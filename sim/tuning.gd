@@ -62,11 +62,13 @@ func _init_schema() -> void:
 	_add_schema("berry_nodes_count", "int", true, 50, 0, 1000, "Number of berry nodes")
 	_add_schema("tree_nodes_count", "int", true, 70, 0, 1000, "Number of tree nodes")
 	_add_schema("ore_nodes_count", "int", true, 20, 0, 500, "Number of ore nodes")
+	_add_schema("stone_nodes_count", "int", false, 60, 0, 1000, "Number of stone nodes")
 	_add_schema("berry_regen_per_day", "int", true, 3, 0, 100, "Berry regeneration per day")
 	_add_schema("tree_regen_per_day", "int", true, 2, 0, 100, "Tree regeneration per day")
 	_add_schema("berry_max_stock", "int", false, 10, 1, 100, "Max stock for berry nodes")
 	_add_schema("tree_max_stock", "int", false, 20, 1, 100, "Max stock for tree nodes")
 	_add_schema("ore_max_stock", "int", false, 30, 1, 100, "Max stock for ore nodes")
+	_add_schema("stone_max_stock", "int", false, 40, 1, 100, "Max stock for stone nodes")
 	_add_schema("node_spawn_attempts", "int", false, 100, 1, 1000, "Max attempts to spawn a node")
 	
 	# Pollution
@@ -333,6 +335,15 @@ func has_key(key: String) -> bool:
 ## Get all schema entries (for documentation/tests)
 func get_schema() -> Dictionary:
 	return _schema.duplicate(true)
+
+## Get full data set with defaults applied for missing keys
+func get_data_with_defaults() -> Dictionary:
+	var merged := _data.duplicate(true)
+	for key in _schema:
+		var schema_entry: Dictionary = _schema[key]
+		if not merged.has(key):
+			merged[key] = schema_entry["default"]
+	return merged
 
 ## Get all loaded data
 func get_data() -> Dictionary:
