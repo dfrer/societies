@@ -175,7 +175,7 @@ func _process_faction_formation(agents: Array, state: SimState, rng: RNG) -> voi
 							 Vector2i(agent.pos_x, agent.pos_y), state.tick, ticks_per_day)
 		
 		# Transfer treasury seed
-		agent.money -= treasury_seed
+		agent.debit_available_money(treasury_seed)
 		faction.treasury = treasury_seed
 		faction.openness = rng.randf()  # Random openness trait
 		

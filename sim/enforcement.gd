@@ -87,13 +87,11 @@ func apply_fine_with_routing(agent: Agent, fine_amount: int, items: Dictionary,
 	
 	# Try to pay from money first
 	if available_cash >= fine_amount:
-		agent.money -= fine_amount
-		paid = fine_amount
+		paid = agent.debit_available_money(fine_amount)
 	else:
 		# Pay what we can
-		paid = available_cash
+		paid = agent.debit_available_money(available_cash)
 		var remaining := fine_amount - paid
-		agent.money -= paid
 
 		
 		# Confiscate items
