@@ -65,11 +65,13 @@ This document describes all configurable tuning parameters for the Societies sim
 | `berry_nodes_count` | int | 50 | 0-1000 | Number of berry nodes |
 | `tree_nodes_count` | int | 70 | 0-1000 | Number of tree nodes |
 | `ore_nodes_count` | int | 20 | 0-500 | Number of ore nodes |
+| `stone_nodes_count` | int | 60 | 0-1000 | Number of stone nodes |
 | `berry_regen_per_day` | int | 3 | 0-100 | Berry regeneration per day |
 | `tree_regen_per_day` | int | 2 | 0-100 | Tree regeneration per day |
 | `berry_max_stock` | int | 10 | 1-100 | Max stock for berry nodes |
 | `tree_max_stock` | int | 20 | 1-100 | Max stock for tree nodes |
 | `ore_max_stock` | int | 30 | 1-100 | Max stock for ore nodes |
+| `stone_max_stock` | int | 40 | 1-100 | Max stock for stone nodes |
 | `node_spawn_attempts` | int | 100 | 1-1000 | Max attempts to spawn a node |
 
 ---
