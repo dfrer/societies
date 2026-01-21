@@ -50,6 +50,9 @@ var _toast_manager: ToastManager
 
 
 func _ready() -> void:
+	_log_startup_diagnostics()
+	if not _validate_required_nodes():
+		return
 	# Initialize update throttler
 	_update_throttler = UpdateThrottler.new()
 	
@@ -85,6 +88,38 @@ func _ready() -> void:
 	if auto_start:
 		# Delay auto-start slightly to ensure everything is ready
 		call_deferred("_start_new_run", default_seed)
+
+
+func _log_startup_diagnostics() -> void:
+	var version := Engine.get_version_info()
+	var version_str := "%s.%s.%s" % [version.get("major", 0), version.get("minor", 0), version.get("patch", 0)]
+	print("Visualizer: Startup diagnostics")
+	print("  Godot version: %s" % version_str)
+	print("  OS: %s" % OS.get_name())
+	print("  Auto-start: %s" % str(auto_start))
+	print("  Default seed: %d" % default_seed)
+
+
+func _validate_required_nodes() -> bool:
+	var missing := []
+	if sim_runner == null:
+		missing.append("SimRunnerNode")
+	if top_bar == null:
+		missing.append("TopBar")
+	if time_controls == null:
+		missing.append("TimeControls")
+	if map_view == null:
+		missing.append("MapView")
+	if error_label == null:
+		missing.append("ErrorLabel")
+
+	if missing.is_empty():
+		return true
+
+	var message := "Visualizer startup missing nodes: %s" % ", ".join(missing)
+	push_error(message)
+	_show_startup_error(message)
+	return false
 
 
 func _connect_signals() -> void:
@@ -170,6 +205,14 @@ func _show_error(message: String) -> void:
 	error_label.text = message
 	error_label.visible = true
 	top_bar.set_status_error(message)
+
+
+func _show_startup_error(message: String) -> void:
+	if error_label:
+		error_label.text = message
+		error_label.visible = true
+	if top_bar:
+		top_bar.set_status_error(message)
 
 
 # These methods are now handled by controllers

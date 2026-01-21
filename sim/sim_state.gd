@@ -18,6 +18,7 @@ var laws_by_owner: Dictionary = {}  # owner_id -> Laws
 var metrics_history: Array = []  # Array of snapshot dictionaries
 var factions: Array = []
 var tuning: Dictionary = {}
+var tuning_config: TuningConfig = null
 var items: Dictionary = {}
 var recipes: Dictionary = {}
 var events: Array = [] # Array[Dictionary]
@@ -38,6 +39,7 @@ func _init() -> void:
 	enforcement = Enforcement.new()
 	factions_system = FactionsSystem.new()
 	communal_projects = CommunalProjectsSystem.new()
+	tuning_config = TuningConfig.new()
 
 ## Get laws for a jurisdiction owner
 func get_laws(owner_id: int) -> Laws:
@@ -46,6 +48,55 @@ func get_laws(owner_id: int) -> Laws:
 		default_laws.init_from_tuning(tuning)
 		laws_by_owner[owner_id] = default_laws
 	return laws_by_owner[owner_id]
+
+## Validate escrow/locked money invariants across agents and contracts
+func validate_financial_invariants() -> void:
+	var total_locked_money := 0
+	for agent in agents:
+		if agent.locked_money > agent.money:
+			push_error("Financial invariant: agent %d locked_money %d exceeds money %d" % [agent.id, agent.locked_money, agent.money])
+			agent.locked_money = agent.money
+		total_locked_money += agent.locked_money
+
+		for item_name in agent.locked_inventory:
+			var locked_qty: int = agent.locked_inventory[item_name]
+			var total_qty: int = agent.inventory.get(item_name, 0)
+			if locked_qty > total_qty:
+				push_error("Inventory invariant: agent %d locked %s=%d exceeds inventory %d" % [agent.id, item_name, locked_qty, total_qty])
+				agent.locked_inventory[item_name] = total_qty
+
+	var total_escrow := contracts_system.get_total_escrow()
+	if total_escrow > total_locked_money:
+		push_error("Escrow invariant: total escrow %d exceeds locked money %d" % [total_escrow, total_locked_money])
+
+## Typed tuning access (prefers TuningConfig defaults/validation)
+func get_tuning_int(key: String, fallback: int = 0) -> int:
+	if tuning_config != null:
+		return tuning_config.get_int(key)
+	if tuning.has(key):
+		return int(tuning[key])
+	return fallback
+
+func get_tuning_float(key: String, fallback: float = 0.0) -> float:
+	if tuning_config != null:
+		return tuning_config.get_float(key)
+	if tuning.has(key):
+		return float(tuning[key])
+	return fallback
+
+func get_tuning_bool(key: String, fallback: bool = false) -> bool:
+	if tuning_config != null:
+		return tuning_config.get_bool(key)
+	if tuning.has(key):
+		return bool(tuning[key])
+	return fallback
+
+func get_tuning_string(key: String, fallback: String = "") -> String:
+	if tuning_config != null:
+		return tuning_config.get_string(key)
+	if tuning.has(key):
+		return str(tuning[key])
+	return fallback
 
 ## Serialize entire simulation state to dictionary
 func to_dict() -> Dictionary:
@@ -110,7 +161,8 @@ func _sanitize_events_for_serialization(events_data: Array) -> Array:
 func _sanitize_tuning_for_serialization(d: Dictionary) -> Dictionary:
 	var result := {}
 	var float_keys := ["hunger_drain_per_tick", "pollution_impact", "pollution_decay_per_day",
-				   "pollution_per_ore", "price_ema_alpha", "bid_scarcity_strength",
+				   "pollution_per_ore", "pollution_spread_rate", "pollution_spread_threshold",
+				   "price_ema_alpha", "bid_scarcity_strength",
 				   "ask_surplus_strength", "crafter_ratio", "craft_profit_margin",
 				   "daily_contract_post_chance", "contract_payout_multiplier", "detect_chance",
 				   "faction_found_min_grievance", "faction_found_daily_chance",
@@ -118,7 +170,8 @@ func _sanitize_tuning_for_serialization(d: Dictionary) -> Dictionary:
 				   "grievance_fine_increase", "grievance_blocked_increase",
 				   "inflation_threshold", "food_yield_pollution_start", "food_yield_pollution_step",
 				   "hunger_drain_pollution_mult", "pollution_high_threshold", "food_scarcity_multiplier",
-				   "starvation_collapse_ratio", "pollution_collapse_threshold"]
+				   "starvation_collapse_ratio", "pollution_collapse_threshold",
+				   "flora_growth_chance", "flora_growth_pollution_max", "flora_growth_berry_weight"]
 	for k in d:
 		if k in float_keys:
 			result[k] = snappedf(float(d[k]), 0.00000001)
@@ -212,6 +265,8 @@ static func from_dict(d: Dictionary) -> SimState:
 
 	# Convert tuning values - integers, floats, and bools as appropriate
 	state.tuning = state._sanitize_tuning_for_serialization(d.get("tuning", {}))
+	state.tuning_config = TuningConfig.new()
+	state.tuning_config.load_from_dict(state.tuning)
 
 	# Convert items values
 	state.items = state._sanitize_items_for_serialization(d.get("items", {}))

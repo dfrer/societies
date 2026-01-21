@@ -13,12 +13,16 @@ const WEIGHT_SOCIAL = 1.0
 # Inertia (preference to keep doing the same thing)
 const INERTIA_BONUS = 0.2
 
+var _survival_planner := SurvivalPlanner.new()
+var _economy_planner := EconomyPlanner.new()
+var _governance_planner := GovernancePlanner.new()
+
 func decide_action(agent: Agent, world: World, market: Market,
 				   contracts_system: ContractsSystem, tuning: Dictionary,
 				   recipes: Dictionary = {}, state: SimState = null) -> Dictionary:
 
 	# 0. Interrupts (Panic checks that override everything)
-	var interrupt = _check_interrupts(agent, tuning)
+	var interrupt = _survival_planner.get_interrupt_action(agent, tuning)
 	if not interrupt.is_empty():
 		return interrupt
 
@@ -65,15 +69,6 @@ func decide_action(agent: Agent, world: World, market: Market,
 # GOAL ORIENTED PLANNING (GOAP)
 # ==============================================================================
 
-func _check_interrupts(agent: Agent, tuning: Dictionary) -> Dictionary:
-	# Critical Survival (Starvation/Exhaustion) check that bypasses stack
-	if agent.get_hunger() < 15.0:
-		if agent.has_available_item("CookedMeal"): return Actions.eat_meal()
-		if agent.has_available_item("Berries"): return Actions.eat()
-	if agent.get_stamina() <= 0.0:
-		return Actions.sleep_rest() # Must rest
-	return {}
-
 func _fallback_action(agent: Agent, world: World) -> Dictionary:
 	# Just explore or idle
 	var risk = agent.personality.get("risk_tolerance", 0.5)
@@ -84,128 +79,18 @@ func _fallback_action(agent: Agent, world: World) -> Dictionary:
 func _generate_high_level_goals(agent: Agent, world: World, market: Market,
 								contracts_system: ContractsSystem, tuning: Dictionary,
 								recipes: Dictionary, state: SimState = null) -> void:
-	# Priority 1: Survival (if low but not critical)
-	if agent.get_hunger() < 50.0:
-		# If we already have food, push an EAT goal instead of OBTAIN_ITEM
-		if agent.has_available_item("CookedMeal"):
-			agent.goal_stack.push_back({"type": "EAT_FOOD", "item": "CookedMeal", "is_goal": true})
-			return
-		if agent.has_available_item("Berries"):
-			agent.goal_stack.push_back({"type": "EAT_FOOD", "item": "Berries", "is_goal": true})
-			return
-		# Goal: Obtain Food (don't have any)
-		agent.goal_stack.push_back({"type": "OBTAIN_ITEM", "item": "Berries", "qty": 5, "is_goal": true})
-		return
-		
-	# Priority 2: Resource Competition (claim resources before others)
-	if agent.has_claim_tokens() and _should_claim_resources(agent, world):
-		agent.goal_stack.push_back({"type": "CLAIM_RESOURCES", "is_goal": true})
-		return
-		
-	# Priority 3: Contracts
-	if agent.has_active_contract():
-		var contract = contracts_system.get_contract(agent.active_contract_id)
-		if contract and contract.status == Contract.STATUS_ACCEPTED:
-			agent.goal_stack.push_back({"type": "FULFILL_CONTRACT", "contract_id": contract.id, "is_goal": true})
-			return
-	else:
-		# Try to find a contract
-		# Simple heuristic: if we have free time, get a contract
-		var best_contract = contracts_system.find_best_contract(agent, market, tuning)
-		if best_contract != null:
-			agent.goal_stack.push_back({"type": "ACCEPT_CONTRACT", "contract_id": best_contract.id, "is_goal": true})
-			return
-			
-	# Priority 3: Faction Expansion (Leader Only)
-	if state != null and agent.faction_id != 0:
-		# Check if leader/founder
-		var my_faction = null
-		for f in state.factions:
-			if f.id == agent.faction_id:
-				my_faction = f
-				break
-				
-		if my_faction and my_faction.founder_agent_id == agent.id:
-			# I am the leader!
-			var claim_cost: int = tuning.get("faction_claim_cost", 15) # Verify tuning key, was logic hardcoded in system?
-			# FactionsSystem uses "faction_claim_cost" defaults to 15. Actions uses "claim_cost_coins" defaults to 20.
-			# Let's trust FactionsSystem key for faction expansion.
-			
-			if my_faction.treasury >= claim_cost * 2: # Keep some buffer
-				# Push Expand Faction Goal
-				agent.goal_stack.push_back({"type": "EXPAND_FACTION", "is_goal": true})
-				return
-
-	# Priority 4: Progression (First Tools)
-	if not agent.has_tool("Axe"):
-		agent.goal_stack.push_back({"type": "OBTAIN_ITEM", "item": "Axe", "qty": 1, "is_goal": true})
-		return
-		
-	# Priority 5: Infrastructure (Roads)
-	if agent.faction_id != 0 and agent.has_tool("Shovel"):
-		var market_pos = Vector2i(tuning.get("market_pos_x", 48), tuning.get("market_pos_y", 48))
-		# Check if route from home to market has roads
-		# For now, just a chance to build a road near current pos or on the way to market
-		if state != null and state.rng.randf() < 0.05:
-			agent.goal_stack.push_back({"type": "BUILD_ROAD", "target_x": market_pos.x, "target_y": market_pos.y, "is_goal": true})
-			return
-
-	# Priority 6: Progression (More Tools)
-	if not agent.has_tool("Mallet"):
-		agent.goal_stack.push_back({"type": "OBTAIN_ITEM", "item": "Mallet", "qty": 1, "is_goal": true})
-		return
-		
-	# Priority 6.5: Strategic Workshop Building
-	if agent.has_tool("Mallet") and _should_build_workshop(agent, world, state):
-		agent.goal_stack.push_back({"type": "BUILD_STRATEGIC_WORKSHOP", "is_goal": true})
-		return
-	if not agent.has_tool("Shovel"):
-		agent.goal_stack.push_back({"type": "OBTAIN_ITEM", "item": "Shovel", "qty": 1, "is_goal": true})
+	if _survival_planner.maybe_add_goal(agent, tuning):
 		return
 
-	# Priority 7: Wealth / General
-	# Default: Gather/Craft profitable items
-	agent.goal_stack.push_back({"type": "OBTAIN_ITEM", "item": "Planks", "qty": 1, "is_goal": true})
+	if _economy_planner.add_primary_goal(agent, world, market, contracts_system, tuning, recipes, state):
+		return
+
+	if _governance_planner.maybe_add_goal(agent, world, tuning, state):
+		return
+
+	_economy_planner.add_progression_goal(agent, world, tuning, state)
 
 # Helper function to determine if agent should claim resources
-func _should_claim_resources(agent: Agent, world: World) -> bool:
-	# Claim if near valuable unclaimed resources
-	var search_radius = 8
-	var valuable_found = false
-	
-	for node in world.resource_nodes:
-		var dist = absi(node.pos_x - agent.pos_x) + absi(node.pos_y - agent.pos_y)
-		if dist <= search_radius and not world.is_claimed(node.pos_x, node.pos_y):
-			# Prioritize resources that match agent's needs
-			if node.type == "berry" and agent.get_hunger() < 60:
-				return true
-			elif node.type == "tree" and not agent.has_tool("Axe"):
-				return true
-			elif node.type == "ore" and not agent.has_tool("Pickaxe"):
-				return true
-			valuable_found = true
-	
-	return valuable_found
-
-# Helper function to determine if agent should build a workshop
-func _should_build_workshop(agent: Agent, world: World, state: SimState) -> bool:
-	# Don't build if no workshops available nearby
-	var nearby_workshops = 0
-	var search_radius = 15
-	
-	for workshop in world.workshops:
-		var dist = absi(workshop.pos_x - agent.pos_x) + absi(workshop.pos_y - agent.pos_y)
-		if dist <= search_radius and workshop.is_ready():
-			nearby_workshops += 1
-	
-	# Build if workshop shortage and have materials
-	if nearby_workshops < 2:  # Strategic threshold
-		var planks_needed = 10
-		if agent.has_available_item("Planks", planks_needed):
-			return true
-	
-	return false
-
 func _is_goal_complete(agent: Agent, goal: Dictionary, world: World) -> bool:
 	match goal.type:
 		"CLAIM_RESOURCES":
@@ -665,7 +550,11 @@ func _eval_accept_contract(agent: Agent, action: Dictionary, contracts_system: C
 	if contract == null: return -1.0
 	
 	var greed = agent.personality.get("greed", 0.5)
-	var profit = contract.payout # TODO: subtract item costs
+	var have: int = agent.get_available_item(contract.item)
+	var need: int = maxi(0, contract.qty - have)
+	var ref_price: float = market.get_ref_price(contract.item)
+	var estimated_cost: float = need * ref_price
+	var profit = contract.payout - estimated_cost
 	
 	# High base utility to ensure agents actually pick up contracts
 	return 20.0 + (profit * 0.1 * greed)

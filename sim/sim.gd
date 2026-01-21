@@ -65,6 +65,7 @@ func _load_config() -> void:
 	var tuning_errors := tuning_config.validate()
 	if tuning_errors.size() > 0:
 		push_error("TuningConfig validation failed:\n- " + "\n- ".join(tuning_errors))
+	state.tuning_config = tuning_config
 	state.tuning = tuning_config.get_data_with_defaults()
 	
 	var recipes_data = Serializers.load_json_file("res://config/recipes.json")
@@ -88,24 +89,51 @@ func _get_default_items() -> Dictionary:
 
 func _spawn_resource_nodes() -> void:
 	var occupied := {}
-	var berry_max_stock: int = state.tuning.get("berry_max_stock", 10)
-	var tree_max_stock: int = state.tuning.get("tree_max_stock", 20)
-	var ore_max_stock: int = state.tuning.get("ore_max_stock", 30)
-	var stone_max_stock: int = state.tuning.get("stone_max_stock", 40)
-	var node_spawn_attempts: int = state.tuning.get("node_spawn_attempts", 100)
-	for i in range(state.tuning.get("berry_nodes_count", 120)):
-		var node := _spawn_node("berry", berry_max_stock, 6, berry_max_stock, occupied, node_spawn_attempts)
+	var berry_max_stock: int = state.get_tuning_int("berry_max_stock", 10)
+	var tree_max_stock: int = state.get_tuning_int("tree_max_stock", 20)
+	var ore_max_stock: int = state.get_tuning_int("ore_max_stock", 30)
+	var stone_max_stock: int = state.get_tuning_int("stone_max_stock", 40)
+	var node_spawn_attempts: int = state.get_tuning_int("node_spawn_attempts", 100)
+
+	var berry_start_min: int = mini(state.get_tuning_int("berry_start_min", 6), berry_max_stock)
+	var berry_start_max: int = mini(state.get_tuning_int("berry_start_max", berry_max_stock), berry_max_stock)
+	var tree_start_min: int = mini(state.get_tuning_int("tree_start_min", 10), tree_max_stock)
+	var tree_start_max: int = mini(state.get_tuning_int("tree_start_max", tree_max_stock), tree_max_stock)
+	var ore_start_min: int = mini(state.get_tuning_int("ore_start_min", 20), ore_max_stock)
+	var ore_start_max: int = mini(state.get_tuning_int("ore_start_max", ore_max_stock), ore_max_stock)
+	var stone_start_min: int = mini(state.get_tuning_int("stone_start_min", 20), stone_max_stock)
+	var stone_start_max: int = mini(state.get_tuning_int("stone_start_max", stone_max_stock), stone_max_stock)
+
+	if berry_start_min > berry_start_max:
+		var temp := berry_start_min
+		berry_start_min = berry_start_max
+		berry_start_max = temp
+	if tree_start_min > tree_start_max:
+		var temp := tree_start_min
+		tree_start_min = tree_start_max
+		tree_start_max = temp
+	if ore_start_min > ore_start_max:
+		var temp := ore_start_min
+		ore_start_min = ore_start_max
+		ore_start_max = temp
+	if stone_start_min > stone_start_max:
+		var temp := stone_start_min
+		stone_start_min = stone_start_max
+		stone_start_max = temp
+
+	for i in range(state.get_tuning_int("berry_nodes_count", 120)):
+		var node := _spawn_node("berry", berry_max_stock, berry_start_min, berry_start_max, occupied, node_spawn_attempts)
 		if node: state.world.add_resource_node(node)
-	for i in range(state.tuning.get("tree_nodes_count", 200)):
-		var node := _spawn_node("tree", tree_max_stock, 10, tree_max_stock, occupied, node_spawn_attempts)
+	for i in range(state.get_tuning_int("tree_nodes_count", 200)):
+		var node := _spawn_node("tree", tree_max_stock, tree_start_min, tree_start_max, occupied, node_spawn_attempts)
 		if node: state.world.add_resource_node(node)
-	for i in range(state.tuning.get("ore_nodes_count", 40)):
-		var node := _spawn_node("ore", ore_max_stock, 20, ore_max_stock, occupied, node_spawn_attempts)
+	for i in range(state.get_tuning_int("ore_nodes_count", 40)):
+		var node := _spawn_node("ore", ore_max_stock, ore_start_min, ore_start_max, occupied, node_spawn_attempts)
 		if node: state.world.add_resource_node(node)
 	# Add stone nodes (permanent resource)
-	var stone_count = state.tuning.get("stone_nodes_count", 60)
+	var stone_count = state.get_tuning_int("stone_nodes_count", 60)
 	for i in range(stone_count):
-		var node := _spawn_node("stone", stone_max_stock, 20, stone_max_stock, occupied, node_spawn_attempts)
+		var node := _spawn_node("stone", stone_max_stock, stone_start_min, stone_start_max, occupied, node_spawn_attempts)
 		if node: state.world.add_resource_node(node)
 
 func _spawn_node(type: String, max_stock: int, min_start: int, max_start: int, occupied: Dictionary, spawn_attempts: int) -> ResourceNode:
