@@ -298,6 +298,14 @@ static func from_dict(d: Dictionary) -> Agent:
 func get_available_money() -> int:
 	return maxi(0, money - locked_money)
 
+## Spend available (unlocked) money only.
+## Returns the amount actually debited.
+func debit_available_money(amount: int) -> int:
+	var available := get_available_money()
+	var actual := maxi(0, mini(amount, available))
+	money -= actual
+	return actual
+
 ## Get available item quantity
 func get_available_item(item_name: String) -> int:
 	var total: int = inventory.get(item_name, 0)

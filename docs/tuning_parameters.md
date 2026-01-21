@@ -2,6 +2,10 @@
 
 This document describes all configurable tuning parameters for the Societies simulation. Parameters are loaded from `config/tuning.json` and validated by the `TuningConfig` class.
 
+## Loading behavior
+
+When `tuning.json` fails to load or contains invalid values, the simulation logs validation errors via `push_error` and continues using schema defaults. Missing required keys are reported during validation, but the sim does not abort by default; defaults are applied so runs can continue in a degraded, traceable state.
+
 ---
 
 ## World & Time
@@ -72,6 +76,14 @@ This document describes all configurable tuning parameters for the Societies sim
 | `tree_max_stock` | int | 20 | 1-100 | Max stock for tree nodes |
 | `ore_max_stock` | int | 30 | 1-100 | Max stock for ore nodes |
 | `stone_max_stock` | int | 40 | 1-100 | Max stock for stone nodes |
+| `berry_start_min` | int | 6 | 0-100 | Min starting stock for berry nodes |
+| `berry_start_max` | int | 10 | 1-100 | Max starting stock for berry nodes |
+| `tree_start_min` | int | 10 | 0-100 | Min starting stock for tree nodes |
+| `tree_start_max` | int | 20 | 1-100 | Max starting stock for tree nodes |
+| `ore_start_min` | int | 20 | 0-100 | Min starting stock for ore nodes |
+| `ore_start_max` | int | 30 | 1-100 | Max starting stock for ore nodes |
+| `stone_start_min` | int | 20 | 0-100 | Min starting stock for stone nodes |
+| `stone_start_max` | int | 40 | 1-100 | Max starting stock for stone nodes |
 | `node_spawn_attempts` | int | 100 | 1-1000 | Max attempts to spawn a node |
 
 ---
@@ -83,11 +95,17 @@ This document describes all configurable tuning parameters for the Societies sim
 | `pollution_impact` | float | 0.5 | 0-2 | Pollution impact on resource regen |
 | `pollution_decay_per_day` | float | 0.05 | 0-1 | Pollution decay rate per day |
 | `pollution_per_ore` | float | 0.01 | 0-1 | Pollution added per ore mined |
+| `pollution_spread_rate` | float | 0.05 | 0-1 | Fraction of pollution spread per day |
+| `pollution_spread_threshold` | float | 0.05 | 0-1 | Minimum pollution before spreading |
 | `pollution_high_threshold` | float | 0.6 | 0-1 | Threshold for high pollution |
 | `pollution_collapse_threshold` | float | 0.8 | 0-1 | Pollution level causing collapse |
 | `food_yield_pollution_start` | float | 0.3 | 0-1 | Pollution where food yield decreases |
 | `food_yield_pollution_step` | float | 0.1 | 0-1 | Pollution step for food yield reduction |
 | `hunger_drain_pollution_mult` | float | 0.5 | 0-5 | Hunger drain multiplier from pollution |
+| `flora_growth_attempts_per_day` | int | 6 | 0-100 | Flora growth attempts per day |
+| `flora_growth_chance` | float | 0.35 | 0-1 | Chance each flora growth attempt succeeds |
+| `flora_growth_pollution_max` | float | 0.3 | 0-1 | Max pollution for flora growth tiles |
+| `flora_growth_berry_weight` | float | 0.6 | 0-1 | Probability of spawning berries vs trees |
 
 ---
 
@@ -197,6 +215,8 @@ This document describes all configurable tuning parameters for the Societies sim
 | `harvest_permit_required_default` | bool | true | - | Default harvest permit req |
 | `build_permit_required_default` | bool | true | - | Default build permit req |
 | `sales_tax_rate_default` | int | 5 | 0-100 | Default sales tax rate |
+| `sales_tax_rate_min` | int | 0 | 0-100 | Minimum sales tax rate |
+| `sales_tax_rate_max` | int | 20 | 0-100 | Maximum sales tax rate |
 
 ---
 

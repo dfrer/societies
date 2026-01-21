@@ -50,6 +50,9 @@ var _toast_manager: ToastManager
 
 
 func _ready() -> void:
+	_log_startup_diagnostics()
+	if not _validate_required_nodes():
+		return
 	# Initialize update throttler
 	_update_throttler = UpdateThrottler.new()
 	
@@ -85,6 +88,38 @@ func _ready() -> void:
 	if auto_start:
 		# Delay auto-start slightly to ensure everything is ready
 		call_deferred("_start_new_run", default_seed)
+
+
+func _log_startup_diagnostics() -> void:
+	var version := Engine.get_version_info()
+	var version_str := "%s.%s.%s" % [version.get("major", 0), version.get("minor", 0), version.get("patch", 0)]
+	print("Visualizer: Startup diagnostics")
+	print("  Godot version: %s" % version_str)
+	print("  OS: %s" % OS.get_name())
+	print("  Auto-start: %s" % str(auto_start))
+	print("  Default seed: %d" % default_seed)
+
+
+func _validate_required_nodes() -> bool:
+	var missing := []
+	if sim_runner == null:
+		missing.append("SimRunnerNode")
+	if top_bar == null:
+		missing.append("TopBar")
+	if time_controls == null:
+		missing.append("TimeControls")
+	if map_view == null:
+		missing.append("MapView")
+	if error_label == null:
+		missing.append("ErrorLabel")
+
+	if missing.is_empty():
+		return true
+
+	var message := "Visualizer startup missing nodes: %s" % ", ".join(missing)
+	push_error(message)
+	_show_startup_error(message)
+	return false
 
 
 func _connect_signals() -> void:
@@ -170,6 +205,14 @@ func _show_error(message: String) -> void:
 	error_label.text = message
 	error_label.visible = true
 	top_bar.set_status_error(message)
+
+
+func _show_startup_error(message: String) -> void:
+	if error_label:
+		error_label.text = message
+		error_label.visible = true
+	if top_bar:
+		top_bar.set_status_error(message)
 
 
 # These methods are now handled by controllers
@@ -368,11 +411,14 @@ func _on_compare_requested() -> void:
 ## Input handling for keyboard shortcuts
 func _input(event: InputEvent) -> void:
 	# Handle keyboard shortcuts
-	if not event.pressed:
+	if not (event is InputEventKey):
+		return
+	var key_event := event as InputEventKey
+	if not key_event.pressed:
 		return
 		
 	# Space: pause/play toggle
-	if event.keycode == KEY_SPACE:
+	if key_event.keycode == KEY_SPACE:
 		if _state_controller.is_simulation_running():
 			_state_controller.set_speed(0)
 			_toast_manager.show_info("Simulation paused")
@@ -382,19 +428,19 @@ func _input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 	
 	# S: step tick
-	elif event.keycode == KEY_S:
+	elif key_event.keycode == KEY_S:
 		_state_controller.step_ticks(1)
 		_toast_manager.show_info("Stepped 1 tick")
 		get_viewport().set_input_as_handled()
 	
 	# D: step day
-	elif event.keycode == KEY_D:
+	elif key_event.keycode == KEY_D:
 		_state_controller.step_day()
 		_toast_manager.show_info("Stepped 1 day")
 		get_viewport().set_input_as_handled()
 	
 	# M: toggle metrics panel
-	elif event.keycode == KEY_M:
+	elif key_event.keycode == KEY_M:
 		var metrics_visible = right_panel.visible
 		_panel_controller.set_panel_visible("metrics", not metrics_visible)
 		_toast_manager.show_info("Metrics panel " + ("shown" if not metrics_visible else "hidden"))

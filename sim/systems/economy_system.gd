@@ -17,3 +17,4 @@ func tick(sim: RefCounted, state: SimState) -> void:
     state.market.expire_orders(state.tick, state.agents)
     
     state.contracts_system.process_expirations(state.tick, state.agents, state)
+    state.validate_financial_invariants()

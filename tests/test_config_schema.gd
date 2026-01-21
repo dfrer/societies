@@ -8,6 +8,7 @@ func _run() -> void:
 	subtest("TuningConfig validation", _test_tuning_validation)
 	subtest("TuningConfig typed getters", _test_typed_getters)
 	subtest("Missing required key error", _test_missing_required_key)
+	subtest("Missing required key from tuning.json", _test_missing_required_key_from_file)
 	subtest("Schema completeness", _test_schema_completeness)
 
 func _test_tuning_loads() -> void:
@@ -109,6 +110,33 @@ func _test_missing_required_key() -> void:
 			break
 	
 	assert_true(found_helpful_message, "Validation should produce helpful 'Missing required tuning key' messages")
+
+func _test_missing_required_key_from_file() -> void:
+	var file := FileAccess.open("res://config/tuning.json", FileAccess.READ)
+	assert_true(file != null, "tuning.json should exist and be readable")
+	if file == null:
+		return
+
+	var json := JSON.new()
+	var error := json.parse(file.get_as_text())
+	file.close()
+	assert_eq(error, OK, "tuning.json should parse correctly")
+	if error != OK:
+		return
+
+	var data: Dictionary = json.data
+	data.erase("world_w")
+
+	var config := TuningConfig.new()
+	config.load_from_dict(data)
+	var errors := config.validate()
+
+	var found_missing := false
+	for err in errors:
+		if err.contains("world_w"):
+			found_missing = true
+			break
+	assert_true(found_missing, "Validation should flag missing required keys from tuning.json")
 
 func _test_schema_completeness() -> void:
 	# Load actual tuning.json

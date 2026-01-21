@@ -175,7 +175,7 @@ func _process_faction_formation(agents: Array, state: SimState, rng: RNG) -> voi
 							 Vector2i(agent.pos_x, agent.pos_y), state.tick, ticks_per_day)
 		
 		# Transfer treasury seed
-		agent.money -= treasury_seed
+		agent.debit_available_money(treasury_seed)
 		faction.treasury = treasury_seed
 		faction.openness = rng.randf()  # Random openness trait
 		
@@ -399,6 +399,7 @@ func _process_governance(state: SimState, rng: RNG) -> void:
 func _resolve_expired_proposals(faction: Faction, state: SimState) -> void:
 	var expired := faction.get_expired_proposals(state.tick)
 	var faction_owner_id := World.owner_id_for_faction(faction.id)
+	var tuning := state.tuning
 	
 	for proposal in expired:
 		# Count votes
@@ -416,7 +417,9 @@ func _resolve_expired_proposals(faction: Faction, state: SimState) -> void:
 			if changes.has("build_permit_required"):
 				laws.build_permit_required = changes["build_permit_required"]
 			if changes.has("sales_tax_rate"):
-				laws.sales_tax_rate = clampi(changes["sales_tax_rate"], 0, 20)
+				var tax_min: int = tuning.get("sales_tax_rate_min", 0)
+				var tax_max: int = tuning.get("sales_tax_rate_max", 20)
+				laws.sales_tax_rate = clampi(changes["sales_tax_rate"], tax_min, tax_max)
 			if changes.has("fine_base"):
 				var min_fine: int = state.tuning.get("min_fine", 5)
 				var max_fine: int = state.tuning.get("max_fine", 50)
