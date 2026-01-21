@@ -411,11 +411,14 @@ func _on_compare_requested() -> void:
 ## Input handling for keyboard shortcuts
 func _input(event: InputEvent) -> void:
 	# Handle keyboard shortcuts
-	if not event.pressed:
+	if not (event is InputEventKey):
+		return
+	var key_event := event as InputEventKey
+	if not key_event.pressed:
 		return
 		
 	# Space: pause/play toggle
-	if event.keycode == KEY_SPACE:
+	if key_event.keycode == KEY_SPACE:
 		if _state_controller.is_simulation_running():
 			_state_controller.set_speed(0)
 			_toast_manager.show_info("Simulation paused")
@@ -425,19 +428,19 @@ func _input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 	
 	# S: step tick
-	elif event.keycode == KEY_S:
+	elif key_event.keycode == KEY_S:
 		_state_controller.step_ticks(1)
 		_toast_manager.show_info("Stepped 1 tick")
 		get_viewport().set_input_as_handled()
 	
 	# D: step day
-	elif event.keycode == KEY_D:
+	elif key_event.keycode == KEY_D:
 		_state_controller.step_day()
 		_toast_manager.show_info("Stepped 1 day")
 		get_viewport().set_input_as_handled()
 	
 	# M: toggle metrics panel
-	elif event.keycode == KEY_M:
+	elif key_event.keycode == KEY_M:
 		var metrics_visible = right_panel.visible
 		_panel_controller.set_panel_visible("metrics", not metrics_visible)
 		_toast_manager.show_info("Metrics panel " + ("shown" if not metrics_visible else "hidden"))
