@@ -5,8 +5,8 @@ extends SceneTree
 
 const TestCaseScript = preload("res://tests/test_case.gd")
 
-## Directories to scan for tests (relative to res://tests)
-const TEST_SUBDIRS := ["unit", "system", "integration"]
+## Root directories to scan for tests
+const TEST_ROOTS := ["res://tests"]
 
 ## Files to exclude from test discovery
 const EXCLUDE_FILES := [
@@ -19,8 +19,16 @@ const EXCLUDE_FILES := [
 	"sim_fixture.gd"
 ]
 
+const DEFAULT_OUTPUT_PATH := "user://test_output.txt"
+const REQUIRED_CONFIG_FILES := [
+	"res://config/tuning.json",
+	"res://config/items.json",
+	"res://config/recipes.json"
+]
+
 func _init() -> void:
-	var output_file := FileAccess.open("res://test_output.txt", FileAccess.WRITE)
+	var output_path := _get_output_path()
+	var output_file := FileAccess.open(output_path, FileAccess.WRITE)
 	if not output_file:
 		print("Failed to open output file")
 		quit(1)
@@ -32,6 +40,13 @@ func _init() -> void:
 	
 	log_msg.call("=== Societies Simulation Test Suite ===")
 	log_msg.call("")
+	log_msg.call("Output file: %s" % output_path)
+	log_msg.call("")
+
+	if not _validate_required_files(log_msg):
+		output_file.close()
+		quit(1)
+		return
 	
 	var passed_count := 0
 	var failed_count := 0
@@ -39,15 +54,9 @@ func _init() -> void:
 	
 	var test_files: Array[String] = []
 	
-	# Discover tests in all subdirectories
-	for subdir in TEST_SUBDIRS:
-		var dir_path: String
-		if subdir.is_empty():
-			dir_path = "res://tests"
-		else:
-			dir_path = "res://tests/" + subdir
-		
-		var discovered := _discover_tests_in_dir(dir_path)
+	# Discover tests in all root directories
+	for root_dir in TEST_ROOTS:
+		var discovered := _discover_tests_recursive(root_dir)
 		test_files.append_array(discovered)
 	
 	# Sort for deterministic ordering
@@ -57,6 +66,11 @@ func _init() -> void:
 	log_msg.call("")
 	
 	var tests_to_run := test_files.size()
+	if tests_to_run == 0:
+		log_msg.call("No tests discovered. Check discovery roots and exclusions.")
+		output_file.close()
+		quit(1)
+		return
 	
 	for i in range(tests_to_run):
 		var path: String = test_files[i]
@@ -128,8 +142,8 @@ func _init() -> void:
 		log_msg.call("SOME TESTS FAILED")
 		quit(1)
 
-## Discover test files in a directory
-func _discover_tests_in_dir(dir_path: String) -> Array[String]:
+## Discover test files in a directory tree
+func _discover_tests_recursive(dir_path: String) -> Array[String]:
 	var result: Array[String] = []
 	
 	var dir := DirAccess.open(dir_path)
@@ -139,10 +153,33 @@ func _discover_tests_in_dir(dir_path: String) -> Array[String]:
 	dir.list_dir_begin()
 	var file_name := dir.get_next()
 	while file_name != "":
-		if not dir.current_is_dir():
+		if dir.current_is_dir():
+			if file_name != "." and file_name != "..":
+				result.append_array(_discover_tests_recursive(dir_path + "/" + file_name))
+		else:
 			if file_name.begins_with("test_") and file_name.ends_with(".gd"):
 				if file_name not in EXCLUDE_FILES:
 					result.append(dir_path + "/" + file_name)
 		file_name = dir.get_next()
 	
 	return result
+
+func _get_output_path() -> String:
+	var output_path := DEFAULT_OUTPUT_PATH
+	for arg in OS.get_cmdline_args():
+		if arg.begins_with("--out="):
+			output_path = arg.get_slice("=", 1)
+	return output_path
+
+func _validate_required_files(log_msg: Callable) -> bool:
+	var missing: Array[String] = []
+	for path in REQUIRED_CONFIG_FILES:
+		if not FileAccess.file_exists(path):
+			missing.append(path)
+	if missing.is_empty():
+		return true
+	log_msg.call("Missing required config files:")
+	for path in missing:
+		log_msg.call("  - %s" % path)
+	log_msg.call("Run with the correct project path (e.g., godot --path /path/to/project).")
+	return false
