@@ -137,7 +137,7 @@ func apply_fine_with_routing(agent: Agent, fine_amount: int, items: Dictionary,
 
 ## Calculate fines based on policy (severity + repeat offenders + tuning caps)
 func calculate_fine(agent_id: int, violation_type: String, laws: Laws, tuning: Dictionary, current_tick: int) -> int:
-	var base := laws.fine_base * SEVERITY.get(violation_type, 1)
+	var base: int = int(laws.fine_base) * int(SEVERITY.get(violation_type, 1))
 	var min_fine := int(tuning.get("min_fine", base))
 	var max_fine := int(tuning.get("max_fine", base))
 	var fine_step := int(tuning.get("fine_step", 5))
