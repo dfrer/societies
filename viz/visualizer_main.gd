@@ -7,14 +7,14 @@ extends Control
 @onready var top_bar: TopBar = $VBoxContainer/TopBar
 @onready var time_controls: TimeControls = $VBoxContainer/MainContent/LeftPanel/TimeControls
 @onready var overlay_toolbar: OverlayToolbar = $VBoxContainer/MainContent/LeftPanel/DataTabs/Overlays
-@onready var map_view: MapView = $VBoxContainer/MainContent/CenterPanel/VBoxContainer/MapViewContainer/MapView
-@onready var coord_label: Label = $VBoxContainer/MainContent/CenterPanel/VBoxContainer/BottomBar/LeftSection/CoordLabel
-@onready var selection_label: Label = $VBoxContainer/MainContent/CenterPanel/VBoxContainer/BottomBar/LeftSection/SelectionLabel
-@onready var zoom_label: Label = $VBoxContainer/MainContent/CenterPanel/VBoxContainer/BottomBar/RightSection/ZoomLabel
-@onready var metrics_button: Button = $VBoxContainer/MainContent/CenterPanel/VBoxContainer/BottomBar/RightSection/MetricsButton
-@onready var inspector_panel: InspectorPanel = $VBoxContainer/MainContent/RightPanel/InspectorPanel
-@onready var metrics_panel: PanelContainer = $VBoxContainer/MainContent/RightPanel/MetricsPanel
-@onready var right_panel: VBoxContainer = $VBoxContainer/MainContent/RightPanel
+@onready var map_view: MapView = $VBoxContainer/MainContent/CenterRightSplit/CenterPanel/VBoxContainer/MapViewContainer/MapView
+@onready var coord_label: Label = $VBoxContainer/MainContent/CenterRightSplit/CenterPanel/VBoxContainer/BottomBar/LeftSection/CoordLabel
+@onready var selection_label: Label = $VBoxContainer/MainContent/CenterRightSplit/CenterPanel/VBoxContainer/BottomBar/LeftSection/SelectionLabel
+@onready var zoom_label: Label = $VBoxContainer/MainContent/CenterRightSplit/CenterPanel/VBoxContainer/BottomBar/RightSection/ZoomLabel
+@onready var metrics_button: Button = $VBoxContainer/MainContent/CenterRightSplit/CenterPanel/VBoxContainer/BottomBar/RightSection/MetricsButton
+@onready var inspector_panel: InspectorPanel = $VBoxContainer/MainContent/CenterRightSplit/RightPanel/InspectorPanel
+@onready var metrics_panel: PanelContainer = $VBoxContainer/MainContent/CenterRightSplit/RightPanel/MetricsPanel
+@onready var right_panel: VBoxContainer = $VBoxContainer/MainContent/CenterRightSplit/RightPanel
 @onready var data_tabs: TabContainer = $VBoxContainer/MainContent/LeftPanel/DataTabs
 @onready var split_container: HSplitContainer = $VBoxContainer/MainContent
 @onready var market_panel: MarketPanel = $VBoxContainer/MainContent/LeftPanel/DataTabs/Market
@@ -23,7 +23,7 @@ extends Control
 # @onready var timeline_panel: Control = $VBoxContainer/MainContent/LeftPanel/DataTabs/Timeline  # Temporarily disabled
 @onready var file_dialog: FileDialog = $FileDialog
 @onready var save_dialog: FileDialog = $SaveDialog
-@onready var error_label: Label = $VBoxContainer/MainContent/CenterPanel/ErrorLabel
+@onready var error_label: Label = $VBoxContainer/MainContent/CenterRightSplit/CenterPanel/ErrorLabel
 
 ## Default seed for new runs
 @export var default_seed: int = 42
@@ -71,10 +71,11 @@ func _ready() -> void:
 	# Connect metrics button if available
 	if metrics_button:
 		metrics_button.toggled.connect(_on_metrics_button_toggled)
+		metrics_button.set_pressed_no_signal(metrics_panel.visible)
 	
-	# Connect right panel visibility if available
-	if right_panel:
-		right_panel.visibility_changed.connect(_on_metrics_panel_visibility_changed)
+	# Sync metrics button state if panel visibility changes elsewhere
+	if metrics_panel:
+		metrics_panel.visibility_changed.connect(_on_metrics_panel_visibility_changed)
 
 	# Setup timeline panel if available (temporarily disabled)
 	# if timeline_panel and sim_runner:
@@ -399,8 +400,8 @@ func _on_metrics_button_toggled(pressed: bool) -> void:
 
 func _on_metrics_panel_visibility_changed() -> void:
 	# Sync button state if panel is closed via its own close button
-	if metrics_button.button_pressed != right_panel.visible:
-		metrics_button.set_pressed_no_signal(right_panel.visible)
+	if metrics_button.button_pressed != metrics_panel.visible:
+		metrics_button.set_pressed_no_signal(metrics_panel.visible)
 
 func _on_jump_to_tick_requested(tick: int) -> void:
 	_state_controller.jump_to_tick(tick)
@@ -441,7 +442,7 @@ func _input(event: InputEvent) -> void:
 	
 	# M: toggle metrics panel
 	elif key_event.keycode == KEY_M:
-		var metrics_visible = right_panel.visible
+		var metrics_visible = metrics_panel.visible
 		_panel_controller.set_panel_visible("metrics", not metrics_visible)
 		_toast_manager.show_info("Metrics panel " + ("shown" if not metrics_visible else "hidden"))
 		get_viewport().set_input_as_handled()
