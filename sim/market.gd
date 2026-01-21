@@ -333,7 +333,7 @@ func _match_item(item: String, agent_map: Dictionary, alpha: float,
 		# 2. Pay the actual cost from available money (which now includes the released amount)
 		# Note: buyer.money includes locked_money, so we just decrement total.
 		# release_locked_money only updates the locked_money counter.
-		buyer.debit_money(total_cost)
+		buyer.debit_available_money(total_cost)
 		
 		# Seller receives total minus tax and tariff
 		seller.money += total_cost - tax_amount - tariff_amount
