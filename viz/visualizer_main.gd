@@ -71,10 +71,11 @@ func _ready() -> void:
 	# Connect metrics button if available
 	if metrics_button:
 		metrics_button.toggled.connect(_on_metrics_button_toggled)
+		metrics_button.set_pressed_no_signal(metrics_panel.visible)
 	
-	# Connect right panel visibility if available
-	if right_panel:
-		right_panel.visibility_changed.connect(_on_metrics_panel_visibility_changed)
+	# Sync metrics button state if panel visibility changes elsewhere
+	if metrics_panel:
+		metrics_panel.visibility_changed.connect(_on_metrics_panel_visibility_changed)
 
 	# Setup timeline panel if available (temporarily disabled)
 	# if timeline_panel and sim_runner:
@@ -399,8 +400,8 @@ func _on_metrics_button_toggled(pressed: bool) -> void:
 
 func _on_metrics_panel_visibility_changed() -> void:
 	# Sync button state if panel is closed via its own close button
-	if metrics_button.button_pressed != right_panel.visible:
-		metrics_button.set_pressed_no_signal(right_panel.visible)
+	if metrics_button.button_pressed != metrics_panel.visible:
+		metrics_button.set_pressed_no_signal(metrics_panel.visible)
 
 func _on_jump_to_tick_requested(tick: int) -> void:
 	_state_controller.jump_to_tick(tick)
@@ -441,7 +442,7 @@ func _input(event: InputEvent) -> void:
 	
 	# M: toggle metrics panel
 	elif key_event.keycode == KEY_M:
-		var metrics_visible = right_panel.visible
+		var metrics_visible = metrics_panel.visible
 		_panel_controller.set_panel_visible("metrics", not metrics_visible)
 		_toast_manager.show_info("Metrics panel " + ("shown" if not metrics_visible else "hidden"))
 		get_viewport().set_input_as_handled()
