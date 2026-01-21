@@ -113,7 +113,7 @@ theme_override_constants/separation = 12
 [node name="CoordLabel" type="Label" parent="VBoxContainer/MainContent/CenterPanel/VBoxContainer/BottomBar/LeftSection"]
 layout_mode = 2
 text = "Tile: --"
-modulate = Color(0.8, 0.8, 0.8)
+modulate = Color(0.8, 0.8, 0.8, 1)
 
 [node name="VSeparator1" type="VSeparator" parent="VBoxContainer/MainContent/CenterPanel/VBoxContainer/BottomBar/LeftSection"]
 layout_mode = 2
@@ -121,7 +121,7 @@ layout_mode = 2
 [node name="SelectionLabel" type="Label" parent="VBoxContainer/MainContent/CenterPanel/VBoxContainer/BottomBar/LeftSection"]
 layout_mode = 2
 text = "Selected: --"
-modulate = Color(0.8, 0.8, 0.8)
+modulate = Color(0.8, 0.8, 0.8, 1)
 
 [node name="Spacer" type="Control" parent="VBoxContainer/MainContent/CenterPanel/VBoxContainer/BottomBar"]
 layout_mode = 2
@@ -134,7 +134,7 @@ theme_override_constants/separation = 12
 [node name="ZoomLabel" type="Label" parent="VBoxContainer/MainContent/CenterPanel/VBoxContainer/BottomBar/RightSection"]
 layout_mode = 2
 text = "Zoom: 100%"
-modulate = Color(0.7, 0.7, 0.7)
+modulate = Color(0.7, 0.7, 0.7, 1)
 
 [node name="VSeparator2" type="VSeparator" parent="VBoxContainer/MainContent/CenterPanel/VBoxContainer/BottomBar/RightSection"]
 layout_mode = 2
