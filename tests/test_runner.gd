@@ -20,6 +20,7 @@ const EXCLUDE_FILES := [
 ]
 
 const DEFAULT_OUTPUT_PATH := "user://test_output.txt"
+const DEFAULT_JSON_OUTPUT_PATH := "user://test_results.json"
 const REQUIRED_CONFIG_FILES := [
 	"res://config/tuning.json",
 	"res://config/items.json",
@@ -28,6 +29,8 @@ const REQUIRED_CONFIG_FILES := [
 
 func _init() -> void:
 	var output_path := _get_output_path()
+	var filter := _get_filter()
+	var json_output_path := _get_json_output_path()
 	var output_file := FileAccess.open(output_path, FileAccess.WRITE)
 	if not output_file:
 		print("Failed to open output file")
@@ -41,6 +44,10 @@ func _init() -> void:
 	log_msg.call("=== Societies Simulation Test Suite ===")
 	log_msg.call("")
 	log_msg.call("Output file: %s" % output_path)
+	if not filter.is_empty():
+		log_msg.call("Filter: %s" % filter)
+	if not json_output_path.is_empty():
+		log_msg.call("JSON output: %s" % json_output_path)
 	log_msg.call("")
 
 	if not _validate_required_files(log_msg):
@@ -51,6 +58,8 @@ func _init() -> void:
 	var passed_count := 0
 	var failed_count := 0
 	var total_count := 0
+	var results: Array[Dictionary] = []
+	var failures_by_file: Dictionary = {}
 	
 	var test_files: Array[String] = []
 	
@@ -61,6 +70,8 @@ func _init() -> void:
 	
 	# Sort for deterministic ordering
 	test_files.sort()
+	if not filter.is_empty():
+		test_files = _filter_tests(test_files, filter)
 	
 	log_msg.call("Discovered %d test files" % test_files.size())
 	log_msg.call("")
@@ -76,12 +87,18 @@ func _init() -> void:
 		var path: String = test_files[i]
 		var display_name := path.replace("res://tests/", "")
 		log_msg.call("[TEST %d/%d] %s" % [i + 1, tests_to_run, display_name])
+		var start_ms := Time.get_ticks_msec()
+		var status := "unknown"
+		var failures: Array[String] = []
 		
 		var script = load(path)
 		if not script:
 			log_msg.call("  FAILED to load script")
 			failed_count += 1
 			total_count += 1
+			status = "error"
+			_failures_add(failures_by_file, path)
+			results.append(_result_entry(path, status, failures, start_ms))
 			continue
 			
 		var instance = script.new()
@@ -89,11 +106,16 @@ func _init() -> void:
 			log_msg.call("  FAILED to instantiate script")
 			failed_count += 1
 			total_count += 1
+			status = "error"
+			_failures_add(failures_by_file, path)
+			results.append(_result_entry(path, status, failures, start_ms))
 			continue
 			
 		if not instance.has_method("run"):
 			log_msg.call("  SKIPPED (no run() method)")
 			instance = null  # Explicitly release
+			status = "skipped"
+			results.append(_result_entry(path, status, failures, start_ms))
 			continue
 			
 		total_count += 1
@@ -105,33 +127,51 @@ func _init() -> void:
 			if success:
 				log_msg.call("  Result: PASSED")
 				passed_count += 1
+				status = "passed"
 			else:
 				log_msg.call("  Result: FAILED")
 				failed_count += 1
+				status = "failed"
 				var fails = instance.get_failures()
 				for fail_msg in fails:
 					log_msg.call("    - %s" % fail_msg)
+					failures.append(fail_msg)
+				_failures_add(failures_by_file, path)
 		else:
 			# Legacy/Simple bool returner
 			success = instance.run()
 			if success:
 				log_msg.call("  Result: PASSED")
 				passed_count += 1
+				status = "passed"
 			else:
 				log_msg.call("  Result: FAILED")
+				status = "failed"
 				if "error_message" in instance:
-					log_msg.call("    - %s" % instance.error_message)
+					var error_message: String = instance.error_message
+					log_msg.call("    - %s" % error_message)
+					failures.append(error_message)
 				failed_count += 1
+				_failures_add(failures_by_file, path)
 		
 		# CRITICAL: Explicit cleanup to prevent memory accumulation
 		instance = null
 		script = null
 				
+		results.append(_result_entry(path, status, failures, start_ms))
 		log_msg.call("")
 
 	log_msg.call("=== Test Summary ===")
 	log_msg.call("Tests run: %d | Passed: %d | Failed: %d" % [total_count, passed_count, failed_count])
 	log_msg.call("")
+	if not failures_by_file.is_empty():
+		log_msg.call("=== Failure Summary ===")
+		for failed_path in failures_by_file.keys():
+			log_msg.call("  - %s" % failed_path.replace("res://tests/", ""))
+		log_msg.call("")
+	
+	if not json_output_path.is_empty():
+		_write_json_results(log_msg, json_output_path, results)
 	
 	output_file.close()
 	
@@ -171,6 +211,28 @@ func _get_output_path() -> String:
 			output_path = arg.get_slice("=", 1)
 	return output_path
 
+func _get_json_output_path() -> String:
+	var output_path := DEFAULT_JSON_OUTPUT_PATH
+	for arg in OS.get_cmdline_args():
+		if arg.begins_with("--json_out="):
+			output_path = arg.get_slice("=", 1)
+	return output_path
+
+func _get_filter() -> String:
+	for arg in OS.get_cmdline_args():
+		if arg.begins_with("--filter="):
+			return arg.get_slice("=", 1)
+	return ""
+
+func _filter_tests(test_files: Array[String], filter: String) -> Array[String]:
+	if filter.is_empty():
+		return test_files
+	var filtered: Array[String] = []
+	for path in test_files:
+		if path.contains(filter):
+			filtered.append(path)
+	return filtered
+
 func _validate_required_files(log_msg: Callable) -> bool:
 	var missing: Array[String] = []
 	for path in REQUIRED_CONFIG_FILES:
@@ -183,3 +245,31 @@ func _validate_required_files(log_msg: Callable) -> bool:
 		log_msg.call("  - %s" % path)
 	log_msg.call("Run with the correct project path (e.g., godot --path /path/to/project).")
 	return false
+
+func _result_entry(path: String, status: String, failures: Array[String], start_ms: int) -> Dictionary:
+	var elapsed_ms := Time.get_ticks_msec() - start_ms
+	return {
+		"path": path,
+		"status": status,
+		"duration_ms": elapsed_ms,
+		"failures": failures
+	}
+
+func _failures_add(failures_by_file: Dictionary, path: String) -> void:
+	if failures_by_file.has(path):
+		failures_by_file[path] += 1
+	else:
+		failures_by_file[path] = 1
+
+func _write_json_results(log_msg: Callable, json_path: String, results: Array[Dictionary]) -> void:
+	var payload := {
+		"results": results
+	}
+	var json_str := JSON.stringify(payload, "\t", false)
+	var file := FileAccess.open(json_path, FileAccess.WRITE)
+	if file == null:
+		log_msg.call("Failed to open JSON output file: %s" % json_path)
+		return
+	file.store_string(json_str)
+	file.close()
+	log_msg.call("Wrote JSON results to %s" % json_path)

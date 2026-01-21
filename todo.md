@@ -12,9 +12,9 @@
 - [ ] Emit a timeout error that includes the test file and subtest label when applicable.【F:tests/test_runner.gd†L87-L99】
 
 ## P1 — Noise Reduction & Actionable Output
-- [ ] Emit machine-readable test results (JSON) alongside human log output for CI parsing.【F:tests/test_runner.gd†L118-L129】
-- [ ] Summarize failures with test file + failure count at end of run for quick triage.【F:tests/test_runner.gd†L118-L129】
-- [ ] Add optional `--filter` or `--only` flag to run a subset of tests quickly.
+- [x] Emit machine-readable test results (JSON) alongside human log output for CI parsing.【F:tests/test_runner.gd†L136-L224】
+- [x] Summarize failures with test file + failure count at end of run for quick triage.【F:tests/test_runner.gd†L136-L145】
+- [x] Add optional `--filter` or `--only` flag to run a subset of tests quickly.【F:tests/test_runner.gd†L168-L191】
 
 ## P1 — Fixture Consistency
 - [ ] Consolidate test fixtures (`SimFixture` vs `TestFixtures`) to a single, documented API to reduce drift.【F:tests/sim_fixture.gd†L1-L52】【F:tests/test_fixtures.gd†L1-L139】
