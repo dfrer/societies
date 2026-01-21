@@ -399,6 +399,7 @@ func _process_governance(state: SimState, rng: RNG) -> void:
 func _resolve_expired_proposals(faction: Faction, state: SimState) -> void:
 	var expired := faction.get_expired_proposals(state.tick)
 	var faction_owner_id := World.owner_id_for_faction(faction.id)
+	var tuning := state.tuning
 	
 	for proposal in expired:
 		# Count votes
