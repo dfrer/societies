@@ -1,0 +1,62 @@
+[gd_scene load_steps=2 format=3 uid="uid://c9node_inspector"]
+
+[ext_resource type="Script" path="res://viz/inspect/node_inspector.gd" id="1_node_script"]
+
+[node name="Node" type="VBoxContainer"]
+script = ExtResource("1_node_script")
+theme_override_constants/separation = 4
+
+[node name="Header" type="Label" parent="."]
+text = "Node Inspector"
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 16
+
+[node name="HSeparator" type="HSeparator" parent="."]
+
+[node name="NoNodeLabel" type="Label" parent="."]
+text = "No node at this tile"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="ResourceContainer" type="VBoxContainer" parent="."]
+visible = false
+theme_override_constants/separation = 2
+
+[node name="ResourceHeader" type="Label" parent="ResourceContainer"]
+text = "Resource Node"
+theme_override_font_sizes/font_size = 14
+
+[node name="ResourceTypeLabel" type="Label" parent="ResourceContainer"]
+text = "Type: --"
+
+[node name="ResourceStockLabel" type="Label" parent="ResourceContainer"]
+text = "Stock: --"
+
+[node name="ResourcePosLabel" type="Label" parent="ResourceContainer"]
+text = "Position: --"
+
+[node name="ResourceIdLabel" type="Label" parent="ResourceContainer"]
+text = "Node ID: --"
+
+[node name="WorkshopContainer" type="VBoxContainer" parent="."]
+visible = false
+theme_override_constants/separation = 2
+
+[node name="WorkshopHeader" type="Label" parent="WorkshopContainer"]
+text = "Workshop"
+theme_override_font_sizes/font_size = 14
+
+[node name="WorkshopIdLabel" type="Label" parent="WorkshopContainer"]
+text = "Workshop ID: --"
+
+[node name="WorkshopOwnerLabel" type="Label" parent="WorkshopContainer"]
+text = "Owner: --"
+
+[node name="WorkshopStatusLabel" type="Label" parent="WorkshopContainer"]
+text = "Status: --"
+
+[node name="WorkshopQueueLabel" type="Label" parent="WorkshopContainer"]
+text = "Queue: --"
+
+[node name="WorkshopJobLabel" type="Label" parent="WorkshopContainer"]
+text = "Current Job: --"

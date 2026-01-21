@@ -1,0 +1,7 @@
+[gd_scene load_steps=2 format=3 uid="uid://c8market_panel"]
+
+[ext_resource type="Script" path="res://viz/market/market_panel.gd" id="1_market_script"]
+
+[node name="MarketPanel" type="PanelContainer"]
+custom_minimum_size = Vector2(250, 0)
+script = ExtResource("1_market_script")

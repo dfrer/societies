@@ -1,0 +1,115 @@
+[gd_scene load_steps=3 format=3 uid="uid://c8compare_view"]
+
+[ext_resource type="Script" path="res://viz/compare/compare_view.gd" id="1_script"]
+[ext_resource type="Script" path="res://viz/metrics/simple_line_chart.gd" id="2_chart"]
+
+[node name="CompareView" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_script")
+
+[node name="Panel" type="Panel" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="VBoxContainer" type="VBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 10
+
+[node name="HBoxContainer" type="HBoxContainer" parent="VBoxContainer"]
+layout_mode = 2
+theme_override_constants/separation = 20
+
+[node name="Label" type="Label" parent="VBoxContainer/HBoxContainer"]
+layout_mode = 2
+text = "Compare Runs"
+theme_override_font_sizes/font_size = 20
+
+[node name="VSeparator" type="VSeparator" parent="VBoxContainer/HBoxContainer"]
+layout_mode = 2
+
+[node name="LoadABtn" type="Button" parent="VBoxContainer/HBoxContainer"]
+layout_mode = 2
+text = "Load Run A..."
+
+[node name="LabelA" type="Label" parent="VBoxContainer/HBoxContainer"]
+layout_mode = 2
+text = "Run A: None"
+theme_override_colors/font_color = Color(0, 0.74902, 1, 1)
+
+[node name="VSeparator2" type="VSeparator" parent="VBoxContainer/HBoxContainer"]
+layout_mode = 2
+
+[node name="LoadBBtn" type="Button" parent="VBoxContainer/HBoxContainer"]
+layout_mode = 2
+text = "Load Run B..."
+
+[node name="LabelB" type="Label" parent="VBoxContainer/HBoxContainer"]
+layout_mode = 2
+text = "Run B: None"
+theme_override_colors/font_color = Color(1, 0.270588, 0, 1)
+
+[node name="VSeparator3" type="VSeparator" parent="VBoxContainer/HBoxContainer"]
+layout_mode = 2
+
+[node name="LabelM" type="Label" parent="VBoxContainer/HBoxContainer"]
+layout_mode = 2
+text = "Metric:"
+
+[node name="MetricSelector" type="OptionButton" parent="VBoxContainer/HBoxContainer"]
+custom_minimum_size = Vector2(200, 0)
+layout_mode = 2
+
+[node name="Spacer" type="Control" parent="VBoxContainer/HBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="CloseBtn" type="Button" parent="VBoxContainer/HBoxContainer"]
+layout_mode = 2
+text = "Close"
+
+[node name="HSplitContainer" type="HSplitContainer" parent="VBoxContainer"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="ChartContainer" type="PanelContainer" parent="VBoxContainer/HSplitContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 2.0
+
+[node name="SimpleLineChart" type="Control" parent="VBoxContainer/HSplitContainer/ChartContainer"]
+layout_mode = 2
+script = ExtResource("2_chart")
+title = "Metric Comparison"
+
+[node name="StatsContainer" type="PanelContainer" parent="VBoxContainer/HSplitContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="StatsTree" type="Tree" parent="VBoxContainer/HSplitContainer/StatsContainer"]
+layout_mode = 2
+hide_root = true
+
+[node name="FileDialog" type="FileDialog" parent="."]
+title = "Open a File"
+size = Vector2i(800, 500)
+ok_button_text = "Open"
+file_mode = 0
+access = 2
+
+[connection signal="pressed" from="VBoxContainer/HBoxContainer/LoadABtn" to="." method="_on_load_a_pressed"]
+[connection signal="pressed" from="VBoxContainer/HBoxContainer/LoadBBtn" to="." method="_on_load_b_pressed"]
+[connection signal="pressed" from="VBoxContainer/HBoxContainer/CloseBtn" to="." method="_on_close_pressed"]

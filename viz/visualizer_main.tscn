@@ -1,0 +1,187 @@
+[gd_scene load_steps=14 format=3 uid="uid://dsiyr53og7i02"]
+
+[ext_resource type="Script" uid="uid://darq3eq5yvevy" path="res://viz/visualizer_main.gd" id="1_main_script"]
+[ext_resource type="Script" uid="uid://6wm2dljqvi6e" path="res://viz/sim_runner_node.gd" id="2_sim_runner"]
+[ext_resource type="PackedScene" path="res://viz/ui/top_bar.tscn" id="3_top_bar"]
+[ext_resource type="PackedScene" path="res://viz/ui/time_controls.tscn" id="4_time_controls"]
+[ext_resource type="PackedScene" path="res://viz/map/map_view.tscn" id="5_map_view"]
+[ext_resource type="PackedScene" uid="uid://cbphmnfellyk5" path="res://viz/map/overlay_toolbar.tscn" id="6_overlay_toolbar"]
+[ext_resource type="PackedScene" path="res://viz/inspect/inspector_panel.tscn" id="7_inspector_panel"]
+[ext_resource type="PackedScene" path="res://viz/market/market_panel.tscn" id="8_market_panel"]
+[ext_resource type="PackedScene" path="res://viz/factions/factions_panel.tscn" id="9_factions_panel"]
+[ext_resource type="PackedScene" path="res://viz/contracts/contracts_panel.tscn" id="10_contracts_panel"]
+[ext_resource type="PackedScene" path="res://viz/metrics/metrics_panel.tscn" id="11_metrics_panel"]
+[ext_resource type="PackedScene" path="res://viz/events/event_timeline_panel.tscn" id="12_event_timeline_panel"]
+[ext_resource type="PackedScene" path="res://viz/compare/compare_view.tscn" id="13_compare_view"]
+
+[node name="VisualizerMain" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_right = 0.0
+offset_bottom = 0.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_main_script")
+
+[node name="SimRunnerNode" type="Node" parent="."]
+script = ExtResource("2_sim_runner")
+
+[node name="VBoxContainer" type="VBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="TopBar" parent="VBoxContainer" instance=ExtResource("3_top_bar")]
+layout_mode = 2
+
+[node name="MainContent" type="HSplitContainer" parent="VBoxContainer"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 0
+split_offset = 260
+
+[node name="LeftPanel" type="VBoxContainer" parent="VBoxContainer/MainContent"]
+custom_minimum_size = Vector2(200, 0)
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="TimeControls" parent="VBoxContainer/MainContent/LeftPanel" instance=ExtResource("4_time_controls")]
+layout_mode = 2
+
+[node name="DataTabs" type="TabContainer" parent="VBoxContainer/MainContent/LeftPanel"]
+layout_mode = 2
+size_flags_vertical = 3
+current_tab = 0
+
+[node name="Market" parent="VBoxContainer/MainContent/LeftPanel/DataTabs" instance=ExtResource("8_market_panel")]
+layout_mode = 2
+size_flags_vertical = 3
+metadata/_tab_index = 0
+
+[node name="Factions" parent="VBoxContainer/MainContent/LeftPanel/DataTabs" instance=ExtResource("9_factions_panel")]
+visible = false
+layout_mode = 2
+size_flags_vertical = 3
+metadata/_tab_index = 1
+
+[node name="Contracts" parent="VBoxContainer/MainContent/LeftPanel/DataTabs" instance=ExtResource("10_contracts_panel")]
+visible = false
+layout_mode = 2
+metadata/_tab_index = 2
+
+[node name="Timeline" parent="VBoxContainer/MainContent/LeftPanel/DataTabs" instance=ExtResource("12_event_timeline_panel")]
+visible = false
+layout_mode = 2
+size_flags_vertical = 3
+metadata/_tab_index = 3
+
+[node name="Overlays" parent="VBoxContainer/MainContent/LeftPanel/DataTabs" instance=ExtResource("6_overlay_toolbar")]
+layout_mode = 2
+size_flags_vertical = 3
+metadata/_tab_index = 4
+
+[node name="CenterPanel" type="PanelContainer" parent="VBoxContainer/MainContent"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="VBoxContainer" type="VBoxContainer" parent="VBoxContainer/MainContent/CenterPanel"]
+layout_mode = 2
+
+[node name="MapViewContainer" type="PanelContainer" parent="VBoxContainer/MainContent/CenterPanel/VBoxContainer"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="MapView" parent="VBoxContainer/MainContent/CenterPanel/VBoxContainer/MapViewContainer" instance=ExtResource("5_map_view")]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="BottomBar" type="HBoxContainer" parent="VBoxContainer/MainContent/CenterPanel/VBoxContainer"]
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="LeftSection" type="HBoxContainer" parent="VBoxContainer/MainContent/CenterPanel/VBoxContainer/BottomBar"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 12
+
+[node name="CoordLabel" type="Label" parent="VBoxContainer/MainContent/CenterPanel/VBoxContainer/BottomBar/LeftSection"]
+layout_mode = 2
+text = "Tile: --"
+modulate = Color(0.8, 0.8, 0.8)
+
+[node name="VSeparator1" type="VSeparator" parent="VBoxContainer/MainContent/CenterPanel/VBoxContainer/BottomBar/LeftSection"]
+layout_mode = 2
+
+[node name="SelectionLabel" type="Label" parent="VBoxContainer/MainContent/CenterPanel/VBoxContainer/BottomBar/LeftSection"]
+layout_mode = 2
+text = "Selected: --"
+modulate = Color(0.8, 0.8, 0.8)
+
+[node name="Spacer" type="Control" parent="VBoxContainer/MainContent/CenterPanel/VBoxContainer/BottomBar"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="RightSection" type="HBoxContainer" parent="VBoxContainer/MainContent/CenterPanel/VBoxContainer/BottomBar"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="ZoomLabel" type="Label" parent="VBoxContainer/MainContent/CenterPanel/VBoxContainer/BottomBar/RightSection"]
+layout_mode = 2
+text = "Zoom: 100%"
+modulate = Color(0.7, 0.7, 0.7)
+
+[node name="VSeparator2" type="VSeparator" parent="VBoxContainer/MainContent/CenterPanel/VBoxContainer/BottomBar/RightSection"]
+layout_mode = 2
+
+[node name="MetricsButton" type="Button" parent="VBoxContainer/MainContent/CenterPanel/VBoxContainer/BottomBar/RightSection"]
+layout_mode = 2
+toggle_mode = true
+text = "Metrics"
+
+[node name="ErrorLabel" type="Label" parent="VBoxContainer/MainContent/CenterPanel"]
+visible = false
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 8
+theme_override_colors/font_color = Color(1, 0.3, 0.3, 1)
+text = "Error message here"
+horizontal_alignment = 1
+
+[node name="RightPanel" type="VBoxContainer" parent="VBoxContainer/MainContent"]
+custom_minimum_size = Vector2(400, 0)
+layout_mode = 2
+theme_override_constants/separation = 8
+visible = false
+
+[node name="MetricsPanel" parent="VBoxContainer/MainContent/RightPanel" instance=ExtResource("11_metrics_panel")]
+visible = true
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="InspectorPanel" parent="VBoxContainer/MainContent/RightPanel" instance=ExtResource("7_inspector_panel")]
+layout_mode = 2
+
+[node name="FileDialog" type="FileDialog" parent="."]
+title = "Open a File"
+size = Vector2i(800, 500)
+ok_button_text = "Open"
+file_mode = 0
+access = 2
+filters = PackedStringArray("*.json ; JSON Save Files")
+
+[node name="SaveDialog" type="FileDialog" parent="."]
+title = "Save Simulation State"
+size = Vector2i(800, 500)
+ok_button_text = "Save"
+access = 2
+filters = PackedStringArray("*.json ; JSON Save Files")
+
+[node name="CompareView" parent="." instance=ExtResource("13_compare_view")]
+visible = false
+layout_mode = 1

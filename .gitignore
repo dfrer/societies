@@ -1,0 +1,16 @@
+# Godot 4+ specific ignores
+.godot/
+*.translation
+
+# Logs
+stdout.txt
+stderr.txt
+test_output.txt
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+nul
+artifacts/
+*.tmp

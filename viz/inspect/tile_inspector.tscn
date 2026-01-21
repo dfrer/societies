@@ -1,0 +1,44 @@
+[gd_scene load_steps=2 format=3 uid="uid://c8tile_inspector"]
+
+[ext_resource type="Script" path="res://viz/inspect/tile_inspector.gd" id="1_tile_script"]
+
+[node name="Tile" type="VBoxContainer"]
+script = ExtResource("1_tile_script")
+theme_override_constants/separation = 4
+
+[node name="Header" type="Label" parent="."]
+text = "Tile Inspector"
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 16
+
+[node name="HSeparator" type="HSeparator" parent="."]
+
+[node name="PositionLabel" type="Label" parent="."]
+text = "Position: --"
+
+[node name="OwnerLabel" type="Label" parent="."]
+text = "Owner: --"
+
+[node name="OwnerTypeLabel" type="Label" parent="."]
+text = "Claim Type: --"
+
+[node name="HSeparator2" type="HSeparator" parent="."]
+
+[node name="LawsHeader" type="Label" parent="."]
+text = "Jurisdiction Laws"
+theme_override_font_sizes/font_size = 14
+
+[node name="LawsContainer" type="VBoxContainer" parent="."]
+theme_override_constants/separation = 2
+
+[node name="HarvestPermitLabel" type="Label" parent="LawsContainer"]
+text = "Harvest Permit: --"
+
+[node name="BuildPermitLabel" type="Label" parent="LawsContainer"]
+text = "Build Permit: --"
+
+[node name="FineBaseLabel" type="Label" parent="LawsContainer"]
+text = "Fine Base: --"
+
+[node name="SalesTaxLabel" type="Label" parent="LawsContainer"]
+text = "Sales Tax: --"

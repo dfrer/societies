@@ -1,0 +1,324 @@
+## SimState - container for all simulation state
+class_name SimState
+extends RefCounted
+
+var tick: int = 0
+var rng: RNG = null
+var world: World = null
+var agents: Array = []
+var market: Market = null
+var crafting: Crafting = null
+var contracts_system: ContractsSystem = null
+var enforcement: Enforcement = null
+var factions_system: FactionsSystem = null
+var communal_projects: CommunalProjectsSystem = null
+var world_fines_sink: int = 0
+var taxes_collected: int = 0
+var laws_by_owner: Dictionary = {}  # owner_id -> Laws
+var metrics_history: Array = []  # Array of snapshot dictionaries
+var factions: Array = []
+var tuning: Dictionary = {}
+var items: Dictionary = {}
+var recipes: Dictionary = {}
+var events: Array = [] # Array[Dictionary]
+var next_agent_id: int = 1
+var next_faction_id: int = 1001
+var next_workshop_id: int = 1
+var next_node_id: int = 1
+
+## Performance: O(1) agent lookup by ID
+var agent_by_id: Dictionary = {}  # id -> Agent
+
+func _init() -> void:
+	rng = RNG.new()
+	world = World.new()
+	market = Market.new()
+	crafting = Crafting.new()
+	contracts_system = ContractsSystem.new()
+	enforcement = Enforcement.new()
+	factions_system = FactionsSystem.new()
+	communal_projects = CommunalProjectsSystem.new()
+
+## Get laws for a jurisdiction owner
+func get_laws(owner_id: int) -> Laws:
+	if not laws_by_owner.has(owner_id):
+		var default_laws := Laws.new()
+		default_laws.init_from_tuning(tuning)
+		laws_by_owner[owner_id] = default_laws
+	return laws_by_owner[owner_id]
+
+## Serialize entire simulation state to dictionary
+func to_dict() -> Dictionary:
+	var agents_data := []
+	for agent in agents:
+		agents_data.append(agent.to_dict())
+	
+	var factions_data := []
+	for faction in factions:
+		factions_data.append(faction.to_dict())
+	
+	var recipes_data := {}
+	for recipe_id in recipes:
+		recipes_data[recipe_id] = recipes[recipe_id].to_dict()
+	
+	var laws_data := {}
+	for owner_id in laws_by_owner:
+		laws_data[str(owner_id)] = laws_by_owner[owner_id].to_dict()
+	
+	return {
+		"tick": tick,
+		"rng": rng.get_state(),
+		"world": world.to_dict(),
+		"agents": agents_data,
+		"market": market.to_dict(),
+		"crafting": crafting.to_dict(),
+		"contracts_system": contracts_system.to_dict(),
+		"enforcement": enforcement.to_dict(),
+		"factions_system": factions_system.to_dict(),
+		"communal_projects": communal_projects.to_dict(),
+		"laws_by_owner": laws_data,
+		"factions": factions_data,
+		"metrics_history": _sanitize_metrics_for_serialization(metrics_history),
+		"tuning": _sanitize_tuning_for_serialization(tuning),
+		"items": _sanitize_items_for_serialization(items),
+		"recipes": recipes_data,
+		"next_agent_id": next_agent_id,
+		"next_faction_id": next_faction_id,
+		"next_workshop_id": next_workshop_id,
+		"next_node_id": next_node_id,
+		"world_fines_sink": world_fines_sink,
+		"taxes_collected": taxes_collected,
+		"events": _sanitize_events_for_serialization(events)
+	}
+
+func _sanitize_events_for_serialization(events_data: Array) -> Array:
+	var result := []
+	var int_keys := ["tick", "day", "agent_id", "contract_id", "issuer_id", "worker_id",
+					 "faction_id", "founder_id", "payout", "qty", "deadline", "refund",
+					 "fine", "owner_id", "proposal_id", "proposer_id", "tariff_rate",
+					 "law_owner_id", "votes_for", "votes_against", "x", "y",
+					 "sales_tax_rate", "fine_base", "fine_applied"]
+	for event in events_data:
+		var fixed_event := {}
+		fixed_event["tick"] = int(event.get("tick", 0))
+		fixed_event["type"] = event.get("type", "")
+		var data: Dictionary = event.get("data", {})
+		fixed_event["data"] = _sanitize_event_data_recursive(data, int_keys)
+		result.append(fixed_event)
+	return result
+
+func _sanitize_tuning_for_serialization(d: Dictionary) -> Dictionary:
+	var result := {}
+	var float_keys := ["hunger_drain_per_tick", "pollution_impact", "pollution_decay_per_day",
+				   "pollution_per_ore", "price_ema_alpha", "bid_scarcity_strength",
+				   "ask_surplus_strength", "crafter_ratio", "craft_profit_margin",
+				   "daily_contract_post_chance", "contract_payout_multiplier", "detect_chance",
+				   "faction_found_min_grievance", "faction_found_daily_chance",
+				   "join_min_score", "proposal_grievance_threshold", "grievance_decay_daily",
+				   "grievance_fine_increase", "grievance_blocked_increase",
+				   "inflation_threshold", "food_yield_pollution_start", "food_yield_pollution_step",
+				   "hunger_drain_pollution_mult", "pollution_high_threshold", "food_scarcity_multiplier",
+				   "starvation_collapse_ratio", "pollution_collapse_threshold"]
+	for k in d:
+		if k in float_keys:
+			result[k] = snappedf(float(d[k]), 0.00000001)
+		elif d[k] is int:
+			result[k] = int(d[k])
+		elif d[k] is bool:
+			result[k] = bool(d[k])
+		elif d[k] is String:
+			result[k] = d[k]
+		else:
+			result[k] = d[k]
+	return result
+
+func _sanitize_items_for_serialization(d: Dictionary) -> Dictionary:
+	var result := {}
+	for item_name in d:
+		var item_dict: Dictionary = d[item_name]
+		var sanitized := {}
+		for k in item_dict:
+			var val = item_dict[k]
+			if k in ["base_value", "nutrition"]:
+				sanitized[k] = snappedf(float(val), 0.00000001)
+			elif val is int:
+				sanitized[k] = int(val)
+			elif val is bool:
+				sanitized[k] = bool(val)
+			elif val is String:
+				sanitized[k] = val
+			else:
+				sanitized[k] = val
+		result[item_name] = sanitized
+	return result
+
+func _sanitize_metrics_for_serialization(history: Array) -> Array:
+	var result := []
+	for entry in history:
+		var sanitized := {}
+		for k in entry:
+			var val = entry[k]
+			if val is float:
+				sanitized[k] = snappedf(val, 0.00000001)
+			elif val is Dictionary:
+				# Recursive for sub-dicts like prices or stocks
+				var sub := {}
+				for sk in val:
+					var sval = val[sk]
+					if sval is float:
+						sub[sk] = snappedf(sval, 0.00000001)
+					else:
+						sub[sk] = sval
+				sanitized[k] = sub
+			else:
+				sanitized[k] = val
+		result.append(sanitized)
+	return result
+
+## Deserialize simulation state from dictionary
+static func from_dict(d: Dictionary) -> SimState:
+	var state := SimState.new()
+	state.tick = int(d.get("tick", 0))
+
+	state.rng = RNG.new()
+	state.rng.set_state(d.get("rng", {}))
+
+	state.world = World.from_dict(d.get("world", {}))
+
+	state.agents = []
+	for agent_data in d.get("agents", []):
+		state.agents.append(Agent.from_dict(agent_data))
+	state.rebuild_agent_lookup()  # Build O(1) lookup after loading
+
+	state.market = Market.from_dict(d.get("market", {}))
+	state.crafting = Crafting.from_dict(d.get("crafting", {}))
+	state.contracts_system = ContractsSystem.from_dict(d.get("contracts_system", {}))
+	state.enforcement = Enforcement.from_dict(d.get("enforcement", {}))
+	state.factions_system = FactionsSystem.from_dict(d.get("factions_system", {}))
+	state.communal_projects = CommunalProjectsSystem.from_dict(d.get("communal_projects", {}))
+	state.world_fines_sink = int(d.get("world_fines_sink", 0))
+	state.taxes_collected = int(d.get("taxes_collected", 0))
+	state.metrics_history = state._sanitize_metrics_for_serialization(d.get("metrics_history", []))
+
+	state.laws_by_owner = {}
+	var laws_data: Dictionary = d.get("laws_by_owner", {})
+	for owner_str in laws_data:
+		var owner_id := int(owner_str)
+		state.laws_by_owner[owner_id] = Laws.from_dict(laws_data[owner_str])
+
+	state.factions = []
+	for faction_data in d.get("factions", []):
+		state.factions.append(Faction.from_dict(faction_data))
+
+	# Convert tuning values - integers, floats, and bools as appropriate
+	state.tuning = state._sanitize_tuning_for_serialization(d.get("tuning", {}))
+
+	# Convert items values
+	state.items = state._sanitize_items_for_serialization(d.get("items", {}))
+
+	state.recipes = {}
+	var recipes_data: Dictionary = d.get("recipes", {})
+	for recipe_id in recipes_data:
+		state.recipes[recipe_id] = Recipe.from_dict(recipes_data[recipe_id])
+
+	state.next_agent_id = int(d.get("next_agent_id", 1))
+	state.next_faction_id = int(d.get("next_faction_id", 1001))
+	state.next_workshop_id = int(d.get("next_workshop_id", 1))
+	state.next_node_id = int(d.get("next_node_id", 1))
+	state.events = _sanitize_events_for_deserialization(d.get("events", []))
+
+	return state
+
+
+## Convert event data fields back to proper types after JSON deserialization
+static func _sanitize_events_for_deserialization(events_data: Array) -> Array:
+	var result := []
+	# Keys that should be integers in event data
+	var int_keys := ["tick", "day", "agent_id", "contract_id", "issuer_id", "worker_id",
+					 "faction_id", "founder_id", "payout", "qty", "deadline", "refund",
+					 "fine", "owner_id", "proposal_id", "proposer_id", "tariff_rate",
+					 "law_owner_id", "votes_for", "votes_against", "x", "y",
+					 "sales_tax_rate", "fine_base", "fine_applied"]
+	for event in events_data:
+		var fixed_event := {}
+		fixed_event["tick"] = int(event.get("tick", 0))
+		fixed_event["type"] = event.get("type", "")
+		# Sanitize the data dictionary
+		var data: Dictionary = event.get("data", {})
+		var fixed_data: Variant = _sanitize_event_data_recursive(data, int_keys)
+		fixed_event["data"] = fixed_data
+		result.append(fixed_event)
+	return result
+
+
+## Recursively sanitize event data, converting known int fields
+static func _sanitize_event_data_recursive(data: Variant, int_keys: Array) -> Variant:
+	if data is Dictionary:
+		var fixed := {}
+		for key in data:
+			var val = data[key]
+			if key in int_keys:
+				fixed[key] = int(val)
+			elif val is Dictionary:
+				fixed[key] = _sanitize_event_data_recursive(val, int_keys)
+			elif val is Array:
+				fixed[key] = _sanitize_event_data_recursive(val, int_keys)
+			else:
+				fixed[key] = val
+		return fixed
+	elif data is Array:
+		var fixed := []
+		for item in data:
+			if item is Dictionary:
+				fixed.append(_sanitize_event_data_recursive(item, int_keys))
+			elif item is float or item is int:
+				fixed.append(int(item))
+			else:
+				fixed.append(item)
+		return fixed
+	else:
+		return data
+
+## Get agent by ID - O(1) lookup
+func get_agent(agent_id: int) -> Agent:
+	return agent_by_id.get(agent_id, null)
+
+## Add an agent and update lookup
+func add_agent(agent: Agent) -> void:
+	agents.append(agent)
+	agent_by_id[agent.id] = agent
+
+## Rebuild agent lookup from agents array
+func rebuild_agent_lookup() -> void:
+	agent_by_id.clear()
+	for agent in agents:
+		agent_by_id[agent.id] = agent
+
+## Get player agent
+func get_player() -> Agent:
+	for agent in agents:
+		if agent.is_player:
+			return agent
+	return null
+
+## Calculate average hunger
+func get_average_hunger() -> float:
+	if agents.is_empty():
+		return 0.0
+	var total := 0.0
+	for agent in agents:
+		total += agent.get_hunger()
+	return total / agents.size()
+
+## Log an event (ring buffer - oldest events removed when exceeding cap)
+const MAX_EVENTS := 500
+
+func log_event(type: String, data: Dictionary) -> void:
+	events.append({
+		"tick": tick,
+		"type": type,
+		"data": data
+	})
+	# Prune oldest events to prevent unbounded growth
+	if events.size() > MAX_EVENTS:
+		events.pop_front()

@@ -1,0 +1,39 @@
+[gd_scene load_steps=2 format=3 uid="uid://c9event_timeline_panel"]
+
+[ext_resource type="Script" path="res://viz/events/event_timeline_panel.gd" id="1_script"]
+
+[node name="EventTimelinePanel" type="VBoxContainer"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_script")
+
+[node name="Filters" type="HBoxContainer" parent="."]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="Filters"]
+layout_mode = 2
+text = "Filters:"
+
+[node name="TypeFilter" type="OptionButton" parent="Filters"]
+layout_mode = 2
+
+[node name="AgentFilter" type="LineEdit" parent="Filters"]
+custom_minimum_size = Vector2(80, 0)
+layout_mode = 2
+placeholder_text = "Agent ID"
+
+[node name="FactionFilter" type="LineEdit" parent="Filters"]
+custom_minimum_size = Vector2(80, 0)
+layout_mode = 2
+placeholder_text = "Faction ID"
+
+[node name="ScrollContainer" type="ScrollContainer" parent="."]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="EventList" type="VBoxContainer" parent="ScrollContainer"]
+layout_mode = 2
+size_flags_horizontal = 3

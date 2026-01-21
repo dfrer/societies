@@ -1,0 +1,7 @@
+[gd_scene load_steps=2 format=3 uid="uid://c8factions_panel"]
+
+[ext_resource type="Script" path="res://viz/factions/factions_panel.gd" id="1_script"]
+
+[node name="FactionsPanel" type="PanelContainer"]
+custom_minimum_size = Vector2(400, 300)
+script = ExtResource("1_script")

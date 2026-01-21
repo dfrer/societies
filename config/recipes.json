@@ -1,0 +1,104 @@
+{
+    "recipes": [
+        {
+            "id": "planks_hand",
+            "name": "Planks (Hand)",
+            "station": "hand",
+            "inputs": {
+                "Logs": 4
+            },
+            "outputs": {
+                "Planks": 1
+            },
+            "ticks": 60
+        },
+        {
+            "id": "planks",
+            "name": "Planks",
+            "station": "workshop",
+            "inputs": {
+                "Logs": 2
+            },
+            "outputs": {
+                "Planks": 1
+            },
+            "ticks": 30
+        },
+        {
+            "id": "cooked_meal",
+            "name": "Cooked Meal",
+            "station": "workshop",
+            "inputs": {
+                "Berries": 3
+            },
+            "outputs": {
+                "CookedMeal": 1
+            },
+            "ticks": 20
+        },
+        {
+            "id": "metal_ingot",
+            "name": "Metal Ingot",
+            "station": "workshop",
+            "inputs": {
+                "Ore": 2
+            },
+            "outputs": {
+                "MetalIngot": 1
+            },
+            "ticks": 40
+        },
+        {
+            "id": "axe",
+            "name": "Axe",
+            "station": "workshop",
+            "inputs": {
+                "Planks": 2,
+                "MetalIngot": 1
+            },
+            "outputs": {
+                "Axe": 1
+            },
+            "ticks": 50
+        },
+        {
+            "id": "pickaxe",
+            "name": "Pickaxe",
+            "station": "workshop",
+            "inputs": {
+                "Planks": 1,
+                "MetalIngot": 2
+            },
+            "outputs": {
+                "Pickaxe": 1
+            },
+            "ticks": 50
+        },
+        {
+            "id": "mallet",
+            "name": "Mallet",
+            "station": "workshop",
+            "inputs": {
+                "Planks": 2,
+                "MetalIngot": 1
+            },
+            "outputs": {
+                "Mallet": 1
+            },
+            "ticks": 40
+        },
+        {
+            "id": "shovel",
+            "name": "Shovel",
+            "station": "workshop",
+            "inputs": {
+                "Planks": 2,
+                "MetalIngot": 1
+            },
+            "outputs": {
+                "Shovel": 1
+            },
+            "ticks": 30
+        }
+    ]
+}

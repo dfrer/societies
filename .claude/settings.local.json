@@ -1,0 +1,35 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(\"D:\\\\Games \\(SSD\\)\\\\SteamLibrary\\\\steamapps\\\\common\\\\Godot Engine\\\\godot.windows.opt.tools.64.exe\" --headless --script res://tests/test_runner.gd --path \"C:\\\\Users\\\\hunte\\\\OneDrive\\\\Desktop\\\\AIExperiments\\\\games\\\\societies\")",
+      "Bash(godot:*)",
+      "Bash(dir /s /b \"C:\\\\Users\\\\hunte\\\\OneDrive\\\\Desktop\\\\AIExperiments\\\\games\\\\societies\\\\viz\")",
+      "Bash(python3:*)",
+      "Bash(for f in \"C:/Users/hunte/OneDrive/Desktop/AIExperiments/games/societies/sim/\"*.gd)",
+      "Bash(do sed -i 's/\\\\r$//' \"$f\")",
+      "Bash(done)",
+      "Bash(for f in \"C:/Users/hunte/OneDrive/Desktop/AIExperiments/games/societies/viz/\"*.gd \"C:/Users/hunte/OneDrive/Desktop/AIExperiments/games/societies/viz/ui/\"*.gd)",
+      "Bash(for f in \"C:/Users/hunte/OneDrive/Desktop/AIExperiments/games/societies/sim/\"*.gd \"C:/Users/hunte/OneDrive/Desktop/AIExperiments/games/societies/tests/\"*.gd \"C:/Users/hunte/OneDrive/Desktop/AIExperiments/games/societies/tools/\"*.gd)",
+      "Bash(for f in \"C:/Users/hunte/OneDrive/Desktop/AIExperiments/games/societies/viz/\"*.gd \"C:/Users/hunte/OneDrive/Desktop/AIExperiments/games/societies/viz/map/\"*.gd \"C:/Users/hunte/OneDrive/Desktop/AIExperiments/games/societies/viz/ui/\"*.gd)",
+      "Bash(where:*)",
+      "Bash(\"D:/Games \\(SSD\\)/SteamLibrary/steamapps/common/Godot Engine/godot.windows.opt.tools.64.exe\" --headless --path \"C:/Users/hunte/OneDrive/Desktop/AIExperiments/games/societies/viz\" --quit)",
+      "Bash(\"D:/Games \\(SSD\\)/SteamLibrary/steamapps/common/Godot Engine/godot.windows.opt.tools.64.exe\" --headless --path \"C:/Users/hunte/OneDrive/Desktop/AIExperiments/games/societies\" --script res://sim/tests/run_headless.gd)",
+      "Bash(\"D:/Games \\(SSD\\)/SteamLibrary/steamapps/common/Godot Engine/godot.windows.opt.tools.64.exe\" --headless --path \"C:/Users/hunte/OneDrive/Desktop/AIExperiments/games/societies\" --script res://tests/test_runner.gd)",
+      "Bash(\"D:/Games \\(SSD\\)/SteamLibrary/steamapps/common/Godot Engine/godot.windows.opt.tools.64.exe\" --headless --path \"C:/Users/hunte/OneDrive/Desktop/AIExperiments/games/societies\" --script res://tests/debug_save_load.gd)",
+      "Bash(\"D:/Games \\(SSD\\)/SteamLibrary/steamapps/common/Godot Engine/godot.windows.opt.tools.64.exe\" --headless --path \"C:/Users/hunte/OneDrive/Desktop/AIExperiments/games/societies\" --script res://tests/debug_enforcement.gd)",
+      "Bash(\"D:/Games \\(SSD\\)/SteamLibrary/steamapps/common/Godot Engine/godot.windows.opt.tools.64.exe\" --headless --path \"C:/Users/hunte/OneDrive/Desktop/AIExperiments/games/societies\" --script tests/run_tests.gd)",
+      "Bash(\"D:/Games \\(SSD\\)/SteamLibrary/steamapps/common/Godot Engine/godot.windows.opt.tools.64.exe\" --headless --path \"C:/Users/hunte/OneDrive/Desktop/AIExperiments/games/societies\" --script tests/test_runner.gd)",
+      "Bash(\"C:\\\\Users\\\\hunte\\\\Downloads\\\\Godot_v4.4-stable_win64_console\\\\Godot_v4.4-stable_win64_console.exe\" --headless --script tests/run_tests.gd)",
+      "Bash(cmd.exe /c \"cd /d C:\\\\Users\\\\hunte\\\\OneDrive\\\\Desktop\\\\AIExperiments\\\\games\\\\societies && C:\\\\Users\\\\hunte\\\\Downloads\\\\Godot_v4.4-stable_win64_console\\\\Godot_v4.4-stable_win64_console.exe --headless --script tests/run_tests.gd\")",
+      "Bash(powershell.exe -Command \"Set-Location ''C:\\\\Users\\\\hunte\\\\OneDrive\\\\Desktop\\\\AIExperiments\\\\games\\\\societies''; & ''C:\\\\Users\\\\hunte\\\\Downloads\\\\Godot_v4.4-stable_win64_console\\\\Godot_v4.4-stable_win64_console.exe'' --headless --script tests/run_tests.gd 2>&1\")",
+      "Bash(powershell.exe -Command \"& ''D:\\\\Games \\(SSD\\)\\\\SteamLibrary\\\\steamapps\\\\common\\\\Godot Engine\\\\Godot_v4.4-stable_win64_console.exe'' --headless --path ''C:\\\\Users\\\\hunte\\\\OneDrive\\\\Desktop\\\\AIExperiments\\\\games\\\\societies'' --script tests/run_tests.gd 2>&1\")",
+      "Bash(powershell.exe -Command \"Get-ChildItem ''D:\\\\Games \\(SSD\\)\\\\SteamLibrary\\\\steamapps\\\\common\\\\Godot Engine\\\\'' -Filter ''*.exe''\")",
+      "Bash(powershell.exe -Command \"& ''D:\\\\Games \\(SSD\\)\\\\SteamLibrary\\\\steamapps\\\\common\\\\Godot Engine\\\\godot.windows.opt.tools.64.exe'' --headless --path ''C:\\\\Users\\\\hunte\\\\OneDrive\\\\Desktop\\\\AIExperiments\\\\games\\\\societies'' --script tests/run_tests.gd 2>&1\")",
+      "Bash(powershell.exe -Command \"& ''D:\\\\Games \\(SSD\\)\\\\SteamLibrary\\\\steamapps\\\\common\\\\Godot Engine\\\\godot.windows.opt.tools.64.exe'' --headless --path ''C:\\\\Users\\\\hunte\\\\OneDrive\\\\Desktop\\\\AIExperiments\\\\games\\\\societies'' --script tests/run_tests.gd *>&1\")",
+      "Bash(powershell.exe -Command \"& ''D:\\\\Games \\(SSD\\)\\\\SteamLibrary\\\\steamapps\\\\common\\\\Godot Engine\\\\godot.windows.opt.tools.64.exe'' --headless --path ''C:\\\\Users\\\\hunte\\\\OneDrive\\\\Desktop\\\\AIExperiments\\\\games\\\\societies'' --script tests/test_runner.gd *>&1\")",
+      "Bash(find:*)",
+      "Bash(findstr:*)",
+      "Bash(powershell:*)"
+    ]
+  }
+}

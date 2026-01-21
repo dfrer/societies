@@ -1,0 +1,87 @@
+[gd_scene load_steps=2 format=3 uid="uid://c3time_controls"]
+
+[ext_resource type="Script" path="res://viz/ui/time_controls.gd" id="1_script"]
+
+[node name="TimeControls" type="PanelContainer"]
+custom_minimum_size = Vector2(250, 0)
+script = ExtResource("1_script")
+
+[node name="MarginContainer" type="MarginContainer" parent="."]
+layout_mode = 2
+theme_override_constants/margin_left = 8
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 8
+theme_override_constants/margin_bottom = 8
+
+[node name="VBoxContainer" type="VBoxContainer" parent="MarginContainer"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Label" type="Label" parent="MarginContainer/VBoxContainer"]
+layout_mode = 2
+text = "Time Controls"
+horizontal_alignment = 1
+
+[node name="HSeparator" type="HSeparator" parent="MarginContainer/VBoxContainer"]
+layout_mode = 2
+
+[node name="ButtonRow" type="HBoxContainer" parent="MarginContainer/VBoxContainer"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="PauseBtn" type="Button" parent="MarginContainer/VBoxContainer/ButtonRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+toggle_mode = true
+text = "Pause"
+
+[node name="Play1xBtn" type="Button" parent="MarginContainer/VBoxContainer/ButtonRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+toggle_mode = true
+text = "1x"
+
+[node name="Play5xBtn" type="Button" parent="MarginContainer/VBoxContainer/ButtonRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+toggle_mode = true
+text = "5x"
+
+[node name="Play20xBtn" type="Button" parent="MarginContainer/VBoxContainer/ButtonRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+toggle_mode = true
+text = "20x"
+
+[node name="StepRow" type="HBoxContainer" parent="MarginContainer/VBoxContainer"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="StepTickBtn" type="Button" parent="MarginContainer/VBoxContainer/StepRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Step Tick"
+
+[node name="StepDayBtn" type="Button" parent="MarginContainer/VBoxContainer/StepRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Step Day"
+
+[node name="JumpRow" type="HBoxContainer" parent="MarginContainer/VBoxContainer"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="JumpLabel" type="Label" parent="MarginContainer/VBoxContainer/JumpRow"]
+layout_mode = 2
+text = "Jump to Day:"
+
+[node name="JumpDaySpin" type="SpinBox" parent="MarginContainer/VBoxContainer/JumpRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = 1.0
+max_value = 9999.0
+value = 1.0
+
+[node name="JumpBtn" type="Button" parent="MarginContainer/VBoxContainer/JumpRow"]
+layout_mode = 2
+text = "Go"

@@ -1,0 +1,33 @@
+[gd_scene load_steps=5 format=3 uid="uid://c7inspector_panel"]
+
+[ext_resource type="Script" path="res://viz/inspect/inspector_panel.gd" id="1_inspector_script"]
+[ext_resource type="PackedScene" uid="uid://c8tile_inspector" path="res://viz/inspect/tile_inspector.tscn" id="2_tile_inspector"]
+[ext_resource type="PackedScene" uid="uid://c9node_inspector" path="res://viz/inspect/node_inspector.tscn" id="3_node_inspector"]
+[ext_resource type="PackedScene" uid="uid://c10agent_inspector" path="res://viz/inspect/agent_inspector.tscn" id="4_agent_inspector"]
+
+[node name="InspectorPanel" type="PanelContainer"]
+custom_minimum_size = Vector2(280, 0)
+script = ExtResource("1_inspector_script")
+
+[node name="MarginContainer" type="MarginContainer" parent="."]
+layout_mode = 2
+theme_override_constants/margin_left = 8
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 8
+theme_override_constants/margin_bottom = 8
+
+[node name="TabContainer" type="TabContainer" parent="MarginContainer"]
+layout_mode = 2
+size_flags_vertical = 3
+current_tab = 0
+
+[node name="Tile" parent="MarginContainer/TabContainer" instance=ExtResource("2_tile_inspector")]
+layout_mode = 2
+
+[node name="Node" parent="MarginContainer/TabContainer" instance=ExtResource("3_node_inspector")]
+visible = false
+layout_mode = 2
+
+[node name="Agent" parent="MarginContainer/TabContainer" instance=ExtResource("4_agent_inspector")]
+visible = false
+layout_mode = 2

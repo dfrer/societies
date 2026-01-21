@@ -1,0 +1,27 @@
+[gd_scene load_steps=2 format=3 uid="uid://c10agent_inspector"]
+
+[ext_resource type="Script" path="res://viz/inspect/agent_inspector.gd" id="1_agent_script"]
+
+[node name="Agent" type="VBoxContainer"]
+script = ExtResource("1_agent_script")
+theme_override_constants/separation = 4
+
+[node name="Header" type="Label" parent="."]
+text = "Agent Inspector"
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 16
+
+[node name="HSeparator" type="HSeparator" parent="."]
+
+[node name="PlaceholderLabel" type="Label" parent="."]
+text = "Coming in Prompt 14
+
+Agent details will be shown here:
+- Agent ID & position
+- Inventory contents
+- Current action
+- Faction membership
+- Market orders
+- Grievance level"
+horizontal_alignment = 1
+vertical_alignment = 1

@@ -1,0 +1,17 @@
+{
+	"final_checksum": "76c0fbb38b18ad60d9ae7eef79c40561a4859b5f7e9b6cd7e9b274fceac7ce6a",
+	"metrics": [
+		{
+			"avg_pollution": 0.0,
+			"day": 1,
+			"faction_count": 0,
+			"population": 11,
+			"total_food": 792,
+			"world_wealth": 5500
+		}
+	],
+	"parameters": {
+		"days": 1,
+		"seed": 12345
+	}
+}

@@ -1,0 +1,58 @@
+{
+  "Berries": {
+    "nutrition": 20,
+    "type": "food",
+    "base_value": 10,
+    "description": "Foraged berries that restore hunger"
+  },
+  "Logs": {
+    "type": "material",
+    "base_value": 15,
+    "description": "Wood logs gathered from trees"
+  },
+  "Ore": {
+    "type": "material",
+    "base_value": 25,
+    "description": "Raw ore mined from veins"
+  },
+  "Planks": {
+    "type": "material",
+    "base_value": 35,
+    "description": "Processed wood planks"
+  },
+  "CookedMeal": {
+    "nutrition": 40,
+    "type": "food",
+    "base_value": 30,
+    "description": "Cooked food that restores more hunger"
+  },
+  "MetalIngot": {
+    "type": "material",
+    "base_value": 60,
+    "description": "Refined metal ingot"
+  },
+  "Axe": {
+    "type": "tool",
+    "tool_tag": "axe",
+    "base_value": 150,
+    "description": "Tool for faster tree harvesting"
+  },
+  "Pickaxe": {
+    "type": "tool",
+    "tool_tag": "pickaxe",
+    "base_value": 180,
+    "description": "Tool for faster ore mining"
+  },
+  "Mallet": {
+    "type": "tool",
+    "tool_tag": "hammer",
+    "base_value": 120,
+    "description": "Tool for building structures"
+  },
+  "Shovel": {
+    "type": "tool",
+    "tool_tag": "shovel",
+    "base_value": 100,
+    "description": "Tool for building roads"
+  }
+}
