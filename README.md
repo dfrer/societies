@@ -75,8 +75,8 @@ godot --headless --script res://tools/run_sim.gd -- --seed=42 --days=30 --out=ru
 godot --headless --script res://tools/run_sim.gd -- --seed=42 --days=30 --out=run2.json
 # Checksums should match for deterministic runs
 
-# Run test suite
-godot --headless --script res://tests/test_runner.gd
+# Run test suite (ensure correct project path)
+godot --path /path/to/societies --headless --script res://tests/test_runner.gd
 ```
 
 ### Metrics Export
@@ -93,8 +93,8 @@ cd "c:\Users\hunte\OneDrive\Desktop\AIExperiments\games\societies"
 # Run 15 days headless
 godot --headless --script res://tools/run_sim.gd -- --seed=123 --days=15
 
-# Run tests
-godot --headless --script res://tests/test_runner.gd
+# Run tests (ensure correct project path)
+godot --path "c:\\Users\\hunte\\OneDrive\\Desktop\\AIExperiments\\games\\societies" --headless --script res://tests/test_runner.gd
 ```
 
 ## Factions & Governance (Prompt 7)
