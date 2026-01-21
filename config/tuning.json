@@ -19,6 +19,7 @@
     "tree_nodes_count": 80,
     "ore_nodes_count": 40,
     "stone_nodes_count": 60,
+    "stone_max_stock": 40,
     "market_pos_x": 48,
     "market_pos_y": 48,
     "market_match_interval_ticks": 1,
