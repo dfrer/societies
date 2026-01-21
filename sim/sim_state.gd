@@ -12,6 +12,7 @@ var contracts_system: ContractsSystem = null
 var enforcement: Enforcement = null
 var factions_system: FactionsSystem = null
 var communal_projects: CommunalProjectsSystem = null
+var job_board: JobBoard = null
 var world_fines_sink: int = 0
 var taxes_collected: int = 0
 var laws_by_owner: Dictionary = {}  # owner_id -> Laws
@@ -22,10 +23,13 @@ var tuning_config: TuningConfig = null
 var items: Dictionary = {}
 var recipes: Dictionary = {}
 var events: Array = [] # Array[Dictionary]
+var intents: Array = [] # Array[Dictionary]
+var decision_traces: Array = [] # Array[Dictionary]
 var next_agent_id: int = 1
 var next_faction_id: int = 1001
 var next_workshop_id: int = 1
 var next_node_id: int = 1
+var next_intent_id: int = 1
 
 ## Performance: O(1) agent lookup by ID
 var agent_by_id: Dictionary = {}  # id -> Agent
@@ -39,6 +43,7 @@ func _init() -> void:
 	enforcement = Enforcement.new()
 	factions_system = FactionsSystem.new()
 	communal_projects = CommunalProjectsSystem.new()
+	job_board = JobBoard.new()
 	tuning_config = TuningConfig.new()
 
 ## Get laws for a jurisdiction owner
@@ -127,16 +132,20 @@ func to_dict() -> Dictionary:
 		"enforcement": enforcement.to_dict(),
 		"factions_system": factions_system.to_dict(),
 		"communal_projects": communal_projects.to_dict(),
+		"job_board": job_board.to_dict(),
 		"laws_by_owner": laws_data,
 		"factions": factions_data,
 		"metrics_history": _sanitize_metrics_for_serialization(metrics_history),
 		"tuning": _sanitize_tuning_for_serialization(tuning),
 		"items": _sanitize_items_for_serialization(items),
 		"recipes": recipes_data,
+		"intents": _sanitize_intents_for_serialization(intents),
+		"decision_traces": _sanitize_decision_traces_for_serialization(decision_traces),
 		"next_agent_id": next_agent_id,
 		"next_faction_id": next_faction_id,
 		"next_workshop_id": next_workshop_id,
 		"next_node_id": next_node_id,
+		"next_intent_id": next_intent_id,
 		"world_fines_sink": world_fines_sink,
 		"taxes_collected": taxes_collected,
 		"events": _sanitize_events_for_serialization(events)
@@ -228,6 +237,46 @@ func _sanitize_metrics_for_serialization(history: Array) -> Array:
 		result.append(sanitized)
 	return result
 
+func _sanitize_intents_for_serialization(intents_data: Array) -> Array:
+	var result := []
+	for intent in intents_data:
+		result.append({
+			"intent_id": int(intent.get("intent_id", 0)),
+			"agent_id": int(intent.get("agent_id", 0)),
+			"type": intent.get("type", ""),
+			"status": intent.get("status", "active"),
+			"created_tick": int(intent.get("created_tick", 0)),
+			"updated_tick": int(intent.get("updated_tick", 0)),
+			"data": _sanitize_intent_data(intent.get("data", {}))
+		})
+	return result
+
+func _sanitize_intent_data(data: Dictionary) -> Dictionary:
+	var fixed := {}
+	for key in data:
+		var val = data[key]
+		if val is int or val is float:
+			fixed[key] = int(val)
+		elif val is bool:
+			fixed[key] = bool(val)
+		else:
+			fixed[key] = val
+	return fixed
+
+func _sanitize_decision_traces_for_serialization(traces_data: Array) -> Array:
+	var result := []
+	for trace in traces_data:
+		result.append({
+			"tick": int(trace.get("tick", 0)),
+			"agent_id": int(trace.get("agent_id", 0)),
+			"intent_id": int(trace.get("intent_id", -1)),
+			"intent_type": trace.get("intent_type", ""),
+			"activity_id": int(trace.get("activity_id", -1)),
+			"activity_type": trace.get("activity_type", ""),
+			"action_type": trace.get("action_type", "")
+		})
+	return result
+
 ## Deserialize simulation state from dictionary
 static func from_dict(d: Dictionary) -> SimState:
 	var state := SimState.new()
@@ -249,6 +298,7 @@ static func from_dict(d: Dictionary) -> SimState:
 	state.enforcement = Enforcement.from_dict(d.get("enforcement", {}))
 	state.factions_system = FactionsSystem.from_dict(d.get("factions_system", {}))
 	state.communal_projects = CommunalProjectsSystem.from_dict(d.get("communal_projects", {}))
+	state.job_board = JobBoard.from_dict(d.get("job_board", {}))
 	state.world_fines_sink = int(d.get("world_fines_sink", 0))
 	state.taxes_collected = int(d.get("taxes_collected", 0))
 	state.metrics_history = state._sanitize_metrics_for_serialization(d.get("metrics_history", []))
@@ -280,7 +330,10 @@ static func from_dict(d: Dictionary) -> SimState:
 	state.next_faction_id = int(d.get("next_faction_id", 1001))
 	state.next_workshop_id = int(d.get("next_workshop_id", 1))
 	state.next_node_id = int(d.get("next_node_id", 1))
+	state.next_intent_id = int(d.get("next_intent_id", 1))
 	state.events = _sanitize_events_for_deserialization(d.get("events", []))
+	state.intents = state._sanitize_intents_for_serialization(d.get("intents", []))
+	state.decision_traces = state._sanitize_decision_traces_for_serialization(d.get("decision_traces", []))
 
 	return state
 
@@ -367,6 +420,7 @@ func get_average_hunger() -> float:
 
 ## Log an event (ring buffer - oldest events removed when exceeding cap)
 const MAX_EVENTS := 500
+const MAX_DECISION_TRACES := 1000
 
 func log_event(type: String, data: Dictionary) -> void:
 	events.append({
@@ -377,3 +431,44 @@ func log_event(type: String, data: Dictionary) -> void:
 	# Prune oldest events to prevent unbounded growth
 	if events.size() > MAX_EVENTS:
 		events.pop_front()
+
+func create_intent(agent_id: int, intent_type: String, data: Dictionary, current_tick: int) -> int:
+	var intent := {
+		"intent_id": next_intent_id,
+		"agent_id": agent_id,
+		"type": intent_type,
+		"status": "active",
+		"created_tick": current_tick,
+		"updated_tick": current_tick,
+		"data": data.duplicate(true)
+	}
+	next_intent_id += 1
+	intents.append(intent)
+	return intent["intent_id"]
+
+func resolve_intent(intent_id: int, status: String, current_tick: int) -> void:
+	for intent in intents:
+		if intent.get("intent_id", -1) == intent_id:
+			intent["status"] = status
+			intent["updated_tick"] = current_tick
+			return
+
+func get_intent(intent_id: int) -> Dictionary:
+	for intent in intents:
+		if intent.get("intent_id", -1) == intent_id:
+			return intent
+	return {}
+
+func log_decision_trace(agent_id: int, intent_id: int, intent_type: String,
+		activity_id: int, activity_type: String, action_type: String) -> void:
+	decision_traces.append({
+		"tick": tick,
+		"agent_id": agent_id,
+		"intent_id": intent_id,
+		"intent_type": intent_type,
+		"activity_id": activity_id,
+		"activity_type": activity_type,
+		"action_type": action_type
+	})
+	if decision_traces.size() > MAX_DECISION_TRACES:
+		decision_traces.pop_front()
