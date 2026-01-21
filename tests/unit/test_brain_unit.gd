@@ -8,6 +8,8 @@ func _run() -> void:
 	subtest("Decide Action - Well Fed Agent Gathers", _test_well_fed_agent_works)
 	subtest("Decide Action - Critical Hunger Eats", _test_critical_hunger_eats)
 	subtest("Goal Stack Management", _test_goal_stack)
+	subtest("Goal Stack Empty Action", _test_goal_stack_empty)
+	subtest("Goal Stack Instant Completion", _test_goal_stack_instant_completion)
 	subtest("Action Selection Determinism", _test_action_determinism)
 
 func _test_hungry_agent_seeks_food() -> void:
@@ -23,7 +25,7 @@ func _test_hungry_agent_seeks_food() -> void:
 	var world := Fixtures.make_world()
 	var market := Fixtures.make_market()
 	var contracts := ContractsSystem.new()
-	var tuning := state.tuning.to_dict()
+	var tuning := state.tuning
 	
 	# Hungry agent should prioritize getting food
 	var action := brain.decide_action(agent, world, market, contracts, tuning, {}, state)
@@ -46,7 +48,7 @@ func _test_well_fed_agent_works() -> void:
 	var world := Fixtures.make_world()
 	var market := Fixtures.make_market()
 	var contracts := ContractsSystem.new()
-	var tuning := state.tuning.to_dict()
+	var tuning := state.tuning
 	
 	# Well-fed agent should focus on wealth/work
 	var action := brain.decide_action(agent, world, market, contracts, tuning, {}, state)
@@ -67,7 +69,7 @@ func _test_critical_hunger_eats() -> void:
 	var world := Fixtures.make_world()
 	var market := Fixtures.make_market()
 	var contracts := ContractsSystem.new()
-	var tuning := state.tuning.to_dict()
+	var tuning := state.tuning
 	
 	# Critical hunger with food should result in eating
 	var action := brain.decide_action(agent, world, market, contracts, tuning, {}, state)
@@ -95,6 +97,45 @@ func _test_goal_stack() -> void:
 	var popped := agent.goal_stack.pop_back()
 	assert_eq(popped["type"], "EAT_FOOD", "Should pop most recent goal")
 	assert_eq(agent.goal_stack.size(), 1, "Goal stack should have 1 item after pop")
+
+func _test_goal_stack_empty() -> void:
+	var state := Fixtures.make_sim_state(12345)
+	var agent := Fixtures.make_agent({
+		"id": 1,
+		"hunger": 90.0,
+		"money": 100
+	})
+	state.add_agent(agent)
+	agent.goal_stack = []
+
+	var brain := DefaultBrain.new()
+	var world := state.world
+	var market := Fixtures.make_market()
+	var contracts := ContractsSystem.new()
+	var tuning := state.tuning
+
+	var action := brain.decide_action(agent, world, market, contracts, tuning, {}, state)
+	assert_true(action.has("type"), "Empty goal stack should still return an action")
+
+func _test_goal_stack_instant_completion() -> void:
+	var state := Fixtures.make_sim_state(12345)
+	var agent := Fixtures.make_agent({
+		"id": 1,
+		"hunger": 90.0,
+		"inventory": {"Planks": 1}
+	})
+	state.add_agent(agent)
+	agent.goal_stack = [{"type": "OBTAIN_ITEM", "item": "Planks", "qty": 1, "is_goal": true}]
+
+	var brain := DefaultBrain.new()
+	var world := state.world
+	var market := Fixtures.make_market()
+	var contracts := ContractsSystem.new()
+	var tuning := state.tuning
+
+	var action := brain.decide_action(agent, world, market, contracts, tuning, {}, state)
+	assert_true(action.has("type"), "Instant completion should still return an action")
+	assert_eq(agent.goal_stack.size(), 0, "Completed goal should be popped from stack")
 
 func _test_action_determinism() -> void:
 	# Two identical agents with same state should produce same action
@@ -126,8 +167,8 @@ func _test_action_determinism() -> void:
 	var market2 := state2.market
 	var contracts1 := ContractsSystem.new()
 	var contracts2 := ContractsSystem.new()
-	var tuning1 := state1.tuning.to_dict()
-	var tuning2 := state2.tuning.to_dict()
+	var tuning1 := state1.tuning
+	var tuning2 := state2.tuning
 	
 	var action1 := brain1.decide_action(agent1, world1, market1, contracts1, tuning1, {}, state1)
 	var action2 := brain2.decide_action(agent2, world2, market2, contracts2, tuning2, {}, state2)

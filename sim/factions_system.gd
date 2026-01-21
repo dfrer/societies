@@ -416,7 +416,9 @@ func _resolve_expired_proposals(faction: Faction, state: SimState) -> void:
 			if changes.has("build_permit_required"):
 				laws.build_permit_required = changes["build_permit_required"]
 			if changes.has("sales_tax_rate"):
-				laws.sales_tax_rate = clampi(changes["sales_tax_rate"], 0, 20)
+				var tax_min: int = tuning.get("sales_tax_rate_min", 0)
+				var tax_max: int = tuning.get("sales_tax_rate_max", 20)
+				laws.sales_tax_rate = clampi(changes["sales_tax_rate"], tax_min, tax_max)
 			if changes.has("fine_base"):
 				var min_fine: int = state.tuning.get("min_fine", 5)
 				var max_fine: int = state.tuning.get("max_fine", 50)

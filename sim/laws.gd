@@ -21,10 +21,14 @@ func _init() -> void:
 func init_from_tuning(tuning: Dictionary) -> void:
 	harvest_permit_required = tuning.get("harvest_permit_required_default", true)
 	build_permit_required = tuning.get("build_permit_required_default", true)
-	fine_base = tuning.get("fine_base", 10)
+	var min_fine: int = int(tuning.get("min_fine", 5))
+	var max_fine: int = int(tuning.get("max_fine", 50))
+	fine_base = clampi(int(tuning.get("fine_base", 10)), min_fine, max_fine)
 	market_ban_days_on_repeat = tuning.get("market_ban_days_on_repeat", 2)
 	repeat_threshold = tuning.get("repeat_threshold", 3)
-	sales_tax_rate = tuning.get("sales_tax_rate_default", 5)
+	var tax_min: int = int(tuning.get("sales_tax_rate_min", 0))
+	var tax_max: int = int(tuning.get("sales_tax_rate_max", 20))
+	sales_tax_rate = clampi(int(tuning.get("sales_tax_rate_default", 5)), tax_min, tax_max)
 	var ticks_per_day: int = tuning.get("ticks_per_day", 24)
 	var window_days: int = tuning.get("violation_window_days", 2)
 	violation_window_ticks = window_days * ticks_per_day
