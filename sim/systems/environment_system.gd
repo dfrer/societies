@@ -101,7 +101,7 @@ func _spread_pollution(state: SimState) -> void:
 			updated[idx] = maxf(0.0, updated[idx] - spread_amount)
 			var per_neighbor := spread_amount / float(neighbors.size())
 			for neighbor in neighbors:
-				var n_idx := neighbor.y * width + neighbor.x
+				var n_idx: int = int(neighbor.y * width + neighbor.x)
 				updated[n_idx] = clampf(updated[n_idx] + per_neighbor, 0.0, 1.0)
 
 	state.world.pollution = updated
