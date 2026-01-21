@@ -47,7 +47,8 @@ func init_new(seed_value: int) -> void:
 	state.add_agent(player)
 	
 	var crafter_ratio: float = state.tuning.get("crafter_ratio", 0.3)
-	for i in range(10):
+	var npc_count: int = state.tuning.get("npc_count", 10)
+	for i in range(npc_count):
 		var roll := state.rng.randf()
 		var role := "crafter" if roll < crafter_ratio else "gatherer"
 		var npc := _create_agent(false, role)
@@ -60,8 +61,11 @@ func _load_config() -> void:
 	var items_data = Serializers.load_json_file("res://config/items.json")
 	state.items = items_data if items_data else _get_default_items()
 	
-	var tuning_data = Serializers.load_json_file("res://config/tuning.json")
-	state.tuning = tuning_data if tuning_data else _get_default_tuning()
+	var tuning_config := TuningConfig.load_from_file("res://config/tuning.json")
+	var tuning_errors := tuning_config.validate()
+	if tuning_errors.size() > 0:
+		push_error("TuningConfig validation failed:\n- " + "\n- ".join(tuning_errors))
+	state.tuning = tuning_config.get_data_with_defaults()
 	
 	var recipes_data = Serializers.load_json_file("res://config/recipes.json")
 	if recipes_data and recipes_data.has("recipes"):
@@ -82,52 +86,30 @@ func _get_default_items() -> Dictionary:
 		"Pickaxe": {"type": "tool", "base_value": 180}
 	}
 
-func _get_default_tuning() -> Dictionary:
-	return {
-		"world_w": 96, "world_h": 96, "ticks_per_day": 24,
-		"hunger_drain_per_tick": 0.5, "eat_threshold": 50, "berry_nutrition": 20,
-		"meal_nutrition": 40, "starting_money": 100, "starting_berries": 10,
-		"berry_regen_per_day": 3, "tree_regen_per_day": 2,
-		"pollution_impact": 0.5, "pollution_decay_per_day": 0.05, "pollution_per_ore": 0.01,
-		"urgent_hunger_threshold": 25, "target_food_buffer": 5,
-		"berry_nodes_count": 120, "tree_nodes_count": 200, "ore_nodes_count": 40,
-		"market_pos_x": 48, "market_pos_y": 48, "market_match_interval_ticks": 6,
-		"order_ttl_ticks": 48, "price_ema_alpha": 0.2,
-		"bid_scarcity_strength": 0.6, "ask_surplus_strength": 0.6,
-		"min_price": 1, "max_price": 1000,
-		"sell_surplus_food_over": 15, "sell_logs_over": 5, "sell_ore_over": 3,
-		"sell_planks_over": 15, "sell_meals_over": 8,
-		"workshop_start_count": 1, "workshop_build_planks": 10, "workshop_build_ticks": 80,
-		"crafter_ratio": 0.3, "crafter_planks_buffer": 10, "crafter_meal_buffer": 6,
-		"craft_profit_margin": 1.15, "axe_tree_bonus": 2, "pickaxe_ore_bonus": 2,
-		"daily_contract_post_chance": 0.15, "contract_deadline_days": 2,
-		"contract_payout_multiplier": 1.2, "contract_accept_min_profit": 5,
-		"max_active_contracts_per_agent": 1,
-		"claim_cost_coins": 20, "claim_ticks": 40, "detect_chance": 0.8,
-		"fine_base": 10, "market_ban_days_on_repeat": 2, "repeat_threshold": 3,
-		"violation_window_days": 2, "harvest_permit_required_default": true,
-		"build_permit_required_default": true
-	}
-
 func _spawn_resource_nodes() -> void:
 	var occupied := {}
+	var berry_max_stock: int = state.tuning.get("berry_max_stock", 10)
+	var tree_max_stock: int = state.tuning.get("tree_max_stock", 20)
+	var ore_max_stock: int = state.tuning.get("ore_max_stock", 30)
+	var stone_max_stock: int = state.tuning.get("stone_max_stock", 40)
+	var node_spawn_attempts: int = state.tuning.get("node_spawn_attempts", 100)
 	for i in range(state.tuning.get("berry_nodes_count", 120)):
-		var node := _spawn_node("berry", 10, 6, 10, occupied)
+		var node := _spawn_node("berry", berry_max_stock, 6, berry_max_stock, occupied, node_spawn_attempts)
 		if node: state.world.add_resource_node(node)
 	for i in range(state.tuning.get("tree_nodes_count", 200)):
-		var node := _spawn_node("tree", 20, 10, 20, occupied)
+		var node := _spawn_node("tree", tree_max_stock, 10, tree_max_stock, occupied, node_spawn_attempts)
 		if node: state.world.add_resource_node(node)
 	for i in range(state.tuning.get("ore_nodes_count", 40)):
-		var node := _spawn_node("ore", 30, 20, 30, occupied)
+		var node := _spawn_node("ore", ore_max_stock, 20, ore_max_stock, occupied, node_spawn_attempts)
 		if node: state.world.add_resource_node(node)
 	# Add stone nodes (permanent resource)
 	var stone_count = state.tuning.get("stone_nodes_count", 60)
 	for i in range(stone_count):
-		var node := _spawn_node("stone", 40, 20, 40, occupied)
+		var node := _spawn_node("stone", stone_max_stock, 20, stone_max_stock, occupied, node_spawn_attempts)
 		if node: state.world.add_resource_node(node)
 
-func _spawn_node(type: String, max_stock: int, min_start: int, max_start: int, occupied: Dictionary) -> ResourceNode:
-	for attempt in range(100):
+func _spawn_node(type: String, max_stock: int, min_start: int, max_start: int, occupied: Dictionary, spawn_attempts: int) -> ResourceNode:
+	for attempt in range(spawn_attempts):
 		var x := state.rng.randi_range(0, state.world.width - 1)
 		var y := state.rng.randi_range(0, state.world.height - 1)
 		var key := "%d,%d" % [x, y]
@@ -171,7 +153,11 @@ func _create_agent(is_player: bool, role: String) -> Agent:
 	agent.pos_y = state.rng.randi_range(0, state.world.height - 1)
 	agent.money = state.tuning.get("starting_money", 100)
 	agent.add_item("Berries", state.tuning.get("starting_berries", 10))
-	agent.set_hunger(100.0)
+	agent.set_hunger(state.tuning.get("initial_hunger", 100.0))
+	agent.set_stamina(state.tuning.get("initial_stamina", 100.0))
+	var initial_skill: float = state.tuning.get("initial_skill_level", 1.0)
+	for skill_name in agent.skills:
+		agent.skills[skill_name] = initial_skill
 	agent.risk_tolerance = state.rng.randf()  # Random risk tolerance
 	agent.eco_concern = state.rng.randf()  # Random environmental concern
 	
