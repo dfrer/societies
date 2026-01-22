@@ -43,6 +43,7 @@
 - [ ] Extend DefaultBrain to claim new task types and stack lightweight intents for project work. (sim/brains/default_brain.gd)
 - [ ] Add task generation hooks for build sites, hauling, and farming while preserving deterministic ordering. (sim/job_board.gd, sim/sim.gd)
 - [x] Post deliver-to-project activities for communal project resource needs. (sim/systems/job_board_system.gd, sim/job_board.gd)
+- [x] Post build-site activities for communal project build phases. (sim/systems/job_board_system.gd, sim/job_board.gd)
 
 ## P0 — Communal Projects as Build Sites
 - [ ] Add build site state (required inputs, delivered inputs, build progress, assigned workers). (sim/communal_projects_system.gd)

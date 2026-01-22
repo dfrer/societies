@@ -191,6 +191,18 @@ func has_activity_for_project_item(project_id: int, item_type: String) -> bool:
 			return true
 	return false
 
+func has_activity_for_build_site(project_id: int) -> bool:
+	for activity in activities:
+		if activity.get("type", "") != ACTIVITY_BUILD_SITE:
+			continue
+		var status: String = activity.get("status", STATUS_AVAILABLE)
+		if status == STATUS_CANCELLED or status == STATUS_COMPLETED:
+			continue
+		var data: Dictionary = activity.get("data", {})
+		if int(data.get("project_id", -1)) == project_id:
+			return true
+	return false
+
 func prune_inactive(max_inactive: int) -> void:
 	if max_inactive <= 0:
 		return

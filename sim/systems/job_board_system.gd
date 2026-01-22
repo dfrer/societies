@@ -7,7 +7,9 @@ func tick(sim: RefCounted, state: SimState) -> void:
 	_refresh_gather_activities(state)
 	_refresh_contract_activities(state)
 	_refresh_project_delivery_activities(state)
+	_refresh_build_site_activities(state)
 	_post_project_delivery_activities(state)
+	_post_build_site_activities(state)
 	var max_inactive: int = state.get_tuning_int("job_board_max_inactive", 200)
 	state.job_board.prune_inactive(max_inactive)
 
@@ -136,3 +138,35 @@ func _post_project_delivery_activities(state: SimState) -> void:
 			posted_for_project = true
 		if posted_for_project:
 			posted_projects += 1
+
+func _refresh_build_site_activities(state: SimState) -> void:
+	for activity in state.job_board.activities:
+		if activity.get("type", "") != JobBoard.ACTIVITY_BUILD_SITE:
+			continue
+		var status: String = activity.get("status", JobBoard.STATUS_AVAILABLE)
+		if status == JobBoard.STATUS_COMPLETED or status == JobBoard.STATUS_CANCELLED:
+			continue
+		var data: Dictionary = activity.get("data", {})
+		var project_id: int = int(data.get("project_id", -1))
+		var project := state.communal_projects.get_project(project_id)
+		if project == null or project.status != CommunalProject.STATUS_BUILDING:
+			activity["status"] = JobBoard.STATUS_CANCELLED
+			activity["updated_tick"] = state.tick
+			activity["worker_id"] = -1
+
+func _post_build_site_activities(state: SimState) -> void:
+	var project_limit: int = state.get_tuning_int("job_board_build_site_post_limit", 10)
+	if project_limit <= 0:
+		return
+	var projects := state.communal_projects.projects.duplicate()
+	projects.sort_custom(func(a, b): return a.id < b.id)
+	var posted := 0
+	for project in projects:
+		if posted >= project_limit:
+			break
+		if project.status != CommunalProject.STATUS_BUILDING:
+			continue
+		if state.job_board.has_activity_for_build_site(project.id):
+			continue
+		state.job_board.post_build_site(project.id, project.id, state.tick)
+		posted += 1
