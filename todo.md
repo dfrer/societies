@@ -57,18 +57,18 @@
 - [x] Add reservation/escrow to prevent double-spending across projects. (sim/communal_projects_system.gd)
 
 ## P1 — Organization Planner
-- [ ] Create Organization entity with members, stockpile access, and treasury. (sim/organizations.gd)
-- [ ] Add daily planner that spawns stockpile/workshop/shelter projects based on thresholds. (sim/organizations.gd, sim/sim.gd)
-- [ ] Implement contiguous claim expansion from a town center and zoning tags. (sim/claims_system.gd)
+- [x] Create Organization entity with members, stockpile access, and treasury. (sim/organizations.gd)
+- [x] Add daily planner that spawns stockpile/workshop/shelter projects based on thresholds. (sim/organizations.gd, sim/sim.gd)
+- [x] Implement contiguous claim expansion from a town center and zoning tags. (sim/claims_system.gd)
 
 ## P1 — Workshops + Production Chains
-- [ ] Add station types and require them for recipes (carpenter, kiln, smithy). (sim/recipes.gd, sim/workshop_system.gd)
-- [ ] Add craft-at-station tasks and station build projects. (sim/job_board.gd, sim/communal_projects_system.gd)
-- [ ] Planner spawns stations in sequence based on needs. (sim/organizations.gd)
+- [x] Add station types and require them for recipes (carpenter, kiln, smithy). (sim/recipes.gd, sim/workshop_system.gd)
+- [x] Add craft-at-station tasks and station build projects. (sim/job_board.gd, sim/communal_projects_system.gd)
+- [x] Planner spawns stations in sequence based on needs. (sim/organizations.gd)
 
 ## P1 — Roads + Logistics Optimization
-- [ ] Spawn road projects connecting resource clusters to stockpiles and town center. (sim/communal_projects_system.gd, sim/organizations.gd)
-- [ ] Prefer roads for hauling tasks and pathing when available. (sim/agent_navigation.gd)
+- [x] Spawn road projects connecting resource clusters to stockpiles and town center. (sim/communal_projects_system.gd, sim/organizations.gd)
+- [x] Prefer roads for hauling tasks and pathing when available. (sim/agent_navigation.gd)
 
 ## P2 — Farming Pipeline
 - [ ] Add farm plot tile state: tilled, seeded, growth, harvest-ready. (sim/world_tile.gd)
