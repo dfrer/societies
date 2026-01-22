@@ -9,6 +9,11 @@ const STATUS_CANCELLED := "cancelled"
 
 const ACTIVITY_GATHER_NODE := "GATHER_NODE"
 const ACTIVITY_ACCEPT_CONTRACT := "ACCEPT_CONTRACT"
+const ACTIVITY_HAUL := "HAUL"
+const ACTIVITY_DELIVER_TO_PROJECT := "DELIVER_TO_PROJECT"
+const ACTIVITY_BUILD_SITE := "BUILD_SITE"
+const ACTIVITY_CRAFT_AT_STATION := "CRAFT_AT_STATION"
+const ACTIVITY_FARM_TASK := "FARM_TASK"
 
 var next_activity_id: int = 1
 var activities: Array = [] # Array[Dictionary]
@@ -45,6 +50,65 @@ func post_gather_node(node_id: int, node_type: String, created_tick: int) -> Dic
 
 func post_accept_contract(contract_id: int, created_tick: int) -> Dictionary:
 	return post_activity(ACTIVITY_ACCEPT_CONTRACT, 0, {"contract_id": contract_id}, created_tick)
+
+func post_haul(source_id: int, destination_id: int, item_type: String, quantity: int, created_tick: int) -> Dictionary:
+	return post_activity(
+		ACTIVITY_HAUL,
+		0,
+		{
+			"source_id": source_id,
+			"destination_id": destination_id,
+			"item_type": item_type,
+			"quantity": quantity
+		},
+		created_tick
+	)
+
+func post_deliver_to_project(project_id: int, item_type: String, quantity: int, created_tick: int) -> Dictionary:
+	return post_activity(
+		ACTIVITY_DELIVER_TO_PROJECT,
+		project_id,
+		{
+			"project_id": project_id,
+			"item_type": item_type,
+			"quantity": quantity
+		},
+		created_tick
+	)
+
+func post_build_site(project_id: int, build_site_id: int, created_tick: int) -> Dictionary:
+	return post_activity(
+		ACTIVITY_BUILD_SITE,
+		project_id,
+		{
+			"project_id": project_id,
+			"build_site_id": build_site_id
+		},
+		created_tick
+	)
+
+func post_craft_at_station(station_id: int, recipe_id: String, created_tick: int) -> Dictionary:
+	return post_activity(
+		ACTIVITY_CRAFT_AT_STATION,
+		station_id,
+		{
+			"station_id": station_id,
+			"recipe_id": recipe_id
+		},
+		created_tick
+	)
+
+func post_farm_task(plot_id: int, task_type: String, crop_type: String, created_tick: int) -> Dictionary:
+	return post_activity(
+		ACTIVITY_FARM_TASK,
+		plot_id,
+		{
+			"plot_id": plot_id,
+			"task_type": task_type,
+			"crop_type": crop_type
+		},
+		created_tick
+	)
 
 func get_activity(activity_id: int) -> Dictionary:
 	for activity in activities:
