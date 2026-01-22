@@ -88,6 +88,9 @@ func plan_daily(state: SimState) -> void:
 		_spawn_project(state, "shelter", "shelter")
 	_plan_station_projects(state)
 	_plan_road_projects(state)
+	_plan_farm_projects(state)
+	_post_procurement_contracts(state)
+	_post_surplus_orders(state)
 
 func _count_structures_of_type(state: SimState, structure_type: String, owner_id: int) -> int:
 	var count := 0
@@ -237,6 +240,116 @@ func _plan_road_projects(state: SimState) -> void:
 		if remaining <= 0:
 			break
 		remaining = _spawn_road_path(state, target["start"], target["end"], remaining)
+
+func _plan_farm_projects(state: SimState) -> void:
+	var owner_id := get_owner_id()
+	var food_threshold := state.get_tuning_int("organization_farm_food_threshold", 25)
+	var members_per_plot := state.get_tuning_int("organization_farm_members_per_plot", 6)
+	var target_plots := maxi(1, int(ceil(float(members.size()) / float(members_per_plot))))
+	var current_food := _get_stockpile_item_count(state, owner_id, "Berries")
+	var farm_plots := state.world.get_farm_plot_count(owner_id)
+	var farm_projects := _count_active_projects(state, "farm")
+
+	if current_food < food_threshold and (farm_plots + farm_projects) < target_plots:
+		_spawn_project(state, "farm", "residential")
+
+func _post_procurement_contracts(state: SimState) -> void:
+	var daily_limit := state.get_tuning_int("organization_procure_contracts_per_day", 2)
+	if daily_limit <= 0:
+		return
+	var owner_id := get_owner_id()
+	var stockpile := _get_primary_stockpile(state, owner_id)
+	if stockpile == null:
+		return
+	var deadline_days: int = state.get_tuning_int("organization_contract_deadline_days", 2)
+	var payout_multiplier: float = state.get_tuning_float("organization_contract_payout_multiplier", 1.1)
+	var batch_cap: int = state.get_tuning_int("organization_procure_batch_cap", 8)
+	var ticks_per_day: int = state.get_tuning_int("ticks_per_day", 200)
+	var deadline := state.tick + (deadline_days * ticks_per_day)
+
+	var procurement_specs := [
+		{"item": "Berries", "threshold": state.get_tuning_int("organization_procure_food_under", 20)},
+		{"item": "Logs", "threshold": state.get_tuning_int("organization_procure_logs_under", 12)},
+		{"item": "Ore", "threshold": state.get_tuning_int("organization_procure_ore_under", 8)},
+		{"item": "Planks", "threshold": state.get_tuning_int("organization_procure_planks_under", 10)},
+		{"item": "MetalIngot", "threshold": state.get_tuning_int("organization_procure_metal_under", 4)}
+	]
+
+	var posted := 0
+	for spec in procurement_specs:
+		if posted >= daily_limit:
+			break
+		var item: String = spec["item"]
+		var threshold: int = int(spec["threshold"])
+		var current := _get_stockpile_item_count(state, owner_id, item)
+		if current >= threshold:
+			continue
+		if state.contracts_system.has_active_contract_for_issuer("organization", id, item):
+			continue
+		var desired := threshold - current
+		var qty := mini(desired, batch_cap)
+		if qty <= 0:
+			continue
+		var ref_price: float = state.market.get_ref_price(item)
+		var payout: int = int(ceil(ref_price * qty * payout_multiplier))
+		var contract := state.contracts_system.post_org_contract(self, item, qty, payout,
+			deadline, stockpile.pos_x, stockpile.pos_y, state.tick, state)
+		if contract != null:
+			posted += 1
+
+func _post_surplus_orders(state: SimState) -> void:
+	var daily_limit := state.get_tuning_int("organization_market_sell_orders_per_day", 2)
+	if daily_limit <= 0:
+		return
+	var owner_id := get_owner_id()
+	var stockpile := _get_primary_stockpile(state, owner_id)
+	if stockpile == null:
+		return
+	var batch_cap: int = state.get_tuning_int("organization_market_sell_batch", 10)
+	var ttl: int = state.get_tuning_int("order_ttl_ticks", 48)
+	var discount: float = state.get_tuning_float("organization_market_sell_discount", 0.0)
+	var min_price: int = state.get_tuning_int("min_price", 1)
+	var max_price: int = state.get_tuning_int("max_price", 1000)
+
+	var surplus_specs := [
+		{"item": "Berries", "threshold": state.get_tuning_int("sell_surplus_food_over", 6)},
+		{"item": "Logs", "threshold": state.get_tuning_int("sell_logs_over", 5)},
+		{"item": "Ore", "threshold": state.get_tuning_int("sell_ore_over", 3)},
+		{"item": "Planks", "threshold": state.get_tuning_int("sell_planks_over", 8)},
+		{"item": "CookedMeal", "threshold": state.get_tuning_int("sell_meals_over", 5)}
+	]
+
+	var posted := 0
+	for spec in surplus_specs:
+		if posted >= daily_limit:
+			break
+		var item: String = spec["item"]
+		var threshold: int = int(spec["threshold"])
+		var available := stockpile.get_available_item(item)
+		if available <= threshold:
+			continue
+		if state.market.has_active_order_for_owner("organization", id, item, "sell"):
+			continue
+		var surplus := available - threshold
+		var qty := mini(surplus, batch_cap)
+		if qty <= 0:
+			continue
+		var reserved := stockpile.reserve_item(item, qty)
+		if reserved <= 0:
+			continue
+		var ref_price: float = state.market.get_ref_price(item)
+		var price := int(ceil(ref_price * (1.0 - discount)))
+		price = clampi(price, min_price, max_price)
+		var order := state.market.create_order("sell", item, reserved, price, 0, state.tick, ttl,
+			"organization", id, stockpile.id)
+		state.market.place_sell_order(order)
+		posted += 1
+
+func _get_primary_stockpile(state: SimState, owner_id: int) -> StructureState:
+	var stockpiles := _get_org_stockpiles(state, owner_id)
+	if stockpiles.is_empty():
+		return null
+	return stockpiles[0]
 
 func _get_road_targets(state: SimState, stockpiles: Array) -> Array:
 	var targets := []

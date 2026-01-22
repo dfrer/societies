@@ -43,6 +43,17 @@ func get_stockpiles_sorted() -> Array:
 	result.sort_custom(func(a, b): return a.id < b.id)
 	return result
 
+func get_stockpiles_for_owner(owner_id: int) -> Array:
+	var result := []
+	for structure in structures:
+		if structure.structure_type != StructureState.TYPE_STOCKPILE:
+			continue
+		if owner_id > 0 and structure.owner_id != owner_id:
+			continue
+		result.append(structure)
+	result.sort_custom(func(a, b): return a.id < b.id)
+	return result
+
 func find_stockpile_with_item(item: String, qty: int = 1) -> StructureState:
 	var stockpiles := get_stockpiles_sorted()
 	for structure in stockpiles:

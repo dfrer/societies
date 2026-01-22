@@ -21,6 +21,16 @@ var roads: Array[int] = []
 ## Zoning tags per tile (flat array, same indexing)
 var zone_tags: Array[String] = []
 
+## Farm plot state (flat arrays, same indexing)
+var farm_active: Array[bool] = []
+var farm_tilled: Array[bool] = []
+var farm_seeded: Array[bool] = []
+var farm_growth: Array[float] = []
+var farm_harvest_ready: Array[bool] = []
+var farm_crop_type: Array[String] = []
+var farm_pending_yield: Array[int] = []
+var farm_owner_id: Array[int] = []
+
 ## Resource nodes
 var resource_nodes: Array[ResourceNode] = []
 var _nodes_by_id: Dictionary = {}  # id -> ResourceNode
@@ -63,6 +73,22 @@ func init_world(w: int, h: int) -> void:
 	roads.fill(0)
 	zone_tags.resize(w * h)
 	zone_tags.fill("")
+	farm_active.resize(w * h)
+	farm_active.fill(false)
+	farm_tilled.resize(w * h)
+	farm_tilled.fill(false)
+	farm_seeded.resize(w * h)
+	farm_seeded.fill(false)
+	farm_growth.resize(w * h)
+	farm_growth.fill(0.0)
+	farm_harvest_ready.resize(w * h)
+	farm_harvest_ready.fill(false)
+	farm_crop_type.resize(w * h)
+	farm_crop_type.fill("")
+	farm_pending_yield.resize(w * h)
+	farm_pending_yield.fill(0)
+	farm_owner_id.resize(w * h)
+	farm_owner_id.fill(0)
 	_dirty_claim_tiles.clear()
 	_dirty_pollution_tiles.clear()
 	_dirty_claim_indices.clear()
@@ -217,6 +243,162 @@ func set_road(x: int, y: int, value: int) -> void:
 ## Check if tile has a road
 func has_road(x: int, y: int) -> bool:
 	return get_road(x, y) > 0
+
+# ============================================
+# FARM PLOTS
+# ============================================
+
+func is_farm_plot(x: int, y: int) -> bool:
+	if not is_valid(x, y):
+		return false
+	return farm_active[_tile_index(x, y)]
+
+func add_farm_plot(x: int, y: int, owner_id: int = 0, crop_type: String = "Berries") -> bool:
+	if not is_valid(x, y):
+		return false
+	var idx := _tile_index(x, y)
+	farm_active[idx] = true
+	farm_tilled[idx] = false
+	farm_seeded[idx] = false
+	farm_growth[idx] = 0.0
+	farm_harvest_ready[idx] = false
+	farm_crop_type[idx] = crop_type
+	farm_pending_yield[idx] = 0
+	farm_owner_id[idx] = owner_id
+	return true
+
+func get_farm_plot(plot_id: int) -> Dictionary:
+	if plot_id < 0 or plot_id >= width * height:
+		return {}
+	if not farm_active[plot_id]:
+		return {}
+	var x := plot_id % width
+	var y := plot_id / width
+	return {
+		"id": plot_id,
+		"x": x,
+		"y": y,
+		"owner_id": farm_owner_id[plot_id],
+		"tilled": farm_tilled[plot_id],
+		"seeded": farm_seeded[plot_id],
+		"growth": farm_growth[plot_id],
+		"harvest_ready": farm_harvest_ready[plot_id],
+		"crop_type": farm_crop_type[plot_id],
+		"pending_yield": farm_pending_yield[plot_id]
+	}
+
+func get_farm_plots() -> Array:
+	var plots := []
+	var total := width * height
+	for idx in range(total):
+		if not farm_active[idx]:
+			continue
+		var x := idx % width
+		var y := idx / width
+		var task_type := ""
+		if farm_pending_yield[idx] > 0:
+			task_type = "DELIVER"
+		elif not farm_tilled[idx]:
+			task_type = "TILL"
+		elif farm_tilled[idx] and not farm_seeded[idx]:
+			task_type = "PLANT"
+		elif farm_seeded[idx] and farm_harvest_ready[idx]:
+			task_type = "HARVEST"
+		plots.append({
+			"id": idx,
+			"x": x,
+			"y": y,
+			"owner_id": farm_owner_id[idx],
+			"task_type": task_type,
+			"crop_type": farm_crop_type[idx],
+			"pending_yield": farm_pending_yield[idx]
+		})
+	return plots
+
+func get_farm_plot_count(owner_id: int = -1) -> int:
+	var total := 0
+	for idx in range(width * height):
+		if not farm_active[idx]:
+			continue
+		if owner_id >= 0 and farm_owner_id[idx] != owner_id:
+			continue
+		total += 1
+	return total
+
+func till_farm_plot(plot_id: int) -> bool:
+	if plot_id < 0 or plot_id >= width * height:
+		return false
+	if not farm_active[plot_id]:
+		return false
+	if farm_tilled[plot_id]:
+		return false
+	farm_tilled[plot_id] = true
+	farm_seeded[plot_id] = false
+	farm_growth[plot_id] = 0.0
+	farm_harvest_ready[plot_id] = false
+	return true
+
+func plant_farm_plot(plot_id: int, crop_type: String) -> bool:
+	if plot_id < 0 or plot_id >= width * height:
+		return false
+	if not farm_active[plot_id]:
+		return false
+	if not farm_tilled[plot_id] or farm_seeded[plot_id]:
+		return false
+	farm_seeded[plot_id] = true
+	farm_growth[plot_id] = 0.0
+	farm_harvest_ready[plot_id] = false
+	if crop_type != "":
+		farm_crop_type[plot_id] = crop_type
+	return true
+
+func mark_farm_harvest_ready(plot_id: int) -> void:
+	if plot_id < 0 or plot_id >= width * height:
+		return
+	if not farm_active[plot_id]:
+		return
+	farm_harvest_ready[plot_id] = true
+
+func harvest_farm_plot(plot_id: int, yield_amount: int) -> bool:
+	if plot_id < 0 or plot_id >= width * height:
+		return false
+	if not farm_active[plot_id]:
+		return false
+	if not farm_harvest_ready[plot_id]:
+		return false
+	var add_yield := maxi(0, yield_amount)
+	if add_yield <= 0:
+		add_yield = 0
+	farm_pending_yield[plot_id] += add_yield
+	farm_seeded[plot_id] = false
+	farm_growth[plot_id] = 0.0
+	farm_harvest_ready[plot_id] = false
+	return true
+
+func collect_farm_yield(plot_id: int) -> int:
+	if plot_id < 0 or plot_id >= width * height:
+		return 0
+	if not farm_active[plot_id]:
+		return 0
+	var available := farm_pending_yield[plot_id]
+	if available <= 0:
+		return 0
+	farm_pending_yield[plot_id] = 0
+	return available
+
+func advance_farm_growth(growth_per_day: float, growth_required: float) -> void:
+	if growth_per_day <= 0.0 or growth_required <= 0.0:
+		return
+	for idx in range(width * height):
+		if not farm_active[idx]:
+			continue
+		if not farm_seeded[idx]:
+			continue
+		if farm_harvest_ready[idx]:
+			continue
+		farm_growth[idx] += growth_per_day
+		if farm_growth[idx] >= growth_required:
+			farm_harvest_ready[idx] = true
 
 ## Get total claimed tiles count
 func get_claimed_tiles_count() -> int:
@@ -404,6 +586,9 @@ func to_dict() -> Dictionary:
 	var pollution_data := []
 	for p in pollution:
 		pollution_data.append(snappedf(p, 0.00000001))
+	var farm_growth_data := []
+	for g in farm_growth:
+		farm_growth_data.append(snappedf(g, 0.00000001))
 	
 	return {
 		"width": width,
@@ -412,6 +597,14 @@ func to_dict() -> Dictionary:
 		"tiles": tiles.duplicate(),
 		"roads": roads.duplicate(),
 		"zone_tags": zone_tags.duplicate(),
+		"farm_active": farm_active.duplicate(),
+		"farm_tilled": farm_tilled.duplicate(),
+		"farm_seeded": farm_seeded.duplicate(),
+		"farm_growth": farm_growth_data,
+		"farm_harvest_ready": farm_harvest_ready.duplicate(),
+		"farm_crop_type": farm_crop_type.duplicate(),
+		"farm_pending_yield": farm_pending_yield.duplicate(),
+		"farm_owner_id": farm_owner_id.duplicate(),
 		"resource_nodes": nodes_data,
 		"workshops": workshops_data,
 		"next_node_id": next_node_id
@@ -462,6 +655,72 @@ static func from_dict(d: Dictionary) -> World:
 	if world.zone_tags.is_empty():
 		world.zone_tags.resize(world.width * world.height)
 		world.zone_tags.fill("")
+
+	# Load farm state
+	var farm_active_data: Array = d.get("farm_active", [])
+	world.farm_active.resize(farm_active_data.size())
+	for i in range(farm_active_data.size()):
+		world.farm_active[i] = bool(farm_active_data[i])
+
+	var farm_tilled_data: Array = d.get("farm_tilled", [])
+	world.farm_tilled.resize(farm_tilled_data.size())
+	for i in range(farm_tilled_data.size()):
+		world.farm_tilled[i] = bool(farm_tilled_data[i])
+
+	var farm_seeded_data: Array = d.get("farm_seeded", [])
+	world.farm_seeded.resize(farm_seeded_data.size())
+	for i in range(farm_seeded_data.size()):
+		world.farm_seeded[i] = bool(farm_seeded_data[i])
+
+	var farm_growth_data: Array = d.get("farm_growth", [])
+	world.farm_growth.resize(farm_growth_data.size())
+	for i in range(farm_growth_data.size()):
+		world.farm_growth[i] = float(farm_growth_data[i])
+
+	var farm_ready_data: Array = d.get("farm_harvest_ready", [])
+	world.farm_harvest_ready.resize(farm_ready_data.size())
+	for i in range(farm_ready_data.size()):
+		world.farm_harvest_ready[i] = bool(farm_ready_data[i])
+
+	var farm_crop_data: Array = d.get("farm_crop_type", [])
+	world.farm_crop_type.resize(farm_crop_data.size())
+	for i in range(farm_crop_data.size()):
+		world.farm_crop_type[i] = str(farm_crop_data[i])
+
+	var farm_yield_data: Array = d.get("farm_pending_yield", [])
+	world.farm_pending_yield.resize(farm_yield_data.size())
+	for i in range(farm_yield_data.size()):
+		world.farm_pending_yield[i] = int(farm_yield_data[i])
+
+	var farm_owner_data: Array = d.get("farm_owner_id", [])
+	world.farm_owner_id.resize(farm_owner_data.size())
+	for i in range(farm_owner_data.size()):
+		world.farm_owner_id[i] = int(farm_owner_data[i])
+
+	if world.farm_active.is_empty():
+		world.farm_active.resize(world.width * world.height)
+		world.farm_active.fill(false)
+	if world.farm_tilled.is_empty():
+		world.farm_tilled.resize(world.width * world.height)
+		world.farm_tilled.fill(false)
+	if world.farm_seeded.is_empty():
+		world.farm_seeded.resize(world.width * world.height)
+		world.farm_seeded.fill(false)
+	if world.farm_growth.is_empty():
+		world.farm_growth.resize(world.width * world.height)
+		world.farm_growth.fill(0.0)
+	if world.farm_harvest_ready.is_empty():
+		world.farm_harvest_ready.resize(world.width * world.height)
+		world.farm_harvest_ready.fill(false)
+	if world.farm_crop_type.is_empty():
+		world.farm_crop_type.resize(world.width * world.height)
+		world.farm_crop_type.fill("")
+	if world.farm_pending_yield.is_empty():
+		world.farm_pending_yield.resize(world.width * world.height)
+		world.farm_pending_yield.fill(0)
+	if world.farm_owner_id.is_empty():
+		world.farm_owner_id.resize(world.width * world.height)
+		world.farm_owner_id.fill(0)
 	
 	# Load resource nodes
 	world.resource_nodes = []

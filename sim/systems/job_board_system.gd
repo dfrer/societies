@@ -406,6 +406,29 @@ func _post_farm_task_activities(state: SimState) -> void:
 		# Expect plot fields: id, task_type, crop_type
 		if plot.get("task_type", "") == "":
 			continue
-		state.job_board.post_farm_task(int(plot.get("id", 0)), plot.get("task_type", ""),
-			plot.get("crop_type", ""), state.tick)
+		var plot_id: int = int(plot.get("id", 0))
+		var task_type: String = plot.get("task_type", "")
+		if state.job_board.has_activity_for_farm_plot(plot_id, task_type):
+			continue
+		var stockpile_id: int = -1
+		if task_type == "DELIVER":
+			stockpile_id = _find_farm_delivery_stockpile(state, plot)
+		state.job_board.post_farm_task(plot_id, task_type,
+			plot.get("crop_type", ""), state.tick, stockpile_id)
 		posted += 1
+
+func _find_farm_delivery_stockpile(state: SimState, plot: Dictionary) -> int:
+	var owner_id: int = int(plot.get("owner_id", 0))
+	var stockpiles := state.structures.get_stockpiles_for_owner(owner_id)
+	if stockpiles.is_empty():
+		return -1
+	var plot_x: int = int(plot.get("x", 0))
+	var plot_y: int = int(plot.get("y", 0))
+	var best_id := -1
+	var best_dist := 999999
+	for stockpile in stockpiles:
+		var dist := absi(stockpile.pos_x - plot_x) + absi(stockpile.pos_y - plot_y)
+		if dist < best_dist:
+			best_dist = dist
+			best_id = stockpile.id
+	return best_id

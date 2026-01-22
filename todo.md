@@ -71,15 +71,15 @@
 - [x] Prefer roads for hauling tasks and pathing when available. (sim/agent_navigation.gd)
 
 ## P2 — Farming Pipeline
-- [ ] Add farm plot tile state: tilled, seeded, growth, harvest-ready. (sim/world_tile.gd)
-- [ ] Integrate daily growth into EnvironmentSystem tick. (sim/environment_system.gd)
-- [ ] Add TILL/PLANT/HARVEST/DELIVER tasks and actions. (sim/job_board.gd, sim/actions.gd)
-- [ ] Transition from foraging to farming via planner thresholds. (sim/organizations.gd)
+- [x] Add farm plot tile state: tilled, seeded, growth, harvest-ready. (sim/world_tile.gd)
+- [x] Integrate daily growth into EnvironmentSystem tick. (sim/environment_system.gd)
+- [x] Add TILL/PLANT/HARVEST/DELIVER tasks and actions. (sim/job_board.gd, sim/actions.gd)
+- [x] Transition from foraging to farming via planner thresholds. (sim/organizations.gd)
 
 ## P2 — Economy + Contracts
-- [ ] Post procurement contracts when stockpiles fall below thresholds. (sim/organizations.gd, sim/contract_system.gd)
-- [ ] Auto-post surplus to market. (sim/market_system.gd)
-- [ ] Allow agents to choose between org tasks and paid contracts. (sim/brains/default_brain.gd)
+- [x] Post procurement contracts when stockpiles fall below thresholds. (sim/organizations.gd, sim/contract_system.gd)
+- [x] Auto-post surplus to market. (sim/market_system.gd)
+- [x] Allow agents to choose between org tasks and paid contracts. (sim/brains/default_brain.gd)
 
 ## P3 — Metrics + Debugging
 - [ ] Add build-site progress telemetry and stockpile throughput metrics. (sim/metrics_system.gd)

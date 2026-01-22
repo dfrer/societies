@@ -10,6 +10,7 @@ func tick_daily(sim: RefCounted, state: SimState) -> void:
 	_decay_resources(state)  # Apply perishable resource decay
 	_spread_pollution(state)
 	_grow_flora(state)
+	_grow_farms(state)
 
 ## Called every tick - currently no per-tick environment updates
 func tick(sim: RefCounted, state: SimState) -> void:
@@ -171,3 +172,14 @@ func _spawn_flora_node(state: SimState, node_type: String, x: int, y: int) -> vo
 	node.set_type_spoilage()
 	node.quality = state.rng.randf_range(0.8, 1.2)
 	state.world.add_resource_node(node)
+
+# ============================================
+# FARM SIMULATION
+# ============================================
+
+func _grow_farms(state: SimState) -> void:
+	var growth_per_day: float = state.get_tuning_float("farm_growth_per_day", 0.25)
+	var growth_required: float = state.get_tuning_float("farm_growth_required", 1.0)
+	if growth_per_day <= 0.0 or growth_required <= 0.0:
+		return
+	state.world.advance_farm_growth(growth_per_day, growth_required)

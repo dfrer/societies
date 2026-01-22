@@ -87,6 +87,46 @@ func post_contract(issuer: Agent, item: String, qty: int, payout: int,
 	
 	return contract
 
+## Post a procurement contract funded by an organization treasury
+func post_org_contract(organization: Organization, item: String, qty: int, payout: int,
+					   deadline_tick: int, delivery_x: int, delivery_y: int,
+					   current_tick: int, state: SimState) -> Contract:
+	if organization == null:
+		return null
+	if organization.treasury < payout:
+		return null
+	organization.treasury -= payout
+
+	var contract := Contract.new()
+	contract.id = next_contract_id
+	next_contract_id += 1
+	contract.status = Contract.STATUS_POSTED
+	contract.issuer_type = "organization"
+	contract.issuer_id = organization.id
+	contract.item = item
+	contract.qty = qty
+	contract.payout = payout
+	contract.escrow = payout
+	contract.created_tick = current_tick
+	contract.deadline_tick = deadline_tick
+	contract.delivery_pos_x = delivery_x
+	contract.delivery_pos_y = delivery_y
+
+	contracts.append(contract)
+	stats["posted"] += 1
+
+	state.log_event("contract_posted", {
+		"contract_id": contract.id,
+		"issuer_id": organization.id,
+		"issuer_type": "organization",
+		"item": item,
+		"qty": qty,
+		"payout": payout,
+		"deadline": deadline_tick
+	})
+
+	return contract
+
 ## Accept a contract
 func accept_contract(contract_id: int, agent: Agent, current_tick: int, state: SimState) -> bool:
 	var contract := get_contract(contract_id)
@@ -135,11 +175,18 @@ func complete_delivery(contract_id: int, agent: Agent, state: SimState) -> bool:
 	agent.active_contract_id = -1
 	
 	# Transfer items to issuer and release escrow
-	var issuer := state.get_agent(contract.issuer_id)
-	if issuer:
-		issuer.add_item(contract.item, contract.qty)
-		# contract.complete() returns the escrow amount, so release it back to issuer
-		issuer.release_locked_money(payout)
+	if contract.issuer_type == "organization":
+		var org := state.get_organization(contract.issuer_id)
+		if org:
+			var stockpile := _find_org_delivery_stockpile(org, state, contract.delivery_pos_x, contract.delivery_pos_y)
+			if stockpile != null:
+				stockpile.add_item(contract.item, contract.qty)
+	else:
+		var issuer := state.get_agent(contract.issuer_id)
+		if issuer:
+			issuer.add_item(contract.item, contract.qty)
+			# contract.complete() returns the escrow amount, so release it back to issuer
+			issuer.release_locked_money(payout)
 	
 	stats["completed"] += 1
 	
@@ -167,9 +214,14 @@ func process_expirations(current_tick: int, agents: Array, state: SimState) -> v
 			var is_expired: bool = (contract.status == Contract.STATUS_POSTED)
 			var refund: int = contract.fail_or_expire(is_expired)
 			if refund > 0:
-				var issuer: Agent = agent_map.get(contract.issuer_id)
-				if issuer:
-					issuer.release_locked_money(refund)
+				if contract.issuer_type == "organization":
+					var org := state.get_organization(contract.issuer_id)
+					if org:
+						org.treasury += refund
+				else:
+					var issuer: Agent = agent_map.get(contract.issuer_id)
+					if issuer:
+						issuer.release_locked_money(refund)
 
 			# Clear worker's active contract if there was one
 			if contract.worker_id > 0:
@@ -346,6 +398,30 @@ func find_best_contract(agent: Agent, market: Market, tuning: Dictionary) -> Con
 			best_contract = contract
 	
 	return best_contract
+
+## Check if issuer already has an active contract for an item
+func has_active_contract_for_issuer(issuer_type: String, issuer_id: int, item: String) -> bool:
+	for contract in contracts:
+		if contract.issuer_type != issuer_type or contract.issuer_id != issuer_id:
+			continue
+		if contract.item != item:
+			continue
+		if contract.is_active():
+			return true
+	return false
+
+func _find_org_delivery_stockpile(organization: Organization, state: SimState, target_x: int, target_y: int) -> StructureState:
+	var stockpiles := state.structures.get_stockpiles_for_owner(organization.get_owner_id())
+	if stockpiles.is_empty():
+		return null
+	var best: StructureState = null
+	var best_dist := 999999
+	for stockpile in stockpiles:
+		var dist := absi(stockpile.pos_x - target_x) + absi(stockpile.pos_y - target_y)
+		if dist < best_dist:
+			best = stockpile
+			best_dist = dist
+	return best
 
 static func _sort_agents_by_id(a, b) -> bool:
 	return a.id < b.id

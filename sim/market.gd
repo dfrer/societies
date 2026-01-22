@@ -46,8 +46,12 @@ func get_ref_price(item: String) -> float:
 	return ref_price.get(item, 10.0)
 
 ## Create a buy order (does not place it yet)
-func create_order(type: String, item: String, qty: int, price: int, agent_id: int, 
-				  current_tick: int, ttl: int) -> Dictionary:
+func create_order(type: String, item: String, qty: int, price: int, agent_id: int,
+				  current_tick: int, ttl: int, owner_type: String = "agent",
+				  owner_id: int = -1, stockpile_id: int = -1) -> Dictionary:
+	var resolved_owner_id := owner_id
+	if resolved_owner_id < 0:
+		resolved_owner_id = agent_id
 	var order := {
 		"order_id": next_order_id,
 		"type": type,
@@ -55,6 +59,9 @@ func create_order(type: String, item: String, qty: int, price: int, agent_id: in
 		"qty": qty,
 		"price": price,
 		"agent_id": agent_id,
+		"owner_type": owner_type,
+		"owner_id": resolved_owner_id,
+		"stockpile_id": stockpile_id,
 		"created_tick": current_tick,
 		"expires_tick": current_tick + ttl
 	}
@@ -112,6 +119,18 @@ func has_active_order(agent_id: int, item: String, order_type: String) -> bool:
 			return true
 	return false
 
+func has_active_order_for_owner(owner_type: String, owner_id: int, item: String, order_type: String) -> bool:
+	var orders := buy_orders if order_type == "buy" else sell_orders
+	for order in orders:
+		if order.get("owner_type", "agent") != owner_type:
+			continue
+		if int(order.get("owner_id", -1)) != owner_id:
+			continue
+		if order.get("item", "") != item:
+			continue
+		return true
+	return false
+
 ## Get orders by agent ID
 func get_agent_orders(agent_id: int) -> Array:
 	var result := []
@@ -124,7 +143,7 @@ func get_agent_orders(agent_id: int) -> Array:
 	return result
 
 ## Remove expired orders and release locked resources
-func expire_orders(current_tick: int, agents: Array) -> void:
+func expire_orders(current_tick: int, agents: Array, state: SimState = null) -> void:
 	# Build agent lookup
 	var agent_map := {}
 	for agent in agents:
@@ -135,10 +154,16 @@ func expire_orders(current_tick: int, agents: Array) -> void:
 	for order in buy_orders:
 		if order["expires_tick"] <= current_tick:
 			# Release locked money
-			var agent = agent_map.get(order["agent_id"])
-			if agent:
-				var locked_amount: int = order["qty"] * order["price"]
-				agent.release_locked_money(locked_amount)
+			var owner_type: String = order.get("owner_type", "agent")
+			var locked_amount: int = order["qty"] * order["price"]
+			if owner_type == "organization" and state != null:
+				var org := state.get_organization(int(order.get("owner_id", -1)))
+				if org:
+					org.treasury += locked_amount
+			else:
+				var agent = agent_map.get(order["agent_id"])
+				if agent:
+					agent.release_locked_money(locked_amount)
 		else:
 			new_buy_orders.append(order)
 	buy_orders = new_buy_orders
@@ -148,9 +173,16 @@ func expire_orders(current_tick: int, agents: Array) -> void:
 	for order in sell_orders:
 		if order["expires_tick"] <= current_tick:
 			# Release locked inventory
-			var agent = agent_map.get(order["agent_id"])
-			if agent:
-				agent.release_locked_item(order["item"], order["qty"])
+			var owner_type: String = order.get("owner_type", "agent")
+			if owner_type == "organization" and state != null:
+				var stockpile_id: int = int(order.get("stockpile_id", -1))
+				var stockpile := state.structures.get_structure(stockpile_id)
+				if stockpile != null:
+					stockpile.release_reserved_item(order["item"], order["qty"])
+			else:
+				var agent = agent_map.get(order["agent_id"])
+				if agent:
+					agent.release_locked_item(order["item"], order["qty"])
 		else:
 			new_sell_orders.append(order)
 	sell_orders = new_sell_orders
@@ -280,7 +312,7 @@ func _match_item(item: String, agent_map: Dictionary, alpha: float,
 			break  # No more matches possible
 		
 		# Don't match self-trades
-		if buy_order["agent_id"] == sell_order["agent_id"]:
+		if _order_owner_key(buy_order) == _order_owner_key(sell_order):
 			sell_idx += 1
 			continue
 		
@@ -288,13 +320,29 @@ func _match_item(item: String, agent_map: Dictionary, alpha: float,
 		var trade_qty: int = mini(buy_order["qty"], sell_order["qty"])
 		var trade_price: int = (buy_order["price"] + sell_order["price"]) / 2
 		
-		# Get agents
-		var buyer = agent_map.get(buy_order["agent_id"])
-		var seller = agent_map.get(sell_order["agent_id"])
-		
-		if buyer == null or seller == null:
+		# Resolve buyer/seller
+		var buyer_info := _resolve_order_party(buy_order, agent_map, state)
+		var seller_info := _resolve_order_party(sell_order, agent_map, state)
+		if buyer_info.is_empty() or seller_info.is_empty():
 			buy_idx += 1
 			continue
+		if buyer_info.get("type", "") == "organization":
+			buy_idx += 1
+			continue
+		var buyer: Agent = buyer_info.get("agent", null)
+		if buyer == null:
+			buy_idx += 1
+			continue
+		var seller_type: String = seller_info.get("type", "agent")
+		var seller_stockpile_id: int = int(seller_info.get("stockpile_id", -1))
+		if seller_type == "organization":
+			if state == null:
+				sell_idx += 1
+				continue
+			var stockpile := state.structures.get_structure(seller_stockpile_id)
+			if stockpile == null:
+				sell_idx += 1
+				continue
 		
 		# Execute trade
 		var total_cost: int = trade_qty * trade_price
@@ -304,22 +352,25 @@ func _match_item(item: String, agent_map: Dictionary, alpha: float,
 		if state != null and tax_rate > 0:
 			tax_amount = int(floor(float(total_cost) * tax_rate / 100.0))
 		
+		var seller_agent: Agent = seller_info.get("agent", null)
+		var seller_org: Organization = seller_info.get("organization", null)
+
 		# Calculate tariff for foreign sellers
 		var tariff_amount: int = 0
 		var owner_faction_id: int = -1
-		if state != null and world != null and market_pos.x >= 0:
+		if seller_type == "agent" and state != null and world != null and market_pos.x >= 0:
 			var market_owner_id := world.get_claim_owner(market_pos.x, market_pos.y)
 			if World.is_faction_owner(market_owner_id):
 				owner_faction_id = World.faction_id_from_owner(market_owner_id)
 				# Check if seller is foreign to market owner faction
-				if seller.faction_id != owner_faction_id:
+				if seller_agent != null and seller_agent.faction_id != owner_faction_id:
 					var owner_faction: Faction = null
 					for f in state.factions:
 						if f.id == owner_faction_id:
 							owner_faction = f
 							break
 					if owner_faction != null:
-						var policy := owner_faction.get_trade_policy_for_agent(seller, state.tuning)
+						var policy := owner_faction.get_trade_policy_for_agent(seller_agent, state.tuning)
 						if policy["policy"] == "tariff":
 							var tariff_rate: int = policy["tariff_rate"]
 							tariff_amount = int(floor(float(total_cost) * tariff_rate / 100.0))
@@ -336,7 +387,11 @@ func _match_item(item: String, agent_map: Dictionary, alpha: float,
 		buyer.debit_available_money(total_cost)
 		
 		# Seller receives total minus tax and tariff
-		seller.money += total_cost - tax_amount - tariff_amount
+		if seller_type == "organization":
+			if seller_org != null:
+				seller_org.treasury += total_cost - tax_amount - tariff_amount
+		elif seller_agent != null:
+			seller_agent.money += total_cost - tax_amount - tariff_amount
 		
 		# Route tax to market owner
 		if state != null and tax_amount > 0 and world != null and market_pos.x >= 0:
@@ -352,7 +407,14 @@ func _match_item(item: String, agent_map: Dictionary, alpha: float,
 			_route_tax(tariff_amount, market_owner, state)
 		
 		# Transfer from seller's locked inventory to buyer's inventory
-		seller.consume_locked_item(item, trade_qty)
+		if seller_type == "organization":
+			if state != null:
+				var stockpile := state.structures.get_structure(seller_stockpile_id)
+				if stockpile != null:
+					stockpile.release_reserved_item(item, trade_qty)
+					stockpile.remove_item(item, trade_qty)
+		elif seller_agent != null:
+			seller_agent.consume_locked_item(item, trade_qty)
 		buyer.add_item(item, trade_qty)
 		
 		# Update order quantities
@@ -372,7 +434,9 @@ func _match_item(item: String, agent_map: Dictionary, alpha: float,
 		if state != null:
 			state.log_event("trade_executed", {
 				"buyer_id": buyer.id,
-				"seller_id": seller.id,
+				"seller_id": seller_agent.id if seller_agent != null else 0,
+				"seller_type": seller_type,
+				"seller_org_id": seller_org.id if seller_org != null else 0,
 				"item": item,
 				"qty": trade_qty,
 				"price": trade_price,
@@ -390,6 +454,29 @@ func _match_item(item: String, agent_map: Dictionary, alpha: float,
 	_remove_filled_orders()
 	
 	return trades
+
+func _order_owner_key(order: Dictionary) -> String:
+	var owner_type: String = order.get("owner_type", "agent")
+	var owner_id: int = int(order.get("owner_id", order.get("agent_id", -1)))
+	return "%s:%d" % [owner_type, owner_id]
+
+func _resolve_order_party(order: Dictionary, agent_map: Dictionary, state: SimState) -> Dictionary:
+	var owner_type: String = order.get("owner_type", "agent")
+	if owner_type == "organization":
+		if state == null:
+			return {}
+		var org := state.get_organization(int(order.get("owner_id", -1)))
+		if org == null:
+			return {}
+		return {
+			"type": "organization",
+			"organization": org,
+			"stockpile_id": int(order.get("stockpile_id", -1))
+		}
+	var agent = agent_map.get(order.get("agent_id", -1))
+	if agent == null:
+		return {}
+	return {"type": "agent", "agent": agent}
 
 ## Route tax to jurisdiction owner
 func _route_tax(tax_amount: int, owner_id: int, state: SimState) -> void:
@@ -481,6 +568,9 @@ static func from_dict(d: Dictionary) -> Market:
 		fixed_order["qty"] = int(order.get("qty", 0))
 		fixed_order["price"] = int(order.get("price", 0))
 		fixed_order["agent_id"] = int(order.get("agent_id", 0))
+		fixed_order["owner_type"] = order.get("owner_type", "agent")
+		fixed_order["owner_id"] = int(order.get("owner_id", fixed_order["agent_id"]))
+		fixed_order["stockpile_id"] = int(order.get("stockpile_id", -1))
 		fixed_order["created_tick"] = int(order.get("created_tick", 0))
 		fixed_order["expires_tick"] = int(order.get("expires_tick", 0))
 		market.buy_orders.append(fixed_order)
@@ -493,6 +583,9 @@ static func from_dict(d: Dictionary) -> Market:
 		fixed_order["qty"] = int(order.get("qty", 0))
 		fixed_order["price"] = int(order.get("price", 0))
 		fixed_order["agent_id"] = int(order.get("agent_id", 0))
+		fixed_order["owner_type"] = order.get("owner_type", "agent")
+		fixed_order["owner_id"] = int(order.get("owner_id", fixed_order["agent_id"]))
+		fixed_order["stockpile_id"] = int(order.get("stockpile_id", -1))
 		fixed_order["created_tick"] = int(order.get("created_tick", 0))
 		fixed_order["expires_tick"] = int(order.get("expires_tick", 0))
 		market.sell_orders.append(fixed_order)
