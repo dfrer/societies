@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Societies Project Architecture Graph</title>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <style>
+        body {
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            background-color: #f8f9fa;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        h1 { color: #2d3436; }
+        #graph-container {
+            width: 100%;
+            max-width: 1200px;
+            background: white;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            cursor: zoom-in;
+        }
+        .controls {
+            margin-bottom: 20px;
+            padding: 10px;
+            background: #eee;
+            border-radius: 8px;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <h1>Societies Project Architecture</h1>
+    <div class="controls">
+        💡 <b>Tip:</b> Use <code>Ctrl + Scroll Wheel</code> or <code>Ctrl + Plus/Minus</code> to zoom in and out.
+    </div>
+    <div id="graph-container">
+        <pre class="mermaid">
+graph TB
+    %% Definitions
+    classDef kernel color:#fff,fill:#2d3436,stroke:#000,stroke-width:2px;
+    classDef system color:#fff,fill:#6c5ce7,stroke:#000,stroke-width:1px;
+    classDef model color:#fff,fill:#0984e3,stroke:#000,stroke-width:1px;
+    classDef problematic color:#fff,fill:#d63031,stroke:#000,stroke-width:2px,stroke-dasharray: 5 5;
+    classDef unfinished color:#000,fill:#ffeaa7,stroke:#000,stroke-width:1px,stroke-dasharray: 5 5;
+    classDef viz color:#fff,fill:#00b894,stroke:#000,stroke-width:1px;
+
+    %% Subgraph: Simulation Kernel
+    subgraph Kernel ["Core Simulation Kernel (Headless)"]
+        Sim["Sim.gd (Controller)"]:::kernel
+        SimState["SimState.gd (Store)"]:::kernel
+        Pipeline["SimPipeline.gd (Runner)"]:::kernel
+        RNG["RNG.gd (Deterministic)"]:::kernel
+        
+        Sim --> Pipeline
+        Sim --> SimState
+        SimState --> RNG
+    end
+
+    %% Subgraph: System Pipeline
+    subgraph Systems ["Update Pipeline (Order of Execution)"]
+        S1["EnvironmentSystem"]:::system
+        S2["EconomySystem"]:::system
+        S3["JobBoardSystem"]:::system
+        S4["GovernanceSystem"]:::system
+        S5["MetricsSystem"]:::system
+        S6["TimeSystem"]:::system
+        S7["WorkshopSystem"]:::system
+        S8["TaskProjectSystem"]:::system
+        S9["AgentsSystem"]:::system
+        S10["EconomyResolutionSystem"]:::system
+
+        Pipeline --> S1
+        S1 --> S2 --> S3 --> S4 --> S5 --> S6 --> S7 --> S8 --> S9 --> S10
+    end
+
+    %% Subgraph: Models & Data
+    subgraph Data ["State Models"]
+        MA["Agent.gd"]:::model
+        MW["World.gd"]:::model
+        MF["Faction.gd"]:::model
+        MM["Market.gd"]:::model
+        MC["Contract.gd"]:::model
+
+        SimState --> MA
+        SimState --> MW
+        SimState --> MF
+        SimState --> MM
+        SimState --> MC
+    end
+
+    %% Agent Loop
+    subgraph AgentLoop ["The Perception-Decision-Action Loop"]
+        S9 -- "Triggers" --> Brain["DefaultBrain.gd"]
+        Brain -- "Decision" --> Actions["Actions.gd"]
+        Actions -- "Result" --> SimState
+        Actions -- "Illegal Action?" --> Enforcement["Enforcement.gd"]
+        Enforcement -- "Fine/Block" --> SimState
+    end
+
+    %% The Pit of Despair (Problematic & Unfinished)
+    subgraph PitOfDespair ["The Pit of Despair (Problematic / WIP)"]
+        ND["Non-Determinism Risk"]:::problematic
+        CT["Contract Expiry issues"]:::problematic
+        ST["Stockpiles (State Only)"]:::unfinished
+        RD["Roads (No Pathing)"]:::unfinished
+        ORG["Organizations (Unfinished)"]:::unfinished
+        
+        RNG -.-> ND
+        S3 -.-> CT
+        S8 -.-> ST
+        S8 -.-> RD
+        S8 -.-> ORG
+    end
+
+    %% Visualizer
+    subgraph UI ["Godot Visualizer (GUI)"]
+        MainViz["visualizer_main.gd"]:::viz
+        Runner["sim_runner_node.gd"]:::viz
+        
+        MainViz --> Runner
+        Runner -- "Calls Step()" --> Sim
+    end
+
+    %% Layout hints
+    ND --- CT
+    ST --- RD
+        </pre>
+    </div>
+    <script>
+        mermaid.initialize({ startOnLoad: true });
+    </script>
+</body>
+</html>
