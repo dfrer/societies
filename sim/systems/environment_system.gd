@@ -46,9 +46,18 @@ func _regenerate_resources(state: SimState) -> void:
 ## Apply decay to all pollution tiles
 func _decay_pollution(state: SimState) -> void:
 	var pollution_decay: float = state.get_tuning_float("pollution_decay_per_day", 0.05)
-	
-	for i in range(state.world.pollution.size()):
-		state.world.pollution[i] *= (1.0 - pollution_decay)
+
+	var world := state.world
+	var pollution := world.pollution
+	var multiplier := 1.0 - pollution_decay
+
+	for i in range(pollution.size()):
+		var before := pollution[i]
+		var after := before * multiplier
+		if not is_equal_approx(before, after):
+			pollution[i] = after
+			world.mark_pollution_dirty_by_index(i)
+	world._pollution_cache_tick = -1
 
 # ============================================
 # PERISHABLE RESOURCE DECAY
@@ -105,6 +114,9 @@ func _spread_pollution(state: SimState) -> void:
 				updated[n_idx] = clampf(updated[n_idx] + per_neighbor, 0.0, 1.0)
 
 	state.world.pollution = updated
+	for i in range(current.size()):
+		if not is_equal_approx(current[i], updated[i]):
+			state.world.mark_pollution_dirty_by_index(i)
 	state.world._pollution_cache_tick = -1
 
 # ============================================

@@ -34,6 +34,12 @@ var _workshops_by_id: Dictionary = {}  # id -> Workshop
 var _cached_avg_pollution: float = 0.0
 var _pollution_cache_tick: int = -1
 
+## Dirty tile tracking for incremental updates
+var _dirty_claim_tiles: Array[Vector2i] = []
+var _dirty_pollution_tiles: Array[Vector2i] = []
+var _dirty_claim_indices: Dictionary = {}
+var _dirty_pollution_indices: Dictionary = {}
+
 ## Faction owner ID offset (faction_id + this = owner_id)
 const FACTION_OWNER_OFFSET := 1000000
 const ORGANIZATION_OWNER_OFFSET := 2000000
@@ -57,6 +63,10 @@ func init_world(w: int, h: int) -> void:
 	roads.fill(0)
 	zone_tags.resize(w * h)
 	zone_tags.fill("")
+	_dirty_claim_tiles.clear()
+	_dirty_pollution_tiles.clear()
+	_dirty_claim_indices.clear()
+	_dirty_pollution_indices.clear()
 
 # ============================================
 # TILE QUERY
@@ -128,15 +138,22 @@ func get_pollution(x: int, y: int) -> float:
 ## Set pollution at position
 func set_pollution(x: int, y: int, value: float) -> void:
 	if is_valid(x, y):
-		pollution[_tile_index(x, y)] = clampf(value, 0.0, 1.0)
-		_pollution_cache_tick = -1  # Invalidate cache
+		var idx := _tile_index(x, y)
+		var clamped := clampf(value, 0.0, 1.0)
+		if not is_equal_approx(pollution[idx], clamped):
+			pollution[idx] = clamped
+			_mark_pollution_dirty_by_index(idx)
+			_pollution_cache_tick = -1  # Invalidate cache
 
 ## Add pollution at position (clamped 0-1)
 func add_pollution(x: int, y: int, delta: float) -> void:
 	if is_valid(x, y):
 		var idx := _tile_index(x, y)
-		pollution[idx] = clampf(pollution[idx] + delta, 0.0, 1.0)
-		_pollution_cache_tick = -1  # Invalidate cache
+		var updated := clampf(pollution[idx] + delta, 0.0, 1.0)
+		if not is_equal_approx(pollution[idx], updated):
+			pollution[idx] = updated
+			_mark_pollution_dirty_by_index(idx)
+			_pollution_cache_tick = -1  # Invalidate cache
 
 ## Get average pollution (cached per tick)
 func get_average_pollution(tick: int = -1) -> float:
@@ -166,7 +183,10 @@ func get_claim_owner(x: int, y: int) -> int:
 ## Set claim owner at position
 func set_claim_owner(x: int, y: int, owner_id: int) -> void:
 	if is_valid(x, y):
-		tiles[_tile_index(x, y)] = owner_id
+		var idx := _tile_index(x, y)
+		if tiles[idx] != owner_id:
+			tiles[idx] = owner_id
+			_mark_claim_dirty_by_index(idx)
 
 ## Check if tile is claimed
 func is_claimed(x: int, y: int) -> bool:
@@ -226,6 +246,41 @@ func get_claims_by_owner() -> Dictionary:
 			var y := i / width
 			claims[owner].append(Vector2i(x, y))
 	return claims
+
+# ============================================
+# DIRTY TILE TRACKING
+# ============================================
+
+func _mark_claim_dirty_by_index(index: int) -> void:
+	if _dirty_claim_indices.has(index):
+		return
+	_dirty_claim_indices[index] = true
+	var x := index % width
+	var y := index / width
+	_dirty_claim_tiles.append(Vector2i(x, y))
+
+func _mark_pollution_dirty_by_index(index: int) -> void:
+	if _dirty_pollution_indices.has(index):
+		return
+	_dirty_pollution_indices[index] = true
+	var x := index % width
+	var y := index / width
+	_dirty_pollution_tiles.append(Vector2i(x, y))
+
+func mark_pollution_dirty_by_index(index: int) -> void:
+	_mark_pollution_dirty_by_index(index)
+
+func consume_dirty_claim_tiles() -> Array[Vector2i]:
+	var dirty := _dirty_claim_tiles.duplicate()
+	_dirty_claim_tiles.clear()
+	_dirty_claim_indices.clear()
+	return dirty
+
+func consume_dirty_pollution_tiles() -> Array[Vector2i]:
+	var dirty := _dirty_pollution_tiles.duplicate()
+	_dirty_pollution_tiles.clear()
+	_dirty_pollution_indices.clear()
+	return dirty
 
 # ============================================
 # WORKSHOP QUERY/MUTATE
