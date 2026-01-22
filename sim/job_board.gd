@@ -179,6 +179,18 @@ func has_activity_for_contract(contract_id: int) -> bool:
 			return true
 	return false
 
+func has_activity_for_project_item(project_id: int, item_type: String) -> bool:
+	for activity in activities:
+		if activity.get("type", "") != ACTIVITY_DELIVER_TO_PROJECT:
+			continue
+		var status: String = activity.get("status", STATUS_AVAILABLE)
+		if status == STATUS_CANCELLED or status == STATUS_COMPLETED:
+			continue
+		var data: Dictionary = activity.get("data", {})
+		if int(data.get("project_id", -1)) == project_id and data.get("item_type", "") == item_type:
+			return true
+	return false
+
 func prune_inactive(max_inactive: int) -> void:
 	if max_inactive <= 0:
 		return
