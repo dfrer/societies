@@ -63,8 +63,8 @@ static func make_contract(issuer_id: int, item: String, qty: int, payout: int,
 	contract.qty = qty
 	contract.payout = payout
 	contract.deadline_tick = deadline_tick
-	contract.delivery_x = overrides.get("delivery_x", 48)
-	contract.delivery_y = overrides.get("delivery_y", 48)
+	contract.delivery_pos_x = overrides.get("delivery_pos_x", 48)
+	contract.delivery_pos_y = overrides.get("delivery_pos_y", 48)
 	contract.status = overrides.get("status", Contract.STATUS_POSTED)
 	contract.worker_id = overrides.get("worker_id", 0)
 	contract.created_tick = overrides.get("created_tick", 0)
@@ -110,7 +110,7 @@ static func make_rng(seed_val: int = 12345) -> RNG:
 ## Create a minimal world for testing
 static func make_world(width: int = 16, height: int = 16) -> World:
 	var world := World.new()
-	world.init(width, height)
+	world.init_world(width, height)
 	return world
 
 ## Create an enforcement instance

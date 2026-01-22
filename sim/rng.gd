@@ -6,7 +6,9 @@ extends RefCounted
 var _state: int = 0
 
 func _init() -> void:
-	_state = hash("default_seed")
+	# Use a fixed default seed for determinism - DO NOT use hash() as it returns
+	# different values between process runs
+	_state = 12345
 
 ## Initialize RNG with a seed
 func init_seed(seed_value: int) -> void:
