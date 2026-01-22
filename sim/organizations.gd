@@ -86,6 +86,8 @@ func plan_daily(state: SimState) -> void:
 		_spawn_project(state, "workshop", "workshop")
 	if shelter_count + shelter_projects < shelter_target:
 		_spawn_project(state, "shelter", "shelter")
+	_plan_station_projects(state)
+	_plan_road_projects(state)
 
 func _count_structures_of_type(state: SimState, structure_type: String, owner_id: int) -> int:
 	var count := 0
@@ -98,6 +100,13 @@ func _count_workshops(state: SimState, owner_id: int) -> int:
 	var count := 0
 	for workshop in state.world.workshops:
 		if workshop.owner_id == owner_id:
+			count += 1
+	return count
+
+func _count_workshops_by_type(state: SimState, owner_id: int, workshop_type: String) -> int:
+	var count := 0
+	for workshop in state.world.workshops:
+		if workshop.owner_id == owner_id and workshop.workshop_type == workshop_type:
 			count += 1
 	return count
 
@@ -156,6 +165,154 @@ func _is_tile_occupied(state: SimState, x: int, y: int) -> bool:
 			return true
 	for project in state.communal_projects.projects:
 		if project.is_active() and project.pos_x == x and project.pos_y == y:
+			return true
+	return false
+
+func _plan_station_projects(state: SimState) -> void:
+	var owner_id := get_owner_id()
+	var carpenter_count := _count_workshops_by_type(state, owner_id, "carpenter")
+	var kiln_count := _count_workshops_by_type(state, owner_id, "kiln")
+	var smithy_count := _count_workshops_by_type(state, owner_id, "smithy")
+	var carpenter_projects := _count_active_projects(state, "carpenter")
+	var kiln_projects := _count_active_projects(state, "kiln")
+	var smithy_projects := _count_active_projects(state, "smithy")
+
+	var planks_target := state.get_tuning_int("organization_target_planks", 20)
+	var metal_target := state.get_tuning_int("organization_target_metal_ingot", 6)
+	var tools_target := state.get_tuning_int("organization_target_tools", 2)
+	var planks := _get_stockpile_item_count(state, owner_id, "Planks")
+	var ore := _get_stockpile_item_count(state, owner_id, "Ore")
+	var metal := _get_stockpile_item_count(state, owner_id, "MetalIngot")
+	var tools := _get_stockpile_tool_count(state, owner_id)
+
+	if carpenter_count + carpenter_projects < 1 and planks < planks_target:
+		_spawn_project(state, "carpenter", "workshop")
+		return
+	if carpenter_count == 0 and carpenter_projects == 0:
+		return
+	if kiln_count + kiln_projects < 1 and (metal < metal_target or ore >= 4):
+		_spawn_project(state, "kiln", "workshop")
+		return
+	if kiln_count == 0 and kiln_projects == 0:
+		return
+	if smithy_count + smithy_projects < 1 and (metal >= 2 or tools < tools_target):
+		_spawn_project(state, "smithy", "workshop")
+
+func _get_stockpile_item_count(state: SimState, owner_id: int, item: String) -> int:
+	var total := 0
+	var stockpiles := _get_org_stockpiles(state, owner_id)
+	for stockpile in stockpiles:
+		total += int(stockpile.items.get(item, 0))
+	return total
+
+func _get_stockpile_tool_count(state: SimState, owner_id: int) -> int:
+	var tools := ["Axe", "Pickaxe", "Mallet", "Shovel"]
+	var total := 0
+	for tool in tools:
+		total += _get_stockpile_item_count(state, owner_id, tool)
+	return total
+
+func _get_org_stockpiles(state: SimState, owner_id: int) -> Array:
+	var stockpiles := []
+	for structure in state.structures.structures:
+		if structure.structure_type != StructureState.TYPE_STOCKPILE:
+			continue
+		if structure.owner_id != owner_id:
+			continue
+		stockpiles.append(structure)
+	stockpiles.sort_custom(func(a, b): return a.id < b.id)
+	return stockpiles
+
+func _plan_road_projects(state: SimState) -> void:
+	var daily_limit := state.get_tuning_int("organization_road_projects_per_day", 6)
+	if daily_limit <= 0:
+		return
+	var owner_id := get_owner_id()
+	var stockpiles := _get_org_stockpiles(state, owner_id)
+	if stockpiles.is_empty():
+		return
+	var remaining := daily_limit
+	var road_targets := _get_road_targets(state, stockpiles)
+	for target in road_targets:
+		if remaining <= 0:
+			break
+		remaining = _spawn_road_path(state, target["start"], target["end"], remaining)
+
+func _get_road_targets(state: SimState, stockpiles: Array) -> Array:
+	var targets := []
+	for stockpile in stockpiles:
+		targets.append({"start": town_center, "end": Vector2i(stockpile.pos_x, stockpile.pos_y)})
+	var resource_types := ["tree", "ore", "stone", "berry"]
+	for rtype in resource_types:
+		var node := _find_nearest_resource_node(state, rtype, town_center)
+		if node == null:
+			continue
+		var nearest_stockpile := _find_nearest_stockpile(stockpiles, Vector2i(node.pos_x, node.pos_y))
+		if nearest_stockpile == null:
+			continue
+		targets.append({
+			"start": Vector2i(nearest_stockpile.pos_x, nearest_stockpile.pos_y),
+			"end": Vector2i(node.pos_x, node.pos_y)
+		})
+	return targets
+
+func _find_nearest_resource_node(state: SimState, node_type: String, origin: Vector2i) -> ResourceNode:
+	var best: ResourceNode = null
+	var best_dist := 999999
+	for node in state.world.resource_nodes:
+		if node.type != node_type:
+			continue
+		var dist := absi(node.pos_x - origin.x) + absi(node.pos_y - origin.y)
+		if dist < best_dist:
+			best_dist = dist
+			best = node
+	return best
+
+func _find_nearest_stockpile(stockpiles: Array, origin: Vector2i) -> StructureState:
+	var best: StructureState = null
+	var best_dist := 999999
+	for stockpile in stockpiles:
+		var dist := absi(stockpile.pos_x - origin.x) + absi(stockpile.pos_y - origin.y)
+		if dist < best_dist:
+			best_dist = dist
+			best = stockpile
+	return best
+
+func _spawn_road_path(state: SimState, start: Vector2i, end: Vector2i, remaining: int) -> int:
+	var path := _build_manhattan_path(start, end)
+	for pos in path:
+		if remaining <= 0:
+			break
+		if not state.world.is_valid(pos.x, pos.y):
+			continue
+		if state.world.has_road(pos.x, pos.y):
+			continue
+		if _is_tile_occupied(state, pos.x, pos.y):
+			continue
+		if _has_active_project_at(state, pos.x, pos.y):
+			continue
+		state.communal_projects.start_project(id, "road", pos.x, pos.y, 0, state.tick, state)
+		remaining -= 1
+	return remaining
+
+func _build_manhattan_path(start: Vector2i, end: Vector2i) -> Array:
+	var path := []
+	var x := start.x
+	var y := start.y
+	while x != end.x:
+		path.append(Vector2i(x, y))
+		x += 1 if end.x > x else -1
+	while y != end.y:
+		path.append(Vector2i(x, y))
+		y += 1 if end.y > y else -1
+	path.append(Vector2i(x, y))
+	return path
+
+func _has_active_project_at(state: SimState, x: int, y: int) -> bool:
+	for project in state.communal_projects.projects:
+		if not project.is_active():
+			continue
+		if project.pos_x == x and project.pos_y == y:
 			return true
 	return false
 
