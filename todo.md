@@ -34,3 +34,51 @@
 ## P3 — Developer Experience
 - [ ] Add a `make test` or script wrapper to standardize the command and project path usage.
 - [ ] Add a short troubleshooting section for common CLI errors (missing `res://` path, permissions, missing Godot binary).
+
+# V2 Settlement Simulation TODO
+
+## P0 — Planning + Task System Foundations
+- [ ] Add a Task/Project system phase before Agents tick without reordering existing pipeline. (docs/sim_update_order.md)
+- [ ] Expand JobBoard activity types (haul, deliver-to-project, build site, craft at station, farm tasks) and serialization coverage. (sim/job_board.gd)
+- [ ] Extend DefaultBrain to claim new task types and stack lightweight intents for project work. (sim/brains/default_brain.gd)
+- [ ] Add task generation hooks for build sites, hauling, and farming while preserving deterministic ordering. (sim/job_board.gd, sim/sim.gd)
+
+## P0 — Communal Projects as Build Sites
+- [ ] Add build site state (required inputs, delivered inputs, build progress, assigned workers). (sim/communal_projects_system.gd)
+- [ ] Add phases: COLLECTING → BUILDING → COMPLETED with tick-based progress. (sim/communal_projects_system.gd)
+- [ ] Create BUILD_SITE tasks from active build sites and finalize on progress completion. (sim/communal_projects_system.gd, sim/job_board.gd)
+- [ ] Preserve project type API and resource requirement definition. (sim/communal_projects_system.gd)
+
+## P0 — Shared Storage + Logistics
+- [ ] Add Stockpile structure state with capacity, ownership, and reserved items. (sim/structures.gd, sim/structure_state.gd)
+- [ ] Add deposit/withdraw/haul actions and task types for stockpile logistics. (sim/actions.gd, sim/job_board.gd)
+- [ ] Add reservation/escrow to prevent double-spending across projects. (sim/communal_projects_system.gd)
+
+## P1 — Organization Planner
+- [ ] Create Organization entity with members, stockpile access, and treasury. (sim/organizations.gd)
+- [ ] Add daily planner that spawns stockpile/workshop/shelter projects based on thresholds. (sim/organizations.gd, sim/sim.gd)
+- [ ] Implement contiguous claim expansion from a town center and zoning tags. (sim/claims_system.gd)
+
+## P1 — Workshops + Production Chains
+- [ ] Add station types and require them for recipes (carpenter, kiln, smithy). (sim/recipes.gd, sim/workshop_system.gd)
+- [ ] Add craft-at-station tasks and station build projects. (sim/job_board.gd, sim/communal_projects_system.gd)
+- [ ] Planner spawns stations in sequence based on needs. (sim/organizations.gd)
+
+## P1 — Roads + Logistics Optimization
+- [ ] Spawn road projects connecting resource clusters to stockpiles and town center. (sim/communal_projects_system.gd, sim/organizations.gd)
+- [ ] Prefer roads for hauling tasks and pathing when available. (sim/agent_navigation.gd)
+
+## P2 — Farming Pipeline
+- [ ] Add farm plot tile state: tilled, seeded, growth, harvest-ready. (sim/world_tile.gd)
+- [ ] Integrate daily growth into EnvironmentSystem tick. (sim/environment_system.gd)
+- [ ] Add TILL/PLANT/HARVEST/DELIVER tasks and actions. (sim/job_board.gd, sim/actions.gd)
+- [ ] Transition from foraging to farming via planner thresholds. (sim/organizations.gd)
+
+## P2 — Economy + Contracts
+- [ ] Post procurement contracts when stockpiles fall below thresholds. (sim/organizations.gd, sim/contract_system.gd)
+- [ ] Auto-post surplus to market. (sim/market_system.gd)
+- [ ] Allow agents to choose between org tasks and paid contracts. (sim/brains/default_brain.gd)
+
+## P3 — Metrics + Debugging
+- [ ] Add build-site progress telemetry and stockpile throughput metrics. (sim/metrics_system.gd)
+- [ ] Add debug overlays for projects, tasks, and stockpile reservations. (viz/)
