@@ -409,7 +409,7 @@ func _plan_obtain_item(agent: Agent, goal: Dictionary, world: World, market: Mar
 				return Actions.move_to_node(node.id) # Or push GO_TO goal, but Action is fine
 				
 	# 2. Check if we can craft it
-	var recipe = _find_recipe_for(item, recipes, world)
+	var recipe = _find_recipe_for(item, recipes, world, agent)
 	if recipe:
 		# Check inputs
 		for input_item in recipe.inputs:
@@ -419,6 +419,10 @@ func _plan_obtain_item(agent: Agent, goal: Dictionary, world: World, market: Mar
 		
 		# Have inputs!
 		if recipe.station == "hand":
+			return Actions.queue_craft(recipe.id)
+		elif recipe.station == "workbench":
+			if not agent.has_available_item("Workbench"):
+				return {"type": "OBTAIN_ITEM", "item": "Workbench", "qty": 1, "is_goal": true}
 			return Actions.queue_craft(recipe.id)
 		else:
 			# Workshop
@@ -476,7 +480,7 @@ func _is_recipe_allowed(recipe: Recipe, world: World) -> bool:
 		return false
 	return world.has_advanced_workshop()
 
-func _find_recipe_for(output_item: String, recipes: Dictionary, world: World) -> Recipe:
+func _find_recipe_for(output_item: String, recipes: Dictionary, world: World, agent: Agent) -> Recipe:
 	# Prefer handheld recipes first (like planks_hand)
 	# Sort keys for deterministic iteration order
 	var sorted_ids: Array = recipes.keys()
@@ -484,6 +488,11 @@ func _find_recipe_for(output_item: String, recipes: Dictionary, world: World) ->
 	for id in sorted_ids:
 		var r: Recipe = recipes[id]
 		if r.outputs.has(output_item) and r.station == "hand" and _is_recipe_allowed(r, world):
+			return r
+
+	for id in sorted_ids:
+		var r: Recipe = recipes[id]
+		if r.outputs.has(output_item) and r.station == "workbench" and _is_recipe_allowed(r, world):
 			return r
 			
 	for id in sorted_ids:

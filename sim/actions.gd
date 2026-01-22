@@ -475,6 +475,7 @@ static func _execute_queue_craft(agent: Agent, action: Dictionary, world: World,
 	
 	var recipe: Recipe = recipes.get(recipe_id)
 	var is_handheld: bool = recipe != null and recipe.station == "hand"
+	var is_workbench: bool = recipe != null and recipe.station == "workbench"
 	var workshop: Workshop = world.get_workshop_by_id(workshop_id)
 	
 	if recipe == null:
@@ -486,7 +487,10 @@ static func _execute_queue_craft(agent: Agent, action: Dictionary, world: World,
 		if not world.has_advanced_workshop():
 			return true
 	
-	if not is_handheld:
+	if is_workbench and not agent.has_available_item("Workbench"):
+		return true
+	
+	if not is_handheld and not is_workbench:
 		if workshop == null or not workshop.is_ready() or not workshop.has_queue_space():
 			return true
 		if recipe.tier == "advanced" and workshop.workshop_type == "general":
@@ -518,7 +522,7 @@ static func _execute_queue_craft(agent: Agent, action: Dictionary, world: World,
 	# Add general experience for crafting (more than gathering)
 	agent.add_experience(2, tuning)  # 2 XP for crafting
 	
-	if is_handheld:
+	if is_handheld or is_workbench:
 		Crafting.consume_inputs(agent, recipe)
 		Crafting.give_outputs(agent, recipe)
 	else:

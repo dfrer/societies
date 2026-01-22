@@ -23,7 +23,7 @@
   "Workbench": {
     "type": "structure",
     "base_value": 90,
-    "description": "Basic bench for hand-crafted items"
+    "description": "Basic bench required for workbench crafting"
   },
   "CookedMeal": {
     "nutrition": 40,
