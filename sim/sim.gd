@@ -84,6 +84,7 @@ func _load_config() -> void:
 		for recipe_dict in recipes_data["recipes"]:
 			var recipe := Recipe.from_dict(recipe_dict)
 			state.recipes[recipe.id] = recipe
+	state.update_recipe_sorted_ids()
 
 func _get_default_items() -> Dictionary:
 		return {

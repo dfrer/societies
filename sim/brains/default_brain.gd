@@ -162,7 +162,7 @@ func _process_goal(agent: Agent, goal: Dictionary, world: World, market: Market,
 		"BUILD_STRATEGIC_WORKSHOP":
 			return _plan_build_strategic_workshop(agent, goal, world, tuning)
 		"OBTAIN_ITEM":
-			return _plan_obtain_item(agent, goal, world, market, recipes, tuning)
+			return _plan_obtain_item(agent, goal, world, market, recipes, tuning, state)
 		"EAT_FOOD":
 			# Directly return eat action for the food item
 			if goal.item == "CookedMeal":
@@ -389,7 +389,7 @@ func _action_from_activity(agent: Agent, activity: Dictionary, world: World, tun
 # PLANNER HELPERS
 # --------------------
 
-func _plan_obtain_item(agent: Agent, goal: Dictionary, world: World, market: Market, recipes: Dictionary, tuning: Dictionary) -> Dictionary:
+func _plan_obtain_item(agent: Agent, goal: Dictionary, world: World, market: Market, recipes: Dictionary, tuning: Dictionary, state: SimState = null) -> Dictionary:
 	var item = goal.item
 
 	# 1. Check if we can simply gather it
@@ -409,7 +409,7 @@ func _plan_obtain_item(agent: Agent, goal: Dictionary, world: World, market: Mar
 				return Actions.move_to_node(node.id) # Or push GO_TO goal, but Action is fine
 				
 	# 2. Check if we can craft it
-	var recipe = _find_recipe_for(item, recipes, world, agent)
+	var recipe = _find_recipe_for(item, recipes, world, agent, state)
 	if recipe:
 		# Check inputs
 		for input_item in recipe.inputs:
@@ -480,11 +480,19 @@ func _is_recipe_allowed(recipe: Recipe, world: World) -> bool:
 		return false
 	return world.has_advanced_workshop()
 
-func _find_recipe_for(output_item: String, recipes: Dictionary, world: World, agent: Agent) -> Recipe:
-	# Prefer handheld recipes first (like planks_hand)
-	# Sort keys for deterministic iteration order
+func _get_sorted_recipe_ids(recipes: Dictionary, state: SimState) -> Array:
+	if state != null and not state.recipe_sorted_ids.is_empty():
+		return state.recipe_sorted_ids
 	var sorted_ids: Array = recipes.keys()
 	sorted_ids.sort()
+	if state != null and state.recipe_sorted_ids.is_empty():
+		state.recipe_sorted_ids = sorted_ids
+	return sorted_ids
+
+func _find_recipe_for(output_item: String, recipes: Dictionary, world: World, agent: Agent, state: SimState = null) -> Recipe:
+	# Prefer handheld recipes first (like planks_hand)
+	# Sort keys for deterministic iteration order
+	var sorted_ids := _get_sorted_recipe_ids(recipes, state)
 	for id in sorted_ids:
 		var r: Recipe = recipes[id]
 		if r.outputs.has(output_item) and r.station == "hand" and _is_recipe_allowed(r, world):
