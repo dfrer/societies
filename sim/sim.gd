@@ -14,6 +14,7 @@ func _init_pipeline() -> void:
 	pipeline = SimPipeline.new()
 	pipeline.add_system(EnvironmentSystem.new())
 	pipeline.add_system(EconomySystem.new())
+	pipeline.add_system(JobBoardSystem.new())
 	pipeline.add_system(GovernanceSystem.new())
 	pipeline.add_system(MetricsSystem.new())
 	pipeline.add_system(TimeSystem.new())
