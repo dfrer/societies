@@ -45,6 +45,14 @@ func tick(sim: RefCounted, state: SimState) -> void:
                     agent.current_activity_id = -1
                 else:
                     state.job_board.release_activity(activity_id, state.tick)
+            elif action_success and activity_type in [
+                JobBoard.ACTIVITY_DELIVER_TO_PROJECT,
+                JobBoard.ACTIVITY_BUILD_SITE,
+                JobBoard.ACTIVITY_HAUL,
+                JobBoard.ACTIVITY_FARM_TASK
+            ]:
+                state.job_board.complete_activity(activity_id, state.tick)
+                agent.current_activity_id = -1
         state.log_decision_trace(agent.id, intent_id, intent_type,
             activity_id, activity_type, action.get("type", Actions.TYPE_IDLE))
 

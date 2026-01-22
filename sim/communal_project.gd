@@ -16,15 +16,21 @@ var pos_y: int = 0
 var required_resources: Dictionary = {}  # {"Planks": 20, "MetalIngot": 5}
 var contributed: Dictionary = {}         # {"Planks": 10, "MetalIngot": 2}
 var contributors: Array = []             # Agent IDs who contributed, sorted
+var reserved_resources: Dictionary = {}
 var status: String = STATUS_COLLECTING
 var started_tick: int = 0
 var completion_tick: int = 0
 var initiator_id: int = 0  # Agent who started the project
+var build_progress: int = 0
+var build_required: int = 0
+var assigned_workers: Array = []
 
 func _init() -> void:
 	required_resources = {}
 	contributed = {}
 	contributors = []
+	reserved_resources = {}
+	assigned_workers = []
 
 ## Initialize a new project
 func init_project(p_id: int, p_type: String, p_faction_id: int, 
@@ -43,6 +49,7 @@ func init_project(p_id: int, p_type: String, p_faction_id: int,
 	# Initialize contributed to zero for all required resources
 	for item in required_resources:
 		contributed[item] = 0
+		reserved_resources[item] = 0
 
 ## Contribute resources to the project
 ## Returns how many items were actually consumed
@@ -59,6 +66,8 @@ func contribute(agent_id: int, item: String, qty: int) -> int:
 	
 	var actual: int = mini(qty, needed)
 	contributed[item] = contributed.get(item, 0) + actual
+	if reserved_resources.has(item):
+		reserved_resources[item] = maxi(0, reserved_resources.get(item, 0) - actual)
 	
 	# Track contributor
 	if agent_id not in contributors:
@@ -82,10 +91,30 @@ func is_fully_funded() -> bool:
 func get_remaining_resources() -> Dictionary:
 	var remaining := {}
 	for item in required_resources:
-		var need: int = required_resources[item] - contributed.get(item, 0)
+		var need: int = required_resources[item] - contributed.get(item, 0) - reserved_resources.get(item, 0)
 		if need > 0:
 			remaining[item] = need
 	return remaining
+
+func reserve_resource(item: String, qty: int) -> int:
+	if status != STATUS_COLLECTING:
+		return 0
+	if not required_resources.has(item):
+		return 0
+	var remaining: int = required_resources[item] - contributed.get(item, 0) - reserved_resources.get(item, 0)
+	if remaining <= 0:
+		return 0
+	var to_reserve := mini(remaining, qty)
+	reserved_resources[item] = reserved_resources.get(item, 0) + to_reserve
+	return to_reserve
+
+func release_reserved_resource(item: String, qty: int) -> int:
+	var reserved: int = reserved_resources.get(item, 0)
+	var to_release := mini(reserved, qty)
+	if to_release <= 0:
+		return 0
+	reserved_resources[item] = reserved - to_release
+	return to_release
 
 ## Mark as complete
 func complete(tick: int) -> void:
@@ -110,11 +139,15 @@ func to_dict() -> Dictionary:
 		"pos_y": pos_y,
 		"required_resources": required_resources.duplicate(),
 		"contributed": contributed.duplicate(),
+		"reserved_resources": reserved_resources.duplicate(),
 		"contributors": contributors.duplicate(),
 		"status": status,
 		"started_tick": started_tick,
 		"completion_tick": completion_tick,
-		"initiator_id": initiator_id
+		"initiator_id": initiator_id,
+		"build_progress": build_progress,
+		"build_required": build_required,
+		"assigned_workers": assigned_workers.duplicate()
 	}
 
 ## Deserialize from dictionary
@@ -136,6 +169,11 @@ static func from_dict(d: Dictionary) -> CommunalProject:
 	project.contributed = {}
 	for k in contrib:
 		project.contributed[k] = int(contrib[k])
+
+	var reserved: Dictionary = d.get("reserved_resources", {})
+	project.reserved_resources = {}
+	for k in reserved:
+		project.reserved_resources[k] = int(reserved[k])
 	
 	# Convert contributors to int array
 	var contribs: Array = d.get("contributors", [])
@@ -147,5 +185,10 @@ static func from_dict(d: Dictionary) -> CommunalProject:
 	project.started_tick = int(d.get("started_tick", 0))
 	project.completion_tick = int(d.get("completion_tick", 0))
 	project.initiator_id = int(d.get("initiator_id", 0))
+	project.build_progress = int(d.get("build_progress", 0))
+	project.build_required = int(d.get("build_required", 0))
+	project.assigned_workers = []
+	for worker_id in d.get("assigned_workers", []):
+		project.assigned_workers.append(int(worker_id))
 	
 	return project

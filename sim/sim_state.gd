@@ -13,6 +13,7 @@ var enforcement: Enforcement = null
 var factions_system: FactionsSystem = null
 var communal_projects: CommunalProjectsSystem = null
 var job_board: JobBoard = null
+var structures: Structures = null
 var world_fines_sink: int = 0
 var taxes_collected: int = 0
 var laws_by_owner: Dictionary = {}  # owner_id -> Laws
@@ -44,6 +45,7 @@ func _init() -> void:
 	factions_system = FactionsSystem.new()
 	communal_projects = CommunalProjectsSystem.new()
 	job_board = JobBoard.new()
+	structures = Structures.new()
 	tuning_config = TuningConfig.new()
 
 ## Get laws for a jurisdiction owner
@@ -133,6 +135,7 @@ func to_dict() -> Dictionary:
 		"factions_system": factions_system.to_dict(),
 		"communal_projects": communal_projects.to_dict(),
 		"job_board": job_board.to_dict(),
+		"structures": structures.to_dict(),
 		"laws_by_owner": laws_data,
 		"factions": factions_data,
 		"metrics_history": _sanitize_metrics_for_serialization(metrics_history),
@@ -299,6 +302,7 @@ static func from_dict(d: Dictionary) -> SimState:
 	state.factions_system = FactionsSystem.from_dict(d.get("factions_system", {}))
 	state.communal_projects = CommunalProjectsSystem.from_dict(d.get("communal_projects", {}))
 	state.job_board = JobBoard.from_dict(d.get("job_board", {}))
+	state.structures = Structures.from_dict(d.get("structures", {}))
 	state.world_fines_sink = int(d.get("world_fines_sink", 0))
 	state.taxes_collected = int(d.get("taxes_collected", 0))
 	state.metrics_history = state._sanitize_metrics_for_serialization(d.get("metrics_history", []))
