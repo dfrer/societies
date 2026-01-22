@@ -36,6 +36,18 @@
     "base_value": 60,
     "description": "Refined metal ingot"
   },
+  "WoodenAxe": {
+    "type": "tool",
+    "tool_tag": "axe",
+    "base_value": 80,
+    "description": "Basic wooden axe for harvesting trees"
+  },
+  "WoodenPickaxe": {
+    "type": "tool",
+    "tool_tag": "pickaxe",
+    "base_value": 90,
+    "description": "Basic wooden pickaxe for mining ore"
+  },
   "Axe": {
     "type": "tool",
     "tool_tag": "axe",
