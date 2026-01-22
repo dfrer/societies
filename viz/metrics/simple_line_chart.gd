@@ -19,8 +19,12 @@ func add_series(key: String, data: Array, color: Color) -> void:
 	series_dict[key] = {
 		"data": data,
 		"color": color,
-		"visible": true
+		"visible": true,
+		"has_data": false,
+		"min": 0.0,
+		"max": 0.0
 	}
+	_update_series_stats(key)
 	_update_scales()
 	queue_redraw()
 
@@ -33,6 +37,7 @@ func set_series_visible(key: String, visible: bool) -> void:
 
 func clear_all() -> void:
 	series_dict.clear()
+	_reset_scales_defaults()
 	queue_redraw()
 
 func update_series_data(series_data: Dictionary) -> void:
@@ -40,47 +45,74 @@ func update_series_data(series_data: Dictionary) -> void:
 	for key in series_data:
 		if series_dict.has(key):
 			series_dict[key]["data"] = series_data[key]
+			_update_series_stats(key)
 			updated = true
 
 	if updated:
 		_update_scales()
 		queue_redraw()
 
+func _update_series_stats(key: String) -> void:
+	var data = series_dict[key]["data"]
+	if data.is_empty():
+		series_dict[key]["has_data"] = false
+		series_dict[key]["min"] = 0.0
+		series_dict[key]["max"] = 0.0
+		return
+
+	var series_min = data[0]
+	var series_max = data[0]
+	for i in range(1, data.size()):
+		var value = data[i]
+		if value < series_min:
+			series_min = value
+		if value > series_max:
+			series_max = value
+
+	series_dict[key]["has_data"] = true
+	series_dict[key]["min"] = series_min
+	series_dict[key]["max"] = series_max
+
+func _reset_scales_defaults() -> void:
+	y_min = 0.0
+	y_max = 1.0
+
 func _update_scales() -> void:
 	if not auto_scale_y:
 		return
-		
+
 	var global_min = 0.0
 	var global_max = 1.0 # Default fallback
 	var first = true
-	
+
 	for key in series_dict:
 		var s = series_dict[key]
-		if not s["visible"] or s["data"].is_empty():
+		if not s["visible"] or not s["has_data"]:
 			continue
-			
-		for v in s["data"]:
-			if first:
-				global_min = v
-				global_max = v
-				first = false
-			else:
-				if v < global_min: global_min = v
-				if v > global_max: global_max = v
-	
+
+		if first:
+			global_min = s["min"]
+			global_max = s["max"]
+			first = false
+		else:
+			if s["min"] < global_min:
+				global_min = s["min"]
+			if s["max"] > global_max:
+				global_max = s["max"]
+
 	if first: # No data found
-		y_min = 0.0
-		y_max = 1.0
+		_reset_scales_defaults()
 	else:
 		var range_val = global_max - global_min
 		if range_val == 0:
 			range_val = 1.0
-			
+
 		y_min = global_min - range_val * 0.05
 		y_max = global_max + range_val * 0.05
-		
+
 		# Optional: Keep 0 in view if numbers are positive
-		if y_min < 0 and global_min >= 0: y_min = 0
+		if y_min < 0 and global_min >= 0:
+			y_min = 0
 
 func _draw() -> void:
 	var rect = get_rect()
