@@ -35,7 +35,7 @@
                 "Planks": 3
             },
             "outputs": {
-                "Axe": 1
+                "WoodenAxe": 1
             },
             "ticks": 90
         },
@@ -48,7 +48,7 @@
                 "Planks": 3
             },
             "outputs": {
-                "Pickaxe": 1
+                "WoodenPickaxe": 1
             },
             "ticks": 90
         },

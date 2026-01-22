@@ -281,10 +281,16 @@ static func _execute_gather(agent: Agent, action: Dictionary, world: World,
 				return true  # Gather blocked
 	
 	var gather_amount := 1
-	if target_node.type == "tree" and agent.has_tool("Axe"):
-		gather_amount = tuning.get("axe_tree_bonus", 2)
-	elif target_node.type == "ore" and agent.has_tool("Pickaxe"):
-		gather_amount = tuning.get("pickaxe_ore_bonus", 2)
+	if target_node.type == "tree":
+		if agent.has_tool("Axe"):
+			gather_amount = tuning.get("axe_tree_bonus", 2)
+		elif agent.has_tool("WoodenAxe"):
+			gather_amount = maxi(1, tuning.get("axe_tree_bonus", 2) - 1)
+	elif target_node.type == "ore":
+		if agent.has_tool("Pickaxe"):
+			gather_amount = tuning.get("pickaxe_ore_bonus", 2)
+		elif agent.has_tool("WoodenPickaxe"):
+			gather_amount = maxi(1, tuning.get("pickaxe_ore_bonus", 2) - 1)
 	
 	var removed := 0
 	if target_node.type == "berry":

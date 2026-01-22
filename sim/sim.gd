@@ -95,8 +95,10 @@ func _get_default_items() -> Dictionary:
 		"Workbench": {"type": "structure", "base_value": 90},
 		"CookedMeal": {"nutrition": 40, "type": "food", "base_value": 30},
 		"MetalIngot": {"type": "material", "base_value": 60},
-		"Axe": {"type": "tool", "base_value": 150},
-		"Pickaxe": {"type": "tool", "base_value": 180}
+		"WoodenAxe": {"type": "tool", "tool_tag": "axe", "base_value": 80, "description": "Basic wooden axe for harvesting trees"},
+		"WoodenPickaxe": {"type": "tool", "tool_tag": "pickaxe", "base_value": 90, "description": "Basic wooden pickaxe for mining ore"},
+		"Axe": {"type": "tool", "tool_tag": "axe", "base_value": 150},
+		"Pickaxe": {"type": "tool", "tool_tag": "pickaxe", "base_value": 180}
 	}
 
 func _spawn_resource_nodes() -> void:
