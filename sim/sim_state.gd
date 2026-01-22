@@ -453,6 +453,7 @@ func get_average_hunger() -> float:
 ## Log an event (ring buffer - oldest events removed when exceeding cap)
 const MAX_EVENTS := 500
 const MAX_DECISION_TRACES := 1000
+const MAX_INTENTS := 1000
 
 func log_event(type: String, data: Dictionary) -> void:
 	events.append({
@@ -483,6 +484,7 @@ func resolve_intent(intent_id: int, status: String, current_tick: int) -> void:
 		if intent.get("intent_id", -1) == intent_id:
 			intent["status"] = status
 			intent["updated_tick"] = current_tick
+			_compact_resolved_intent(intent)
 			return
 
 func get_intent(intent_id: int) -> Dictionary:
@@ -490,6 +492,45 @@ func get_intent(intent_id: int) -> Dictionary:
 		if intent.get("intent_id", -1) == intent_id:
 			return intent
 	return {}
+
+func prune_intents(max_intents: int = MAX_INTENTS) -> void:
+	if intents.size() <= max_intents:
+		return
+
+	var active := []
+	var resolved := []
+	for intent in intents:
+		if intent.get("status", "active") == "active":
+			active.append(intent)
+		else:
+			_compact_resolved_intent(intent)
+			resolved.append(intent)
+
+	if resolved.is_empty():
+		return
+
+	var resolved_allowed := maxi(0, max_intents - active.size())
+	if resolved.size() <= resolved_allowed:
+		return
+
+	resolved.sort_custom(func(a, b): return int(a.get("updated_tick", 0)) < int(b.get("updated_tick", 0)))
+	var keep_from := maxi(0, resolved.size() - resolved_allowed)
+	var kept_resolved := resolved.slice(keep_from, resolved.size())
+	var new_intents := []
+	new_intents.append_array(active)
+	new_intents.append_array(kept_resolved)
+	intents = new_intents
+
+func _compact_resolved_intent(intent: Dictionary) -> void:
+	if intent.get("status", "active") == "active":
+		return
+	var intent_id: int = int(intent.get("intent_id", 0))
+	var status: String = str(intent.get("status", "resolved"))
+	var updated_tick: int = int(intent.get("updated_tick", 0))
+	intent.clear()
+	intent["intent_id"] = intent_id
+	intent["status"] = status
+	intent["updated_tick"] = updated_tick
 
 func log_decision_trace(agent_id: int, intent_id: int, intent_type: String,
 		activity_id: int, activity_type: String, action_type: String) -> void:
