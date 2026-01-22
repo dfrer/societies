@@ -8,8 +8,11 @@ func tick(sim: RefCounted, state: SimState) -> void:
 	_refresh_contract_activities(state)
 	_refresh_project_delivery_activities(state)
 	_refresh_build_site_activities(state)
+	_refresh_haul_activities(state)
 	_post_project_delivery_activities(state)
 	_post_build_site_activities(state)
+	_post_haul_activities(state)
+	_post_farm_task_activities(state)
 	var max_inactive: int = state.get_tuning_int("job_board_max_inactive", 200)
 	state.job_board.prune_inactive(max_inactive)
 
@@ -98,12 +101,18 @@ func _refresh_project_delivery_activities(state: SimState) -> void:
 		var item_type: String = data.get("item_type", "")
 		var project := state.communal_projects.get_project(project_id)
 		if project == null or project.status != CommunalProject.STATUS_COLLECTING:
+			var qty: int = int(data.get("quantity", 0))
+			if qty > 0:
+				state.communal_projects.release_project_reservation(project_id, item_type, qty)
 			activity["status"] = JobBoard.STATUS_CANCELLED
 			activity["updated_tick"] = state.tick
 			activity["worker_id"] = -1
 			continue
 		var remaining: Dictionary = project.get_remaining_resources()
 		if not remaining.has(item_type):
+			var qty: int = int(data.get("quantity", 0))
+			if qty > 0:
+				state.communal_projects.release_project_reservation(project_id, item_type, qty)
 			activity["status"] = JobBoard.STATUS_CANCELLED
 			activity["updated_tick"] = state.tick
 			activity["worker_id"] = -1
@@ -133,7 +142,11 @@ func _post_project_delivery_activities(state: SimState) -> void:
 				break
 			if state.job_board.has_activity_for_project_item(project.id, item_type):
 				continue
-			state.job_board.post_deliver_to_project(project.id, item_type, int(remaining[item_type]), state.tick)
+			var desired: int = int(remaining[item_type])
+			var reserved := state.communal_projects.reserve_project_resources(project.id, item_type, desired)
+			if reserved <= 0:
+				continue
+			state.job_board.post_deliver_to_project(project.id, item_type, reserved, state.tick)
 			posted_items += 1
 			posted_for_project = true
 		if posted_for_project:
@@ -169,4 +182,89 @@ func _post_build_site_activities(state: SimState) -> void:
 		if state.job_board.has_activity_for_build_site(project.id):
 			continue
 		state.job_board.post_build_site(project.id, project.id, state.tick)
+		posted += 1
+
+func _refresh_haul_activities(state: SimState) -> void:
+	for activity in state.job_board.activities:
+		if activity.get("type", "") != JobBoard.ACTIVITY_HAUL:
+			continue
+		var status: String = activity.get("status", JobBoard.STATUS_AVAILABLE)
+		if status == JobBoard.STATUS_COMPLETED or status == JobBoard.STATUS_CANCELLED:
+			continue
+		var data: Dictionary = activity.get("data", {})
+		var source_id: int = int(data.get("source_id", -1))
+		var destination_id: int = int(data.get("destination_id", -1))
+		var item_type: String = data.get("item_type", "")
+		var quantity: int = int(data.get("quantity", 0))
+		var destination_type: String = data.get("destination_type", "stockpile")
+		var source := state.structures.get_structure(source_id)
+		var destination_project: CommunalProject = null
+		if destination_type == "project":
+			destination_project = state.communal_projects.get_project(destination_id)
+		if source == null or item_type == "" or quantity <= 0:
+			activity["status"] = JobBoard.STATUS_CANCELLED
+		elif destination_type == "project" and (destination_project == null or destination_project.status != CommunalProject.STATUS_COLLECTING):
+			activity["status"] = JobBoard.STATUS_CANCELLED
+		if activity.get("status", "") == JobBoard.STATUS_CANCELLED:
+			if source != null and item_type != "" and quantity > 0:
+				source.release_reserved_item(item_type, quantity)
+			if destination_project != null and item_type != "" and quantity > 0:
+				state.communal_projects.release_project_reservation(destination_project.id, item_type, quantity)
+			activity["updated_tick"] = state.tick
+			activity["worker_id"] = -1
+
+func _post_haul_activities(state: SimState) -> void:
+	var haul_limit: int = state.get_tuning_int("job_board_haul_post_limit", 10)
+	if haul_limit <= 0:
+		return
+	var projects := state.communal_projects.projects.duplicate()
+	projects.sort_custom(func(a, b): return a.id < b.id)
+	var posted := 0
+	for project in projects:
+		if posted >= haul_limit:
+			break
+		if project.status != CommunalProject.STATUS_COLLECTING:
+			continue
+		var remaining: Dictionary = project.get_remaining_resources()
+		if remaining.is_empty():
+			continue
+		var item_keys := remaining.keys()
+		item_keys.sort()
+		for item_type in item_keys:
+			if posted >= haul_limit:
+				break
+			var desired: int = int(remaining[item_type])
+			if desired <= 0:
+				continue
+			var source := state.structures.find_stockpile_with_item(item_type, 1)
+			if source == null:
+				continue
+			var reserved_from_project := state.communal_projects.reserve_project_resources(project.id, item_type, desired)
+			if reserved_from_project <= 0:
+				continue
+			var reserved_from_stockpile := source.reserve_item(item_type, reserved_from_project)
+			if reserved_from_stockpile <= 0:
+				state.communal_projects.release_project_reservation(project.id, item_type, reserved_from_project)
+				continue
+			state.job_board.post_haul(source.id, project.id, item_type, reserved_from_stockpile, state.tick, "project")
+			posted += 1
+
+func _post_farm_task_activities(state: SimState) -> void:
+	if not state.world.has_method("get_farm_plots"):
+		return
+	var farm_limit: int = state.get_tuning_int("job_board_farm_task_post_limit", 10)
+	if farm_limit <= 0:
+		return
+	var plots := state.world.get_farm_plots()
+	if plots == null:
+		return
+	var posted := 0
+	for plot in plots:
+		if posted >= farm_limit:
+			break
+		# Expect plot fields: id, task_type, crop_type
+		if plot.get("task_type", "") == "":
+			continue
+		state.job_board.post_farm_task(int(plot.get("id", 0)), plot.get("task_type", ""),
+			plot.get("crop_type", ""), state.tick)
 		posted += 1

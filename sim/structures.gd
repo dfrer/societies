@@ -23,6 +23,21 @@ func get_structure(structure_id: int) -> StructureState:
 			return structure
 	return null
 
+func get_stockpiles_sorted() -> Array:
+	var result := []
+	for structure in structures:
+		if structure.structure_type == StructureState.TYPE_STOCKPILE:
+			result.append(structure)
+	result.sort_custom(func(a, b): return a.id < b.id)
+	return result
+
+func find_stockpile_with_item(item: String, qty: int = 1) -> StructureState:
+	var stockpiles := get_stockpiles_sorted()
+	for structure in stockpiles:
+		if structure.get_available_item(item) >= qty:
+			return structure
+	return null
+
 func to_dict() -> Dictionary:
 	var data := []
 	for structure in structures:

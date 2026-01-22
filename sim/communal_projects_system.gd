@@ -90,6 +90,20 @@ func contribute_to_project(project_id: int, agent: Agent, item: String, qty: int
 	
 	return consumed
 
+## Reserve resources for a project to avoid double-spending
+func reserve_project_resources(project_id: int, item: String, qty: int) -> int:
+	var project := get_project(project_id)
+	if project == null:
+		return 0
+	return project.reserve_resource(item, qty)
+
+## Release reserved resources for a project
+func release_project_reservation(project_id: int, item: String, qty: int) -> int:
+	var project := get_project(project_id)
+	if project == null:
+		return 0
+	return project.release_reserved_resource(item, qty)
+
 ## Process building projects each tick
 func process_building(world: World, state: SimState, current_tick: int, tuning: Dictionary) -> void:
 	for project in projects:

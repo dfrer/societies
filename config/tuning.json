@@ -113,6 +113,8 @@
     "job_board_project_post_limit": 10,
     "job_board_project_item_post_limit": 20,
     "job_board_build_site_post_limit": 10,
+    "job_board_haul_post_limit": 10,
+    "job_board_farm_task_post_limit": 10,
     "job_board_max_inactive": 200,
     "task_project_system_enabled": true,
     "project_max_stale_ticks": 240,

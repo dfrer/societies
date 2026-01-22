@@ -31,6 +31,10 @@ func decide_action(agent: Agent, world: World, market: Market,
 	var activity_action := _action_from_current_activity(agent, world, tuning, state)
 	if activity_action.has("type"):
 		return activity_action
+	if state != null:
+		var opportunistic := _claim_opportunity_activity(agent, world, tuning, state)
+		if opportunistic.has("type"):
+			return opportunistic
 
 	var iterations: int = 0
 	while iterations < 5:
@@ -260,6 +264,22 @@ func _commit_activity_for_intent(agent: Agent, intent: Dictionary, state: SimSta
 				return activity
 	return {}
 
+func _claim_opportunity_activity(agent: Agent, world: World, tuning: Dictionary, state: SimState) -> Dictionary:
+	var priority := [
+		JobBoard.ACTIVITY_DELIVER_TO_PROJECT,
+		JobBoard.ACTIVITY_BUILD_SITE,
+		JobBoard.ACTIVITY_HAUL,
+		JobBoard.ACTIVITY_FARM_TASK
+	]
+	for activity_type in priority:
+		var candidates := state.job_board.get_available_activities(activity_type)
+		for activity in candidates:
+			if state.job_board.claim_activity(activity.get("activity_id", -1), agent.id, state.tick):
+				agent.current_activity_id = int(activity.get("activity_id", -1))
+				_set_intent(state, agent, "JOB_BOARD_TASK", {"activity_type": activity_type})
+				return _action_from_activity(agent, activity, world, tuning, state)
+	return {}
+
 func _action_from_current_activity(agent: Agent, world: World, tuning: Dictionary, state: SimState) -> Dictionary:
 	if state == null or agent.current_activity_id < 0:
 		return {}
@@ -297,6 +317,72 @@ func _action_from_activity(agent: Agent, activity: Dictionary, world: World, tun
 				agent.current_activity_id = -1
 				return {}
 			return Actions.accept_contract(contract_id)
+		JobBoard.ACTIVITY_DELIVER_TO_PROJECT:
+			var data: Dictionary = activity.get("data", {})
+			var project_id: int = int(data.get("project_id", -1))
+			var item_type: String = data.get("item_type", "")
+			var qty: int = int(data.get("quantity", 1))
+			var project := state.communal_projects.get_project(project_id)
+			if project == null or project.status != CommunalProject.STATUS_COLLECTING:
+				state.job_board.cancel_activity(activity.get("activity_id", -1), state.tick)
+				agent.current_activity_id = -1
+				return {}
+			if agent.has_available_item(item_type, qty):
+				if agent.is_at(project.pos_x, project.pos_y):
+					return Actions.contribute_to_project(project_id, item_type, qty)
+				return Actions.move_to_position(project.pos_x, project.pos_y)
+			var stockpile := state.structures.find_stockpile_with_item(item_type, 1)
+			if stockpile == null:
+				state.job_board.release_activity(activity.get("activity_id", -1), state.tick)
+				agent.current_activity_id = -1
+				return {}
+			if agent.is_at(stockpile.pos_x, stockpile.pos_y):
+				return Actions.withdraw_stockpile(stockpile.id, item_type, qty)
+			return Actions.move_to_position(stockpile.pos_x, stockpile.pos_y)
+		JobBoard.ACTIVITY_BUILD_SITE:
+			var project_id: int = int(activity.get("data", {}).get("project_id", -1))
+			if project_id < 0:
+				state.job_board.cancel_activity(activity.get("activity_id", -1), state.tick)
+				agent.current_activity_id = -1
+				return {}
+			return Actions.build_site(project_id)
+		JobBoard.ACTIVITY_HAUL:
+			var data: Dictionary = activity.get("data", {})
+			var source_id: int = int(data.get("source_id", -1))
+			var destination_id: int = int(data.get("destination_id", -1))
+			var item_type: String = data.get("item_type", "")
+			var qty: int = int(data.get("quantity", 1))
+			var destination_type: String = data.get("destination_type", "stockpile")
+			var source := state.structures.get_structure(source_id)
+			if source == null or item_type == "" or qty <= 0:
+				state.job_board.cancel_activity(activity.get("activity_id", -1), state.tick)
+				agent.current_activity_id = -1
+				return {}
+			if agent.has_available_item(item_type, qty):
+				if destination_type == "project":
+					var project := state.communal_projects.get_project(destination_id)
+					if project == null:
+						state.job_board.cancel_activity(activity.get("activity_id", -1), state.tick)
+						agent.current_activity_id = -1
+						return {}
+					if agent.is_at(project.pos_x, project.pos_y):
+						return Actions.contribute_to_project(project.id, item_type, qty)
+					return Actions.move_to_position(project.pos_x, project.pos_y)
+				var destination := state.structures.get_structure(destination_id)
+				if destination == null:
+					state.job_board.cancel_activity(activity.get("activity_id", -1), state.tick)
+					agent.current_activity_id = -1
+					return {}
+				if agent.is_at(destination.pos_x, destination.pos_y):
+					return Actions.deposit_stockpile(destination.id, item_type, qty)
+				return Actions.move_to_position(destination.pos_x, destination.pos_y)
+			if agent.is_at(source.pos_x, source.pos_y):
+				return Actions.withdraw_stockpile(source.id, item_type, qty, true)
+			return Actions.move_to_position(source.pos_x, source.pos_y)
+		JobBoard.ACTIVITY_FARM_TASK:
+			state.job_board.release_activity(activity.get("activity_id", -1), state.tick)
+			agent.current_activity_id = -1
+			return {}
 	return {}
 	
 # --------------------

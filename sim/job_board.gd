@@ -51,7 +51,8 @@ func post_gather_node(node_id: int, node_type: String, created_tick: int) -> Dic
 func post_accept_contract(contract_id: int, created_tick: int) -> Dictionary:
 	return post_activity(ACTIVITY_ACCEPT_CONTRACT, 0, {"contract_id": contract_id}, created_tick)
 
-func post_haul(source_id: int, destination_id: int, item_type: String, quantity: int, created_tick: int) -> Dictionary:
+func post_haul(source_id: int, destination_id: int, item_type: String, quantity: int,
+			   created_tick: int, destination_type: String = "stockpile") -> Dictionary:
 	return post_activity(
 		ACTIVITY_HAUL,
 		0,
@@ -59,7 +60,8 @@ func post_haul(source_id: int, destination_id: int, item_type: String, quantity:
 			"source_id": source_id,
 			"destination_id": destination_id,
 			"item_type": item_type,
-			"quantity": quantity
+			"quantity": quantity,
+			"destination_type": destination_type
 		},
 		created_tick
 	)

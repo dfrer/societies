@@ -61,6 +61,17 @@ func release_reserved_item(item: String, qty: int) -> int:
 		reserved_items.erase(item)
 	return to_release
 
+func get_total_item_count() -> int:
+	var total := 0
+	for key in items:
+		total += int(items[key])
+	return total
+
+func get_free_capacity() -> int:
+	if capacity <= 0:
+		return 999999
+	return maxi(0, capacity - get_total_item_count())
+
 func to_dict() -> Dictionary:
 	return {
 		"id": id,
