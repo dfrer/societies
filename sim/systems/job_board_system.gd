@@ -255,7 +255,7 @@ func _post_farm_task_activities(state: SimState) -> void:
 	var farm_limit: int = state.get_tuning_int("job_board_farm_task_post_limit", 10)
 	if farm_limit <= 0:
 		return
-	var plots := state.world.get_farm_plots()
+	var plots: Array = state.world.get_farm_plots()
 	if plots == null:
 		return
 	var posted := 0
