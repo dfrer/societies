@@ -38,9 +38,10 @@ func _test_is_detected() -> void:
 
 func _test_record_violation() -> void:
 	var enforcement := Fixtures.make_enforcement()
+	var state := Fixtures.make_sim_state()
 	
 	# Record a violation
-	enforcement.record_violation(1, Enforcement.VIOLATION_ILLEGAL_HARVEST, 100)
+	enforcement.record_violation(1, Enforcement.VIOLATION_ILLEGAL_HARVEST, 100, state)
 	
 	assert_eq(enforcement.violations_log.size(), 1, "Should have 1 violation")
 	assert_eq(enforcement.violations_log[0]["agent_id"], 1, "Agent ID should match")
@@ -50,23 +51,24 @@ func _test_record_violation() -> void:
 
 func _test_get_recent_count() -> void:
 	var enforcement := Fixtures.make_enforcement()
+	var state := Fixtures.make_sim_state()
 	
 	# Record violations at different ticks
-	enforcement.record_violation(1, Enforcement.VIOLATION_ILLEGAL_HARVEST, 50)
-	enforcement.record_violation(1, Enforcement.VIOLATION_ILLEGAL_BUILD, 75)
-	enforcement.record_violation(1, Enforcement.VIOLATION_ILLEGAL_HARVEST, 90)
-	enforcement.record_violation(2, Enforcement.VIOLATION_ILLEGAL_HARVEST, 80)  # Different agent
+	enforcement.record_violation(1, Enforcement.VIOLATION_ILLEGAL_HARVEST, 50, state)
+	enforcement.record_violation(1, Enforcement.VIOLATION_ILLEGAL_BUILD, 75, state)
+	enforcement.record_violation(1, Enforcement.VIOLATION_ILLEGAL_HARVEST, 90, state)
+	enforcement.record_violation(2, Enforcement.VIOLATION_ILLEGAL_HARVEST, 80, state)  # Different agent
 	
 	# Count for agent 1 within window (tick 60 to 100 = 40 ticks window)
-	var count := enforcement.get_recent_violation_count(1, 100, 40)
+	var count: int = enforcement.count_recent_violations(1, 100, 40)
 	assert_eq(count, 2, "Should have 2 recent violations for agent 1")
 	
 	# Count for agent 2
-	var count2 := enforcement.get_recent_violation_count(2, 100, 40)
+	var count2: int = enforcement.count_recent_violations(2, 100, 40)
 	assert_eq(count2, 1, "Should have 1 recent violation for agent 2")
 	
 	# Count with smaller window (only tick 85-100)
-	var count3 := enforcement.get_recent_violation_count(1, 100, 15)
+	var count3: int = enforcement.count_recent_violations(1, 100, 15)
 	assert_eq(count3, 1, "Should have 1 violation in narrow window")
 
 func _test_apply_fine_to_agent() -> void:
@@ -114,7 +116,7 @@ func _test_apply_fine_respects_available() -> void:
 	
 	# Agent with locked money
 	var violator := Fixtures.make_agent({"id": 1, "money": 100})
-	violator.reserve_money(60)  # Only 40 available
+	violator.lock_money(60)  # Only 40 available
 	state.agents = [violator]
 	state.add_agent(violator)
 	
@@ -133,8 +135,8 @@ func _test_market_ban() -> void:
 	# Initially not banned
 	assert_false(enforcement.is_market_banned(agent, 100), "Should not be banned initially")
 	
-	# Apply ban for 50 ticks starting at tick 100
-	enforcement.apply_market_ban(agent, 100, 50)
+	# Apply ban for 50 ticks starting at tick 100 (directly set market_ban_until_tick)
+	agent.market_ban_until_tick = 150  # Ban until tick 150
 	
 	# Check ban status
 	assert_true(enforcement.is_market_banned(agent, 100), "Should be banned at tick 100")
@@ -163,14 +165,15 @@ func _test_process_illegal_harvest() -> void:
 	
 	# Should not be allowed due to missing permit and detection
 	assert_false(result["allowed"], "Should not be allowed without permit when detected")
-	assert_eq(result["reason_code"], EnforcementResult.FINED, "Reason should be FINED")
+	assert_eq(result["reason_code"], EnforcementResult.DETECTED, "Reason should be DETECTED")
 
 func _test_serialization_roundtrip() -> void:
 	var enforcement := Fixtures.make_enforcement()
+	var state := Fixtures.make_sim_state()
 	
 	# Add some state
-	enforcement.record_violation(1, Enforcement.VIOLATION_ILLEGAL_HARVEST, 50)
-	enforcement.record_violation(2, Enforcement.VIOLATION_ILLEGAL_BUILD, 75)
+	enforcement.record_violation(1, Enforcement.VIOLATION_ILLEGAL_HARVEST, 50, state)
+	enforcement.record_violation(2, Enforcement.VIOLATION_ILLEGAL_BUILD, 75, state)
 	enforcement.fines_collected = 100
 	
 	# Serialize

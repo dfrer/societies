@@ -62,8 +62,8 @@ func _test_match_basic() -> void:
 	var sell_order := market.create_order("sell", "Berries", 5, 8, 2, 0, 100)
 	
 	# Lock resources before placing orders
-	buyer.reserve_money(50)  # Lock money for buy
-	seller.reserve_item("Berries", 5)  # Lock items for sell
+	buyer.lock_money(50)  # Lock money for buy
+	seller.lock_item("Berries", 5)  # Lock items for sell
 	
 	market.place_buy_order(buy_order)
 	market.place_sell_order(sell_order)
@@ -112,8 +112,8 @@ func _test_match_partial_fill() -> void:
 	var buy_order := market.create_order("buy", "Ore", 10, 20, 1, 0, 100)
 	var sell_order := market.create_order("sell", "Ore", 5, 15, 2, 0, 100)
 	
-	buyer.reserve_money(200)
-	seller.reserve_item("Ore", 5)
+	buyer.lock_money(200)
+	seller.lock_item("Ore", 5)
 	
 	market.place_buy_order(buy_order)
 	market.place_sell_order(sell_order)
@@ -142,8 +142,8 @@ func _test_expire_orders() -> void:
 	var market := Fixtures.make_market()
 	var agent := Fixtures.make_agent({"id": 1, "money": 100})
 	agent.add_item("Planks", 10)
-	agent.reserve_money(50)
-	agent.reserve_item("Planks", 5)
+	agent.lock_money(50)
+	agent.lock_item("Planks", 5)
 	
 	var agents := [agent]
 	
