@@ -53,8 +53,11 @@ func tick(sim: RefCounted, state: SimState) -> void:
             ]:
                 state.job_board.complete_activity(activity_id, state.tick)
                 agent.current_activity_id = -1
-        if state.decision_trace_enabled:
-            var sample_interval := maxi(1, state.decision_trace_sample_interval)
+        if state.get_tuning_bool("decision_trace_enabled", state.decision_trace_enabled):
+            var sample_interval := maxi(1, state.get_tuning_int(
+                "decision_trace_sample_interval",
+                state.decision_trace_sample_interval
+            ))
             if state.tick % sample_interval == 0:
                 state.log_decision_trace(agent.id, intent_id, intent_type,
                     activity_id, activity_type, action.get("type", Actions.TYPE_IDLE))
