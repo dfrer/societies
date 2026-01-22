@@ -228,8 +228,8 @@ static func _move_toward(agent: Agent, target_x: int, target_y: int, world: Worl
 		var candidates := []
 		var offsets := [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]
 		for offset in offsets:
-			var nx := agent.pos_x + offset.x
-			var ny := agent.pos_y + offset.y
+			var nx: int = agent.pos_x + offset.x
+			var ny: int = agent.pos_y + offset.y
 			if not world.is_valid(nx, ny):
 				continue
 			var dist := absi(target_x - nx) + absi(target_y - ny)
