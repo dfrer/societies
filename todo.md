@@ -8,8 +8,8 @@
 - [ ] Ensure runner returns a distinct error when zero tests are found (currently fails ambiguously).【F:tests/test_runner.gd†L124-L129】
 
 ## P0 — Hung Tests / Timeouts
-- [ ] Add per-test timeout handling (watchdog or cooperative yield/timeout pattern) to prevent indefinite hangs.【F:tests/test_runner.gd†L61-L116】
-- [ ] Emit a timeout error that includes the test file and subtest label when applicable.【F:tests/test_runner.gd†L87-L99】
+- [x] Add per-test timeout handling (watchdog or cooperative yield/timeout pattern) to prevent indefinite hangs.【F:tests/test_runner.gd†L90-L317】
+- [ ] Emit a timeout error that includes the test file and subtest label when applicable.【F:tests/test_runner.gd†L126-L145】
 
 ## P1 — Noise Reduction & Actionable Output
 - [x] Emit machine-readable test results (JSON) alongside human log output for CI parsing.【F:tests/test_runner.gd†L136-L224】
