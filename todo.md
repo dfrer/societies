@@ -52,7 +52,7 @@
 - [x] Preserve project type API and resource requirement definition. (sim/communal_projects_system.gd)
 
 ## P0 — Shared Storage + Logistics
-- [ ] Add Stockpile structure state with capacity, ownership, and reserved items. (sim/structures.gd, sim/structure_state.gd)
+- [x] Add Stockpile structure state with capacity, ownership, and reserved items. (sim/structures.gd, sim/structure_state.gd)
 - [ ] Add deposit/withdraw/haul actions and task types for stockpile logistics. (sim/actions.gd, sim/job_board.gd)
 - [ ] Add reservation/escrow to prevent double-spending across projects. (sim/communal_projects_system.gd)
 
