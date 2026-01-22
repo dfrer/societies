@@ -20,6 +20,11 @@
     "base_value": 35,
     "description": "Processed wood planks"
   },
+  "Workbench": {
+    "type": "structure",
+    "base_value": 90,
+    "description": "Basic bench for hand-crafted items"
+  },
   "CookedMeal": {
     "nutrition": 40,
     "type": "food",

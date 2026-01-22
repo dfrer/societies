@@ -92,6 +92,7 @@ func _get_default_items() -> Dictionary:
 		"Ore": {"type": "material", "base_value": 25},
 		"Stone": {"type": "material", "base_value": 12},
 		"Planks": {"type": "material", "base_value": 35},
+		"Workbench": {"type": "structure", "base_value": 90},
 		"CookedMeal": {"nutrition": 40, "type": "food", "base_value": 30},
 		"MetalIngot": {"type": "material", "base_value": 60},
 		"Axe": {"type": "tool", "base_value": 150},
