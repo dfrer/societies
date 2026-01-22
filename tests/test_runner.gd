@@ -175,8 +175,6 @@ func _init() -> void:
 		
 		results.append(_result_entry(path, status, failures, start_ms))
 		log_msg.call("")
-	if aborted_due_to_timeout:
-		break
 
 	log_msg.call("=== Test Summary ===")
 	log_msg.call("Tests run: %d | Passed: %d | Failed: %d" % [total_count, passed_count, failed_count])
@@ -303,7 +301,8 @@ func _write_json_results(log_msg: Callable, json_path: String, results: Array[Di
 
 func _run_with_timeout(instance: Object, timeout_ms: int) -> Dictionary:
 	var thread := Thread.new()
-	var start_err := thread.start(Callable(self, "_thread_run_test"), instance)
+	var callable := Callable(self, "_thread_run_test").bind(instance)
+	var start_err := thread.start(callable)
 	if start_err != OK:
 		return {"success": false, "timed_out": false}
 	var start_ms := Time.get_ticks_msec()
@@ -311,7 +310,7 @@ func _run_with_timeout(instance: Object, timeout_ms: int) -> Dictionary:
 		if Time.get_ticks_msec() - start_ms > timeout_ms:
 			return {"success": false, "timed_out": true}
 		OS.delay_msec(25)
-	var success := thread.wait_to_finish()
+	var success: Variant = thread.wait_to_finish()
 	return {"success": bool(success), "timed_out": false}
 
 func _thread_run_test(instance: Object) -> bool:
