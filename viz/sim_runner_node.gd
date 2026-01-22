@@ -34,6 +34,7 @@ var ticks_per_day: int = 24
 var _tick_accumulator: float = 0.0
 var _ticks_since_ui_update: int = 0
 var _last_emitted_tick: int = -1
+var _last_checksum_tick: int = -1
 
 ## Base tick rate (ticks per second at 1x speed)
 @export var base_ticks_per_second: float = 24.0
@@ -290,10 +291,16 @@ func _emit_state_changed() -> void:
 
 	_last_emitted_tick = current_tick
 
+	var checksum_value := ""
+	if checksum_interval_ticks > 0:
+		if _last_checksum_tick < 0 or (current_tick - _last_checksum_tick) >= checksum_interval_ticks:
+			checksum_value = sim.checksum()
+			_last_checksum_tick = current_tick
+
 	var snapshot := {
 		"tick": current_tick,
 		"day": current_tick / ticks_per_day,
-		"checksum": sim.checksum(),
+		"checksum": checksum_value,
 		"speed": speed,
 		"alive_agents": sim.get_alive_agent_count(),
 		"total_agents": sim.get_agent_count(),
@@ -317,3 +324,4 @@ func _reset_accumulators() -> void:
 	_tick_accumulator = 0.0
 	_ticks_since_ui_update = 0
 	_last_emitted_tick = -1
+	_last_checksum_tick = -1
