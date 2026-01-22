@@ -18,24 +18,31 @@ The systems are executed in the following strict order:
     *   **Daily**: Generates new contracts based on economic and environmental conditions.
     *   **Tick**: Expired orders and contracts are processed. *Note: Order expiration happens before matching.*
 
-3.  **GovernanceSystem**
+3.  **JobBoardSystem**
+    *   **Daily**: Posts new gather/contract activities based on resource nodes and contracts.
+    *   **Tick**: Refreshes job availability and prunes inactive activities.
+
+4.  **GovernanceSystem**
     *   **Daily**: Updates factions (formation, recruitment, territory expansion, voting).
     *   **Tick**: (No-op)
 
-4.  **MetricsSystem**
+5.  **MetricsSystem**
     *   **Daily**: Captures a snapshot of simulation state for history/analysis.
     *   **Tick**: (No-op)
 
-5.  **TimeSystem**
+6.  **TimeSystem**
     *   **Tick**: Increments `state.tick`.
 
-6.  **WorkshopSystem**
+7.  **WorkshopSystem**
     *   **Tick**: Processes active crafting jobs in workshops.
 
-7.  **AgentsSystem**
+8.  **TaskProjectSystem**
+    *   **Tick**: Advances communal projects (build completion/abandonment) before agents act.
+
+9.  **AgentsSystem**
     *   **Tick**: Updates agent hunger (pollution-affected). Agents decide and execute actions (move, harvest, craft, trade).
 
-8.  **EconomyResolutionSystem**
+10. **EconomyResolutionSystem**
     *   **Tick**: Executes market matching (matches buy/sell orders). *Executed post-agent to maintain legacy behavior where agents act before trades clear.*
 
 ## Rationale for Split Economy
