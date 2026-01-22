@@ -81,19 +81,17 @@ func count_recent_violations(agent_id: int, current_tick: int, window_ticks: int
 func apply_fine_with_routing(agent: Agent, fine_amount: int, items: Dictionary,
 							  tile_owner: int, state: SimState) -> int:
 	var paid := 0
-	
-	# TODO: Make fine collection dynamic (policy-based). For now fines cannot touch locked_money/escrow.
+
+	# Fine collection respects locked money/escrow to preserve market/contract integrity.
 	var available_cash := agent.get_available_money()
 	
 	# Try to pay from money first
 	if available_cash >= fine_amount:
-		agent.money -= fine_amount
-		paid = fine_amount
+		paid = agent.debit_available_money(fine_amount)
 	else:
 		# Pay what we can
-		paid = available_cash
+		paid = agent.debit_available_money(available_cash)
 		var remaining := fine_amount - paid
-		agent.money -= paid
 
 		
 		# Confiscate items
@@ -135,6 +133,17 @@ func apply_fine_with_routing(agent: Agent, fine_amount: int, items: Dictionary,
 	
 	return paid
 
+## Calculate fines based on policy (severity + repeat offenders + tuning caps)
+func calculate_fine(agent_id: int, violation_type: String, laws: Laws, tuning: Dictionary, current_tick: int) -> int:
+	var base: int = int(laws.fine_base) * int(SEVERITY.get(violation_type, 1))
+	var min_fine := int(tuning.get("min_fine", base))
+	var max_fine := int(tuning.get("max_fine", base))
+	var fine_step := int(tuning.get("fine_step", 5))
+
+	var repeat_count := count_recent_violations(agent_id, current_tick, laws.violation_window_ticks)
+	var adjusted := base + (repeat_count * fine_step)
+	return clampi(adjusted, min_fine, max_fine)
+
 ## Increase agent grievance due to fine
 func increase_grievance(agent: Agent, tuning: Dictionary) -> void:
 	var increase: float = tuning.get("grievance_fine_increase", 0.15)
@@ -164,8 +173,7 @@ func process_illegal_harvest_with_state(agent: Agent, tile_owner: int, laws: Law
 	var detect_chance: float = tuning.get("detect_chance", 0.8)
 	if is_detected(rng, detect_chance):
 		record_violation(agent.id, VIOLATION_ILLEGAL_HARVEST, current_tick, state)
-		# TODO: fines will become dynamic later - keep exact behavior
-		var fine := laws.fine_base * SEVERITY[VIOLATION_ILLEGAL_HARVEST]
+		var fine := calculate_fine(agent.id, VIOLATION_ILLEGAL_HARVEST, laws, tuning, current_tick)
 		apply_fine_with_routing(agent, fine, items, tile_owner, state)
 		increase_grievance(agent, tuning)
 		var ticks_per_day: int = tuning.get("ticks_per_day", 24)
@@ -194,8 +202,7 @@ func process_illegal_build_with_state(agent: Agent, tile_owner: int, laws: Laws,
 	var detect_chance: float = tuning.get("detect_chance", 0.8)
 	if is_detected(rng, detect_chance):
 		record_violation(agent.id, VIOLATION_ILLEGAL_BUILD, current_tick, state)
-		# TODO: fines will become dynamic later - keep exact behavior
-		var fine := laws.fine_base * SEVERITY[VIOLATION_ILLEGAL_BUILD]
+		var fine := calculate_fine(agent.id, VIOLATION_ILLEGAL_BUILD, laws, tuning, current_tick)
 		apply_fine_with_routing(agent, fine, items, tile_owner, state)
 		increase_grievance(agent, tuning)
 		var ticks_per_day: int = tuning.get("ticks_per_day", 24)

@@ -37,6 +37,17 @@ Run the interactive visualizer to observe and control the simulation:
 
 The visualizer does not modify simulation behavior - it only drives `Sim.step()` and displays state.
 
+#### Visualizer Troubleshooting Checklist
+If the visualizer quits immediately or closes without errors:
+
+1. **Capture logs** by launching Godot from a terminal:
+   ```bash
+   godot --verbose --log-file=visualizer.log
+   ```
+2. **Reproduce** the issue by opening `res://viz/visualizer_main.tscn` and running the scene.
+3. **Record environment details** (OS, GPU, driver version, and Godot version).
+4. **Attach artifacts**: `visualizer.log`, steps to reproduce, and any crash dialog output.
+
 ### Headless Simulation Run
 
 The simulation is fully decoupled from the GUI and runs headless for server-side/CI testing. All core simulation classes (`sim/`) extend `RefCounted` with no scene graph dependencies.

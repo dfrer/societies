@@ -20,6 +20,7 @@ signal jump_to_day_requested(day: int)
 @onready var jump_btn: Button = $MarginContainer/VBoxContainer/JumpRow/JumpBtn
 
 var _current_speed: int = 0
+var _current_day: int = 0
 
 
 func _ready() -> void:
@@ -38,12 +39,20 @@ func set_current_speed(spd: int) -> void:
 	_current_speed = spd
 	_update_button_states()
 
+func get_current_speed() -> int:
+	return _current_speed
+
 
 func set_current_day(day: int) -> void:
+	_current_day = day
 	# Update spinbox minimum to be current day + 1
 	jump_day_spin.min_value = day + 1
 	if jump_day_spin.value < jump_day_spin.min_value:
 		jump_day_spin.value = jump_day_spin.min_value
+
+
+func get_current_day() -> int:
+	return _current_day
 
 
 func set_enabled(enabled: bool) -> void:

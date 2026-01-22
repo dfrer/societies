@@ -629,7 +629,7 @@ static func _execute_claim_tile(agent: Agent, action: Dictionary, world: World,
 			faction.treasury -= claim_cost
 			owner_id = World.faction_owner_id(faction.id)
 		else:
-			agent.money -= claim_cost
+			agent.debit_available_money(claim_cost)
 			# Use claim token for personal claims
 			agent.use_claim_tokens()
 			# Grant experience for claiming

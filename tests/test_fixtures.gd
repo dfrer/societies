@@ -13,7 +13,10 @@ static func make_sim_state(seed_val: int = 12345) -> SimState:
 	
 	var tuning_data = Serializers.load_json_file("res://config/tuning.json")
 	if tuning_data:
-		state.tuning = tuning_data
+		var tuning_config := TuningConfig.new()
+		tuning_config.load_from_dict(tuning_data)
+		state.tuning_config = tuning_config
+		state.tuning = tuning_config.get_data_with_defaults()
 	
 	# CRITICAL: Initialize world dimensions to prevent bounds errors
 	var world_w: int = 96

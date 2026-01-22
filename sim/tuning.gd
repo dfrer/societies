@@ -69,17 +69,31 @@ func _init_schema() -> void:
 	_add_schema("tree_max_stock", "int", false, 20, 1, 100, "Max stock for tree nodes")
 	_add_schema("ore_max_stock", "int", false, 30, 1, 100, "Max stock for ore nodes")
 	_add_schema("stone_max_stock", "int", false, 40, 1, 100, "Max stock for stone nodes")
+	_add_schema("berry_start_min", "int", false, 6, 0, 100, "Min starting stock for berry nodes")
+	_add_schema("berry_start_max", "int", false, 10, 1, 100, "Max starting stock for berry nodes")
+	_add_schema("tree_start_min", "int", false, 10, 0, 100, "Min starting stock for tree nodes")
+	_add_schema("tree_start_max", "int", false, 20, 1, 100, "Max starting stock for tree nodes")
+	_add_schema("ore_start_min", "int", false, 20, 0, 100, "Min starting stock for ore nodes")
+	_add_schema("ore_start_max", "int", false, 30, 1, 100, "Max starting stock for ore nodes")
+	_add_schema("stone_start_min", "int", false, 20, 0, 100, "Min starting stock for stone nodes")
+	_add_schema("stone_start_max", "int", false, 40, 1, 100, "Max starting stock for stone nodes")
 	_add_schema("node_spawn_attempts", "int", false, 100, 1, 1000, "Max attempts to spawn a node")
 	
 	# Pollution
 	_add_schema("pollution_impact", "float", true, 0.5, 0, 2, "Pollution impact on resource regen")
 	_add_schema("pollution_decay_per_day", "float", true, 0.05, 0, 1, "Pollution decay rate per day")
 	_add_schema("pollution_per_ore", "float", true, 0.01, 0, 1, "Pollution added per ore mined")
+	_add_schema("pollution_spread_rate", "float", false, 0.05, 0, 1, "Fraction of pollution spread per day")
+	_add_schema("pollution_spread_threshold", "float", false, 0.05, 0, 1, "Minimum pollution before spreading")
 	_add_schema("pollution_high_threshold", "float", true, 0.6, 0, 1, "Threshold for high pollution")
 	_add_schema("pollution_collapse_threshold", "float", true, 0.8, 0, 1, "Pollution level causing collapse")
 	_add_schema("food_yield_pollution_start", "float", true, 0.3, 0, 1, "Pollution level where food yield starts decreasing")
 	_add_schema("food_yield_pollution_step", "float", true, 0.1, 0, 1, "Pollution step for food yield reduction")
 	_add_schema("hunger_drain_pollution_mult", "float", true, 0.5, 0, 5, "Hunger drain multiplier from pollution")
+	_add_schema("flora_growth_attempts_per_day", "int", false, 6, 0, 100, "Flora growth attempts per day")
+	_add_schema("flora_growth_chance", "float", false, 0.35, 0, 1, "Chance each flora growth attempt succeeds")
+	_add_schema("flora_growth_pollution_max", "float", false, 0.3, 0, 1, "Max pollution for flora growth tiles")
+	_add_schema("flora_growth_berry_weight", "float", false, 0.6, 0, 1, "Probability of spawning berries vs trees")
 	
 	# Market
 	_add_schema("market_pos_x", "int", true, 48, 0, 512, "Market X position")
@@ -155,6 +169,8 @@ func _init_schema() -> void:
 	_add_schema("harvest_permit_required_default", "bool", true, true, 0, 0, "Default harvest permit requirement")
 	_add_schema("build_permit_required_default", "bool", true, true, 0, 0, "Default build permit requirement")
 	_add_schema("sales_tax_rate_default", "int", true, 5, 0, 100, "Default sales tax rate")
+	_add_schema("sales_tax_rate_min", "int", false, 0, 0, 100, "Minimum sales tax rate")
+	_add_schema("sales_tax_rate_max", "int", false, 20, 0, 100, "Maximum sales tax rate")
 	
 	# Factions
 	_add_schema("faction_found_min_money", "int", true, 80, 0, 10000, "Min money to found faction")
@@ -213,6 +229,11 @@ func _init_schema() -> void:
 	
 	# Metrics
 	_add_schema("metrics_enabled", "bool", true, true, 0, 0, "Whether to collect metrics")
+	_add_schema("job_board_enabled", "bool", false, true, 0, 0, "Enable job board activity posting")
+	_add_schema("job_board_daily_post_limit", "int", false, 20, 0, 10000, "Daily max activities to post")
+	_add_schema("job_board_gather_node_post_limit", "int", false, 20, 0, 10000, "Daily gather-node activity cap")
+	_add_schema("job_board_contract_post_limit", "int", false, 10, 0, 10000, "Daily contract activity cap")
+	_add_schema("job_board_max_inactive", "int", false, 200, 0, 10000, "Max inactive activities to retain")
 
 ## Add a schema entry
 func _add_schema(key: String, type: String, required: bool, default_value, 
