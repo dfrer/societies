@@ -19,6 +19,7 @@ func _init_pipeline() -> void:
 	pipeline.add_system(MetricsSystem.new())
 	pipeline.add_system(TimeSystem.new())
 	pipeline.add_system(WorkshopSystem.new())
+	pipeline.add_system(TaskProjectSystem.new())
 	pipeline.add_system(AgentsSystem.new())
 	pipeline.add_system(EconomyResolutionSystem.new())
 
