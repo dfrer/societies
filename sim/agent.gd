@@ -230,12 +230,12 @@ static func from_dict(d: Dictionary) -> Agent:
 	# List of keys that should be integers
 	var int_action_keys := ["node_id", "workshop_id", "contract_id", "target_x", "target_y", "x", "y",
 							"direction", "proposal_id", "project_id", "qty"]
-	for key in action_data:
-		var val = action_data[key]
-		if key in int_action_keys:
-			agent.current_action[key] = int(val)
-		else:
-		agent.current_action[key] = val
+		for key in action_data:
+			var val = action_data[key]
+			if key in int_action_keys:
+				agent.current_action[key] = int(val)
+			else:
+				agent.current_action[key] = val
 	agent.target_node_id = int(d.get("target_node_id", -1))
 	agent.target_workshop_id = int(d.get("target_workshop_id", -1))
 	agent.current_intent_id = int(d.get("current_intent_id", -1))
