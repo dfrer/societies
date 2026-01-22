@@ -18,6 +18,9 @@ var tiles: Array[int] = []
 ## 0 = no road, 1 = dirt road, 2 = paved road
 var roads: Array[int] = []
 
+## Zoning tags per tile (flat array, same indexing)
+var zone_tags: Array[String] = []
+
 ## Resource nodes
 var resource_nodes: Array[ResourceNode] = []
 var _nodes_by_id: Dictionary = {}  # id -> ResourceNode
@@ -33,6 +36,7 @@ var _pollution_cache_tick: int = -1
 
 ## Faction owner ID offset (faction_id + this = owner_id)
 const FACTION_OWNER_OFFSET := 1000000
+const ORGANIZATION_OWNER_OFFSET := 2000000
 
 # ============================================
 # INITIALIZATION
@@ -51,6 +55,8 @@ func init_world(w: int, h: int) -> void:
 	tiles.fill(0)
 	roads.resize(w * h)
 	roads.fill(0)
+	zone_tags.resize(w * h)
+	zone_tags.fill("")
 
 # ============================================
 # TILE QUERY
@@ -165,6 +171,17 @@ func set_claim_owner(x: int, y: int, owner_id: int) -> void:
 ## Check if tile is claimed
 func is_claimed(x: int, y: int) -> bool:
 	return get_claim_owner(x, y) > 0
+
+## Get zoning tag at position
+func get_zone_tag(x: int, y: int) -> String:
+	if not is_valid(x, y):
+		return ""
+	return zone_tags[_tile_index(x, y)]
+
+## Set zoning tag at position
+func set_zone_tag(x: int, y: int, tag: String) -> void:
+	if is_valid(x, y):
+		zone_tags[_tile_index(x, y)] = tag
 
 ## Get road status at position
 func get_road(x: int, y: int) -> int:
@@ -281,6 +298,18 @@ static func faction_owner_id(faction_id: int) -> int:
 static func owner_id_for_faction(faction_id: int) -> int:
 	return faction_owner_id(faction_id)
 
+## Check if owner_id represents an organization
+static func is_organization_owner(owner_id: int) -> bool:
+	return owner_id >= ORGANIZATION_OWNER_OFFSET
+
+## Extract organization_id from owner_id
+static func organization_id_from_owner(owner_id: int) -> int:
+	return owner_id - ORGANIZATION_OWNER_OFFSET
+
+## Create organization owner_id from organization_id
+static func organization_owner_id(organization_id: int) -> int:
+	return organization_id + ORGANIZATION_OWNER_OFFSET
+
 # ============================================
 # SERIALIZATION
 # ============================================
@@ -306,6 +335,7 @@ func to_dict() -> Dictionary:
 		"pollution": pollution_data,
 		"tiles": tiles.duplicate(),
 		"roads": roads.duplicate(),
+		"zone_tags": zone_tags.duplicate(),
 		"resource_nodes": nodes_data,
 		"workshops": workshops_data,
 		"next_node_id": next_node_id
@@ -342,10 +372,20 @@ static func from_dict(d: Dictionary) -> World:
 	world.roads.resize(roads_data.size())
 	for i in range(roads_data.size()):
 		world.roads[i] = int(roads_data[i])
-	
+
 	if world.roads.is_empty():
 		world.roads.resize(world.width * world.height)
 		world.roads.fill(0)
+
+	# Load zone tags
+	var zone_data: Array = d.get("zone_tags", [])
+	world.zone_tags.resize(zone_data.size())
+	for i in range(zone_data.size()):
+		world.zone_tags[i] = str(zone_data[i])
+
+	if world.zone_tags.is_empty():
+		world.zone_tags.resize(world.width * world.height)
+		world.zone_tags.fill("")
 	
 	# Load resource nodes
 	world.resource_nodes = []
