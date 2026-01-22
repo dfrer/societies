@@ -53,10 +53,10 @@ func decide_action(agent: Agent, world: World, market: Market,
 		var intent := _intent_from_goal(agent, current_goal, world, market, tuning)
 		_set_intent(state, agent, intent.get("type", "NONE"), intent.get("data", {}))
 		var activity := _commit_activity_for_intent(agent, intent, state)
-		if not activity.is_empty():
-			var activity_action := _action_from_activity(agent, activity, world, tuning, state)
-			if activity_action.has("type"):
-				return activity_action
+			if not activity.is_empty():
+				var committed_action := _action_from_activity(agent, activity, world, tuning, state)
+				if committed_action.has("type"):
+					return committed_action
 
 		# Process Goal
 		var result = _process_goal(agent, current_goal, world, market, contracts_system, tuning, recipes, state)
