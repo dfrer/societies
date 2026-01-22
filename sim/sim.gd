@@ -14,6 +14,8 @@ func _init_pipeline() -> void:
 	pipeline = SimPipeline.new()
 	pipeline.add_system(EnvironmentSystem.new())
 	pipeline.add_system(EconomySystem.new())
+	pipeline.add_system(ClaimsSystem.new())
+	pipeline.add_system(OrganizationsSystem.new())
 	pipeline.add_system(JobBoardSystem.new())
 	pipeline.add_system(GovernanceSystem.new())
 	pipeline.add_system(MetricsSystem.new())
@@ -60,7 +62,9 @@ func init_new(seed_value: int) -> void:
 		var role := "crafter" if roll < crafter_ratio else "gatherer"
 		var npc := _create_agent(false, role)
 		state.add_agent(npc)
-	
+
+	_init_organization()
+
 	# Claim some tiles for early agents (for testing enforcement)
 	_claim_starting_tiles()
 
@@ -222,6 +226,18 @@ func _claim_starting_tiles() -> void:
 					agent_laws.init_from_tuning(state.tuning)
 					state.laws_by_owner[agent.id] = agent_laws
 				break
+
+func _init_organization() -> void:
+	var center := Vector2i(state.get_tuning_int("market_pos_x", 0), state.get_tuning_int("market_pos_y", 0))
+	var org := Organization.new()
+	org.init_organization(state.next_organization_id, "Settlement", center, state.get_tuning_int("organization_starting_treasury", 200))
+	state.next_organization_id += 1
+	for agent in state.agents:
+		org.add_member(agent.id)
+	state.organizations.append(org)
+	if state.world.is_valid(center.x, center.y) and state.world.get_claim_owner(center.x, center.y) == 0:
+		state.world.set_claim_owner(center.x, center.y, org.get_owner_id())
+		state.world.set_zone_tag(center.x, center.y, "town_center")
 
 ## Run simulation for n ticks
 func step(n: int = 1) -> void:

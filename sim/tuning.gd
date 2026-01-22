@@ -171,6 +171,16 @@ func _init_schema() -> void:
 	_add_schema("sales_tax_rate_default", "int", true, 5, 0, 100, "Default sales tax rate")
 	_add_schema("sales_tax_rate_min", "int", false, 0, 0, 100, "Minimum sales tax rate")
 	_add_schema("sales_tax_rate_max", "int", false, 20, 0, 100, "Maximum sales tax rate")
+
+	# Organizations
+	_add_schema("organization_starting_treasury", "int", false, 200, 0, 100000, "Initial organization treasury seed")
+	_add_schema("organization_claims_per_day", "int", false, 4, 0, 100, "Claims per day for organization expansion")
+	_add_schema("organization_claim_radius", "int", false, 12, 1, 200, "Max radius for organization claims")
+	_add_schema("organization_stockpile_members_per", "int", false, 6, 1, 100, "Members per stockpile target")
+	_add_schema("organization_workshop_members_per", "int", false, 10, 1, 200, "Members per workshop target")
+	_add_schema("organization_shelter_members_per", "int", false, 4, 1, 100, "Members per shelter target")
+	_add_schema("stockpile_capacity", "int", false, 150, 1, 10000, "Default stockpile capacity")
+	_add_schema("shelter_capacity", "int", false, 4, 1, 1000, "Default shelter capacity")
 	
 	# Factions
 	_add_schema("faction_found_min_money", "int", true, 80, 0, 10000, "Min money to found faction")

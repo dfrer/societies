@@ -19,6 +19,7 @@ var taxes_collected: int = 0
 var laws_by_owner: Dictionary = {}  # owner_id -> Laws
 var metrics_history: Array = []  # Array of snapshot dictionaries
 var factions: Array = []
+var organizations: Array = []
 var tuning: Dictionary = {}
 var tuning_config: TuningConfig = null
 var items: Dictionary = {}
@@ -28,6 +29,7 @@ var intents: Array = [] # Array[Dictionary]
 var decision_traces: Array = [] # Array[Dictionary]
 var next_agent_id: int = 1
 var next_faction_id: int = 1001
+var next_organization_id: int = 2001
 var next_workshop_id: int = 1
 var next_node_id: int = 1
 var next_intent_id: int = 1
@@ -47,6 +49,7 @@ func _init() -> void:
 	job_board = JobBoard.new()
 	structures = Structures.new()
 	tuning_config = TuningConfig.new()
+	organizations = []
 
 ## Get laws for a jurisdiction owner
 func get_laws(owner_id: int) -> Laws:
@@ -114,6 +117,10 @@ func to_dict() -> Dictionary:
 	var factions_data := []
 	for faction in factions:
 		factions_data.append(faction.to_dict())
+
+	var organizations_data := []
+	for organization in organizations:
+		organizations_data.append(organization.to_dict())
 	
 	var recipes_data := {}
 	for recipe_id in recipes:
@@ -138,6 +145,7 @@ func to_dict() -> Dictionary:
 		"structures": structures.to_dict(),
 		"laws_by_owner": laws_data,
 		"factions": factions_data,
+		"organizations": organizations_data,
 		"metrics_history": _sanitize_metrics_for_serialization(metrics_history),
 		"tuning": _sanitize_tuning_for_serialization(tuning),
 		"items": _sanitize_items_for_serialization(items),
@@ -146,6 +154,7 @@ func to_dict() -> Dictionary:
 		"decision_traces": _sanitize_decision_traces_for_serialization(decision_traces),
 		"next_agent_id": next_agent_id,
 		"next_faction_id": next_faction_id,
+		"next_organization_id": next_organization_id,
 		"next_workshop_id": next_workshop_id,
 		"next_node_id": next_node_id,
 		"next_intent_id": next_intent_id,
@@ -317,6 +326,10 @@ static func from_dict(d: Dictionary) -> SimState:
 	for faction_data in d.get("factions", []):
 		state.factions.append(Faction.from_dict(faction_data))
 
+	state.organizations = []
+	for organization_data in d.get("organizations", []):
+		state.organizations.append(Organization.from_dict(organization_data))
+
 	# Convert tuning values - integers, floats, and bools as appropriate
 	state.tuning = state._sanitize_tuning_for_serialization(d.get("tuning", {}))
 	state.tuning_config = TuningConfig.new()
@@ -332,6 +345,7 @@ static func from_dict(d: Dictionary) -> SimState:
 
 	state.next_agent_id = int(d.get("next_agent_id", 1))
 	state.next_faction_id = int(d.get("next_faction_id", 1001))
+	state.next_organization_id = int(d.get("next_organization_id", 2001))
 	state.next_workshop_id = int(d.get("next_workshop_id", 1))
 	state.next_node_id = int(d.get("next_node_id", 1))
 	state.next_intent_id = int(d.get("next_intent_id", 1))
@@ -394,6 +408,12 @@ static func _sanitize_event_data_recursive(data: Variant, int_keys: Array) -> Va
 ## Get agent by ID - O(1) lookup
 func get_agent(agent_id: int) -> Agent:
 	return agent_by_id.get(agent_id, null)
+
+func get_organization(organization_id: int) -> Organization:
+	for organization in organizations:
+		if organization.id == organization_id:
+			return organization
+	return null
 
 ## Add an agent and update lookup
 func add_agent(agent: Agent) -> void:
