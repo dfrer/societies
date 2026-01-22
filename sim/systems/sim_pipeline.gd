@@ -18,3 +18,5 @@ func execute(sim: RefCounted, state: SimState) -> void:
 
 	for system in systems:
 		system.tick(sim, state)
+
+	state.prune_intents()
