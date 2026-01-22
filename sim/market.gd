@@ -413,6 +413,7 @@ func _match_item(item: String, agent_map: Dictionary, alpha: float,
 				if stockpile != null:
 					stockpile.release_reserved_item(item, trade_qty)
 					stockpile.remove_item(item, trade_qty)
+					state.record_stockpile_withdrawal(item, trade_qty)
 		elif seller_agent != null:
 			seller_agent.consume_locked_item(item, trade_qty)
 		buyer.add_item(item, trade_qty)

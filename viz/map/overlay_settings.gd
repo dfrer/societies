@@ -13,6 +13,9 @@ var show_faction_borders: bool = false
 var show_market: bool = true
 var show_agents: bool = true
 var show_grid: bool = true
+var show_projects: bool = false
+var show_tasks: bool = false
+var show_stockpile_reservations: bool = false
 
 ## Resource display mode
 enum ResourceDisplayMode { DOTS, LETTERS, SCALED_DOTS }
@@ -93,6 +96,24 @@ func set_show_agents(value: bool) -> void:
 func set_show_grid(value: bool) -> void:
 	if show_grid != value:
 		show_grid = value
+		settings_changed.emit()
+
+
+func set_show_projects(value: bool) -> void:
+	if show_projects != value:
+		show_projects = value
+		settings_changed.emit()
+
+
+func set_show_tasks(value: bool) -> void:
+	if show_tasks != value:
+		show_tasks = value
+		settings_changed.emit()
+
+
+func set_show_stockpile_reservations(value: bool) -> void:
+	if show_stockpile_reservations != value:
+		show_stockpile_reservations = value
 		settings_changed.emit()
 
 

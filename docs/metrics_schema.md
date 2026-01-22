@@ -1,6 +1,6 @@
 # Metrics Snapshot Schema
 
-Version: **2** (as of 2026-01-20)
+Version: **3** (as of 2026-01-20)
 
 ## Overview
 
@@ -11,7 +11,7 @@ The `Metrics.create_snapshot()` function produces a standardized JSON-compatible
 ### Core
 | Field | Type | Description |
 |-------|------|-------------|
-| `schema_version` | int | Schema version for compatibility (currently 2) |
+| `schema_version` | int | Schema version for compatibility (currently 3) |
 | `day` | int | Simulation day number |
 | `tick` | int | Current tick count |
 
@@ -37,6 +37,23 @@ The `Metrics.create_snapshot()` function produces a standardized JSON-compatible
 | Field | Type | Description |
 |-------|------|-------------|
 | `inventory_totals` | Dictionary | `{item_name: qty}` - aggregate inventory across all agents |
+
+### Projects
+| Field | Type | Description |
+|-------|------|-------------|
+| `build_sites_active` | int | Active build sites (collecting + building) |
+| `build_sites_collecting` | int | Build sites still collecting resources |
+| `build_sites_building` | int | Build sites currently building |
+| `build_sites_resource_completion` | float | Average resource completion ratio (0-1) |
+| `build_sites_build_completion` | float | Average build progress ratio (0-1) |
+
+### Stockpiles
+| Field | Type | Description |
+|-------|------|-------------|
+| `stockpile_deposited_total` | int | Total items deposited into stockpiles since last snapshot |
+| `stockpile_withdrawn_total` | int | Total items withdrawn from stockpiles since last snapshot |
+| `stockpile_deposits_by_item` | Dictionary | `{item_name: qty}` deposited into stockpiles since last snapshot |
+| `stockpile_withdrawals_by_item` | Dictionary | `{item_name: qty}` withdrawn from stockpiles since last snapshot |
 
 ### Market
 | Field | Type | Description |
@@ -79,7 +96,7 @@ These fields are maintained for backward compatibility:
 
 ```json
 {
-  "schema_version": 2,
+  "schema_version": 3,
   "day": 10,
   "tick": 240,
   "population": 20,
@@ -93,6 +110,15 @@ These fields are maintained for backward compatibility:
   "workshop_count": 3,
   "workshop_ready_count": 2,
   "inventory_totals": {"Berries": 500, "CookedMeal": 120, "Tool": 45},
+  "build_sites_active": 4,
+  "build_sites_collecting": 2,
+  "build_sites_building": 2,
+  "build_sites_resource_completion": 0.65,
+  "build_sites_build_completion": 0.5,
+  "stockpile_deposited_total": 120,
+  "stockpile_withdrawn_total": 95,
+  "stockpile_deposits_by_item": {"Berries": 80, "Planks": 40},
+  "stockpile_withdrawals_by_item": {"Berries": 60, "Planks": 35},
   "market_buy_orders": 8,
   "market_sell_orders": 12,
   "market_ref_prices": {"Berries": 12.5, "CookedMeal": 25.0, "Tool": 50.0},
