@@ -3,6 +3,7 @@ class_name StructureState
 extends RefCounted
 
 const TYPE_STOCKPILE := "stockpile"
+const TYPE_SHELTER := "shelter"
 
 var id: int = 0
 var structure_type: String = TYPE_STOCKPILE

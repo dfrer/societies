@@ -17,6 +17,18 @@ func add_stockpile(pos_x: int, pos_y: int, owner_id: int, capacity: int) -> Stru
 	structures.append(state)
 	return state
 
+func add_shelter(pos_x: int, pos_y: int, owner_id: int, capacity: int) -> StructureState:
+	var state := StructureState.new()
+	state.id = next_structure_id
+	next_structure_id += 1
+	state.structure_type = StructureState.TYPE_SHELTER
+	state.pos_x = pos_x
+	state.pos_y = pos_y
+	state.owner_id = owner_id
+	state.capacity = capacity
+	structures.append(state)
+	return state
+
 func get_structure(structure_id: int) -> StructureState:
 	for structure in structures:
 		if structure.id == structure_id:

@@ -18,7 +18,9 @@ const PROJECT_TYPES := {
 	"farm": {"Planks": 10, "Berries": 5},
 	"road": {"Planks": 8},
 	"wall": {"Planks": 12, "MetalIngot": 2},
-	"town_hall": {"Planks": 30, "MetalIngot": 10}
+	"town_hall": {"Planks": 30, "MetalIngot": 10},
+	"stockpile": {"Planks": 12, "Stone": 6},
+	"shelter": {"Planks": 20, "Stone": 10}
 }
 
 func _init() -> void:
@@ -126,6 +128,10 @@ func _complete_project(project: CommunalProject, world: World, state: SimState, 
 			workshop.built_by = project.initiator_id
 			workshop.build_start_tick = project.started_tick
 			workshop.build_ticks_remaining = 0  # Already built
+			var org := state.get_organization(project.faction_id)
+			if org:
+				workshop.owner_id = org.get_owner_id()
+				workshop.access_policy = "public"
 			world.add_workshop(workshop)
 		
 		"farm":
@@ -140,10 +146,28 @@ func _complete_project(project: CommunalProject, world: World, state: SimState, 
 		
 		"road":
 			world.set_road(project.pos_x, project.pos_y, 1)
-		
+
 		"wall":
 			# Walls could provide defense (not implemented yet)
 			pass
+
+		"stockpile":
+			var org := state.get_organization(project.faction_id)
+			var owner_id := 0
+			if org:
+				owner_id = org.get_owner_id()
+			var capacity := state.get_tuning_int("stockpile_capacity", 150)
+			var structure := state.structures.add_stockpile(project.pos_x, project.pos_y, owner_id, capacity)
+			if org:
+				org.add_stockpile_access(structure.id)
+
+		"shelter":
+			var org := state.get_organization(project.faction_id)
+			var owner_id := 0
+			if org:
+				owner_id = org.get_owner_id()
+			var capacity := state.get_tuning_int("shelter_capacity", 4)
+			state.structures.add_shelter(project.pos_x, project.pos_y, owner_id, capacity)
 			
 		"town_hall":
 			# Mark the faction home position with the town hall
@@ -177,6 +201,10 @@ func _get_build_ticks_for_project(project: CommunalProject, tuning: Dictionary) 
 			return maxi(1, int(tuning.get("project_build_ticks_wall", default_ticks)))
 		"town_hall":
 			return maxi(1, int(tuning.get("project_build_ticks_town_hall", default_ticks)))
+		"stockpile":
+			return maxi(1, int(tuning.get("project_build_ticks_stockpile", default_ticks)))
+		"shelter":
+			return maxi(1, int(tuning.get("project_build_ticks_shelter", default_ticks)))
 	return default_ticks
 
 ## Get a project by ID
