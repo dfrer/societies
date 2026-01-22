@@ -36,8 +36,11 @@ func start_project(faction_id: int, project_type: String, pos_x: int, pos_y: int
 			return null
 	
 	var project := CommunalProject.new()
+	var requirements := get_project_requirements(project_type)
+	if requirements.is_empty():
+		return null
 	project.init_project(next_project_id, project_type, faction_id, pos_x, pos_y,
-						 initiator_id, PROJECT_TYPES[project_type], current_tick)
+						 initiator_id, requirements, current_tick)
 	next_project_id += 1
 	projects.append(project)
 	stats["projects_started"] += 1
@@ -51,6 +54,13 @@ func start_project(faction_id: int, project_type: String, pos_x: int, pos_y: int
 	})
 	
 	return project
+
+## Read-only access to project requirements for a given type
+func get_project_requirements(project_type: String) -> Dictionary:
+	if not PROJECT_TYPES.has(project_type):
+		return {}
+	var data: Dictionary = PROJECT_TYPES[project_type]
+	return data.duplicate(true)
 
 ## Contribute resources to a project
 func contribute_to_project(project_id: int, agent: Agent, item: String, qty: int,

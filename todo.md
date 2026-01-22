@@ -49,7 +49,7 @@
 - [x] Add build site state (required inputs, delivered inputs, build progress, assigned workers). (sim/communal_projects_system.gd)
 - [x] Add phases: COLLECTING → BUILDING → COMPLETED with tick-based progress. (sim/communal_projects_system.gd)
 - [x] Create BUILD_SITE tasks from active build sites and finalize on progress completion. (sim/communal_projects_system.gd, sim/job_board.gd)
-- [ ] Preserve project type API and resource requirement definition. (sim/communal_projects_system.gd)
+- [x] Preserve project type API and resource requirement definition. (sim/communal_projects_system.gd)
 
 ## P0 — Shared Storage + Logistics
 - [ ] Add Stockpile structure state with capacity, ownership, and reserved items. (sim/structures.gd, sim/structure_state.gd)
