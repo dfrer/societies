@@ -4,6 +4,7 @@
             "id": "planks_hand",
             "name": "Planks (Hand)",
             "station": "hand",
+            "tier": "basic",
             "inputs": {
                 "Logs": 4
             },
@@ -55,6 +56,7 @@
             "id": "planks",
             "name": "Planks",
             "station": "workshop",
+            "tier": "basic",
             "inputs": {
                 "Logs": 2
             },
@@ -67,6 +69,7 @@
             "id": "cooked_meal",
             "name": "Cooked Meal",
             "station": "workshop",
+            "tier": "basic",
             "inputs": {
                 "Berries": 3
             },
@@ -79,6 +82,7 @@
             "id": "metal_ingot",
             "name": "Metal Ingot",
             "station": "workshop",
+            "tier": "advanced",
             "inputs": {
                 "Ore": 2
             },
@@ -91,6 +95,7 @@
             "id": "axe",
             "name": "Axe",
             "station": "workshop",
+            "tier": "advanced",
             "inputs": {
                 "Planks": 2,
                 "MetalIngot": 1
@@ -104,6 +109,7 @@
             "id": "pickaxe",
             "name": "Pickaxe",
             "station": "workshop",
+            "tier": "advanced",
             "inputs": {
                 "Planks": 1,
                 "MetalIngot": 2
@@ -117,6 +123,7 @@
             "id": "mallet",
             "name": "Mallet",
             "station": "workshop",
+            "tier": "advanced",
             "inputs": {
                 "Planks": 2,
                 "MetalIngot": 1
@@ -130,6 +137,7 @@
             "id": "shovel",
             "name": "Shovel",
             "station": "workshop",
+            "tier": "advanced",
             "inputs": {
                 "Planks": 2,
                 "MetalIngot": 1

@@ -473,9 +473,17 @@ static func _execute_queue_craft(agent: Agent, action: Dictionary, world: World,
 	
 	if recipe == null:
 		return true
-		
+
+	if recipe.tier == "advanced":
+		if is_handheld:
+			return true
+		if not world.has_advanced_workshop():
+			return true
+	
 	if not is_handheld:
 		if workshop == null or not workshop.is_ready() or not workshop.has_queue_space():
+			return true
+		if recipe.tier == "advanced" and workshop.workshop_type == "general":
 			return true
 		if not agent.is_at_workshop(workshop):
 			return true
