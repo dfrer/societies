@@ -38,10 +38,12 @@
 # V2 Settlement Simulation TODO
 
 ## P0 — Planning + Task System Foundations
-- [ ] Add a Task/Project system phase before Agents tick without reordering existing pipeline. (docs/sim_update_order.md)
+- [x] Add a Task/Project system phase before Agents tick without reordering existing pipeline. (docs/sim_update_order.md)
 - [ ] Expand JobBoard activity types (haul, deliver-to-project, build site, craft at station, farm tasks) and serialization coverage. (sim/job_board.gd)
 - [ ] Extend DefaultBrain to claim new task types and stack lightweight intents for project work. (sim/brains/default_brain.gd)
 - [ ] Add task generation hooks for build sites, hauling, and farming while preserving deterministic ordering. (sim/job_board.gd, sim/sim.gd)
+- [x] Post deliver-to-project activities for communal project resource needs. (sim/systems/job_board_system.gd, sim/job_board.gd)
+- [x] Post build-site activities for communal project build phases. (sim/systems/job_board_system.gd, sim/job_board.gd)
 
 ## P0 — Communal Projects as Build Sites
 - [ ] Add build site state (required inputs, delivered inputs, build progress, assigned workers). (sim/communal_projects_system.gd)
