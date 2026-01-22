@@ -63,6 +63,10 @@ var _workshops: Array = []
 var _claims: Dictionary = {}
 var _pollution_data: Dictionary = {}
 var _avg_pollution: float = 0.0
+var _claims_texture: ImageTexture = null
+var _pollution_texture: ImageTexture = null
+var _claims_dirty: bool = true
+var _pollution_dirty: bool = true
 
 ## Selected agent target position for line drawing (-1,-1 means no target)
 var _agent_target_pos: Vector2i = Vector2i(-1, -1)
@@ -108,6 +112,8 @@ func set_world_size(width: int, height: int) -> void:
 	world_width = width
 	world_height = height
 	selection.set_world_size(width, height)
+	_claims_dirty = true
+	_pollution_dirty = true
 	_center_view()
 
 
@@ -118,6 +124,7 @@ func update_from_snapshot(snapshot: Dictionary) -> void:
 	
 	_snapshot = snapshot
 	_avg_pollution = snapshot.get("avg_pollution", 0.0)
+	_pollution_dirty = true
 	_last_snapshot_hash = new_hash
 	queue_redraw()
 
@@ -132,6 +139,8 @@ func update_world_data(world_data: Dictionary) -> void:
 	_resource_nodes = world_data.get("resource_nodes", [])
 	_workshops = world_data.get("workshops", [])
 	_pollution_data = world_data.get("pollution", [])
+	_claims_dirty = true
+	_pollution_dirty = true
 	_last_world_hash = new_hash
 	queue_redraw()
 
@@ -157,6 +166,8 @@ func set_overlay_settings(settings: OverlaySettings) -> void:
 
 
 func _on_overlay_settings_changed() -> void:
+	_claims_dirty = true
+	_pollution_dirty = true
 	queue_redraw()
 
 
@@ -172,12 +183,24 @@ func _draw() -> void:
 	start_tile = start_tile.clamp(Vector2i.ZERO, Vector2i(world_width - 1, world_height - 1))
 	end_tile = end_tile.clamp(Vector2i.ZERO, Vector2i(world_width - 1, world_height - 1))
 
-	# Draw base tiles with claims coloring
-	_draw_tiles(start_tile, end_tile, effective_tile_size)
+	# Draw base tiles with claims coloring (cached)
+	_ensure_claims_cache()
+	if _claims_texture != null:
+		var world_rect := Rect2(
+			camera_offset,
+			Vector2(world_width * tile_size, world_height * tile_size) * zoom_level
+		)
+		draw_texture_rect(_claims_texture, world_rect, false)
 
 	# Draw pollution overlay
 	if overlay_settings.show_pollution:
-		_draw_pollution_overlay(start_tile, end_tile, effective_tile_size)
+		_ensure_pollution_cache()
+		if _pollution_texture != null:
+			var world_rect := Rect2(
+				camera_offset,
+				Vector2(world_width * tile_size, world_height * tile_size) * zoom_level
+			)
+			draw_texture_rect(_pollution_texture, world_rect, false)
 
 	# Draw resource nodes
 	if overlay_settings.show_resources:
@@ -204,6 +227,73 @@ func _draw() -> void:
 
 	# Draw selection and hover
 	_draw_selection(start_tile, end_tile, effective_tile_size)
+
+
+func _ensure_claims_cache() -> void:
+	if not _claims_dirty and _claims_texture != null:
+		return
+	if world_width <= 0 or world_height <= 0 or tile_size <= 0:
+		return
+
+	var image := Image.create(world_width * tile_size, world_height * tile_size, false, Image.FORMAT_RGBA8)
+	for y in range(world_height):
+		for x in range(world_width):
+			var tile_key := "%d,%d" % [x, y]
+			var base_color: Color
+
+			if overlay_settings.show_claims:
+				var owner_id: int = 0
+				if _claims.has(tile_key):
+					owner_id = _claims[tile_key]
+				base_color = overlay_settings.get_owner_color(owner_id)
+			else:
+				base_color = overlay_settings.COLOR_UNCLAIMED
+
+			image.fill_rect(Rect2i(x * tile_size, y * tile_size, tile_size, tile_size), base_color)
+
+	if _claims_texture == null \
+			or _claims_texture.get_width() != image.get_width() \
+			or _claims_texture.get_height() != image.get_height():
+		_claims_texture = ImageTexture.create_from_image(image)
+	else:
+		_claims_texture.update(image)
+	_claims_dirty = false
+
+
+func _ensure_pollution_cache() -> void:
+	if not _pollution_dirty and _pollution_texture != null:
+		return
+	if world_width <= 0 or world_height <= 0 or tile_size <= 0:
+		return
+
+	var image := Image.create(world_width * tile_size, world_height * tile_size, false, Image.FORMAT_RGBA8)
+	image.fill(Color(0.0, 0.0, 0.0, 0.0))
+
+	if _pollution_data.size() > 0:
+		for key in _pollution_data.keys():
+			var parts := key.split(",")
+			if parts.size() != 2:
+				continue
+			var x := int(parts[0])
+			var y := int(parts[1])
+			if x < 0 or x >= world_width or y < 0 or y >= world_height:
+				continue
+			var pollution: float = _pollution_data[key]
+			if pollution <= 0.01:
+				continue
+			var pollution_color := overlay_settings.get_pollution_color(pollution)
+			image.fill_rect(Rect2i(x * tile_size, y * tile_size, tile_size, tile_size), pollution_color)
+	elif _avg_pollution > 0.01:
+		var tint := overlay_settings.get_global_pollution_tint(_avg_pollution)
+		image.fill(tint)
+
+	if _pollution_texture == null \
+			or _pollution_texture.get_width() != image.get_width() \
+			or _pollution_texture.get_height() != image.get_height():
+		_pollution_texture = ImageTexture.create_from_image(image)
+	else:
+		_pollution_texture.update(image)
+	_pollution_dirty = false
 
 
 func _draw_tiles(start_tile: Vector2i, end_tile: Vector2i, effective_tile_size: float) -> void:
