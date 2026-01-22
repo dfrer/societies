@@ -125,6 +125,29 @@ func _update_list() -> void:
 	
 	_faction_list.clear()
 	
+	if _sim_state.factions.is_empty():
+		_selected_faction_id = -1
+		var placeholder_idx := _faction_list.add_item("No factions formed yet")
+		_faction_list.set_item_disabled(placeholder_idx, true)
+		
+		var min_money := _sim_state.get_tuning_int("faction_found_min_money", 0)
+		var min_grievance := _sim_state.get_tuning_float("faction_found_min_grievance", 0.0)
+		var daily_chance := _sim_state.get_tuning_float("faction_found_daily_chance", 0.0)
+		
+		var criteria_idx := _faction_list.add_item("Formation criteria:")
+		_faction_list.set_item_disabled(criteria_idx, true)
+		
+		var money_line_idx := _faction_list.add_item("- Min money: %d" % min_money)
+		_faction_list.set_item_disabled(money_line_idx, true)
+		
+		var grievance_line_idx := _faction_list.add_item("- Grievance: ≥ %.2f" % min_grievance)
+		_faction_list.set_item_disabled(grievance_line_idx, true)
+		
+		var chance_percent := daily_chance * 100.0
+		var chance_line_idx := _faction_list.add_item("- Daily chance: %.1f%%" % chance_percent)
+		_faction_list.set_item_disabled(chance_line_idx, true)
+		return
+	
 	var factions := _sim_state.factions.duplicate()
 	factions.sort_custom(func(a, b): return a.id < b.id)
 	
