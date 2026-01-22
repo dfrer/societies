@@ -38,19 +38,21 @@
 # V2 Settlement Simulation TODO
 
 ## P0 — Planning + Task System Foundations
-- [ ] Add a Task/Project system phase before Agents tick without reordering existing pipeline. (docs/sim_update_order.md)
+- [x] Add a Task/Project system phase before Agents tick without reordering existing pipeline. (docs/sim_update_order.md)
 - [ ] Expand JobBoard activity types (haul, deliver-to-project, build site, craft at station, farm tasks) and serialization coverage. (sim/job_board.gd)
 - [ ] Extend DefaultBrain to claim new task types and stack lightweight intents for project work. (sim/brains/default_brain.gd)
 - [ ] Add task generation hooks for build sites, hauling, and farming while preserving deterministic ordering. (sim/job_board.gd, sim/sim.gd)
+- [x] Post deliver-to-project activities for communal project resource needs. (sim/systems/job_board_system.gd, sim/job_board.gd)
+- [x] Post build-site activities for communal project build phases. (sim/systems/job_board_system.gd, sim/job_board.gd)
 
 ## P0 — Communal Projects as Build Sites
-- [ ] Add build site state (required inputs, delivered inputs, build progress, assigned workers). (sim/communal_projects_system.gd)
-- [ ] Add phases: COLLECTING → BUILDING → COMPLETED with tick-based progress. (sim/communal_projects_system.gd)
-- [ ] Create BUILD_SITE tasks from active build sites and finalize on progress completion. (sim/communal_projects_system.gd, sim/job_board.gd)
-- [ ] Preserve project type API and resource requirement definition. (sim/communal_projects_system.gd)
+- [x] Add build site state (required inputs, delivered inputs, build progress, assigned workers). (sim/communal_projects_system.gd)
+- [x] Add phases: COLLECTING → BUILDING → COMPLETED with tick-based progress. (sim/communal_projects_system.gd)
+- [x] Create BUILD_SITE tasks from active build sites and finalize on progress completion. (sim/communal_projects_system.gd, sim/job_board.gd)
+- [x] Preserve project type API and resource requirement definition. (sim/communal_projects_system.gd)
 
 ## P0 — Shared Storage + Logistics
-- [ ] Add Stockpile structure state with capacity, ownership, and reserved items. (sim/structures.gd, sim/structure_state.gd)
+- [x] Add Stockpile structure state with capacity, ownership, and reserved items. (sim/structures.gd, sim/structure_state.gd)
 - [ ] Add deposit/withdraw/haul actions and task types for stockpile logistics. (sim/actions.gd, sim/job_board.gd)
 - [ ] Add reservation/escrow to prevent double-spending across projects. (sim/communal_projects_system.gd)
 
