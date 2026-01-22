@@ -80,15 +80,11 @@ func _hold_election(faction: Faction, state: SimState, rng: RNG) -> void:
 		votes[candidate.id] = 0
 		
 	for member_id in faction.members:
-		# Vote for someone (bias toward current leader, then wealth)
+		# Select a candidate. If more than 1, use RNG for randomization.
 		var chosen_id = top_candidates[0].id
-		if rng.randf() < 0.3 and faction.leader_id in votes:
-			chosen_id = faction.leader_id
-		elif top_candidates.size() > 1 and rng.randf() < 0.2:
-			chosen_id = top_candidates[rng.工具(top_candidates.size()) if "工具" in rng else rng.randi() % top_candidates.size()].id
-		
-		# Wait, I shouldn't use "工具" (tool) in code. Just use %
-		chosen_id = top_candidates[rng.randi() % top_candidates.size()].id
+		if top_candidates.size() > 1:
+			var idx = rng.randi() % top_candidates.size()
+			chosen_id = top_candidates[idx].id
 		
 		votes[chosen_id] += 1
 	
