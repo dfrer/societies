@@ -20,7 +20,7 @@ extends Control
 @onready var market_panel: MarketPanel = $VBoxContainer/MainContent/LeftPanel/DataTabs/Market
 @onready var factions_panel: FactionsPanel = $VBoxContainer/MainContent/LeftPanel/DataTabs/Factions
 @onready var contracts_panel: PanelContainer = $VBoxContainer/MainContent/LeftPanel/DataTabs/Contracts
-# @onready var timeline_panel: Control = $VBoxContainer/MainContent/LeftPanel/DataTabs/Timeline  # Temporarily disabled
+@onready var timeline_panel: EventTimelinePanel = $VBoxContainer/MainContent/LeftPanel/DataTabs/Timeline
 @onready var file_dialog: FileDialog = $FileDialog
 @onready var save_dialog: FileDialog = $SaveDialog
 @onready var error_label: Label = $VBoxContainer/MainContent/CenterRightSplit/CenterPanel/ErrorLabel
@@ -77,10 +77,10 @@ func _ready() -> void:
 	if metrics_panel:
 		metrics_panel.visibility_changed.connect(_on_metrics_panel_visibility_changed)
 
-	# Setup timeline panel if available (temporarily disabled)
-	# if timeline_panel and sim_runner:
-	# 	timeline_panel.setup(sim_runner)
-	# 	timeline_panel.request_jump_to_tick.connect(_on_jump_to_tick_requested)
+	# Setup timeline panel if available
+	if timeline_panel and sim_runner:
+		timeline_panel.setup(sim_runner)
+		timeline_panel.request_jump_to_tick.connect(_on_jump_to_tick_requested)
 
 	# Initialize controllers (after basic setup)
 	_initialize_controllers()
@@ -180,7 +180,7 @@ func _initialize_controllers() -> void:
 		_map_controller = MapViewController.new(map_view, sim_runner)
 	
 	if data_tabs and market_panel and factions_panel and contracts_panel and metrics_panel and sim_runner:
-		_panel_controller = PanelController.new(data_tabs, market_panel, factions_panel, contracts_panel, null, metrics_panel, sim_runner)
+		_panel_controller = PanelController.new(data_tabs, market_panel, factions_panel, contracts_panel, timeline_panel, metrics_panel, sim_runner)
 	
 	if sim_runner and top_bar and time_controls and _map_controller and _panel_controller and inspector_panel and _update_throttler:
 		_state_controller = StateController.new(sim_runner, top_bar, time_controls, _map_controller, _panel_controller, inspector_panel, _update_throttler)

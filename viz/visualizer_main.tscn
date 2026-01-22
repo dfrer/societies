@@ -64,18 +64,15 @@ size_flags_vertical = 3
 metadata/_tab_index = 0
 
 [node name="Factions" parent="VBoxContainer/MainContent/LeftPanel/DataTabs" instance=ExtResource("9_factions_panel")]
-visible = false
 layout_mode = 2
 size_flags_vertical = 3
 metadata/_tab_index = 1
 
 [node name="Contracts" parent="VBoxContainer/MainContent/LeftPanel/DataTabs" instance=ExtResource("10_contracts_panel")]
-visible = false
 layout_mode = 2
 metadata/_tab_index = 2
 
 [node name="Timeline" parent="VBoxContainer/MainContent/LeftPanel/DataTabs" instance=ExtResource("12_event_timeline_panel")]
-visible = false
 layout_mode = 2
 size_flags_vertical = 3
 metadata/_tab_index = 3
