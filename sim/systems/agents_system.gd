@@ -49,6 +49,7 @@ func tick(sim: RefCounted, state: SimState) -> void:
                 JobBoard.ACTIVITY_DELIVER_TO_PROJECT,
                 JobBoard.ACTIVITY_BUILD_SITE,
                 JobBoard.ACTIVITY_HAUL,
+                JobBoard.ACTIVITY_CRAFT_AT_STATION,
                 JobBoard.ACTIVITY_FARM_TASK
             ]:
                 state.job_board.complete_activity(activity_id, state.tick)

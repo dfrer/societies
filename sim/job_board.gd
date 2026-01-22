@@ -205,6 +205,18 @@ func has_activity_for_build_site(project_id: int) -> bool:
 			return true
 	return false
 
+func has_activity_for_craft(station_id: int, recipe_id: String) -> bool:
+	for activity in activities:
+		if activity.get("type", "") != ACTIVITY_CRAFT_AT_STATION:
+			continue
+		var status: String = activity.get("status", STATUS_AVAILABLE)
+		if status == STATUS_CANCELLED or status == STATUS_COMPLETED:
+			continue
+		var data: Dictionary = activity.get("data", {})
+		if int(data.get("station_id", -1)) == station_id and data.get("recipe_id", "") == recipe_id:
+			return true
+	return false
+
 func prune_inactive(max_inactive: int) -> void:
 	if max_inactive <= 0:
 		return
