@@ -133,9 +133,23 @@ func _update_list() -> void:
 		var min_money := _sim_state.get_tuning_int("faction_found_min_money", 0)
 		var min_grievance := _sim_state.get_tuning_float("faction_found_min_grievance", 0.0)
 		var daily_chance := _sim_state.get_tuning_float("faction_found_daily_chance", 0.0)
+		var treasury_seed := _sim_state.get_tuning_int("faction_found_treasury_seed", 0)
+		var money_candidates := 0
+		var grievance_candidates := 0
+		
+		for agent in _sim_state.agents:
+			if agent.faction_id != 0:
+				continue
+			if agent.money >= min_money and agent.money >= treasury_seed:
+				money_candidates += 1
+				if agent.grievance >= min_grievance:
+					grievance_candidates += 1
 		
 		var criteria_idx := _faction_list.add_item("Formation criteria:")
 		_faction_list.set_item_disabled(criteria_idx, true)
+		
+		var eligibility_idx := _faction_list.add_item("- Eligible agents: %d money / %d grievance" % [money_candidates, grievance_candidates])
+		_faction_list.set_item_disabled(eligibility_idx, true)
 		
 		var money_line_idx := _faction_list.add_item("- Min money: %d" % min_money)
 		_faction_list.set_item_disabled(money_line_idx, true)
