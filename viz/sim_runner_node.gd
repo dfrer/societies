@@ -30,6 +30,9 @@ var ticks_per_day: int = 24
 ## Maximum ticks to process per frame to avoid freezing
 @export var max_ticks_per_frame: int = 100
 
+## Time budget per frame for stepping (in milliseconds)
+@export var frame_budget_ms: int = 10
+
 ## Internal state
 var _tick_accumulator: float = 0.0
 var _ticks_since_ui_update: int = 0
@@ -60,14 +63,27 @@ func _process(delta: float) -> void:
 
 	# Clamp to avoid freezing on high speeds
 	ticks_to_run = mini(ticks_to_run, max_ticks_per_frame)
-	_tick_accumulator -= ticks_to_run
+
+	var start_ms: int = Time.get_ticks_msec()
+	var ticks_run: int = 0
+	while ticks_run < ticks_to_run:
+		if Time.get_ticks_msec() - start_ms >= frame_budget_ms:
+			break
+		sim.step(1)
+		ticks_run += 1
+
+	if ticks_run == 0:
+		# Cap accumulator to prevent runaway accumulation
+		_tick_accumulator = minf(_tick_accumulator, float(max_ticks_per_frame))
+		return
+
+	_tick_accumulator -= ticks_run
 
 	# Cap accumulator to prevent runaway accumulation
 	_tick_accumulator = minf(_tick_accumulator, float(max_ticks_per_frame))
 
-	# Step the simulation
-	sim.step(ticks_to_run)
-	_ticks_since_ui_update += ticks_to_run
+	# Track ticks processed this frame
+	_ticks_since_ui_update += ticks_run
 
 	# Emit state update if enough ticks have passed
 	if _ticks_since_ui_update >= ui_update_interval_ticks:
