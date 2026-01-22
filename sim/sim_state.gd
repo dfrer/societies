@@ -199,7 +199,9 @@ func _sanitize_tuning_for_serialization(d: Dictionary) -> Dictionary:
 				   "inflation_threshold", "food_yield_pollution_start", "food_yield_pollution_step",
 				   "hunger_drain_pollution_mult", "pollution_high_threshold", "food_scarcity_multiplier",
 				   "starvation_collapse_ratio", "pollution_collapse_threshold",
-				   "flora_growth_chance", "flora_growth_pollution_max", "flora_growth_berry_weight"]
+				   "flora_growth_chance", "flora_growth_pollution_max", "flora_growth_berry_weight",
+				   "farm_growth_per_day", "farm_growth_required", "organization_contract_payout_multiplier",
+				   "organization_market_sell_discount"]
 	for k in d:
 		if k in float_keys:
 			result[k] = snappedf(float(d[k]), 0.00000001)

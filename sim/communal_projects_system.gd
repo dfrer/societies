@@ -169,14 +169,11 @@ func _complete_project(project: CommunalProject, world: World, state: SimState, 
 			world.add_workshop(station)
 		
 		"farm":
-			# Create a berry node at the location
-			var node := ResourceNode.new()
-			node.type = "berry"
-			node.pos_x = project.pos_x
-			node.pos_y = project.pos_y
-			node.stock = 10
-			node.max_stock = 15
-			world.add_resource_node(node)
+			var farm_owner := 0
+			var farm_org := state.get_organization(project.faction_id)
+			if farm_org:
+				farm_owner = farm_org.get_owner_id()
+			world.add_farm_plot(project.pos_x, project.pos_y, farm_owner, "Berries")
 		
 		"road":
 			world.set_road(project.pos_x, project.pos_y, 1)

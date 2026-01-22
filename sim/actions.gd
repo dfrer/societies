@@ -29,6 +29,10 @@ const TYPE_BUILD_ROAD := "BUILD_ROAD"
 const TYPE_WITHDRAW_STOCKPILE := "WITHDRAW_STOCKPILE"
 const TYPE_DEPOSIT_STOCKPILE := "DEPOSIT_STOCKPILE"
 const TYPE_BUILD_SITE := "BUILD_SITE"
+const TYPE_TILL_FARM := "TILL_FARM"
+const TYPE_PLANT_FARM := "PLANT_FARM"
+const TYPE_HARVEST_FARM := "HARVEST_FARM"
+const TYPE_DELIVER_FARM := "DELIVER_FARM"
 
 ## Create actions
 static func idle() -> Dictionary:
@@ -114,6 +118,18 @@ static func deposit_stockpile(structure_id: int, item: String, qty: int) -> Dict
 static func build_site(project_id: int) -> Dictionary:
 	return {"type": TYPE_BUILD_SITE, "project_id": project_id}
 
+static func till_farm(plot_id: int) -> Dictionary:
+	return {"type": TYPE_TILL_FARM, "plot_id": plot_id}
+
+static func plant_farm(plot_id: int, crop_type: String) -> Dictionary:
+	return {"type": TYPE_PLANT_FARM, "plot_id": plot_id, "crop_type": crop_type}
+
+static func harvest_farm(plot_id: int) -> Dictionary:
+	return {"type": TYPE_HARVEST_FARM, "plot_id": plot_id}
+
+static func deliver_farm(plot_id: int, stockpile_id: int, crop_type: String) -> Dictionary:
+	return {"type": TYPE_DELIVER_FARM, "plot_id": plot_id, "stockpile_id": stockpile_id, "crop_type": crop_type}
+
 ## Execute one tick of an action (with enforcement)
 static func execute_action(agent: Agent, action: Dictionary, world: World, 
 						   market: Market, crafting: Crafting, contracts_system: ContractsSystem,
@@ -173,6 +189,14 @@ static func execute_action(agent: Agent, action: Dictionary, world: World,
 			return _execute_deposit_stockpile(agent, action, state)
 		TYPE_BUILD_SITE:
 			return _execute_build_site(agent, action, state, world, tuning)
+		TYPE_TILL_FARM:
+			return _execute_till_farm(agent, action, state)
+		TYPE_PLANT_FARM:
+			return _execute_plant_farm(agent, action, state)
+		TYPE_HARVEST_FARM:
+			return _execute_harvest_farm(agent, action, world, state, tuning, current_tick)
+		TYPE_DELIVER_FARM:
+			return _execute_deliver_farm(agent, action, state)
 		_:
 			return true
 
@@ -899,6 +923,90 @@ static func _execute_build_site(agent: Agent, action: Dictionary, state: SimStat
 		return true
 	if not agent.is_at(project.pos_x, project.pos_y):
 		_move_toward(agent, project.pos_x, project.pos_y, world, tuning)
+		return false
+	return true
+
+static func _execute_till_farm(agent: Agent, action: Dictionary, state: SimState) -> bool:
+	var plot_id: int = action.get("plot_id", -1)
+	if plot_id < 0:
+		return true
+	state.world.till_farm_plot(plot_id)
+	return true
+
+static func _execute_plant_farm(agent: Agent, action: Dictionary, state: SimState) -> bool:
+	var plot_id: int = action.get("plot_id", -1)
+	var crop_type: String = action.get("crop_type", "Berries")
+	if plot_id < 0:
+		return true
+	state.world.plant_farm_plot(plot_id, crop_type)
+	return true
+
+static func _execute_harvest_farm(agent: Agent, action: Dictionary, world: World, state: SimState,
+								  tuning: Dictionary, current_tick: int) -> bool:
+	var plot_id: int = action.get("plot_id", -1)
+	if plot_id < 0:
+		return true
+	var plot := world.get_farm_plot(plot_id)
+	if plot.is_empty():
+		return true
+	if not bool(plot.get("harvest_ready", false)):
+		return true
+	var crop_type: String = plot.get("crop_type", "Berries")
+	var yield_min: int = tuning.get("farm_yield_min", 2)
+	var yield_max: int = tuning.get("farm_yield_max", 5)
+	if yield_min > yield_max:
+		var temp := yield_min
+		yield_min = yield_max
+		yield_max = temp
+	var yield_amount := state.rng.randi_range(yield_min, yield_max)
+	if crop_type == "Berries":
+		var local_pollution := world.get_pollution(int(plot.get("x", 0)), int(plot.get("y", 0)))
+		var start: float = tuning.get("food_yield_pollution_start", 0.3)
+		var step: float = tuning.get("food_yield_pollution_step", 0.1)
+		if local_pollution >= start:
+			yield_amount = maxi(0, yield_amount - int(floor((local_pollution - start) / step)))
+		if yield_amount > 0 and local_pollution >= 0.6:
+			if (agent.id + current_tick) % 2 == 0:
+				yield_amount = 0
+	var harvested := state.world.harvest_farm_plot(plot_id, yield_amount)
+	if harvested and yield_amount > 0:
+		# Drain stamina for farm work
+		var farm_cost: float = tuning.get("stamina_drain_gather", 2.0)
+		agent.drain_stamina(farm_cost)
+		agent.add_skill_xp("farming", tuning.get("skill_xp_per_action", 0.1), tuning)
+		agent.add_experience(1, tuning)
+	return harvested
+
+static func _execute_deliver_farm(agent: Agent, action: Dictionary, state: SimState) -> bool:
+	var plot_id: int = action.get("plot_id", -1)
+	var stockpile_id: int = action.get("stockpile_id", -1)
+	var crop_type: String = action.get("crop_type", "Berries")
+	var plot := state.world.get_farm_plot(plot_id)
+	if plot.is_empty():
+		return true
+	var plot_x: int = int(plot.get("x", agent.pos_x))
+	var plot_y: int = int(plot.get("y", agent.pos_y))
+	var stockpile := state.structures.get_structure(stockpile_id)
+	if stockpile == null:
+		return true
+	if agent.has_available_item(crop_type, 1):
+		if not agent.is_at(stockpile.pos_x, stockpile.pos_y):
+			return false
+		var to_deposit := agent.get_available_item(crop_type)
+		if to_deposit <= 0:
+			return true
+		var free_capacity := stockpile.get_free_capacity()
+		if free_capacity <= 0:
+			return true
+		var final_qty := mini(to_deposit, free_capacity)
+		agent.remove_item(crop_type, final_qty)
+		stockpile.add_item(crop_type, final_qty)
+		return true
+	if not agent.is_at(plot_x, plot_y):
+		return false
+	var collected := state.world.collect_farm_yield(plot_id)
+	if collected > 0:
+		agent.add_item(crop_type, collected)
 		return false
 	return true
 

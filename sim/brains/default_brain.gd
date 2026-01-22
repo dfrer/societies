@@ -265,6 +265,20 @@ func _commit_activity_for_intent(agent: Agent, intent: Dictionary, state: SimSta
 	return {}
 
 func _claim_opportunity_activity(agent: Agent, world: World, tuning: Dictionary, state: SimState) -> Dictionary:
+	var contract_threshold: float = float(tuning.get("contract_prefer_profit_threshold", 8))
+	var best_contract := state.contracts_system.find_best_contract(agent, state.market, tuning)
+	if best_contract != null:
+		var score := state.contracts_system.score_contract(best_contract, agent, state.market, tuning)
+		if score >= contract_threshold:
+			var candidates := state.job_board.get_available_activities(JobBoard.ACTIVITY_ACCEPT_CONTRACT)
+			for activity in candidates:
+				var data: Dictionary = activity.get("data", {})
+				if int(data.get("contract_id", -1)) != best_contract.id:
+					continue
+				if state.job_board.claim_activity(activity.get("activity_id", -1), agent.id, state.tick):
+					agent.current_activity_id = int(activity.get("activity_id", -1))
+					_set_intent(state, agent, "JOB_BOARD_TASK", {"activity_type": JobBoard.ACTIVITY_ACCEPT_CONTRACT})
+					return _action_from_activity(agent, activity, world, tuning, state)
 	var priority := [
 		JobBoard.ACTIVITY_DELIVER_TO_PROJECT,
 		JobBoard.ACTIVITY_BUILD_SITE,
@@ -414,6 +428,44 @@ func _action_from_activity(agent: Agent, activity: Dictionary, world: World, tun
 				return Actions.queue_craft(recipe.id, workshop.id)
 			return Actions.move_to_position(workshop.pos_x, workshop.pos_y)
 		JobBoard.ACTIVITY_FARM_TASK:
+			var data: Dictionary = activity.get("data", {})
+			var plot_id: int = int(data.get("plot_id", -1))
+			var task_type: String = data.get("task_type", "")
+			var crop_type: String = data.get("crop_type", "Berries")
+			var plot := state.world.get_farm_plot(plot_id)
+			if plot.is_empty():
+				state.job_board.cancel_activity(activity.get("activity_id", -1), state.tick)
+				agent.current_activity_id = -1
+				return {}
+			var plot_x: int = int(plot.get("x", agent.pos_x))
+			var plot_y: int = int(plot.get("y", agent.pos_y))
+			match task_type:
+				"TILL":
+					if agent.is_at(plot_x, plot_y):
+						return Actions.till_farm(plot_id)
+					return Actions.move_to_position(plot_x, plot_y)
+				"PLANT":
+					if agent.is_at(plot_x, plot_y):
+						return Actions.plant_farm(plot_id, crop_type)
+					return Actions.move_to_position(plot_x, plot_y)
+				"HARVEST":
+					if agent.is_at(plot_x, plot_y):
+						return Actions.harvest_farm(plot_id)
+					return Actions.move_to_position(plot_x, plot_y)
+				"DELIVER":
+					var stockpile_id: int = int(data.get("stockpile_id", -1))
+					var stockpile := state.structures.get_structure(stockpile_id)
+					if stockpile == null:
+						state.job_board.release_activity(activity.get("activity_id", -1), state.tick)
+						agent.current_activity_id = -1
+						return {}
+					if agent.has_available_item(crop_type, 1):
+						if agent.is_at(stockpile.pos_x, stockpile.pos_y):
+							return Actions.deliver_farm(plot_id, stockpile_id, crop_type)
+						return Actions.move_to_position(stockpile.pos_x, stockpile.pos_y)
+					if agent.is_at(plot_x, plot_y):
+						return Actions.deliver_farm(plot_id, stockpile_id, crop_type)
+					return Actions.move_to_position(plot_x, plot_y)
 			state.job_board.release_activity(activity.get("activity_id", -1), state.tick)
 			agent.current_activity_id = -1
 			return {}

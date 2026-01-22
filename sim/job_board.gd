@@ -100,14 +100,16 @@ func post_craft_at_station(station_id: int, recipe_id: String, created_tick: int
 		created_tick
 	)
 
-func post_farm_task(plot_id: int, task_type: String, crop_type: String, created_tick: int) -> Dictionary:
+func post_farm_task(plot_id: int, task_type: String, crop_type: String, created_tick: int,
+					stockpile_id: int = -1) -> Dictionary:
 	return post_activity(
 		ACTIVITY_FARM_TASK,
 		plot_id,
 		{
 			"plot_id": plot_id,
 			"task_type": task_type,
-			"crop_type": crop_type
+			"crop_type": crop_type,
+			"stockpile_id": stockpile_id
 		},
 		created_tick
 	)
@@ -214,6 +216,18 @@ func has_activity_for_craft(station_id: int, recipe_id: String) -> bool:
 			continue
 		var data: Dictionary = activity.get("data", {})
 		if int(data.get("station_id", -1)) == station_id and data.get("recipe_id", "") == recipe_id:
+			return true
+	return false
+
+func has_activity_for_farm_plot(plot_id: int, task_type: String) -> bool:
+	for activity in activities:
+		if activity.get("type", "") != ACTIVITY_FARM_TASK:
+			continue
+		var status: String = activity.get("status", STATUS_AVAILABLE)
+		if status == STATUS_CANCELLED or status == STATUS_COMPLETED:
+			continue
+		var data: Dictionary = activity.get("data", {})
+		if int(data.get("plot_id", -1)) == plot_id and data.get("task_type", "") == task_type:
 			return true
 	return false
 
