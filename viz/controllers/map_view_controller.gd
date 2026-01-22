@@ -17,9 +17,9 @@ var _map_view: MapView
 var _sim_runner: SimRunnerNode
 
 ## Cached data to prevent unnecessary updates
-var _last_world_hash: int = 0
 var _last_agents_hash: int = 0
 var _last_snapshot_hash: int = 0
+var _world_data_initialized: bool = false
 
 
 func _init(map_view: MapView, sim_runner: SimRunnerNode) -> void:
@@ -32,59 +32,35 @@ func update_map_data() -> void:
 	if _sim_runner.sim == null:
 		return
 
-	# Check if data actually changed to prevent expensive rebuilds
-	var current_hash = _calculate_world_data_hash()
-	if current_hash == _last_world_hash:
+	var world: RefCounted = _sim_runner.sim.state.world
+	if not _world_data_initialized:
+		var world_data := _build_full_world_data(world)
+		_map_view.update_world_data(world_data)
+		_world_data_initialized = true
+		world.consume_dirty_claim_tiles()
+		world.consume_dirty_pollution_tiles()
+		map_data_updated.emit(world_data)
 		return
 
-	# Build world data dictionary for map view
-	var world: RefCounted = _sim_runner.sim.state.world
-	var world_data: Dictionary = {}
+	var dirty_claims: Array = world.consume_dirty_claim_tiles()
+	var dirty_pollution: Array = world.consume_dirty_pollution_tiles()
 
-	# Claims data
-	var claims: Dictionary = {}
-	for y in range(world.height):
-		for x in range(world.width):
-			var owner_id: int = world.get_claim_owner(x, y)
-			if owner_id > 0:
-				claims["%d,%d" % [x, y]] = owner_id
-	world_data["claims"] = claims
+	var claims_delta: Dictionary = {}
+	for tile in dirty_claims:
+		var owner_id: int = world.get_claim_owner(tile.x, tile.y)
+		claims_delta["%d,%d" % [tile.x, tile.y]] = owner_id
 
-	# Resource nodes
-	var resource_nodes: Array = []
-	for node in world.resource_nodes:
-		resource_nodes.append({
-			"pos_x": node.pos_x,
-			"pos_y": node.pos_y,
-			"type": node.type,
-			"stock": node.stock,
-			"max_stock": node.max_stock
-		})
-	world_data["resource_nodes"] = resource_nodes
+	var pollution_delta: Dictionary = {}
+	for tile in dirty_pollution:
+		var p: float = world.get_pollution(tile.x, tile.y)
+		pollution_delta["%d,%d" % [tile.x, tile.y]] = p
 
-	# Workshops
-	var workshops: Array = []
-	for workshop in world.workshops:
-		workshops.append({
-			"pos_x": workshop.pos_x,
-			"pos_y": workshop.pos_y,
-			"is_built": workshop.is_built
-		})
-	world_data["workshops"] = workshops
+	if not claims_delta.is_empty() or not pollution_delta.is_empty():
+		_map_view.update_world_tiles(claims_delta, pollution_delta)
 
-	# Pollution data - pass entire grid for heatmap rendering
-	var pollution: Dictionary = {}
-	for y in range(world.height):
-		for x in range(world.width):
-			var p: float = world.get_pollution(x, y)
-			if p > 0.0:
-				pollution["%d,%d" % [x, y]] = p
-	world_data["pollution"] = pollution
-
-	# Update map view
-	_map_view.update_world_data(world_data)
-	_last_world_hash = current_hash
-	map_data_updated.emit(world_data)
+	var resource_nodes := _build_resource_nodes_data(world)
+	var workshops := _build_workshops_data(world)
+	_map_view.update_static_world_data(resource_nodes, workshops)
 
 
 ## Update agents display
@@ -183,18 +159,54 @@ func get_selection() -> SelectionModel:
 	return _map_view.selection
 
 
-## Calculate hash for world data to detect changes
-func _calculate_world_data_hash() -> int:
-	if _sim_runner.sim == null:
-		return 0
+## Build a full world payload for initial map view setup
+func _build_full_world_data(world: RefCounted) -> Dictionary:
+	var world_data: Dictionary = {}
 
-	var world: RefCounted = _sim_runner.sim.state.world
-	var hash_data: Dictionary = {}
-	
-	# Include key data that affects rendering
-	hash_data["claims_count"] = world.workshops.size()
-	hash_data["resource_nodes_count"] = world.resource_nodes.size()
-	hash_data["workshops_count"] = world.workshops.size()
-	hash_data["tick"] = _sim_runner.sim.state.tick
-	
-	return hash_data.hash()
+	var claims: Dictionary = {}
+	for y in range(world.height):
+		for x in range(world.width):
+			var owner_id: int = world.get_claim_owner(x, y)
+			if owner_id > 0:
+				claims["%d,%d" % [x, y]] = owner_id
+	world_data["claims"] = claims
+
+	var resource_nodes := _build_resource_nodes_data(world)
+	world_data["resource_nodes"] = resource_nodes
+
+	var workshops := _build_workshops_data(world)
+	world_data["workshops"] = workshops
+
+	var pollution: Dictionary = {}
+	for y in range(world.height):
+		for x in range(world.width):
+			var p: float = world.get_pollution(x, y)
+			if p > 0.0:
+				pollution["%d,%d" % [x, y]] = p
+	world_data["pollution"] = pollution
+
+	return world_data
+
+
+func _build_resource_nodes_data(world: RefCounted) -> Array:
+	var resource_nodes: Array = []
+	for node in world.resource_nodes:
+		resource_nodes.append({
+			"pos_x": node.pos_x,
+			"pos_y": node.pos_y,
+			"type": node.type,
+			"stock": node.stock,
+			"max_stock": node.max_stock
+		})
+	return resource_nodes
+
+
+func _build_workshops_data(world: RefCounted) -> Array:
+	var workshops: Array = []
+	for workshop in world.workshops:
+		workshops.append({
+			"pos_x": workshop.pos_x,
+			"pos_y": workshop.pos_y,
+			"is_built": workshop.is_built
+		})
+	return workshops

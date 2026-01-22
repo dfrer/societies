@@ -53,6 +53,7 @@ var _agents_data: Array = []
 var _last_world_hash: int = 0
 var _last_agents_hash: int = 0
 var _last_snapshot_hash: int = 0
+var _last_static_world_hash: int = 0
 var _resource_nodes: Array = []
 var _workshops: Array = []
 var _claims: Dictionary = {}
@@ -121,6 +122,38 @@ func update_world_data(world_data: Dictionary) -> void:
 	_workshops = world_data.get("workshops", [])
 	_pollution_data = world_data.get("pollution", [])
 	_last_world_hash = new_hash
+	queue_redraw()
+
+
+func update_static_world_data(resource_nodes: Array, workshops: Array) -> void:
+	var static_hash := resource_nodes.hash() ^ workshops.hash()
+	if static_hash == _last_static_world_hash:
+		return
+
+	_resource_nodes = resource_nodes
+	_workshops = workshops
+	_last_static_world_hash = static_hash
+	queue_redraw()
+
+
+func update_world_tiles(claims_delta: Dictionary, pollution_delta: Dictionary) -> void:
+	if claims_delta.is_empty() and pollution_delta.is_empty():
+		return
+
+	for key in claims_delta.keys():
+		var owner_id: int = claims_delta[key]
+		if owner_id > 0:
+			_claims[key] = owner_id
+		else:
+			_claims.erase(key)
+
+	for key in pollution_delta.keys():
+		var pollution: float = float(pollution_delta[key])
+		if pollution > 0.0:
+			_pollution_data[key] = pollution
+		else:
+			_pollution_data.erase(key)
+
 	queue_redraw()
 
 
