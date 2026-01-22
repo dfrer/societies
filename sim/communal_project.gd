@@ -20,11 +20,15 @@ var status: String = STATUS_COLLECTING
 var started_tick: int = 0
 var completion_tick: int = 0
 var initiator_id: int = 0  # Agent who started the project
+var build_progress: int = 0
+var build_required: int = 0
+var assigned_workers: Array = []
 
 func _init() -> void:
 	required_resources = {}
 	contributed = {}
 	contributors = []
+	assigned_workers = []
 
 ## Initialize a new project
 func init_project(p_id: int, p_type: String, p_faction_id: int, 
@@ -114,7 +118,10 @@ func to_dict() -> Dictionary:
 		"status": status,
 		"started_tick": started_tick,
 		"completion_tick": completion_tick,
-		"initiator_id": initiator_id
+		"initiator_id": initiator_id,
+		"build_progress": build_progress,
+		"build_required": build_required,
+		"assigned_workers": assigned_workers.duplicate()
 	}
 
 ## Deserialize from dictionary
@@ -147,5 +154,10 @@ static func from_dict(d: Dictionary) -> CommunalProject:
 	project.started_tick = int(d.get("started_tick", 0))
 	project.completion_tick = int(d.get("completion_tick", 0))
 	project.initiator_id = int(d.get("initiator_id", 0))
+	project.build_progress = int(d.get("build_progress", 0))
+	project.build_required = int(d.get("build_required", 0))
+	project.assigned_workers = []
+	for worker_id in d.get("assigned_workers", []):
+		project.assigned_workers.append(int(worker_id))
 	
 	return project

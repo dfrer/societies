@@ -46,9 +46,9 @@
 - [x] Post build-site activities for communal project build phases. (sim/systems/job_board_system.gd, sim/job_board.gd)
 
 ## P0 — Communal Projects as Build Sites
-- [ ] Add build site state (required inputs, delivered inputs, build progress, assigned workers). (sim/communal_projects_system.gd)
-- [ ] Add phases: COLLECTING → BUILDING → COMPLETED with tick-based progress. (sim/communal_projects_system.gd)
-- [ ] Create BUILD_SITE tasks from active build sites and finalize on progress completion. (sim/communal_projects_system.gd, sim/job_board.gd)
+- [x] Add build site state (required inputs, delivered inputs, build progress, assigned workers). (sim/communal_projects_system.gd)
+- [x] Add phases: COLLECTING → BUILDING → COMPLETED with tick-based progress. (sim/communal_projects_system.gd)
+- [x] Create BUILD_SITE tasks from active build sites and finalize on progress completion. (sim/communal_projects_system.gd, sim/job_board.gd)
 - [ ] Preserve project type API and resource requirement definition. (sim/communal_projects_system.gd)
 
 ## P0 — Shared Storage + Logistics
