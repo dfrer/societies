@@ -24,7 +24,10 @@ var ticks_per_day: int = 24
 ## How often to emit state_changed signal (in ticks)
 @export var ui_update_interval_ticks: int = 1
 
-## Maximum ticks to process per frame to avoid freezing (hard ceiling)
+## How often to compute checksum for UI snapshots (in ticks)
+@export var checksum_interval_ticks: int = 24
+
+## Maximum ticks to process per frame to avoid freezing
 @export var max_ticks_per_frame: int = 100
 
 ## Time budget per frame for stepping (in milliseconds)
@@ -292,8 +295,8 @@ func _emit_state_changed() -> void:
 	_last_emitted_tick = current_tick
 
 	var checksum_value := ""
-	if checksum_interval_ticks > 0:
-		if _last_checksum_tick < 0 or (current_tick - _last_checksum_tick) >= checksum_interval_ticks:
+	if self.checksum_interval_ticks > 0:
+		if _last_checksum_tick < 0 or (current_tick - _last_checksum_tick) >= self.checksum_interval_ticks:
 			checksum_value = sim.checksum()
 			_last_checksum_tick = current_tick
 
