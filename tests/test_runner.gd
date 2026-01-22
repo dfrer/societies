@@ -21,6 +21,7 @@ const EXCLUDE_FILES := [
 
 const DEFAULT_OUTPUT_PATH := "user://test_output.txt"
 const DEFAULT_JSON_OUTPUT_PATH := "user://test_results.json"
+const DEFAULT_TEST_TIMEOUT_MS := 120000
 const REQUIRED_CONFIG_FILES := [
 	"res://config/tuning.json",
 	"res://config/items.json",
@@ -31,6 +32,7 @@ func _init() -> void:
 	var output_path := _get_output_path()
 	var filter := _get_filter()
 	var json_output_path := _get_json_output_path()
+	var timeout_ms := _get_timeout_ms()
 	var output_file := FileAccess.open(output_path, FileAccess.WRITE)
 	if not output_file:
 		print("Failed to open output file")
@@ -44,6 +46,7 @@ func _init() -> void:
 	log_msg.call("=== Societies Simulation Test Suite ===")
 	log_msg.call("")
 	log_msg.call("Output file: %s" % output_path)
+	log_msg.call("Per-test timeout (ms): %d" % timeout_ms)
 	if not filter.is_empty():
 		log_msg.call("Filter: %s" % filter)
 	if not json_output_path.is_empty():
@@ -60,6 +63,7 @@ func _init() -> void:
 	var total_count := 0
 	var results: Array[Dictionary] = []
 	var failures_by_file: Dictionary = {}
+	var aborted_due_to_timeout := false
 	
 	var test_files: Array[String] = []
 	
@@ -122,8 +126,20 @@ func _init() -> void:
 		
 		var success := false
 		# Check if it's a newer TestCase version by method existence
+		var run_result := _run_with_timeout(instance, timeout_ms)
+		if run_result["timed_out"]:
+			log_msg.call("  Result: TIMED OUT after %d ms" % timeout_ms)
+			status = "timeout"
+			failures.append("Test timed out after %d ms" % timeout_ms)
+			failed_count += 1
+			_failures_add(failures_by_file, path)
+			instance = null
+			script = null
+			results.append(_result_entry(path, status, failures, start_ms))
+			aborted_due_to_timeout = true
+			break
+		success = run_result["success"]
 		if instance.has_method("get_failures"):
-			success = instance.run()
 			if success:
 				log_msg.call("  Result: PASSED")
 				passed_count += 1
@@ -139,7 +155,6 @@ func _init() -> void:
 				_failures_add(failures_by_file, path)
 		else:
 			# Legacy/Simple bool returner
-			success = instance.run()
 			if success:
 				log_msg.call("  Result: PASSED")
 				passed_count += 1
@@ -157,13 +172,18 @@ func _init() -> void:
 		# CRITICAL: Explicit cleanup to prevent memory accumulation
 		instance = null
 		script = null
-				
+		
 		results.append(_result_entry(path, status, failures, start_ms))
 		log_msg.call("")
+	if aborted_due_to_timeout:
+		break
 
 	log_msg.call("=== Test Summary ===")
 	log_msg.call("Tests run: %d | Passed: %d | Failed: %d" % [total_count, passed_count, failed_count])
 	log_msg.call("")
+	if aborted_due_to_timeout:
+		log_msg.call("ABORTED: Test run stopped due to timeout.")
+		log_msg.call("")
 	if not failures_by_file.is_empty():
 		log_msg.call("=== Failure Summary ===")
 		for failed_path in failures_by_file.keys():
@@ -175,7 +195,7 @@ func _init() -> void:
 	
 	output_file.close()
 	
-	if failed_count == 0 and total_count > 0:
+	if failed_count == 0 and total_count > 0 and not aborted_due_to_timeout:
 		log_msg.call("ALL TESTS PASSED")
 		quit(0)
 	else:
@@ -223,6 +243,13 @@ func _get_filter() -> String:
 		if arg.begins_with("--filter="):
 			return arg.get_slice("=", 1)
 	return ""
+
+func _get_timeout_ms() -> int:
+	var timeout_ms := DEFAULT_TEST_TIMEOUT_MS
+	for arg in OS.get_cmdline_args():
+		if arg.begins_with("--timeout_ms="):
+			timeout_ms = int(arg.get_slice("=", 1))
+	return timeout_ms
 
 func _filter_tests(test_files: Array[String], filter: String) -> Array[String]:
 	if filter.is_empty():
@@ -273,3 +300,19 @@ func _write_json_results(log_msg: Callable, json_path: String, results: Array[Di
 	file.store_string(json_str)
 	file.close()
 	log_msg.call("Wrote JSON results to %s" % json_path)
+
+func _run_with_timeout(instance: Object, timeout_ms: int) -> Dictionary:
+	var thread := Thread.new()
+	var start_err := thread.start(Callable(self, "_thread_run_test"), instance)
+	if start_err != OK:
+		return {"success": false, "timed_out": false}
+	var start_ms := Time.get_ticks_msec()
+	while thread.is_alive():
+		if Time.get_ticks_msec() - start_ms > timeout_ms:
+			return {"success": false, "timed_out": true}
+		OS.delay_msec(25)
+	var success := thread.wait_to_finish()
+	return {"success": bool(success), "timed_out": false}
+
+func _thread_run_test(instance: Object) -> bool:
+	return instance.run()
