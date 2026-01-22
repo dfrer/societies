@@ -26,7 +26,7 @@ var items: Dictionary = {}
 var recipes: Dictionary = {}
 var recipe_sorted_ids: Array = []
 var events: Array = [] # Array[Dictionary]
-var intents: Array = [] # Array[Dictionary]
+var intents_by_id: Dictionary = {} # intent_id -> Dictionary
 var decision_traces: Array = [] # Array[Dictionary]
 var decision_trace_enabled: bool = false
 var decision_trace_sample_interval: int = 1
@@ -157,7 +157,7 @@ func to_dict() -> Dictionary:
 		"tuning": _sanitize_tuning_for_serialization(tuning),
 		"items": _sanitize_items_for_serialization(items),
 		"recipes": recipes_data,
-		"intents": _sanitize_intents_for_serialization(intents),
+		"intents": _sanitize_intents_for_serialization(intents_by_id),
 		"decision_traces": _sanitize_decision_traces_for_serialization(decision_traces),
 		"next_agent_id": next_agent_id,
 		"next_faction_id": next_faction_id,
@@ -256,9 +256,12 @@ func _sanitize_metrics_for_serialization(history: Array) -> Array:
 		result.append(sanitized)
 	return result
 
-func _sanitize_intents_for_serialization(intents_data: Array) -> Array:
+func _sanitize_intents_for_serialization(intents_data: Variant) -> Array:
 	var result := []
-	for intent in intents_data:
+	var source_intents: Array = intents_data
+	if intents_data is Dictionary:
+		source_intents = intents_data.values()
+	for intent in source_intents:
 		result.append({
 			"intent_id": int(intent.get("intent_id", 0)),
 			"agent_id": int(intent.get("agent_id", 0)),
@@ -358,7 +361,12 @@ static func from_dict(d: Dictionary) -> SimState:
 	state.next_node_id = int(d.get("next_node_id", 1))
 	state.next_intent_id = int(d.get("next_intent_id", 1))
 	state.events = _sanitize_events_for_deserialization(d.get("events", []))
-	state.intents = state._sanitize_intents_for_serialization(d.get("intents", []))
+	state.intents_by_id = {}
+	var intents_list := state._sanitize_intents_for_serialization(d.get("intents", []))
+	for intent in intents_list:
+		var intent_id := int(intent.get("intent_id", 0))
+		if intent_id > 0:
+			state.intents_by_id[intent_id] = intent
 	state.decision_traces = state._sanitize_decision_traces_for_serialization(d.get("decision_traces", []))
 
 	return state
@@ -453,7 +461,7 @@ func get_average_hunger() -> float:
 ## Log an event (ring buffer - oldest events removed when exceeding cap)
 const MAX_EVENTS := 500
 const MAX_DECISION_TRACES := 1000
-const MAX_INTENTS := 1000
+const INTENT_PRUNE_AGE_TICKS := 500
 
 func log_event(type: String, data: Dictionary) -> void:
 	events.append({
@@ -476,22 +484,30 @@ func create_intent(agent_id: int, intent_type: String, data: Dictionary, current
 		"data": data.duplicate(true)
 	}
 	next_intent_id += 1
-	intents.append(intent)
+	intents_by_id[intent["intent_id"]] = intent
+	_prune_resolved_intents(current_tick)
 	return intent["intent_id"]
 
 func resolve_intent(intent_id: int, status: String, current_tick: int) -> void:
-	for intent in intents:
-		if intent.get("intent_id", -1) == intent_id:
-			intent["status"] = status
-			intent["updated_tick"] = current_tick
-			_compact_resolved_intent(intent)
-			return
+	var intent: Dictionary = intents_by_id.get(intent_id, {})
+	if intent.is_empty():
+		return
+	intent["status"] = status
+	intent["updated_tick"] = current_tick
+	_prune_resolved_intents(current_tick)
 
 func get_intent(intent_id: int) -> Dictionary:
-	for intent in intents:
-		if intent.get("intent_id", -1) == intent_id:
-			return intent
-	return {}
+	return intents_by_id.get(intent_id, {})
+
+func _prune_resolved_intents(current_tick: int) -> void:
+	var cutoff := current_tick - INTENT_PRUNE_AGE_TICKS
+	var to_remove := []
+	for intent_id in intents_by_id:
+		var intent: Dictionary = intents_by_id[intent_id]
+		if intent.get("status", "active") != "active" and int(intent.get("updated_tick", 0)) <= cutoff:
+			to_remove.append(intent_id)
+	for intent_id in to_remove:
+		intents_by_id.erase(intent_id)
 
 func prune_intents(max_intents: int = MAX_INTENTS) -> void:
 	if intents.size() <= max_intents:
