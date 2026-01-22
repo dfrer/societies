@@ -28,8 +28,8 @@
         },
         {
             "id": "wooden_axe_hand",
-            "name": "Wooden Axe (Hand)",
-            "station": "hand",
+            "name": "Wooden Axe (Workbench)",
+            "station": "workbench",
             "inputs": {
                 "Logs": 1,
                 "Planks": 3
@@ -41,8 +41,8 @@
         },
         {
             "id": "wooden_pickaxe_hand",
-            "name": "Wooden Pickaxe (Hand)",
-            "station": "hand",
+            "name": "Wooden Pickaxe (Workbench)",
+            "station": "workbench",
             "inputs": {
                 "Logs": 1,
                 "Planks": 3
