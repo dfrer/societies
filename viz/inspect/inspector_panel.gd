@@ -7,11 +7,16 @@ extends PanelContainer
 @onready var tile_inspector: TileInspector = $MarginContainer/TabContainer/Tile
 @onready var node_inspector: NodeInspector = $MarginContainer/TabContainer/Node
 @onready var agent_inspector: AgentInspector = $MarginContainer/TabContainer/Agent
+const TILE_TAB_INDEX := 0
+const NODE_TAB_INDEX := 1
+const AGENT_TAB_INDEX := 2
 
 
 func _ready() -> void:
 	# Start with Tile tab active
-	tab_container.current_tab = 0
+	tab_container.current_tab = TILE_TAB_INDEX
+	tab_container.set_tab_hidden(NODE_TAB_INDEX, true)
+	tab_container.set_tab_hidden(AGENT_TAB_INDEX, true)
 
 
 ## Update inspector based on tile selection
@@ -43,15 +48,20 @@ func update_selection(tile: Vector2i, sim_state: SimState) -> void:
 	if resource_node != null:
 		node_inspector.update_resource_node(resource_node)
 		# Auto-switch to Node tab when node is present
-		tab_container.current_tab = 1
+		tab_container.set_tab_hidden(NODE_TAB_INDEX, false)
+		tab_container.current_tab = NODE_TAB_INDEX
 	elif workshop != null:
 		node_inspector.update_workshop(workshop)
 		# Auto-switch to Node tab when workshop is present
-		tab_container.current_tab = 1
+		tab_container.set_tab_hidden(NODE_TAB_INDEX, false)
+		tab_container.current_tab = NODE_TAB_INDEX
 	else:
 		node_inspector.clear()
 		# Stay on Tile tab if no node
-		tab_container.current_tab = 0
+		tab_container.set_tab_hidden(NODE_TAB_INDEX, true)
+		tab_container.current_tab = TILE_TAB_INDEX
+	
+	tab_container.set_tab_hidden(AGENT_TAB_INDEX, true)
 
 
 
@@ -63,7 +73,9 @@ func update_agent_selection(agent_id: int, sim_state: SimState) -> void:
 	
 	agent_inspector.update_agent(agent_id, sim_state)
 	# Switch to Agent tab
-	tab_container.current_tab = 2
+	tab_container.set_tab_hidden(AGENT_TAB_INDEX, false)
+	tab_container.set_tab_hidden(NODE_TAB_INDEX, true)
+	tab_container.current_tab = AGENT_TAB_INDEX
 
 
 ## Get current agent target position for line drawing
@@ -76,4 +88,6 @@ func clear() -> void:
 	tile_inspector.clear()
 	node_inspector.clear()
 	agent_inspector.clear()
-	tab_container.current_tab = 0
+	tab_container.set_tab_hidden(NODE_TAB_INDEX, true)
+	tab_container.set_tab_hidden(AGENT_TAB_INDEX, true)
+	tab_container.current_tab = TILE_TAB_INDEX
