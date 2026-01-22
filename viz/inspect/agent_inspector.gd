@@ -125,6 +125,7 @@ func update_agent(agent_id: int, sim_state: SimState) -> void:
 	
 	# Inventory
 	_inventory_label.text = _format_inventory(agent)
+	_inventory_label.tooltip_text = _format_inventory_tooltip(agent)
 	
 	# Needs & Traits
 	_hunger_label.text = "Hunger: %.1f" % agent.get_hunger()
@@ -140,8 +141,10 @@ func update_agent(agent_id: int, sim_state: SimState) -> void:
 	
 	# Current action
 	_action_label.text = "Action: %s" % _format_action(agent.current_action)
+	_action_label.tooltip_text = _format_action_tooltip(agent.current_action)
 	_target_label.text = _format_target(agent, sim_state)
 	_contract_label.text = _format_contract(agent, sim_state)
+	_contract_label.tooltip_text = _format_contract_tooltip(agent, sim_state)
 
 
 func _format_inventory(agent: Agent) -> String:
@@ -160,6 +163,47 @@ func _format_inventory(agent: Agent) -> String:
 	return "Inventory:\n  " + "\n  ".join(parts)
 
 
+func _format_inventory_tooltip(agent: Agent) -> String:
+	if _sim_state == null or agent.inventory.is_empty():
+		return ""
+	
+	var items := agent.inventory.keys()
+	items.sort()
+	var lines := []
+	for item in items:
+		var description := _get_item_description(item)
+		if description == "":
+			continue
+		lines.append("%s (%d): %s" % [item, agent.inventory[item], description])
+	
+	return "\n".join(lines)
+
+
+func _format_action_tooltip(action: Dictionary) -> String:
+	var item_id := _get_action_item_id(action)
+	if item_id == "":
+		return ""
+	return _get_item_description(item_id)
+
+
+func _format_contract_tooltip(agent: Agent, sim_state: SimState) -> String:
+	if agent.active_contract_id <= 0 or sim_state == null:
+		return ""
+	var contract: Contract = sim_state.contracts_system.get_contract(agent.active_contract_id)
+	if contract == null:
+		return ""
+	return _get_item_description(contract.item)
+
+
+func _get_action_item_id(action: Dictionary) -> String:
+	var action_type: String = action.get("type", "")
+	match action_type:
+		"eat", "buy", "bid", "PLACE_BUY_ORDER", "sell", "ask", "PLACE_SELL_ORDER":
+			return action.get("item", "")
+		_:
+			return ""
+
+
 func _format_skills(skills: Dictionary) -> String:
 	if skills.is_empty():
 		return "(none)"
@@ -168,6 +212,14 @@ func _format_skills(skills: Dictionary) -> String:
 	for skill in skills:
 		parts.append("%s: %d" % [skill, skills[skill]])
 	return ", ".join(parts)
+
+
+func _get_item_description(item_id: String) -> String:
+	if _sim_state == null:
+		return ""
+	var item_data: Dictionary = _sim_state.items.get(item_id, {})
+	var description = item_data.get("description", "")
+	return str(description) if description != null else ""
 
 
 func _format_faction(agent: Agent, sim_state: SimState) -> String:
@@ -314,6 +366,7 @@ func clear() -> void:
 		_alive_label.text = "Status: --"
 		_money_label.text = "Money: --"
 		_inventory_label.text = "Inventory: --"
+		_inventory_label.tooltip_text = ""
 		_hunger_label.text = "Hunger: --"
 		_role_label.text = "Role: --"
 		_skills_label.text = "Skills: --"
@@ -321,5 +374,7 @@ func clear() -> void:
 		_faction_label.text = "Faction: --"
 		_market_ban_label.text = "Market Ban: --"
 		_action_label.text = "Action: --"
+		_action_label.tooltip_text = ""
 		_target_label.text = "Target: --"
 		_contract_label.text = "Contract: --"
+		_contract_label.tooltip_text = ""

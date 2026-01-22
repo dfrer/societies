@@ -246,9 +246,25 @@ func _update_item_filter_options() -> void:
 		items.sort()
 		for item in items:
 			_item_filter_opt.add_item(item)
+			_set_item_option_tooltip(_item_filter_opt, _item_filter_opt.item_count - 1, item)
 			
 	# Note: If new items appear dynamically, this might need more robust updating.
 	# But items are usually static in this sim.
+
+func _set_item_option_tooltip(option_button: OptionButton, index: int, item_id: String) -> void:
+	var description := _get_item_description(item_id)
+	if description == "":
+		return
+	var popup := option_button.get_popup()
+	if popup:
+		popup.set_item_tooltip(index, description)
+
+func _get_item_description(item_id: String) -> String:
+	if _sim_state == null:
+		return ""
+	var item_data: Dictionary = _sim_state.items.get(item_id, {})
+	var description = item_data.get("description", "")
+	return str(description) if description != null else ""
 
 func _update_contract_list() -> void:
 	# Clear list
@@ -354,6 +370,9 @@ func _create_contract_row(c: Contract) -> Button:
 	lbl_item.text = "%s x%d" % [c.item, c.qty]
 	lbl_item.custom_minimum_size.x = 80
 	lbl_item.clip_text = true
+	var item_description := _get_item_description(c.item)
+	if item_description != "":
+		lbl_item.tooltip_text = item_description
 	hbox.add_child(lbl_item)
 	
 	# Payout
@@ -396,6 +415,9 @@ func _update_details_view() -> void:
 	var text = "[b]Contract #%d[/b]\n" % c.id
 	text += "Status: %s\n" % c.status
 	text += "Item: [color=yellow]%s[/color] x%d\n" % [c.item, c.qty]
+	var item_description := _get_item_description(c.item)
+	if item_description != "":
+		text += "Item info: [i]%s[/i]\n" % item_description
 	text += "Payout: [color=green]%d[/color] (Escrow: %d)\n" % [c.payout, c.escrow]
 	text += "Issuer: %s #%d\n" % [c.issuer_type.capitalize(), c.issuer_id]
 	if c.worker_id > 0:
