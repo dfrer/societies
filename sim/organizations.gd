@@ -144,8 +144,8 @@ func _find_zoned_site(state: SimState, zone_tag: String) -> Vector2i:
 			return a["x"] < b["x"]
 		return a["dist"] < b["dist"]
 	)
-	var best := candidates[0]
-	return Vector2i(best["x"], best["y"])
+	var best: Dictionary = candidates[0]
+	return Vector2i(int(best["x"]), int(best["y"]))
 
 func _is_tile_occupied(state: SimState, x: int, y: int) -> bool:
 	for structure in state.structures.structures:
