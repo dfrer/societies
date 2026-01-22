@@ -115,6 +115,7 @@
     "job_board_build_site_post_limit": 10,
     "job_board_max_inactive": 200,
     "task_project_system_enabled": true,
+    "project_max_stale_ticks": 240,
     "stamina_max": 100,
     "stamina_drain_gather": 1.0,
     "stamina_drain_move": 0.2,
