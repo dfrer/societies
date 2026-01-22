@@ -25,9 +25,7 @@ current_tab = 0
 layout_mode = 2
 
 [node name="Node" parent="MarginContainer/TabContainer" instance=ExtResource("3_node_inspector")]
-visible = false
 layout_mode = 2
 
 [node name="Agent" parent="MarginContainer/TabContainer" instance=ExtResource("4_agent_inspector")]
-visible = false
 layout_mode = 2
