@@ -48,17 +48,21 @@ func add_progression_goal(agent: Agent, world: World, tuning: Dictionary, recipe
 	return true
 
 func _has_allowed_recipe(output_item: String, recipes: Dictionary, world: World) -> bool:
-	var has_advanced_workshop := world.has_advanced_workshop()
 	for recipe_id in recipes:
 		var recipe: Recipe = recipes[recipe_id]
 		if recipe.outputs.has(output_item):
 			if recipe.tier == "advanced":
 				if recipe.station == "hand":
 					continue
-				if not has_advanced_workshop:
-					continue
+			if not _is_station_available(recipe, world):
+				continue
 			return true
 	return false
+
+func _is_station_available(recipe: Recipe, world: World) -> bool:
+	if recipe.station == "hand" or recipe.station == "workbench":
+		return true
+	return world.has_workshop_type(recipe.station)
 
 # Helper function to determine if agent should claim resources
 func _should_claim_resources(agent: Agent, world: World, tuning: Dictionary) -> bool:

@@ -223,19 +223,45 @@ static func _move_toward(agent: Agent, target_x: int, target_y: int, world: Worl
 	# Drain stamina for movement
 	var move_cost: float = tuning.get("stamina_drain_move", 0.5)
 	
-	# Road speedup: reduce stamina cost if moving from/to a road? 
-	# Let's check both current and next tile for simplicity
-	# Wait, we only know current pos and target x/y.
-	# Let's check if current tile has road.
-	if world != null and world.has_road(agent.pos_x, agent.pos_y):
+	var next_step := Vector2i(agent.pos_x, agent.pos_y)
+	if world != null:
+		var candidates := []
+		var offsets := [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]
+		for offset in offsets:
+			var nx := agent.pos_x + offset.x
+			var ny := agent.pos_y + offset.y
+			if not world.is_valid(nx, ny):
+				continue
+			var dist := absi(target_x - nx) + absi(target_y - ny)
+			candidates.append({
+				"x": nx,
+				"y": ny,
+				"dist": dist,
+				"road": world.has_road(nx, ny)
+			})
+		candidates.sort_custom(func(a, b):
+			if a["dist"] == b["dist"]:
+				if a["road"] == b["road"]:
+					if a["x"] == b["x"]:
+						return a["y"] < b["y"]
+					return a["x"] < b["x"]
+				return a["road"] and not b["road"]
+			return a["dist"] < b["dist"]
+		)
+		if not candidates.is_empty():
+			next_step = Vector2i(candidates[0]["x"], candidates[0]["y"])
+	else:
+		if dx != 0:
+			next_step = Vector2i(agent.pos_x + (1 if dx > 0 else -1), agent.pos_y)
+		elif dy != 0:
+			next_step = Vector2i(agent.pos_x, agent.pos_y + (1 if dy > 0 else -1))
+
+	if world != null and (world.has_road(agent.pos_x, agent.pos_y) or world.has_road(next_step.x, next_step.y)):
 		move_cost *= tuning.get("road_stamina_drain_multiplier", 0.5)
-	
+
 	agent.drain_stamina(move_cost)
-	
-	if dx != 0:
-		agent.pos_x += 1 if dx > 0 else -1
-	elif dy != 0:
-		agent.pos_y += 1 if dy > 0 else -1
+	agent.pos_x = next_step.x
+	agent.pos_y = next_step.y
 	
 	return agent.pos_x == target_x and agent.pos_y == target_y
 
@@ -494,6 +520,8 @@ static func _execute_queue_craft(agent: Agent, action: Dictionary, world: World,
 		if workshop == null or not workshop.is_ready() or not workshop.has_queue_space():
 			return true
 		if recipe.tier == "advanced" and workshop.workshop_type == "general":
+			return true
+		if recipe.station != "workshop" and recipe.station != "" and workshop.workshop_type != recipe.station:
 			return true
 		if not agent.is_at_workshop(workshop):
 			return true

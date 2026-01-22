@@ -15,6 +15,9 @@ var stats: Dictionary = {
 ## Project type definitions with their resource requirements
 const PROJECT_TYPES := {
 	"workshop": {"Planks": 15, "MetalIngot": 3},
+	"carpenter": {"Planks": 12, "Stone": 5},
+	"kiln": {"Planks": 6, "Stone": 12},
+	"smithy": {"Stone": 15, "MetalIngot": 8},
 	"farm": {"Planks": 10, "Berries": 5},
 	"road": {"Planks": 8},
 	"wall": {"Planks": 12, "MetalIngot": 2},
@@ -38,7 +41,7 @@ func start_project(faction_id: int, project_type: String, pos_x: int, pos_y: int
 			return null
 	
 	var project := CommunalProject.new()
-	var requirements := get_project_requirements(project_type)
+	var requirements := get_project_requirements(project_type, state)
 	if requirements.is_empty():
 		return null
 	project.init_project(next_project_id, project_type, faction_id, pos_x, pos_y,
@@ -58,9 +61,26 @@ func start_project(faction_id: int, project_type: String, pos_x: int, pos_y: int
 	return project
 
 ## Read-only access to project requirements for a given type
-func get_project_requirements(project_type: String) -> Dictionary:
+func get_project_requirements(project_type: String, state: SimState = null) -> Dictionary:
 	if not PROJECT_TYPES.has(project_type):
 		return {}
+	if state != null:
+		match project_type:
+			"carpenter":
+				return {
+					"Planks": state.get_tuning_int("workshop_carpenter_planks", 12),
+					"Stone": state.get_tuning_int("workshop_carpenter_stone", 5)
+				}
+			"kiln":
+				return {
+					"Planks": state.get_tuning_int("workshop_kiln_planks", 6),
+					"Stone": state.get_tuning_int("workshop_kiln_stone", 12)
+				}
+			"smithy":
+				return {
+					"Stone": state.get_tuning_int("workshop_smithy_stone", 15),
+					"MetalIngot": state.get_tuning_int("workshop_smithy_metal", 8)
+				}
 	var data: Dictionary = PROJECT_TYPES[project_type]
 	return data.duplicate(true)
 
@@ -128,11 +148,25 @@ func _complete_project(project: CommunalProject, world: World, state: SimState, 
 			workshop.built_by = project.initiator_id
 			workshop.build_start_tick = project.started_tick
 			workshop.build_ticks_remaining = 0  # Already built
+			workshop.workshop_type = "general"
 			var org := state.get_organization(project.faction_id)
 			if org:
 				workshop.owner_id = org.get_owner_id()
 				workshop.access_policy = "public"
 			world.add_workshop(workshop)
+		"carpenter", "kiln", "smithy":
+			var station := Workshop.new()
+			station.pos_x = project.pos_x
+			station.pos_y = project.pos_y
+			station.built_by = project.initiator_id
+			station.build_start_tick = project.started_tick
+			station.build_ticks_remaining = 0
+			station.workshop_type = project.project_type
+			var station_org := state.get_organization(project.faction_id)
+			if station_org:
+				station.owner_id = station_org.get_owner_id()
+				station.access_policy = "public"
+			world.add_workshop(station)
 		
 		"farm":
 			# Create a berry node at the location
@@ -193,6 +227,12 @@ func _get_build_ticks_for_project(project: CommunalProject, tuning: Dictionary) 
 	match project.project_type:
 		"workshop":
 			return maxi(1, int(tuning.get("project_build_ticks_workshop", default_ticks)))
+		"carpenter":
+			return maxi(1, int(tuning.get("project_build_ticks_carpenter", default_ticks)))
+		"kiln":
+			return maxi(1, int(tuning.get("project_build_ticks_kiln", default_ticks)))
+		"smithy":
+			return maxi(1, int(tuning.get("project_build_ticks_smithy", default_ticks)))
 		"farm":
 			return maxi(1, int(tuning.get("project_build_ticks_farm", default_ticks)))
 		"road":

@@ -55,7 +55,7 @@
         {
             "id": "planks",
             "name": "Planks",
-            "station": "workshop",
+            "station": "carpenter",
             "tier": "basic",
             "inputs": {
                 "Logs": 2
@@ -81,7 +81,7 @@
         {
             "id": "metal_ingot",
             "name": "Metal Ingot",
-            "station": "workshop",
+            "station": "kiln",
             "tier": "advanced",
             "inputs": {
                 "Ore": 2
@@ -94,7 +94,7 @@
         {
             "id": "axe",
             "name": "Axe",
-            "station": "workshop",
+            "station": "smithy",
             "tier": "advanced",
             "inputs": {
                 "Planks": 2,
@@ -108,7 +108,7 @@
         {
             "id": "pickaxe",
             "name": "Pickaxe",
-            "station": "workshop",
+            "station": "smithy",
             "tier": "advanced",
             "inputs": {
                 "Planks": 1,
@@ -122,7 +122,7 @@
         {
             "id": "mallet",
             "name": "Mallet",
-            "station": "workshop",
+            "station": "smithy",
             "tier": "advanced",
             "inputs": {
                 "Planks": 2,
@@ -136,7 +136,7 @@
         {
             "id": "shovel",
             "name": "Shovel",
-            "station": "workshop",
+            "station": "smithy",
             "tier": "advanced",
             "inputs": {
                 "Planks": 2,
