@@ -156,6 +156,9 @@ func _connect_signals() -> void:
 	map_view.tile_clicked.connect(_on_tile_clicked)
 	map_view.agent_clicked.connect(_on_agent_clicked)
 
+	# Data tab changes
+	data_tabs.tab_changed.connect(_on_data_tab_changed)
+
 
 func _setup_file_dialog() -> void:
 	file_dialog.file_mode = FileDialog.FILE_MODE_OPEN_FILE
@@ -389,6 +392,11 @@ func _on_agent_clicked(agent_id: int) -> void:
 func _on_overlay_changed() -> void:
 	# Handle overlay changes through map controller
 	_map_controller.on_overlay_changed()
+
+
+func _on_data_tab_changed(tab_index: int) -> void:
+	if _panel_controller:
+		_panel_controller.on_tab_changed(tab_index)
 
 
 # This method is now handled by PanelController

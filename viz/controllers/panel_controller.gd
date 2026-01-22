@@ -112,6 +112,30 @@ func update_panel(panel_name: String) -> void:
 				_metrics_panel.update_sim_state(sim_state)
 
 
+## Handle tab changes so panels refresh even when simulation is paused.
+func on_tab_changed(tab_index: int) -> void:
+	var panel_name := _panel_name_for_tab(tab_index)
+	if panel_name == "":
+		return
+	update_panel(panel_name)
+
+
+func _panel_name_for_tab(tab_index: int) -> String:
+	if tab_index < 0 or tab_index >= _data_tabs.get_child_count():
+		return ""
+
+	var tab := _data_tabs.get_child(tab_index)
+	if tab == _market_panel:
+		return "market"
+	if tab == _factions_panel:
+		return "factions"
+	if tab == _contracts_panel:
+		return "contracts"
+	if tab == _timeline_panel:
+		return "timeline"
+	return ""
+
+
 ## Set panel visibility
 func set_panel_visible(panel_name: String, visible: bool) -> void:
 	match panel_name:
