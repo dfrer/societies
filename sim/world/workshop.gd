@@ -18,7 +18,7 @@ var access_policy: String = "public"  # "public", "faction", "private"
 var usage_fee: int = 0  # coins per use
 
 ## Workshop type and specialization
-var workshop_type: String = "general"  # "general", "carpenter", "smithy", "kitchen"
+var workshop_type: String = "general"  # "general", "carpenter", "kiln", "smithy", "kitchen"
 var efficiency_bonus: float = 1.0  # Multiplier for crafting speed
 
 ## Construction state

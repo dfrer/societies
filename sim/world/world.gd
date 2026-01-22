@@ -314,6 +314,15 @@ func has_advanced_workshop() -> bool:
 			return true
 	return false
 
+## Check if a specific workshop type exists
+func has_workshop_type(workshop_type: String) -> bool:
+	if workshop_type == "" or workshop_type == "workshop":
+		return get_ready_workshop_count() > 0
+	for ws in workshops:
+		if ws.is_ready() and ws.workshop_type == workshop_type:
+			return true
+	return false
+
 ## Check if workshop exists at position
 func has_workshop_at(x: int, y: int) -> bool:
 	for ws in workshops:
@@ -329,11 +338,16 @@ func get_workshop_at(x: int, y: int) -> Workshop:
 	return null
 
 ## Find closest workshop to position
-func find_closest_workshop(x: int, y: int) -> Workshop:
+func find_closest_workshop(x: int, y: int, station_type: String = "") -> Workshop:
 	var closest: Workshop = null
 	var closest_dist := 999999
 	for ws in workshops:
 		if ws.is_ready():
+			if station_type != "":
+				if station_type == "workshop":
+					pass
+				elif ws.workshop_type != station_type:
+					continue
 			var dist := absi(ws.pos_x - x) + absi(ws.pos_y - y)
 			if dist < closest_dist:
 				closest_dist = dist

@@ -9,9 +9,11 @@ func tick(sim: RefCounted, state: SimState) -> void:
 	_refresh_project_delivery_activities(state)
 	_refresh_build_site_activities(state)
 	_refresh_haul_activities(state)
+	_refresh_craft_activities(state)
 	_post_project_delivery_activities(state)
 	_post_build_site_activities(state)
 	_post_haul_activities(state)
+	_post_craft_activities(state)
 	_post_farm_task_activities(state)
 	var max_inactive: int = state.get_tuning_int("job_board_max_inactive", 200)
 	state.job_board.prune_inactive(max_inactive)
@@ -212,6 +214,145 @@ func _refresh_haul_activities(state: SimState) -> void:
 				state.communal_projects.release_project_reservation(destination_project.id, item_type, quantity)
 			activity["updated_tick"] = state.tick
 			activity["worker_id"] = -1
+
+func _refresh_craft_activities(state: SimState) -> void:
+	for activity in state.job_board.activities:
+		if activity.get("type", "") != JobBoard.ACTIVITY_CRAFT_AT_STATION:
+			continue
+		var status: String = activity.get("status", JobBoard.STATUS_AVAILABLE)
+		if status == JobBoard.STATUS_COMPLETED or status == JobBoard.STATUS_CANCELLED:
+			continue
+		var data: Dictionary = activity.get("data", {})
+		var station_id: int = int(data.get("station_id", -1))
+		var recipe_id: String = data.get("recipe_id", "")
+		var workshop := state.world.get_workshop_by_id(station_id)
+		var recipe: Recipe = state.recipes.get(recipe_id)
+		if workshop == null or recipe == null or not workshop.is_ready():
+			_release_craft_reservations(state, data)
+			activity["status"] = JobBoard.STATUS_CANCELLED
+			activity["updated_tick"] = state.tick
+			activity["worker_id"] = -1
+
+func _post_craft_activities(state: SimState) -> void:
+	var post_limit: int = state.get_tuning_int("job_board_craft_post_limit", 8)
+	var per_station_limit: int = state.get_tuning_int("job_board_craft_per_station_limit", 2)
+	if post_limit <= 0 or per_station_limit <= 0:
+		return
+	if state.world.workshops.is_empty():
+		return
+	var recipes := _get_sorted_recipes(state)
+	if recipes.is_empty():
+		return
+	var stockpiles := state.structures.get_stockpiles_sorted()
+	if stockpiles.is_empty():
+		return
+
+	var posted := 0
+	var stations := state.world.workshops.duplicate()
+	stations.sort_custom(func(a, b): return a.id < b.id)
+	for station in stations:
+		if posted >= post_limit:
+			break
+		if not station.is_ready():
+			continue
+		var station_posts := 0
+		for recipe in recipes:
+			if posted >= post_limit or station_posts >= per_station_limit:
+				break
+			if not _station_supports_recipe(station, recipe):
+				continue
+			if state.job_board.has_activity_for_craft(station.id, recipe.id):
+				continue
+			var stockpile := _find_stockpile_for_recipe(station, recipe, stockpiles)
+			if stockpile == null:
+				continue
+			if not _should_craft_recipe(stockpile, recipe, state):
+				continue
+			var reserved_inputs := _reserve_recipe_inputs(stockpile, recipe)
+			if reserved_inputs.is_empty():
+				continue
+			var activity := state.job_board.post_craft_at_station(station.id, recipe.id, state.tick)
+			var data: Dictionary = activity.get("data", {})
+			data["stockpile_id"] = stockpile.id
+			data["reserved_inputs"] = reserved_inputs
+			activity["data"] = data
+			posted += 1
+			station_posts += 1
+
+func _get_sorted_recipes(state: SimState) -> Array:
+	var recipes: Array = []
+	var ids: Array = state.recipes.keys()
+	ids.sort()
+	for recipe_id in ids:
+		recipes.append(state.recipes[recipe_id])
+	return recipes
+
+func _station_supports_recipe(station: Workshop, recipe: Recipe) -> bool:
+	if recipe == null:
+		return false
+	if recipe.station == "" or recipe.station == "workshop":
+		return true
+	return station.workshop_type == recipe.station
+
+func _find_stockpile_for_recipe(station: Workshop, recipe: Recipe, stockpiles: Array) -> StructureState:
+	var closest: StructureState = null
+	var best_dist := 999999
+	for stockpile in stockpiles:
+		var has_all := true
+		for item in recipe.inputs:
+			var required: int = recipe.inputs[item]
+			if stockpile.get_available_item(item) < required:
+				has_all = false
+				break
+		if not has_all:
+			continue
+		var dist := absi(stockpile.pos_x - station.pos_x) + absi(stockpile.pos_y - station.pos_y)
+		if dist < best_dist:
+			best_dist = dist
+			closest = stockpile
+	return closest
+
+func _should_craft_recipe(stockpile: StructureState, recipe: Recipe, state: SimState) -> bool:
+	for item in recipe.outputs:
+		var target := _get_craft_target(item, state)
+		if target <= 0:
+			continue
+		if stockpile.get_available_item(item) < target:
+			return true
+	return false
+
+func _get_craft_target(item: String, state: SimState) -> int:
+	match item:
+		"Planks":
+			return state.get_tuning_int("organization_target_planks", 20)
+		"MetalIngot":
+			return state.get_tuning_int("organization_target_metal_ingot", 6)
+		"Axe", "Pickaxe", "Mallet", "Shovel":
+			return state.get_tuning_int("organization_target_tools", 2)
+	return 0
+
+func _reserve_recipe_inputs(stockpile: StructureState, recipe: Recipe) -> Dictionary:
+	var reserved := {}
+	for item in recipe.inputs:
+		var required: int = recipe.inputs[item]
+		var locked := stockpile.reserve_item(item, required)
+		if locked < required:
+			for reserved_item in reserved:
+				stockpile.release_reserved_item(reserved_item, reserved[reserved_item])
+			return {}
+		reserved[item] = locked
+	return reserved
+
+func _release_craft_reservations(state: SimState, data: Dictionary) -> void:
+	var stockpile_id: int = int(data.get("stockpile_id", -1))
+	var reserved_inputs: Dictionary = data.get("reserved_inputs", {})
+	if stockpile_id < 0 or reserved_inputs.is_empty():
+		return
+	var stockpile := state.structures.get_structure(stockpile_id)
+	if stockpile == null:
+		return
+	for item in reserved_inputs:
+		stockpile.release_reserved_item(item, int(reserved_inputs[item]))
 
 func _post_haul_activities(state: SimState) -> void:
 	var haul_limit: int = state.get_tuning_int("job_board_haul_post_limit", 10)

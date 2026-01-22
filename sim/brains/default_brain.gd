@@ -268,6 +268,7 @@ func _claim_opportunity_activity(agent: Agent, world: World, tuning: Dictionary,
 	var priority := [
 		JobBoard.ACTIVITY_DELIVER_TO_PROJECT,
 		JobBoard.ACTIVITY_BUILD_SITE,
+		JobBoard.ACTIVITY_CRAFT_AT_STATION,
 		JobBoard.ACTIVITY_HAUL,
 		JobBoard.ACTIVITY_FARM_TASK
 	]
@@ -379,6 +380,39 @@ func _action_from_activity(agent: Agent, activity: Dictionary, world: World, tun
 			if agent.is_at(source.pos_x, source.pos_y):
 				return Actions.withdraw_stockpile(source.id, item_type, qty, true)
 			return Actions.move_to_position(source.pos_x, source.pos_y)
+		JobBoard.ACTIVITY_CRAFT_AT_STATION:
+			var data: Dictionary = activity.get("data", {})
+			var station_id: int = int(data.get("station_id", -1))
+			var recipe_id: String = data.get("recipe_id", "")
+			var workshop := state.world.get_workshop_by_id(station_id)
+			var recipe: Recipe = state.recipes.get(recipe_id)
+			if workshop == null or recipe == null or not workshop.is_ready():
+				_release_craft_reservations(data, state)
+				state.job_board.cancel_activity(activity.get("activity_id", -1), state.tick)
+				agent.current_activity_id = -1
+				return {}
+			if not _station_supports_recipe(workshop, recipe):
+				_release_craft_reservations(data, state)
+				state.job_board.cancel_activity(activity.get("activity_id", -1), state.tick)
+				agent.current_activity_id = -1
+				return {}
+			var stockpile_id: int = int(data.get("stockpile_id", -1))
+			var stockpile := state.structures.get_structure(stockpile_id)
+			for item in recipe.inputs:
+				var required: int = recipe.inputs[item]
+				var available: int = agent.get_available_item(item)
+				if available < required:
+					if stockpile == null:
+						state.job_board.release_activity(activity.get("activity_id", -1), state.tick)
+						agent.current_activity_id = -1
+						return {}
+					if agent.is_at(stockpile.pos_x, stockpile.pos_y):
+						return Actions.withdraw_stockpile(stockpile.id, item, required - available, true)
+					return Actions.move_to_position(stockpile.pos_x, stockpile.pos_y)
+			_release_craft_reservations(data, state)
+			if agent.is_at(workshop.pos_x, workshop.pos_y):
+				return Actions.queue_craft(recipe.id, workshop.id)
+			return Actions.move_to_position(workshop.pos_x, workshop.pos_y)
 		JobBoard.ACTIVITY_FARM_TASK:
 			state.job_board.release_activity(activity.get("activity_id", -1), state.tick)
 			agent.current_activity_id = -1
@@ -426,7 +460,7 @@ func _plan_obtain_item(agent: Agent, goal: Dictionary, world: World, market: Mar
 			return Actions.queue_craft(recipe.id)
 		else:
 			# Workshop
-			var workshop = world.find_closest_workshop(agent.pos_x, agent.pos_y)
+			var workshop = world.find_closest_workshop(agent.pos_x, agent.pos_y, recipe.station)
 			if workshop:
 				if agent.is_at_workshop(workshop):
 					return Actions.queue_craft(recipe.id, workshop.id)
@@ -475,10 +509,15 @@ func _is_recipe_allowed(recipe: Recipe, world: World) -> bool:
 	if recipe == null:
 		return false
 	if recipe.tier != "advanced":
-		return true
+		return _is_recipe_station_available(recipe, world)
 	if recipe.station == "hand":
 		return false
-	return world.has_advanced_workshop()
+	return _is_recipe_station_available(recipe, world)
+
+func _is_recipe_station_available(recipe: Recipe, world: World) -> bool:
+	if recipe.station == "hand" or recipe.station == "workbench":
+		return true
+	return world.has_workshop_type(recipe.station)
 
 func _get_sorted_recipe_ids(recipes: Dictionary, state: SimState) -> Array:
 	if state != null and not state.recipe_sorted_ids.is_empty():
@@ -508,6 +547,24 @@ func _find_recipe_for(output_item: String, recipes: Dictionary, world: World, ag
 		if r.outputs.has(output_item) and _is_recipe_allowed(r, world):
 			return r 
 	return null
+
+func _station_supports_recipe(workshop: Workshop, recipe: Recipe) -> bool:
+	if workshop == null or recipe == null:
+		return false
+	if recipe.station == "" or recipe.station == "workshop":
+		return true
+	return workshop.workshop_type == recipe.station
+
+func _release_craft_reservations(data: Dictionary, state: SimState) -> void:
+	var stockpile_id: int = int(data.get("stockpile_id", -1))
+	var reserved_inputs: Dictionary = data.get("reserved_inputs", {})
+	if stockpile_id < 0 or reserved_inputs.is_empty():
+		return
+	var stockpile := state.structures.get_structure(stockpile_id)
+	if stockpile == null:
+		return
+	for item in reserved_inputs:
+		stockpile.release_reserved_item(item, int(reserved_inputs[item]))
 
 func _score_action(action, agent: Agent, world: World, market: Market, 
 				   contracts_system: ContractsSystem, tuning: Dictionary) -> float:
