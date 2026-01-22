@@ -24,6 +24,7 @@ func _init_pipeline() -> void:
 	pipeline.add_system(TaskProjectSystem.new())
 	pipeline.add_system(AgentsSystem.new())
 	pipeline.add_system(EconomyResolutionSystem.new())
+	pipeline.add_system(TimelineLogger.new())
 
 
 ## Initialize a new simulation with the given seed
