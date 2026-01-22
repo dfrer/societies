@@ -85,9 +85,12 @@ func process_building(world: World, state: SimState, current_tick: int, tuning: 
 	for project in projects:
 		if project.status != CommunalProject.STATUS_BUILDING:
 			continue
-		
-		# Building is instant once fully funded (could add build time later)
-		_complete_project(project, world, state, current_tick)
+
+		if project.build_required <= 0:
+			project.build_required = _get_build_ticks_for_project(project, tuning)
+		project.build_progress += 1
+		if project.build_progress >= project.build_required:
+			_complete_project(project, world, state, current_tick)
 
 ## Complete a project and apply its effects
 func _complete_project(project: CommunalProject, world: World, state: SimState, current_tick: int) -> void:
@@ -134,6 +137,23 @@ func _complete_project(project: CommunalProject, world: World, state: SimState, 
 		"contributors": project.contributors,
 		"pos": [project.pos_x, project.pos_y]
 	})
+
+func _get_build_ticks_for_project(project: CommunalProject, tuning: Dictionary) -> int:
+	var default_ticks: int = int(tuning.get("project_build_ticks_default", 8))
+	if default_ticks <= 0:
+		default_ticks = 1
+	match project.project_type:
+		"workshop":
+			return maxi(1, int(tuning.get("project_build_ticks_workshop", default_ticks)))
+		"farm":
+			return maxi(1, int(tuning.get("project_build_ticks_farm", default_ticks)))
+		"road":
+			return maxi(1, int(tuning.get("project_build_ticks_road", default_ticks)))
+		"wall":
+			return maxi(1, int(tuning.get("project_build_ticks_wall", default_ticks)))
+		"town_hall":
+			return maxi(1, int(tuning.get("project_build_ticks_town_hall", default_ticks)))
+	return default_ticks
 
 ## Get a project by ID
 func get_project(project_id: int) -> CommunalProject:
