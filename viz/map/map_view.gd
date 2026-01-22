@@ -304,7 +304,7 @@ func _ensure_pollution_cache() -> void:
 
 	if _pollution_data.size() > 0:
 		for key in _pollution_data.keys():
-			var parts := key.split(",")
+			var parts: PackedStringArray = str(key).split(",")
 			if parts.size() != 2:
 				continue
 			var x := int(parts[0])
