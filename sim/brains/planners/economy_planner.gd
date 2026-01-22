@@ -24,14 +24,14 @@ func add_primary_goal(agent: Agent, world: World, market: Market,
 
 	return false
 
-func add_progression_goal(agent: Agent, world: World, tuning: Dictionary, state: SimState = null) -> bool:
+func add_progression_goal(agent: Agent, world: World, tuning: Dictionary, recipes: Dictionary, state: SimState = null) -> bool:
 	# First tools
-	if not agent.has_tool("Axe"):
+	if not agent.has_tool("Axe") and _has_allowed_recipe("Axe", recipes, world):
 		agent.goal_stack.push_back({"type": "OBTAIN_ITEM", "item": "Axe", "qty": 1, "is_goal": true})
 		return true
 
 	# Additional tools
-	if not agent.has_tool("Mallet"):
+	if not agent.has_tool("Mallet") and _has_allowed_recipe("Mallet", recipes, world):
 		agent.goal_stack.push_back({"type": "OBTAIN_ITEM", "item": "Mallet", "qty": 1, "is_goal": true})
 		return true
 
@@ -39,13 +39,26 @@ func add_progression_goal(agent: Agent, world: World, tuning: Dictionary, state:
 		agent.goal_stack.push_back({"type": "BUILD_STRATEGIC_WORKSHOP", "is_goal": true})
 		return true
 
-	if not agent.has_tool("Shovel"):
+	if not agent.has_tool("Shovel") and _has_allowed_recipe("Shovel", recipes, world):
 		agent.goal_stack.push_back({"type": "OBTAIN_ITEM", "item": "Shovel", "qty": 1, "is_goal": true})
 		return true
 
 	# Default: gather/craft profitable items
 	agent.goal_stack.push_back({"type": "OBTAIN_ITEM", "item": "Planks", "qty": 1, "is_goal": true})
 	return true
+
+func _has_allowed_recipe(output_item: String, recipes: Dictionary, world: World) -> bool:
+	var has_advanced_workshop := world.has_advanced_workshop()
+	for recipe_id in recipes:
+		var recipe: Recipe = recipes[recipe_id]
+		if recipe.outputs.has(output_item):
+			if recipe.tier == "advanced":
+				if recipe.station == "hand":
+					continue
+				if not has_advanced_workshop:
+					continue
+			return true
+	return false
 
 # Helper function to determine if agent should claim resources
 func _should_claim_resources(agent: Agent, world: World, tuning: Dictionary) -> bool:

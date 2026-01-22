@@ -252,6 +252,13 @@ func get_ready_workshop_count() -> int:
 			count += 1
 	return count
 
+## Check if any advanced workshop is available
+func has_advanced_workshop() -> bool:
+	for ws in workshops:
+		if ws.is_ready() and ws.workshop_type != "general":
+			return true
+	return false
+
 ## Check if workshop exists at position
 func has_workshop_at(x: int, y: int) -> bool:
 	for ws in workshops:

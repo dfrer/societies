@@ -110,7 +110,7 @@ func _generate_high_level_goals(agent: Agent, world: World, market: Market,
 	if _governance_planner.maybe_add_goal(agent, world, tuning, state):
 		return
 
-	_economy_planner.add_progression_goal(agent, world, tuning, state)
+	_economy_planner.add_progression_goal(agent, world, tuning, recipes, state)
 
 # Helper function to determine if agent should claim resources
 func _is_goal_complete(agent: Agent, goal: Dictionary, world: World) -> bool:
@@ -409,7 +409,7 @@ func _plan_obtain_item(agent: Agent, goal: Dictionary, world: World, market: Mar
 				return Actions.move_to_node(node.id) # Or push GO_TO goal, but Action is fine
 				
 	# 2. Check if we can craft it
-	var recipe = _find_recipe_for(item, recipes)
+	var recipe = _find_recipe_for(item, recipes, world)
 	if recipe:
 		# Check inputs
 		for input_item in recipe.inputs:
@@ -467,19 +467,28 @@ func _plan_fulfill_contract(agent: Agent, goal: Dictionary, contracts_system: Co
 		# Obtain item
 		return {"type": "OBTAIN_ITEM", "item": contract.item, "qty": contract.qty, "is_goal": true}
 		
-func _find_recipe_for(output_item: String, recipes: Dictionary) -> Recipe:
+func _is_recipe_allowed(recipe: Recipe, world: World) -> bool:
+	if recipe == null:
+		return false
+	if recipe.tier != "advanced":
+		return true
+	if recipe.station == "hand":
+		return false
+	return world.has_advanced_workshop()
+
+func _find_recipe_for(output_item: String, recipes: Dictionary, world: World) -> Recipe:
 	# Prefer handheld recipes first (like planks_hand)
 	# Sort keys for deterministic iteration order
 	var sorted_ids: Array = recipes.keys()
 	sorted_ids.sort()
 	for id in sorted_ids:
 		var r: Recipe = recipes[id]
-		if r.outputs.has(output_item) and r.station == "hand":
+		if r.outputs.has(output_item) and r.station == "hand" and _is_recipe_allowed(r, world):
 			return r
 			
 	for id in sorted_ids:
 		var r: Recipe = recipes[id]
-		if r.outputs.has(output_item):
+		if r.outputs.has(output_item) and _is_recipe_allowed(r, world):
 			return r 
 	return null
 

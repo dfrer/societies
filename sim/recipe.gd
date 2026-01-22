@@ -8,6 +8,7 @@ var station: String = "workshop"  # Required station type
 var inputs: Dictionary = {}  # item_name -> qty
 var outputs: Dictionary = {}  # item_name -> qty
 var ticks: int = 30
+var tier: String = "basic"
 
 func _init() -> void:
 	pass
@@ -44,7 +45,8 @@ func to_dict() -> Dictionary:
 		"station": station,
 		"inputs": inputs.duplicate(),
 		"outputs": outputs.duplicate(),
-		"ticks": ticks
+		"ticks": ticks,
+		"tier": tier
 	}
 
 ## Deserialize from dictionary
@@ -53,6 +55,7 @@ static func from_dict(d: Dictionary) -> Recipe:
 	recipe.id = d.get("id", "")
 	recipe.name = d.get("name", "")
 	recipe.station = d.get("station", "workshop")
+	recipe.tier = d.get("tier", "basic")
 	# Convert inputs values to int (JSON may parse as float)
 	var inp: Dictionary = d.get("inputs", {})
 	recipe.inputs = {}
