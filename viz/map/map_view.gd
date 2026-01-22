@@ -41,6 +41,11 @@ var _pan_start: Vector2 = Vector2.ZERO
 ## Selection model
 var selection: SelectionModel = SelectionModel.new()
 
+## Hover redraw throttling
+var _hover_redraw_timer: Timer = null
+var _hover_redraw_pending: bool = false
+var _hover_redraw_interval: float = 0.075
+
 ## Overlay settings
 var overlay_settings: OverlaySettings = OverlaySettings.new()
 
@@ -80,6 +85,13 @@ func _ready() -> void:
 
 	# Connect overlay settings signal
 	overlay_settings.settings_changed.connect(_on_overlay_settings_changed)
+
+	# Initialize hover redraw throttling timer
+	_hover_redraw_timer = Timer.new()
+	_hover_redraw_timer.one_shot = true
+	_hover_redraw_timer.wait_time = _hover_redraw_interval
+	_hover_redraw_timer.timeout.connect(_on_hover_redraw_timeout)
+	add_child(_hover_redraw_timer)
 
 	# Center the view initially
 	call_deferred("_center_view")
@@ -496,7 +508,22 @@ func _handle_mouse_motion(event: InputEventMouseMotion) -> void:
 		var tile := screen_to_tile(event.position)
 		selection.set_hover(tile)
 		tile_hovered.emit(tile)
+		_request_hover_redraw()
+
+
+func _request_hover_redraw() -> void:
+	if _hover_redraw_timer.is_stopped():
 		queue_redraw()
+		_hover_redraw_timer.start()
+	else:
+		_hover_redraw_pending = true
+
+
+func _on_hover_redraw_timeout() -> void:
+	if _hover_redraw_pending:
+		_hover_redraw_pending = false
+		queue_redraw()
+		_hover_redraw_timer.start()
 
 
 func _zoom_at(screen_pos: Vector2, delta: float) -> void:
