@@ -82,5 +82,5 @@
 - [x] Allow agents to choose between org tasks and paid contracts. (sim/brains/default_brain.gd)
 
 ## P3 — Metrics + Debugging
-- [ ] Add build-site progress telemetry and stockpile throughput metrics. (sim/metrics_system.gd)
-- [ ] Add debug overlays for projects, tasks, and stockpile reservations. (viz/)
+- [x] Add build-site progress telemetry and stockpile throughput metrics. (sim/metrics_system.gd)
+- [x] Add debug overlays for projects, tasks, and stockpile reservations. (viz/)

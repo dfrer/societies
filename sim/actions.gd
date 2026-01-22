@@ -889,6 +889,7 @@ static func _execute_withdraw_stockpile(agent: Agent, action: Dictionary, state:
 	var removed := structure.remove_item(item, to_withdraw)
 	if removed > 0:
 		agent.add_item(item, removed)
+		state.record_stockpile_withdrawal(item, removed)
 	return true
 
 static func _execute_deposit_stockpile(agent: Agent, action: Dictionary, state: SimState) -> bool:
@@ -912,6 +913,7 @@ static func _execute_deposit_stockpile(agent: Agent, action: Dictionary, state: 
 	var final_qty := mini(to_deposit, free_capacity)
 	agent.remove_item(item, final_qty)
 	structure.add_item(item, final_qty)
+	state.record_stockpile_deposit(item, final_qty)
 	return true
 
 static func _execute_build_site(agent: Agent, action: Dictionary, state: SimState, world: World, tuning: Dictionary) -> bool:
@@ -1001,6 +1003,7 @@ static func _execute_deliver_farm(agent: Agent, action: Dictionary, state: SimSt
 		var final_qty := mini(to_deposit, free_capacity)
 		agent.remove_item(crop_type, final_qty)
 		stockpile.add_item(crop_type, final_qty)
+		state.record_stockpile_deposit(crop_type, final_qty)
 		return true
 	if not agent.is_at(plot_x, plot_y):
 		return false
