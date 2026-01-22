@@ -94,7 +94,7 @@ func _test_goal_stack() -> void:
 	assert_eq(agent.goal_stack.size(), 2, "Goal stack should have 2 items")
 	
 	# Pop a goal
-	var popped := agent.goal_stack.pop_back()
+	var popped: Variant = agent.goal_stack.pop_back()
 	assert_eq(popped["type"], "EAT_FOOD", "Should pop most recent goal")
 	assert_eq(agent.goal_stack.size(), 1, "Goal stack should have 1 item after pop")
 
