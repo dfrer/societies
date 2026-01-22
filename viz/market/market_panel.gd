@@ -247,7 +247,9 @@ func _rebuild_item_filters(items: Array) -> void:
 	_prices_filter.clear()
 	_prices_filter.add_item("All", 0)
 	for i in range(items.size()):
-		_prices_filter.add_item(items[i], i + 1)
+		var item_id: String = items[i]
+		_prices_filter.add_item(item_id, i + 1)
+		_set_item_option_tooltip(_prices_filter, i + 1, item_id)
 	if current_prices_idx >= 0 and current_prices_idx < _prices_filter.item_count:
 		_prices_filter.select(current_prices_idx)
 	
@@ -256,9 +258,28 @@ func _rebuild_item_filters(items: Array) -> void:
 	_orders_item_filter.clear()
 	_orders_item_filter.add_item("All", 0)
 	for i in range(items.size()):
-		_orders_item_filter.add_item(items[i], i + 1)
+		var item_id: String = items[i]
+		_orders_item_filter.add_item(item_id, i + 1)
+		_set_item_option_tooltip(_orders_item_filter, i + 1, item_id)
 	if current_orders_item_idx >= 0 and current_orders_item_idx < _orders_item_filter.item_count:
 		_orders_item_filter.select(current_orders_item_idx)
+
+
+func _set_item_option_tooltip(option_button: OptionButton, index: int, item_id: String) -> void:
+	var description := _get_item_description(item_id)
+	if description == "":
+		return
+	var popup := option_button.get_popup()
+	if popup:
+		popup.set_item_tooltip(index, description)
+
+
+func _get_item_description(item_id: String) -> String:
+	if _sim_state == null:
+		return ""
+	var item_data: Dictionary = _sim_state.items.get(item_id, {})
+	var description = item_data.get("description", "")
+	return str(description) if description != null else ""
 
 
 ## Rebuild agent filter with new data
@@ -310,12 +331,21 @@ func _update_prices_tab() -> void:
 			item,
 			"%.1f" % ref_price,
 			str(last_price) if last_price > 0 else "--",
-			str(trade_count)
+			str(trade_count),
+			false,
+			item
 		)
 		_prices_content.add_child(row)
 
 
-func _create_price_row(col1: String, col2: String, col3: String, col4: String, is_header: bool = false) -> HBoxContainer:
+func _create_price_row(
+	col1: String,
+	col2: String,
+	col3: String,
+	col4: String,
+	is_header: bool = false,
+	col1_item_id: String = ""
+) -> HBoxContainer:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 4)
 	
@@ -323,6 +353,10 @@ func _create_price_row(col1: String, col2: String, col3: String, col4: String, i
 	label1.text = col1
 	label1.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	label1.custom_minimum_size.x = 70
+	if not is_header and col1_item_id != "":
+		var description := _get_item_description(col1_item_id)
+		if description != "":
+			label1.tooltip_text = description
 	if is_header:
 		label1.add_theme_font_size_override("font_size", 12)
 	row.add_child(label1)
@@ -459,6 +493,9 @@ func _create_order_row(order: Dictionary) -> HBoxContainer:
 	item_label.text = order["item"]
 	item_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	item_label.clip_text = true
+	var item_description := _get_item_description(order["item"])
+	if item_description != "":
+		item_label.tooltip_text = item_description
 	row.add_child(item_label)
 	
 	# Qty
@@ -505,6 +542,9 @@ func _update_stats_tab() -> void:
 		if count > 0:
 			var item_label := Label.new()
 			item_label.text = "  %s: %d" % [item, count]
+			var item_description := _get_item_description(item)
+			if item_description != "":
+				item_label.tooltip_text = item_description
 			_stats_content.add_child(item_label)
 	
 	_stats_content.add_child(HSeparator.new())
