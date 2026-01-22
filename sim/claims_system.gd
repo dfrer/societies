@@ -20,11 +20,11 @@ func _expand_claims_for_organization(organization: Organization, state: SimState
 	if claims_per_day <= 0:
 		return
 
-	var claims := state.world.get_claims_by_owner().get(owner_id, [])
+	var claims: Array = state.world.get_claims_by_owner().get(owner_id, [])
 	if claims.is_empty():
 		return
 
-	var claimed_lookup := {}
+	var claimed_lookup: Dictionary = {}
 	for claim in claims:
 		claimed_lookup[_key(claim.x, claim.y)] = true
 
@@ -52,14 +52,14 @@ func _ensure_town_center_claimed(organization: Organization, state: SimState, ow
 	state.world.set_zone_tag(center.x, center.y, "town_center")
 
 func _find_next_claim_tile(organization: Organization, state: SimState, claimed_lookup: Dictionary, max_radius: int) -> Vector2i:
-	var candidates := {}
+	var candidates: Dictionary = {}
 	for key in claimed_lookup.keys():
 		var parts: Array[String] = str(key).split(",")
 		var x := int(parts[0])
 		var y := int(parts[1])
 		for offset in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
-			var nx := x + offset.x
-			var ny := y + offset.y
+			var nx: int = x + offset.x
+			var ny: int = y + offset.y
 			if not state.world.is_valid(nx, ny):
 				continue
 			if state.world.is_claimed(nx, ny):
@@ -75,7 +75,7 @@ func _find_next_claim_tile(organization: Organization, state: SimState, claimed_
 	if candidates.is_empty():
 		return Vector2i(-1, -1)
 
-	var ordered := candidates.values()
+	var ordered: Array = candidates.values()
 	ordered.sort_custom(func(a, b):
 		if a["dist"] == b["dist"]:
 			if a["x"] == b["x"]:
@@ -83,8 +83,8 @@ func _find_next_claim_tile(organization: Organization, state: SimState, claimed_
 			return a["x"] < b["x"]
 		return a["dist"] < b["dist"]
 	)
-	var best := ordered[0]
-	return Vector2i(best["x"], best["y"])
+	var best: Dictionary = ordered[0]
+	return Vector2i(int(best["x"]), int(best["y"]))
 
 func _key(x: int, y: int) -> String:
 	return "%d,%d" % [x, y]
