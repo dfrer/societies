@@ -54,7 +54,7 @@ func _ensure_town_center_claimed(organization: Organization, state: SimState, ow
 func _find_next_claim_tile(organization: Organization, state: SimState, claimed_lookup: Dictionary, max_radius: int) -> Vector2i:
 	var candidates: Dictionary = {}
 	for key in claimed_lookup.keys():
-		var parts: Array[String] = str(key).split(",")
+		var parts: PackedStringArray = str(key).split(",")
 		var x := int(parts[0])
 		var y := int(parts[1])
 		for offset in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
