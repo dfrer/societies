@@ -258,9 +258,13 @@ func _sanitize_metrics_for_serialization(history: Array) -> Array:
 
 func _sanitize_intents_for_serialization(intents_data: Variant) -> Array:
 	var result := []
-	var source_intents: Array = intents_data
-	if intents_data is Dictionary:
+	var source_intents: Array = []
+	if intents_data is Array:
+		source_intents = intents_data
+	elif intents_data is Dictionary:
 		source_intents = intents_data.values()
+	else:
+		return result
 	for intent in source_intents:
 		result.append({
 			"intent_id": int(intent.get("intent_id", 0)),
