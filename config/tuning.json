@@ -106,6 +106,8 @@
     "inflation_threshold": 50.0,
     "pollution_collapse_threshold": 0.8,
     "metrics_enabled": true,
+    "decision_trace_enabled": false,
+    "decision_trace_sample_interval": 1,
     "job_board_enabled": true,
     "job_board_daily_post_limit": 20,
     "job_board_gather_node_post_limit": 20,

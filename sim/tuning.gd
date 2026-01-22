@@ -239,6 +239,8 @@ func _init_schema() -> void:
 	
 	# Metrics
 	_add_schema("metrics_enabled", "bool", true, true, 0, 0, "Whether to collect metrics")
+	_add_schema("decision_trace_enabled", "bool", false, false, 0, 0, "Enable decision trace logging")
+	_add_schema("decision_trace_sample_interval", "int", false, 1, 1, 100000, "Ticks between decision trace samples")
 	_add_schema("job_board_enabled", "bool", false, true, 0, 0, "Enable job board activity posting")
 	_add_schema("job_board_daily_post_limit", "int", false, 20, 0, 10000, "Daily max activities to post")
 	_add_schema("job_board_gather_node_post_limit", "int", false, 20, 0, 10000, "Daily gather-node activity cap")
