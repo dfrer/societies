@@ -461,6 +461,7 @@ func get_average_hunger() -> float:
 ## Log an event (ring buffer - oldest events removed when exceeding cap)
 const MAX_EVENTS := 500
 const MAX_DECISION_TRACES := 1000
+const MAX_INTENTS := 1000
 const INTENT_PRUNE_AGE_TICKS := 500
 
 func log_event(type: String, data: Dictionary) -> void:
@@ -510,12 +511,13 @@ func _prune_resolved_intents(current_tick: int) -> void:
 		intents_by_id.erase(intent_id)
 
 func prune_intents(max_intents: int = MAX_INTENTS) -> void:
-	if intents.size() <= max_intents:
+	var intents_list := intents_by_id.values()
+	if intents_list.size() <= max_intents:
 		return
 
 	var active := []
 	var resolved := []
-	for intent in intents:
+	for intent in intents_list:
 		if intent.get("status", "active") == "active":
 			active.append(intent)
 		else:
@@ -535,7 +537,11 @@ func prune_intents(max_intents: int = MAX_INTENTS) -> void:
 	var new_intents := []
 	new_intents.append_array(active)
 	new_intents.append_array(kept_resolved)
-	intents = new_intents
+	intents_by_id = {}
+	for intent in new_intents:
+		var intent_id := int(intent.get("intent_id", 0))
+		if intent_id > 0:
+			intents_by_id[intent_id] = intent
 
 func _compact_resolved_intent(intent: Dictionary) -> void:
 	if intent.get("status", "active") == "active":
