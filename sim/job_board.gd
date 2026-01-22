@@ -51,7 +51,8 @@ func post_gather_node(node_id: int, node_type: String, created_tick: int) -> Dic
 func post_accept_contract(contract_id: int, created_tick: int) -> Dictionary:
 	return post_activity(ACTIVITY_ACCEPT_CONTRACT, 0, {"contract_id": contract_id}, created_tick)
 
-func post_haul(source_id: int, destination_id: int, item_type: String, quantity: int, created_tick: int) -> Dictionary:
+func post_haul(source_id: int, destination_id: int, item_type: String, quantity: int,
+			   created_tick: int, destination_type: String = "stockpile") -> Dictionary:
 	return post_activity(
 		ACTIVITY_HAUL,
 		0,
@@ -59,7 +60,8 @@ func post_haul(source_id: int, destination_id: int, item_type: String, quantity:
 			"source_id": source_id,
 			"destination_id": destination_id,
 			"item_type": item_type,
-			"quantity": quantity
+			"quantity": quantity,
+			"destination_type": destination_type
 		},
 		created_tick
 	)
@@ -176,6 +178,30 @@ func has_activity_for_contract(contract_id: int) -> bool:
 			continue
 		var data: Dictionary = activity.get("data", {})
 		if int(data.get("contract_id", -1)) == contract_id and activity.get("status", "") != STATUS_CANCELLED:
+			return true
+	return false
+
+func has_activity_for_project_item(project_id: int, item_type: String) -> bool:
+	for activity in activities:
+		if activity.get("type", "") != ACTIVITY_DELIVER_TO_PROJECT:
+			continue
+		var status: String = activity.get("status", STATUS_AVAILABLE)
+		if status == STATUS_CANCELLED or status == STATUS_COMPLETED:
+			continue
+		var data: Dictionary = activity.get("data", {})
+		if int(data.get("project_id", -1)) == project_id and data.get("item_type", "") == item_type:
+			return true
+	return false
+
+func has_activity_for_build_site(project_id: int) -> bool:
+	for activity in activities:
+		if activity.get("type", "") != ACTIVITY_BUILD_SITE:
+			continue
+		var status: String = activity.get("status", STATUS_AVAILABLE)
+		if status == STATUS_CANCELLED or status == STATUS_COMPLETED:
+			continue
+		var data: Dictionary = activity.get("data", {})
+		if int(data.get("project_id", -1)) == project_id:
 			return true
 	return false
 

@@ -26,6 +26,9 @@ const TYPE_BUILD_WORKSHOP := "BUILD_WORKSHOP"
 const TYPE_VOTE := "VOTE"
 const TYPE_CONTRIBUTE_TO_PROJECT := "CONTRIBUTE_TO_PROJECT"
 const TYPE_BUILD_ROAD := "BUILD_ROAD"
+const TYPE_WITHDRAW_STOCKPILE := "WITHDRAW_STOCKPILE"
+const TYPE_DEPOSIT_STOCKPILE := "DEPOSIT_STOCKPILE"
+const TYPE_BUILD_SITE := "BUILD_SITE"
 
 ## Create actions
 static func idle() -> Dictionary:
@@ -96,6 +99,21 @@ static func contribute_to_project(project_id: int, item: String, qty: int) -> Di
 static func build_road(x: int, y: int) -> Dictionary:
 	return {"type": TYPE_BUILD_ROAD, "target_x": x, "target_y": y}
 
+static func withdraw_stockpile(structure_id: int, item: String, qty: int, require_reserved: bool = false) -> Dictionary:
+	return {
+		"type": TYPE_WITHDRAW_STOCKPILE,
+		"structure_id": structure_id,
+		"item": item,
+		"qty": qty,
+		"require_reserved": require_reserved
+	}
+
+static func deposit_stockpile(structure_id: int, item: String, qty: int) -> Dictionary:
+	return {"type": TYPE_DEPOSIT_STOCKPILE, "structure_id": structure_id, "item": item, "qty": qty}
+
+static func build_site(project_id: int) -> Dictionary:
+	return {"type": TYPE_BUILD_SITE, "project_id": project_id}
+
 ## Execute one tick of an action (with enforcement)
 static func execute_action(agent: Agent, action: Dictionary, world: World, 
 						   market: Market, crafting: Crafting, contracts_system: ContractsSystem,
@@ -149,6 +167,12 @@ static func execute_action(agent: Agent, action: Dictionary, world: World,
 			return _execute_contribute_project(agent, action, state)
 		TYPE_BUILD_ROAD:
 			return _execute_build_road(agent, action, world, state, tuning, current_tick)
+		TYPE_WITHDRAW_STOCKPILE:
+			return _execute_withdraw_stockpile(agent, action, state)
+		TYPE_DEPOSIT_STOCKPILE:
+			return _execute_deposit_stockpile(agent, action, state)
+		TYPE_BUILD_SITE:
+			return _execute_build_site(agent, action, state, world, tuning)
 		_:
 			return true
 
@@ -770,8 +794,66 @@ static func _execute_contribute_project(agent: Agent, action: Dictionary,
 		return true
 	
 	# Use the communal projects system to contribute
-	state.communal_projects.contribute_to_project(project_id, agent, item, qty, state)
-	
+	var contributed := state.communal_projects.contribute_to_project(project_id, agent, item, qty, state)
+	if contributed < qty:
+		state.communal_projects.release_project_reservation(project_id, item, qty - contributed)
+	return contributed > 0
+
+static func _execute_withdraw_stockpile(agent: Agent, action: Dictionary, state: SimState) -> bool:
+	var structure_id: int = action.get("structure_id", -1)
+	var item: String = action.get("item", "")
+	var qty: int = action.get("qty", 1)
+	var require_reserved: bool = action.get("require_reserved", false)
+	if structure_id < 0 or item == "" or qty <= 0:
+		return true
+	var structure := state.structures.get_structure(structure_id)
+	if structure == null:
+		return true
+	if not agent.is_at(structure.pos_x, structure.pos_y):
+		return false
+	var to_withdraw := qty
+	if require_reserved:
+		to_withdraw = structure.release_reserved_item(item, qty)
+		if to_withdraw <= 0:
+			return true
+	var removed := structure.remove_item(item, to_withdraw)
+	if removed > 0:
+		agent.add_item(item, removed)
+	return true
+
+static func _execute_deposit_stockpile(agent: Agent, action: Dictionary, state: SimState) -> bool:
+	var structure_id: int = action.get("structure_id", -1)
+	var item: String = action.get("item", "")
+	var qty: int = action.get("qty", 1)
+	if structure_id < 0 or item == "" or qty <= 0:
+		return true
+	var structure := state.structures.get_structure(structure_id)
+	if structure == null:
+		return true
+	if not agent.is_at(structure.pos_x, structure.pos_y):
+		return false
+	var available := agent.get_available_item(item)
+	var to_deposit := mini(available, qty)
+	if to_deposit <= 0:
+		return true
+	var free_capacity := structure.get_free_capacity()
+	if free_capacity <= 0:
+		return true
+	var final_qty := mini(to_deposit, free_capacity)
+	agent.remove_item(item, final_qty)
+	structure.add_item(item, final_qty)
+	return true
+
+static func _execute_build_site(agent: Agent, action: Dictionary, state: SimState, world: World, tuning: Dictionary) -> bool:
+	var project_id: int = action.get("project_id", -1)
+	if project_id < 0:
+		return true
+	var project := state.communal_projects.get_project(project_id)
+	if project == null:
+		return true
+	if not agent.is_at(project.pos_x, project.pos_y):
+		_move_toward(agent, project.pos_x, project.pos_y, world, tuning)
+		return false
 	return true
 
 ## Build road action - construct a road at position

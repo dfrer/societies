@@ -36,8 +36,11 @@ func start_project(faction_id: int, project_type: String, pos_x: int, pos_y: int
 			return null
 	
 	var project := CommunalProject.new()
+	var requirements := get_project_requirements(project_type)
+	if requirements.is_empty():
+		return null
 	project.init_project(next_project_id, project_type, faction_id, pos_x, pos_y,
-						 initiator_id, PROJECT_TYPES[project_type], current_tick)
+						 initiator_id, requirements, current_tick)
 	next_project_id += 1
 	projects.append(project)
 	stats["projects_started"] += 1
@@ -51,6 +54,13 @@ func start_project(faction_id: int, project_type: String, pos_x: int, pos_y: int
 	})
 	
 	return project
+
+## Read-only access to project requirements for a given type
+func get_project_requirements(project_type: String) -> Dictionary:
+	if not PROJECT_TYPES.has(project_type):
+		return {}
+	var data: Dictionary = PROJECT_TYPES[project_type]
+	return data.duplicate(true)
 
 ## Contribute resources to a project
 func contribute_to_project(project_id: int, agent: Agent, item: String, qty: int,
@@ -80,14 +90,31 @@ func contribute_to_project(project_id: int, agent: Agent, item: String, qty: int
 	
 	return consumed
 
+## Reserve resources for a project to avoid double-spending
+func reserve_project_resources(project_id: int, item: String, qty: int) -> int:
+	var project := get_project(project_id)
+	if project == null:
+		return 0
+	return project.reserve_resource(item, qty)
+
+## Release reserved resources for a project
+func release_project_reservation(project_id: int, item: String, qty: int) -> int:
+	var project := get_project(project_id)
+	if project == null:
+		return 0
+	return project.release_reserved_resource(item, qty)
+
 ## Process building projects each tick
 func process_building(world: World, state: SimState, current_tick: int, tuning: Dictionary) -> void:
 	for project in projects:
 		if project.status != CommunalProject.STATUS_BUILDING:
 			continue
-		
-		# Building is instant once fully funded (could add build time later)
-		_complete_project(project, world, state, current_tick)
+
+		if project.build_required <= 0:
+			project.build_required = _get_build_ticks_for_project(project, tuning)
+		project.build_progress += 1
+		if project.build_progress >= project.build_required:
+			_complete_project(project, world, state, current_tick)
 
 ## Complete a project and apply its effects
 func _complete_project(project: CommunalProject, world: World, state: SimState, current_tick: int) -> void:
@@ -134,6 +161,23 @@ func _complete_project(project: CommunalProject, world: World, state: SimState, 
 		"contributors": project.contributors,
 		"pos": [project.pos_x, project.pos_y]
 	})
+
+func _get_build_ticks_for_project(project: CommunalProject, tuning: Dictionary) -> int:
+	var default_ticks: int = int(tuning.get("project_build_ticks_default", 8))
+	if default_ticks <= 0:
+		default_ticks = 1
+	match project.project_type:
+		"workshop":
+			return maxi(1, int(tuning.get("project_build_ticks_workshop", default_ticks)))
+		"farm":
+			return maxi(1, int(tuning.get("project_build_ticks_farm", default_ticks)))
+		"road":
+			return maxi(1, int(tuning.get("project_build_ticks_road", default_ticks)))
+		"wall":
+			return maxi(1, int(tuning.get("project_build_ticks_wall", default_ticks)))
+		"town_hall":
+			return maxi(1, int(tuning.get("project_build_ticks_town_hall", default_ticks)))
+	return default_ticks
 
 ## Get a project by ID
 func get_project(project_id: int) -> CommunalProject:

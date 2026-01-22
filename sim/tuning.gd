@@ -233,7 +233,14 @@ func _init_schema() -> void:
 	_add_schema("job_board_daily_post_limit", "int", false, 20, 0, 10000, "Daily max activities to post")
 	_add_schema("job_board_gather_node_post_limit", "int", false, 20, 0, 10000, "Daily gather-node activity cap")
 	_add_schema("job_board_contract_post_limit", "int", false, 10, 0, 10000, "Daily contract activity cap")
+	_add_schema("job_board_project_post_limit", "int", false, 10, 0, 10000, "Project activity cap")
+	_add_schema("job_board_project_item_post_limit", "int", false, 20, 0, 10000, "Project item activity cap")
+	_add_schema("job_board_build_site_post_limit", "int", false, 10, 0, 10000, "Build-site activity cap")
+	_add_schema("job_board_haul_post_limit", "int", false, 10, 0, 10000, "Haul activity cap")
+	_add_schema("job_board_farm_task_post_limit", "int", false, 10, 0, 10000, "Farm task activity cap")
 	_add_schema("job_board_max_inactive", "int", false, 200, 0, 10000, "Max inactive activities to retain")
+	_add_schema("task_project_system_enabled", "bool", false, true, 0, 0, "Enable task/project system phase")
+	_add_schema("project_max_stale_ticks", "int", false, 240, 0, 100000, "Max ticks before abandoning projects")
 
 ## Add a schema entry
 func _add_schema(key: String, type: String, required: bool, default_value, 
