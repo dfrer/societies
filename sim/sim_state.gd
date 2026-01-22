@@ -24,6 +24,7 @@ var tuning: Dictionary = {}
 var tuning_config: TuningConfig = null
 var items: Dictionary = {}
 var recipes: Dictionary = {}
+var recipe_sorted_ids: Array = []
 var events: Array = [] # Array[Dictionary]
 var intents: Array = [] # Array[Dictionary]
 var decision_traces: Array = [] # Array[Dictionary]
@@ -107,6 +108,10 @@ func get_tuning_string(key: String, fallback: String = "") -> String:
 	if tuning.has(key):
 		return str(tuning[key])
 	return fallback
+
+func update_recipe_sorted_ids() -> void:
+	recipe_sorted_ids = recipes.keys()
+	recipe_sorted_ids.sort()
 
 ## Serialize entire simulation state to dictionary
 func to_dict() -> Dictionary:
@@ -342,6 +347,7 @@ static func from_dict(d: Dictionary) -> SimState:
 	var recipes_data: Dictionary = d.get("recipes", {})
 	for recipe_id in recipes_data:
 		state.recipes[recipe_id] = Recipe.from_dict(recipes_data[recipe_id])
+	state.update_recipe_sorted_ids()
 
 	state.next_agent_id = int(d.get("next_agent_id", 1))
 	state.next_faction_id = int(d.get("next_faction_id", 1001))
