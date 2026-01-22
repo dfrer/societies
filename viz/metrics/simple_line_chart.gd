@@ -35,6 +35,17 @@ func clear_all() -> void:
 	series_dict.clear()
 	queue_redraw()
 
+func update_series_data(series_data: Dictionary) -> void:
+	var updated := false
+	for key in series_data:
+		if series_dict.has(key):
+			series_dict[key]["data"] = series_data[key]
+			updated = true
+
+	if updated:
+		_update_scales()
+		queue_redraw()
+
 func _update_scales() -> void:
 	if not auto_scale_y:
 		return
@@ -136,4 +147,3 @@ func _draw() -> void:
 		if show_points and count < 40:
 			for p in points:
 				draw_circle(p, 3.0, color)
-

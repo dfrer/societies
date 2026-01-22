@@ -55,10 +55,10 @@ func update_panels() -> void:
 	
 	var sim_state: SimState = _sim_runner.sim.state
 	
-	# Update all panels that have update method
-	for child in _data_tabs.get_children():
-		if child.has_method("update_sim_state"):
-			child.update_sim_state(sim_state)
+	# Update only the active tab to reduce unnecessary work
+	var active_tab := _data_tabs.get_child(_data_tabs.current_tab)
+	if active_tab and active_tab.has_method("update_sim_state"):
+		active_tab.update_sim_state(sim_state)
 	
 	# Update metrics panel if visible
 	if _metrics_panel.visible:

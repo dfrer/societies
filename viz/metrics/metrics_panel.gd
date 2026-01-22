@@ -11,6 +11,9 @@ var _chart: SimpleLineChart
 
 # Toggles container
 var _toggles_grid: GridContainer
+var _series_cache: Dictionary = {}
+var _last_history_size: int = 0
+var _last_trades_today: float = 0.0
 
 # Defined metrics config
 # { key: "metric_id", title: "Name", color: Color }
@@ -124,55 +127,32 @@ func _create_toggles() -> void:
 func update_sim_state(sim_state: SimState) -> void:
 	if sim_state == null:
 		return
-	
-	# Simple check to avoid excessive updates
-	# Assuming ticks increase always
-	if _sim_state == sim_state and _chart.series_dict.size() > 0:
-		# Check if data length changed significantly or just assume update needed for new data point
-		var history_len = sim_state.metrics_history.size()
-		# Optimization: only update every N ticks or day?
-		# For visually smooth updates, every update is fine if data processing is fast.
-		# But recreating arrays every frame is bad.
-		# Let's check against cached data size if we had it, but simpler: just update.
-		pass
-		
+
 	_sim_state = sim_state
 	_refresh_chart_data()
 
 func _refresh_chart_data() -> void:
-	if _sim_state == null: return
+	if _sim_state == null:
+		return
 	
 	var history = _sim_state.metrics_history
 	if history.is_empty():
+		_chart.clear_all()
+		_series_cache.clear()
+		_last_history_size = 0
+		_last_trades_today = 0.0
 		return
-		
-	# Calculate derived series if needed (e.g. deltas)
-	# But mostly we extract series.
-	
-	# To avoid parsing everything every frame, we could cache. 
-	# But strictly recalculating for "simplicity" first.
-	
-	# Prepare calculated series
-	var trades_delta = _calculate_deltas(history, "trades_today")
-	
-	for config in _metric_configs:
-		var key = config["key"]
-		var color = config["color"]
-		var data = []
-		
-		if key == "trades_today_delta":
-			data = trades_delta
-		else:
-			data = _extract_series(history, key)
-			
-		_chart.add_series(key, data, color)
-		
-		# Sync visibility with toggles
-		# Find the checkbox for this key? 
-		# Actually, we rely on the toggle event to set visibility. 
-		# But on first add, we need to respect current toggle state.
-		var is_visible = _get_toggle_state(key)
-		_chart.set_series_visible(key, is_visible)
+
+	if history.size() == _last_history_size:
+		return
+
+	if _last_history_size == 0 or history.size() < _last_history_size:
+		_rebuild_series_cache(history)
+		_update_chart_from_cache()
+		return
+
+	_append_series_data(history)
+	_chart.update_series_data(_series_cache)
 
 func _get_toggle_state(key: String) -> bool:
 	for i in range(_metric_configs.size()):
@@ -187,24 +167,50 @@ func _on_metric_toggled(key: String, pressed: bool) -> void:
 func _on_close_pressed() -> void:
 	hide()
 
-func _extract_series(history: Array, key: String) -> Array:
-	var series = []
-	for snapshot in history:
-		series.append(float(snapshot.get(key, 0.0)))
-	return series
+func _rebuild_series_cache(history: Array) -> void:
+	_series_cache.clear()
+	for config in _metric_configs:
+		_series_cache[config["key"]] = []
 
-func _calculate_deltas(history: Array, key: String) -> Array:
-	var series = []
-	var prev_val = 0.0
-	for i in range(history.size()):
+	var prev_trades = 0.0
+	for snapshot in history:
+		for config in _metric_configs:
+			var key = config["key"]
+			if key == "trades_today_delta":
+				var curr_trades = float(snapshot.get("trades_today", 0.0))
+				var trade_delta = curr_trades - prev_trades
+				_series_cache[key].append(trade_delta)
+				prev_trades = curr_trades
+			else:
+				_series_cache[key].append(float(snapshot.get(key, 0.0)))
+
+	_last_trades_today = prev_trades
+	_last_history_size = history.size()
+
+func _append_series_data(history: Array) -> void:
+	for i in range(_last_history_size, history.size()):
 		var snapshot = history[i]
-		var curr_val = float(snapshot.get(key, 0))
-		if i == 0:
-			series.append(curr_val)
-		else:
-			series.append(curr_val - prev_val)
-		prev_val = curr_val
-	return series
+		for config in _metric_configs:
+			var key = config["key"]
+			if key == "trades_today_delta":
+				var curr_trades = float(snapshot.get("trades_today", 0.0))
+				var trade_delta = curr_trades - _last_trades_today
+				_series_cache[key].append(trade_delta)
+				_last_trades_today = curr_trades
+			else:
+				_series_cache[key].append(float(snapshot.get(key, 0.0)))
+
+	_last_history_size = history.size()
+
+func _update_chart_from_cache() -> void:
+	_chart.clear_all()
+	for config in _metric_configs:
+		var key = config["key"]
+		var color = config["color"]
+		var data = _series_cache.get(key, [])
+		_chart.add_series(key, data, color)
+		var is_visible = _get_toggle_state(key)
+		_chart.set_series_visible(key, is_visible)
 
 func _on_export_csv_pressed() -> void:
 	if _sim_state == null or _sim_state.metrics_history.is_empty():
