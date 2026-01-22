@@ -24,7 +24,13 @@ func decide_action(agent: Agent, world: World, market: Market,
 	# 0. Interrupts (Panic checks that override everything)
 	var interrupt = _survival_planner.get_interrupt_action(agent, tuning)
 	if not interrupt.is_empty():
+		_set_intent(state, agent, "INTERRUPT", {"action_type": interrupt.get("type", "")})
+		_clear_activity(state, agent)
 		return interrupt
+
+	var activity_action := _action_from_current_activity(agent, world, tuning, state)
+	if activity_action.has("type"):
+		return activity_action
 
 	var iterations: int = 0
 	while iterations < 5:
@@ -32,7 +38,9 @@ func decide_action(agent: Agent, world: World, market: Market,
 			_generate_high_level_goals(agent, world, market, contracts_system, tuning, recipes, state)
 
 		if agent.goal_stack.is_empty():
-			return _fallback_action(agent, world) # Idle/Explore
+			var fallback := _fallback_action(agent, world)
+			_set_intent(state, agent, "IDLE", {"action_type": fallback.get("type", "")})
+			return fallback # Idle/Explore
 
 		var current_goal: Dictionary = agent.goal_stack.back()
 
@@ -41,6 +49,14 @@ func decide_action(agent: Agent, world: World, market: Market,
 			agent.goal_stack.pop_back()
 			iterations += 1  # Increment to prevent infinite loop on instant completion
 			continue
+
+		var intent := _intent_from_goal(agent, current_goal, world, market, tuning)
+		_set_intent(state, agent, intent.get("type", "NONE"), intent.get("data", {}))
+		var activity := _commit_activity_for_intent(agent, intent, state)
+			if not activity.is_empty():
+				var committed_action := _action_from_activity(agent, activity, world, tuning, state)
+				if committed_action.has("type"):
+					return committed_action
 
 		# Process Goal
 		var result = _process_goal(agent, current_goal, world, market, contracts_system, tuning, recipes, state)
@@ -59,7 +75,9 @@ func decide_action(agent: Agent, world: World, market: Market,
 
 		iterations += 1
 
-	return Actions.idle()
+	var idle_action := Actions.idle()
+	_set_intent(state, agent, "IDLE", {"action_type": idle_action.get("type", "")})
+	return idle_action
 
 # ==============================================================================
 # ACTION GENERATION
@@ -162,6 +180,123 @@ func _process_goal(agent: Agent, goal: Dictionary, world: World, market: Market,
 		"BUILD_ROAD":
 			return _plan_build_road(agent, goal, world, tuning)
 
+	return {}
+
+func _intent_from_goal(agent: Agent, goal: Dictionary, world: World, market: Market, tuning: Dictionary) -> Dictionary:
+	match goal.type:
+		"OBTAIN_ITEM":
+			var node_type := ""
+			var item_name := goal.get("item", "")
+			if item_name == "Berries":
+				node_type = "berry"
+			elif item_name == "Logs":
+				node_type = "tree"
+			elif item_name == "Ore":
+				node_type = "ore"
+			elif item_name == "Stone":
+				node_type = "stone"
+			if node_type != "":
+				return {"type": "GATHER_RESOURCE", "data": {"item": item_name, "node_type": node_type}}
+			return {"type": "OBTAIN_ITEM", "data": {"item": item_name}}
+		"EAT_FOOD":
+			return {"type": "EAT_FOOD", "data": {"item": goal.get("item", "")}}
+		"FULFILL_CONTRACT":
+			return {"type": "FULFILL_CONTRACT", "data": {"contract_id": goal.get("contract_id", -1)}}
+		"BUILD_STRATEGIC_WORKSHOP":
+			return {"type": "BUILD_WORKSHOP", "data": {}}
+		"CLAIM_RESOURCES":
+			return {"type": "CLAIM_RESOURCES", "data": {}}
+		"EXPAND_FACTION":
+			return {"type": "EXPAND_FACTION", "data": goal.duplicate(true)}
+		"BUILD_ROAD":
+			return {"type": "BUILD_ROAD", "data": goal.duplicate(true)}
+		"ACCEPT_CONTRACT":
+			return {"type": "ACCEPT_CONTRACT", "data": {"contract_id": goal.get("contract_id", -1)}}
+		"GO_TO":
+			return {"type": "GO_TO", "data": {"x": goal.get("x", agent.pos_x), "y": goal.get("y", agent.pos_y)}}
+	return {"type": "IDLE", "data": {}}
+
+func _set_intent(state: SimState, agent: Agent, intent_type: String, data: Dictionary) -> void:
+	if state == null:
+		return
+	if agent.current_intent_id >= 0:
+		var existing := state.get_intent(agent.current_intent_id)
+		if existing.get("type", "") == intent_type and existing.get("status", "") == "active" \
+			and existing.get("data", {}) == data:
+			return
+		state.resolve_intent(agent.current_intent_id, "superseded", state.tick)
+	var intent_id: int = state.create_intent(agent.id, intent_type, data, state.tick)
+	agent.current_intent_id = intent_id
+
+func _clear_activity(state: SimState, agent: Agent) -> void:
+	if state == null:
+		return
+	if agent.current_activity_id >= 0:
+		state.job_board.release_activity(agent.current_activity_id, state.tick)
+	agent.current_activity_id = -1
+
+func _commit_activity_for_intent(agent: Agent, intent: Dictionary, state: SimState) -> Dictionary:
+	if state == null:
+		return {}
+	if intent.get("type", "") == "GATHER_RESOURCE":
+		var node_type := intent.get("data", {}).get("node_type", "")
+		var candidates := state.job_board.get_available_activities(JobBoard.ACTIVITY_GATHER_NODE)
+		for activity in candidates:
+			var data: Dictionary = activity.get("data", {})
+			if data.get("node_type", "") != node_type:
+				continue
+			if state.job_board.claim_activity(activity.get("activity_id", -1), agent.id, state.tick):
+				agent.current_activity_id = int(activity.get("activity_id", -1))
+				return activity
+	elif intent.get("type", "") == "ACCEPT_CONTRACT":
+		var contract_id := int(intent.get("data", {}).get("contract_id", -1))
+		var candidates := state.job_board.get_available_activities(JobBoard.ACTIVITY_ACCEPT_CONTRACT)
+		for activity in candidates:
+			var data: Dictionary = activity.get("data", {})
+			if int(data.get("contract_id", -1)) != contract_id:
+				continue
+			if state.job_board.claim_activity(activity.get("activity_id", -1), agent.id, state.tick):
+				agent.current_activity_id = int(activity.get("activity_id", -1))
+				return activity
+	return {}
+
+func _action_from_current_activity(agent: Agent, world: World, tuning: Dictionary, state: SimState) -> Dictionary:
+	if state == null or agent.current_activity_id < 0:
+		return {}
+	var activity := state.job_board.get_activity(agent.current_activity_id)
+	if activity.is_empty():
+		agent.current_activity_id = -1
+		return {}
+	var status: String = activity.get("status", JobBoard.STATUS_AVAILABLE)
+	if status != JobBoard.STATUS_CLAIMED:
+		agent.current_activity_id = -1
+		return {}
+	if int(activity.get("worker_id", -1)) != agent.id:
+		agent.current_activity_id = -1
+		return {}
+	return _action_from_activity(agent, activity, world, tuning, state)
+
+func _action_from_activity(agent: Agent, activity: Dictionary, world: World, tuning: Dictionary, state: SimState) -> Dictionary:
+	var activity_type := activity.get("type", "")
+	match activity_type:
+		JobBoard.ACTIVITY_GATHER_NODE:
+			var data: Dictionary = activity.get("data", {})
+			var node_id: int = int(data.get("node_id", -1))
+			var node := world.get_node_by_id(node_id)
+			if node == null or not node.has_stock(1):
+				state.job_board.cancel_activity(activity.get("activity_id", -1), state.tick)
+				agent.current_activity_id = -1
+				return {}
+			if agent.is_at(node.pos_x, node.pos_y):
+				return Actions.gather_node(node.id)
+			return Actions.move_to_node(node.id)
+		JobBoard.ACTIVITY_ACCEPT_CONTRACT:
+			var contract_id := int(activity.get("data", {}).get("contract_id", -1))
+			if contract_id < 0:
+				state.job_board.cancel_activity(activity.get("activity_id", -1), state.tick)
+				agent.current_activity_id = -1
+				return {}
+			return Actions.accept_contract(contract_id)
 	return {}
 	
 # --------------------

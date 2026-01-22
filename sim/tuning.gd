@@ -229,6 +229,11 @@ func _init_schema() -> void:
 	
 	# Metrics
 	_add_schema("metrics_enabled", "bool", true, true, 0, 0, "Whether to collect metrics")
+	_add_schema("job_board_enabled", "bool", false, true, 0, 0, "Enable job board activity posting")
+	_add_schema("job_board_daily_post_limit", "int", false, 20, 0, 10000, "Daily max activities to post")
+	_add_schema("job_board_gather_node_post_limit", "int", false, 20, 0, 10000, "Daily gather-node activity cap")
+	_add_schema("job_board_contract_post_limit", "int", false, 10, 0, 10000, "Daily contract activity cap")
+	_add_schema("job_board_max_inactive", "int", false, 200, 0, 10000, "Max inactive activities to retain")
 
 ## Add a schema entry
 func _add_schema(key: String, type: String, required: bool, default_value, 

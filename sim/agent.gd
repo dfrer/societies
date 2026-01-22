@@ -18,6 +18,8 @@ var personality: Dictionary = {}
 var current_action: Dictionary = {}
 var target_node_id: int = -1
 var target_workshop_id: int = -1
+var current_intent_id: int = -1
+var current_activity_id: int = -1
 
 ## Market/locking state
 var locked_money: int = 0
@@ -112,6 +114,8 @@ func to_dict() -> Dictionary:
 		"current_action": current_action.duplicate(),
 		"target_node_id": target_node_id,
 		"target_workshop_id": target_workshop_id,
+		"current_intent_id": current_intent_id,
+		"current_activity_id": current_activity_id,
 		"locked_money": locked_money,
 		"locked_inventory": locked_inventory.duplicate(),
 		"active_contract_id": active_contract_id,
@@ -224,8 +228,7 @@ static func from_dict(d: Dictionary) -> Agent:
 	var action_data: Dictionary = d.get("current_action", {"type": "IDLE"})
 	agent.current_action = {}
 	# List of keys that should be integers
-	var int_action_keys := ["node_id", "workshop_id", "contract_id", "target_x", "target_y", "x", "y",
-							"direction", "proposal_id", "project_id", "qty"]
+	var int_action_keys := ["node_id", "workshop_id", "contract_id", "target_x", "target_y", "x", "y", "direction", "proposal_id", "project_id", "qty"]
 	for key in action_data:
 		var val = action_data[key]
 		if key in int_action_keys:
@@ -234,6 +237,8 @@ static func from_dict(d: Dictionary) -> Agent:
 			agent.current_action[key] = val
 	agent.target_node_id = int(d.get("target_node_id", -1))
 	agent.target_workshop_id = int(d.get("target_workshop_id", -1))
+	agent.current_intent_id = int(d.get("current_intent_id", -1))
+	agent.current_activity_id = int(d.get("current_activity_id", -1))
 	agent.locked_money = int(d.get("locked_money", 0))
 	# Convert locked_inventory values to int
 	var locked_inv: Dictionary = d.get("locked_inventory", {})
