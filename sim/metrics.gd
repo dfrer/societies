@@ -3,7 +3,7 @@ class_name Metrics
 extends RefCounted
 
 ## Snapshot schema version - increment when schema changes
-const SCHEMA_VERSION := 2
+const SCHEMA_VERSION := 3
 
 ## Required field names for schema validation
 const REQUIRED_FIELDS := [
@@ -15,6 +15,12 @@ const REQUIRED_FIELDS := [
 	"workshop_count", "workshop_ready_count",
 	# Inventory
 	"inventory_totals",
+	# Projects
+	"build_sites_active", "build_sites_collecting", "build_sites_building",
+	"build_sites_resource_completion", "build_sites_build_completion",
+	# Stockpiles
+	"stockpile_deposited_total", "stockpile_withdrawn_total",
+	"stockpile_deposits_by_item", "stockpile_withdrawals_by_item",
 	# Market
 	"market_buy_orders", "market_sell_orders", "market_ref_prices",
 	"market_trade_volumes", "total_trades", "orders_denied_embargo",
@@ -49,6 +55,37 @@ static func create_snapshot(state: SimState) -> Dictionary:
 		for item_name in agent.inventory:
 			var qty: int = agent.inventory[item_name]
 			inventory_totals[item_name] = inventory_totals.get(item_name, 0) + qty
+
+	# Build site telemetry
+	var build_sites_active := 0
+	var build_sites_collecting := 0
+	var build_sites_building := 0
+	var build_sites_resource_required := 0
+	var build_sites_resource_contributed := 0
+	var build_sites_build_required := 0
+	var build_sites_build_progress := 0
+	for project in state.communal_projects.projects:
+		if not project.is_active():
+			continue
+		build_sites_active += 1
+		if project.status == CommunalProject.STATUS_COLLECTING:
+			build_sites_collecting += 1
+			for item in project.required_resources:
+				var required: int = int(project.required_resources[item])
+				var contributed: int = int(project.contributed.get(item, 0))
+				build_sites_resource_required += required
+				build_sites_resource_contributed += contributed
+		elif project.status == CommunalProject.STATUS_BUILDING:
+			build_sites_building += 1
+			var required_ticks := maxi(1, project.build_required)
+			build_sites_build_required += required_ticks
+			build_sites_build_progress += mini(project.build_progress, required_ticks)
+	var build_sites_resource_completion := 0.0
+	if build_sites_resource_required > 0:
+		build_sites_resource_completion = float(build_sites_resource_contributed) / float(build_sites_resource_required)
+	var build_sites_build_completion := 0.0
+	if build_sites_build_required > 0:
+		build_sites_build_completion = float(build_sites_build_progress) / float(build_sites_build_required)
 	
 	# Environment stats
 	var avg_pollution := world.get_average_pollution()
@@ -101,6 +138,17 @@ static func create_snapshot(state: SimState) -> Dictionary:
 		"workshop_ready_count": world.get_ready_workshop_count(),
 		# Inventory
 		"inventory_totals": inventory_totals,
+		# Projects
+		"build_sites_active": build_sites_active,
+		"build_sites_collecting": build_sites_collecting,
+		"build_sites_building": build_sites_building,
+		"build_sites_resource_completion": snappedf(build_sites_resource_completion, 0.00000001),
+		"build_sites_build_completion": snappedf(build_sites_build_completion, 0.00000001),
+		# Stockpiles
+		"stockpile_deposited_total": int(state.stockpile_throughput.get("deposited_total", 0)),
+		"stockpile_withdrawn_total": int(state.stockpile_throughput.get("withdrawn_total", 0)),
+		"stockpile_deposits_by_item": state.stockpile_throughput.get("deposited_by_item", {}).duplicate(true),
+		"stockpile_withdrawals_by_item": state.stockpile_throughput.get("withdrawn_by_item", {}).duplicate(true),
 		# Market
 		"market_buy_orders": market.buy_orders.size(),
 		"market_sell_orders": market.sell_orders.size(),
@@ -154,6 +202,15 @@ static func get_field_types() -> Dictionary:
 		"workshop_count": TYPE_INT,
 		"workshop_ready_count": TYPE_INT,
 		"inventory_totals": TYPE_DICTIONARY,
+		"build_sites_active": TYPE_INT,
+		"build_sites_collecting": TYPE_INT,
+		"build_sites_building": TYPE_INT,
+		"build_sites_resource_completion": TYPE_FLOAT,
+		"build_sites_build_completion": TYPE_FLOAT,
+		"stockpile_deposited_total": TYPE_INT,
+		"stockpile_withdrawn_total": TYPE_INT,
+		"stockpile_deposits_by_item": TYPE_DICTIONARY,
+		"stockpile_withdrawals_by_item": TYPE_DICTIONARY,
 		"market_buy_orders": TYPE_INT,
 		"market_sell_orders": TYPE_INT,
 		"market_ref_prices": TYPE_DICTIONARY,

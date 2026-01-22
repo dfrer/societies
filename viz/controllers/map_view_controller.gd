@@ -33,12 +33,16 @@ func update_map_data() -> void:
 		return
 
 	var world: RefCounted = _sim_runner.sim.state.world
+	var state: SimState = _sim_runner.sim.state
 	if not _world_data_initialized:
 		var world_data := _build_full_world_data(world)
 		_map_view.update_world_data(world_data)
 		_world_data_initialized = true
 		world.consume_dirty_claim_tiles()
 		world.consume_dirty_pollution_tiles()
+		_map_view.update_projects_data(_build_projects_data(state))
+		_map_view.update_tasks_data(_build_tasks_data(state))
+		_map_view.update_stockpiles_data(_build_stockpiles_data(state))
 		map_data_updated.emit(world_data)
 		return
 
@@ -61,6 +65,9 @@ func update_map_data() -> void:
 	var resource_nodes := _build_resource_nodes_data(world)
 	var workshops := _build_workshops_data(world)
 	_map_view.update_static_world_data(resource_nodes, workshops)
+	_map_view.update_projects_data(_build_projects_data(state))
+	_map_view.update_tasks_data(_build_tasks_data(state))
+	_map_view.update_stockpiles_data(_build_stockpiles_data(state))
 
 
 ## Update agents display
@@ -210,3 +217,103 @@ func _build_workshops_data(world: RefCounted) -> Array:
 			"is_built": workshop.is_built
 		})
 	return workshops
+
+
+func _build_projects_data(state: SimState) -> Array:
+	var projects_data: Array = []
+	for project in state.communal_projects.projects:
+		if not project.is_active():
+			continue
+		var progress_ratio := 0.0
+		if project.status == CommunalProject.STATUS_BUILDING:
+			var required := maxi(1, project.build_required)
+			progress_ratio = float(mini(project.build_progress, required)) / float(required)
+		elif project.status == CommunalProject.STATUS_COLLECTING:
+			var required_total := 0
+			var contributed_total := 0
+			for item in project.required_resources:
+				required_total += int(project.required_resources[item])
+				contributed_total += int(project.contributed.get(item, 0))
+			if required_total > 0:
+				progress_ratio = float(contributed_total) / float(required_total)
+		projects_data.append({
+			"pos_x": project.pos_x,
+			"pos_y": project.pos_y,
+			"status": project.status,
+			"progress_ratio": progress_ratio
+		})
+	return projects_data
+
+
+func _build_tasks_data(state: SimState) -> Array:
+	var tasks_data: Array = []
+	for activity in state.job_board.activities:
+		var status: String = activity.get("status", JobBoard.STATUS_AVAILABLE)
+		if status != JobBoard.STATUS_AVAILABLE and status != JobBoard.STATUS_CLAIMED:
+			continue
+		var activity_type: String = activity.get("type", "")
+		var data: Dictionary = activity.get("data", {})
+		var pos := _get_activity_position(state, activity_type, data)
+		if pos == Vector2i(-1, -1):
+			continue
+		tasks_data.append({
+			"pos_x": pos.x,
+			"pos_y": pos.y,
+			"type": activity_type,
+			"status": status
+		})
+	return tasks_data
+
+
+func _get_activity_position(state: SimState, activity_type: String, data: Dictionary) -> Vector2i:
+	match activity_type:
+		JobBoard.ACTIVITY_GATHER_NODE:
+			var node_id: int = int(data.get("node_id", -1))
+			var node := state.world.get_node_by_id(node_id)
+			if node != null:
+				return Vector2i(node.pos_x, node.pos_y)
+		JobBoard.ACTIVITY_HAUL:
+			var destination_type: String = data.get("destination_type", "stockpile")
+			if destination_type == "project":
+				var project_id: int = int(data.get("destination_id", -1))
+				var project := state.communal_projects.get_project(project_id)
+				if project != null:
+					return Vector2i(project.pos_x, project.pos_y)
+			else:
+				var destination_id: int = int(data.get("destination_id", -1))
+				var destination := state.structures.get_structure(destination_id)
+				if destination != null:
+					return Vector2i(destination.pos_x, destination.pos_y)
+		JobBoard.ACTIVITY_DELIVER_TO_PROJECT, JobBoard.ACTIVITY_BUILD_SITE:
+			var project_id: int = int(data.get("project_id", -1))
+			var project := state.communal_projects.get_project(project_id)
+			if project != null:
+				return Vector2i(project.pos_x, project.pos_y)
+		JobBoard.ACTIVITY_CRAFT_AT_STATION:
+			var station_id: int = int(data.get("station_id", -1))
+			var workshop := state.world.get_workshop_by_id(station_id)
+			if workshop != null:
+				return Vector2i(workshop.pos_x, workshop.pos_y)
+		JobBoard.ACTIVITY_FARM_TASK:
+			var plot_id: int = int(data.get("plot_id", -1))
+			if plot_id >= 0:
+				var x := plot_id % state.world.width
+				var y := plot_id / state.world.width
+				return Vector2i(x, y)
+	return Vector2i(-1, -1)
+
+
+func _build_stockpiles_data(state: SimState) -> Array:
+	var stockpiles_data: Array = []
+	for structure in state.structures.structures:
+		if structure.structure_type != StructureState.TYPE_STOCKPILE:
+			continue
+		var reserved_total := 0
+		for item in structure.reserved_items:
+			reserved_total += int(structure.reserved_items[item])
+		stockpiles_data.append({
+			"pos_x": structure.pos_x,
+			"pos_y": structure.pos_y,
+			"reserved_total": reserved_total
+		})
+	return stockpiles_data

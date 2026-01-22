@@ -25,6 +25,10 @@ signal agent_clicked(agent_id: int)
 @export var color_market: Color = Color(0.9, 0.7, 0.1)
 @export var color_market_blocked: Color = Color(0.9, 0.2, 0.2)
 @export var color_faction_border: Color = Color(1.0, 1.0, 1.0, 0.6)
+@export var color_project_collecting: Color = Color(0.95, 0.6, 0.2, 0.7)
+@export var color_project_building: Color = Color(0.2, 0.8, 0.4, 0.7)
+@export var color_task_default: Color = Color(0.6, 0.8, 0.9, 0.85)
+@export var color_stockpile_reserved: Color = Color(0.9, 0.2, 0.2, 0.7)
 
 ## World dimensions
 var world_width: int = 96
@@ -64,10 +68,16 @@ var _workshops: Array = []
 var _claims: Dictionary = {}
 var _pollution_data: Dictionary = {}
 var _avg_pollution: float = 0.0
+var _projects_data: Array = []
+var _tasks_data: Array = []
+var _stockpiles_data: Array = []
 var _claims_texture: ImageTexture = null
 var _pollution_texture: ImageTexture = null
 var _claims_dirty: bool = true
 var _pollution_dirty: bool = true
+var _last_projects_hash: int = 0
+var _last_tasks_hash: int = 0
+var _last_stockpiles_hash: int = 0
 
 ## Selected agent target position for line drawing (-1,-1 means no target)
 var _agent_target_pos: Vector2i = Vector2i(-1, -1)
@@ -188,6 +198,33 @@ func update_agents(agents: Array) -> void:
 	queue_redraw()
 
 
+func update_projects_data(projects: Array) -> void:
+	var new_hash = projects.hash()
+	if new_hash == _last_projects_hash:
+		return
+	_projects_data = projects
+	_last_projects_hash = new_hash
+	queue_redraw()
+
+
+func update_tasks_data(tasks: Array) -> void:
+	var new_hash = tasks.hash()
+	if new_hash == _last_tasks_hash:
+		return
+	_tasks_data = tasks
+	_last_tasks_hash = new_hash
+	queue_redraw()
+
+
+func update_stockpiles_data(stockpiles: Array) -> void:
+	var new_hash = stockpiles.hash()
+	if new_hash == _last_stockpiles_hash:
+		return
+	_stockpiles_data = stockpiles
+	_last_stockpiles_hash = new_hash
+	queue_redraw()
+
+
 func set_overlay_settings(settings: OverlaySettings) -> void:
 	if overlay_settings != null:
 		if overlay_settings.settings_changed.is_connected(_on_overlay_settings_changed):
@@ -245,6 +282,18 @@ func _draw() -> void:
 	# Draw market
 	if overlay_settings.show_market:
 		_draw_market(start_tile, end_tile, effective_tile_size)
+
+	# Draw projects
+	if overlay_settings.show_projects:
+		_draw_projects(start_tile, end_tile, effective_tile_size)
+
+	# Draw tasks
+	if overlay_settings.show_tasks:
+		_draw_tasks(start_tile, end_tile, effective_tile_size)
+
+	# Draw stockpile reservation overlay
+	if overlay_settings.show_stockpile_reservations:
+		_draw_stockpile_reservations(start_tile, end_tile, effective_tile_size)
 
 	# Draw faction borders
 	if overlay_settings.show_faction_borders:
@@ -455,6 +504,80 @@ func _draw_market(start_tile: Vector2i, end_tile: Vector2i, effective_tile_size:
 		Vector2(effective_tile_size - 6 * zoom_level, effective_tile_size - 6 * zoom_level)
 	)
 	draw_rect(inner_rect, outline_color, false, 1.0 * zoom_level)
+
+
+func _draw_projects(start_tile: Vector2i, end_tile: Vector2i, effective_tile_size: float) -> void:
+	for project in _projects_data:
+		var px: int = project.get("pos_x", 0)
+		var py: int = project.get("pos_y", 0)
+		if px < start_tile.x or px > end_tile.x or py < start_tile.y or py > end_tile.y:
+			continue
+
+		var progress: float = float(project.get("progress_ratio", 0.0))
+		var status: String = project.get("status", "")
+		var base_color := color_project_collecting if status == CommunalProject.STATUS_COLLECTING else color_project_building
+		var alpha: float = clampf(0.2 + progress * 0.7, 0.2, 0.9)
+		var display_color := base_color
+		display_color.a = alpha
+		var tile_pos := tile_to_screen(Vector2i(px, py))
+		var inset: float = effective_tile_size * 0.1
+		var rect := Rect2(
+			tile_pos + Vector2(inset, inset),
+			Vector2(effective_tile_size - inset * 2, effective_tile_size - inset * 2)
+		)
+		draw_rect(rect, display_color)
+
+
+func _draw_tasks(start_tile: Vector2i, end_tile: Vector2i, effective_tile_size: float) -> void:
+	var radius: float = maxf(2.0, effective_tile_size * 0.15)
+	for task in _tasks_data:
+		var tx: int = task.get("pos_x", 0)
+		var ty: int = task.get("pos_y", 0)
+		if tx < start_tile.x or tx > end_tile.x or ty < start_tile.y or ty > end_tile.y:
+			continue
+		var status: String = task.get("status", "")
+		var task_type: String = task.get("type", "")
+		var base_color := _get_task_color(task_type)
+		var display_color := base_color.lightened(0.2) if status == JobBoard.STATUS_CLAIMED else base_color
+		var tile_pos := tile_to_screen(Vector2i(tx, ty))
+		var center := tile_pos + Vector2(effective_tile_size / 2, effective_tile_size / 2)
+		draw_circle(center, radius, display_color)
+
+
+func _draw_stockpile_reservations(start_tile: Vector2i, end_tile: Vector2i, effective_tile_size: float) -> void:
+	for stockpile in _stockpiles_data:
+		var sx: int = stockpile.get("pos_x", 0)
+		var sy: int = stockpile.get("pos_y", 0)
+		if sx < start_tile.x or sx > end_tile.x or sy < start_tile.y or sy > end_tile.y:
+			continue
+		var reserved_total: int = stockpile.get("reserved_total", 0)
+		if reserved_total <= 0:
+			continue
+		var tile_pos := tile_to_screen(Vector2i(sx, sy))
+		var inset: float = effective_tile_size * 0.05
+		var rect := Rect2(
+			tile_pos + Vector2(inset, inset),
+			Vector2(effective_tile_size - inset * 2, effective_tile_size - inset * 2)
+		)
+		draw_rect(rect, color_stockpile_reserved, false, 2.0 * zoom_level)
+
+
+func _get_task_color(task_type: String) -> Color:
+	match task_type:
+		JobBoard.ACTIVITY_GATHER_NODE:
+			return Color(0.7, 0.4, 0.9, 0.85)
+		JobBoard.ACTIVITY_HAUL:
+			return Color(0.3, 0.7, 0.9, 0.85)
+		JobBoard.ACTIVITY_DELIVER_TO_PROJECT:
+			return Color(0.9, 0.6, 0.2, 0.85)
+		JobBoard.ACTIVITY_BUILD_SITE:
+			return Color(0.2, 0.8, 0.4, 0.85)
+		JobBoard.ACTIVITY_CRAFT_AT_STATION:
+			return Color(0.2, 0.8, 0.8, 0.85)
+		JobBoard.ACTIVITY_FARM_TASK:
+			return Color(0.4, 0.9, 0.4, 0.85)
+		_:
+			return color_task_default
 
 
 func _draw_faction_borders(start_tile: Vector2i, end_tile: Vector2i, effective_tile_size: float) -> void:

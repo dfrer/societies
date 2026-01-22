@@ -18,6 +18,7 @@ var world_fines_sink: int = 0
 var taxes_collected: int = 0
 var laws_by_owner: Dictionary = {}  # owner_id -> Laws
 var metrics_history: Array = []  # Array of snapshot dictionaries
+var stockpile_throughput: Dictionary = {}
 var factions: Array = []
 var organizations: Array = []
 var tuning: Dictionary = {}
@@ -53,6 +54,34 @@ func _init() -> void:
 	structures = Structures.new()
 	tuning_config = TuningConfig.new()
 	organizations = []
+	stockpile_throughput = _create_empty_stockpile_throughput()
+
+func _create_empty_stockpile_throughput() -> Dictionary:
+	return {
+		"deposited_total": 0,
+		"withdrawn_total": 0,
+		"deposited_by_item": {},
+		"withdrawn_by_item": {}
+	}
+
+func record_stockpile_deposit(item: String, qty: int) -> void:
+	if qty <= 0:
+		return
+	stockpile_throughput["deposited_total"] = int(stockpile_throughput.get("deposited_total", 0)) + qty
+	var by_item: Dictionary = stockpile_throughput.get("deposited_by_item", {})
+	by_item[item] = int(by_item.get(item, 0)) + qty
+	stockpile_throughput["deposited_by_item"] = by_item
+
+func record_stockpile_withdrawal(item: String, qty: int) -> void:
+	if qty <= 0:
+		return
+	stockpile_throughput["withdrawn_total"] = int(stockpile_throughput.get("withdrawn_total", 0)) + qty
+	var by_item: Dictionary = stockpile_throughput.get("withdrawn_by_item", {})
+	by_item[item] = int(by_item.get(item, 0)) + qty
+	stockpile_throughput["withdrawn_by_item"] = by_item
+
+func reset_stockpile_throughput() -> void:
+	stockpile_throughput = _create_empty_stockpile_throughput()
 
 ## Get laws for a jurisdiction owner
 func get_laws(owner_id: int) -> Laws:
@@ -154,6 +183,7 @@ func to_dict() -> Dictionary:
 		"factions": factions_data,
 		"organizations": organizations_data,
 		"metrics_history": _sanitize_metrics_for_serialization(metrics_history),
+		"stockpile_throughput": _sanitize_stockpile_throughput(stockpile_throughput),
 		"tuning": _sanitize_tuning_for_serialization(tuning),
 		"items": _sanitize_items_for_serialization(items),
 		"recipes": recipes_data,
@@ -233,6 +263,22 @@ func _sanitize_items_for_serialization(d: Dictionary) -> Dictionary:
 			else:
 				sanitized[k] = val
 		result[item_name] = sanitized
+	return result
+
+func _sanitize_stockpile_throughput(d: Dictionary) -> Dictionary:
+	var result := _create_empty_stockpile_throughput()
+	if d.is_empty():
+		return result
+	result["deposited_total"] = int(d.get("deposited_total", 0))
+	result["withdrawn_total"] = int(d.get("withdrawn_total", 0))
+	result["deposited_by_item"] = _sanitize_item_totals(d.get("deposited_by_item", {}))
+	result["withdrawn_by_item"] = _sanitize_item_totals(d.get("withdrawn_by_item", {}))
+	return result
+
+func _sanitize_item_totals(d: Dictionary) -> Dictionary:
+	var result := {}
+	for key in d:
+		result[key] = int(d[key])
 	return result
 
 func _sanitize_metrics_for_serialization(history: Array) -> Array:
@@ -331,6 +377,7 @@ static func from_dict(d: Dictionary) -> SimState:
 	state.world_fines_sink = int(d.get("world_fines_sink", 0))
 	state.taxes_collected = int(d.get("taxes_collected", 0))
 	state.metrics_history = state._sanitize_metrics_for_serialization(d.get("metrics_history", []))
+	state.stockpile_throughput = state._sanitize_stockpile_throughput(d.get("stockpile_throughput", {}))
 
 	state.laws_by_owner = {}
 	var laws_data: Dictionary = d.get("laws_by_owner", {})
