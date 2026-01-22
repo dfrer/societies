@@ -13,6 +13,45 @@
             "ticks": 60
         },
         {
+            "id": "workbench_hand",
+            "name": "Workbench (Hand)",
+            "station": "hand",
+            "inputs": {
+                "Logs": 4,
+                "Planks": 2
+            },
+            "outputs": {
+                "Workbench": 1
+            },
+            "ticks": 120
+        },
+        {
+            "id": "wooden_axe_hand",
+            "name": "Wooden Axe (Hand)",
+            "station": "hand",
+            "inputs": {
+                "Logs": 1,
+                "Planks": 3
+            },
+            "outputs": {
+                "Axe": 1
+            },
+            "ticks": 90
+        },
+        {
+            "id": "wooden_pickaxe_hand",
+            "name": "Wooden Pickaxe (Hand)",
+            "station": "hand",
+            "inputs": {
+                "Logs": 1,
+                "Planks": 3
+            },
+            "outputs": {
+                "Pickaxe": 1
+            },
+            "ticks": 90
+        },
+        {
             "id": "planks",
             "name": "Planks",
             "station": "workshop",
