@@ -185,8 +185,8 @@ func _process_goal(agent: Agent, goal: Dictionary, world: World, market: Market,
 func _intent_from_goal(agent: Agent, goal: Dictionary, world: World, market: Market, tuning: Dictionary) -> Dictionary:
 	match goal.type:
 		"OBTAIN_ITEM":
-			var node_type := ""
-			var item_name := goal.get("item", "")
+			var node_type: String = ""
+			var item_name: String = goal.get("item", "")
 			if item_name == "Berries":
 				node_type = "berry"
 			elif item_name == "Logs":
@@ -239,7 +239,7 @@ func _commit_activity_for_intent(agent: Agent, intent: Dictionary, state: SimSta
 	if state == null:
 		return {}
 	if intent.get("type", "") == "GATHER_RESOURCE":
-		var node_type := intent.get("data", {}).get("node_type", "")
+		var node_type: String = intent.get("data", {}).get("node_type", "")
 		var candidates := state.job_board.get_available_activities(JobBoard.ACTIVITY_GATHER_NODE)
 		for activity in candidates:
 			var data: Dictionary = activity.get("data", {})
@@ -277,7 +277,7 @@ func _action_from_current_activity(agent: Agent, world: World, tuning: Dictionar
 	return _action_from_activity(agent, activity, world, tuning, state)
 
 func _action_from_activity(agent: Agent, activity: Dictionary, world: World, tuning: Dictionary, state: SimState) -> Dictionary:
-	var activity_type := activity.get("type", "")
+	var activity_type: String = activity.get("type", "")
 	match activity_type:
 		JobBoard.ACTIVITY_GATHER_NODE:
 			var data: Dictionary = activity.get("data", {})
@@ -307,7 +307,7 @@ func _plan_obtain_item(agent: Agent, goal: Dictionary, world: World, market: Mar
 	var item = goal.item
 
 	# 1. Check if we can simply gather it
-	var node_type = ""
+	var node_type: String = ""
 	if item == "Berries": node_type = "berry"
 	elif item == "Logs": node_type = "tree"
 	elif item == "Ore": node_type = "ore"

@@ -30,6 +30,11 @@ func init_new(seed_value: int) -> void:
 	
 	_load_config()
 	
+	# DEBUG: Trace first few RNG values
+	# print("DEBUG: init_new seed: ", seed_value)
+	# var test_rand = state.rng.randi()
+	# print("DEBUG: First randi: ", test_rand)
+	
 	# Initialize default laws for unclaimed land (owner 0)
 	var default_laws := Laws.new()
 	default_laws.init_from_tuning(state.tuning)

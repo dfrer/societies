@@ -29,12 +29,18 @@ func _test_inventory_add_remove() -> void:
 	assert_eq(agent.get_item_count("Berries"), 15, "Should have 15 Berries after adding more")
 	
 	# Remove items
-	agent.remove_item("Berries", 7)
+	var removed := agent.remove_item("Berries", 7)
+	assert_true(removed, "Should return true when remove succeeds")
 	assert_eq(agent.get_item_count("Berries"), 8, "Should have 8 Berries after removing 7")
 	
-	# Remove more than available (should not go negative)
-	agent.remove_item("Berries", 20)
-	assert_eq(agent.get_item_count("Berries"), 0, "Should have 0 Berries after removing too many")
+	# Remove more than available (should return false and not modify)
+	var removed_too_many := agent.remove_item("Berries", 20)
+	assert_false(removed_too_many, "Should return false when not enough available")
+	assert_eq(agent.get_item_count("Berries"), 8, "Should still have 8 Berries (unchanged)")
+	
+	# Remove all that remain
+	agent.remove_item("Berries", 8)
+	assert_eq(agent.get_item_count("Berries"), 0, "Should have 0 Berries after removing exact amount")
 	
 	# Get count for non-existent item
 	assert_eq(agent.get_item_count("NonexistentItem"), 0, "Non-existent item should return 0")
@@ -44,24 +50,24 @@ func _test_inventory_locking() -> void:
 	agent.add_item("Logs", 10)
 	
 	# Lock some items
-	agent.reserve_item("Logs", 3)
+	agent.lock_item("Logs", 3)
 	assert_eq(agent.get_available_item("Logs"), 7, "Available should be total minus locked")
 	assert_eq(agent.locked_inventory.get("Logs", 0), 3, "Locked should be 3")
 	
 	# Lock more
-	agent.reserve_item("Logs", 4)
+	agent.lock_item("Logs", 4)
 	assert_eq(agent.get_available_item("Logs"), 3, "Available should be 3 after locking 7 total")
 	assert_eq(agent.locked_inventory.get("Logs", 0), 7, "Locked should be 7")
 	
 	# Try to lock more than available (should clamp)
-	agent.reserve_item("Logs", 10)  # More than available
+	agent.lock_item("Logs", 10)  # More than available
 	# Available should not go negative
 	assert_true(agent.get_available_item("Logs") >= 0, "Available should never be negative")
 
 func _test_inventory_release_locked() -> void:
 	var agent := Fixtures.make_agent()
 	agent.add_item("Ore", 10)
-	agent.reserve_item("Ore", 5)
+	agent.lock_item("Ore", 5)
 	
 	# Release locked items (should not destroy inventory)
 	agent.release_locked_item("Ore", 3)
@@ -72,7 +78,7 @@ func _test_inventory_release_locked() -> void:
 func _test_inventory_consume_locked() -> void:
 	var agent := Fixtures.make_agent()
 	agent.add_item("Planks", 10)
-	agent.reserve_item("Planks", 5)
+	agent.lock_item("Planks", 5)
 	
 	# Consume locked items (releases AND removes from inventory)
 	agent.consume_locked_item("Planks", 3)
@@ -84,18 +90,18 @@ func _test_money_locking() -> void:
 	var agent := Fixtures.make_agent({"money": 100})
 	
 	# Lock money
-	agent.reserve_money(30)
+	agent.lock_money(30)
 	assert_eq(agent.locked_money, 30, "Locked money should be 30")
 	assert_eq(agent.get_available_money(), 70, "Available money should be 70")
 	
 	# Lock more
-	agent.reserve_money(20)
+	agent.lock_money(20)
 	assert_eq(agent.locked_money, 50, "Locked money should be 50")
 	assert_eq(agent.get_available_money(), 50, "Available money should be 50")
 
 func _test_money_release() -> void:
 	var agent := Fixtures.make_agent({"money": 100})
-	agent.reserve_money(50)
+	agent.lock_money(50)
 	
 	# Release some
 	agent.release_locked_money(20)
@@ -109,11 +115,11 @@ func _test_get_available_money() -> void:
 	assert_eq(agent.get_available_money(), 100, "All money available initially")
 	
 	# Lock all
-	agent.reserve_money(100)
+	agent.lock_money(100)
 	assert_eq(agent.get_available_money(), 0, "No money available when all locked")
 	
 	# Lock more than total should not make available negative
-	agent.reserve_money(50)  # 150 locked, but only 100 total
+	agent.lock_money(50)  # 150 locked, but only 100 total
 	assert_true(agent.get_available_money() >= 0, "Available money should never be negative")
 
 func _test_hunger_clamping() -> void:
@@ -152,8 +158,8 @@ func _test_serialization_roundtrip() -> void:
 		"inventory": {"Berries": 15, "Logs": 8}
 	})
 	agent.set_hunger(65.0)
-	agent.reserve_money(100)
-	agent.reserve_item("Berries", 5)
+	agent.lock_money(100)
+	agent.lock_item("Berries", 5)
 	agent.personality["greed"] = 0.8
 	
 	# Serialize
@@ -198,6 +204,6 @@ func _test_skill_system() -> void:
 	assert_true(initial_gather >= 0.0, "Skill level should be non-negative")
 	
 	# Add experience
-	agent.add_skill_xp("gather", 10.0)
+	agent.add_skill_xp("gather", 10.0, {})
 	var after_xp := agent.get_skill_level("gather")
 	assert_true(after_xp >= initial_gather, "Skill should not decrease after XP gain")
