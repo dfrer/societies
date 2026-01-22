@@ -39,20 +39,25 @@ func tick(sim: RefCounted, state: SimState) -> void:
         if activity_id >= 0:
             var activity := state.job_board.get_activity(activity_id)
             activity_type = activity.get("type", "")
-            if activity_type == JobBoard.ACTIVITY_ACCEPT_CONTRACT and action.get("type", "") == Actions.TYPE_ACCEPT_CONTRACT:
+            var action_type: String = action.get("type", "")
+            if activity_type == JobBoard.ACTIVITY_ACCEPT_CONTRACT and action_type == Actions.TYPE_ACCEPT_CONTRACT:
                 if action_success:
                     state.job_board.complete_activity(activity_id, state.tick)
                     agent.current_activity_id = -1
                 else:
                     state.job_board.release_activity(activity_id, state.tick)
-            elif action_success and activity_type in [
-                JobBoard.ACTIVITY_DELIVER_TO_PROJECT,
-                JobBoard.ACTIVITY_BUILD_SITE,
-                JobBoard.ACTIVITY_HAUL,
-                JobBoard.ACTIVITY_FARM_TASK
-            ]:
-                state.job_board.complete_activity(activity_id, state.tick)
-                agent.current_activity_id = -1
+            elif action_success and activity_type == JobBoard.ACTIVITY_DELIVER_TO_PROJECT:
+                if action_type == Actions.TYPE_CONTRIBUTE_TO_PROJECT:
+                    state.job_board.complete_activity(activity_id, state.tick)
+                    agent.current_activity_id = -1
+            elif action_success and activity_type == JobBoard.ACTIVITY_BUILD_SITE:
+                if action_type == Actions.TYPE_BUILD_SITE:
+                    state.job_board.complete_activity(activity_id, state.tick)
+                    agent.current_activity_id = -1
+            elif action_success and activity_type == JobBoard.ACTIVITY_HAUL:
+                if action_type in [Actions.TYPE_CONTRIBUTE_TO_PROJECT, Actions.TYPE_DEPOSIT_STOCKPILE]:
+                    state.job_board.complete_activity(activity_id, state.tick)
+                    agent.current_activity_id = -1
         state.log_decision_trace(agent.id, intent_id, intent_type,
             activity_id, activity_type, action.get("type", Actions.TYPE_IDLE))
 
