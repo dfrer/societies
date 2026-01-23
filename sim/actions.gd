@@ -1033,6 +1033,8 @@ static func _can_access_stockpile(agent: Agent, structure: StructureState, state
 		"personal":
 			return structure.owner_id == agent.id
 		"organization":
+			if structure.owner_id == 0:
+				return true
 			if World.is_organization_owner(structure.owner_id) and state != null:
 				var org_id := World.organization_id_from_owner(structure.owner_id)
 				var org := state.get_organization(org_id)
