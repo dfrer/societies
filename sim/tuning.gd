@@ -33,6 +33,7 @@ func _init_schema() -> void:
 	_add_schema("urgent_hunger_threshold", "float", true, 25, 0, 100, "Hunger level for urgent food needs")
 	_add_schema("emergency_hunger_threshold", "float", false, 15, 0, 100, "Hunger level for emergency eating")
 	_add_schema("emergency_food_hunger_threshold", "float", false, 40, 0, 100, "Hunger level to trigger emergency food acquisition")
+	_add_schema("proactive_food_buffer", "int", false, 5, 0, 100, "Target food inventory buffer for proactive gathering")
 	_add_schema("berry_nutrition", "float", true, 20, 0, 100, "Hunger restored by eating berries")
 	_add_schema("meal_nutrition", "float", true, 40, 0, 100, "Hunger restored by eating cooked meal")
 	
@@ -45,9 +46,15 @@ func _init_schema() -> void:
 	_add_schema("stamina_drain_build", "float", true, 5.0, 0, 50, "Stamina cost for building")
 	_add_schema("stamina_recover_rest", "float", true, 5.0, 0, 50, "Stamina recovered when resting")
 	_add_schema("stamina_recover_sleep", "float", true, 10.0, 0, 50, "Stamina recovered when sleeping")
+	_add_schema("shelter_rest_bonus", "float", false, 1.5, 1, 10, "Stamina recovery multiplier when resting in shelter")
 	_add_schema("stamina_low_threshold", "float", true, 20.0, 0, 100, "Stamina below which agent is exhausted")
 	_add_schema("stamina_exhausted_yield_penalty", "float", true, 0.5, 0, 1, "Yield penalty when exhausted")
 	_add_schema("stamina_rest_optimization_threshold", "float", false, 50, 0, 100, "Stamina level for optional rest")
+
+	# Comfort/social needs
+	_add_schema("comfort_decay_per_tick", "float", false, 0.1, 0, 10, "Comfort loss per tick")
+	_add_schema("homelessness_comfort_penalty", "float", false, 0.3, 0, 10, "Extra comfort loss when homeless")
+	_add_schema("social_decay_per_tick", "float", false, 0.05, 0, 10, "Social need loss per tick")
 	
 	# Starting conditions
 	_add_schema("starting_money", "int", true, 200, 0, 10000, "Starting money for agents")
