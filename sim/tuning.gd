@@ -282,6 +282,7 @@ func _init_schema() -> void:
 	_add_schema("job_board_build_site_post_limit", "int", false, 10, 0, 10000, "Build-site activity cap")
 	_add_schema("job_board_haul_post_limit", "int", false, 10, 0, 10000, "Haul activity cap")
 	_add_schema("job_board_farm_task_post_limit", "int", false, 10, 0, 10000, "Farm task activity cap")
+	_add_schema("job_board_gather_blocked_cancel_threshold", "int", false, 3, 0, 10000, "Blocked gather cancel threshold")
 	_add_schema("job_board_max_inactive", "int", false, 200, 0, 10000, "Max inactive activities to retain")
 	_add_schema("task_project_system_enabled", "bool", false, true, 0, 0, "Enable task/project system phase")
 	_add_schema("project_max_stale_ticks", "int", false, 240, 0, 100000, "Max ticks before abandoning projects")
