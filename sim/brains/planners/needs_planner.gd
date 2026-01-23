@@ -3,7 +3,7 @@ class_name NeedsPlanner
 extends IAgentPlanner
 
 func get_priority() -> int:
-	return 90
+	return 120
 
 func get_interrupt_action(agent: Agent, tuning: Dictionary) -> Dictionary:
 	var emergency_threshold: float = tuning.get("emergency_hunger_threshold", 15.0)
