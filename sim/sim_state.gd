@@ -58,10 +58,8 @@ func _init() -> void:
 
 func _create_empty_stockpile_throughput() -> Dictionary:
 	return {
-		"deposited_total": 0,
-		"withdrawn_total": 0,
-		"deposited_by_item": {},
-		"withdrawn_by_item": {}
+		"in": {},
+		"out": {}
 	}
 
 func record_stockpile_deposit(item: String, qty: int) -> void:
@@ -474,9 +472,20 @@ static func _sanitize_event_data_recursive(data: Variant, int_keys: Array) -> Va
 	else:
 		return data
 
-## Get agent by ID - O(1) lookup
+## Get agent by ID - O(1) lookup with robust fallback
 func get_agent(agent_id: int) -> Agent:
-	return agent_by_id.get(agent_id, null)
+	# Try fast lookup
+	var agent = agent_by_id.get(agent_id, null)
+	if agent != null:
+		return agent
+		
+	# Fallback to linear search
+	for a in agents:
+		if a.id == agent_id:
+			agent_by_id[agent_id] = a # Heal the lookup
+			return a
+			
+	return null
 
 func get_organization(organization_id: int) -> Organization:
 	for organization in organizations:

@@ -425,6 +425,11 @@ func _input(event: InputEvent) -> void:
 	var key_event := event as InputEventKey
 	if not key_event.pressed:
 		return
+	
+	# Skip shortcuts if a text input has focus (LineEdit, TextEdit, SpinBox, etc.)
+	var focused := get_viewport().gui_get_focus_owner()
+	if focused != null and (focused is LineEdit or focused is TextEdit or focused is SpinBox):
+		return
 		
 	# Space: pause/play toggle
 	if key_event.keycode == KEY_SPACE:

@@ -8,27 +8,47 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+theme_override_constants/separation = 4
 script = ExtResource("1_script")
 
 [node name="Filters" type="HBoxContainer" parent="."]
 layout_mode = 2
+theme_override_constants/separation = 4
 
 [node name="Label" type="Label" parent="Filters"]
 layout_mode = 2
-text = "Filters:"
+text = "Type:"
 
 [node name="TypeFilter" type="OptionButton" parent="Filters"]
+custom_minimum_size = Vector2(100, 0)
+layout_mode = 2
+
+[node name="Label2" type="Label" parent="Filters"]
+layout_mode = 2
+text = "Cat:"
+
+[node name="CategoryFilter" type="OptionButton" parent="Filters"]
+custom_minimum_size = Vector2(80, 0)
 layout_mode = 2
 
 [node name="AgentFilter" type="LineEdit" parent="Filters"]
-custom_minimum_size = Vector2(80, 0)
+custom_minimum_size = Vector2(60, 0)
 layout_mode = 2
-placeholder_text = "Agent ID"
+placeholder_text = "Agent"
 
 [node name="FactionFilter" type="LineEdit" parent="Filters"]
-custom_minimum_size = Vector2(80, 0)
+custom_minimum_size = Vector2(60, 0)
 layout_mode = 2
-placeholder_text = "Faction ID"
+placeholder_text = "Faction"
+
+[node name="Filters2" type="HBoxContainer" parent="."]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="ShowActionsCheck" type="CheckBox" parent="Filters2"]
+layout_mode = 2
+text = "Show Actions"
+tooltip_text = "Show agent actions from decision traces (may be verbose)"
 
 [node name="ScrollContainer" type="ScrollContainer" parent="."]
 layout_mode = 2
@@ -37,3 +57,4 @@ size_flags_vertical = 3
 [node name="EventList" type="VBoxContainer" parent="ScrollContainer"]
 layout_mode = 2
 size_flags_horizontal = 3
+theme_override_constants/separation = 2

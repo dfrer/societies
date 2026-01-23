@@ -1,0 +1,6 @@
+{"data":{"agent_id":1,"contract_id":1,"issuer_id":2},"tick":201,"type":"contract_accepted"}
+{"data":{"agent_id":3,"contract_id":2,"issuer_id":7},"tick":201,"type":"contract_accepted"}
+{"data":{"agent_id":4,"contract_id":3,"issuer_id":8},"tick":201,"type":"contract_accepted"}
+{"data":{"agent_id":5,"contract_id":4,"issuer_id":9},"tick":201,"type":"contract_accepted"}
+{"data":{"faction_id":2001,"project_id":1,"type":"shelter"},"tick":441,"type":"project_abandoned"}
+{"data":{"faction_id":2001,"project_id":2,"type":"shelter"},"tick":641,"type":"project_abandoned"}

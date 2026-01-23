@@ -34,9 +34,14 @@ func _ready() -> void:
 
 
 func _setup_ui() -> void:
-	# Remove placeholder if it exists
+	# Remove placeholder if it exists (use free() for immediate removal)
 	for child in get_children():
-		child.queue_free()
+		remove_child(child)
+		child.free()
+	
+	# Ensure root expands
+	size_flags_vertical = Control.SIZE_EXPAND_FILL
+	size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	
 	# Header
 	_header_label = Label.new()
@@ -52,12 +57,16 @@ func _setup_ui() -> void:
 	# Scroll container for content
 	_scroll_container = ScrollContainer.new()
 	_scroll_container.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_scroll_container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_scroll_container.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	# Minimum size to ensure visibility
+	_scroll_container.custom_minimum_size = Vector2(0, 200) 
 	add_child(_scroll_container)
 	
 	# Content container
 	_content = VBoxContainer.new()
 	_content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_content.size_flags_vertical = Control.SIZE_EXPAND_FILL 
 	_content.add_theme_constant_override("separation", 2)
 	_scroll_container.add_child(_content)
 	
