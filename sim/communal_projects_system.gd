@@ -15,9 +15,13 @@ var stats: Dictionary = {
 ## Project type definitions with their resource requirements
 const PROJECT_TYPES := {
 	"workshop": {"Planks": 15, "MetalIngot": 3},
+	"baker": {"Planks": 20, "Stone": 15},
 	"carpenter": {"Planks": 12, "Stone": 5},
-	"kiln": {"Planks": 6, "Stone": 12},
+	"forge": {"Stone": 20, "MetalIngot": 12},
+	"kiln": {"Stone": 15, "Planks": 5},
+	"smelter": {"Stone": 25, "MetalIngot": 5},
 	"smithy": {"Stone": 15, "MetalIngot": 8},
+	"stove": {"Planks": 8, "Stone": 10},
 	"farm": {"Planks": 10, "Berries": 5},
 	"road": {"Planks": 8},
 	"wall": {"Planks": 12, "MetalIngot": 2},
@@ -71,15 +75,35 @@ func get_project_requirements(project_type: String, state: SimState = null) -> D
 					"Planks": state.get_tuning_int("workshop_carpenter_planks", 12),
 					"Stone": state.get_tuning_int("workshop_carpenter_stone", 5)
 				}
+			"baker":
+				return {
+					"Planks": state.get_tuning_int("workshop_baker_planks", 20),
+					"Stone": state.get_tuning_int("workshop_baker_stone", 15)
+				}
+			"forge":
+				return {
+					"Stone": state.get_tuning_int("workshop_forge_stone", 20),
+					"MetalIngot": state.get_tuning_int("workshop_forge_metal", 12)
+				}
 			"kiln":
 				return {
-					"Planks": state.get_tuning_int("workshop_kiln_planks", 6),
-					"Stone": state.get_tuning_int("workshop_kiln_stone", 12)
+					"Stone": state.get_tuning_int("workshop_kiln_stone", 15),
+					"Planks": state.get_tuning_int("workshop_kiln_planks", 5)
+				}
+			"smelter":
+				return {
+					"Stone": state.get_tuning_int("workshop_smelter_stone", 25),
+					"MetalIngot": state.get_tuning_int("workshop_smelter_metal", 5)
 				}
 			"smithy":
 				return {
 					"Stone": state.get_tuning_int("workshop_smithy_stone", 15),
 					"MetalIngot": state.get_tuning_int("workshop_smithy_metal", 8)
+				}
+			"stove":
+				return {
+					"Planks": state.get_tuning_int("workshop_stove_planks", 8),
+					"Stone": state.get_tuning_int("workshop_stove_stone", 10)
 				}
 	var data: Dictionary = PROJECT_TYPES[project_type]
 	return data.duplicate(true)
@@ -154,7 +178,7 @@ func _complete_project(project: CommunalProject, world: World, state: SimState, 
 				workshop.owner_id = org.get_owner_id()
 				workshop.access_policy = "public"
 			world.add_workshop(workshop)
-		"carpenter", "kiln", "smithy":
+		"baker", "carpenter", "forge", "kiln", "smelter", "smithy", "stove":
 			var station := Workshop.new()
 			station.pos_x = project.pos_x
 			station.pos_y = project.pos_y
@@ -226,10 +250,18 @@ func _get_build_ticks_for_project(project: CommunalProject, tuning: Dictionary) 
 			return maxi(1, int(tuning.get("project_build_ticks_workshop", default_ticks)))
 		"carpenter":
 			return maxi(1, int(tuning.get("project_build_ticks_carpenter", default_ticks)))
+		"baker":
+			return maxi(1, int(tuning.get("project_build_ticks_baker", default_ticks)))
+		"forge":
+			return maxi(1, int(tuning.get("project_build_ticks_forge", default_ticks)))
 		"kiln":
 			return maxi(1, int(tuning.get("project_build_ticks_kiln", default_ticks)))
+		"smelter":
+			return maxi(1, int(tuning.get("project_build_ticks_smelter", default_ticks)))
 		"smithy":
 			return maxi(1, int(tuning.get("project_build_ticks_smithy", default_ticks)))
+		"stove":
+			return maxi(1, int(tuning.get("project_build_ticks_stove", default_ticks)))
 		"farm":
 			return maxi(1, int(tuning.get("project_build_ticks_farm", default_ticks)))
 		"road":

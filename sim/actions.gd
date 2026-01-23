@@ -609,7 +609,13 @@ static func _execute_queue_craft(agent: Agent, action: Dictionary, world: World,
 		# Check usage fee affordability
 		if not workshop.can_afford_usage(agent):
 			return true
-	
+
+	var fuel_pick := {}
+	if recipe.fuel.size() > 0:
+		fuel_pick = _resolve_fuel_source(agent, workshop, recipe.fuel)
+		if fuel_pick.is_empty():
+			return true
+
 	if not Crafting.can_craft(agent, recipe):
 		return true
 	
@@ -625,14 +631,41 @@ static func _execute_queue_craft(agent: Agent, action: Dictionary, world: World,
 	agent.add_experience(2, tuning)  # 2 XP for crafting
 	
 	if is_handheld or is_workbench:
+		_consume_fuel_pick(agent, workshop, fuel_pick)
 		Crafting.consume_inputs(agent, recipe)
 		Crafting.give_outputs(agent, recipe)
 	else:
+		_consume_fuel_pick(agent, workshop, fuel_pick)
 		Crafting.consume_inputs(agent, recipe)
 		var job := crafting.create_job(recipe, agent.id, workshop.id)
 		workshop.add_job(job)
 	
 	return true
+
+static func _resolve_fuel_source(agent: Agent, workshop: Workshop, fuel_options: Dictionary) -> Dictionary:
+	for item in fuel_options:
+		var qty: int = int(fuel_options[item])
+		if agent.has_available_item(item, qty):
+			return {"source": "agent", "item": item, "qty": qty}
+	if workshop != null:
+		for item in fuel_options:
+			var qty: int = int(fuel_options[item])
+			if workshop.has_fuel(item, qty):
+				return {"source": "workshop", "item": item, "qty": qty}
+	return {}
+
+static func _consume_fuel_pick(agent: Agent, workshop: Workshop, fuel_pick: Dictionary) -> void:
+	if fuel_pick.is_empty():
+		return
+	var item: String = fuel_pick.get("item", "")
+	var qty: int = int(fuel_pick.get("qty", 0))
+	if qty <= 0 or item == "":
+		return
+	var source: String = fuel_pick.get("source", "agent")
+	if source == "workshop" and workshop != null:
+		workshop.consume_fuel(item, qty)
+		return
+	agent.remove_item(item, qty)
 
 ## Accept a contract
 static func _execute_accept_contract(agent: Agent, action: Dictionary, 

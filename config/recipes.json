@@ -146,6 +146,126 @@
                 "Shovel": 1
             },
             "ticks": 30
+        },
+        {
+            "id": "firewood_hand",
+            "name": "Process Firewood",
+            "station": "hand",
+            "tier": "basic",
+            "inputs": {
+                "Logs": 2
+            },
+            "outputs": {
+                "Firewood": 4
+            },
+            "ticks": 30
+        },
+        {
+            "id": "firewood_workbench",
+            "name": "Process Firewood",
+            "station": "workbench",
+            "tier": "basic",
+            "inputs": {
+                "Logs": 2
+            },
+            "outputs": {
+                "Firewood": 4
+            },
+            "ticks": 24
+        },
+        {
+            "id": "charcoal",
+            "name": "Make Charcoal",
+            "station": "kiln",
+            "tier": "advanced",
+            "inputs": {
+                "Firewood": 4
+            },
+            "outputs": {
+                "Charcoal": 4
+            },
+            "ticks": 45
+        },
+        {
+            "id": "smelt_iron",
+            "name": "Smelt Iron",
+            "station": "smelter",
+            "tier": "advanced",
+            "inputs": {
+                "Ore": 2
+            },
+            "fuel": {
+                "Charcoal": 1,
+                "Coal": 1
+            },
+            "outputs": {
+                "MetalIngot": 2
+            },
+            "ticks": 50
+        },
+        {
+            "id": "bake_bread_baker_flour",
+            "name": "Bake Bread",
+            "station": "baker",
+            "tier": "advanced",
+            "inputs": {
+                "Flour": 2
+            },
+            "fuel": {
+                "Firewood": 1
+            },
+            "outputs": {
+                "Bread": 2
+            },
+            "ticks": 40
+        },
+        {
+            "id": "bake_bread_baker_grain",
+            "name": "Bake Bread",
+            "station": "baker",
+            "tier": "advanced",
+            "inputs": {
+                "Grain": 2
+            },
+            "fuel": {
+                "Firewood": 1
+            },
+            "outputs": {
+                "Bread": 2
+            },
+            "ticks": 40
+        },
+        {
+            "id": "bake_bread_stove_flour",
+            "name": "Bake Bread",
+            "station": "stove",
+            "tier": "advanced",
+            "inputs": {
+                "Flour": 2
+            },
+            "fuel": {
+                "Firewood": 1
+            },
+            "outputs": {
+                "Bread": 2
+            },
+            "ticks": 40
+        },
+        {
+            "id": "bake_bread_stove_grain",
+            "name": "Bake Bread",
+            "station": "stove",
+            "tier": "advanced",
+            "inputs": {
+                "Grain": 2
+            },
+            "fuel": {
+                "Firewood": 1
+            },
+            "outputs": {
+                "Bread": 2
+            },
+            "ticks": 40
         }
     ]
 }
