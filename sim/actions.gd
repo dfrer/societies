@@ -17,6 +17,7 @@ const TYPE_PLACE_SELL_ORDER := "PLACE_SELL_ORDER"
 const TYPE_QUEUE_CRAFT := "QUEUE_CRAFT"
 const TYPE_ACCEPT_CONTRACT := "ACCEPT_CONTRACT"
 const TYPE_DELIVER_CONTRACT := "DELIVER_CONTRACT"
+const TYPE_POST_CONTRACT := "POST_CONTRACT"
 ## New action types for expanded brain
 const TYPE_REST := "REST"
 const TYPE_SLEEP := "SLEEP"
@@ -76,6 +77,9 @@ static func accept_contract(contract_id: int) -> Dictionary:
 
 static func deliver_contract(contract_id: int) -> Dictionary:
 	return {"type": TYPE_DELIVER_CONTRACT, "contract_id": contract_id}
+
+static func post_contract(item: String, qty: int, payout: int) -> Dictionary:
+	return {"type": TYPE_POST_CONTRACT, "item": item, "qty": qty, "payout": payout}
 
 ## New action creators for expanded brain
 
@@ -178,6 +182,8 @@ static func execute_action(agent: Agent, action: Dictionary, world: World,
 			return _execute_accept_contract(agent, action, contracts_system, current_tick, state)
 		TYPE_DELIVER_CONTRACT:
 			return _execute_deliver_contract(agent, action, contracts_system, state)
+		TYPE_POST_CONTRACT:
+			return _execute_post_contract(agent, action, contracts_system, state, tuning, current_tick)
 		# New action types
 		TYPE_REST:
 			return _execute_rest(agent, tuning)
@@ -654,6 +660,27 @@ static func _execute_deliver_contract(agent: Agent, action: Dictionary,
 	if contracts_system.complete_delivery(contract_id, agent, state):
 		agent.active_contract_id = -1
 	
+	return true
+
+## Post a contract for needed items
+static func _execute_post_contract(agent: Agent, action: Dictionary,
+								   contracts_system: ContractsSystem, state: SimState,
+								   tuning: Dictionary, current_tick: int) -> bool:
+	if state == null:
+		return true
+	var item: String = action.get("item", "")
+	if item == "":
+		return true
+	var qty: int = int(action.get("qty", 1))
+	var payout: int = int(action.get("payout", 0))
+	if qty <= 0 or payout <= 0:
+		return true
+	var ticks_per_day: int = int(tuning.get("ticks_per_day", 200))
+	var deadline_days: int = int(tuning.get("contract_deadline_days", 2))
+	var deadline_tick: int = current_tick + (deadline_days * ticks_per_day)
+	var market_x: int = int(tuning.get("market_pos_x", 48))
+	var market_y: int = int(tuning.get("market_pos_y", 48))
+	contracts_system.post_contract(agent, item, qty, payout, deadline_tick, market_x, market_y, current_tick, state)
 	return true
 
 ## Calculate distance to node
