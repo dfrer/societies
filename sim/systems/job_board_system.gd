@@ -62,6 +62,7 @@ func _post_daily_contract_activities(state: SimState) -> void:
 		posted += 1
 
 func _refresh_gather_activities(state: SimState) -> void:
+	var blocked_limit: int = state.get_tuning_int("job_board_gather_blocked_cancel_threshold", 3)
 	for activity in state.job_board.activities:
 		if activity.get("type", "") != JobBoard.ACTIVITY_GATHER_NODE:
 			continue
@@ -69,6 +70,11 @@ func _refresh_gather_activities(state: SimState) -> void:
 		if status == JobBoard.STATUS_COMPLETED or status == JobBoard.STATUS_CANCELLED:
 			continue
 		var data: Dictionary = activity.get("data", {})
+		if blocked_limit > 0 and int(data.get("enforcement_blocked_count", 0)) >= blocked_limit:
+			activity["status"] = JobBoard.STATUS_CANCELLED
+			activity["updated_tick"] = state.tick
+			activity["worker_id"] = -1
+			continue
 		var node_id: int = int(data.get("node_id", -1))
 		var node := state.world.get_node_by_id(node_id)
 		if node == null or not node.has_stock(1):

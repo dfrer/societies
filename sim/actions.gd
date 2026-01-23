@@ -318,7 +318,7 @@ static func _execute_gather(agent: Agent, action: Dictionary, world: World,
 		return true
 	
 	if agent.pos_x != target_node.pos_x or agent.pos_y != target_node.pos_y:
-		return true
+		return false
 	
 	if not target_node.has_stock(1):
 		return true
@@ -343,10 +343,20 @@ static func _execute_gather(agent: Agent, action: Dictionary, world: World,
 				state.log_event("enforcement_blocked", {
 					"agent_id": agent.id,
 					"action": "gather",
+					"node_id": target_node.id,
+					"tile_owner": tile_owner,
 					"reason_code": result["reason_code"],
 					"details": result["details"]
 				})
-				return true  # Gather blocked
+				if agent.current_activity_id >= 0:
+					var activity := state.job_board.get_activity(agent.current_activity_id)
+					if activity.get("type", "") == JobBoard.ACTIVITY_GATHER_NODE:
+						var data: Dictionary = activity.get("data", {})
+						data["enforcement_blocked_count"] = int(data.get(
+							"enforcement_blocked_count", 0)) + 1
+						data["last_enforcement_blocked_tick"] = current_tick
+						activity["data"] = data
+				return false  # Gather blocked
 	
 	var gather_amount := 1
 	if target_node.type == "tree":
