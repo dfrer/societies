@@ -15,6 +15,7 @@ const INERTIA_BONUS = 0.2
 
 var _survival_planner := SurvivalPlanner.new()
 var _needs_planner := NeedsPlanner.new()
+var _homestead_planner := HomesteadPlanner.new()
 var _economy_planner := EconomyPlanner.new()
 var _governance_planner := GovernancePlanner.new()
 var _planners: Array[IAgentPlanner] = []
@@ -22,7 +23,8 @@ var _planners: Array[IAgentPlanner] = []
 func _init() -> void:
 	_planners = [
 		CommitmentPlanner.new(),
-		_survival_planner,
+		_needs_planner,
+		_homestead_planner,
 		_economy_planner,
 		_governance_planner
 	]
@@ -122,6 +124,27 @@ func _is_goal_complete(agent: Agent, goal: Dictionary, world: World) -> bool:
 		"CLAIM_RESOURCES":
 			# Complete when we've claimed a valuable resource or no tokens left
 			return not agent.has_claim_tokens()
+		"ESTABLISH_HOMESTEAD":
+			if not agent.has_home():
+				return false
+			var radius: int = int(goal.get("radius", 3))
+			if not agent.has_claim_tokens():
+				return true
+			for dx in range(-radius, radius + 1):
+				for dy in range(-radius, radius + 1):
+					var x := agent.home_pos.x + dx
+					var y := agent.home_pos.y + dy
+					if world.is_valid(x, y) and not world.is_claimed(x, y):
+						return false
+			return true
+		"BUILD_PERSONAL_STOCKPILE":
+			return agent.has_personal_stockpile()
+		"BUILD_PERSONAL_SHELTER":
+			return agent.has_personal_shelter()
+		"DEPOSIT_SURPLUS":
+			if agent.personal_stockpile_id < 0:
+				return true
+			return _get_total_inventory(agent) <= 20
 		"BUILD_STRATEGIC_WORKSHOP":
 			# Complete when we have sufficient workshops nearby
 			var nearby_workshops = 0
@@ -169,6 +192,14 @@ func _process_goal(agent: Agent, goal: Dictionary, world: World, market: Market,
 	match goal.type:
 		"CLAIM_RESOURCES":
 			return _plan_claim_resources(agent, goal, world, tuning)
+		"ESTABLISH_HOMESTEAD":
+			return _plan_establish_homestead(agent, goal, world, tuning)
+		"BUILD_PERSONAL_STOCKPILE":
+			return _plan_build_personal_stockpile(agent, goal, world, tuning, state)
+		"BUILD_PERSONAL_SHELTER":
+			return _plan_build_personal_shelter(agent, goal, world, tuning, state)
+		"DEPOSIT_SURPLUS":
+			return _plan_deposit_surplus(agent, goal, world, tuning, state)
 		"BUILD_STRATEGIC_WORKSHOP":
 			return _plan_build_strategic_workshop(agent, goal, world, tuning)
 		"OBTAIN_ITEM":
@@ -243,6 +274,14 @@ func _intent_from_goal(agent: Agent, goal: Dictionary, world: World, market: Mar
 			return {"type": "BUILD_WORKSHOP", "data": {}}
 		"CLAIM_RESOURCES":
 			return {"type": "CLAIM_RESOURCES", "data": {}}
+		"ESTABLISH_HOMESTEAD":
+			return {"type": "ESTABLISH_HOMESTEAD", "data": goal.duplicate(true)}
+		"BUILD_PERSONAL_STOCKPILE":
+			return {"type": "BUILD_PERSONAL_STOCKPILE", "data": goal.duplicate(true)}
+		"BUILD_PERSONAL_SHELTER":
+			return {"type": "BUILD_PERSONAL_SHELTER", "data": goal.duplicate(true)}
+		"DEPOSIT_SURPLUS":
+			return {"type": "DEPOSIT_SURPLUS", "data": {}}
 		"EXPAND_FACTION":
 			return {"type": "EXPAND_FACTION", "data": goal.duplicate(true)}
 		"BUILD_ROAD":
@@ -379,7 +418,7 @@ func _action_from_activity(agent: Agent, activity: Dictionary, world: World, tun
 				if agent.is_at(project.pos_x, project.pos_y):
 					return Actions.contribute_to_project(project_id, item_type, qty)
 				return Actions.move_to_position(project.pos_x, project.pos_y)
-			var stockpile := state.structures.find_stockpile_with_item(item_type, 1)
+			var stockpile := state.structures.find_communal_stockpile_with_item(item_type, 1)
 			if stockpile == null:
 				state.job_board.release_activity(activity.get("activity_id", -1), state.tick)
 				agent.current_activity_id = -1
@@ -519,8 +558,19 @@ func _plan_obtain_item(agent: Agent, goal: Dictionary, world: World, market: Mar
 	
 	if node_type != "":
 		# It's a resource!
-		# Check if nearby or strictly find nearest?
-		var node = _find_nearest_node_of_type(agent, world, node_type)
+		# Pin a node to this goal to avoid oscillation between nearby nodes.
+		var node_id: int = int(goal.get("node_id", -1))
+		var node: ResourceNode = null
+		if node_id >= 0:
+			node = world.get_node_by_id(node_id)
+			if node == null or node.type != node_type or not node.has_stock(1) \
+					or not _can_harvest_node(agent, world, state, node):
+				goal.erase("node_id")
+				node = null
+		if node == null:
+			node = _find_nearest_accessible_node_of_type(agent, world, state, node_type)
+			if node:
+				goal["node_id"] = node.id
 		if node:
 			if agent.is_at(node.pos_x, node.pos_y):
 				return Actions.gather_node(node.id)
@@ -1046,6 +1096,31 @@ func _find_nearest_node_of_type(agent: Agent, world: World, type: String) -> Res
 				
 	return best_node
 
+func _find_nearest_accessible_node_of_type(agent: Agent, world: World, state: SimState, type: String) -> ResourceNode:
+	var best_node = null
+	var best_dist = 999999
+
+	for node in world.resource_nodes:
+		if node.type != type or node.stock <= 0:
+			continue
+		if not _can_harvest_node(agent, world, state, node):
+			continue
+		var dist = absi(node.pos_x - agent.pos_x) + absi(node.pos_y - agent.pos_y)
+		if dist < best_dist:
+			best_dist = dist
+			best_node = node
+
+	return best_node
+
+func _can_harvest_node(agent: Agent, world: World, state: SimState, node: ResourceNode) -> bool:
+	if node == null or state == null:
+		return true
+	var owner := world.get_claim_owner(node.pos_x, node.pos_y)
+	if owner <= 0:
+		return true
+	var laws := state.get_laws(owner)
+	return laws.has_harvest_permit(agent.id, agent.faction_id, owner)
+
 func _plan_expand_faction(agent: Agent, goal: Dictionary, world: World, tuning: Dictionary, state: SimState) -> Dictionary:
 	if agent.faction_id == 0:
 		return {}
@@ -1217,3 +1292,100 @@ func _plan_claim_resources(agent: Agent, goal: Dictionary, world: World, tuning:
 		return Actions.claim_tile(best_node.pos_x, best_node.pos_y, false)
 	else:
 		return Actions.move_to_position(best_node.pos_x, best_node.pos_y)
+
+func _plan_establish_homestead(agent: Agent, goal: Dictionary, world: World, tuning: Dictionary) -> Dictionary:
+	var target_x: int = int(goal.get("x", agent.pos_x))
+	var target_y: int = int(goal.get("y", agent.pos_y))
+	var radius: int = int(goal.get("radius", tuning.get("homestead_claim_radius", 3)))
+	if not agent.is_at(target_x, target_y):
+		return Actions.move_to_position(target_x, target_y)
+	if world.get_claim_owner(target_x, target_y) != agent.id:
+		if not agent.has_claim_tokens():
+			return {}
+		return Actions.claim_tile(target_x, target_y, false)
+	if not agent.has_home():
+		agent.home_pos = Vector2i(target_x, target_y)
+	if not agent.has_claim_tokens():
+		return {}
+	var next_tile := _find_unclaimed_tile_in_radius(world, agent.home_pos.x, agent.home_pos.y, radius)
+	if next_tile == Vector2i(-1, -1):
+		return {}
+	if agent.is_at(next_tile.x, next_tile.y):
+		return Actions.claim_tile(next_tile.x, next_tile.y, false)
+	return Actions.move_to_position(next_tile.x, next_tile.y)
+
+func _plan_build_personal_stockpile(agent: Agent, goal: Dictionary, world: World, tuning: Dictionary,
+		state: SimState) -> Dictionary:
+	if state == null:
+		return {}
+	if agent.personal_stockpile_id >= 0:
+		return {}
+	var target_x: int = int(goal.get("x", agent.home_pos.x))
+	var target_y: int = int(goal.get("y", agent.home_pos.y))
+	if not agent.is_at(target_x, target_y):
+		return Actions.move_to_position(target_x, target_y)
+	var existing := state.structures.get_structure_at(target_x, target_y)
+	if existing != null:
+		if existing.structure_type == StructureState.TYPE_STOCKPILE and existing.owner_id == agent.id:
+			agent.personal_stockpile_id = existing.id
+			if existing.id not in agent.owned_structures:
+				agent.owned_structures.append(existing.id)
+		return {}
+	return Actions.build_personal_stockpile(target_x, target_y)
+
+func _plan_build_personal_shelter(agent: Agent, goal: Dictionary, world: World, tuning: Dictionary,
+		state: SimState) -> Dictionary:
+	if state == null:
+		return {}
+	if agent.shelter_id >= 0:
+		return {}
+	var target_x: int = int(goal.get("x", agent.home_pos.x))
+	var target_y: int = int(goal.get("y", agent.home_pos.y))
+	if not agent.is_at(target_x, target_y):
+		return Actions.move_to_position(target_x, target_y)
+	var existing := state.structures.get_structure_at(target_x, target_y)
+	if existing != null:
+		if existing.structure_type == StructureState.TYPE_SHELTER and existing.owner_id == agent.id:
+			agent.shelter_id = existing.id
+			if existing.id not in agent.owned_structures:
+				agent.owned_structures.append(existing.id)
+		return {}
+	return Actions.build_personal_shelter(target_x, target_y)
+
+func _plan_deposit_surplus(agent: Agent, goal: Dictionary, world: World, tuning: Dictionary,
+		state: SimState) -> Dictionary:
+	if state == null:
+		return {}
+	if agent.personal_stockpile_id < 0:
+		return {}
+	if _get_total_inventory(agent) <= 20:
+		return {}
+	var structure := state.structures.get_structure(agent.personal_stockpile_id)
+	if structure == null:
+		return {}
+	if not agent.is_at(structure.pos_x, structure.pos_y):
+		return Actions.move_to_position(structure.pos_x, structure.pos_y)
+	for item_name in agent.inventory:
+		var qty := int(agent.get_available_item(item_name))
+		if qty <= 0:
+			continue
+		return Actions.deposit_to_personal_stockpile(structure.id, item_name, qty)
+	return {}
+
+func _find_unclaimed_tile_in_radius(world: World, center_x: int, center_y: int, radius: int) -> Vector2i:
+	for dx in range(-radius, radius + 1):
+		for dy in range(-radius, radius + 1):
+			var x := center_x + dx
+			var y := center_y + dy
+			if not world.is_valid(x, y):
+				continue
+			if world.is_claimed(x, y):
+				continue
+			return Vector2i(x, y)
+	return Vector2i(-1, -1)
+
+func _get_total_inventory(agent: Agent) -> int:
+	var total := 0
+	for item in agent.inventory:
+		total += int(agent.inventory[item])
+	return total

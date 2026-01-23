@@ -86,6 +86,9 @@ func get_laws(owner_id: int) -> Laws:
 	if not laws_by_owner.has(owner_id):
 		var default_laws := Laws.new()
 		default_laws.init_from_tuning(tuning)
+		if owner_id == 0:
+			default_laws.harvest_permit_required = false
+			default_laws.build_permit_required = false
 		laws_by_owner[owner_id] = default_laws
 	return laws_by_owner[owner_id]
 

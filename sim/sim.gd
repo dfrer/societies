@@ -45,6 +45,8 @@ func init_new(seed_value: int) -> void:
 	# Initialize default laws for unclaimed land (owner 0)
 	var default_laws := Laws.new()
 	default_laws.init_from_tuning(state.tuning)
+	default_laws.harvest_permit_required = false
+	default_laws.build_permit_required = false
 	state.laws_by_owner[0] = default_laws
 	
 	state.market.init_prices(state.items)
