@@ -19,6 +19,9 @@ var _career_planner := CareerPlanner.new()
 var _homestead_planner := HomesteadPlanner.new()
 var _market_behavior_planner := MarketBehaviorPlanner.new()
 var _economy_planner := EconomyPlanner.new()
+var _social_planner := SocialPlanner.new()
+var _civic_planner := CivicPlanner.new()
+var _long_term_planner := LongTermPlanner.new()
 var _governance_planner := GovernancePlanner.new()
 var _planners: Array[IAgentPlanner] = []
 
@@ -30,6 +33,9 @@ func _init() -> void:
 		_homestead_planner,
 		_market_behavior_planner,
 		_economy_planner,
+		_social_planner,
+		_civic_planner,
+		_long_term_planner,
 		_governance_planner
 	]
 	_planners.sort_custom(func(a, b): return a.get_priority() > b.get_priority())
@@ -199,6 +205,27 @@ func _is_goal_complete(agent: Agent, goal: Dictionary, world: World, contracts_s
 			return goal.get("intentions", []).is_empty()
 		"ACCEPT_CONTRACT":
 			return agent.has_active_contract()
+		"JOIN_FACTION":
+			var target_faction: int = int(goal.get("faction_id", 0))
+			return agent.faction_id == target_faction or agent.faction_id != 0
+		"VOTE_ON_PROPOSAL":
+			return bool(goal.get("vote_cast", false))
+		"PROPOSE_LAW_CHANGE":
+			return bool(goal.get("proposal_created", false))
+		"SAVE_FOR_ITEM":
+			var target_money: int = int(goal.get("target_money", 0))
+			var target_item: String = goal.get("item", "")
+			return agent.get_available_money() >= target_money or (target_item != "" and agent.has_item(target_item, 1))
+		"OBTAIN_MONEY":
+			var desired: int = int(goal.get("target_money", 0))
+			return agent.get_available_money() >= desired
+		"FIND_TRADING_PARTNER":
+			var trust_threshold: float = float(goal.get("trust_threshold", 0.6))
+			for partner_id in agent.social_memory:
+				var memory: Dictionary = agent.social_memory[partner_id]
+				if float(memory.get("trust", 0.5)) >= trust_threshold:
+					return true
+			return false
 		"EXPAND_FACTION":
 			if goal.has("target_x"):
 				var owner = world.get_claim_owner(goal.target_x, goal.target_y)
@@ -287,6 +314,103 @@ func _process_goal(agent: Agent, goal: Dictionary, world: World, market: Market,
 			var qty: int = int(goal.get("qty", 1))
 			var payout: int = int(goal.get("payout", 0))
 			return Actions.post_contract(item, qty, payout)
+		"JOIN_FACTION":
+			if state == null:
+				return {}
+			if agent.faction_id != 0:
+				return {}
+			var target_id: int = int(goal.get("faction_id", 0))
+			if target_id <= 0:
+				return {}
+			var faction: Faction = state.factions_system.get_faction(target_id, state.factions)
+			if faction == null:
+				return {}
+			faction.add_member(agent.id)
+			agent.faction_id = target_id
+			var join_grievance_reduction: float = float(tuning.get("faction_join_grievance_reduction", 0.2))
+			agent.grievance = maxf(0.0, agent.grievance - join_grievance_reduction)
+			state.factions_system.stats["members_joined"] = int(state.factions_system.stats.get("members_joined", 0)) + 1
+			state.log_event("faction_joined", {"faction_id": target_id, "agent_id": agent.id})
+			return {}
+		"VOTE_ON_PROPOSAL":
+			if state == null:
+				return {}
+			var proposal_id: int = int(goal.get("proposal_id", -1))
+			if proposal_id < 0:
+				return {}
+			goal["vote_cast"] = true
+			return Actions.vote(proposal_id, bool(goal.get("vote_for", true)))
+		"PROPOSE_LAW_CHANGE":
+			if state == null:
+				return {}
+			if agent.faction_id == 0:
+				return {}
+			var my_faction: Faction = state.factions_system.get_faction(agent.faction_id, state.factions)
+			if my_faction == null:
+				return {}
+			var max_proposals: int = int(tuning.get("max_proposals_per_day_per_faction", 1))
+			if my_faction.get_active_proposals(state.tick).size() >= max_proposals:
+				return {}
+			var faction_owner_id := World.owner_id_for_faction(my_faction.id)
+			var laws: Laws = state.get_laws(faction_owner_id)
+			var changes := {}
+			var tax_step: int = int(tuning.get("tax_step", 2))
+			var fine_step: int = int(tuning.get("fine_step", 5))
+			if laws.sales_tax_rate > 5:
+				changes["sales_tax_rate"] = maxi(0, laws.sales_tax_rate - tax_step)
+			elif laws.fine_base > int(tuning.get("min_fine", 5)):
+				changes["fine_base"] = laws.fine_base - fine_step
+			elif laws.harvest_permit_required:
+				changes["harvest_permit_required"] = false
+			elif laws.build_permit_required:
+				changes["build_permit_required"] = false
+			else:
+				return {}
+			var proposal := my_faction.create_proposal(agent.id, changes, faction_owner_id, state.tick)
+			my_faction.vote_on_proposal(proposal.get("proposal_id", -1), agent.id, true)
+			state.log_event("proposal_created", {
+				"faction_id": my_faction.id,
+				"proposer_id": agent.id,
+				"changes": changes
+			})
+			goal["proposal_created"] = true
+			return {}
+		"SAVE_FOR_ITEM":
+			var target_money: int = int(goal.get("target_money", 0))
+			var item: String = goal.get("item", "")
+			if agent.get_available_money() >= target_money or (item != "" and agent.has_item(item, 1)):
+				return {}
+			return {"type": "OBTAIN_MONEY", "target_money": target_money, "is_goal": true}
+		"OBTAIN_MONEY":
+			var desired_money: int = int(goal.get("target_money", 0))
+			if agent.get_available_money() >= desired_money:
+				return {}
+			if agent.has_active_contract():
+				var contract := contracts_system.get_contract(agent.active_contract_id)
+				if contract != null and contract.status == Contract.STATUS_ACCEPTED:
+					return {"type": "FULFILL_CONTRACT", "contract_id": contract.id, "is_goal": true}
+			var best_contract := contracts_system.find_best_contract(agent, market, tuning, world, recipes)
+			if best_contract != null:
+				return {"type": "ACCEPT_CONTRACT", "contract_id": best_contract.id, "is_goal": true}
+			var market_x: int = int(tuning.get("market_pos_x", 48))
+			var market_y: int = int(tuning.get("market_pos_y", 48))
+			return {
+				"type": "GO_TO_MARKET_WITH_INTENT",
+				"intentions": [{"type": "FIND_WORK"}],
+				"market_x": market_x,
+				"market_y": market_y,
+				"is_goal": true
+			}
+		"FIND_TRADING_PARTNER":
+			var market_x: int = int(tuning.get("market_pos_x", 48))
+			var market_y: int = int(tuning.get("market_pos_y", 48))
+			return {
+				"type": "GO_TO_MARKET_WITH_INTENT",
+				"intentions": [{"type": "FIND_WORK"}],
+				"market_x": market_x,
+				"market_y": market_y,
+				"is_goal": true
+			}
 		"GO_TO_MARKET_WITH_INTENT":
 			return _plan_market_intentions(agent, goal, world, market, contracts_system, tuning, recipes, state)
 		"EXPAND_FACTION":
@@ -350,6 +474,21 @@ func _intent_from_goal(agent: Agent, goal: Dictionary, world: World, market: Mar
 			return {"type": "ACCEPT_CONTRACT", "data": {"contract_id": goal.get("contract_id", -1)}}
 		"POST_CONTRACT_FOR_NEED":
 			return {"type": "POST_CONTRACT_FOR_NEED", "data": {"item": goal.get("item", ""), "qty": goal.get("qty", 1)}}
+		"JOIN_FACTION":
+			return {"type": "JOIN_FACTION", "data": {"faction_id": goal.get("faction_id", 0)}}
+		"VOTE_ON_PROPOSAL":
+			return {"type": "VOTE_ON_PROPOSAL", "data": {"proposal_id": goal.get("proposal_id", -1)}}
+		"PROPOSE_LAW_CHANGE":
+			return {"type": "PROPOSE_LAW_CHANGE", "data": {}}
+		"SAVE_FOR_ITEM":
+			return {
+				"type": "SAVE_FOR_ITEM",
+				"data": {"item": goal.get("item", ""), "target_money": goal.get("target_money", 0)}
+			}
+		"OBTAIN_MONEY":
+			return {"type": "OBTAIN_MONEY", "data": {"target_money": goal.get("target_money", 0)}}
+		"FIND_TRADING_PARTNER":
+			return {"type": "FIND_TRADING_PARTNER", "data": {}}
 		"GO_TO":
 			return {"type": "GO_TO", "data": {"x": goal.get("x", agent.pos_x), "y": goal.get("y", agent.pos_y)}}
 		"GO_TO_MARKET_WITH_INTENT":

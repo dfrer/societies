@@ -238,19 +238,19 @@
 ### P1d — Home Establishment
 > Agents should claim personal territory and establish a base of operations.
 
-- [ ] **Create `homestead_planner.gd`** — New planner handling personal territory goals.
+- [x] **Create `homestead_planner.gd`** — New planner handling personal territory goals.
   - File: `sim/brains/planners/homestead_planner.gd` (NEW)
 
-- [ ] **Implement `ESTABLISH_HOMESTEAD` goal generation** — If agent.has_home() == false AND has_claim_tokens(), push goal to find and claim a 3x3 plot.
+- [x] **Implement `ESTABLISH_HOMESTEAD` goal generation** — If agent.has_home() == false AND has_claim_tokens(), push goal to find and claim a 3x3 plot.
   - File: `sim/brains/planners/homestead_planner.gd`
   - Trigger: homeless + has resources to claim
   - New tuning: `homestead_claim_radius: int = 3`
 
-- [ ] **Implement homestead site selection logic** — Score tiles based on: nearby resources, distance from other agents, unclaimed status, low pollution.
+- [x] **Implement homestead site selection logic** — Score tiles based on: nearby resources, distance from other agents, unclaimed status, low pollution.
   - File: `sim/brains/planners/homestead_planner.gd`
   - Method: `_find_best_homestead_site(agent, world, tuning) -> Vector2i`
 
-- [ ] **Process `ESTABLISH_HOMESTEAD` goal in DefaultBrain** — Break into sub-goals: GO_TO site, CLAIM_TILE for home, then CLAIM_TILE for buffer tiles up to radius.
+- [x] **Process `ESTABLISH_HOMESTEAD` goal in DefaultBrain** — Break into sub-goals: GO_TO site, CLAIM_TILE for home, then CLAIM_TILE for buffer tiles up to radius.
   - File: `sim/brains/default_brain.gd`
   - On completion: set `agent.home_pos` to claimed tile
 
@@ -259,19 +259,19 @@
 ### P1e — Personal Structure Building
 > Agents should build their own stockpiles and shelters.
 
-- [ ] **Implement `BUILD_PERSONAL_STOCKPILE` goal generation** — If agent has home but no personal stockpile, and has materials (Planks x12, Stone x6), push build goal.
+- [x] **Implement `BUILD_PERSONAL_STOCKPILE` goal generation** — If agent has home but no personal stockpile, and has materials (Planks x12, Stone x6), push build goal.
   - File: `sim/brains/planners/homestead_planner.gd`
   - New tuning: `personal_stockpile_planks: int = 12`, `personal_stockpile_stone: int = 6`
 
-- [ ] **Implement `BUILD_PERSONAL_SHELTER` goal generation** — If agent has stockpile but no shelter, and has materials (Planks x20, Stone x10), push build goal.
+- [x] **Implement `BUILD_PERSONAL_SHELTER` goal generation** — If agent has stockpile but no shelter, and has materials (Planks x20, Stone x10), push build goal.
   - File: `sim/brains/planners/homestead_planner.gd`
   - New tuning: `personal_shelter_planks: int = 20`, `personal_shelter_stone: int = 10`
 
-- [ ] **Add personal structure building actions** — Similar to faction projects but with agent.id as owner instead of faction_id.
+- [x] **Add personal structure building actions** — Similar to faction projects but with agent.id as owner instead of faction_id.
   - File: `sim/actions.gd`
   - New action types: `TYPE_BUILD_PERSONAL_STOCKPILE`, `TYPE_BUILD_PERSONAL_SHELTER`
 
-- [ ] **Add personal structures to Structures system** — Extend `structures.gd` with methods: `get_agent_structures(agent_id) -> Array`, `add_personal_stockpile()`, `add_personal_shelter()`
+- [x] **Add personal structures to Structures system** — Extend `structures.gd` with methods: `get_agent_structures(agent_id) -> Array`, `add_personal_stockpile()`, `add_personal_shelter()`
   - File: `sim/structures.gd`
 
 ---
@@ -279,11 +279,11 @@
 ### P1f — Deposit Surplus to Personal Storage
 > Agents should use their personal stockpile for storage.
 
-- [ ] **Implement `DEPOSIT_SURPLUS` goal generation** — If agent has personal stockpile AND inventory exceeds threshold, push goal to deposit items.
+- [x] **Implement `DEPOSIT_SURPLUS` goal generation** — If agent has personal stockpile AND inventory exceeds threshold, push goal to deposit items.
   - File: `sim/brains/planners/homestead_planner.gd`
   - Threshold: total inventory items > 20
 
-- [ ] **Add `TYPE_DEPOSIT_TO_PERSONAL_STOCKPILE` action** — Agent goes to their stockpile and deposits surplus items.
+- [x] **Add `TYPE_DEPOSIT_TO_PERSONAL_STOCKPILE` action** — Agent goes to their stockpile and deposits surplus items.
   - File: `sim/actions.gd`
   - Reuse stockpile deposit logic with agent's `personal_stockpile_id`
 
@@ -293,15 +293,15 @@
 > Personal stockpiles/shelters must be private; current actions allow any agent to
 > deposit/withdraw from any stockpile unless explicitly restricted.
 
-- [ ] **Add access policy to StructureState** — Track whether a structure is `public`, `organization`, or `personal`.
+- [x] **Add access policy to StructureState** — Track whether a structure is `public`, `organization`, or `personal`.
   - File: `sim/structure_state.gd`
   - Default: existing structures remain `organization` or `public` as appropriate
 
-- [ ] **Enforce access checks in stockpile actions** — Prevent non-owners from depositing/withdrawing from personal structures.
+- [x] **Enforce access checks in stockpile actions** — Prevent non-owners from depositing/withdrawing from personal structures.
   - File: `sim/actions.gd`
   - Apply to `deposit_stockpile`, `withdraw_stockpile`, and any personal deposit actions
 
-- [ ] **Exclude personal stockpiles from communal task selection** — JobBoard should not pick personal stockpiles for projects.
+- [x] **Exclude personal stockpiles from communal task selection** — JobBoard should not pick personal stockpiles for projects.
   - File: `sim/systems/job_board_system.gd`
 
 ---
@@ -312,20 +312,20 @@
 > Agents should POST contracts when they NEED something they can't efficiently
 > produce themselves, not randomly via generate_daily_contracts().
 
-- [ ] **Add `_should_post_contract_for_item()` to EconomyPlanner** — Evaluate if agent should post contract: can't produce efficiently + not available on market + can afford payout.
+- [x] **Add `_should_post_contract_for_item()` to EconomyPlanner** — Evaluate if agent should post contract: can't produce efficiently + not available on market + can afford payout.
   - File: `sim/brains/planners/economy_planner.gd`
   - Input: item needed, quantity, market state
   - Output: `{should_post: bool, payout: int, reason: String}`
 
-- [ ] **Implement `POST_CONTRACT_FOR_NEED` goal type** — When agent needs item and _should_post_contract_for_item() returns true, create goal to post contract.
+- [x] **Implement `POST_CONTRACT_FOR_NEED` goal type** — When agent needs item and _should_post_contract_for_item() returns true, create goal to post contract.
   - File: `sim/brains/planners/economy_planner.gd`
   - Goal data: `{type: "POST_CONTRACT_FOR_NEED", item: String, qty: int, payout: int}`
 
-- [ ] **Add `TYPE_POST_CONTRACT` action** — Agent posts a contract to the contracts_system.
+- [x] **Add `TYPE_POST_CONTRACT` action** — Agent posts a contract to the contracts_system.
   - File: `sim/actions.gd`
   - Calls `contracts_system.post_contract()` with agent-determined payout
 
-- [ ] **Deprecate random contract generation in `generate_daily_contracts()`** — Comment out or remove the random dice roll per agent. Replace with stub that allows faction/org contracts only.
+- [x] **Deprecate random contract generation in `generate_daily_contracts()`** — Comment out or remove the random dice roll per agent. Replace with stub that allows faction/org contracts only.
   - File: `sim/contracts_system.gd`
   - Keep method signature for backwards compat; gut the random agent posting logic
 
@@ -335,12 +335,12 @@
 > Agents should evaluate contracts based on their actual capabilities,
 > not just profit margin.
 
-- [ ] **Refactor `find_best_contract()` to consider agent capabilities** — Score contracts based on: can agent actually produce the item? How long will it take? Does agent have tools?
+- [x] **Refactor `find_best_contract()` to consider agent capabilities** — Score contracts based on: can agent actually produce the item? How long will it take? Does agent have tools?
   - File: `sim/contracts_system.gd`
   - Add: `_estimate_fulfillment_time(agent, contract, world) -> int`
   - Add: `_can_agent_fulfill(agent, contract, world, recipes) -> bool`
 
-- [ ] **Add contract rejection reasons to agent memory** — Track why agent rejected a contract: "no_tools", "too_far", "low_profit", "no_resources". Use for career guidance.
+- [x] **Add contract rejection reasons to agent memory** — Track why agent rejected a contract: "no_tools", "too_far", "low_profit", "no_resources". Use for career guidance.
   - File: `sim/agent.gd`
   - New: `contract_rejection_history: Array[Dictionary]` (capped at 10)
 
@@ -350,11 +350,11 @@
 > Contract scoring must account for actual production feasibility (tools, workshops,
 > recipe chain) rather than just profit margin.
 
-- [ ] **Implement `_can_agent_fulfill()` and `_estimate_fulfillment_time()`** — Use recipes, tool requirements, and workshop access.
+- [x] **Implement `_can_agent_fulfill()` and `_estimate_fulfillment_time()`** — Use recipes, tool requirements, and workshop access.
   - File: `sim/contracts_system.gd`
   - Input: agent, contract, world, recipes
 
-- [ ] **Use capability checks in contract scoring** — Reject infeasible contracts or penalize long completion times.
+- [x] **Use capability checks in contract scoring** — Reject infeasible contracts or penalize long completion times.
   - File: `sim/contracts_system.gd`
   - Update: `score_contract()` and `find_best_contract()`
 
@@ -365,18 +365,18 @@
 ### P1i — Market Intention System
 > Agents should know WHY they're going to the market before going.
 
-- [ ] **Create `market_behavior_planner.gd`** — New planner that generates market visit goals with explicit intentions.
+- [x] **Create `market_behavior_planner.gd`** — New planner that generates market visit goals with explicit intentions.
   - File: `sim/brains/planners/market_behavior_planner.gd` (NEW)
 
-- [ ] **Implement market intention gathering** — Before generating market goal, collect all reasons to visit: buy needs, sell surplus, find work, check prices.
+- [x] **Implement market intention gathering** — Before generating market goal, collect all reasons to visit: buy needs, sell surplus, find work, check prices.
   - File: `sim/brains/planners/market_behavior_planner.gd`
   - Method: `_gather_market_intentions(agent, market, tuning) -> Array[Dictionary]`
 
-- [ ] **Implement `GO_TO_MARKET_WITH_INTENT` goal type** — Carries the list of intentions; agent behavior at market depends on intention list.
+- [x] **Implement `GO_TO_MARKET_WITH_INTENT` goal type** — Carries the list of intentions; agent behavior at market depends on intention list.
   - File: `sim/brains/default_brain.gd`
   - Goal data: `{type: "GO_TO_MARKET_WITH_INTENT", intentions: Array}`
 
-- [ ] **Implement intention fulfillment at market** — When agent arrives at market, process intentions in order: place buy orders, place sell orders, browse contracts.
+- [x] **Implement intention fulfillment at market** — When agent arrives at market, process intentions in order: place buy orders, place sell orders, browse contracts.
   - File: `sim/brains/default_brain.gd`
   - Clear intentions as fulfilled; leave market when done
 
@@ -386,11 +386,11 @@
 > Intentions can fail (no liquidity, insufficient funds, embargo). Agents should
 > back off to avoid market thrashing.
 
-- [ ] **Add intention TTL / retry counters** — Track failure counts per intention and expire after N attempts.
+- [x] **Add intention TTL / retry counters** — Track failure counts per intention and expire after N attempts.
   - File: `sim/brains/planners/market_behavior_planner.gd`
   - Intention fields: `attempts`, `max_attempts`, `expires_tick`
 
-- [ ] **Use cooldown on failed intentions** — Leverage `last_market_visit_tick` + new tuning to avoid repeated immediate visits.
+- [x] **Use cooldown on failed intentions** — Leverage `last_market_visit_tick` + new tuning to avoid repeated immediate visits.
   - File: `sim/brains/planners/market_behavior_planner.gd`
   - Tuning: `market_intention_cooldown_ticks`
 
@@ -399,11 +399,11 @@
 ### P1j — Price Intelligence
 > Agents should remember prices and make informed decisions.
 
-- [ ] **Implement price memory updates on market visit** — When agent visits market, update `market_price_memory` with current ref prices for relevant items.
+- [x] **Implement price memory updates on market visit** — When agent visits market, update `market_price_memory` with current ref prices for relevant items.
   - File: `sim/brains/planners/market_behavior_planner.gd`
   - Trigger: on entering market tile or after trade
 
-- [ ] **Use price memory in buy/sell decisions** — Compare current price to remembered price; avoid buying if price is unusually high.
+- [x] **Use price memory in buy/sell decisions** — Compare current price to remembered price; avoid buying if price is unusually high.
   - File: `sim/brains/planners/economy_planner.gd`
   - Add: `_is_price_favorable(agent, item, current_price, intent) -> bool`
 
@@ -412,7 +412,7 @@
 ### P1j2 — Price Memory Staleness
 > Agents should not rely on stale memory for price decisions.
 
-- [ ] **Add price memory max age** — Ignore remembered prices older than a threshold.
+- [x] **Add price memory max age** — Ignore remembered prices older than a threshold.
   - File: `sim/agent.gd` (helper: `get_price_memory(item, max_age_ticks)`)
   - File: `sim/brains/planners/economy_planner.gd`
   - New tuning: `market_price_memory_max_age_ticks`
@@ -424,14 +424,14 @@
 ### P1k — Career Assessment
 > Agents should discover what they're good at and specialize.
 
-- [ ] **Create `career_planner.gd`** — New planner handling skill development and specialization goals.
+- [x] **Create `career_planner.gd`** — New planner handling skill development and specialization goals.
   - File: `sim/brains/planners/career_planner.gd` (NEW)
 
-- [ ] **Implement `_assess_career()` method** — Evaluate agent's current career potential based on: skills, nearby resources, tools owned, workshop access.
+- [x] **Implement `_assess_career()` method** — Evaluate agent's current career potential based on: skills, nearby resources, tools owned, workshop access.
   - File: `sim/brains/planners/career_planner.gd`
   - Returns: `{current: String, suggested: String, reasoning: String}`
 
-- [ ] **Implement starter career suggestion for new agents** — If career_type == "none", suggest based on: nearest abundant resource + any starting tools.
+- [x] **Implement starter career suggestion for new agents** — If career_type == "none", suggest based on: nearest abundant resource + any starting tools.
   - File: `sim/brains/planners/career_planner.gd`
 
 ---
@@ -440,15 +440,15 @@
 > Careers need multi-stage progression (apprentice → journeyman → master) with
 > explicit skill, station, and production milestones that feed LongTermPlanner.
 
-- [ ] **Add career ladder definitions** — Define stages, required skills, and milestone outputs for each career.
+- [x] **Add career ladder definitions** — Define stages, required skills, and milestone outputs for each career.
   - File: `sim/brains/careers/career_registry.gd` (NEW)
   - Include: required tools, required stations, preferred recipes, and milestone items
 
-- [ ] **Add career progression state to Agent** — Track `career_stage`, `career_milestones`, and `career_xp`.
+- [x] **Add career progression state to Agent** — Track `career_stage`, `career_milestones`, and `career_xp`.
   - File: `sim/agent.gd`
   - Include serialization in `to_dict()` / `from_dict()`
 
-- [ ] **Add career milestone goals** — Goals like `GAIN_SKILL_XP`, `CRAFT_MILESTONE_ITEM`, `BUILD_ADVANCED_STATION`.
+- [x] **Add career milestone goals** — Goals like `GAIN_SKILL_XP`, `CRAFT_MILESTONE_ITEM`, `BUILD_ADVANCED_STATION`.
   - File: `sim/brains/planners/career_planner.gd`
   - Integrate with LongTermPlanner for multi-day milestones
 
@@ -457,11 +457,11 @@
 ### P1l — Tool Acquisition Goals
 > Career progression often requires specific tools.
 
-- [ ] **Implement `ACQUIRE_TOOL` goal generation** — If suggested career requires tool agent doesn't have, push goal to acquire it.
+- [x] **Implement `ACQUIRE_TOOL` goal generation** — If suggested career requires tool agent doesn't have, push goal to acquire it.
   - File: `sim/brains/planners/career_planner.gd`
   - Example: Logger career → need Axe; Miner career → need Pickaxe
 
-- [ ] **Add tool requirement mapping to CareerPlanner** — Dict mapping career → required tools: `{"logger": ["Axe"], "miner": ["Pickaxe"], "smith": ["Mallet"]}`
+- [x] **Add tool requirement mapping to CareerPlanner** — Dict mapping career → required tools: `{"logger": ["Axe"], "miner": ["Pickaxe"], "smith": ["Mallet"]}`
   - File: `sim/brains/planners/career_planner.gd`
 
 ---
@@ -469,11 +469,11 @@
 ### P1m — Workshop Access Goals
 > Crafters need workshop access to be productive.
 
-- [ ] **Implement `SECURE_WORKSHOP_ACCESS` goal generation** — If career requires workshop type agent lacks access to, push goal to build or find one.
+- [x] **Implement `SECURE_WORKSHOP_ACCESS` goal generation** — If career requires workshop type agent lacks access to, push goal to build or find one.
   - File: `sim/brains/planners/career_planner.gd`
   - Check: nearby public workshops + personal workshops + faction workshops
 
-- [ ] **Implement resource access goals** — Career-specific: loggers should claim/access tree areas; miners should claim/access ore deposits.
+- [x] **Implement resource access goals** — Career-specific: loggers should claim/access tree areas; miners should claim/access ore deposits.
   - File: `sim/brains/planners/career_planner.gd`
   - Goal: `{type: "SECURE_RESOURCE_ACCESS", resource_type: "tree"}`
 

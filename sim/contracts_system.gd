@@ -301,7 +301,14 @@ func score_contract(contract: Contract, agent: Agent, market: Market, tuning: Di
 	
 	var estimated_ticks: int = _estimate_fulfillment_time(agent, contract, world, tuning, recipes)
 	var opportunity_cost: float = float(tuning.get("opportunity_cost_per_tick", 0.1))
-	return profit - (estimated_ticks * opportunity_cost)
+	var trust_bonus := 0.0
+	if contract.issuer_type == "agent":
+		var trust_threshold: float = float(tuning.get("trade_trust_bonus_threshold", 0.6))
+		var trust_bonus_value: float = float(tuning.get("trade_trust_score_bonus", 2.0))
+		var trust: float = agent.get_trust(contract.issuer_id)
+		if trust >= trust_threshold:
+			trust_bonus = trust_bonus_value
+	return profit - (estimated_ticks * opportunity_cost) + trust_bonus
 
 ## Find best contract for an agent
 func find_best_contract(agent: Agent, market: Market, tuning: Dictionary,
