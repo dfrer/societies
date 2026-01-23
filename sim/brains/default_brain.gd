@@ -15,7 +15,9 @@ const INERTIA_BONUS = 0.2
 
 var _survival_planner := SurvivalPlanner.new()
 var _needs_planner := NeedsPlanner.new()
+var _career_planner := CareerPlanner.new()
 var _homestead_planner := HomesteadPlanner.new()
+var _market_behavior_planner := MarketBehaviorPlanner.new()
 var _economy_planner := EconomyPlanner.new()
 var _governance_planner := GovernancePlanner.new()
 var _planners: Array[IAgentPlanner] = []
@@ -24,7 +26,9 @@ func _init() -> void:
 	_planners = [
 		CommitmentPlanner.new(),
 		_needs_planner,
+		_career_planner,
 		_homestead_planner,
+		_market_behavior_planner,
 		_economy_planner,
 		_governance_planner
 	]
@@ -156,6 +160,21 @@ func _is_goal_complete(agent: Agent, goal: Dictionary, world: World, contracts_s
 			return nearby_workshops >= 2
 		"OBTAIN_ITEM":
 			return agent.has_item(goal.item, goal.get("qty", 1))
+		"ACQUIRE_TOOL":
+			return agent.has_tool(goal.get("item", ""))
+		"SECURE_WORKSHOP_ACCESS":
+			var workshop_id: int = int(goal.get("workshop_id", -1))
+			if workshop_id >= 0:
+				var workshop := world.get_workshop_by_id(workshop_id)
+				if workshop != null and workshop.is_ready():
+					return agent.is_at_workshop(workshop)
+			return false
+		"SECURE_RESOURCE_ACCESS":
+			if not agent.has_claim_tokens():
+				return true
+			var target_x: int = int(goal.get("target_x", agent.pos_x))
+			var target_y: int = int(goal.get("target_y", agent.pos_y))
+			return world.get_claim_owner(target_x, target_y) == agent.id
 		"MAINTAIN_FOOD_BUFFER":
 			var target: int = int(goal.get("target_qty", 5))
 			var have: int = agent.get_item_count("Berries") + agent.get_item_count("CookedMeal")
@@ -172,6 +191,12 @@ func _is_goal_complete(agent: Agent, goal: Dictionary, world: World, contracts_s
 			return contracts_system.has_active_contract_for_issuer("agent", agent.id, goal.get("item", ""))
 		"GO_TO":
 			return agent.is_at(goal.x, goal.y)
+		"GO_TO_MARKET_WITH_INTENT":
+			var market_x: int = int(goal.get("market_x", agent.pos_x))
+			var market_y: int = int(goal.get("market_y", agent.pos_y))
+			if not agent.is_at(market_x, market_y):
+				return false
+			return goal.get("intentions", []).is_empty()
 		"ACCEPT_CONTRACT":
 			return agent.has_active_contract()
 		"EXPAND_FACTION":
@@ -214,6 +239,14 @@ func _process_goal(agent: Agent, goal: Dictionary, world: World, market: Market,
 					"qty": int(goal.get("qty", 1))
 				}
 			return obtain_result
+		"ACQUIRE_TOOL":
+			if agent.has_tool(goal.get("item", "")):
+				return {}
+			return {"type": "OBTAIN_ITEM", "item": goal.get("item", ""), "qty": 1, "is_goal": true}
+		"SECURE_WORKSHOP_ACCESS":
+			return _plan_secure_workshop_access(agent, goal, world, tuning)
+		"SECURE_RESOURCE_ACCESS":
+			return _plan_secure_resource_access(agent, goal, world, tuning)
 		"EAT_FOOD":
 			# Directly return eat action for the food item
 			if goal.item == "CookedMeal":
@@ -254,6 +287,8 @@ func _process_goal(agent: Agent, goal: Dictionary, world: World, market: Market,
 			var qty: int = int(goal.get("qty", 1))
 			var payout: int = int(goal.get("payout", 0))
 			return Actions.post_contract(item, qty, payout)
+		"GO_TO_MARKET_WITH_INTENT":
+			return _plan_market_intentions(agent, goal, world, market, contracts_system, tuning, recipes, state)
 		"EXPAND_FACTION":
 			return _plan_expand_faction(agent, goal, world, tuning, state)
 		"BUILD_ROAD":
@@ -279,6 +314,12 @@ func _intent_from_goal(agent: Agent, goal: Dictionary, world: World, market: Mar
 			if node_type != "":
 				return {"type": "GATHER_RESOURCE", "data": {"item": item_name, "node_type": node_type}}
 			return {"type": "OBTAIN_ITEM", "data": {"item": item_name}}
+		"ACQUIRE_TOOL":
+			return {"type": "ACQUIRE_TOOL", "data": {"item": goal.get("item", "")}}
+		"SECURE_WORKSHOP_ACCESS":
+			return {"type": "SECURE_WORKSHOP_ACCESS", "data": goal.duplicate(true)}
+		"SECURE_RESOURCE_ACCESS":
+			return {"type": "SECURE_RESOURCE_ACCESS", "data": goal.duplicate(true)}
 		"MAINTAIN_FOOD_BUFFER":
 			return {"type": "GATHER_RESOURCE", "data": {"item": "Berries", "node_type": "berry"}}
 		"EFFICIENT_REST":
@@ -311,6 +352,8 @@ func _intent_from_goal(agent: Agent, goal: Dictionary, world: World, market: Mar
 			return {"type": "POST_CONTRACT_FOR_NEED", "data": {"item": goal.get("item", ""), "qty": goal.get("qty", 1)}}
 		"GO_TO":
 			return {"type": "GO_TO", "data": {"x": goal.get("x", agent.pos_x), "y": goal.get("y", agent.pos_y)}}
+		"GO_TO_MARKET_WITH_INTENT":
+			return {"type": "GO_TO_MARKET_WITH_INTENT", "data": {"intentions": goal.get("intentions", [])}}
 	return {"type": "IDLE", "data": {}}
 
 func _set_intent(state: SimState, agent: Agent, intent_type: String, data: Dictionary) -> void:
@@ -653,6 +696,9 @@ func _plan_obtain_item(agent: Agent, goal: Dictionary, world: World, market: Mar
 	
 	# 3. Check if we can BUY it
 	# If we have money > Ref Price
+	var current_tick: int = state.tick if state != null else 0
+	if _economy_planner.should_avoid_buying(agent, item, market, tuning, current_tick):
+		return {}
 	var price = market.get_ref_price(item)
 	if agent.get_available_money() >= price:
 		# Place buy order
@@ -684,7 +730,183 @@ func _plan_fulfill_contract(agent: Agent, goal: Dictionary, contracts_system: Co
 	else:
 		# Obtain item
 		return {"type": "OBTAIN_ITEM", "item": contract.item, "qty": contract.qty, "is_goal": true}
-		
+
+func _plan_market_intentions(agent: Agent, goal: Dictionary, world: World, market: Market,
+		contracts_system: ContractsSystem, tuning: Dictionary, recipes: Dictionary,
+		state: SimState = null) -> Dictionary:
+	var market_x: int = int(goal.get("market_x", tuning.get("market_pos_x", 48)))
+	var market_y: int = int(goal.get("market_y", tuning.get("market_pos_y", 48)))
+	if not agent.is_at(market_x, market_y):
+		return Actions.move_to_market()
+
+	var current_tick: int = state.tick if state != null else 0
+	_update_market_price_memory(agent, market, current_tick, tuning)
+
+	var intentions: Array = goal.get("intentions", [])
+	var updated_intentions: Array[Dictionary] = []
+	var max_attempts: int = int(tuning.get("market_intention_max_attempts", 3))
+
+	for i in range(intentions.size()):
+		if not (intentions[i] is Dictionary):
+			continue
+		var intention: Dictionary = intentions[i].duplicate(true)
+		if _is_intention_expired(intention, current_tick):
+			continue
+		var action := {}
+		var fulfilled := false
+		match intention.get("type", ""):
+			"BUY_NEEDS":
+				var item: String = intention.get("item", "")
+				var qty: int = int(intention.get("qty", 1))
+				if item == "":
+					fulfilled = true
+				elif agent.has_available_item(item, qty):
+					fulfilled = true
+				elif market.has_active_order(agent.id, item, "buy"):
+					fulfilled = true
+				elif agent.get_available_money() < market.get_ref_price(item):
+					intention = _increment_intention_attempts(intention, max_attempts)
+				else:
+					action = Actions.place_buy_order(item)
+					fulfilled = true
+				if fulfilled:
+					agent.goal_data.erase("failed_item_request")
+			"SELL_SURPLUS":
+				var item: String = intention.get("item", "")
+				if item == "":
+					fulfilled = true
+				else:
+					var threshold: int = _get_surplus_threshold(item, tuning)
+					if agent.get_available_item(item) <= threshold:
+						fulfilled = true
+					elif market.has_active_order(agent.id, item, "sell"):
+						fulfilled = true
+					else:
+						action = Actions.place_sell_order(item)
+						fulfilled = true
+			"FIND_WORK":
+				if agent.has_active_contract():
+					fulfilled = true
+				else:
+					var contract := contracts_system.find_best_contract(agent, market, tuning, world, recipes)
+					if contract != null:
+						action = Actions.accept_contract(contract.id)
+						fulfilled = true
+					else:
+						intention = _increment_intention_attempts(intention, max_attempts)
+			"CHECK_PRICES":
+				fulfilled = true
+			_:
+				fulfilled = true
+
+		if action.has("type"):
+			for j in range(i + 1, intentions.size()):
+				if intentions[j] is Dictionary:
+					updated_intentions.append(intentions[j].duplicate(true))
+			goal["intentions"] = updated_intentions.duplicate(true)
+			agent.market_intentions = goal["intentions"].duplicate(true)
+			return action
+
+		if not fulfilled and not intention.is_empty():
+			updated_intentions.append(intention)
+
+	goal["intentions"] = updated_intentions.duplicate(true)
+	agent.market_intentions = goal["intentions"].duplicate(true)
+	return {}
+
+func _plan_secure_workshop_access(agent: Agent, goal: Dictionary, world: World, tuning: Dictionary) -> Dictionary:
+	var workshop_type: String = goal.get("workshop_type", "")
+	var workshop_id: int = int(goal.get("workshop_id", -1))
+	if workshop_id >= 0:
+		var existing := world.get_workshop_by_id(workshop_id)
+		if existing != null and existing.is_ready():
+			if agent.is_at_workshop(existing):
+				return {}
+			return Actions.move_to_workshop(existing.id)
+		goal.erase("workshop_id")
+	var closest := world.find_closest_workshop(agent.pos_x, agent.pos_y, workshop_type)
+	if closest != null and closest.is_ready():
+		goal["workshop_id"] = closest.id
+		if agent.is_at_workshop(closest):
+			return {}
+		return Actions.move_to_workshop(closest.id)
+	return {"type": "BUILD_STRATEGIC_WORKSHOP", "is_goal": true}
+
+func _plan_secure_resource_access(agent: Agent, goal: Dictionary, world: World, tuning: Dictionary) -> Dictionary:
+	var resource_type: String = goal.get("resource_type", "")
+	if resource_type == "":
+		return {}
+	var node_id: int = int(goal.get("node_id", -1))
+	var node: ResourceNode = null
+	if node_id >= 0:
+		node = world.get_node_by_id(node_id)
+		if node == null or node.type != resource_type:
+			node = null
+	if node == null:
+		node = _find_nearest_resource_node(agent, world, resource_type)
+		if node == null:
+			return {}
+		goal["node_id"] = node.id
+		goal["target_x"] = node.pos_x
+		goal["target_y"] = node.pos_y
+	var target_x: int = int(goal.get("target_x", node.pos_x))
+	var target_y: int = int(goal.get("target_y", node.pos_y))
+	if not agent.is_at(target_x, target_y):
+		return Actions.move_to_position(target_x, target_y)
+	if world.get_claim_owner(target_x, target_y) != agent.id:
+		if agent.has_claim_tokens():
+			return Actions.claim_tile(target_x, target_y, false)
+	return {}
+
+func _find_nearest_resource_node(agent: Agent, world: World, resource_type: String) -> ResourceNode:
+	var closest: ResourceNode = null
+	var closest_dist := 999999
+	for node in world.resource_nodes:
+		if node == null or node.type != resource_type:
+			continue
+		var dist := absi(node.pos_x - agent.pos_x) + absi(node.pos_y - agent.pos_y)
+		if dist < closest_dist:
+			closest_dist = dist
+			closest = node
+	return closest
+
+func _get_surplus_threshold(item_name: String, tuning: Dictionary) -> int:
+	match item_name:
+		"Berries":
+			return int(tuning.get("sell_surplus_food_over", 6))
+		"Logs":
+			return int(tuning.get("sell_logs_over", 3))
+		"Ore":
+			return int(tuning.get("sell_ore_over", 2))
+		"Planks":
+			return int(tuning.get("sell_planks_over", 5))
+		"CookedMeal":
+			return int(tuning.get("sell_meals_over", 3))
+		_:
+			return 0
+
+func _update_market_price_memory(agent: Agent, market: Market, current_tick: int, tuning: Dictionary) -> void:
+	if current_tick <= 0:
+		return
+	var memory_limit: int = int(tuning.get("market_price_memory_limit", 20))
+	for item_name in market.ref_price.keys():
+		var price: int = int(round(market.get_ref_price(item_name)))
+		agent.remember_market_price(item_name, price, current_tick, memory_limit)
+	agent.last_market_visit_tick = current_tick
+
+func _is_intention_expired(intention: Dictionary, current_tick: int) -> bool:
+	var expires_tick: int = int(intention.get("expires_tick", -1))
+	if expires_tick > 0 and current_tick > 0:
+		return current_tick >= expires_tick
+	return false
+
+func _increment_intention_attempts(intention: Dictionary, max_attempts: int) -> Dictionary:
+	var attempts: int = int(intention.get("attempts", 0)) + 1
+	intention["attempts"] = attempts
+	if attempts >= max_attempts:
+		return {}
+	return intention
+
 func _is_recipe_allowed(recipe: Recipe, world: World) -> bool:
 	if recipe == null:
 		return false
