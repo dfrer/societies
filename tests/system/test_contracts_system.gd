@@ -181,7 +181,7 @@ func _test_find_best_contract() -> void:
 	contracts.post_contract(issuer, "Ore", 2, 50, 100, 48, 48, 0, state)      # Medium profit
 	
 	# Find best contract for worker
-	var best := contracts.find_best_contract(worker, market, tuning)
+	var best := contracts.find_best_contract(worker, market, tuning, state.world, state.recipes)
 	
 	assert_true(best != null, "Should find a contract")
 	# Best should be the highest profit contract
