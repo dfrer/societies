@@ -36,7 +36,7 @@ func decide_action(agent: Agent, world: World, market: Market,
 	var planner_context := PlannerContext.create(world, market, contracts_system, tuning, recipes, state)
 
 	# 0. Interrupts (Panic checks that override everything)
-	var interrupt = _needs_planner.get_interrupt_action(agent, tuning)
+	var interrupt = _survival_planner.get_interrupt_action(agent, tuning)
 	if not interrupt.is_empty():
 		_set_intent(state, agent, "INTERRUPT", {"action_type": interrupt.get("type", "")})
 		_clear_activity(state, agent)

@@ -10,36 +10,17 @@ extends "res://sim/brains/planners/i_agent_planner.gd"
 func get_priority() -> int:
 	return 100 # Priority.CRITICAL_NEEDS - usually high
 
-# --- Critical Interrupts ---
-# Returns an Action if immediate survival action is needed, bypassing planner
-func get_interrupt_action(agent, world) -> Dictionary:
-	# 1. Starvation Check
-	if agent.state.hunger < 15.0:
-		# If has food, eat immediately
-		if agent.has_item_category("food"):
-			# Find best food
-			var food = agent.inventory.get_best_item("food") # Assuming this helper exists or generic get
-			# Fallback if get_best_item not implemented, exact search
-			if not food:
-				if agent.inventory.has("CookedMeal"): food = "CookedMeal"
-				elif agent.inventory.has("Berries"): food = "Berries"
-			
-			if food:
-				return {
-					"type": "eat",
-					"item": food,
-					"interrupt": true
-				}
-	
-	# 2. Exhaustion Check
-	if agent.state.stamina <= 0.0:
-		# Sleep immediately where you stand
-		return {
-			"type": "sleep",
-			"interrupt": true
-		}
-		
-	return {} # No interrupt
+func get_interrupt_action(agent: Agent, tuning: Variant) -> Dictionary:
+	var tuning_data: Dictionary = tuning if tuning is Dictionary else {}
+	var emergency_threshold: float = float(tuning_data.get("emergency_hunger_threshold", 15.0))
+	if agent.get_hunger() < emergency_threshold:
+		if agent.has_available_item("CookedMeal"):
+			return Actions.eat_meal()
+		if agent.has_available_item("Berries"):
+			return Actions.eat()
+	if agent.get_stamina() <= 0.0:
+		return Actions.sleep_rest()
+	return {}
 
 # --- Goal Generation ---
 func maybe_add_goal(agent, ctx) -> bool:
