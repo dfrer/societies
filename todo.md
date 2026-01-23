@@ -24,20 +24,20 @@
 > Agents need state to track their personal territory, owned structures,
 > and sense of "home" before we can implement homestead behavior.
 
-- [ ] **Add `home_pos: Vector2i` to Agent class** — Stores the agent's claimed home tile position. Initialize to `Vector2i(-1, -1)` for homeless agents. This becomes the anchor point for all homestead goals.
+- [x] **Add `home_pos: Vector2i` to Agent class** — Stores the agent's claimed home tile position. Initialize to `Vector2i(-1, -1)` for homeless agents. This becomes the anchor point for all homestead goals.
   - File: `sim/agent.gd`
   - Add after line ~45 (near claim state)
   - Include in `to_dict()` and `from_dict()` serialization
 
-- [ ] **Add `owned_structures: Array[int]` to Agent class** — Array of structure IDs that this agent personally owns (stockpiles, shelters, workshops). Distinct from faction-owned structures.
+- [x] **Add `owned_structures: Array[int]` to Agent class** — Array of structure IDs that this agent personally owns (stockpiles, shelters, workshops). Distinct from faction-owned structures.
   - File: `sim/agent.gd`
   - Add helper methods: `has_personal_stockpile() -> bool`, `has_personal_shelter() -> bool`
 
-- [ ] **Add `personal_stockpile_id: int` and `shelter_id: int` to Agent class** — Quick references to primary personal structures (first stockpile, first shelter). Set to -1 if none.
+- [x] **Add `personal_stockpile_id: int` and `shelter_id: int` to Agent class** — Quick references to primary personal structures (first stockpile, first shelter). Set to -1 if none.
   - File: `sim/agent.gd`
   - These are convenience shortcuts; `owned_structures` is the canonical list
 
-- [ ] **Add helper method `has_home() -> bool` to Agent class** — Returns `home_pos != Vector2i(-1, -1)`. Used by HomesteadPlanner to determine if agent needs to establish home.
+- [x] **Add helper method `has_home() -> bool` to Agent class** — Returns `home_pos != Vector2i(-1, -1)`. Used by HomesteadPlanner to determine if agent needs to establish home.
   - File: `sim/agent.gd`
 
 ---
@@ -46,15 +46,15 @@
 > Agents need state to track their career path, specialization goals,
 > and skill-based identity for the CareerPlanner.
 
-- [ ] **Add `career_type: String` to Agent class** — Current career identity: "none", "gatherer", "logger", "miner", "craftsman", "smith", "trader", "farmer". Initialize to "none" for new agents; replaces static `role` over time.
+- [x] **Add `career_type: String` to Agent class** — Current career identity: "none", "gatherer", "logger", "miner", "craftsman", "smith", "trader", "farmer". Initialize to "none" for new agents; replaces static `role` over time.
   - File: `sim/agent.gd`
   - Initially keep `role` for backwards compatibility; deprecate in V4
 
-- [ ] **Add `career_goals: Array[Dictionary]` to Agent class** — Career-specific progression goals. Example: `[{type: "ACQUIRE_TOOL", item: "Axe"}, {type: "SECURE_RESOURCE_ACCESS", resource_type: "tree"}]`
+- [x] **Add `career_goals: Array[Dictionary]` to Agent class** — Career-specific progression goals. Example: `[{type: "ACQUIRE_TOOL", item: "Axe"}, {type: "SECURE_RESOURCE_ACCESS", resource_type: "tree"}]`
   - File: `sim/agent.gd`
   - Serialization: include in `to_dict()` / `from_dict()`
 
-- [ ] **Add `preferred_resource: String` to Agent class** — The resource type this agent prefers to gather based on location/skills. Used by CareerPlanner to suggest specialization.
+- [x] **Add `preferred_resource: String` to Agent class** — The resource type this agent prefers to gather based on location/skills. Used by CareerPlanner to suggest specialization.
   - File: `sim/agent.gd`
   - Set dynamically based on nearest abundant resource at spawn or career change
 
@@ -64,12 +64,12 @@
 > Agents need persistent state for multi-day goals that survive
 > across ticks and even serialization/deserialization.
 
-- [ ] **Add `long_term_goals: Array[Dictionary]` to Agent class** — Persistent goals that span multiple days. Schema: `{type: String, target: Variant, started_tick: int, deadline_tick: int, progress: float, sub_goals: Array}`
+- [x] **Add `long_term_goals: Array[Dictionary]` to Agent class** — Persistent goals that span multiple days. Schema: `{type: String, target: Variant, started_tick: int, deadline_tick: int, progress: float, sub_goals: Array}`
   - File: `sim/agent.gd`
   - Example: `{type: "SAVE_FOR_AXE", target: 150, started_tick: 100, progress: 0.6}`
   - Include full serialization support
 
-- [ ] **Add `market_price_memory: Dictionary` to Agent class** — Remembered prices for items: `{item_name: {last_price: int, last_tick: int}}`. Used for market intelligence.
+- [x] **Add `market_price_memory: Dictionary` to Agent class** — Remembered prices for items: `{item_name: {last_price: int, last_tick: int}}`. Used for market intelligence.
   - File: `sim/agent.gd`
   - Capacity limit: max 20 items remembered
 
@@ -79,11 +79,11 @@
 > Agents need to track WHY they're going to the market so behavior
 > is purposeful, not arbitrary.
 
-- [ ] **Add `market_intentions: Array[Dictionary]` to Agent class** — Why the agent is going to/at the market. Schema: `{type: "BUY_SPECIFIC"|"SELL_SURPLUS"|"FIND_CONTRACT"|"CHECK_PRICES", item: String, qty: int, max_price: int}`
+- [x] **Add `market_intentions: Array[Dictionary]` to Agent class** — Why the agent is going to/at the market. Schema: `{type: "BUY_SPECIFIC"|"SELL_SURPLUS"|"FIND_CONTRACT"|"CHECK_PRICES", item: String, qty: int, max_price: int}`
   - File: `sim/agent.gd`
   - Cleared when agent leaves market area or intentions fulfilled
 
-- [ ] **Add `last_market_visit_tick: int` to Agent class** — Track when agent last visited market for cooldown/frequency logic.
+- [x] **Add `last_market_visit_tick: int` to Agent class** — Track when agent last visited market for cooldown/frequency logic.
   - File: `sim/agent.gd`
 
 ---
@@ -94,15 +94,15 @@
 > Create the infrastructure for the new planner system before
 > implementing individual planners.
 
-- [ ] **Create `IAgentPlanner` interface class** — Base class for all planners. Defines: `func maybe_add_goal(agent: Agent, context: PlannerContext) -> bool` and `func get_priority() -> int`
+- [x] **Create `IAgentPlanner` interface class** — Base class for all planners. Defines: `func maybe_add_goal(agent: Agent, context: PlannerContext) -> bool` and `func get_priority() -> int`
   - File: `sim/brains/planners/i_agent_planner.gd` (NEW)
   - All planners extend this interface
 
-- [ ] **Create `PlannerContext` container class** — Bundles all context needed by planners: world, market, contracts_system, tuning, recipes, state. Avoids long parameter lists.
+- [x] **Create `PlannerContext` container class** — Bundles all context needed by planners: world, market, contracts_system, tuning, recipes, state. Avoids long parameter lists.
   - File: `sim/brains/planner_context.gd` (NEW)
   - Immutable struct passed to all planners
 
-- [ ] **Refactor DefaultBrain to use planner registry** — Replace hard-coded planner calls with a registered list of planners sorted by priority.
+- [x] **Refactor DefaultBrain to use planner registry** — Replace hard-coded planner calls with a registered list of planners sorted by priority.
   - File: `sim/brains/default_brain.gd`
   - Method: `_init()` registers planners; `_generate_high_level_goals()` iterates by priority
 
@@ -113,11 +113,11 @@
 > active contracts). Commitments should be surfaced as explicit high-priority goals,
 > not bypassed by the planner loop.
 
-- [ ] **Create `commitment_planner.gd`** — New planner that translates current activities and active contracts into explicit goals.
+- [x] **Create `commitment_planner.gd`** — New planner that translates current activities and active contracts into explicit goals.
   - File: `sim/brains/planners/commitment_planner.gd` (NEW)
   - Priority: highest (pre-needs), so commitments are honored before new goals
 
-- [ ] **Integrate commitments with planner registry** — Register `CommitmentPlanner` at the top of the priority list.
+- [x] **Integrate commitments with planner registry** — Register `CommitmentPlanner` at the top of the priority list.
   - File: `sim/brains/default_brain.gd`
   - Prevents planner bypass of current activities and contracts
 
