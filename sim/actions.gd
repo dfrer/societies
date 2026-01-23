@@ -261,6 +261,12 @@ static func _move_toward(agent: Agent, target_x: int, target_y: int, world: Worl
 	
 	if dx == 0 and dy == 0:
 		return true
+
+	var from_dx: int = 0
+	var from_dy: int = 0
+	if agent.last_pos_x >= 0 and agent.last_pos_y >= 0:
+		from_dx = agent.pos_x - agent.last_pos_x
+		from_dy = agent.pos_y - agent.last_pos_y
 	
 	# Drain stamina for movement
 	var move_cost: float = tuning.get("stamina_drain_move", 0.5)
@@ -284,6 +290,13 @@ static func _move_toward(agent: Agent, target_x: int, target_y: int, world: Worl
 		candidates.sort_custom(func(a, b):
 			if a["dist"] == b["dist"]:
 				if a["road"] == b["road"]:
+					if from_dx != 0 or from_dy != 0:
+						var prefer_x: int = agent.pos_x + from_dx
+						var prefer_y: int = agent.pos_y + from_dy
+						var a_prefers: bool = a["x"] == prefer_x and a["y"] == prefer_y
+						var b_prefers: bool = b["x"] == prefer_x and b["y"] == prefer_y
+						if a_prefers != b_prefers:
+							return a_prefers
 					if a["x"] == b["x"]:
 						return a["y"] < b["y"]
 					return a["x"] < b["x"]
@@ -302,6 +315,9 @@ static func _move_toward(agent: Agent, target_x: int, target_y: int, world: Worl
 		move_cost *= tuning.get("road_stamina_drain_multiplier", 0.5)
 
 	agent.drain_stamina(move_cost)
+	if next_step.x != agent.pos_x or next_step.y != agent.pos_y:
+		agent.last_pos_x = agent.pos_x
+		agent.last_pos_y = agent.pos_y
 	agent.pos_x = next_step.x
 	agent.pos_y = next_step.y
 	

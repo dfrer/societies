@@ -5,6 +5,8 @@ extends RefCounted
 var id: int = 0
 var pos_x: int = 0
 var pos_y: int = 0
+var last_pos_x: int = -1
+var last_pos_y: int = -1
 var money: int = 0
 var inventory: Dictionary = {}
 var needs: Dictionary = {}
@@ -116,6 +118,8 @@ func to_dict() -> Dictionary:
 		"id": id,
 		"pos_x": pos_x,
 		"pos_y": pos_y,
+		"last_pos_x": last_pos_x,
+		"last_pos_y": last_pos_y,
 		"money": money,
 		"inventory": inventory.duplicate(),
 		"needs": _serialize_needs(),
@@ -255,6 +259,8 @@ static func from_dict(d: Dictionary) -> Agent:
 	agent.id = int(d.get("id", 0))
 	agent.pos_x = int(d.get("pos_x", 0))
 	agent.pos_y = int(d.get("pos_y", 0))
+	agent.last_pos_x = int(d.get("last_pos_x", -1))
+	agent.last_pos_y = int(d.get("last_pos_y", -1))
 	agent.money = int(d.get("money", 0))
 	# Convert inventory values to int (JSON may parse as float)
 	var inv: Dictionary = d.get("inventory", {})

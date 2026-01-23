@@ -553,6 +553,9 @@ func _action_from_activity(agent: Agent, activity: Dictionary, world: World, tun
 # PLANNER HELPERS
 # --------------------
 
+func _manhattan_distance(agent: Agent, node: ResourceNode) -> int:
+	return absi(agent.pos_x - node.pos_x) + absi(agent.pos_y - node.pos_y)
+
 func _plan_obtain_item(agent: Agent, goal: Dictionary, world: World, market: Market, recipes: Dictionary, tuning: Dictionary, state: SimState = null) -> Dictionary:
 	var item = goal.item
 
@@ -565,20 +568,40 @@ func _plan_obtain_item(agent: Agent, goal: Dictionary, world: World, market: Mar
 	if node_type != "":
 		# It's a resource!
 		# Pin a node to this goal to avoid oscillation between nearby nodes.
+		var node_switch_threshold: int = int(tuning.get("node_switch_threshold", 3))
+		var node_blocked_threshold: int = int(tuning.get("node_blocked_ticks_threshold", 3))
 		var node_id: int = int(goal.get("node_id", -1))
 		var node: ResourceNode = null
 		if node_id >= 0:
 			node = world.get_node_by_id(node_id)
-			if node == null or node.type != node_type or not node.has_stock(1) \
-					or not _can_harvest_resource_node(agent, world, state, node):
+			var should_abandon := false
+			if node == null or node.type != node_type:
+				should_abandon = true
+			elif not node.has_stock(1) or not _can_harvest_resource_node(agent, world, state, node):
+				var blocked_ticks: int = int(goal.get("node_blocked_ticks", 0)) + 1
+				goal["node_blocked_ticks"] = blocked_ticks
+				if blocked_ticks >= node_blocked_threshold:
+					var alternative := _find_nearest_accessible_node_of_type(agent, world, state, node_type)
+					if alternative != null:
+						var current_dist: int = _manhattan_distance(agent, node)
+						var alt_dist: int = _manhattan_distance(agent, alternative)
+						if alt_dist < current_dist - node_switch_threshold:
+							should_abandon = true
+			else:
+				goal.erase("node_blocked_ticks")
+			if should_abandon:
 				goal.erase("node_id")
+				goal.erase("node_blocked_ticks")
 				node = null
 		if node == null:
 			node = _find_nearest_accessible_node_of_type(agent, world, state, node_type)
 			if node:
 				goal["node_id"] = node.id
+				goal["node_commitment_ticks"] = 0
+				goal.erase("node_blocked_ticks")
 		if node:
 			goal["node_id"] = node.id
+			goal["node_commitment_ticks"] = int(goal.get("node_commitment_ticks", 0)) + 1
 			if agent.is_at(node.pos_x, node.pos_y):
 				return Actions.gather_node(node.id)
 			else:
