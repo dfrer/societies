@@ -1,0 +1,7 @@
+{"data":{"day":1},"tick":200,"type":"day_started"}
+{"data":{"organization_id":2001,"pos":[47,48]},"tick":200,"type":"organization_tile_claimed"}
+{"data":{"organization_id":2001,"pos":[48,47]},"tick":200,"type":"organization_tile_claimed"}
+{"data":{"organization_id":2001,"pos":[48,49]},"tick":200,"type":"organization_tile_claimed"}
+{"data":{"organization_id":2001,"pos":[49,48]},"tick":200,"type":"organization_tile_claimed"}
+{"data":{"faction_id":2001,"initiator_id":0,"pos":[47,48],"project_id":1,"type":"shelter"},"tick":200,"type":"project_started"}
+{"data":{"organization_id":2001,"pos":[47,48],"project_type":"shelter"},"tick":200,"type":"organization_project_planned"}

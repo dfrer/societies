@@ -1,0 +1,17 @@
+=== Societies Simulation Test Suite ===
+
+Output file: test_sanity_output.txt
+Per-test timeout (ms): 120000
+Filter: test_sanity.gd
+JSON output: user://test_results.json
+
+Discovered 1 test files
+
+[TEST 1/1] test_sanity.gd
+  Loading script: res://tests/test_sanity.gd
+  Result: PASSED
+
+=== Test Summary ===
+Tests run: 1 | Passed: 1 | Failed: 0
+
+Wrote JSON results to user://test_results.json

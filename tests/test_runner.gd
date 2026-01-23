@@ -42,6 +42,7 @@ func _init() -> void:
 	var log_msg := func(msg: String):
 		print(msg)
 		output_file.store_line(msg)
+		output_file.flush()
 	
 	log_msg.call("=== Societies Simulation Test Suite ===")
 	log_msg.call("")
@@ -95,6 +96,7 @@ func _init() -> void:
 		var status := "unknown"
 		var failures: Array[String] = []
 		
+		log_msg.call("  Loading script: %s" % path)
 		var script = load(path)
 		if not script:
 			log_msg.call("  FAILED to load script")

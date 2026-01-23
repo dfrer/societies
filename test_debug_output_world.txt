@@ -1,0 +1,21 @@
+=== Societies Simulation Test Suite ===
+
+Output file: test_debug_output_world.txt
+Per-test timeout (ms): 120000
+Filter: test_debug_determinism.gd
+JSON output: user://test_results.json
+
+Discovered 1 test files
+
+[TEST 1/1] test_debug_determinism.gd
+  Loading script: res://tests/test_debug_determinism.gd
+  Result: FAILED
+    - [Find Divergence Tick] Mismatch detail logged
+
+=== Test Summary ===
+Tests run: 1 | Passed: 0 | Failed: 1
+
+=== Failure Summary ===
+  - test_debug_determinism.gd
+
+Wrote JSON results to user://test_results.json

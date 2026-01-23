@@ -1,0 +1,21 @@
+=== Societies Simulation Test Suite ===
+
+Output file: test_determinism_output.txt
+Per-test timeout (ms): 120000
+Filter: test_determinism.gd
+JSON output: user://test_results.json
+
+Discovered 2 test files
+
+[TEST 1/2] integration/test_determinism.gd
+  Loading script: res://tests/integration/test_determinism.gd
+  Result: PASSED
+
+[TEST 2/2] test_determinism.gd
+  Loading script: res://tests/test_determinism.gd
+  Result: PASSED
+
+=== Test Summary ===
+Tests run: 2 | Passed: 2 | Failed: 0
+
+Wrote JSON results to user://test_results.json

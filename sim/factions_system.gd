@@ -68,7 +68,11 @@ func _hold_election(faction: Faction, state: SimState, rng: RNG) -> void:
 		if agent:
 			candidates.append(agent)
 	
-	candidates.sort_custom(func(a, b): return a.money > b.money)
+	candidates.sort_custom(func(a, b):
+		if a.money != b.money:
+			return a.money > b.money
+		return a.id < b.id # Deterministic tie-breaker
+	)
 	var top_candidates = candidates.slice(0, 3)
 	
 	if top_candidates.is_empty():
