@@ -60,7 +60,7 @@ func randf() -> float:
 ## Get random integer in range [a, b] inclusive
 func randi_range(a: int, b: int) -> int:
 	if a == b: return a
-	var r = randi()
+	var r = self.randi()
 	# Ensure positive modulo
 	var range_size = b - a + 1
 	var mod = r % range_size
@@ -69,7 +69,7 @@ func randi_range(a: int, b: int) -> int:
 
 ## Get random float in range [a, b]
 func randf_range(a: float, b: float) -> float:
-	return a + (b - a) * randf()
+	return a + (b - a) * self.randf()
 
 ## Serialize to dictionary
 func to_dict() -> Dictionary:

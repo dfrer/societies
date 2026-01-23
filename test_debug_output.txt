@@ -1,0 +1,10 @@
+=== Societies Simulation Test Suite ===
+
+Output file: test_debug_output.txt
+Per-test timeout (ms): 120000
+Filter: test_debug_determinism.gd
+JSON output: user://test_results.json
+
+Discovered 1 test files
+
+[TEST 1/1] test_debug_determinism.gd

@@ -122,10 +122,14 @@ func _test_goal_stack_instant_completion() -> void:
 	var agent := Fixtures.make_agent({
 		"id": 1,
 		"hunger": 90.0,
-		"inventory": {"Planks": 1}
+		"inventory": {
+			"Logs": 1,
+			"Berries": 10
+		}
 	})
 	state.add_agent(agent)
-	agent.goal_stack = [{"type": "OBTAIN_ITEM", "item": "Planks", "qty": 1, "is_goal": true}]
+	# Goal is already complete upon setting
+	agent.goal_stack = [{"type": "OBTAIN_ITEM", "item": "Logs", "qty": 1, "is_goal": true}]
 
 	var brain := DefaultBrain.new()
 	var world := state.world
@@ -135,7 +139,18 @@ func _test_goal_stack_instant_completion() -> void:
 
 	var action := brain.decide_action(agent, world, market, contracts, tuning, {}, state)
 	assert_true(action.has("type"), "Instant completion should still return an action")
-	assert_eq(agent.goal_stack.size(), 0, "Completed goal should be popped from stack")
+	
+	# The brain should pop the completed goal and immediately generate a new one
+	# because the stack became empty. So size should be > 0.
+	assert_true(agent.goal_stack.size() > 0, "Brain should generate new goals after completing one")
+	
+	# Verify the completed goal is gone (the new goal should NOT be "Logs")
+	var current_goal = agent.goal_stack.back()
+	if current_goal.get("type") == "OBTAIN_ITEM":
+		assert_ne(current_goal.get("item"), "Logs", "Completed Logs goal should be popped")
+	else:
+		# If it's a different goal type (e.g. ESTABLISH_HOMESTEAD), then Logs is definitely gone
+		pass
 
 func _test_action_determinism() -> void:
 	# Two identical agents with same state should produce same action

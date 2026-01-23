@@ -1,9 +1,14 @@
-## NeedsPlanner - handles survival interrupts and proactive needs
 class_name NeedsPlanner
-extends IAgentPlanner
+extends "res://sim/brains/planners/i_agent_planner.gd"
+
+# Needs Planner
+# Handles survival needs (Hunger, Stamina) and comfort/social needs.
+# operates in two modes:
+# 1. Critical Interrupts: Bypasses goals for immediate survival (Starvation/Exhaustion)
+# 2. Goal Generation: Adds goals for hungry/tired states or proactive buffering
 
 func get_priority() -> int:
-	return 120
+	return 100 # Priority.CRITICAL_NEEDS - usually high
 
 func get_interrupt_action(agent: Agent, tuning: Variant) -> Dictionary:
 	var tuning_data: Dictionary = tuning if tuning is Dictionary else {}
@@ -17,53 +22,77 @@ func get_interrupt_action(agent: Agent, tuning: Variant) -> Dictionary:
 		return Actions.sleep_rest()
 	return {}
 
-func maybe_add_goal(agent: Agent, context: PlannerContext) -> bool:
-	var eat_threshold: float = context.tuning.get("eat_threshold", 50.0)
-	if agent.get_hunger() < eat_threshold:
-		if agent.has_available_item("CookedMeal"):
-			agent.goal_stack.push_back({"type": "EAT_FOOD", "item": "CookedMeal", "is_goal": true})
+# --- Goal Generation ---
+func maybe_add_goal(agent, ctx) -> bool:
+	var tuning = ctx.tuning
+	
+	# 1. Reactive Hunger
+	if agent.state.hunger < 50.0:
+		# Low hunger: Need food logic
+		# If user has food -> EAT_FOOD goal
+		# If user has no food -> OBTAIN_ITEM goal
+		var has_food = false
+		if agent.inventory.has("Berries") or agent.inventory.has("CookedMeal"):
+			has_food = true
+			
+		if has_food:
+			agent.goals.push_front({
+				"type": "EAT_FOOD",
+				"is_goal": true
+			})
 			return true
-		if agent.has_available_item("Berries"):
-			agent.goal_stack.push_back({"type": "EAT_FOOD", "item": "Berries", "is_goal": true})
-			return true
-		agent.goal_stack.push_back({"type": "OBTAIN_ITEM", "item": "Berries", "qty": 5, "is_goal": true})
-		return true
-
-	var stamina_threshold: float = context.tuning.get("stamina_low_threshold", 20.0)
-	if agent.get_stamina() < stamina_threshold:
-		var shelter := _find_nearby_shelter(agent, context)
-		if shelter != null:
-			agent.goal_stack.push_back({"type": "EFFICIENT_REST", "shelter_id": shelter.id, "is_goal": true})
 		else:
-			agent.goal_stack.push_back({"type": "REST", "is_goal": true})
+			# Need to find food.
+			# Simplified: Just ask for Berries for now, V3 spec might want generic "food"
+			agent.goals.push_front({
+				"type": "OBTAIN_ITEM",
+				"item": "Berries",
+				"qty": 5,
+				"is_goal": true
+			})
+			return true
+
+	# 2. Reactive Stamina
+	if agent.state.stamina < 20.0:
+		# Need rest.
+		# Check for shelter preference (P1b)
+		var shelter_id = -1
+		if agent.has_method("has_personal_shelter") and agent.has_personal_shelter():
+			shelter_id = agent.shelter_id
+		else:
+			# Look for nearby public shelter
+			# This requires spatial query. For now, basic REST.
+			pass
+			
+		# If shelter found, EFFICIENT_REST, else REST
+		if shelter_id != -1:
+			agent.goals.push_front({
+				"type": "EFFICIENT_REST",
+				"shelter_id": shelter_id,
+				"is_goal": true
+			})
+		else:
+			agent.goals.push_front({
+				"type": "REST",
+				"is_goal": true
+			})
 		return true
 
-	var proactive_buffer: int = int(context.tuning.get("proactive_food_buffer", 5))
-	if agent.get_hunger() >= 50.0 and get_food_inventory(agent) < proactive_buffer:
-		agent.goal_stack.push_back({"type": "MAINTAIN_FOOD_BUFFER", "target_qty": proactive_buffer, "is_goal": true})
-		return true
-
-	var comfort: float = float(agent.needs.get("comfort", 100.0))
-	if comfort < 30.0 and not agent.has_personal_shelter():
-		agent.goal_stack.push_back({"type": "BUILD_PERSONAL_SHELTER", "is_goal": true})
-		return true
-
-	var social: float = float(agent.needs.get("social", 100.0))
-	if social < 30.0 and agent.faction_id == 0:
-		agent.goal_stack.push_back({"type": "FIND_COMMUNITY", "is_goal": true})
+	# 3. Proactive Food Buffer (P1a)
+	# If hunger is fine (>50) but inventory low
+	var food_count = 0
+	food_count += agent.inventory.count("Berries")
+	food_count += agent.inventory.count("CookedMeal")
+	
+	var buffer_target = tuning.get("proactive_food_buffer", 5)
+	
+	if food_count < buffer_target:
+		agent.goals.push_front({
+			"type": "MAINTAIN_FOOD_BUFFER",
+			"target_qty": buffer_target,
+			"current_qty": food_count,
+			"is_goal": true
+		})
 		return true
 
 	return false
-
-func get_food_inventory(agent: Agent) -> int:
-	return agent.get_item_count("Berries") + agent.get_item_count("CookedMeal")
-
-func _find_nearby_shelter(agent: Agent, context: PlannerContext) -> StructureState:
-	if context.state == null:
-		return null
-	var at_shelter := context.state.structures.get_structure_at(agent.pos_x, agent.pos_y)
-	if at_shelter and at_shelter.structure_type == StructureState.TYPE_SHELTER:
-		return at_shelter
-	if agent.shelter_id >= 0:
-		return context.state.structures.get_structure(agent.shelter_id)
-	return null

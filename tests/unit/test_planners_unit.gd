@@ -18,7 +18,11 @@ func _test_survival_planner_food() -> void:
 	var tuning := {
 		"eat_threshold": 50.0
 	}
-	var added := planner.maybe_add_goal(agent, tuning)
+	
+	var context := PlannerContext.new()
+	context.tuning = tuning
+	
+	var added := planner.maybe_add_goal(agent, context)
 	assert_true(added, "Survival planner should add a food goal")
 	assert_eq(agent.goal_stack.size(), 1, "Goal stack should contain one goal")
 	assert_eq(agent.goal_stack[0]["type"], "EAT_FOOD", "Goal should be EAT_FOOD")
@@ -56,6 +60,12 @@ func _test_governance_planner_expansion() -> void:
 	state.factions = [faction]
 
 	var planner := GovernancePlanner.new()
-	var added := planner.maybe_add_goal(agent, state.world, state.tuning, state)
+	
+	var context := PlannerContext.new()
+	context.world = state.world
+	context.tuning = state.tuning
+	context.state = state
+	
+	var added := planner.maybe_add_goal(agent, context)
 	assert_true(added, "Governance planner should add an expansion goal")
 	assert_eq(agent.goal_stack.back()["type"], "EXPAND_FACTION", "Goal should be EXPAND_FACTION")
