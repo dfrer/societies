@@ -570,7 +570,7 @@ func _plan_obtain_item(agent: Agent, goal: Dictionary, world: World, market: Mar
 		if node_id >= 0:
 			node = world.get_node_by_id(node_id)
 			if node == null or node.type != node_type or not node.has_stock(1) \
-					or not _can_harvest_node(agent, world, state, node):
+					or not _can_harvest_resource_node(agent, world, state, node):
 				goal.erase("node_id")
 				node = null
 		if node == null:
@@ -1120,7 +1120,7 @@ func _find_nearest_accessible_node_of_type(agent: Agent, world: World, state: Si
 	for node in world.resource_nodes:
 		if node.type != type or node.stock <= 0:
 			continue
-		if not _can_harvest_node(agent, world, state, node):
+			if not _can_harvest_resource_node(agent, world, state, node):
 			continue
 		var dist = absi(node.pos_x - agent.pos_x) + absi(node.pos_y - agent.pos_y)
 		if dist < best_dist:
@@ -1129,7 +1129,7 @@ func _find_nearest_accessible_node_of_type(agent: Agent, world: World, state: Si
 
 	return best_node
 
-func _can_harvest_node(agent: Agent, world: World, state: SimState, node: ResourceNode) -> bool:
+func _can_harvest_resource_node(agent: Agent, world: World, state: SimState, node: ResourceNode) -> bool:
 	if node == null or state == null:
 		return true
 	var owner := world.get_claim_owner(node.pos_x, node.pos_y)
