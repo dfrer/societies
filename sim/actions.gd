@@ -170,7 +170,7 @@ static func execute_action(agent: Agent, action: Dictionary, world: World,
 		TYPE_REST:
 			return _execute_rest(agent, tuning)
 		TYPE_SLEEP:
-			return _execute_sleep(agent, tuning)
+			return _execute_sleep(agent, tuning, state)
 		TYPE_EXPLORE:
 			return _execute_explore(agent, action, world, tuning, current_tick)
 		TYPE_CLAIM_TILE:
@@ -627,9 +627,14 @@ static func _execute_rest(agent: Agent, tuning: Dictionary) -> bool:
 	return true
 
 ## Sleep action - enhanced stamina recovery (at home/safe location)
-static func _execute_sleep(agent: Agent, tuning: Dictionary) -> bool:
-	var recover_amount: float = tuning.get("stamina_recover_sleep", 10.0)
-	agent.recover_stamina(recover_amount)
+static func _execute_sleep(agent: Agent, tuning: Dictionary, state: SimState) -> bool:
+	var base_recovery: float = tuning.get("stamina_recover_sleep", 10.0)
+	if state != null:
+		var structure := state.structures.get_structure_at(agent.pos_x, agent.pos_y)
+		if structure != null and structure.structure_type == StructureState.TYPE_SHELTER:
+			var bonus: float = tuning.get("shelter_rest_bonus", 1.5)
+			base_recovery *= bonus
+	agent.recover_stamina(base_recovery)
 	return true
 
 ## Explore action - move in exploration direction to find new resources

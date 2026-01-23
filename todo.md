@@ -16,6 +16,36 @@
 # CORE INSIGHT: Currently, JobBoardSystem posts activities FOR agents,
 # generate_daily_contracts() randomly creates contracts, and agents
 # just react. Agents should WANT things and pursue them.
+#
+# ═══════════════════════════════════════════════════════════════════
+# IMPLEMENTATION ORDER (for Codex)
+# ═══════════════════════════════════════════════════════════════════
+#
+# PHASE 1 — Foundation (must complete before planners)
+#   P0a → P0b → P0c → P0d (Agent State Expansion)
+#   P0e → P0f (Planner Infrastructure)
+#
+# PHASE 2 — Core Planners (can parallelize within phase)
+#   P1a-P1c (NeedsPlanner + dependencies like P1b2)
+#   P1d-P1f2 (HomesteadPlanner + structure access)
+#   P1g-P1h2 (EconomyPlanner - contract posting/evaluation)
+#   P1i-P1j2 (MarketBehaviorPlanner - intentions/prices)
+#   P1k-P1m (CareerPlanner - assessment/tools/workshops)
+#
+# PHASE 3 — Integration
+#   P3a-P3b (DefaultBrain priority system + goal processing)
+#   P3c (Tuning parameters)
+#   P3d (Unit tests for all planners)
+#
+# PHASE 4 — Secondary Planners (can defer to V3.5 if needed)
+#   P2a-P2c (CivicPlanner)
+#   P2d-P2e (SocialPlanner)
+#   P2f-P2h (LongTermPlanner)
+#
+# PHASE 5 — Extended Content (DEFERRABLE to V3.5)
+#   P1n (Station taxonomy expansion)
+#   P1o (Fuel, cooking, advanced production)
+#
 # ═══════════════════════════════════════════════════════════════════
 
 ## P0 — Agent State Expansion (Foundation)
@@ -129,27 +159,27 @@
 > Agents should gather food BEFORE they're hungry, not just react
 > when hunger drops below threshold.
 
-- [ ] **Create `needs_planner.gd`** — New planner replacing `survival_planner.gd`. Handles all agent needs with both reactive and proactive modes.
+- [x] **Create `needs_planner.gd`** — New planner replacing `survival_planner.gd`. Handles all agent needs with both reactive and proactive modes.
   - File: `sim/brains/planners/needs_planner.gd` (NEW)
   - Keep `survival_planner.gd` temporarily for reference; delete after migration
 
-- [ ] **Implement `get_interrupt_action()` for critical survival** — Same as current: if hunger < 15 and has food, eat immediately. If stamina <= 0, sleep. Returns action directly (not goal).
+- [x] **Implement `get_interrupt_action()` for critical survival** — Same as current: if hunger < 15 and has food, eat immediately. If stamina <= 0, sleep. Returns action directly (not goal).
   - File: `sim/brains/planners/needs_planner.gd`
   - This is the PANIC layer that bypasses goal system
 
-- [ ] **Implement `maybe_add_critical_goal()` for reactive needs** — If hunger < 50, push EAT_FOOD or OBTAIN_ITEM goal. If stamina < 20, push REST goal. This is the current behavior.
+- [x] **Implement `maybe_add_critical_goal()` for reactive needs** — If hunger < 50, push EAT_FOOD or OBTAIN_ITEM goal. If stamina < 20, push REST goal. This is the current behavior.
   - File: `sim/brains/planners/needs_planner.gd`
 
-- [ ] **Implement `maybe_add_proactive_goal()` for buffer maintenance** — If hunger > 50 BUT food_inventory < `proactive_food_buffer` (default 5), push MAINTAIN_FOOD_BUFFER goal.
+- [x] **Implement `maybe_add_proactive_goal()` for buffer maintenance** — If hunger > 50 BUT food_inventory < `proactive_food_buffer` (default 5), push MAINTAIN_FOOD_BUFFER goal.
   - File: `sim/brains/planners/needs_planner.gd`
   - New tuning param: `proactive_food_buffer: int = 5`
   - Goal: `{type: "MAINTAIN_FOOD_BUFFER", target_qty: 5, is_goal: true}`
 
-- [ ] **Add `MAINTAIN_FOOD_BUFFER` goal type to DefaultBrain** — Process goal by pushing OBTAIN_ITEM sub-goal for Berries or checking personal stockpile.
+- [x] **Add `MAINTAIN_FOOD_BUFFER` goal type to DefaultBrain** — Process goal by pushing OBTAIN_ITEM sub-goal for Berries or checking personal stockpile.
   - File: `sim/brains/default_brain.gd`
   - Add to `_is_goal_complete()` and `_process_goal()`
 
-- [ ] **Add helper `get_food_inventory(agent) -> int`** — Returns total edible items: Berries + CookedMeal. Used by proactive goal check.
+- [x] **Add helper `get_food_inventory(agent) -> int`** — Returns total edible items: Berries + CookedMeal. Used by proactive goal check.
   - File: `sim/agent.gd` or `sim/brains/planners/needs_planner.gd`
 
 ---
@@ -157,15 +187,15 @@
 ### P1b — Stamina & Rest Optimization
 > Agents should seek shelter for efficient rest, not just rest anywhere.
 
-- [ ] **Implement shelter detection in NeedsPlanner** — If agent has personal shelter OR is near a public shelter, prefer EFFICIENT_REST goal over basic REST.
+- [x] **Implement shelter detection in NeedsPlanner** — If agent has personal shelter OR is near a public shelter, prefer EFFICIENT_REST goal over basic REST.
   - File: `sim/brains/planners/needs_planner.gd`
   - New goal: `{type: "EFFICIENT_REST", shelter_id: int, is_goal: true}`
 
-- [ ] **Add shelter rest bonus to `_execute_sleep()`** — If agent is at a shelter structure, apply `shelter_rest_bonus` multiplier (default 1.5x) to stamina recovery.
+- [x] **Add shelter rest bonus to `_execute_sleep()`** — If agent is at a shelter structure, apply `shelter_rest_bonus` multiplier (default 1.5x) to stamina recovery.
   - File: `sim/actions.gd`
   - Check: `state.structures.get_structure_at(agent.pos_x, agent.pos_y)` for shelter
 
-- [ ] **Add tuning param `shelter_rest_bonus: float = 1.5`** — Multiplier for stamina recovery when sleeping in shelter.
+- [x] **Add tuning param `shelter_rest_bonus: float = 1.5`** — Multiplier for stamina recovery when sleeping in shelter.
   - File: `sim/tuning.gd`
 
 ---
@@ -174,11 +204,11 @@
 > NeedsPlanner requires tile-based structure lookup, but Structures currently has no
 > positional accessor, making shelter detection impossible.
 
-- [ ] **Add `get_structure_at(x, y)` to Structures** — Returns the structure at a tile, or null if none.
+- [x] **Add `get_structure_at(x, y)` to Structures** — Returns the structure at a tile, or null if none.
   - File: `sim/structures.gd`
   - Optional: `get_structures_at(x, y) -> Array` if multiple structures per tile ever exist
 
-- [ ] **Use positional lookup for shelter detection** — Replace any ad-hoc shelter checks with the new helper.
+- [x] **Use positional lookup for shelter detection** — Replace any ad-hoc shelter checks with the new helper.
   - File: `sim/brains/planners/needs_planner.gd`
   - File: `sim/actions.gd` (sleep rest bonus)
 
@@ -187,18 +217,18 @@
 ### P1c — Comfort & Social Needs
 > Activate the unused comfort and social needs to drive non-survival behavior.
 
-- [ ] **Implement comfort decay per tick** — Comfort decreases slowly over time. Being in owned shelter prevents decay. Being homeless accelerates decay.
+- [x] **Implement comfort decay per tick** — Comfort decreases slowly over time. Being in owned shelter prevents decay. Being homeless accelerates decay.
   - File: `sim/systems/agents_system.gd`
   - New tuning: `comfort_decay_per_tick: float = 0.1`, `homelessness_comfort_penalty: float = 0.3`
 
-- [ ] **Add comfort-based goals to NeedsPlanner** — If comfort < 30 and no shelter, push BUILD_PERSONAL_SHELTER goal.
+- [x] **Add comfort-based goals to NeedsPlanner** — If comfort < 30 and no shelter, push BUILD_PERSONAL_SHELTER goal.
   - File: `sim/brains/planners/needs_planner.gd`
 
-- [ ] **Implement social need decay and faction affinity** — Social need decreases over time. Being in faction slows decay. Successful trades boost social satisfaction.
+- [x] **Implement social need decay and faction affinity** — Social need decreases over time. Being in faction slows decay. Successful trades boost social satisfaction.
   - File: `sim/systems/agents_system.gd`
   - New tuning: `social_decay_per_tick: float = 0.05`
 
-- [ ] **Add social-based goals to NeedsPlanner** — If social < 30 and no faction, push FIND_COMMUNITY goal (leads to faction joining or trade partner seeking).
+- [x] **Add social-based goals to NeedsPlanner** — If social < 30 and no faction, push FIND_COMMUNITY goal (leads to faction joining or trade partner seeking).
   - File: `sim/brains/planners/needs_planner.gd`
 
 ---
@@ -450,8 +480,8 @@
 ---
 
 ### P1n — Career System Expansion (Stations & Professions)
-> V3 should include a broader station taxonomy and more careers, enabling
-> workshop → specialized station → advanced production chains.
+> **PHASE 5 — DEFERRABLE TO V3.5**: This section and P1o are extensive content
+> expansions. Core V3 is complete without them. Implement only after Phase 1-4 pass tests.
 
 - [ ] **Expand station taxonomy** — Add station types beyond basic workshop variants (e.g., `farmhouse`, `bakery`, `forge`, `smelter`, `stove`, `brick_kiln`).
   - File: `sim/world/workshop.gd`
@@ -640,6 +670,38 @@
 
 - [ ] **Add EconomyPlanner tuning parameters** — `contract_posting_cooldown_ticks`, `market_intention_cooldown_ticks`, `market_price_memory_max_age_ticks`
   - File: `sim/tuning.gd`
+
+---
+
+## P3 — Unit Tests (Validation)
+
+### P3d — Planner Unit Tests
+> Each planner needs tests to validate goal generation and edge cases.
+> Run these after each planner implementation to catch regressions.
+
+- [ ] **Create `test_needs_planner.gd`** — Test critical/reactive/proactive goal generation, interrupt actions, and food buffer maintenance.
+  - File: `tests/test_needs_planner.gd` (NEW)
+  - Cases: hunger < 15 returns eat action, hunger < 50 pushes EAT goal, hunger > 50 but low food pushes MAINTAIN_FOOD_BUFFER
+
+- [ ] **Create `test_homestead_planner.gd`** — Test home establishment, site selection scoring, and personal structure building.
+  - File: `tests/test_homestead_planner.gd` (NEW)
+  - Cases: homeless agent gets ESTABLISH_HOMESTEAD, agent with home but no stockpile gets BUILD_PERSONAL_STOCKPILE
+
+- [ ] **Create `test_economy_planner.gd`** — Test contract posting decisions, capability-aware scoring, and market intention gathering.
+  - File: `tests/test_economy_planner.gd` (NEW)
+  - Cases: agent posts contract when can't produce, rejects infeasible contracts, updates price memory
+
+- [ ] **Create `test_career_planner.gd`** — Test career assessment, tool acquisition goals, and workshop access goals.
+  - File: `tests/test_career_planner.gd` (NEW)
+  - Cases: new agent gets career suggestion, logger without axe gets ACQUIRE_TOOL goal
+
+- [ ] **Create `test_commitment_planner.gd`** — Test that active contracts and job board activities surface as high-priority goals.
+  - File: `tests/test_commitment_planner.gd` (NEW)
+  - Cases: agent with active contract gets commitment goal before other planners run
+
+- [ ] **Create `test_default_brain_v3.gd`** — Integration tests for planner priority ordering and new goal type processing.
+  - File: `tests/test_default_brain_v3.gd` (NEW)
+  - Cases: priority order respected, all new goal types have processing/completion logic
 
 ---
 

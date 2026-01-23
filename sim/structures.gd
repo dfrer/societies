@@ -35,6 +35,12 @@ func get_structure(structure_id: int) -> StructureState:
 			return structure
 	return null
 
+func get_structure_at(x: int, y: int) -> StructureState:
+	for structure in structures:
+		if structure.pos_x == x and structure.pos_y == y:
+			return structure
+	return null
+
 func get_stockpiles_sorted() -> Array:
 	var result := []
 	for structure in structures:

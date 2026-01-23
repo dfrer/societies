@@ -14,6 +14,7 @@ const WEIGHT_SOCIAL = 1.0
 const INERTIA_BONUS = 0.2
 
 var _survival_planner := SurvivalPlanner.new()
+var _needs_planner := NeedsPlanner.new()
 var _economy_planner := EconomyPlanner.new()
 var _governance_planner := GovernancePlanner.new()
 var _planners: Array[IAgentPlanner] = []
@@ -33,7 +34,7 @@ func decide_action(agent: Agent, world: World, market: Market,
 	var planner_context := PlannerContext.create(world, market, contracts_system, tuning, recipes, state)
 
 	# 0. Interrupts (Panic checks that override everything)
-	var interrupt = _survival_planner.get_interrupt_action(agent, tuning)
+	var interrupt = _needs_planner.get_interrupt_action(agent, tuning)
 	if not interrupt.is_empty():
 		_set_intent(state, agent, "INTERRUPT", {"action_type": interrupt.get("type", "")})
 		_clear_activity(state, agent)
@@ -132,6 +133,12 @@ func _is_goal_complete(agent: Agent, goal: Dictionary, world: World) -> bool:
 			return nearby_workshops >= 2
 		"OBTAIN_ITEM":
 			return agent.has_item(goal.item, goal.get("qty", 1))
+		"MAINTAIN_FOOD_BUFFER":
+			var target: int = int(goal.get("target_qty", 5))
+			var have: int = agent.get_item_count("Berries") + agent.get_item_count("CookedMeal")
+			return have >= target
+		"EFFICIENT_REST":
+			return agent.get_stamina() >= 80.0
 		"EAT_FOOD":
 			# EAT_FOOD goal is complete after one eat action (hunger should increase)
 			# We mark it complete if hunger is back above 50 or we don't have the food anymore
@@ -172,6 +179,25 @@ func _process_goal(agent: Agent, goal: Dictionary, world: World, market: Market,
 				return Actions.eat_meal()
 			else:
 				return Actions.eat()
+		"MAINTAIN_FOOD_BUFFER":
+			var target: int = int(goal.get("target_qty", 5))
+			var have: int = agent.get_item_count("Berries") + agent.get_item_count("CookedMeal")
+			var need: int = target - have
+			if need > 0:
+				return {"type": "OBTAIN_ITEM", "item": "Berries", "qty": need, "is_goal": true}
+			return {}
+		"EFFICIENT_REST":
+			var shelter_id: int = int(goal.get("shelter_id", -1))
+			if shelter_id < 0:
+				return Actions.rest()
+			if state == null:
+				return Actions.rest()
+			var shelter = state.structures.get_structure(shelter_id)
+			if shelter == null:
+				return Actions.rest()
+			if agent.is_at(shelter.pos_x, shelter.pos_y):
+				return Actions.sleep_rest()
+			return Actions.move_to_position(shelter.pos_x, shelter.pos_y)
 		"GO_TO":
 			# Simple Move Action
 			if agent.is_at(goal.x, goal.y): return {} # Done (should be caught by is_complete)
@@ -205,6 +231,10 @@ func _intent_from_goal(agent: Agent, goal: Dictionary, world: World, market: Mar
 			if node_type != "":
 				return {"type": "GATHER_RESOURCE", "data": {"item": item_name, "node_type": node_type}}
 			return {"type": "OBTAIN_ITEM", "data": {"item": item_name}}
+		"MAINTAIN_FOOD_BUFFER":
+			return {"type": "GATHER_RESOURCE", "data": {"item": "Berries", "node_type": "berry"}}
+		"EFFICIENT_REST":
+			return {"type": "REST", "data": {"shelter_id": goal.get("shelter_id", -1)}}
 		"EAT_FOOD":
 			return {"type": "EAT_FOOD", "data": {"item": goal.get("item", "")}}
 		"FULFILL_CONTRACT":
