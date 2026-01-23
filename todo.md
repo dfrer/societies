@@ -108,6 +108,21 @@
 
 ---
 
+### P0f — Commitments Planner (Task/Contract Integration)
+> The planner system must not ignore existing commitments (job board activities,
+> active contracts). Commitments should be surfaced as explicit high-priority goals,
+> not bypassed by the planner loop.
+
+- [ ] **Create `commitment_planner.gd`** — New planner that translates current activities and active contracts into explicit goals.
+  - File: `sim/brains/planners/commitment_planner.gd` (NEW)
+  - Priority: highest (pre-needs), so commitments are honored before new goals
+
+- [ ] **Integrate commitments with planner registry** — Register `CommitmentPlanner` at the top of the priority list.
+  - File: `sim/brains/default_brain.gd`
+  - Prevents planner bypass of current activities and contracts
+
+---
+
 ## P1 — NeedsPlanner (Replaces SurvivalPlanner)
 
 ### P1a — Proactive Food Buffer Maintenance
@@ -152,6 +167,20 @@
 
 - [ ] **Add tuning param `shelter_rest_bonus: float = 1.5`** — Multiplier for stamina recovery when sleeping in shelter.
   - File: `sim/tuning.gd`
+
+---
+
+### P1b2 — Structure Lookup for Shelter Detection
+> NeedsPlanner requires tile-based structure lookup, but Structures currently has no
+> positional accessor, making shelter detection impossible.
+
+- [ ] **Add `get_structure_at(x, y)` to Structures** — Returns the structure at a tile, or null if none.
+  - File: `sim/structures.gd`
+  - Optional: `get_structures_at(x, y) -> Array` if multiple structures per tile ever exist
+
+- [ ] **Use positional lookup for shelter detection** — Replace any ad-hoc shelter checks with the new helper.
+  - File: `sim/brains/planners/needs_planner.gd`
+  - File: `sim/actions.gd` (sleep rest bonus)
 
 ---
 
@@ -230,6 +259,23 @@
 
 ---
 
+### P1f2 — Personal Structure Access Control
+> Personal stockpiles/shelters must be private; current actions allow any agent to
+> deposit/withdraw from any stockpile unless explicitly restricted.
+
+- [ ] **Add access policy to StructureState** — Track whether a structure is `public`, `organization`, or `personal`.
+  - File: `sim/structure_state.gd`
+  - Default: existing structures remain `organization` or `public` as appropriate
+
+- [ ] **Enforce access checks in stockpile actions** — Prevent non-owners from depositing/withdrawing from personal structures.
+  - File: `sim/actions.gd`
+  - Apply to `deposit_stockpile`, `withdraw_stockpile`, and any personal deposit actions
+
+- [ ] **Exclude personal stockpiles from communal task selection** — JobBoard should not pick personal stockpiles for projects.
+  - File: `sim/systems/job_board_system.gd`
+
+---
+
 ## P1 — EconomyPlanner Overhaul (Intent-Driven Contracts)
 
 ### P1g — Agent-Driven Contract Posting
@@ -270,6 +316,20 @@
 
 ---
 
+### P1h2 — Capability-Aware Contract Scoring
+> Contract scoring must account for actual production feasibility (tools, workshops,
+> recipe chain) rather than just profit margin.
+
+- [ ] **Implement `_can_agent_fulfill()` and `_estimate_fulfillment_time()`** — Use recipes, tool requirements, and workshop access.
+  - File: `sim/contracts_system.gd`
+  - Input: agent, contract, world, recipes
+
+- [ ] **Use capability checks in contract scoring** — Reject infeasible contracts or penalize long completion times.
+  - File: `sim/contracts_system.gd`
+  - Update: `score_contract()` and `find_best_contract()`
+
+---
+
 ## P1 — MarketBehaviorPlanner (Intentional Market Visits)
 
 ### P1i — Market Intention System
@@ -292,6 +352,20 @@
 
 ---
 
+### P1i2 — Market Intention Backoff & Failure Handling
+> Intentions can fail (no liquidity, insufficient funds, embargo). Agents should
+> back off to avoid market thrashing.
+
+- [ ] **Add intention TTL / retry counters** — Track failure counts per intention and expire after N attempts.
+  - File: `sim/brains/planners/market_behavior_planner.gd`
+  - Intention fields: `attempts`, `max_attempts`, `expires_tick`
+
+- [ ] **Use cooldown on failed intentions** — Leverage `last_market_visit_tick` + new tuning to avoid repeated immediate visits.
+  - File: `sim/brains/planners/market_behavior_planner.gd`
+  - Tuning: `market_intention_cooldown_ticks`
+
+---
+
 ### P1j — Price Intelligence
 > Agents should remember prices and make informed decisions.
 
@@ -302,6 +376,16 @@
 - [ ] **Use price memory in buy/sell decisions** — Compare current price to remembered price; avoid buying if price is unusually high.
   - File: `sim/brains/planners/economy_planner.gd`
   - Add: `_is_price_favorable(agent, item, current_price, intent) -> bool`
+
+---
+
+### P1j2 — Price Memory Staleness
+> Agents should not rely on stale memory for price decisions.
+
+- [ ] **Add price memory max age** — Ignore remembered prices older than a threshold.
+  - File: `sim/agent.gd` (helper: `get_price_memory(item, max_age_ticks)`)
+  - File: `sim/brains/planners/economy_planner.gd`
+  - New tuning: `market_price_memory_max_age_ticks`
 
 ---
 
@@ -319,6 +403,24 @@
 
 - [ ] **Implement starter career suggestion for new agents** — If career_type == "none", suggest based on: nearest abundant resource + any starting tools.
   - File: `sim/brains/planners/career_planner.gd`
+
+---
+
+### P1k2 — Career Ladders & Long-Term Progression
+> Careers need multi-stage progression (apprentice → journeyman → master) with
+> explicit skill, station, and production milestones that feed LongTermPlanner.
+
+- [ ] **Add career ladder definitions** — Define stages, required skills, and milestone outputs for each career.
+  - File: `sim/brains/careers/career_registry.gd` (NEW)
+  - Include: required tools, required stations, preferred recipes, and milestone items
+
+- [ ] **Add career progression state to Agent** — Track `career_stage`, `career_milestones`, and `career_xp`.
+  - File: `sim/agent.gd`
+  - Include serialization in `to_dict()` / `from_dict()`
+
+- [ ] **Add career milestone goals** — Goals like `GAIN_SKILL_XP`, `CRAFT_MILESTONE_ITEM`, `BUILD_ADVANCED_STATION`.
+  - File: `sim/brains/planners/career_planner.gd`
+  - Integrate with LongTermPlanner for multi-day milestones
 
 ---
 
@@ -344,6 +446,43 @@
 - [ ] **Implement resource access goals** — Career-specific: loggers should claim/access tree areas; miners should claim/access ore deposits.
   - File: `sim/brains/planners/career_planner.gd`
   - Goal: `{type: "SECURE_RESOURCE_ACCESS", resource_type: "tree"}`
+
+---
+
+### P1n — Career System Expansion (Stations & Professions)
+> V3 should include a broader station taxonomy and more careers, enabling
+> workshop → specialized station → advanced production chains.
+
+- [ ] **Expand station taxonomy** — Add station types beyond basic workshop variants (e.g., `farmhouse`, `bakery`, `forge`, `smelter`, `stove`, `brick_kiln`).
+  - File: `sim/world/workshop.gd`
+  - File: `sim/communal_projects_system.gd` (project types + requirements)
+  - File: `sim/organizations.gd` (station planning logic)
+
+- [ ] **Add station support in crafting/task systems** — Ensure JobBoard and DefaultBrain can route recipes to new stations.
+  - File: `sim/systems/job_board_system.gd`
+  - File: `sim/brains/default_brain.gd`
+
+- [ ] **Expand career list** — Add careers aligned to new stations: `cook`, `baker`, `mason`, `charcoal_burner`, `farmer`, `metalsmith`, `carpenter`.
+  - File: `sim/brains/planners/career_planner.gd`
+  - File: `sim/brains/careers/career_registry.gd`
+
+---
+
+### P1o — Fuel, Cooking, and Advanced Production Chains
+> Cooking/baking/brick-making requires fuel systems and station dependencies.
+
+- [ ] **Add fuel items and consumption** — Introduce `Charcoal`, `Coal`, `Firewood` and consume fuel per crafting batch.
+  - File: `sim/recipes.gd` (new fuel-related recipes)
+  - File: `sim/crafting.gd` (fuel consumption in job execution)
+  - File: `sim/world/workshop.gd` (optional station fuel inventory)
+
+- [ ] **Add cooking and processing recipes** — Cooking, baking, charcoal making, brick making.
+  - File: `sim/recipes.gd`
+  - Requires new station types from P1n
+
+- [ ] **Add fuel-supply career goals** — `PRODUCE_CHARCOAL_BATCH`, `STOCK_FUEL_FOR_STATIONS`, `BUILD_KILN`.
+  - File: `sim/brains/planners/career_planner.gd`
+  - Integrate with LongTermPlanner milestones
 
 ---
 
@@ -434,6 +573,19 @@
 
 ---
 
+### P2h — Spending Guardrails for Long-Term Goals
+> Long-term savings goals must actually affect market spending behavior.
+
+- [ ] **Block discretionary spending when saving** — If agent has SAVE_FOR_ITEM, suppress non-essential buys.
+  - File: `sim/brains/planners/economy_planner.gd` (or DefaultBrain purchase logic)
+  - Essential needs (food) remain allowed
+
+- [ ] **Expose a “reserved funds” concept** — Track minimum funds required to hit target and prevent accidental depletion.
+  - File: `sim/agent.gd`
+  - Optional: helper `get_reserved_funds() -> int`
+
+---
+
 ### P2g — Goal Progress & Completion
 > Track progress on long-term goals and celebrate completion.
 
@@ -486,7 +638,7 @@
 - [ ] **Add CareerPlanner tuning parameters** — `career_discovery_ticks`, `specialization_skill_threshold`
   - File: `sim/tuning.gd`
 
-- [ ] **Add EconomyPlanner tuning parameters** — `contract_posting_cooldown_ticks`, `market_intention_cooldown_ticks`
+- [ ] **Add EconomyPlanner tuning parameters** — `contract_posting_cooldown_ticks`, `market_intention_cooldown_ticks`, `market_price_memory_max_age_ticks`
   - File: `sim/tuning.gd`
 
 ---
