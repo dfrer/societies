@@ -243,7 +243,7 @@ func _post_craft_activities(state: SimState) -> void:
 	var recipes := _get_sorted_recipes(state)
 	if recipes.is_empty():
 		return
-	var stockpiles := state.structures.get_stockpiles_sorted()
+	var stockpiles := state.structures.get_communal_stockpiles_sorted()
 	if stockpiles.is_empty():
 		return
 
@@ -377,7 +377,7 @@ func _post_haul_activities(state: SimState) -> void:
 			var desired: int = int(remaining[item_type])
 			if desired <= 0:
 				continue
-			var source := state.structures.find_stockpile_with_item(item_type, 1)
+			var source := state.structures.find_communal_stockpile_with_item(item_type, 1)
 			if source == null:
 				continue
 			var reserved_from_project := state.communal_projects.reserve_project_resources(project.id, item_type, desired)
