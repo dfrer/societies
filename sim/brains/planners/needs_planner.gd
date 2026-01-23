@@ -5,8 +5,9 @@ extends IAgentPlanner
 func get_priority() -> int:
 	return 120
 
-func get_interrupt_action(agent: Agent, tuning: Dictionary) -> Dictionary:
-	var emergency_threshold: float = tuning.get("emergency_hunger_threshold", 15.0)
+func get_interrupt_action(agent: Agent, tuning: Variant) -> Dictionary:
+	var tuning_data: Dictionary = tuning if tuning is Dictionary else {}
+	var emergency_threshold: float = float(tuning_data.get("emergency_hunger_threshold", 15.0))
 	if agent.get_hunger() < emergency_threshold:
 		if agent.has_available_item("CookedMeal"):
 			return Actions.eat_meal()
