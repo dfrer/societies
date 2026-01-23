@@ -1120,7 +1120,7 @@ func _find_nearest_accessible_node_of_type(agent: Agent, world: World, state: Si
 	for node in world.resource_nodes:
 		if node.type != type or node.stock <= 0:
 			continue
-			if not _can_harvest_resource_node(agent, world, state, node):
+		if not _can_harvest_resource_node(agent, world, state, node):
 			continue
 		var dist = absi(node.pos_x - agent.pos_x) + absi(node.pos_y - agent.pos_y)
 		if dist < best_dist:

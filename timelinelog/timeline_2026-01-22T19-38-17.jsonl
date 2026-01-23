@@ -1,0 +1,13 @@
+{"data":{"day":1},"tick":200,"type":"day_started"}
+{"data":{"contract_id":1,"deadline":600,"issuer_id":3,"item":"Planks","payout":84,"qty":2},"tick":200,"type":"contract_posted"}
+{"data":{"contract_id":2,"deadline":600,"issuer_id":4,"item":"Planks","payout":84,"qty":2},"tick":200,"type":"contract_posted"}
+{"data":{"contract_id":3,"deadline":600,"issuer_id":6,"item":"Planks","payout":126,"qty":3},"tick":200,"type":"contract_posted"}
+{"data":{"organization_id":2001,"pos":[47,48]},"tick":200,"type":"organization_tile_claimed"}
+{"data":{"organization_id":2001,"pos":[48,47]},"tick":200,"type":"organization_tile_claimed"}
+{"data":{"organization_id":2001,"pos":[48,49]},"tick":200,"type":"organization_tile_claimed"}
+{"data":{"organization_id":2001,"pos":[49,48]},"tick":200,"type":"organization_tile_claimed"}
+{"data":{"faction_id":2001,"initiator_id":0,"pos":[47,48],"project_id":1,"type":"shelter"},"tick":200,"type":"project_started"}
+{"data":{"organization_id":2001,"pos":[47,48],"project_type":"shelter"},"tick":200,"type":"organization_project_planned"}
+{"data":{"agent_id":1,"contract_id":3,"issuer_id":6},"tick":201,"type":"contract_accepted"}
+{"data":{"agent_id":2,"contract_id":1,"issuer_id":3},"tick":201,"type":"contract_accepted"}
+{"data":{"agent_id":3,"contract_id":2,"issuer_id":4},"tick":201,"type":"contract_accepted"}
