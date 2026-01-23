@@ -184,6 +184,8 @@ func _is_goal_complete(agent: Agent, goal: Dictionary, world: World) -> bool:
 				# Just check if we are there and it's built or being built
 				return world.has_road(agent.pos_x, agent.pos_y)
 			return false
+		"REST":
+			return agent.get_stamina() >= 90.0
 	return false
 
 func _process_goal(agent: Agent, goal: Dictionary, world: World, market: Market,
@@ -243,6 +245,8 @@ func _process_goal(agent: Agent, goal: Dictionary, world: World, market: Market,
 			return _plan_expand_faction(agent, goal, world, tuning, state)
 		"BUILD_ROAD":
 			return _plan_build_road(agent, goal, world, tuning)
+		"REST":
+			return Actions.rest()
 
 	return {}
 
@@ -286,6 +290,8 @@ func _intent_from_goal(agent: Agent, goal: Dictionary, world: World, market: Mar
 			return {"type": "EXPAND_FACTION", "data": goal.duplicate(true)}
 		"BUILD_ROAD":
 			return {"type": "BUILD_ROAD", "data": goal.duplicate(true)}
+		"REST":
+			return {"type": "REST", "data": {}}
 		"ACCEPT_CONTRACT":
 			return {"type": "ACCEPT_CONTRACT", "data": {"contract_id": goal.get("contract_id", -1)}}
 		"GO_TO":
