@@ -7,6 +7,7 @@ var name: String = ""
 var station: String = "workshop"  # Required station type
 var inputs: Dictionary = {}  # item_name -> qty
 var outputs: Dictionary = {}  # item_name -> qty
+var fuel: Dictionary = {}  # item_name -> qty (options)
 var ticks: int = 30
 var tier: String = "basic"
 
@@ -18,6 +19,10 @@ func get_input_cost(market: Market) -> float:
 	var total := 0.0
 	for item in inputs:
 		var qty: int = inputs[item]
+		var price: float = market.get_ref_price(item)
+		total += price * qty
+	for item in fuel:
+		var qty: int = fuel[item]
 		var price: float = market.get_ref_price(item)
 		total += price * qty
 	return total
@@ -45,6 +50,7 @@ func to_dict() -> Dictionary:
 		"station": station,
 		"inputs": inputs.duplicate(),
 		"outputs": outputs.duplicate(),
+		"fuel": fuel.duplicate(),
 		"ticks": ticks,
 		"tier": tier
 	}
@@ -61,6 +67,10 @@ static func from_dict(d: Dictionary) -> Recipe:
 	recipe.inputs = {}
 	for key in inp:
 		recipe.inputs[key] = int(inp[key])
+	var fuel_inputs: Dictionary = d.get("fuel", {})
+	recipe.fuel = {}
+	for key in fuel_inputs:
+		recipe.fuel[key] = int(fuel_inputs[key])
 	# Convert outputs values to int
 	var outp: Dictionary = d.get("outputs", {})
 	recipe.outputs = {}

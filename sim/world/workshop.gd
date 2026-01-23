@@ -18,7 +18,7 @@ var access_policy: String = "public"  # "public", "faction", "private"
 var usage_fee: int = 0  # coins per use
 
 ## Workshop type and specialization
-var workshop_type: String = "general"  # "general", "carpenter", "kiln", "smithy", "kitchen"
+var workshop_type: String = "general"  # "general", "baker", "carpenter", "forge", "kiln", "kitchen", "smelter", "smithy", "stove"
 var efficiency_bonus: float = 1.0  # Multiplier for crafting speed
 
 ## Construction state
@@ -31,6 +31,9 @@ var build_total: int = 0     # Used by crafting.gd
 ## Crafting queue
 var queue: Array = []
 var max_queue: int = 3
+
+## Fuel storage (optional)
+var fuel_inventory: Dictionary = {}
 
 ## Used for generating unique IDs - REMOVED for determinism
 # static var _next_id: int = 1
@@ -46,15 +49,21 @@ func is_ready() -> bool:
 ## Get crafting time multiplier based on workshop type
 func get_crafting_speed_bonus(recipe_type: String) -> float:
 	match workshop_type:
+		"baker":
+			if "bread" in recipe_type.to_lower() or "pastry" in recipe_type.to_lower():
+				return 0.7  # 30% faster for baking recipes
 		"carpenter":
 			if "wood" in recipe_type.to_lower():
 				return 0.8  # 20% faster for wood recipes
-		"smithy":
-			if "metal" in recipe_type.to_lower() or "tool" in recipe_type.to_lower():
+		"forge", "smithy":
+			if "metal" in recipe_type.to_lower() or "tool" in recipe_type.to_lower() or "weapon" in recipe_type.to_lower():
 				return 0.8  # 20% faster for metal/tool recipes
-		"kitchen":
-			if "food" in recipe_type.to_lower():
+		"kitchen", "stove":
+			if "food" in recipe_type.to_lower() or "cooked" in recipe_type.to_lower():
 				return 0.7  # 30% faster for food recipes
+		"smelter":
+			if "ingot" in recipe_type.to_lower():
+				return 0.8  # 20% faster for ingot recipes
 	return 1.0
 
 ## Check if agent can use this workshop
@@ -98,6 +107,24 @@ func add_job(job: Dictionary) -> void:
 	if has_queue_space():
 		queue.append(job)
 
+## Fuel helpers
+func get_fuel_amount(item: String) -> int:
+	return int(fuel_inventory.get(item, 0))
+
+func has_fuel(item: String, qty: int) -> bool:
+	return get_fuel_amount(item) >= qty
+
+func consume_fuel(item: String, qty: int) -> bool:
+	if not has_fuel(item, qty):
+		return false
+	fuel_inventory[item] = get_fuel_amount(item) - qty
+	return true
+
+func add_fuel(item: String, qty: int) -> void:
+	if qty <= 0:
+		return
+	fuel_inventory[item] = get_fuel_amount(item) + qty
+
 ## Get the next job without removing it
 func peek_job() -> Dictionary:
 	if queue.is_empty():
@@ -137,6 +164,7 @@ func to_dict() -> Dictionary:
 		"build_total": build_total,
 		"queue": queue.duplicate(true),
 		"max_queue": max_queue,
+		"fuel_inventory": fuel_inventory.duplicate(true),
 		"owner_id": owner_id,
 		"access_policy": access_policy,
 		"usage_fee": usage_fee,
@@ -158,6 +186,7 @@ static func from_dict(d: Dictionary) -> Workshop:
 	workshop.build_total = int(d.get("build_total", 0))
 	workshop.queue = d.get("queue", []).duplicate(true)
 	workshop.max_queue = int(d.get("max_queue", 3))
+	workshop.fuel_inventory = d.get("fuel_inventory", {}).duplicate(true)
 	workshop.owner_id = int(d.get("owner_id", 0))
 	workshop.access_policy = d.get("access_policy", "public")
 	workshop.usage_fee = int(d.get("usage_fee", 0))

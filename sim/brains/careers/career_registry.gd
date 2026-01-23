@@ -9,6 +9,18 @@ const CAREERS := {
 		"required_tools": [],
 		"preferred_workshops": ["kitchen"]
 	},
+	"cook": {
+		"ladder": ["cook", "baker"],
+		"preferred_resource": "berry",
+		"required_tools": [],
+		"preferred_workshops": ["kitchen", "stove"]
+	},
+	"baker": {
+		"ladder": ["baker"],
+		"preferred_resource": "grain",
+		"required_tools": [],
+		"preferred_workshops": ["baker", "stove"]
+	},
 	"logger": {
 		"ladder": ["logger", "carpenter"],
 		"preferred_resource": "tree",
@@ -16,10 +28,16 @@ const CAREERS := {
 		"preferred_workshops": ["carpenter"]
 	},
 	"miner": {
-		"ladder": ["miner", "smith"],
+		"ladder": ["miner", "blacksmith"],
 		"preferred_resource": "ore",
 		"required_tools": ["Pickaxe"],
-		"preferred_workshops": ["smithy"]
+		"preferred_workshops": ["smelter"]
+	},
+	"blacksmith": {
+		"ladder": ["blacksmith"],
+		"preferred_resource": "ore",
+		"required_tools": ["Pickaxe"],
+		"preferred_workshops": ["forge", "smithy"]
 	}
 }
 

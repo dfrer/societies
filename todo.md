@@ -483,16 +483,16 @@
 > **PHASE 5 — DEFERRABLE TO V3.5**: This section and P1o are extensive content
 > expansions. Core V3 is complete without them. Implement only after Phase 1-4 pass tests.
 
-- [ ] **Expand station taxonomy** — Add station types beyond basic workshop variants (e.g., `farmhouse`, `bakery`, `forge`, `smelter`, `stove`, `brick_kiln`).
+- [x] **Expand station taxonomy** — Add station types beyond basic workshop variants (e.g., `farmhouse`, `bakery`, `forge`, `smelter`, `stove`, `brick_kiln`).
   - File: `sim/world/workshop.gd`
   - File: `sim/communal_projects_system.gd` (project types + requirements)
   - File: `sim/organizations.gd` (station planning logic)
 
-- [ ] **Add station support in crafting/task systems** — Ensure JobBoard and DefaultBrain can route recipes to new stations.
+- [x] **Add station support in crafting/task systems** — Ensure JobBoard and DefaultBrain can route recipes to new stations.
   - File: `sim/systems/job_board_system.gd`
   - File: `sim/brains/default_brain.gd`
 
-- [ ] **Expand career list** — Add careers aligned to new stations: `cook`, `baker`, `mason`, `charcoal_burner`, `farmer`, `metalsmith`, `carpenter`.
+- [x] **Expand career list** — Add careers aligned to new stations: `cook`, `baker`, `mason`, `charcoal_burner`, `farmer`, `metalsmith`, `carpenter`.
   - File: `sim/brains/planners/career_planner.gd`
   - File: `sim/brains/careers/career_registry.gd`
 
@@ -501,16 +501,16 @@
 ### P1o — Fuel, Cooking, and Advanced Production Chains
 > Cooking/baking/brick-making requires fuel systems and station dependencies.
 
-- [ ] **Add fuel items and consumption** — Introduce `Charcoal`, `Coal`, `Firewood` and consume fuel per crafting batch.
+- [x] **Add fuel items and consumption** — Introduce `Charcoal`, `Coal`, `Firewood` and consume fuel per crafting batch.
   - File: `sim/recipes.gd` (new fuel-related recipes)
   - File: `sim/crafting.gd` (fuel consumption in job execution)
   - File: `sim/world/workshop.gd` (optional station fuel inventory)
 
-- [ ] **Add cooking and processing recipes** — Cooking, baking, charcoal making, brick making.
+- [x] **Add cooking and processing recipes** — Cooking, baking, charcoal making, brick making.
   - File: `sim/recipes.gd`
   - Requires new station types from P1n
 
-- [ ] **Add fuel-supply career goals** — `PRODUCE_CHARCOAL_BATCH`, `STOCK_FUEL_FOR_STATIONS`, `BUILD_KILN`.
+- [x] **Add fuel-supply career goals** — `PRODUCE_CHARCOAL_BATCH`, `STOCK_FUEL_FOR_STATIONS`, `BUILD_KILN`.
   - File: `sim/brains/planners/career_planner.gd`
   - Integrate with LongTermPlanner milestones
 
@@ -521,14 +521,14 @@
 ### P2a — Faction Joining Logic
 > Agents should join factions based on rational evaluation.
 
-- [ ] **Create `civic_planner.gd`** — New planner handling faction membership and governance.
+- [x] **Create `civic_planner.gd`** — New planner handling faction membership and governance.
   - File: `sim/brains/planners/civic_planner.gd` (NEW)
 
-- [ ] **Implement faction evaluation for joining** — Score factions by: treasury, member count, claimed resources, distance, trade policy toward factionless.
+- [x] **Implement faction evaluation for joining** — Score factions by: treasury, member count, claimed resources, distance, trade policy toward factionless.
   - File: `sim/brains/planners/civic_planner.gd`
   - Method: `_score_faction_for_joining(agent, faction, world) -> float`
 
-- [ ] **Implement `JOIN_FACTION` goal generation** — If agent is factionless, grievance > threshold OR social need low, and good faction nearby, push join goal.
+- [x] **Implement `JOIN_FACTION` goal generation** — If agent is factionless, grievance > threshold OR social need low, and good faction nearby, push join goal.
   - File: `sim/brains/planners/civic_planner.gd`
 
 ---
@@ -536,11 +536,11 @@
 ### P2b — Voting Behavior
 > Agents should vote on proposals based on their values.
 
-- [ ] **Implement value-based vote decision** — When active proposal exists, decide vote based on: grievance (lower fines), eco_concern (stricter pollution), greed (lower taxes).
+- [x] **Implement value-based vote decision** — When active proposal exists, decide vote based on: grievance (lower fines), eco_concern (stricter pollution), greed (lower taxes).
   - File: `sim/brains/planners/civic_planner.gd`
   - Method: `_decide_vote(agent, proposal) -> "for" | "against" | "abstain"`
 
-- [ ] **Implement `VOTE_ON_PROPOSAL` goal generation** — If active proposal in agent's faction and hasn't voted, push voting goal.
+- [x] **Implement `VOTE_ON_PROPOSAL` goal generation** — If active proposal in agent's faction and hasn't voted, push voting goal.
   - File: `sim/brains/planners/civic_planner.gd`
 
 ---
@@ -548,11 +548,11 @@
 ### P2c — Law Proposal Generation
 > Aggrieved agents should propose law changes.
 
-- [ ] **Implement proposal generation logic** — If grievance > 0.5 about specific law (fines, taxes, permits), and is faction member, push proposal goal.
+- [x] **Implement proposal generation logic** — If grievance > 0.5 about specific law (fines, taxes, permits), and is faction member, push proposal goal.
   - File: `sim/brains/planners/civic_planner.gd`
   - Method: `_get_grievance_source(agent, state) -> {law: String, value: int, desired: int}`
 
-- [ ] **Add `PROPOSE_LAW_CHANGE` goal type** — Agent goes to faction meeting area (home_pos of faction?) and submits proposal.
+- [x] **Add `PROPOSE_LAW_CHANGE` goal type** — Agent goes to faction meeting area (home_pos of faction?) and submits proposal.
   - File: `sim/brains/planners/civic_planner.gd`
 
 ---
@@ -562,14 +562,14 @@
 ### P2d — Trust-Based Trading
 > Agents should prefer trading with agents they trust.
 
-- [ ] **Create `social_planner.gd`** — New planner handling relationships and social capital.
+- [x] **Create `social_planner.gd`** — New planner handling relationships and social capital.
   - File: `sim/brains/planners/social_planner.gd` (NEW)
 
-- [ ] **Implement trade partner preference** — When evaluating market orders, prefer orders from high-trust agents. Add trust bonus to contract evaluation.
+- [x] **Implement trade partner preference** — When evaluating market orders, prefer orders from high-trust agents. Add trust bonus to contract evaluation.
   - File: `sim/brains/planners/economy_planner.gd`
   - Call: `agent.get_trust(other_id)` in scoring
 
-- [ ] **Implement `FIND_TRADING_PARTNER` goal** — If no high-trust trade partners for needed resource, push goal to find one.
+- [x] **Implement `FIND_TRADING_PARTNER` goal** — If no high-trust trade partners for needed resource, push goal to find one.
   - File: `sim/brains/planners/social_planner.gd`
 
 ---
@@ -577,11 +577,11 @@
 ### P2e — Trust Building
 > Successful trades should build trust over time.
 
-- [ ] **Enhance trust update on successful trade** — Update social memory with trade details, increment trade_count, boost trust.
+- [x] **Enhance trust update on successful trade** — Update social memory with trade details, increment trade_count, boost trust.
   - File: `sim/market.gd` (in trade execution)
   - Call: `buyer.update_social_memory(seller.id, "trade", state.tick)`
 
-- [ ] **Add trust decay for inactive relationships** — Slowly decay trust for agents not traded with recently.
+- [x] **Add trust decay for inactive relationships** — Slowly decay trust for agents not traded with recently.
   - File: `sim/systems/agents_system.gd` (daily tick)
 
 ---
@@ -591,13 +591,13 @@
 ### P2f — Persistent Goal System
 > Agents should maintain goals that span multiple days.
 
-- [ ] **Create `long_term_planner.gd`** — New planner handling multi-day persistent goals.
+- [x] **Create `long_term_planner.gd`** — New planner handling multi-day persistent goals.
   - File: `sim/brains/planners/long_term_planner.gd` (NEW)
 
-- [ ] **Implement long-term goal persistence** — Goals survive serialization; tracked in `agent.long_term_goals`. Progress updated each tick.
+- [x] **Implement long-term goal persistence** — Goals survive serialization; tracked in `agent.long_term_goals`. Progress updated each tick.
   - File: `sim/brains/planners/long_term_planner.gd`
 
-- [ ] **Implement `SAVE_FOR_ITEM` long-term goal** — Track savings progress toward expensive item (Axe = 150 coins). Modifies spending behavior.
+- [x] **Implement `SAVE_FOR_ITEM` long-term goal** — Track savings progress toward expensive item (Axe = 150 coins). Modifies spending behavior.
   - File: `sim/brains/planners/long_term_planner.gd`
   - Behavior: reject low-priority purchases while saving
 

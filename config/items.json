@@ -71,5 +71,36 @@
     "tool_tag": "shovel",
     "base_value": 100,
     "description": "Tool for building roads"
+  },
+  "Firewood": {
+    "type": "fuel",
+    "base_value": 20,
+    "description": "Prepared wood fuel for stoves and kilns"
+  },
+  "Charcoal": {
+    "type": "fuel",
+    "base_value": 30,
+    "description": "Carbonized fuel for smelting and forging"
+  },
+  "Coal": {
+    "type": "fuel",
+    "base_value": 40,
+    "description": "Dense fuel for high-heat processing"
+  },
+  "Grain": {
+    "type": "material",
+    "base_value": 18,
+    "description": "Staple crop used for flour or baking"
+  },
+  "Flour": {
+    "type": "material",
+    "base_value": 22,
+    "description": "Ground grain ready for baking"
+  },
+  "Bread": {
+    "nutrition": 35,
+    "type": "food",
+    "base_value": 45,
+    "description": "Baked bread that restores hunger"
   }
 }
