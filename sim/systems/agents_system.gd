@@ -21,6 +21,29 @@ func tick(sim: RefCounted, state: SimState) -> void:
         var effective_drain := hunger_drain * (1.0 + pollution_pressure * pollution_mult)
 
         agent.set_hunger(agent.get_hunger() - effective_drain)
+
+        # Comfort decay
+        var comfort_decay: float = state.get_tuning_float("comfort_decay_per_tick", 0.1)
+        var homelessness_penalty: float = state.get_tuning_float("homelessness_comfort_penalty", 0.3)
+        var current_comfort: float = agent.needs.get("comfort", 100.0)
+        var at_shelter: StructureState = state.structures.get_structure_at(agent.pos_x, agent.pos_y)
+        var in_own_shelter: bool = at_shelter != null \
+            and at_shelter.structure_type == StructureState.TYPE_SHELTER \
+            and at_shelter.owner_id == agent.id
+        if not in_own_shelter:
+            if not agent.has_home():
+                current_comfort -= comfort_decay + homelessness_penalty
+            else:
+                current_comfort -= comfort_decay
+        agent.needs["comfort"] = clampf(current_comfort, 0.0, 100.0)
+
+        # Social decay
+        var social_decay: float = state.get_tuning_float("social_decay_per_tick", 0.05)
+        var current_social: float = agent.needs.get("social", 100.0)
+        if agent.faction_id > 0:
+            social_decay *= 0.5
+        agent.needs["social"] = clampf(current_social - social_decay, 0.0, 100.0)
+
         var action: Dictionary = agent.decide_action(state.world, state.market, state.contracts_system,
                                           state.tuning, state.recipes, state)
 
