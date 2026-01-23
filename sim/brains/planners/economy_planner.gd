@@ -1,6 +1,12 @@
 ## EconomyPlanner - handles contracts, resources, and progression goals
 class_name EconomyPlanner
-extends RefCounted
+extends IAgentPlanner
+
+func get_priority() -> int:
+	return 60
+
+func maybe_add_goal(agent: Agent, context: PlannerContext) -> bool:
+	return add_primary_goal(agent, context.world, context.market, context.contracts_system, context.tuning, context.recipes, context.state)
 
 func add_primary_goal(agent: Agent, world: World, market: Market,
 		contracts_system: ContractsSystem, tuning: Dictionary,
