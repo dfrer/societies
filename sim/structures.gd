@@ -13,7 +13,10 @@ func add_stockpile(pos_x: int, pos_y: int, owner_id: int, capacity: int) -> Stru
 	state.pos_x = pos_x
 	state.pos_y = pos_y
 	state.owner_id = owner_id
-	state.access_policy = owner_id == 0 ? "public" : "organization"
+	if owner_id == 0:
+		state.access_policy = "public"
+	else:
+		state.access_policy = "organization"
 	state.capacity = capacity
 	structures.append(state)
 	return state
@@ -26,7 +29,10 @@ func add_shelter(pos_x: int, pos_y: int, owner_id: int, capacity: int) -> Struct
 	state.pos_x = pos_x
 	state.pos_y = pos_y
 	state.owner_id = owner_id
-	state.access_policy = owner_id == 0 ? "public" : "organization"
+	if owner_id == 0:
+		state.access_policy = "public"
+	else:
+		state.access_policy = "organization"
 	state.capacity = capacity
 	structures.append(state)
 	return state

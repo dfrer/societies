@@ -97,7 +97,10 @@ static func from_dict(d: Dictionary) -> StructureState:
 	if d.has("access_policy"):
 		state.access_policy = str(d.get("access_policy", "organization"))
 	else:
-		state.access_policy = state.owner_id == 0 ? "public" : "organization"
+		if state.owner_id == 0:
+			state.access_policy = "public"
+		else:
+			state.access_policy = "organization"
 	state.capacity = int(d.get("capacity", 0))
 	state.items = _sanitize_item_dict(d.get("items", {}))
 	state.reserved_items = _sanitize_item_dict(d.get("reserved_items", {}))
