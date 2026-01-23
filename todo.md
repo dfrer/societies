@@ -16,6 +16,36 @@
 # CORE INSIGHT: Currently, JobBoardSystem posts activities FOR agents,
 # generate_daily_contracts() randomly creates contracts, and agents
 # just react. Agents should WANT things and pursue them.
+#
+# ═══════════════════════════════════════════════════════════════════
+# IMPLEMENTATION ORDER (for Codex)
+# ═══════════════════════════════════════════════════════════════════
+#
+# PHASE 1 — Foundation (must complete before planners)
+#   P0a → P0b → P0c → P0d (Agent State Expansion)
+#   P0e → P0f (Planner Infrastructure)
+#
+# PHASE 2 — Core Planners (can parallelize within phase)
+#   P1a-P1c (NeedsPlanner + dependencies like P1b2)
+#   P1d-P1f2 (HomesteadPlanner + structure access)
+#   P1g-P1h2 (EconomyPlanner - contract posting/evaluation)
+#   P1i-P1j2 (MarketBehaviorPlanner - intentions/prices)
+#   P1k-P1m (CareerPlanner - assessment/tools/workshops)
+#
+# PHASE 3 — Integration
+#   P3a-P3b (DefaultBrain priority system + goal processing)
+#   P3c (Tuning parameters)
+#   P3d (Unit tests for all planners)
+#
+# PHASE 4 — Secondary Planners (can defer to V3.5 if needed)
+#   P2a-P2c (CivicPlanner)
+#   P2d-P2e (SocialPlanner)
+#   P2f-P2h (LongTermPlanner)
+#
+# PHASE 5 — Extended Content (DEFERRABLE to V3.5)
+#   P1n (Station taxonomy expansion)
+#   P1o (Fuel, cooking, advanced production)
+#
 # ═══════════════════════════════════════════════════════════════════
 
 ## P0 — Agent State Expansion (Foundation)
@@ -49,6 +79,10 @@
 - [ ] **Add `career_type: String` to Agent class** — Current career identity: "none", "gatherer", "logger", "miner", "craftsman", "smith", "trader", "farmer". Initialize to "none" for new agents; replaces static `role` over time.
   - File: `sim/agent.gd`
   - Initially keep `role` for backwards compatibility; deprecate in V4
+
+- [ ] **Add migration helper `_sync_role_to_career()`** — Ensures existing `role` assignments are mirrored to `career_type` during load. Allows incremental migration.
+  - File: `sim/agent.gd`
+  - Call in `from_dict()` if `career_type` is missing but `role` exists
 
 - [ ] **Add `career_goals: Array[Dictionary]` to Agent class** — Career-specific progression goals. Example: `[{type: "ACQUIRE_TOOL", item: "Axe"}, {type: "SECURE_RESOURCE_ACCESS", resource_type: "tree"}]`
   - File: `sim/agent.gd`
@@ -450,8 +484,8 @@
 ---
 
 ### P1n — Career System Expansion (Stations & Professions)
-> V3 should include a broader station taxonomy and more careers, enabling
-> workshop → specialized station → advanced production chains.
+> **PHASE 5 — DEFERRABLE TO V3.5**: This section and P1o are extensive content
+> expansions. Core V3 is complete without them. Implement only after Phase 1-4 pass tests.
 
 - [ ] **Expand station taxonomy** — Add station types beyond basic workshop variants (e.g., `farmhouse`, `bakery`, `forge`, `smelter`, `stove`, `brick_kiln`).
   - File: `sim/world/workshop.gd`
@@ -640,6 +674,38 @@
 
 - [ ] **Add EconomyPlanner tuning parameters** — `contract_posting_cooldown_ticks`, `market_intention_cooldown_ticks`, `market_price_memory_max_age_ticks`
   - File: `sim/tuning.gd`
+
+---
+
+## P3 — Unit Tests (Validation)
+
+### P3d — Planner Unit Tests
+> Each planner needs tests to validate goal generation and edge cases.
+> Run these after each planner implementation to catch regressions.
+
+- [ ] **Create `test_needs_planner.gd`** — Test critical/reactive/proactive goal generation, interrupt actions, and food buffer maintenance.
+  - File: `tests/test_needs_planner.gd` (NEW)
+  - Cases: hunger < 15 returns eat action, hunger < 50 pushes EAT goal, hunger > 50 but low food pushes MAINTAIN_FOOD_BUFFER
+
+- [ ] **Create `test_homestead_planner.gd`** — Test home establishment, site selection scoring, and personal structure building.
+  - File: `tests/test_homestead_planner.gd` (NEW)
+  - Cases: homeless agent gets ESTABLISH_HOMESTEAD, agent with home but no stockpile gets BUILD_PERSONAL_STOCKPILE
+
+- [ ] **Create `test_economy_planner.gd`** — Test contract posting decisions, capability-aware scoring, and market intention gathering.
+  - File: `tests/test_economy_planner.gd` (NEW)
+  - Cases: agent posts contract when can't produce, rejects infeasible contracts, updates price memory
+
+- [ ] **Create `test_career_planner.gd`** — Test career assessment, tool acquisition goals, and workshop access goals.
+  - File: `tests/test_career_planner.gd` (NEW)
+  - Cases: new agent gets career suggestion, logger without axe gets ACQUIRE_TOOL goal
+
+- [ ] **Create `test_commitment_planner.gd`** — Test that active contracts and job board activities surface as high-priority goals.
+  - File: `tests/test_commitment_planner.gd` (NEW)
+  - Cases: agent with active contract gets commitment goal before other planners run
+
+- [ ] **Create `test_default_brain_v3.gd`** — Integration tests for planner priority ordering and new goal type processing.
+  - File: `tests/test_default_brain_v3.gd` (NEW)
+  - Cases: priority order respected, all new goal types have processing/completion logic
 
 ---
 
