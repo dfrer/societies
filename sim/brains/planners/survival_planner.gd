@@ -1,6 +1,9 @@
 ## SurvivalPlanner - handles survival interrupts and basic needs
 class_name SurvivalPlanner
-extends RefCounted
+extends IAgentPlanner
+
+func get_priority() -> int:
+	return 90
 
 func get_interrupt_action(agent: Agent, tuning: Dictionary) -> Dictionary:
 	var emergency_threshold: float = tuning.get("emergency_hunger_threshold", 15.0)
@@ -13,8 +16,8 @@ func get_interrupt_action(agent: Agent, tuning: Dictionary) -> Dictionary:
 		return Actions.sleep_rest() # Must rest
 	return {}
 
-func maybe_add_goal(agent: Agent, tuning: Dictionary) -> bool:
-	var eat_threshold: float = tuning.get("eat_threshold", 50.0)
+func maybe_add_goal(agent: Agent, context: PlannerContext) -> bool:
+	var eat_threshold: float = context.tuning.get("eat_threshold", 50.0)
 	if agent.get_hunger() < eat_threshold:
 		if agent.has_available_item("CookedMeal"):
 			agent.goal_stack.push_back({"type": "EAT_FOOD", "item": "CookedMeal", "is_goal": true})

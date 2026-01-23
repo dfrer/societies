@@ -12,6 +12,9 @@ var skills: Dictionary = {}
 var faction_id: int = 0
 var is_player: bool = false
 var role: String = "gatherer"
+var career_type: String = "none"
+var career_goals: Array[Dictionary] = []
+var preferred_resource: String = ""
 var personality: Dictionary = {}
 
 ## Action state
@@ -37,6 +40,10 @@ var eco_concern: float = 0.0  # 0 = doesn't care about pollution, 1 = cares deep
 ## Claim state
 var is_claiming: bool = false
 var claim_progress: int = 0
+var home_pos: Vector2i = Vector2i(-1, -1)
+var owned_structures: Array[int] = []
+var personal_stockpile_id: int = -1
+var shelter_id: int = -1
 
 ## Progression system
 var claim_tokens: int = 25
@@ -49,6 +56,11 @@ var goal_target: int = -1       # Target ID for goal (workshop ID, faction ID, e
 var goal_progress: int = 0      # Progress toward goal (0-100)
 var goal_data: Dictionary = {}  # Flexible goal metadata
 var goal_stack: Array = []      # Stack of sub-goals (Dictionaries)
+var long_term_goals: Array[Dictionary] = []
+
+## Market intention state
+var market_intentions: Array[Dictionary] = []
+var last_market_visit_tick: int = 0
 
 
 
@@ -58,6 +70,7 @@ var last_trade_success_tick: int = 0
 var exploration_direction: int = 0  # 0-7 compass direction
 var known_resource_locations: Array = []  # [{"type": str, "x": int, "y": int, "tick": int}]
 var social_memory: Dictionary = {}  # agent_id -> {"last_trade_tick": int, "trust": float}
+var market_price_memory: Dictionary = {}  # item_name -> {"last_price": int, "last_tick": int}
 
 ## Skill experience (for future skill leveling system)
 var skill_xp: Dictionary = {}
@@ -111,6 +124,9 @@ func to_dict() -> Dictionary:
 		"faction_id": faction_id,
 		"is_player": is_player,
 		"role": role,
+		"career_type": career_type,
+		"career_goals": career_goals.duplicate(true),
+		"preferred_resource": preferred_resource,
 		"current_action": current_action.duplicate(),
 		"target_node_id": target_node_id,
 		"target_workshop_id": target_workshop_id,
@@ -125,6 +141,10 @@ func to_dict() -> Dictionary:
 		"eco_concern": snappedf(eco_concern, 0.00000001),
 		"is_claiming": is_claiming,
 		"claim_progress": claim_progress,
+		"home_pos": {"x": home_pos.x, "y": home_pos.y},
+		"owned_structures": owned_structures.duplicate(),
+		"personal_stockpile_id": personal_stockpile_id,
+		"shelter_id": shelter_id,
 		"claim_tokens": claim_tokens,
 		"claim_level": claim_level,
 		"experience": experience,
@@ -133,11 +153,15 @@ func to_dict() -> Dictionary:
 		"goal_progress": goal_progress,
 		"goal_data": goal_data.duplicate(),
 		"goal_stack": goal_stack.duplicate(true),
+		"long_term_goals": _serialize_long_term_goals(),
+		"market_intentions": _serialize_market_intentions(),
+		"last_market_visit_tick": last_market_visit_tick,
 		"last_gather_success_tick": last_gather_success_tick,
 		"last_trade_success_tick": last_trade_success_tick,
 		"exploration_direction": exploration_direction,
 		"known_resource_locations": _serialize_known_resource_locations(),
 		"social_memory": _serialize_social_memory(),
+		"market_price_memory": _serialize_market_price_memory(),
 		"personality": _serialize_personality()
 	}
 
@@ -166,6 +190,44 @@ func _serialize_social_memory() -> Dictionary:
 			"trust": snappedf(float(mem.get("trust", 0.5)), 0.00000001),
 			"last_trade_tick": int(mem.get("last_trade_tick", 0)),
 			"trade_count": int(mem.get("trade_count", 0))
+		}
+	return result
+
+func _serialize_long_term_goals() -> Array:
+	var result := []
+	for goal in long_term_goals:
+		if goal is Dictionary:
+			var data: Dictionary = goal.duplicate(true)
+			if data.has("started_tick"):
+				data["started_tick"] = int(data.get("started_tick", 0))
+			if data.has("deadline_tick"):
+				data["deadline_tick"] = int(data.get("deadline_tick", 0))
+			if data.has("progress"):
+				data["progress"] = snappedf(float(data.get("progress", 0.0)), 0.00000001)
+			if data.has("sub_goals"):
+				data["sub_goals"] = data.get("sub_goals", []).duplicate(true)
+			result.append(data)
+	return result
+
+func _serialize_market_intentions() -> Array:
+	var result := []
+	for intention in market_intentions:
+		if intention is Dictionary:
+			result.append({
+				"type": intention.get("type", ""),
+				"item": intention.get("item", ""),
+				"qty": int(intention.get("qty", 0)),
+				"max_price": int(intention.get("max_price", 0))
+			})
+	return result
+
+func _serialize_market_price_memory() -> Dictionary:
+	var result := {}
+	for item_name in market_price_memory:
+		var entry: Dictionary = market_price_memory[item_name]
+		result[item_name] = {
+			"last_price": int(entry.get("last_price", 0)),
+			"last_tick": int(entry.get("last_tick", 0))
 		}
 	return result
 
@@ -224,6 +286,16 @@ static func from_dict(d: Dictionary) -> Agent:
 	agent.faction_id = int(d.get("faction_id", 0))
 	agent.is_player = d.get("is_player", false)
 	agent.role = d.get("role", "gatherer")
+	if d.has("career_type"):
+		agent.career_type = d.get("career_type", "none")
+	else:
+		agent._sync_role_to_career(agent.role)
+	var career_goals_data: Array = d.get("career_goals", [])
+	agent.career_goals = []
+	for goal in career_goals_data:
+		if goal is Dictionary:
+			agent.career_goals.append(goal.duplicate(true))
+	agent.preferred_resource = d.get("preferred_resource", "")
 	# Convert current_action with proper types
 	var action_data: Dictionary = d.get("current_action", {"type": "IDLE"})
 	agent.current_action = {}
@@ -252,6 +324,14 @@ static func from_dict(d: Dictionary) -> Agent:
 	agent.eco_concern = snappedf(float(d.get("eco_concern", 0.0)), 0.00000001)
 	agent.is_claiming = d.get("is_claiming", false)
 	agent.claim_progress = int(d.get("claim_progress", 0))
+	var home_data: Dictionary = d.get("home_pos", {"x": -1, "y": -1})
+	agent.home_pos = Vector2i(int(home_data.get("x", -1)), int(home_data.get("y", -1)))
+	var owned_data: Array = d.get("owned_structures", [])
+	agent.owned_structures = []
+	for structure_id in owned_data:
+		agent.owned_structures.append(int(structure_id))
+	agent.personal_stockpile_id = int(d.get("personal_stockpile_id", -1))
+	agent.shelter_id = int(d.get("shelter_id", -1))
 	agent.claim_tokens = int(d.get("claim_tokens", 25))
 	agent.claim_level = int(d.get("claim_level", 1))
 	agent.experience = int(d.get("experience", 0))
@@ -261,6 +341,31 @@ static func from_dict(d: Dictionary) -> Agent:
 	agent.goal_progress = int(d.get("goal_progress", 0))
 	agent.goal_data = d.get("goal_data", {}).duplicate()
 	agent.goal_stack = d.get("goal_stack", []).duplicate(true)
+	var ltg_data: Array = d.get("long_term_goals", [])
+	agent.long_term_goals = []
+	for goal in ltg_data:
+		if goal is Dictionary:
+			var data: Dictionary = goal.duplicate(true)
+			if data.has("started_tick"):
+				data["started_tick"] = int(data.get("started_tick", 0))
+			if data.has("deadline_tick"):
+				data["deadline_tick"] = int(data.get("deadline_tick", 0))
+			if data.has("progress"):
+				data["progress"] = snappedf(float(data.get("progress", 0.0)), 0.00000001)
+			if data.has("sub_goals"):
+				data["sub_goals"] = data.get("sub_goals", []).duplicate(true)
+			agent.long_term_goals.append(data)
+	var intentions_data: Array = d.get("market_intentions", [])
+	agent.market_intentions = []
+	for intention in intentions_data:
+		if intention is Dictionary:
+			agent.market_intentions.append({
+				"type": intention.get("type", ""),
+				"item": intention.get("item", ""),
+				"qty": int(intention.get("qty", 0)),
+				"max_price": int(intention.get("max_price", 0))
+			})
+	agent.last_market_visit_tick = int(d.get("last_market_visit_tick", 0))
 	# Deserialize memory state
 	agent.last_gather_success_tick = int(d.get("last_gather_success_tick", 0))
 	agent.last_trade_success_tick = int(d.get("last_trade_success_tick", 0))
@@ -286,6 +391,15 @@ static func from_dict(d: Dictionary) -> Agent:
 			"last_trade_tick": int(mem.get("last_trade_tick", 0)),
 			"trade_count": int(mem.get("trade_count", 0))
 		}
+	var market_memory_data: Dictionary = d.get("market_price_memory", {})
+	agent.market_price_memory = {}
+	for item_name in market_memory_data:
+		var entry: Dictionary = market_memory_data[item_name]
+		agent.market_price_memory[item_name] = {
+			"last_price": int(entry.get("last_price", 0)),
+			"last_tick": int(entry.get("last_tick", 0))
+		}
+	agent._enforce_market_price_memory_limit()
 	# Deserialize personality with float precision normalization
 	var personality_data: Dictionary = d.get("personality", {
 		"greed": 0.5, "laziness": 0.5, "social_need": 0.5, "risk_tolerance": 0.5
@@ -298,6 +412,33 @@ static func from_dict(d: Dictionary) -> Agent:
 	agent.brain = DefaultBrain.new()
 	
 	return agent
+
+func _sync_role_to_career(current_role: String) -> void:
+	if current_role == "":
+		career_type = "none"
+		return
+	career_type = current_role
+
+func _enforce_market_price_memory_limit(limit: int = 20) -> void:
+	if market_price_memory.size() <= limit:
+		return
+	var entries := []
+	for item_name in market_price_memory.keys():
+		var entry: Dictionary = market_price_memory[item_name]
+		entries.append({
+			"item": item_name,
+			"last_tick": int(entry.get("last_tick", 0))
+		})
+	entries.sort_custom(func(a, b):
+		var tick_a: int = int(a.get("last_tick", 0))
+		var tick_b: int = int(b.get("last_tick", 0))
+		if tick_a == tick_b:
+			return str(a.get("item", "")) < str(b.get("item", ""))
+		return tick_a < tick_b
+	)
+	while market_price_memory.size() > limit and not entries.is_empty():
+		var oldest: Dictionary = entries.pop_front()
+		market_price_memory.erase(oldest.get("item", ""))
 
 ## Get available money
 func get_available_money() -> int:
@@ -381,6 +522,18 @@ func get_item_count(item_name: String) -> int:
 ## Check if has a tool
 func has_tool(tool_name: String) -> bool:
 	return get_item_count(tool_name) > 0
+
+## Has a claimed home tile
+func has_home() -> bool:
+	return home_pos != Vector2i(-1, -1)
+
+## Has a personal stockpile
+func has_personal_stockpile() -> bool:
+	return personal_stockpile_id >= 0
+
+## Has a personal shelter
+func has_personal_shelter() -> bool:
+	return shelter_id >= 0
 
 ## Get hunger
 func get_hunger() -> float:

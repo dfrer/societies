@@ -16,10 +16,21 @@ const INERTIA_BONUS = 0.2
 var _survival_planner := SurvivalPlanner.new()
 var _economy_planner := EconomyPlanner.new()
 var _governance_planner := GovernancePlanner.new()
+var _planners: Array[IAgentPlanner] = []
+
+func _init() -> void:
+	_planners = [
+		CommitmentPlanner.new(),
+		_survival_planner,
+		_economy_planner,
+		_governance_planner
+	]
+	_planners.sort_custom(func(a, b): return a.get_priority() > b.get_priority())
 
 func decide_action(agent: Agent, world: World, market: Market,
 				   contracts_system: ContractsSystem, tuning: Dictionary,
 				   recipes: Dictionary = {}, state: SimState = null) -> Dictionary:
+	var planner_context := PlannerContext.create(world, market, contracts_system, tuning, recipes, state)
 
 	# 0. Interrupts (Panic checks that override everything)
 	var interrupt = _survival_planner.get_interrupt_action(agent, tuning)
@@ -39,7 +50,7 @@ func decide_action(agent: Agent, world: World, market: Market,
 	var iterations: int = 0
 	while iterations < 5:
 		if agent.goal_stack.is_empty():
-			_generate_high_level_goals(agent, world, market, contracts_system, tuning, recipes, state)
+			_generate_high_level_goals(agent, planner_context)
 
 		if agent.goal_stack.is_empty():
 			var fallback := _fallback_action(agent, world)
@@ -98,19 +109,11 @@ func _fallback_action(agent: Agent, world: World) -> Dictionary:
 		return Actions.explore(agent.exploration_direction)
 	return Actions.rest()
 
-func _generate_high_level_goals(agent: Agent, world: World, market: Market,
-								contracts_system: ContractsSystem, tuning: Dictionary,
-								recipes: Dictionary, state: SimState = null) -> void:
-	if _survival_planner.maybe_add_goal(agent, tuning):
-		return
-
-	if _economy_planner.add_primary_goal(agent, world, market, contracts_system, tuning, recipes, state):
-		return
-
-	if _governance_planner.maybe_add_goal(agent, world, tuning, state):
-		return
-
-	_economy_planner.add_progression_goal(agent, world, tuning, recipes, state)
+func _generate_high_level_goals(agent: Agent, context: PlannerContext) -> void:
+	for planner in _planners:
+		if planner.maybe_add_goal(agent, context):
+			return
+	_economy_planner.add_progression_goal(agent, context.world, context.tuning, context.recipes, context.state)
 
 # Helper function to determine if agent should claim resources
 func _is_goal_complete(agent: Agent, goal: Dictionary, world: World) -> bool:
