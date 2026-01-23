@@ -28,6 +28,9 @@ const TYPE_CONTRIBUTE_TO_PROJECT := "CONTRIBUTE_TO_PROJECT"
 const TYPE_BUILD_ROAD := "BUILD_ROAD"
 const TYPE_WITHDRAW_STOCKPILE := "WITHDRAW_STOCKPILE"
 const TYPE_DEPOSIT_STOCKPILE := "DEPOSIT_STOCKPILE"
+const TYPE_BUILD_PERSONAL_STOCKPILE := "BUILD_PERSONAL_STOCKPILE"
+const TYPE_BUILD_PERSONAL_SHELTER := "BUILD_PERSONAL_SHELTER"
+const TYPE_DEPOSIT_TO_PERSONAL_STOCKPILE := "DEPOSIT_TO_PERSONAL_STOCKPILE"
 const TYPE_BUILD_SITE := "BUILD_SITE"
 const TYPE_TILL_FARM := "TILL_FARM"
 const TYPE_PLANT_FARM := "PLANT_FARM"
@@ -115,6 +118,15 @@ static func withdraw_stockpile(structure_id: int, item: String, qty: int, requir
 static func deposit_stockpile(structure_id: int, item: String, qty: int) -> Dictionary:
 	return {"type": TYPE_DEPOSIT_STOCKPILE, "structure_id": structure_id, "item": item, "qty": qty}
 
+static func build_personal_stockpile(x: int, y: int) -> Dictionary:
+	return {"type": TYPE_BUILD_PERSONAL_STOCKPILE, "target_x": x, "target_y": y}
+
+static func build_personal_shelter(x: int, y: int) -> Dictionary:
+	return {"type": TYPE_BUILD_PERSONAL_SHELTER, "target_x": x, "target_y": y}
+
+static func deposit_to_personal_stockpile(structure_id: int, item: String, qty: int) -> Dictionary:
+	return {"type": TYPE_DEPOSIT_TO_PERSONAL_STOCKPILE, "structure_id": structure_id, "item": item, "qty": qty}
+
 static func build_site(project_id: int) -> Dictionary:
 	return {"type": TYPE_BUILD_SITE, "project_id": project_id}
 
@@ -187,6 +199,12 @@ static func execute_action(agent: Agent, action: Dictionary, world: World,
 			return _execute_withdraw_stockpile(agent, action, state)
 		TYPE_DEPOSIT_STOCKPILE:
 			return _execute_deposit_stockpile(agent, action, state)
+		TYPE_BUILD_PERSONAL_STOCKPILE:
+			return _execute_build_personal_stockpile(agent, action, state, world, tuning)
+		TYPE_BUILD_PERSONAL_SHELTER:
+			return _execute_build_personal_shelter(agent, action, state, world, tuning)
+		TYPE_DEPOSIT_TO_PERSONAL_STOCKPILE:
+			return _execute_deposit_personal_stockpile(agent, action, state)
 		TYPE_BUILD_SITE:
 			return _execute_build_site(agent, action, state, world, tuning)
 		TYPE_TILL_FARM:
@@ -884,6 +902,8 @@ static func _execute_withdraw_stockpile(agent: Agent, action: Dictionary, state:
 	var structure := state.structures.get_structure(structure_id)
 	if structure == null:
 		return true
+	if not _can_access_stockpile(agent, structure, state):
+		return true
 	if not agent.is_at(structure.pos_x, structure.pos_y):
 		return false
 	var to_withdraw := qty
@@ -906,6 +926,8 @@ static func _execute_deposit_stockpile(agent: Agent, action: Dictionary, state: 
 	var structure := state.structures.get_structure(structure_id)
 	if structure == null:
 		return true
+	if not _can_access_stockpile(agent, structure, state):
+		return true
 	if not agent.is_at(structure.pos_x, structure.pos_y):
 		return false
 	var available := agent.get_available_item(item)
@@ -920,6 +942,105 @@ static func _execute_deposit_stockpile(agent: Agent, action: Dictionary, state: 
 	structure.add_item(item, final_qty)
 	state.record_stockpile_deposit(item, final_qty)
 	return true
+
+static func _execute_build_personal_stockpile(agent: Agent, action: Dictionary, state: SimState,
+										  world: World, tuning: Dictionary) -> bool:
+	if state == null:
+		return true
+	var target_x: int = action.get("target_x", agent.pos_x)
+	var target_y: int = action.get("target_y", agent.pos_y)
+	if not agent.is_at(target_x, target_y):
+		_move_toward(agent, target_x, target_y, world, tuning)
+		return false
+	var existing := state.structures.get_structure_at(target_x, target_y)
+	if existing != null:
+		if existing.structure_type == StructureState.TYPE_STOCKPILE and existing.owner_id == agent.id:
+			agent.personal_stockpile_id = existing.id
+			if existing.id not in agent.owned_structures:
+				agent.owned_structures.append(existing.id)
+		return true
+	var planks_needed: int = int(tuning.get("personal_stockpile_planks", 12))
+	var stone_needed: int = int(tuning.get("personal_stockpile_stone", 6))
+	if not agent.has_available_item("Planks", planks_needed):
+		return true
+	if not agent.has_available_item("Stone", stone_needed):
+		return true
+	var build_stamina: float = tuning.get("stamina_drain_build", 5.0)
+	agent.drain_stamina(build_stamina)
+	agent.remove_item("Planks", planks_needed)
+	agent.remove_item("Stone", stone_needed)
+	var capacity := int(tuning.get("stockpile_capacity", 150))
+	var structure := state.structures.add_personal_stockpile(target_x, target_y, agent.id, capacity)
+	agent.personal_stockpile_id = structure.id
+	if structure.id not in agent.owned_structures:
+		agent.owned_structures.append(structure.id)
+	return true
+
+static func _execute_build_personal_shelter(agent: Agent, action: Dictionary, state: SimState,
+										world: World, tuning: Dictionary) -> bool:
+	if state == null:
+		return true
+	var target_x: int = action.get("target_x", agent.pos_x)
+	var target_y: int = action.get("target_y", agent.pos_y)
+	if not agent.is_at(target_x, target_y):
+		_move_toward(agent, target_x, target_y, world, tuning)
+		return false
+	var existing := state.structures.get_structure_at(target_x, target_y)
+	if existing != null:
+		if existing.structure_type == StructureState.TYPE_SHELTER and existing.owner_id == agent.id:
+			agent.shelter_id = existing.id
+			if existing.id not in agent.owned_structures:
+				agent.owned_structures.append(existing.id)
+		return true
+	var planks_needed: int = int(tuning.get("personal_shelter_planks", 20))
+	var stone_needed: int = int(tuning.get("personal_shelter_stone", 10))
+	if not agent.has_available_item("Planks", planks_needed):
+		return true
+	if not agent.has_available_item("Stone", stone_needed):
+		return true
+	var build_stamina: float = tuning.get("stamina_drain_build", 5.0)
+	agent.drain_stamina(build_stamina)
+	agent.remove_item("Planks", planks_needed)
+	agent.remove_item("Stone", stone_needed)
+	var capacity := int(tuning.get("shelter_capacity", 4))
+	var structure := state.structures.add_personal_shelter(target_x, target_y, agent.id, capacity)
+	agent.shelter_id = structure.id
+	if structure.id not in agent.owned_structures:
+		agent.owned_structures.append(structure.id)
+	return true
+
+static func _execute_deposit_personal_stockpile(agent: Agent, action: Dictionary, state: SimState) -> bool:
+	if state == null:
+		return true
+	var structure_id: int = action.get("structure_id", -1)
+	var item: String = action.get("item", "")
+	var qty: int = action.get("qty", 1)
+	if structure_id < 0 or item == "" or qty <= 0:
+		return true
+	var structure := state.structures.get_structure(structure_id)
+	if structure == null:
+		return true
+	if structure.access_policy != "personal" or structure.owner_id != agent.id:
+		return true
+	if not agent.is_at(structure.pos_x, structure.pos_y):
+		return false
+	return _execute_deposit_stockpile(agent, action, state)
+
+static func _can_access_stockpile(agent: Agent, structure: StructureState, state: SimState) -> bool:
+	match structure.access_policy:
+		"public":
+			return true
+		"personal":
+			return structure.owner_id == agent.id
+		"organization":
+			if World.is_organization_owner(structure.owner_id) and state != null:
+				var org_id := World.organization_id_from_owner(structure.owner_id)
+				var org := state.get_organization(org_id)
+				if org == null:
+					return false
+				return org.has_member(agent.id)
+			return false
+	return false
 
 static func _execute_build_site(agent: Agent, action: Dictionary, state: SimState, world: World, tuning: Dictionary) -> bool:
 	var project_id: int = action.get("project_id", -1)
