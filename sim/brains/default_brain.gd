@@ -22,7 +22,6 @@ var _planners: Array[IAgentPlanner] = []
 func _init() -> void:
 	_planners = [
 		CommitmentPlanner.new(),
-		_needs_planner,
 		_survival_planner,
 		_economy_planner,
 		_governance_planner

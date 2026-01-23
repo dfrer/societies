@@ -10,7 +10,7 @@ func maybe_add_goal(agent: Agent, context: PlannerContext) -> bool:
 	# Check for active contract
 	if agent.active_contract_id >= 0:
 		var contract = context.contracts_system.get_contract(agent.active_contract_id)
-		if contract != null and not contract.is_fulfilled():
+		if contract != null and contract.status == Contract.STATUS_ACCEPTED:
 			agent.goal_stack.push_back({
 				type = "FULFILL_CONTRACT",
 				contract_id = agent.active_contract_id,

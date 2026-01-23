@@ -80,10 +80,6 @@
   - File: `sim/agent.gd`
   - Initially keep `role` for backwards compatibility; deprecate in V4
 
-- [x] **Add migration helper `_sync_role_to_career()`** — Ensures existing `role` assignments are mirrored to `career_type` during load. Allows incremental migration.
-  - File: `sim/agent.gd`
-  - Call in `from_dict()` if `career_type` is missing but `role` exists
-
 - [x] **Add `career_goals: Array[Dictionary]` to Agent class** — Career-specific progression goals. Example: `[{type: "ACQUIRE_TOOL", item: "Axe"}, {type: "SECURE_RESOURCE_ACCESS", resource_type: "tree"}]`
   - File: `sim/agent.gd`
   - Serialization: include in `to_dict()` / `from_dict()`
