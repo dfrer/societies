@@ -10,6 +10,7 @@ var structure_type: String = TYPE_STOCKPILE
 var pos_x: int = 0
 var pos_y: int = 0
 var owner_id: int = 0
+var access_policy: String = "organization"
 var capacity: int = 0
 var items: Dictionary = {}
 var reserved_items: Dictionary = {}
@@ -80,6 +81,7 @@ func to_dict() -> Dictionary:
 		"pos_x": pos_x,
 		"pos_y": pos_y,
 		"owner_id": owner_id,
+		"access_policy": access_policy,
 		"capacity": capacity,
 		"items": _sanitize_item_dict(items),
 		"reserved_items": _sanitize_item_dict(reserved_items)
@@ -92,6 +94,10 @@ static func from_dict(d: Dictionary) -> StructureState:
 	state.pos_x = int(d.get("pos_x", 0))
 	state.pos_y = int(d.get("pos_y", 0))
 	state.owner_id = int(d.get("owner_id", 0))
+	if d.has("access_policy"):
+		state.access_policy = str(d.get("access_policy", "organization"))
+	else:
+		state.access_policy = state.owner_id == 0 ? "public" : "organization"
 	state.capacity = int(d.get("capacity", 0))
 	state.items = _sanitize_item_dict(d.get("items", {}))
 	state.reserved_items = _sanitize_item_dict(d.get("reserved_items", {}))
