@@ -1,0 +1,3 @@
+{"data":{"agent_id":1,"contract_id":1,"issuer_id":2},"tick":201,"type":"contract_accepted"}
+{"data":{"agent_id":2,"contract_id":2,"issuer_id":3},"tick":201,"type":"contract_accepted"}
+{"data":{"agent_id":3,"contract_id":3,"issuer_id":10},"tick":201,"type":"contract_accepted"}

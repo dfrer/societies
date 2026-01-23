@@ -80,12 +80,11 @@
   - File: `sim/agent.gd`
   - Initially keep `role` for backwards compatibility; deprecate in V4
 
-- [x] **Add `career_goals: Array[Dictionary]` to Agent class** — Career-specific progression goals. Example: `[{type: "ACQUIRE_TOOL", item: "Axe"}, {type: "SECURE_RESOURCE_ACCESS", resource_type: "tree"}]`
-- [ ] **Add migration helper `_sync_role_to_career()`** — Ensures existing `role` assignments are mirrored to `career_type` during load. Allows incremental migration.
+- [x] **Add migration helper `_sync_role_to_career()`** — Ensures existing `role` assignments are mirrored to `career_type` during load. Allows incremental migration.
   - File: `sim/agent.gd`
   - Call in `from_dict()` if `career_type` is missing but `role` exists
 
-- [ ] **Add `career_goals: Array[Dictionary]` to Agent class** — Career-specific progression goals. Example: `[{type: "ACQUIRE_TOOL", item: "Axe"}, {type: "SECURE_RESOURCE_ACCESS", resource_type: "tree"}]`
+- [x] **Add `career_goals: Array[Dictionary]` to Agent class** — Career-specific progression goals. Example: `[{type: "ACQUIRE_TOOL", item: "Axe"}, {type: "SECURE_RESOURCE_ACCESS", resource_type: "tree"}]`
   - File: `sim/agent.gd`
   - Serialization: include in `to_dict()` / `from_dict()`
 
@@ -164,27 +163,27 @@
 > Agents should gather food BEFORE they're hungry, not just react
 > when hunger drops below threshold.
 
-- [ ] **Create `needs_planner.gd`** — New planner replacing `survival_planner.gd`. Handles all agent needs with both reactive and proactive modes.
+- [x] **Create `needs_planner.gd`** — New planner replacing `survival_planner.gd`. Handles all agent needs with both reactive and proactive modes.
   - File: `sim/brains/planners/needs_planner.gd` (NEW)
   - Keep `survival_planner.gd` temporarily for reference; delete after migration
 
-- [ ] **Implement `get_interrupt_action()` for critical survival** — Same as current: if hunger < 15 and has food, eat immediately. If stamina <= 0, sleep. Returns action directly (not goal).
+- [x] **Implement `get_interrupt_action()` for critical survival** — Same as current: if hunger < 15 and has food, eat immediately. If stamina <= 0, sleep. Returns action directly (not goal).
   - File: `sim/brains/planners/needs_planner.gd`
   - This is the PANIC layer that bypasses goal system
 
-- [ ] **Implement `maybe_add_critical_goal()` for reactive needs** — If hunger < 50, push EAT_FOOD or OBTAIN_ITEM goal. If stamina < 20, push REST goal. This is the current behavior.
+- [x] **Implement `maybe_add_critical_goal()` for reactive needs** — If hunger < 50, push EAT_FOOD or OBTAIN_ITEM goal. If stamina < 20, push REST goal. This is the current behavior.
   - File: `sim/brains/planners/needs_planner.gd`
 
-- [ ] **Implement `maybe_add_proactive_goal()` for buffer maintenance** — If hunger > 50 BUT food_inventory < `proactive_food_buffer` (default 5), push MAINTAIN_FOOD_BUFFER goal.
+- [x] **Implement `maybe_add_proactive_goal()` for buffer maintenance** — If hunger > 50 BUT food_inventory < `proactive_food_buffer` (default 5), push MAINTAIN_FOOD_BUFFER goal.
   - File: `sim/brains/planners/needs_planner.gd`
   - New tuning param: `proactive_food_buffer: int = 5`
   - Goal: `{type: "MAINTAIN_FOOD_BUFFER", target_qty: 5, is_goal: true}`
 
-- [ ] **Add `MAINTAIN_FOOD_BUFFER` goal type to DefaultBrain** — Process goal by pushing OBTAIN_ITEM sub-goal for Berries or checking personal stockpile.
+- [x] **Add `MAINTAIN_FOOD_BUFFER` goal type to DefaultBrain** — Process goal by pushing OBTAIN_ITEM sub-goal for Berries or checking personal stockpile.
   - File: `sim/brains/default_brain.gd`
   - Add to `_is_goal_complete()` and `_process_goal()`
 
-- [ ] **Add helper `get_food_inventory(agent) -> int`** — Returns total edible items: Berries + CookedMeal. Used by proactive goal check.
+- [x] **Add helper `get_food_inventory(agent) -> int`** — Returns total edible items: Berries + CookedMeal. Used by proactive goal check.
   - File: `sim/agent.gd` or `sim/brains/planners/needs_planner.gd`
 
 ---
@@ -192,15 +191,15 @@
 ### P1b — Stamina & Rest Optimization
 > Agents should seek shelter for efficient rest, not just rest anywhere.
 
-- [ ] **Implement shelter detection in NeedsPlanner** — If agent has personal shelter OR is near a public shelter, prefer EFFICIENT_REST goal over basic REST.
+- [x] **Implement shelter detection in NeedsPlanner** — If agent has personal shelter OR is near a public shelter, prefer EFFICIENT_REST goal over basic REST.
   - File: `sim/brains/planners/needs_planner.gd`
   - New goal: `{type: "EFFICIENT_REST", shelter_id: int, is_goal: true}`
 
-- [ ] **Add shelter rest bonus to `_execute_sleep()`** — If agent is at a shelter structure, apply `shelter_rest_bonus` multiplier (default 1.5x) to stamina recovery.
+- [x] **Add shelter rest bonus to `_execute_sleep()`** — If agent is at a shelter structure, apply `shelter_rest_bonus` multiplier (default 1.5x) to stamina recovery.
   - File: `sim/actions.gd`
   - Check: `state.structures.get_structure_at(agent.pos_x, agent.pos_y)` for shelter
 
-- [ ] **Add tuning param `shelter_rest_bonus: float = 1.5`** — Multiplier for stamina recovery when sleeping in shelter.
+- [x] **Add tuning param `shelter_rest_bonus: float = 1.5`** — Multiplier for stamina recovery when sleeping in shelter.
   - File: `sim/tuning.gd`
 
 ---
@@ -209,11 +208,11 @@
 > NeedsPlanner requires tile-based structure lookup, but Structures currently has no
 > positional accessor, making shelter detection impossible.
 
-- [ ] **Add `get_structure_at(x, y)` to Structures** — Returns the structure at a tile, or null if none.
+- [x] **Add `get_structure_at(x, y)` to Structures** — Returns the structure at a tile, or null if none.
   - File: `sim/structures.gd`
   - Optional: `get_structures_at(x, y) -> Array` if multiple structures per tile ever exist
 
-- [ ] **Use positional lookup for shelter detection** — Replace any ad-hoc shelter checks with the new helper.
+- [x] **Use positional lookup for shelter detection** — Replace any ad-hoc shelter checks with the new helper.
   - File: `sim/brains/planners/needs_planner.gd`
   - File: `sim/actions.gd` (sleep rest bonus)
 
@@ -222,18 +221,18 @@
 ### P1c — Comfort & Social Needs
 > Activate the unused comfort and social needs to drive non-survival behavior.
 
-- [ ] **Implement comfort decay per tick** — Comfort decreases slowly over time. Being in owned shelter prevents decay. Being homeless accelerates decay.
+- [x] **Implement comfort decay per tick** — Comfort decreases slowly over time. Being in owned shelter prevents decay. Being homeless accelerates decay.
   - File: `sim/systems/agents_system.gd`
   - New tuning: `comfort_decay_per_tick: float = 0.1`, `homelessness_comfort_penalty: float = 0.3`
 
-- [ ] **Add comfort-based goals to NeedsPlanner** — If comfort < 30 and no shelter, push BUILD_PERSONAL_SHELTER goal.
+- [x] **Add comfort-based goals to NeedsPlanner** — If comfort < 30 and no shelter, push BUILD_PERSONAL_SHELTER goal.
   - File: `sim/brains/planners/needs_planner.gd`
 
-- [ ] **Implement social need decay and faction affinity** — Social need decreases over time. Being in faction slows decay. Successful trades boost social satisfaction.
+- [x] **Implement social need decay and faction affinity** — Social need decreases over time. Being in faction slows decay. Successful trades boost social satisfaction.
   - File: `sim/systems/agents_system.gd`
   - New tuning: `social_decay_per_tick: float = 0.05`
 
-- [ ] **Add social-based goals to NeedsPlanner** — If social < 30 and no faction, push FIND_COMMUNITY goal (leads to faction joining or trade partner seeking).
+- [x] **Add social-based goals to NeedsPlanner** — If social < 30 and no faction, push FIND_COMMUNITY goal (leads to faction joining or trade partner seeking).
   - File: `sim/brains/planners/needs_planner.gd`
 
 ---
