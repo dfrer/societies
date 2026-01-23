@@ -564,17 +564,19 @@ func _plan_obtain_item(agent: Agent, goal: Dictionary, world: World, market: Mar
 	
 	if node_type != "":
 		# It's a resource!
-		# Check if nearby or strictly find nearest?
-		var cached_node_id: int = int(goal.get("node_id", -1))
-		if cached_node_id >= 0:
-			var cached_node := world.get_node_by_id(cached_node_id)
-			if _can_harvest_node(agent, cached_node, world, state):
-				if agent.is_at(cached_node.pos_x, cached_node.pos_y):
-					return Actions.gather_node(cached_node.id)
-				else:
-					return Actions.move_to_node(cached_node.id) # Or push GO_TO goal, but Action is fine
-			goal.erase("node_id")
-		var node = _find_nearest_accessible_node_of_type(agent, world, node_type, state)
+		# Pin a node to this goal to avoid oscillation between nearby nodes.
+		var node_id: int = int(goal.get("node_id", -1))
+		var node: ResourceNode = null
+		if node_id >= 0:
+			node = world.get_node_by_id(node_id)
+			if node == null or node.type != node_type or not node.has_stock(1) \
+					or not _can_harvest_node(agent, world, state, node):
+				goal.erase("node_id")
+				node = null
+		if node == null:
+			node = _find_nearest_accessible_node_of_type(agent, world, state, node_type)
+			if node:
+				goal["node_id"] = node.id
 		if node:
 			goal["node_id"] = node.id
 			if agent.is_at(node.pos_x, node.pos_y):
@@ -1111,14 +1113,14 @@ func _find_nearest_node_of_type(agent: Agent, world: World, type: String) -> Res
 				
 	return best_node
 
-func _find_nearest_accessible_node_of_type(agent: Agent, world: World, type: String, state: SimState) -> ResourceNode:
+func _find_nearest_accessible_node_of_type(agent: Agent, world: World, state: SimState, type: String) -> ResourceNode:
 	var best_node = null
 	var best_dist = 999999
 
 	for node in world.resource_nodes:
-		if node.type != type:
+		if node.type != type or node.stock <= 0:
 			continue
-		if not _can_harvest_node(agent, node, world, state):
+		if not _can_harvest_node(agent, world, state, node):
 			continue
 		var dist = absi(node.pos_x - agent.pos_x) + absi(node.pos_y - agent.pos_y)
 		if dist < best_dist:
@@ -1126,6 +1128,15 @@ func _find_nearest_accessible_node_of_type(agent: Agent, world: World, type: Str
 			best_node = node
 
 	return best_node
+
+func _can_harvest_node(agent: Agent, world: World, state: SimState, node: ResourceNode) -> bool:
+	if node == null or state == null:
+		return true
+	var owner := world.get_claim_owner(node.pos_x, node.pos_y)
+	if owner <= 0:
+		return true
+	var laws := state.get_laws(owner)
+	return laws.has_harvest_permit(agent.id, agent.faction_id, owner)
 
 func _plan_expand_faction(agent: Agent, goal: Dictionary, world: World, tuning: Dictionary, state: SimState) -> Dictionary:
 	if agent.faction_id == 0:
