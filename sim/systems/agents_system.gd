@@ -26,8 +26,10 @@ func tick(sim: RefCounted, state: SimState) -> void:
         var comfort_decay: float = state.get_tuning_float("comfort_decay_per_tick", 0.1)
         var homelessness_penalty: float = state.get_tuning_float("homelessness_comfort_penalty", 0.3)
         var current_comfort: float = agent.needs.get("comfort", 100.0)
-        var at_shelter := state.structures.get_structure_at(agent.pos_x, agent.pos_y)
-        var in_own_shelter := at_shelter and at_shelter.structure_type == StructureState.TYPE_SHELTER and at_shelter.owner_id == agent.id
+        var at_shelter: StructureState = state.structures.get_structure_at(agent.pos_x, agent.pos_y)
+        var in_own_shelter: bool = at_shelter != null \
+            and at_shelter.structure_type == StructureState.TYPE_SHELTER \
+            and at_shelter.owner_id == agent.id
         if not in_own_shelter:
             if not agent.has_home():
                 current_comfort -= comfort_decay + homelessness_penalty
