@@ -248,85 +248,9 @@ func process_expirations(current_tick: int, agents: Array, state: SimState) -> v
 ## Generate contracts for a day (called at day start)
 func generate_daily_contracts(state: SimState, agents: Array, market: Market, world: World, tuning: Dictionary, 
 							  rng: RNG, current_tick: int) -> void:
-	var post_chance: float = tuning.get("daily_contract_post_chance", 0.15)
-	var deadline_days: int = tuning.get("contract_deadline_days", 2)
-	var payout_mult: float = tuning.get("contract_payout_multiplier", 1.2)
-	
-	# Scarcity sensing
-	var global_berry_stock := world.get_total_stock("berry")
-	var global_tree_stock := world.get_total_stock("tree")
-	var avg_pollution := world.get_average_pollution()
-	var workshop_count := world.get_ready_workshop_count()
-	
-	var food_scarce: bool = global_berry_stock < int(tuning.get("berry_scarcity_threshold", 100))
-	var wood_scarce: bool = global_tree_stock < int(tuning.get("tree_scarcity_threshold", 150))
-	var pollution_high: bool = avg_pollution > float(tuning.get("pollution_high_threshold", 0.6))
-	
-	if food_scarce or pollution_high:
-		# Increase probability of food-related contracts and payouts
-		payout_mult *= tuning.get("contract_food_focus_multiplier", 2.0)
-		var cap: float = tuning.get("contract_payout_multiplier_cap", 2.5)
-		payout_mult = minf(payout_mult, cap)
-		
-	var ticks_per_day: int = tuning.get("ticks_per_day", 200)
-	var market_x: int = tuning.get("market_pos_x", 48)
-	var market_y: int = tuning.get("market_pos_y", 48)
-	
-	var deadline: int = current_tick + (deadline_days * ticks_per_day)
-	
-	# Iterate agents in ID order for determinism
-	var sorted_agents: Array = agents.duplicate()
-	sorted_agents.sort_custom(_sort_agents_by_id)
-	
-	for agent in sorted_agents:
-		if not agent.is_alive():
-			continue
-		
-		var roll: float = rng.randf()
-		if roll >= post_chance:
-			continue
-		
-		# Determine what to request based on needs
-		var item: String
-		var qty: int
-		
-		var hunger: float = agent.get_hunger()
-		var food_count: int = agent.get_item_count("Berries") + agent.get_item_count("CookedMeal")
-		
-		if hunger < 40 and food_count < 3:
-			# Request food
-			if rng.randf() < 0.7:
-				item = "CookedMeal"
-				qty = rng.randi_range(1, 3)
-			else:
-				item = "Berries"
-				qty = rng.randi_range(3, 8)
-		else:
-			# Request materials or tools
-			# If no workshops, rarely ask for manufactured goods unless rich enough to incentivize manual labor
-			var allow_manufactured: bool = (workshop_count > 0) or (rng.randf() < 0.2)
-			
-			var type_roll: float = rng.randf()
-			if allow_manufactured and type_roll < 0.4:
-				item = "Planks"
-				qty = rng.randi_range(2, 5)
-			elif type_roll < 0.7: # More logs if no planks
-				item = "Logs"
-				qty = rng.randi_range(3, 8)
-			elif allow_manufactured and type_roll < 0.8:
-				item = "MetalIngot"
-				qty = rng.randi_range(1, 3)
-			elif wood_scarce and rng.randf() < 0.5:
-				item = "Logs"
-				qty = rng.randi_range(5, 10)
-		
-		# Calculate payout
-		var ref_price: float = market.get_ref_price(item)
-		var payout: int = int(ceil(ref_price * qty * payout_mult))
-		
-		# Only post if can afford
-		if agent.get_available_money() >= payout:
-			post_contract(agent, item, qty, payout, deadline, market_x, market_y, current_tick, state)
+	# Intent-driven contracts are posted by agents when needed.
+	# Keeping function for compatibility with sim call sites.
+	return
 
 ## Remove old inactive contracts to prevent unbounded growth
 func _prune_inactive_contracts() -> void:
@@ -349,7 +273,8 @@ func _prune_inactive_contracts() -> void:
 	contracts = active + inactive
 
 ## Score a contract for an agent
-func score_contract(contract: Contract, agent: Agent, market: Market, tuning: Dictionary) -> float:
+func score_contract(contract: Contract, agent: Agent, market: Market, tuning: Dictionary,
+					world: World, recipes: Dictionary) -> float:
 	if not contract.is_available():
 		return -999999.0
 	
@@ -357,6 +282,9 @@ func score_contract(contract: Contract, agent: Agent, market: Market, tuning: Di
 	if contract.issuer_id == agent.id:
 		return -999999.0
 	
+	if not _can_agent_fulfill(agent, contract, world, recipes):
+		return -999999.0
+
 	# Estimate cost
 	var have: int = agent.get_available_item(contract.item)
 	var need: int = maxi(0, contract.qty - have)
@@ -371,16 +299,13 @@ func score_contract(contract: Contract, agent: Agent, market: Market, tuning: Di
 	if profit < min_profit:
 		return -999999.0
 	
-	# Distance penalty (simple)
-	var market_x: int = tuning.get("market_pos_x", 48)
-	var market_y: int = tuning.get("market_pos_y", 48)
-	var dist: int = absi(agent.pos_x - market_x) + absi(agent.pos_y - market_y)
-	var time_penalty: float = dist * 0.1
-	
-	return profit - time_penalty
+	var estimated_ticks: int = _estimate_fulfillment_time(agent, contract, world, tuning, recipes)
+	var opportunity_cost: float = float(tuning.get("opportunity_cost_per_tick", 0.1))
+	return profit - (estimated_ticks * opportunity_cost)
 
 ## Find best contract for an agent
-func find_best_contract(agent: Agent, market: Market, tuning: Dictionary) -> Contract:
+func find_best_contract(agent: Agent, market: Market, tuning: Dictionary,
+						world: World, recipes: Dictionary) -> Contract:
 	var available: Array = get_available_contracts()
 	if available.is_empty():
 		return null
@@ -392,7 +317,7 @@ func find_best_contract(agent: Agent, market: Market, tuning: Dictionary) -> Con
 	available.sort_custom(_sort_contracts_by_id)
 	
 	for contract in available:
-		var score: float = score_contract(contract, agent, market, tuning)
+		var score: float = score_contract(contract, agent, market, tuning, world, recipes)
 		if score > best_score:
 			best_score = score
 			best_contract = contract
@@ -409,6 +334,71 @@ func has_active_contract_for_issuer(issuer_type: String, issuer_id: int, item: S
 		if contract.is_active():
 			return true
 	return false
+
+func _can_agent_fulfill(agent: Agent, contract: Contract, world: World, recipes: Dictionary) -> bool:
+	if contract == null:
+		return false
+	var item: String = contract.item
+
+	if item in ["Logs", "Ore"]:
+		if item == "Logs" and not (agent.has_tool("Axe") or agent.has_tool("WoodenAxe")):
+			return false
+		if item == "Ore" and not (agent.has_tool("Pickaxe") or agent.has_tool("WoodenPickaxe")):
+			return false
+		return true
+	if item in ["Berries", "Stone"]:
+		return true
+
+	var recipe := _find_recipe_for_output(item, recipes, world)
+	if recipe == null:
+		return false
+	if recipe.station == "workbench" and not agent.has_available_item("Workbench"):
+		return false
+	if recipe.station != "hand" and recipe.station != "workbench" and not world.has_workshop_type(recipe.station):
+		return false
+	return true
+
+func _estimate_fulfillment_time(agent: Agent, contract: Contract, world: World, tuning: Dictionary, recipes: Dictionary) -> int:
+	if contract == null:
+		return 0
+	var travel_ticks: int = absi(agent.pos_x - contract.delivery_pos_x) + absi(agent.pos_y - contract.delivery_pos_y)
+	var work_ticks := 0
+	var item: String = contract.item
+
+	if item in ["Berries", "Logs", "Ore", "Stone"]:
+		var gather_ticks_per_item: int = int(tuning.get("contract_gather_ticks_per_item", 10))
+		work_ticks = gather_ticks_per_item * contract.qty
+	else:
+		var recipe := _find_recipe_for_output(item, recipes, world)
+		if recipe != null:
+			var output_qty: int = int(recipe.outputs.get(item, 1))
+			var batches: int = int(ceil(float(contract.qty) / maxf(float(output_qty), 1.0)))
+			work_ticks = recipe.ticks * batches
+		else:
+			work_ticks = int(tuning.get("contract_unknown_item_ticks", 100))
+
+	return travel_ticks + work_ticks
+
+func _find_recipe_for_output(output_item: String, recipes: Dictionary, world: World) -> Recipe:
+	for recipe_id in recipes:
+		var recipe: Recipe = recipes[recipe_id]
+		if recipe.outputs.has(output_item) and _is_recipe_allowed(recipe, world):
+			return recipe
+	return null
+
+func _is_recipe_allowed(recipe: Recipe, world: World) -> bool:
+	if recipe == null:
+		return false
+	if recipe.tier != "advanced":
+		return _is_recipe_station_available(recipe, world)
+	if recipe.station == "hand":
+		return false
+	return _is_recipe_station_available(recipe, world)
+
+func _is_recipe_station_available(recipe: Recipe, world: World) -> bool:
+	if recipe.station == "hand" or recipe.station == "workbench":
+		return true
+	return world.has_workshop_type(recipe.station)
 
 func _find_org_delivery_stockpile(organization: Organization, state: SimState, target_x: int, target_y: int) -> StructureState:
 	var stockpiles := state.structures.get_stockpiles_for_owner(organization.get_owner_id())
