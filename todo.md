@@ -406,6 +406,24 @@
 
 ---
 
+### P1k2 — Career Ladders & Long-Term Progression
+> Careers need multi-stage progression (apprentice → journeyman → master) with
+> explicit skill, station, and production milestones that feed LongTermPlanner.
+
+- [ ] **Add career ladder definitions** — Define stages, required skills, and milestone outputs for each career.
+  - File: `sim/brains/careers/career_registry.gd` (NEW)
+  - Include: required tools, required stations, preferred recipes, and milestone items
+
+- [ ] **Add career progression state to Agent** — Track `career_stage`, `career_milestones`, and `career_xp`.
+  - File: `sim/agent.gd`
+  - Include serialization in `to_dict()` / `from_dict()`
+
+- [ ] **Add career milestone goals** — Goals like `GAIN_SKILL_XP`, `CRAFT_MILESTONE_ITEM`, `BUILD_ADVANCED_STATION`.
+  - File: `sim/brains/planners/career_planner.gd`
+  - Integrate with LongTermPlanner for multi-day milestones
+
+---
+
 ### P1l — Tool Acquisition Goals
 > Career progression often requires specific tools.
 
@@ -428,6 +446,43 @@
 - [ ] **Implement resource access goals** — Career-specific: loggers should claim/access tree areas; miners should claim/access ore deposits.
   - File: `sim/brains/planners/career_planner.gd`
   - Goal: `{type: "SECURE_RESOURCE_ACCESS", resource_type: "tree"}`
+
+---
+
+### P1n — Career System Expansion (Stations & Professions)
+> V3 should include a broader station taxonomy and more careers, enabling
+> workshop → specialized station → advanced production chains.
+
+- [ ] **Expand station taxonomy** — Add station types beyond basic workshop variants (e.g., `farmhouse`, `bakery`, `forge`, `smelter`, `stove`, `brick_kiln`).
+  - File: `sim/world/workshop.gd`
+  - File: `sim/communal_projects_system.gd` (project types + requirements)
+  - File: `sim/organizations.gd` (station planning logic)
+
+- [ ] **Add station support in crafting/task systems** — Ensure JobBoard and DefaultBrain can route recipes to new stations.
+  - File: `sim/systems/job_board_system.gd`
+  - File: `sim/brains/default_brain.gd`
+
+- [ ] **Expand career list** — Add careers aligned to new stations: `cook`, `baker`, `mason`, `charcoal_burner`, `farmer`, `metalsmith`, `carpenter`.
+  - File: `sim/brains/planners/career_planner.gd`
+  - File: `sim/brains/careers/career_registry.gd`
+
+---
+
+### P1o — Fuel, Cooking, and Advanced Production Chains
+> Cooking/baking/brick-making requires fuel systems and station dependencies.
+
+- [ ] **Add fuel items and consumption** — Introduce `Charcoal`, `Coal`, `Firewood` and consume fuel per crafting batch.
+  - File: `sim/recipes.gd` (new fuel-related recipes)
+  - File: `sim/crafting.gd` (fuel consumption in job execution)
+  - File: `sim/world/workshop.gd` (optional station fuel inventory)
+
+- [ ] **Add cooking and processing recipes** — Cooking, baking, charcoal making, brick making.
+  - File: `sim/recipes.gd`
+  - Requires new station types from P1n
+
+- [ ] **Add fuel-supply career goals** — `PRODUCE_CHARCOAL_BATCH`, `STOCK_FUEL_FOR_STATIONS`, `BUILD_KILN`.
+  - File: `sim/brains/planners/career_planner.gd`
+  - Integrate with LongTermPlanner milestones
 
 ---
 
