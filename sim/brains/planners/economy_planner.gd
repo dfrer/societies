@@ -74,6 +74,18 @@ func add_progression_goal(agent: Agent, world: World, tuning: Dictionary, recipe
 	agent.goal_stack.push_back({"type": "OBTAIN_ITEM", "item": "Planks", "qty": 1, "is_goal": true})
 	return true
 
+func should_avoid_buying(agent: Agent, item: String, market: Market, tuning: Dictionary, current_tick: int) -> bool:
+	var max_age: int = int(tuning.get("market_price_memory_max_age_ticks", 240))
+	var overpay_multiplier: float = float(tuning.get("market_price_memory_overpay_multiplier", 1.2))
+	var memory_entry: Dictionary = agent.get_market_price_memory_entry(item, current_tick, max_age)
+	if memory_entry.is_empty():
+		return false
+	var fair_price: float = float(memory_entry.get("last_price", 0))
+	if fair_price <= 0.0:
+		return false
+	var ref_price: float = market.get_ref_price(item)
+	return ref_price > fair_price * overpay_multiplier
+
 func _has_allowed_recipe(output_item: String, recipes: Dictionary, world: World) -> bool:
 	for recipe_id in recipes:
 		var recipe: Recipe = recipes[recipe_id]

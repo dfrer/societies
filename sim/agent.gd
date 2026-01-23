@@ -453,6 +453,29 @@ func _enforce_market_price_memory_limit(limit: int = 20) -> void:
 		var oldest: Dictionary = entries.pop_front()
 		market_price_memory.erase(oldest.get("item", ""))
 
+## Record a market price observation
+func remember_market_price(item_name: String, price: int, tick: int, limit: int = 20) -> void:
+	if item_name == "":
+		return
+	market_price_memory[item_name] = {
+		"last_price": int(price),
+		"last_tick": int(tick)
+	}
+	_enforce_market_price_memory_limit(limit)
+
+## Retrieve a market price memory entry if it is not stale
+func get_market_price_memory_entry(item_name: String, current_tick: int, max_age_ticks: int) -> Dictionary:
+	if item_name == "":
+		return {}
+	var entry: Dictionary = market_price_memory.get(item_name, {})
+	if entry.is_empty():
+		return {}
+	if max_age_ticks >= 0 and current_tick > 0:
+		var last_tick: int = int(entry.get("last_tick", 0))
+		if current_tick - last_tick > max_age_ticks:
+			return {}
+	return entry.duplicate(true)
+
 ## Get available money
 func get_available_money() -> int:
 	return maxi(0, money - locked_money)

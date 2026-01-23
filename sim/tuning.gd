@@ -126,6 +126,11 @@ func _init_schema() -> void:
 	_add_schema("food_scarcity_multiplier", "float", true, 0.4, 0, 2, "Price multiplier during food scarcity")
 	_add_schema("berry_scarcity_threshold", "int", true, 100, 0, 10000, "Berry stock below which is scarcity")
 	_add_schema("tree_scarcity_threshold", "int", true, 150, 0, 10000, "Tree stock below which is scarcity")
+	_add_schema("market_price_memory_max_age_ticks", "int", false, 240, 0, 100000, "Max age for market price memory")
+	_add_schema("market_price_memory_overpay_multiplier", "float", false, 1.2, 1.0, 10.0, "Overpay threshold multiplier for price memory")
+	_add_schema("market_price_memory_limit", "int", false, 20, 1, 1000, "Maximum entries in market price memory")
+	_add_schema("market_intention_ttl_ticks", "int", false, 120, 1, 10000, "TTL for market intentions")
+	_add_schema("market_intention_max_attempts", "int", false, 3, 1, 100, "Max attempts for market intentions")
 	
 	# Workshops
 	_add_schema("workshop_start_count", "int", true, 1, 0, 100, "Initial workshops")
@@ -145,6 +150,7 @@ func _init_schema() -> void:
 	_add_schema("miner_pollution_tolerance", "float", true, 0.8, 0, 1, "Pollution tolerance for miners")
 	_add_schema("trader_min_inventory_value", "int", true, 100, 0, 10000, "Min inventory value for traders to buy")
 	_add_schema("role_switch_interval_ticks", "int", true, 100, 1, 1000, "Ticks between role switch evaluation")
+	_add_schema("career_resource_access_radius", "int", false, 12, 1, 100, "Radius before seeking resource access")
 	
 	# Skills
 	_add_schema("skill_xp_per_action", "float", true, 0.1, 0, 10, "XP gained per action")
