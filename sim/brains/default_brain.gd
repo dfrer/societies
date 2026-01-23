@@ -63,7 +63,7 @@ func decide_action(agent: Agent, world: World, market: Market,
 		var current_goal: Dictionary = agent.goal_stack.back()
 
 		# Check completion
-		if _is_goal_complete(agent, current_goal, world):
+		if _is_goal_complete(agent, current_goal, world, contracts_system):
 			agent.goal_stack.pop_back()
 			iterations += 1  # Increment to prevent infinite loop on instant completion
 			continue
@@ -119,7 +119,7 @@ func _generate_high_level_goals(agent: Agent, context: PlannerContext) -> void:
 	_economy_planner.add_progression_goal(agent, context.world, context.tuning, context.recipes, context.state)
 
 # Helper function to determine if agent should claim resources
-func _is_goal_complete(agent: Agent, goal: Dictionary, world: World) -> bool:
+func _is_goal_complete(agent: Agent, goal: Dictionary, world: World, contracts_system: ContractsSystem) -> bool:
 	match goal.type:
 		"CLAIM_RESOURCES":
 			# Complete when we've claimed a valuable resource or no tokens left
@@ -168,6 +168,8 @@ func _is_goal_complete(agent: Agent, goal: Dictionary, world: World) -> bool:
 			return agent.get_hunger() >= 50.0 or not agent.has_available_item(goal.item)
 		"FULFILL_CONTRACT":
 			return agent.active_contract_id == -1 # Completed/Failed
+		"POST_CONTRACT_FOR_NEED":
+			return contracts_system.has_active_contract_for_issuer("agent", agent.id, goal.get("item", ""))
 		"GO_TO":
 			return agent.is_at(goal.x, goal.y)
 		"ACCEPT_CONTRACT":
@@ -205,7 +207,13 @@ func _process_goal(agent: Agent, goal: Dictionary, world: World, market: Market,
 		"BUILD_STRATEGIC_WORKSHOP":
 			return _plan_build_strategic_workshop(agent, goal, world, tuning)
 		"OBTAIN_ITEM":
-			return _plan_obtain_item(agent, goal, world, market, recipes, tuning, state)
+			var obtain_result := _plan_obtain_item(agent, goal, world, market, recipes, tuning, state)
+			if obtain_result.is_empty() and not market.has_active_order(agent.id, goal.get("item", ""), "buy"):
+				agent.goal_data["failed_item_request"] = {
+					"item": goal.get("item", ""),
+					"qty": int(goal.get("qty", 1))
+				}
+			return obtain_result
 		"EAT_FOOD":
 			# Directly return eat action for the food item
 			if goal.item == "CookedMeal":
@@ -241,6 +249,11 @@ func _process_goal(agent: Agent, goal: Dictionary, world: World, market: Market,
 			var contract_id = goal.contract_id
 			# Just do it
 			return Actions.accept_contract(contract_id)
+		"POST_CONTRACT_FOR_NEED":
+			var item: String = goal.get("item", "")
+			var qty: int = int(goal.get("qty", 1))
+			var payout: int = int(goal.get("payout", 0))
+			return Actions.post_contract(item, qty, payout)
 		"EXPAND_FACTION":
 			return _plan_expand_faction(agent, goal, world, tuning, state)
 		"BUILD_ROAD":
@@ -294,6 +307,8 @@ func _intent_from_goal(agent: Agent, goal: Dictionary, world: World, market: Mar
 			return {"type": "REST", "data": {}}
 		"ACCEPT_CONTRACT":
 			return {"type": "ACCEPT_CONTRACT", "data": {"contract_id": goal.get("contract_id", -1)}}
+		"POST_CONTRACT_FOR_NEED":
+			return {"type": "POST_CONTRACT_FOR_NEED", "data": {"item": goal.get("item", ""), "qty": goal.get("qty", 1)}}
 		"GO_TO":
 			return {"type": "GO_TO", "data": {"x": goal.get("x", agent.pos_x), "y": goal.get("y", agent.pos_y)}}
 	return {"type": "IDLE", "data": {}}
@@ -344,9 +359,9 @@ func _commit_activity_for_intent(agent: Agent, intent: Dictionary, state: SimSta
 
 func _claim_opportunity_activity(agent: Agent, world: World, tuning: Dictionary, state: SimState) -> Dictionary:
 	var contract_threshold: float = float(tuning.get("contract_prefer_profit_threshold", 8))
-	var best_contract := state.contracts_system.find_best_contract(agent, state.market, tuning)
+	var best_contract := state.contracts_system.find_best_contract(agent, state.market, tuning, state.world, state.recipes)
 	if best_contract != null:
-		var score := state.contracts_system.score_contract(best_contract, agent, state.market, tuning)
+		var score := state.contracts_system.score_contract(best_contract, agent, state.market, tuning, state.world, state.recipes)
 		if score >= contract_threshold:
 			var candidates := state.job_board.get_available_activities(JobBoard.ACTIVITY_ACCEPT_CONTRACT)
 			for activity in candidates:

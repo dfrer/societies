@@ -32,6 +32,7 @@ var locked_inventory: Dictionary = {}
 
 ## Contract state
 var active_contract_id: int = -1
+var contract_rejection_history: Array[Dictionary] = []
 
 ## Enforcement state
 var market_ban_until_tick: int = 0
@@ -139,6 +140,7 @@ func to_dict() -> Dictionary:
 		"locked_money": locked_money,
 		"locked_inventory": locked_inventory.duplicate(),
 		"active_contract_id": active_contract_id,
+		"contract_rejection_history": contract_rejection_history.duplicate(true),
 		"market_ban_until_tick": market_ban_until_tick,
 		"risk_tolerance": snappedf(risk_tolerance, 0.00000001),
 		"grievance": snappedf(grievance, 0.00000001),
@@ -324,6 +326,11 @@ static func from_dict(d: Dictionary) -> Agent:
 	for key in locked_inv:
 		agent.locked_inventory[key] = int(locked_inv[key])
 	agent.active_contract_id = int(d.get("active_contract_id", -1))
+	var rejection_data: Array = d.get("contract_rejection_history", [])
+	agent.contract_rejection_history = []
+	for entry in rejection_data:
+		if entry is Dictionary:
+			agent.contract_rejection_history.append(entry.duplicate(true))
 	agent.market_ban_until_tick = int(d.get("market_ban_until_tick", 0))
 	agent.risk_tolerance = snappedf(float(d.get("risk_tolerance", 0.5)), 0.00000001)
 	agent.grievance = snappedf(float(d.get("grievance", 0.0)), 0.00000001)
