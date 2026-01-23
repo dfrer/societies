@@ -29,6 +29,9 @@ func _init_pipeline() -> void:
 
 ## Initialize a new simulation with the given seed
 func init_new(seed_value: int) -> void:
+	# Re-initialize pipeline to ensure fresh systems (logger, etc)
+	_init_pipeline()
+	
 	state = SimState.new()
 	state.rng.init_seed(seed_value)
 	
