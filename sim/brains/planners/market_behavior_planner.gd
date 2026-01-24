@@ -3,7 +3,7 @@ class_name MarketBehaviorPlanner
 extends IAgentPlanner
 
 func get_priority() -> int:
-	return 65
+	return DefaultBrain.PRIORITY_MARKET_BEHAVIOR
 
 func maybe_add_goal(agent: Agent, context: PlannerContext) -> bool:
 	var intentions := _gather_market_intentions(agent, context.market, context.tuning)
@@ -47,7 +47,7 @@ func _gather_market_intentions(agent: Agent, market: Market, tuning: Dictionary)
 	if not failed_request.is_empty():
 		var item: String = failed_request.get("item", "")
 		var qty: int = int(failed_request.get("qty", 1))
-		if item != "":
+		if item != "" and not _should_skip_market_buy(agent, item, tuning):
 			_add_intention(intentions, {
 				"type": "BUY_NEEDS",
 				"item": item,
@@ -85,6 +85,23 @@ func _gather_market_intentions(agent: Agent, market: Market, tuning: Dictionary)
 		})
 
 	return intentions
+
+func _should_skip_market_buy(agent: Agent, item: String, tuning: Dictionary) -> bool:
+	if not _has_save_for_item_goal(agent):
+		return false
+	var emergency_threshold: float = float(tuning.get("emergency_hunger_threshold", 15.0))
+	if item in ["Berries", "CookedMeal"] and agent.get_hunger() < emergency_threshold:
+		return false
+	return true
+
+func _has_save_for_item_goal(agent: Agent) -> bool:
+	for goal in agent.long_term_goals:
+		if goal.get("type", "") == "SAVE_FOR_ITEM":
+			return true
+	for goal in agent.goal_stack:
+		if goal.get("type", "") == "SAVE_FOR_ITEM":
+			return true
+	return false
 
 func _normalize_intentions(intentions: Array[Dictionary], current_tick: int, tuning: Dictionary) -> Array[Dictionary]:
 	var ttl: int = int(tuning.get("market_intention_ttl_ticks", 120))

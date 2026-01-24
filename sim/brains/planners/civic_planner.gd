@@ -3,7 +3,7 @@ class_name CivicPlanner
 extends "res://sim/brains/planners/i_agent_planner.gd"
 
 func get_priority() -> int:
-	return 40
+	return DefaultBrain.PRIORITY_CIVIC
 
 func maybe_add_goal(agent: Agent, context: PlannerContext) -> bool:
 	if context.state == null:

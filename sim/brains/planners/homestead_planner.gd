@@ -3,7 +3,7 @@ class_name HomesteadPlanner
 extends IAgentPlanner
 
 func get_priority() -> int:
-	return 70
+	return DefaultBrain.PRIORITY_HOMESTEAD
 
 func maybe_add_goal(agent: Agent, context: PlannerContext) -> bool:
 	if not agent.has_home() and agent.has_claim_tokens():

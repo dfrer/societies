@@ -3,7 +3,7 @@ class_name SurvivalPlanner
 extends IAgentPlanner
 
 func get_priority() -> int:
-	return 90
+	return DefaultBrain.PRIORITY_SURVIVAL
 
 func get_interrupt_action(agent: Agent, tuning: Dictionary) -> Dictionary:
 	var emergency_threshold: float = tuning.get("emergency_hunger_threshold", 15.0)

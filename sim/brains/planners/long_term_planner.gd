@@ -3,7 +3,7 @@ class_name LongTermPlanner
 extends "res://sim/brains/planners/i_agent_planner.gd"
 
 func get_priority() -> int:
-	return 30
+	return DefaultBrain.PRIORITY_LONG_TERM
 
 func maybe_add_goal(agent: Agent, context: PlannerContext) -> bool:
 	var tuning_data: Dictionary = context.tuning if context.tuning is Dictionary else {}
@@ -17,6 +17,7 @@ func maybe_add_goal(agent: Agent, context: PlannerContext) -> bool:
 			continue
 		var item: String = long_term_goal.get("item", "")
 		var target_money: int = int(long_term_goal.get("target_money", 0))
+		_update_save_goal_progress(agent, long_term_goal, item, target_money)
 		if _is_save_goal_complete(agent, item, target_money):
 			completed_indices.append(i)
 			continue
@@ -33,6 +34,16 @@ func maybe_add_goal(agent: Agent, context: PlannerContext) -> bool:
 		agent.long_term_goals.remove_at(completed_indices[idx])
 
 	return false
+
+func _update_save_goal_progress(agent: Agent, goal: Dictionary, item: String, target_money: int) -> void:
+	if item != "" and agent.has_item(item, 1):
+		goal["progress"] = 1.0
+		return
+	if target_money <= 0:
+		goal["progress"] = 0.0
+		return
+	var progress := float(agent.get_available_money()) / float(target_money)
+	goal["progress"] = clampf(progress, 0.0, 1.0)
 
 func _maybe_add_save_for_item_goal(agent: Agent, market: Market, tuning: Dictionary, state: SimState) -> void:
 	if agent.has_tool("Axe"):

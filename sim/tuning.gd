@@ -131,6 +131,7 @@ func _init_schema() -> void:
 	_add_schema("market_price_memory_limit", "int", false, 20, 1, 1000, "Maximum entries in market price memory")
 	_add_schema("market_intention_ttl_ticks", "int", false, 120, 1, 10000, "TTL for market intentions")
 	_add_schema("market_intention_max_attempts", "int", false, 3, 1, 100, "Max attempts for market intentions")
+	_add_schema("market_intention_cooldown_ticks", "int", false, 12, 0, 10000, "Cooldown before adding new market intentions")
 	
 	# Workshops
 	_add_schema("workshop_start_count", "int", true, 1, 0, 100, "Initial workshops")
@@ -151,6 +152,8 @@ func _init_schema() -> void:
 	_add_schema("trader_min_inventory_value", "int", true, 100, 0, 10000, "Min inventory value for traders to buy")
 	_add_schema("role_switch_interval_ticks", "int", true, 100, 1, 1000, "Ticks between role switch evaluation")
 	_add_schema("career_resource_access_radius", "int", false, 12, 1, 100, "Radius before seeking resource access")
+	_add_schema("career_discovery_ticks", "int", false, 48, 1, 10000, "Ticks between career reassessment")
+	_add_schema("specialization_skill_threshold", "float", false, 2.0, 0, 100, "Skill level threshold to specialize")
 	
 	# Skills
 	_add_schema("skill_xp_per_action", "float", true, 0.1, 0, 10, "XP gained per action")
@@ -162,6 +165,7 @@ func _init_schema() -> void:
 	_add_schema("contract_payout_multiplier", "float", true, 1.2, 0, 10, "Contract payout multiplier")
 	_add_schema("contract_accept_min_profit", "int", true, 5, 0, 1000, "Minimum profit to accept contract")
 	_add_schema("contract_prefer_profit_threshold", "int", false, 8, 0, 10000, "Profit threshold to prefer contracts over org tasks")
+	_add_schema("contract_posting_cooldown_ticks", "int", false, 24, 0, 10000, "Cooldown ticks before posting another contract")
 	_add_schema("max_active_contracts_per_agent", "int", true, 1, 0, 10, "Max active contracts per agent")
 	_add_schema("contract_food_focus_multiplier", "float", true, 2.0, 0, 10, "Food payout multiplier during scarcity")
 	_add_schema("contract_payout_multiplier_cap", "float", true, 2.5, 0, 10, "Max contract payout multiplier")

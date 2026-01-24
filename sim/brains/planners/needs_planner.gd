@@ -8,7 +8,7 @@ extends "res://sim/brains/planners/i_agent_planner.gd"
 # 2. Goal Generation: Adds goals for hungry/tired states or proactive buffering
 
 func get_priority() -> int:
-	return 100 # Priority.CRITICAL_NEEDS - usually high
+	return DefaultBrain.PRIORITY_CRITICAL_NEEDS
 
 func get_interrupt_action(agent: Agent, tuning: Variant) -> Dictionary:
 	var tuning_data: Dictionary = tuning if tuning is Dictionary else {}

@@ -3,7 +3,7 @@ class_name GovernancePlanner
 extends IAgentPlanner
 
 func get_priority() -> int:
-	return 20
+	return DefaultBrain.PRIORITY_GOVERNANCE
 
 func maybe_add_goal(agent: Agent, context: PlannerContext) -> bool:
 	if context.state == null:

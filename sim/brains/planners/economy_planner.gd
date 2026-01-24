@@ -6,7 +6,7 @@ var _world: World = null
 var _recipes: Dictionary = {}
 
 func get_priority() -> int:
-	return 60
+	return DefaultBrain.PRIORITY_ECONOMY
 
 func maybe_add_goal(agent: Agent, context: PlannerContext) -> bool:
 	return add_primary_goal(agent, context.world, context.market, context.contracts_system, context.tuning, context.recipes, context.state)
@@ -85,6 +85,23 @@ func should_avoid_buying(agent: Agent, item: String, market: Market, tuning: Dic
 		return false
 	var ref_price: float = market.get_ref_price(item)
 	return ref_price > fair_price * overpay_multiplier
+
+func should_suppress_market_purchase(agent: Agent, item: String, tuning: Dictionary) -> bool:
+	if not _has_save_for_item_goal(agent):
+		return false
+	var emergency_threshold: float = float(tuning.get("emergency_hunger_threshold", 15.0))
+	if item in ["Berries", "CookedMeal"] and agent.get_hunger() < emergency_threshold:
+		return false
+	return true
+
+func _has_save_for_item_goal(agent: Agent) -> bool:
+	for goal in agent.long_term_goals:
+		if goal.get("type", "") == "SAVE_FOR_ITEM":
+			return true
+	for goal in agent.goal_stack:
+		if goal.get("type", "") == "SAVE_FOR_ITEM":
+			return true
+	return false
 
 func _has_allowed_recipe(output_item: String, recipes: Dictionary, world: World) -> bool:
 	for recipe_id in recipes:

@@ -3,7 +3,7 @@ class_name CareerPlanner
 extends IAgentPlanner
 
 func get_priority() -> int:
-	return 75
+	return DefaultBrain.PRIORITY_CAREER
 
 func maybe_add_goal(agent: Agent, context: PlannerContext) -> bool:
 	if agent.career_type == "none" or agent.career_type == "":

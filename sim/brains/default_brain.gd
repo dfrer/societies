@@ -3,6 +3,20 @@
 class_name DefaultBrain
 extends IAgentBrain
 
+# Planner priorities (higher runs first)
+const PRIORITY_SURVIVAL = 100
+const PRIORITY_CRITICAL_NEEDS = 90
+const PRIORITY_COMMITMENTS = 80
+const PRIORITY_LONG_TERM = 70
+const PRIORITY_NEEDS = 60
+const PRIORITY_CAREER = 55
+const PRIORITY_HOMESTEAD = 50
+const PRIORITY_MARKET_BEHAVIOR = 45
+const PRIORITY_ECONOMY = 40
+const PRIORITY_CIVIC = 30
+const PRIORITY_SOCIAL = 20
+const PRIORITY_GOVERNANCE = 10
+
 # Weight mappings
 const WEIGHT_SURVIVAL = 10.0
 const WEIGHT_HEALTH = 5.0
@@ -205,6 +219,8 @@ func _is_goal_complete(agent: Agent, goal: Dictionary, world: World, contracts_s
 			return goal.get("intentions", []).is_empty()
 		"ACCEPT_CONTRACT":
 			return agent.has_active_contract()
+		"COMPLETE_ACTIVITY":
+			return agent.current_activity_id != int(goal.get("activity_id", -1))
 		"JOIN_FACTION":
 			var target_faction: int = int(goal.get("faction_id", 0))
 			return agent.faction_id == target_faction or agent.faction_id != 0
@@ -419,6 +435,18 @@ func _process_goal(agent: Agent, goal: Dictionary, world: World, market: Market,
 			return _plan_build_road(agent, goal, world, tuning)
 		"REST":
 			return Actions.rest()
+		"COMPLETE_ACTIVITY":
+			if state == null:
+				return {}
+			var activity_id: int = int(goal.get("activity_id", -1))
+			if activity_id < 0:
+				return {}
+			if agent.current_activity_id != activity_id:
+				agent.current_activity_id = activity_id
+			var activity := state.job_board.get_activity(activity_id)
+			if activity.is_empty():
+				return {}
+			return _action_from_activity(agent, activity, world, tuning, state)
 
 	return {}
 
@@ -493,6 +521,8 @@ func _intent_from_goal(agent: Agent, goal: Dictionary, world: World, market: Mar
 			return {"type": "GO_TO", "data": {"x": goal.get("x", agent.pos_x), "y": goal.get("y", agent.pos_y)}}
 		"GO_TO_MARKET_WITH_INTENT":
 			return {"type": "GO_TO_MARKET_WITH_INTENT", "data": {"intentions": goal.get("intentions", [])}}
+		"COMPLETE_ACTIVITY":
+			return {"type": "COMPLETE_ACTIVITY", "data": {"activity_id": goal.get("activity_id", -1)}}
 	return {"type": "IDLE", "data": {}}
 
 func _set_intent(state: SimState, agent: Agent, intent_type: String, data: Dictionary) -> void:
@@ -838,6 +868,8 @@ func _plan_obtain_item(agent: Agent, goal: Dictionary, world: World, market: Mar
 	var current_tick: int = state.tick if state != null else 0
 	if _economy_planner.should_avoid_buying(agent, item, market, tuning, current_tick):
 		return {}
+	if _economy_planner.should_suppress_market_purchase(agent, item, tuning):
+		return {}
 	var price = market.get_ref_price(item)
 	if agent.get_available_money() >= price:
 		# Place buy order
@@ -902,12 +934,12 @@ func _plan_market_intentions(agent: Agent, goal: Dictionary, world: World, marke
 				elif agent.has_available_item(item, qty):
 					fulfilled = true
 				elif market.has_active_order(agent.id, item, "buy"):
-					fulfilled = true
+					fulfilled = false
 				elif agent.get_available_money() < market.get_ref_price(item):
 					intention = _increment_intention_attempts(intention, max_attempts)
 				else:
 					action = Actions.place_buy_order(item)
-					fulfilled = true
+					fulfilled = false
 				if fulfilled:
 					agent.goal_data.erase("failed_item_request")
 			"SELL_SURPLUS":
@@ -919,10 +951,10 @@ func _plan_market_intentions(agent: Agent, goal: Dictionary, world: World, marke
 					if agent.get_available_item(item) <= threshold:
 						fulfilled = true
 					elif market.has_active_order(agent.id, item, "sell"):
-						fulfilled = true
+						fulfilled = false
 					else:
 						action = Actions.place_sell_order(item)
-						fulfilled = true
+						fulfilled = false
 			"FIND_WORK":
 				if agent.has_active_contract():
 					fulfilled = true
@@ -939,6 +971,8 @@ func _plan_market_intentions(agent: Agent, goal: Dictionary, world: World, marke
 				fulfilled = true
 
 		if action.has("type"):
+			if not fulfilled and not intention.is_empty():
+				updated_intentions.append(intention)
 			for j in range(i + 1, intentions.size()):
 				if intentions[j] is Dictionary:
 					updated_intentions.append(intentions[j].duplicate(true))

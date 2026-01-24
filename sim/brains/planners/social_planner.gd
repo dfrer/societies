@@ -3,7 +3,7 @@ class_name SocialPlanner
 extends "res://sim/brains/planners/i_agent_planner.gd"
 
 func get_priority() -> int:
-	return 50
+	return DefaultBrain.PRIORITY_SOCIAL
 
 func maybe_add_goal(agent: Agent, context: PlannerContext) -> bool:
 	var tuning_data: Dictionary = context.tuning if context.tuning is Dictionary else {}

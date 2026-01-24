@@ -4,7 +4,7 @@ class_name CommitmentPlanner
 extends IAgentPlanner
 
 func get_priority() -> int:
-	return 100 # Highest priority
+	return DefaultBrain.PRIORITY_COMMITMENTS
 
 func maybe_add_goal(agent: Agent, context: PlannerContext) -> bool:
 	# Check for active contract
