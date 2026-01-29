@@ -12,3 +12,27 @@ thumbs.db
 
 # Artifacts
 artifacts/
+
+# Godot-specific
+.import/
+export.cfg
+export_presets.cfg
+*.tmp
+
+# C#-specific
+*.csproj
+*.sln
+bin/
+obj/
+.vs/
+*.user
+
+# Excel temp files
+~$*.xlsx
+*.xlk
+*.xlsb
+
+# Build outputs
+build/
+dist/
+releases/
