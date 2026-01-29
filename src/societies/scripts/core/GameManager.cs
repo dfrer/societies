@@ -179,11 +179,11 @@ namespace Societies.Core
             var fps = Engine.GetFramesPerSecond();
             var entityCount = _entityManager?.EntityCount ?? 0;
             
-            _debugInfo.Text = $"""Societies v0.1.0-alpha
-FPS: {fps:F0}
-Entities: {entityCount}
-Mode: {(_networkManager?.IsServer == true ? "Server" : "Client")}
-Connected: {_networkManager?.IsConnected == true}""";
+            _debugInfo.Text = $"Societies v0.1.0-alpha\n" +
+                $"FPS: {fps:F0}\n" +
+                $"Entities: {entityCount}\n" +
+                $"Mode: {(_networkManager?.IsServer == true ? "Server" : "Client")}\n" +
+                $"Connected: {_networkManager?.IsConnected == true}";
         }
         
         private void ProcessGameTick(double delta)
