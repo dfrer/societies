@@ -1,0 +1,40 @@
+# Resource Economy Balance
+
+## Generation Rates
+
+Resource,Base Rate,Tool Modifier,Skill Modifier,Final Rate,Unit
+Wood,10,=1+(ToolTier*0.5),=1+(Skill/100),=B2*C2*D2,units/min
+Stone,5,=1+(ToolTier*0.5),=1+(Skill/100),=B3*C3*D3,units/min
+Iron Ore,3,=1+(ToolTier*0.5),=1+(Skill/100),=B4*C4*D4,units/min
+Copper Ore,3,=1+(ToolTier*0.5),=1+(Skill/100),=B5*C5*D5,units/min
+Food (Gather),2,N/A,=1+(Skill/100),=B6*D6,units/min
+Food (Farm),5,N/A,=1+(Skill/100),=B7*D7,units/min
+
+Note: ToolTier = 0 (hands) to 5 (steel)
+Note: Skill = 0 to 100
+
+## Production Chains
+
+Product,Input 1,Qty 1,Input 2,Qty 2,Time (min),Output,Efficiency
+Stone Axe,Wood,5,Stone,10,2,1,100%
+Copper Ingot,Copper Ore,3,Coal,1,5,1,100%
+Iron Ingot,Iron Ore,3,Coal,2,8,1,100%
+Iron Tool,Iron Ingot,2,Wood,3,5,1,100%
+Bread,Flour,1,Water,1,1,2,100%
+
+## Tool Durability
+
+Tool Type,Durability,Uses/Day Heavy,Uses/Day Moderate,Lifetime Days
+Stone,20,20,10,=B2/C2
+Copper,50,20,10,=B3/C3
+Bronze,75,20,10,=B4/C4
+Iron,100,20,10,=B5/C5
+Steel,200,20,10,=B6/C6
+
+## Supply vs Demand
+
+Resource,Daily Supply,Daily Demand,Surplus/Deficit,Price Elasticity
+Food,24,18,=B2-C2,Low
+Wood,60,15,=B3-C3,Medium
+Iron,6,3,=B4-C4,High
+Tools,0.1,0.2,=B5-C5,Very High

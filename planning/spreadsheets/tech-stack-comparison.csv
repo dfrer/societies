@@ -1,0 +1,61 @@
+# Tech Stack Comparison
+
+## Sheet 1: Engine Comparison
+
+Criteria,Godot 4.x,Unity,Unreal Engine,Weight
+Cost,Free (MIT),Free (rev share),Free (5% royalty),High
+Score,10,7,6,
+Learning Curve,Moderate,Moderate,Steep,High
+Score,8,7,5,
+Multiplayer Support,Excellent,Good,Excellent,Critical
+Score,9,8,9,
+C# Support,Native,Primary,Via Plugin,Critical
+Score,9,10,6,
+Performance,Good,Good,Excellent,High
+Score,8,8,10,
+Community,Growing,Massive,Large,Medium
+Score,7,10,9,
+Headless Server,Yes,Complex,Yes,Critical
+Score,9,6,8,
+Open Source,Yes,No,Partial,Medium
+Score,10,3,5,
+,,,,
+TOTAL SCORE,85,78,73,
+DECISION,WINNER,Alternative,
+
+## Sheet 2: Networking Comparison
+
+Criteria,Godot ENet,WebSocket,Custom UDP,Weight
+Native Integration,Yes,Yes,No,Critical
+Score,10,9,4,
+Performance (Latency),Excellent,Good,Variable,Critical
+Score,10,7,8,
+Implementation Complexity,Low,Low,High,High
+Score,9,9,4,
+,,,,
+TOTAL SCORE,55,52,24,
+DECISION,WINNER,Alternative,
+
+## Sheet 3: Database Comparison
+
+Criteria,PostgreSQL,SQLite,MongoDB,Weight
+Relational Data,Excellent,Good,Poor,Critical
+Score,10,8,4,
+JSON Support,Excellent (JSONB),Good,Native,High
+Score,10,7,10,
+Scalability,Excellent,Poor,Excellent,High
+Score,10,4,10,
+Single-Player Mode,Complex,Easy,Complex,Medium
+Score,5,10,5,
+,,,,
+TOTAL SCORE,45,29,29,
+DECISION,PRODUCTION,DEV/SINGLE,Alternative,
+
+## Sheet 4: Summary
+
+Component,Decision,Alternative
+Game Engine,Godot 4.x + C#,Unity (if needed)
+Networking,Godot ENet,WebSocket (firewall issues)
+Database (Prod),PostgreSQL,MySQL
+Database (Dev),SQLite,PostgreSQL local
+AI Framework,Utility AI,GOAP (if too complex)
