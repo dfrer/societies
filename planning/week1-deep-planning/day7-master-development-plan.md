@@ -459,15 +459,24 @@ gantt
    - Setup PostgreSQL
    - Test multiplayer locally
 
-3. **Delegate research tasks**
+3. **Set up testing infrastructure**
+   - Create test project structure (see `day1-technical-architecture.md` Section 8.5)
+   - Install xUnit and Testcontainers NuGet packages
+   - Configure CI/CD pipeline (`.github/workflows/tests.yml`)
+   - Write first unit test (Entity system)
+   - Validate database tests work (PostgreSQL + SQLite)
+   - **Success Criteria**: CI pipeline runs successfully, at least 10 unit tests pass
+
+4. **Delegate research tasks**
    - Send agent prompts for game analysis
    - Collect postmortems
    - Study technical references
 
-4. **Create project structure**
+5. **Create project structure**
    - Initialize Godot project
    - Setup version control workflow
    - Configure build system
+   - Implement testable architecture (business logic separation)
 
 ### Week 2: Begin Prototype 1
 
