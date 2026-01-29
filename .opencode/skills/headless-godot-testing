@@ -2,6 +2,43 @@
 
 How to run automated tests with Godot 4.x in headless/server mode for CI/CD and local testing.
 
+## Quick Start - Verified Working Example
+
+Tested with Godot 4.6.stable.steam - **100% functional** ✅
+
+Create a minimal test scene that runs in headless mode:
+
+**1. Create `test.gd`:**
+```gdscript
+extends Node
+
+func _ready():
+    print("✓ Headless Godot test successful!")
+    print("Godot version: " + str(Engine.get_version_info()))
+    get_tree().quit(0)
+```
+
+**2. Create `test.tscn`:**
+```
+[gd_scene load_steps=2 format=3]
+[ext_resource type="Script" path="res://test.gd" id="1"]
+[node name="Test" type="Node"]
+script = ExtResource("1")
+```
+
+**3. Run in headless mode:**
+```bash
+godot --headless test.tscn
+```
+
+**Expected output:**
+```
+✓ Headless Godot test successful!
+Godot version: { "major": 4, "minor": 6, ... }
+```
+
+---
+
 ## Prerequisites
 
 - Godot 4.x with Mono/C# support installed
