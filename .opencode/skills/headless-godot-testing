@@ -45,6 +45,30 @@ Godot version: { "major": 4, "minor": 6, ... }
 - .NET SDK 6.0 or later
 - Your Godot project configured for C#
 
+### Finding Your Godot Executable
+
+**Steam Installation (Most Common):**
+```bash
+# Default Steam library location
+"D:\Games (SSD)\SteamLibrary\steamapps\common\Godot Engine\godot.windows.opt.tools.64.exe"
+
+# Or standard Steam location
+"C:\Program Files (x86)\Steam\steamapps\common\Godot Engine\godot.windows.opt.tools.64.exe"
+```
+
+**Standalone/Direct Download:**
+```bash
+# Usually in Downloads or a tools folder
+"C:\Users\YourName\Downloads\Godot_v4.x-stable_mono_win64.exe"
+"C:\tools\Godot\Godot_v4.x-stable_mono_win64.exe"
+```
+
+**Verify Installation:**
+```bash
+godot --version
+# Should output: 4.x.stable.mono...
+```
+
 ## Setup
 
 ### 1. Install Godot.XUnit (Optional but Recommended)
@@ -123,6 +147,8 @@ cd /tmp/test_build
 
 ### GitHub Actions
 
+**Note:** CI/CD environments cannot use Steam installations. Download Godot directly from GitHub releases.
+
 ```yaml
 name: Godot Tests
 on: [push, pull_request]
@@ -135,6 +161,7 @@ jobs:
       
       - name: Setup Godot
         run: |
+          # Download from GitHub releases (not Steam)
           wget -q -O godot.zip https://github.com/godotengine/godot/releases/download/4.2.2-stable/Godot_v4.2.2-stable_mono_linux_x86_64.zip
           unzip -q godot.zip
           sudo mv Godot_v4.2.2-stable_mono_linux_x86_64/godot.* /usr/local/bin/godot
