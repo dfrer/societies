@@ -1,0 +1,14 @@
+# System
+nul
+thumbs.db
+.DS_Store
+
+# Godot
+.godot/
+*.translation
+
+# OS
+.vscode/
+
+# Artifacts
+artifacts/
