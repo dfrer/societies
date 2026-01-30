@@ -1,8 +1,9 @@
-# Day 2: AI System Design - Deep Planning Document
+# Session 2: AI System Design - Deep Planning Document
 
-**Planning Day**: 2 of 7  
+**Planning Session**: 2 of 7  
 **Status**: Draft  
-**Last Updated**: Day 0 (Template Created)
+**Date Started**: [Not Started]  
+**Date Completed**: [Not Completed]
 
 ---
 
@@ -25,10 +26,16 @@ Specify how AI agents think, decide, and behave to create believable citizens. T
 
 ---
 
+## Research Summary
+**Tier 1 Sources**: [To be filled during research phase]
+**Key Insights**: [Major learnings from research]
+
+---
+
 ## Dependencies
 
-- **Requires**: Day 1 (Technical Architecture) - Performance budgets, tick loop
-- **Informs**: Day 3 (Gameplay Loops), Day 5 (Governance), Day 6 (Prototyping)
+- **Requires**: Session 1 (Technical Architecture) - Performance budgets, tick loop
+- **Informs**: Session 3 (Gameplay Loops), Session 5 (Governance), Session 6 (Prototyping)
 
 ---
 
@@ -684,6 +691,357 @@ graph TB
 
 ---
 
+## 14. AI Implementation Skills & Knowledge Base
+
+### Overview
+
+This section documents the comprehensive AI development skills required for Societies' agent systems. These skills cover utility-based AI, memory systems, economic agents, political behavior, personality models, and emergent narrative generation.
+
+### 14.1 Core AI Programming Skills
+
+#### Skill 1: Utility-Based AI Systems
+
+**Research Sources:**
+- **Primary:** "Behavioral Mathematics for Game AI" by Dave Mark
+- **Patterns:** "Game AI Pro" chapters on utility AI (free online)
+- **Case Studies:** GDC talks on The Sims AI, Civilization AI
+- **Academic:** Decision-theoretic planning papers (IEEE, AIIDE)
+
+**Key Competencies:**
+- Curve functions for utility scoring (linear, exponential, logistic)
+- Normalization and weighting strategies
+- Decision tree vs utility system tradeoffs
+- Performance optimization for large agent counts (1000+)
+- Goal selection algorithms with interruption
+- Multi-criteria decision analysis
+
+**Creation Process:**
+1. Document goal hierarchy (Maslow-based: Survival, Prosperity, Social, Self-Actualization)
+2. Create utility curves for each goal type
+3. Implement priority calculation formula: `P = urgency × value × personalityAlignment`
+4. Benchmark utility calculations at scale
+5. Research The Sims' utility system implementation
+6. Document goal interruption and resumption patterns
+
+**Verification Steps:**
+- [ ] Can design utility curves for different goal types
+- [ ] Can implement priority calculations with weights
+- [ ] Can handle goal interruption gracefully
+- [ ] Performance: 1000+ agents < 1ms per tick
+- [ ] Creates believable, non-random decision patterns
+
+---
+
+#### Skill 2: Memory System Architecture
+
+**Research Sources:**
+- **Psychology:** Human memory research (episodic, semantic, procedural, working)
+- **Reference:** "The MIT Encyclopedia of the Cognitive Sciences"
+- **Games:** Dwarf Fortress memory systems, The Sims memory
+- **AI:** Knowledge representation (semantic networks, ontologies)
+
+**Key Competencies:**
+- Multi-tier memory (working, short-term, long-term)
+- Consolidation algorithms (importance + emotional salience + rehearsal)
+- Decay mechanics (time-based forgetting curves)
+- Retrieval relevance scoring (context matching)
+- Memory categorization (episodic, semantic, procedural, social)
+- Memory visualization for debugging
+
+**Creation Process:**
+1. Document 4 memory types with structures:
+   - Episodic: events with timestamp, location, emotional valence
+   - Semantic: facts about world (prices, locations, recipes)
+   - Procedural: how-to knowledge (skills, crafting)
+   - Social: relationships, trust, reputation
+2. Create memory decay formulas:
+   - Working: 30 seconds
+   - Short-term: hours with decay
+   - Long-term: permanent with accessibility decay
+3. Implement consolidation algorithm
+4. Create memory retrieval with context matching
+5. Build memory inspection tools
+
+**Verification Steps:**
+- [ ] Can store and retrieve different memory types
+- [ ] Memory decay works realistically over time
+- [ ] Consolidation promotes important memories
+- [ ] Retrieval returns contextually relevant memories
+- [ ] System handles 100+ memories per agent efficiently
+
+---
+
+#### Skill 3: Economic Agent Modeling
+
+**Research Sources:**
+- **Economics:** Behavioral economics (Kahneman, Thaler, Akerlof)
+- **Games:** "Economics for Game Designers" GDC talks
+- **Academic:** Agent-based modeling papers
+- **Case Studies:** EVE Online economic postmortems
+
+**Key Competencies:**
+- Price belief formation (weighted averages with personality bias)
+- Trading strategy algorithms (supply/demand response)
+- Market analysis and opportunity detection
+- Career specialization decisions
+- Economic efficiency optimization
+- Budget management and savings behavior
+
+**Creation Process:**
+1. Document price belief update algorithm:
+   ```
+   newBelief = (oldBelief × weight + observedPrice × (1-weight)) × personalityBias
+   weight = 0.7 + (Openness × 0.2) - (Neuroticism × 0.1)
+   ```
+2. Create trading decision trees
+3. Implement career specialization logic
+4. Research economic agent models (Zero Intelligence, ZIP, GD)
+5. Test with simulated market scenarios
+6. Document market participation thresholds
+
+**Verification Steps:**
+- [ ] Can implement price belief updates
+- [ ] Trading decisions respond to market conditions
+- [ ] Career specialization feels realistic
+- [ ] Agents show diverse economic behaviors
+- [ ] Market dynamics emerge from agent interactions
+
+---
+
+#### Skill 4: Political Behavior Simulation
+
+**Research Sources:**
+- **Theory:** Voting theory (approval, ranked choice, Condorcet)
+- **Psychology:** Political psychology (values voting, social influence)
+- **Game Theory:** Faction formation and coalition building
+- **Design:** Democratic theory, constitutional design principles
+
+**Key Competencies:**
+- Voting decision algorithms (impact × values × social influence × performance)
+- Faction formation and coalition building
+- Political campaign effectiveness
+- Policy preference inference
+- Vote counting methods (plurality, majority, ranked, approval)
+- Political power dynamics
+
+**Creation Process:**
+1. Document voting calculation:
+   ```
+   VoteScore = personalImpact × 0.3 + valueAlignment × 0.3 + socialInfluence × 0.2 + pastPerformance × 0.2
+   ```
+2. Create faction dynamics simulation
+3. Implement different voting methods
+4. Research real-world voting behavior models
+5. Test political scenarios (elections, legislation)
+6. Document AI voting behavior customization
+
+**Verification Steps:**
+- [ ] Can implement multiple voting methods
+- [ ] Voting decisions consider multiple factors
+- [ ] Factions form based on shared interests
+- [ ] Political behavior feels authentic
+- [ ] Different personalities vote differently
+
+---
+
+#### Skill 5: Personality Systems (Big Five/OCEAN)
+
+**Research Sources:**
+- **Psychology:** Big Five personality literature (Costa & McCrae)
+- **Reference:** "The Big Five Trait Taxonomy" research
+- **Games:** Procedural character generation research
+- **Psychology:** Value systems and moral psychology (Schwartz Theory)
+
+**Key Competencies:**
+- Five-factor model implementation (Openness, Conscientiousness, Extraversion, Agreeableness, Neuroticism)
+- Trait-to-behavior mapping systems
+- Value system integration (Schwartz values)
+- Personality diversity generation
+- Personality stability vs change over time
+- Cultural value transmission
+
+**Creation Process:**
+1. Document trait definitions and ranges (0-100 scale):
+   - Openness: creativity, curiosity, preference for variety
+   - Conscientiousness: organization, diligence, goal-directed
+   - Extraversion: sociability, energy, positive emotion
+   - Agreeableness: cooperation, trust, altruism
+   - Neuroticism: anxiety, stress, emotional instability
+2. Create trait impact matrix (how each trait affects behaviors)
+3. Implement personality generation algorithms
+4. Document value systems (power, achievement, security, etc.)
+5. Research procedural character generation
+6. Validate personality diversity distribution
+
+**Verification Steps:**
+- [ ] Can generate diverse personalities
+- [ ] Traits meaningfully impact decisions
+- [ ] Personality distribution feels realistic
+- [ ] Can explain why agent made specific choice
+- [ ] Personality profiles are distinct and memorable
+
+---
+
+#### Skill 6: Emergent Narrative Systems
+
+**Research Sources:**
+- **Games:** Dwarf Fortress emergent storytelling postmortems
+- **Academic:** Procedural narrative generation research
+- **Sociology:** Information propagation models (gossip networks)
+- **Analysis:** Social network analysis principles
+
+**Key Competencies:**
+- Gossip propagation mechanics (network spread, distortion)
+- Event significance scoring (emotional impact × rarity × social relevance)
+- Information decay and distortion over time
+- Narrative reconstruction from records
+- News/worthiness algorithms
+- Story clustering and pattern detection
+
+**Creation Process:**
+1. Document gossip system architecture:
+   - Spread probability based on Extraversion and relationship strength
+   - Decay based on time and newsworthiness
+   - Distortion based on number of hops
+2. Create event significance algorithm
+3. Implement information cascade models
+4. Build narrative reconstruction from episodic memories
+5. Create news generation from world events
+6. Test narrative emergence in simulations
+
+**Verification Steps:**
+- [ ] Can spread information through social networks
+- [ ] Significant events propagate further
+- [ ] Information distorts naturally over time
+- [ ] Can reconstruct stories from agent memories
+- [ ] Players discover interesting emergent stories
+
+---
+
+### 14.2 AI Skill Development Workflow
+
+#### Research Priority Schedule
+
+**Immediate (Week 1-2):**
+- Utility AI implementation patterns
+- Memory system data structures
+- Economic agent basic behaviors
+- Tick processing optimization
+
+**Short-term (Month 1-2):**
+- Political behavior algorithms
+- Personality trait systems
+- Social relationship modeling
+- Debug visualization tools
+
+**Medium-term (Month 2-3):**
+- Emergent narrative systems
+- Population elasticity algorithms
+- Faction and coalition dynamics
+- Advanced economic strategies
+
+**Ongoing:**
+- Performance optimization
+- New behavior types
+- Debugging and profiling tools
+- Validation and testing patterns
+
+---
+
+### 14.3 AI Skill Validation Process
+
+**For Each AI Skill:**
+
+1. **Prototype Implementation (1-2 weeks):**
+   - Build minimal working version
+   - Test with 100+ agents
+   - Profile performance
+   - Document behavior patterns
+
+2. **Behavioral Validation:**
+   - Does behavior match design specification?
+   - Do agents act believably?
+   - Is performance acceptable?
+   - Can we debug their decisions?
+
+3. **Scale Testing:**
+   - Test with target agent counts (100-1000)
+   - Measure tick processing time
+   - Memory usage profiling
+   - Network synchronization impact
+
+4. **Documentation Update:**
+   - Update skill with implementation details
+   - Document deviations from original design
+   - Add performance characteristics
+   - Include code examples
+
+5. **External Review:**
+   - Share with AI programming community
+   - Get feedback on approach
+   - Compare with industry practices
+   - Iterate based on feedback
+
+---
+
+### 14.4 Skills to Create Priority List
+
+**Immediate (Prototype 1-2):**
+1. Utility-Based AI Architecture
+2. Agent Memory Systems
+3. Tick-Based Agent Processing
+4. AI Debugging and Visualization
+
+**Short-term (Prototype 2-3):**
+5. Economic Agent Behaviors
+6. Price Belief Systems
+7. Trading Strategy Algorithms
+8. Population Elasticity System
+
+**Medium-term (Prototype 3-4):**
+9. Political Behavior Simulation
+10. Voting System Implementation
+11. Personality Systems (Big Five)
+12. Social Relationship Modeling
+
+**Ongoing:**
+13. Emergent Narrative Systems
+14. Faction and Coalition Dynamics
+15. AI Performance Optimization
+16. Agent Lifecycle Management
+
+---
+
+### 14.5 AI Research Resources
+
+#### Primary Sources
+| Resource | Focus | Application |
+|----------|-------|-------------|
+| "Behavioral Mathematics for Game AI" | Utility systems | Goal selection |
+| Game AI Pro (free chapters) | Implementation patterns | All AI systems |
+| GDC Vault - The Sims AI | Agent simulation | Memory, goals |
+| IEEE Xplore - Multi-agent | Academic research | Advanced behaviors |
+| AIIDE Proceedings | Game AI research | New techniques |
+
+#### Psychology Sources
+| Resource | Focus | Application |
+|----------|-------|-------------|
+| Big Five Research | Personality | OCEAN model |
+| Behavioral Economics | Decision making | Economic agents |
+| Social Psychology | Influence | Political behavior |
+| Memory Research | Cognitive models | Agent memory |
+
+#### Game References
+| Game | AI System | Study Focus |
+|------|-----------|-------------|
+| The Sims | Utility-based goals | Goal selection |
+| Dwarf Fortress | Emergent narrative | Story generation |
+| Crusader Kings | Social simulation | Relationships |
+| EVE Online | Economic agents | Market behavior |
+| RimWorld | Story generation | Events and drama |
+
+---
+
 ## Success Criteria
 
 - [ ] Clear AI decision-making architecture
@@ -694,7 +1052,40 @@ graph TB
 - [ ] Experimental configurations outlined
 - [ ] Emergent narrative system designed
 - [ ] Debuggability architecture specified
+- [ ] AI implementation skills documented
+- [ ] Research sources catalogued
+- [ ] Skill creation workflow defined
 
 ---
 
-**Status**: TEMPLATE - Ready for Day 2 Planning
+**Status**: COMPLETE - Ready for Day 2 Planning & Development
+
+---
+
+## Changes & Revisions Log
+
+### [Date] - Session 2 Revision
+
+**Trigger**: [What caused this revision]
+
+**Changes Made**:
+- [Section]: [What changed]
+
+**Rationale**: [Why this revision was necessary]
+
+**Impact**: [What other documents/systems are affected]
+
+---
+
+## Cross-Doc Issues
+
+### Issue 1: [Brief Description]
+**Discovered in**: Session 2
+**Affects**: Session Y, Session Z
+**Description**: [What contradicts what]
+**Resolution**: [How/when it will be resolved]
+**Status**: [Open/In Progress/Resolved]
+
+---
+
+**Status**: Template Updated - Ready for Session 2 Planning (Depth-Optimized Methodology)

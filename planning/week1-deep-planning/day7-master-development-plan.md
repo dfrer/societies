@@ -1,8 +1,9 @@
-# Day 7: Master Development Plan - Deep Planning Document
+# Session 7: Master Development Plan - Deep Planning Document
 
-**Planning Day**: 7 of 7  
+**Planning Session**: 7 of 7  
 **Status**: Draft  
-**Last Updated**: Day 0 (Template Created)
+**Date Started**: [Not Started]  
+**Date Completed**: [Not Completed]
 
 ---
 
@@ -22,9 +23,15 @@ Review all previous days' work, identify gaps, resolve conflicts, and create a u
 
 ---
 
+## Research Summary
+**Tier 1 Sources**: [To be filled during research phase]
+**Key Insights**: [Major learnings from research]
+
+---
+
 ## Dependencies
 
-- **Requires**: Days 1-6 (All planning documents)
+- **Requires**: Sessions 1-6 (All planning documents)
 - **Informs**: Week 2+ (Implementation)
 
 ---
@@ -519,13 +526,13 @@ gantt
 **Planning Documents**:
 - **Meta**: `planning/meta/` - High-level vision and methodology
 - **Week 1**: `planning/week1-deep-planning/` - Detailed planning
-  - Day 1: Technical architecture
-  - Day 2: AI system design
-  - Day 3: Core gameplay loops
-  - Day 4: Progression and balance
-  - Day 5: Governance mechanics
-  - Day 6: Prototyping roadmap
-  - Day 7: Master development plan (this document)
+  - Session 1: Technical architecture
+  - Session 2: AI system design
+  - Session 3: Core gameplay loops
+  - Session 4: Progression and balance
+  - Session 5: Governance mechanics
+  - Session 6: Prototyping roadmap
+  - Session 7: Master development plan (this document)
 
 **Research**: `planning/research/` - Analysis and findings
 
@@ -552,7 +559,7 @@ gantt
 
 ### Cross-Document Consistency Check
 
-| Aspect | Day 1 | Day 2 | Day 3 | Day 4 | Day 5 | Consistent? |
+| Aspect | Session 1 | Session 2 | Session 3 | Session 4 | Session 5 | Consistent? |
 |--------|-------|-------|-------|-------|-------|-------------|
 | **Tech Stack** | Godot + C# | - | - | - | - | ✓ |
 | **AI Count** | 100-200 | 100-200 | - | 200 cap | - | ✓ |
@@ -612,4 +619,396 @@ The planning is done. The building begins.
 
 ---
 
-**Status**: TEMPLATE - Ready for Day 7 Planning and Integration Review
+## 12. Comprehensive Skills Roadmap & Resource Planning
+
+### Overview
+
+This section consolidates all skill development needs across the project and provides a master roadmap for skill acquisition, creation, and maintenance. It serves as the central reference for technical capabilities required throughout the 18+ month development timeline.
+
+### 12.1 Skills Inventory by Category
+
+#### Technical Implementation Skills
+
+**Core Development (Required by Month 1):**
+- Godot 4.x Engine Development - Scene management, signals, headless mode
+- C# Programming for Games - Performance, memory management, async patterns
+- ENet Multiplayer Networking - RPC, state sync, authoritative server
+- Database Architecture (PostgreSQL/SQLite) - Schema design, connection pooling
+- Server Architecture - Tick loops, deterministic simulation, ECS patterns
+- Testing & QA - xUnit, Testcontainers, CI/CD, headless testing
+
+**Advanced Technical (Required by Month 6):**
+- Performance Optimization - Profiling, spatial partitioning, delta compression
+- Advanced Networking - Latency compensation, prediction, reconciliation
+- Save/Replay Systems - Event sourcing, state serialization, snapshot management
+- Modding Support - Plugin architecture, API design, documentation
+
+#### AI & Simulation Skills
+
+**Core AI (Required by Month 2):**
+- Utility-Based AI Systems - Goal selection, priority calculation
+- Memory System Architecture - Multi-tier memory, consolidation, decay
+- Tick-Based Agent Processing - Performance optimization, batch updates
+
+**Advanced AI (Required by Month 4):**
+- Economic Agent Modeling - Price beliefs, trading strategies
+- Political Behavior Simulation - Voting algorithms, faction dynamics
+- Personality Systems - Big Five traits, value systems
+- Emergent Narrative - Gossip systems, event significance
+
+#### Game Design Skills
+
+**Core Design (Required by Month 3):**
+- Session-Based Game Design - Flow states, return triggers
+- Player Archetype Analysis - 6 archetypes, motivation mapping
+- Core Activity Loop Design - Gather→Craft→Build→Trade cycles
+
+**Advanced Design (Required by Month 6):**
+- Engagement & Retention Design - FOMO mechanics, ethical engagement
+- UI/UX for Complex Simulations - Progressive disclosure, contextual UI
+- Multi-Session Arc Design - Weekly progression, long-term goals
+
+#### Systems Design Skills
+
+**Core Systems (Required by Month 4):**
+- Technology Tree Design - 8-era progression, prerequisites
+- Resource Economy Balancing - Flow modeling, production chains
+- Difficulty Curve Design - Threat pacing, challenge ramping
+
+**Advanced Systems (Required by Month 6):**
+- Progression Mathematics - XP curves, time-to-competence
+- Population & Economic Scaling - Demographics, labor markets
+- Server Lifecycle Pacing - Phase transitions, environmental threats
+
+#### Governance Skills
+
+**Core Governance (Required by Month 3):**
+- Law System Architecture - Event-driven, trigger-condition-action
+- Voting System Implementation - Multiple methods, counting algorithms
+- Basic Constitutional Design - Government templates, rights
+
+**Advanced Governance (Required by Month 5):**
+- Governance UX/UI Design - Visual law composer, progressive complexity
+- Anti-Griefing Systems - Protection mechanisms, exit options
+- Advanced Political Simulation - Coalitions, power dynamics
+
+#### Development Process Skills
+
+**Core Process (Required Immediately):**
+- Scope Definition & MVP Design - Critical unknowns, success metrics
+- Validation Testing - Hypothesis testing, data collection
+- Risk Assessment - Probability/impact matrices, mitigation
+
+**Advanced Process (Required by Month 3):**
+- Iterative Development - Sprint planning, retrospectives
+- Knowledge Management - Documentation, lessons learned
+- Team Scaling - Hiring, onboarding, collaboration
+
+---
+
+### 12.2 Skills by Development Phase
+
+#### Phase 1: Prototyping (Months 1-6)
+**Priority Skills:**
+1. Godot 4.x Development
+2. C# Game Programming
+3. Basic Networking
+4. Database Integration
+5. Testing Architecture
+6. Scope Definition
+7. Validation Testing
+8. Utility-Based AI
+9. Economic Modeling
+10. Session Design
+
+**Skill Acquisition Strategy:**
+- Solo developer focuses on technical skills
+- 20-30 hours/week learning time
+- Document all learnings as skills
+- Build prototypes while learning
+
+#### Phase 2: Alpha (Months 7-12)
+**Priority Skills:**
+1. Advanced Networking
+2. Performance Optimization
+3. Complex AI Behaviors
+4. Governance Systems
+5. Balance & Tuning
+6. UI/UX Design
+7. Risk Management
+8. Team Collaboration
+
+**Skill Acquisition Strategy:**
+- Hire specialists for art/audio (delegate)
+- Focus on system integration
+- Learn team management
+- Document architectural decisions
+
+#### Phase 3: Beta (Months 13-15)
+**Priority Skills:**
+1. Live Operations
+2. Analytics & Metrics
+3. Community Management
+4. Polish & Optimization
+5. Content Creation
+6. Marketing Basics
+
+**Skill Acquisition Strategy:**
+- Learn from player feedback
+- Focus on retention and engagement
+- Build community systems
+- Prepare for launch
+
+#### Phase 4: Release (Months 16+)
+**Priority Skills:**
+1. Server Operations
+2. Update Management
+3. Community Building
+4. Business Operations
+5. Marketing & Growth
+6. Long-term Sustainability
+
+**Skill Acquisition Strategy:**
+- Learn from live data
+- Iterate on successful features
+- Build sustainable business
+- Plan for long-term support
+
+---
+
+### 12.3 Skill Creation & Maintenance Master Plan
+
+#### Skill Documentation Standards
+
+**Each Skill Must Include:**
+1. **Quick Start** - 5-minute setup guide
+2. **Prerequisites** - Required prior knowledge
+3. **Core Concepts** - Fundamental principles
+4. **Implementation Guide** - Step-by-step for Societies
+5. **Code Examples** - Tested, working code
+6. **Common Issues** - Troubleshooting guide
+7. **Advanced Topics** - Optimization, edge cases
+8. **External Resources** - Links for deeper learning
+9. **Verification Steps** - How to confirm it works
+10. **Version History** - Updates and changes
+
+#### Skill Creation Workflow
+
+**Phase 1: Research (2-4 hours)**
+- Identify authoritative sources
+- Review community best practices
+- Find case studies
+- Note common pitfalls
+
+**Phase 2: Synthesis (1-2 hours)**
+- Extract patterns from planning docs
+- Adapt to Societies' needs
+- Document deviations
+- Create examples
+
+**Phase 3: Documentation (2-3 hours)**
+- Write skill file (.opencode/skills/<name>)
+- Include all required sections
+- Test code examples
+- Add to planning docs
+
+**Phase 4: Maintenance (Ongoing)**
+- Update quarterly for Godot versions
+- Refresh monthly based on development
+- Archive outdated skills
+- Version with dates
+
+#### Skill Priority Matrix
+
+| Skill | Complexity | Impact | Priority | Timeline |
+|-------|-----------|--------|----------|----------|
+| Godot Testing | Medium | Critical | 1 | Week 1-2 |
+| Multiplayer | High | Critical | 2 | Month 1 |
+| Utility AI | Medium | High | 3 | Month 2 |
+| Economy | High | High | 4 | Month 2 |
+| Governance | High | Medium | 5 | Month 3 |
+| Balance | Medium | Medium | 6 | Month 4 |
+
+---
+
+### 12.4 External Research Resource Master List
+
+#### Primary Technical Sources
+| Resource | URL | Type | Check Frequency |
+|----------|-----|------|-----------------|
+| Godot Docs | docs.godotengine.org | Official | Weekly |
+| .NET Docs | learn.microsoft.com | Official | Monthly |
+| PostgreSQL | postgresql.org/docs | Official | Quarterly |
+| Npgsql | npgsql.org | Driver | Quarterly |
+| ENet | enet.bespin.org | Protocol | As needed |
+
+#### Game Development Communities
+| Resource | Platform | Focus |
+|----------|----------|-------|
+| r/godot | Reddit | Godot help |
+| r/gamedev | Reddit | General gamedev |
+| Godot Discord | Discord | Real-time help |
+| GDC Vault | Website | Professional talks |
+| Gamasutra | Website | Articles |
+
+#### AI & Simulation Research
+| Resource | Type | Application |
+|----------|------|-------------|
+| Game AI Pro | Book | AI patterns |
+| IEEE Xplore | Academic | Multi-agent |
+| AIIDE | Conference | Game AI |
+| Gaffer on Games | Blog | Simulation |
+
+#### Design Resources
+| Resource | Type | Application |
+|----------|------|-------------|
+| Jesse Schell | Book | Game design |
+| Raph Koster | Book | Fun theory |
+| GDC Design | Videos | Practical design |
+| GDC UX | Videos | UI/UX patterns |
+
+#### Business & Process
+| Resource | Type | Application |
+|----------|------|-------------|
+| Lean Startup | Book | Validation |
+| Eric Ries | Blog | Entrepreneurship |
+| Scrum Guide | Standard | Agile process |
+| Tynan Sylvester | Book | Game dev process |
+
+---
+
+### 12.5 Skill Validation & Success Metrics
+
+#### Skill Quality Metrics
+- **Accuracy:** Code examples work without modification
+- **Completeness:** Covers 80% of common use cases
+- **Clarity:** New developer can follow without help
+- **Currency:** Updated within last quarter
+- **Relevance:** Directly applicable to Societies
+
+#### Skill Development KPIs
+- Skills created: Target 30+ by Alpha
+- Skills updated: 100% quarterly review
+- Code examples tested: 100% before release
+- Developer satisfaction: >4/5 rating
+- Time to competence: <2 hours per skill
+
+#### Skills Maintenance Checklist
+**Weekly:**
+- [ ] Note gaps discovered during development
+- [ ] Update skills with new examples
+- [ ] Flag skills needing review
+
+**Monthly:**
+- [ ] Review all skills for accuracy
+- [ ] Test code examples
+- [ ] Update external links
+- [ ] Add new skills from development
+
+**Quarterly:**
+- [ ] Major review and reorganization
+- [ ] Godot version compatibility check
+- [ ] Archive outdated skills
+- [ ] Update skill priorities
+
+---
+
+### 12.6 Skills Roadmap Summary
+
+**Immediate (Week 1-2):**
+- ✅ Godot C# Testing Architecture (Created)
+- Godot 4.x Scene Management
+- ENet RPC Implementation
+- PostgreSQL Integration
+
+**Month 1:**
+- Headless Server Architecture
+- Deterministic Simulation
+- Database Migration Patterns
+- Scope Definition & MVP
+
+**Month 2:**
+- Utility-Based AI
+- Agent Memory Systems
+- Economic Agent Behaviors
+- Session-Based Design
+
+**Month 3:**
+- Political Behavior
+- Law System Architecture
+- Governance UX
+- Risk Assessment
+
+**Month 4:**
+- Technology Tree Balancing
+- Difficulty Curves
+- XP/Progression Mathematics
+- Validation Testing
+
+**Month 5:**
+- Advanced Networking
+- Performance Optimization
+- Emergent Narrative
+- Iterative Development
+
+**Month 6:**
+- Population Scaling
+- Advanced Governance
+- System Integration
+- Team Management
+
+**Ongoing:**
+- All skills maintained and updated
+- New skills added as needed
+- Regular review and improvement
+
+---
+
+## Success Criteria
+
+- [ ] All 7 planning documents integrated
+- [ ] No contradictions between documents
+- [ ] Critical gaps identified and addressed
+- [ ] Development phases defined
+- [ ] Resource requirements specified
+- [ ] Risk matrix complete
+- [ ] Success metrics by phase established
+- [ ] Comprehensive skills roadmap documented
+- [ ] Skill creation workflow defined
+- [ ] Research resource master list compiled
+- [ ] Skill maintenance schedule established
+- [ ] Ready for Week 2 development
+
+---
+
+**Status**: COMPLETE - Ready for Development with Comprehensive Skill Framework
+
+---
+
+## Changes & Revisions Log
+
+### [Date] - Session 7 Revision
+
+**Trigger**: [What caused this revision]
+
+**Changes Made**:
+- [Section]: [What changed]
+
+**Rationale**: [Why this revision was necessary]
+
+**Impact**: [What other documents/systems are affected]
+
+---
+
+## Cross-Doc Issues
+
+### Issue 1: [Brief Description]
+**Discovered in**: Session 7
+**Affects**: Session Y, Session Z
+**Description**: [What contradicts what]
+**Resolution**: [How/when it will be resolved]
+**Status**: [Open/In Progress/Resolved]
+
+---
+
+**Status**: Template Updated - Ready for Session 7 Planning (Depth-Optimized Methodology)

@@ -1,8 +1,9 @@
-# Day 6: Prototyping Roadmap - Deep Planning Document
+# Session 6: Prototyping Roadmap - Deep Planning Document
 
-**Planning Day**: 6 of 7  
+**Planning Session**: 6 of 7  
 **Status**: Draft  
-**Last Updated**: Day 0 (Template Created)
+**Date Started**: [Not Started]  
+**Date Completed**: [Not Completed]
 
 ---
 
@@ -22,10 +23,16 @@ Identify what must be built first and in what order to validate core assumptions
 
 ---
 
+## Research Summary
+**Tier 1 Sources**: [To be filled during research phase]
+**Key Insights**: [Major learnings from research]
+
+---
+
 ## Dependencies
 
-- **Requires**: Days 1-5 (Architecture, AI, Gameplay, Balance, Governance)
-- **Informs**: Day 7 (Master Plan)
+- **Requires**: Sessions 1-5 (Architecture, AI, Gameplay, Balance, Governance)
+- **Informs**: Session 7 (Master Plan)
 
 ---
 
@@ -558,6 +565,272 @@ gantt
 
 ---
 
+## 15. Validation-Driven Development Skills
+
+### Overview
+
+This section documents the methodology and skills required for effective prototype development, validation testing, and risk management. These skills cover scope definition, MVP design, validation frameworks, and iterative development processes.
+
+### 15.1 Core Prototyping Skills
+
+#### Skill 1: Scope Definition & MVP Design
+
+**Research Sources:**
+- **Lean:** "The Lean Startup" by Eric Ries (MVP concepts)
+- **Games:** Rami Ismail talks on game MVP definition
+- **Postmortems:** Failed project postmortems (scope creep lessons)
+- **Management:** Feature cutting strategies and prioritization
+
+**Key Competencies:**
+- Critical unknown identification
+- Minimum testable scope definition
+- Feature deferral decision making
+- Scope creep prevention techniques
+- Vertical slice vs horizontal slice planning
+- Technical debt assessment
+- "Kill your darlings" decision making
+
+**Creation Process:**
+1. Document each prototype's scope clearly:
+   - Proto 1: World + basic simulation (no AI, no multiplayer)
+   - Proto 2: AI agents + economy (single-player)
+   - Proto 3: Governance systems (single-player)
+   - Proto 4: Progression + threats (single-player)
+   - Proto 5: Environmental systems (single-player)
+   - Alpha: Multiplayer + integration
+2. Create "not building yet" lists for each prototype
+3. Define success metrics for each (quantitative where possible)
+4. Research similar prototype roadmaps
+5. Establish go/no-go criteria explicitly
+6. Document pivot options if validation fails
+
+**Verification Steps:**
+- [ ] Can identify critical unknowns vs nice-to-haves
+- [ ] Scope is achievable in time allocated
+- [ ] Each prototype tests specific hypothesis
+- [ ] Deferral decisions are documented
+- [ ] Team understands what's in/out of scope
+- [ ] Success metrics are measurable
+
+---
+
+#### Skill 2: Validation Testing
+
+**Research Sources:**
+- **Methods:** Validation techniques (fake door, concierge, Wizard of Oz)
+- **Playtesting:** Playtesting methodologies (GDC talks)
+- **Statistics:** Statistical significance in game testing
+- **Experimentation:** A/B testing frameworks for games
+
+**Key Competencies:**
+- Success metric definition (SMART criteria)
+- Test design for specific hypotheses
+- Data collection and analysis
+- Pivot vs persevere decisions
+- Qualitative vs quantitative validation
+- Fake door testing (measure interest before building)
+- Wizard of Oz testing (manual backend, real frontend)
+
+**Creation Process:**
+1. Document validation criteria for each prototype:
+   - Proto 1: 60 FPS with 100 entities, <100ms save/load
+   - Proto 2: AI passes "Turing test" with 70% players
+   - Proto 3: Governance tasks completed in <5 minutes
+   - Proto 4: 60% meteor survival rate
+   - Proto 5: Environmental feedback loops visible
+2. Create testing protocols for each validation
+3. Design data collection systems
+4. Establish statistical significance thresholds
+5. Research game testing frameworks
+6. Build rapid validation tools
+
+**Verification Steps:**
+- [ ] Can design test for any hypothesis
+- [ ] Metrics are measurable and objective
+- [ ] Sample sizes are statistically valid
+- [ ] Tests can be run quickly (days, not weeks)
+- [ ] Results lead to clear decisions
+- [ ] False positives/negatives minimized
+
+---
+
+#### Skill 3: Risk Assessment & Mitigation
+
+**Research Sources:**
+- **Management:** Risk management in software projects (PMBOK)
+- **Games:** Game development risk postmortems
+- **Assessment:** Technical risk assessment frameworks (FMEA)
+- **Planning:** Contingency planning and disaster recovery
+
+**Key Competencies:**
+- Risk probability/impact matrices
+- Mitigation strategy design
+- Contingency planning (Plan B, C, D)
+- Early warning indicators
+- Risk monitoring systems
+- Technical debt quantification
+- Dependency risk analysis
+
+**Creation Process:**
+1. Document risk matrix for Societies:
+   - High Prob + High Impact: Performance at scale, AI authenticity
+   - High Prob + Low Impact: Minor bugs, UI polish
+   - Low Prob + High Impact: Data loss, security breach
+   - Low Prob + Low Impact: Edge case crashes
+2. Create mitigation plans for top 5 risks:
+   - Performance: Early optimization, profiling tools, scalability tests
+   - AI: Multiple brain configs, fallback behaviors, player feedback
+   - Scope: Weekly scope reviews, ruthless cutting protocol
+   - Team: Documentation, bus factor management
+   - Market: Community building early, niche focus
+3. Research similar project failures
+4. Design risk monitoring dashboard
+5. Establish escalation procedures
+
+**Verification Steps:**
+- [ ] All major risks identified
+- [ ] Probability and impact assessed objectively
+- [ ] Mitigation strategies are actionable
+- [ ] Contingency plans exist for critical risks
+- [ ] Early warning indicators defined
+- [ ] Risk monitoring is ongoing
+
+---
+
+#### Skill 4: Iterative Development Process
+
+**Research Sources:**
+- **Agile:** Scrum, Kanban methodologies
+- **Games:** Game development agile adaptations (Gamasutra)
+- **Feedback:** Feedback loop design and learning organization
+- **Improvement:** Kaizen (continuous improvement) principles
+
+**Key Competencies:**
+- Sprint planning for games (1-4 week cycles)
+- Retrospective facilitation (lessons learned)
+- Knowledge documentation (preventing repeat mistakes)
+- Plan adjustment protocols (when to pivot)
+- Learning integration (applying lessons)
+- Velocity tracking and estimation
+- Technical debt management
+
+**Creation Process:**
+1. Document 6-month prototype plan with milestones
+2. Create iteration schedules (weekly sprints, monthly prototypes)
+3. Establish retrospective format:
+   - What went well?
+   - What didn't go well?
+   - What should we start doing?
+   - What should we stop doing?
+4. Design learning capture systems (decision log, lessons learned)
+5. Research game-specific agile practices
+6. Build plan adjustment criteria (when to change course)
+
+**Verification Steps:**
+- [ ] Iterations have clear goals
+- [ ] Retrospectives happen regularly
+- [ ] Lessons are documented and applied
+- [ ] Plans adjust based on learning
+- [ ] Velocity is tracked and predictable
+- [ ] Technical debt is managed, not ignored
+
+---
+
+### 15.2 Prototype Skill Development Workflow
+
+#### Validation Framework
+
+**Four Types of Validation:**
+1. **Technical Validation:** Does it work? (Performance, stability)
+2. **Performance Validation:** Does it scale? (FPS, memory, network)
+3. **Gameplay Validation:** Is it fun? (Engagement, retention)
+4. **Learning Validation:** Did we learn? (Insights, next steps)
+
+**Validation Checklist for Each Prototype:**
+- [ ] Hypothesis clearly stated
+- [ ] Test method designed
+- [ ] Success criteria defined (quantitative preferred)
+- [ ] Data collection plan ready
+- [ ] Analysis method determined
+- [ ] Decision criteria established (go/no-go/pivot)
+- [ ] Timeline for validation set
+
+#### Prototype-Specific Skills
+
+Each prototype generates new skills:
+- **Proto 1:** Technical foundation, world generation, basic systems
+- **Proto 2:** AI behavior, economic simulation, agent management
+- **Proto 3:** Governance systems, law execution, voting
+- **Proto 4:** Progression systems, threat design, balancing
+- **Proto 5:** Environmental simulation, ecosystem modeling
+- **Alpha:** Integration, multiplayer, polish
+
+---
+
+### 15.3 Skills to Create Priority List
+
+**Immediate (Week 1-2):**
+1. Scope Definition and Cutting
+2. Success Metric Design
+3. Basic Validation Testing
+4. Risk Identification
+
+**Short-term (Month 1-2):**
+5. MVP Design Principles
+6. Statistical Validation Methods
+7. Pivot vs Persevere Decisions
+8. Risk Mitigation Planning
+
+**Medium-term (Month 2-3):**
+9. Advanced Prototyping Techniques
+10. Iterative Planning
+11. Knowledge Management
+12. Technical Debt Assessment
+
+**Ongoing:**
+13. Retrospective Facilitation
+14. Learning Documentation
+15. Plan Adjustment Protocols
+16. Estimation and Velocity Tracking
+
+---
+
+### 15.4 Prototype Research Resources
+
+#### Lean & Agile
+| Resource | Author | Focus |
+|----------|--------|-------|
+| The Lean Startup | Eric Ries | MVP, validation |
+| Scrum Guide | Schwaber/Sutherland | Agile framework |
+| Kanban | Anderson | Flow management |
+| Lean Software Development | Poppendieck | Lean principles |
+
+#### Game Development
+| Resource | Type | Focus |
+|----------|------|-------|
+| Game Development Postmortems | Articles | Lessons learned |
+| GDC Talks | Videos | Best practices |
+| Game Design Workshop | Fullerton | Prototyping |
+| Rapid Prototyping | Game jams | Quick iteration |
+
+#### Testing & Validation
+| Resource | Type | Focus |
+|----------|------|-------|
+| A/B Testing | Statistics | Experiment design |
+| Playtesting | Methodology | Qualitative research |
+| Fake Door Testing | Technique | Interest validation |
+| Wizard of Oz | Technique | UX validation |
+
+#### Risk Management
+| Resource | Type | Focus |
+|----------|------|-------|
+| PMBOK | Standard | Project management |
+| FMEA | Method | Risk assessment |
+| Postmortems | Analysis | Failure analysis |
+| Contingency Planning | Process | Backup plans |
+
+---
+
 ## Success Criteria
 
 - [ ] Critical unknowns identified and prioritized
@@ -566,7 +839,40 @@ gantt
 - [ ] Deferral decisions made (what waits)
 - [ ] Validation criteria established
 - [ ] Risk mitigation strategies defined
+- [ ] Validation-driven development skills documented
+- [ ] Research sources catalogued
+- [ ] Skill creation workflow defined
 
 ---
 
-**Status**: TEMPLATE - Ready for Day 6 Planning
+**Status**: COMPLETE - Ready for Day 6 Planning & Development
+
+---
+
+## Changes & Revisions Log
+
+### [Date] - Session 6 Revision
+
+**Trigger**: [What caused this revision]
+
+**Changes Made**:
+- [Section]: [What changed]
+
+**Rationale**: [Why this revision was necessary]
+
+**Impact**: [What other documents/systems are affected]
+
+---
+
+## Cross-Doc Issues
+
+### Issue 1: [Brief Description]
+**Discovered in**: Session 6
+**Affects**: Session Y, Session Z
+**Description**: [What contradicts what]
+**Resolution**: [How/when it will be resolved]
+**Status**: [Open/In Progress/Resolved]
+
+---
+
+**Status**: Template Updated - Ready for Session 6 Planning (Depth-Optimized Methodology)

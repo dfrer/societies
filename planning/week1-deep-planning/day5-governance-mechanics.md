@@ -1,8 +1,9 @@
-# Day 5: Governance & Systems Design - Deep Planning Document
+# Session 5: Governance & Systems Design - Deep Planning Document
 
-**Planning Day**: 5 of 7  
+**Planning Session**: 5 of 7  
 **Status**: Draft  
-**Last Updated**: Day 0 (Template Created)
+**Date Started**: [Not Started]  
+**Date Completed**: [Not Completed]
 
 ---
 
@@ -24,10 +25,16 @@ Specify the mechanics of laws, government, and social systems in executable deta
 
 ---
 
+## Research Summary
+**Tier 1 Sources**: [To be filled during research phase]
+**Key Insights**: [Major learnings from research]
+
+---
+
 ## Dependencies
 
-- **Requires**: Day 2 (AI System) - AI voting behavior, Day 3 (Gameplay) - Political activities
-- **Informs**: Day 6 (Prototyping), Day 7 (Master Plan)
+- **Requires**: Session 2 (AI System) - AI voting behavior, Session 3 (Gameplay) - Political activities
+- **Informs**: Session 6 (Prototyping), Session 7 (Master Plan)
 
 ---
 
@@ -258,7 +265,7 @@ graph TD
 
 ### AI Voting Behavior
 
-**Factors** (from Day 2):
+**Factors** (from Session 2):
 - Personal impact of proposal
 - Values alignment
 - Social influence (what do friends think?)
@@ -650,10 +657,340 @@ Importance = Impact × Urgency × Personal Relevance
 
 | Date | Decision | Rationale |
 |------|----------|-----------|
-| Day 0 | Event-driven law system | Performance, clarity |
-| Day 0 | Visual law composer | Accessibility |
-| Day 0 | Enforcement notifications | Transparency |
-| Day 0 | Progressive complexity | Not overwhelm new players |
+| Session 0 | Event-driven law system | Performance, clarity |
+| Session 0 | Visual law composer | Accessibility |
+| Session 0 | Enforcement notifications | Transparency |
+| Session 0 | Progressive complexity | Not overwhelm new players |
+
+---
+
+## 12. Governance System Development Skills
+
+### Overview
+
+This section documents the specialized skills required for implementing governance, law, and political systems in Societies. These skills cover event-driven architecture, voting systems, constitutional design, and complex UI/UX for political interfaces.
+
+### 12.1 Core Governance Programming Skills
+
+#### Skill 1: Law System Architecture
+
+**Research Sources:**
+- **Architecture:** Event-driven architecture patterns (EDA)
+- **Rule Engines:** Drools, custom DSL implementations
+- **Smart Contracts:** Ethereum/DAO patterns (conceptual study)
+- **Legal AI:** Expert systems in legal domain
+- **Games:** Unique - few games have complex law systems
+
+**Key Competencies:**
+- Event-driven programming (trigger-condition-action)
+- Rule engine design and implementation
+- Domain-specific languages (DSLs) for law definition
+- Jurisdiction hierarchy and scoping
+- Law conflict detection and resolution
+- Event sourcing for law changes
+- JSON schema design for law storage
+
+**Creation Process:**
+1. Document law data structures:
+   ```json
+   {
+     "id": "uuid",
+     "jurisdiction": "town|state|federal",
+     "trigger": {"type": "event", "params": {}},
+     "conditions": [{"field": "", "operator": "", "value": ""}],
+     "actions": [{"type": "", "params": {}}],
+     "priority": 1
+   }
+   ```
+2. Create event-driven execution engine
+3. Implement trigger evaluation system
+4. Build condition checking framework
+5. Design action execution pipeline
+6. Create jurisdiction hierarchy (4 levels: Personal → Town → State → Federal)
+7. Implement conflict resolution (priority + scope)
+8. Research rule engines and DSL design
+
+**Verification Steps:**
+- [ ] Can define laws in JSON/schema format
+- [ ] Events trigger appropriate laws
+- [ ] Conditions evaluate correctly
+- [ ] Actions execute atomically
+- [ ] Jurisdiction scoping works
+- [ ] Conflicts resolve predictably
+- [ ] Performance: 100+ laws < 1ms evaluation
+
+---
+
+#### Skill 2: Voting System Implementation
+
+**Research Sources:**
+- **Theory:** Voting theory (plurality, majority, ranked choice, approval)
+- **Security:** Election security and integrity best practices
+- **Cryptography:** Cryptographic voting systems (conceptual)
+- **UX:** Ballot design and voting interfaces
+- **Games:** Very few games implement complex voting
+
+**Key Competencies:**
+- Multiple voting method implementations
+- Vote counting algorithms
+- Tie-breaking strategies
+- Audit trail systems
+- Transparency vs privacy balance
+- Real-time results calculation
+- Voter eligibility verification
+
+**Creation Process:**
+1. Document voting methods:
+   - Plurality: Most votes wins
+   - Majority: >50% required (runoff if needed)
+   - Ranked Choice: Instant runoff voting
+   - Approval: Binary approve/disapprove
+2. Implement vote counting for each method
+3. Create tie-breaking algorithms
+4. Build audit trail (who voted, when, how - but not what)
+5. Design transparent vote display
+6. Research voting system vulnerabilities
+7. Test with simulated elections
+
+**Verification Steps:**
+- [ ] Can implement all voting methods
+- [ ] Vote counting is accurate
+- [ ] Tie-breaking is fair and documented
+- [ ] Audit trail maintains integrity
+- [ ] Results calculate efficiently
+- [ ] Method matches constitutional specification
+
+---
+
+#### Skill 3: Constitutional System Design
+
+**Research Sources:**
+- **Law:** Constitutional law principles and structures
+- **Government:** Governance frameworks (democracy, republic, council)
+- **Rights:** Rights and restrictions design
+- **Process:** Amendment procedures and change management
+- **Games:** Unique - constitutional design in games
+
+**Key Competencies:**
+- Government structure templates
+- Rights protection system design
+- Amendment procedure implementation
+- Government type switching mechanics
+- Separation of powers architecture
+- Checks and balances systems
+- Founding document creation UX
+
+**Creation Process:**
+1. Document constitutional templates:
+   - Direct Democracy: Everyone votes on everything
+   - Representative: Elected officials make decisions
+   - Council: Small governing body
+   - Custom: Player-defined structure
+2. Create government structure configurations
+3. Implement rights protection (inalienable rights)
+4. Design amendment procedures
+5. Research real constitutional designs
+6. Create anti-griefing protections
+7. Build government transition mechanics
+
+**Verification Steps:**
+- [ ] Can instantiate different government types
+- [ ] Rights are protected from simple majority
+- [ ] Amendment process is clear
+- [ ] Transitions happen smoothly
+- [ ] Structure matches real-world models
+- [ ] Flexible enough for player creativity
+
+---
+
+#### Skill 4: Governance UX/UI Design
+
+**Research Sources:**
+- **Complex Forms:** Complex form design best practices
+- **Visual Programming:** Scratch, Unreal Blueprints, node editors
+- **Disclosure:** Progressive disclosure patterns
+- **Accessibility:** Accessibility in complex systems
+- **Decision Support:** Decision-making support interfaces
+
+**Key Competencies:**
+- Visual law composers (block-based editors)
+- Progressive complexity implementation
+- Smart default systems
+- Contextual help integration
+- Decision preview systems
+- Batch operation interfaces
+- Mobile/responsive governance (if applicable)
+
+**Creation Process:**
+1. Document governance UI wireframes
+2. Create progressive disclosure tiers:
+   - Tier 1: Simple (templates, presets)
+   - Tier 2: Moderate (conditional logic)
+   - Tier 3: Advanced (full scripting)
+3. Design visual law composer (drag-and-drop blocks)
+4. Implement smart defaults
+5. Research visual scripting tools (Scratch, Blueprints)
+6. Create contextual help system
+7. Design decision preview (simulate law effects)
+
+**Verification Steps:**
+- [ ] New players can create simple laws
+- [ ] Visual composer is intuitive
+- [ ] Progressive disclosure reduces overwhelm
+- [ ] Smart defaults are helpful
+- [ ] Contextual help answers questions
+- [ ] Advanced users have full power
+- [ ] Mobile governance is usable (if applicable)
+
+---
+
+#### Skill 5: Anti-Griefing & Protection Systems
+
+**Research Sources:**
+- **Security:** Game security and anti-cheat
+- **Social:** Social systems in games (EVE Online, WoW)
+- **Governance:** Real-world anti-tyranny mechanisms
+- **Economics:** Exit mechanisms and voice vs exit
+- **Psychology:** Griefing psychology and prevention
+
+**Key Competencies:**
+- Deadlock prevention algorithms
+- Inactive government handling
+- Tyranny protection mechanisms
+- Exit mechanisms (emigration, secession)
+- Constitutional amendment safeguards
+- Vote threshold management
+- Emergency powers and limitations
+
+**Creation Process:**
+1. Document anti-griefing systems:
+   - Constitutional supermajority for rights changes
+   - Inactivity timeouts for officials
+   - Exit options (leave jurisdiction)
+   - Appeals processes
+2. Implement deadlock detection and resolution
+3. Create inactivity handling
+4. Design tyranny protection (checks and balances)
+5. Research griefing in player-run systems
+6. Build emergency powers framework
+7. Test with adversarial scenarios
+
+**Verification Steps:**
+- [ ] Deadlocks can be resolved
+- [ ] Inactive governments don't block progress
+- [ ] Tyranny is prevented by design
+- [ ] Players have exit options
+- [ ] Rights are protected
+- [ ] System handles malicious actors
+
+---
+
+### 12.2 Governance Skill Development Workflow
+
+#### Unique Challenge: Governance in Games
+
+Governance systems are rare in games. Research sources include:
+- **Real-world:** Actual governments and constitutional design
+- **Legal AI:** Academic expert systems research
+- **DAOs:** Blockchain decentralized organizations
+- **Corporate:** Corporate governance structures
+- **Social Systems:** EVE Online, player organizations
+
+#### Development Process
+
+**Step 1: Legal Research (4-6 hours)**
+- Study constitutional law basics
+- Research voting theory and methods
+- Understand separation of powers
+- Learn about rights and protections
+
+**Step 2: Technical Design (3-4 hours)**
+- Design event-driven architecture
+- Create data structures
+- Plan execution flow
+- Design jurisdiction hierarchy
+
+**Step 3: UX Research (2-3 hours)**
+- Study complex form design
+- Research visual programming interfaces
+- Analyze progressive disclosure patterns
+- Design decision support tools
+
+**Step 4: Implementation (2-4 weeks)**
+- Build core law engine
+- Implement voting systems
+- Create UI components
+- Add anti-griefing protections
+
+**Step 5: Validation (Ongoing)**
+- Test with player scenarios
+- Iterate based on usability
+- Security audit
+- Performance optimization
+
+---
+
+### 12.3 Skills to Create Priority List
+
+**Immediate (Week 1-2):**
+1. Event-Driven Architecture for Games
+2. JSON Schema Design for Complex Data
+3. Basic Voting Implementation
+4. Jurisdiction Hierarchy Systems
+
+**Short-term (Month 1-2):**
+5. Law Execution Engine
+6. Visual Law Composer UI
+7. Constitutional System Architecture
+8. Anti-Griefing Mechanisms
+
+**Medium-term (Month 2-3):**
+9. Advanced Voting Methods
+10. Governance Decision Support
+11. Law Conflict Resolution
+12. Government Transition Systems
+
+**Ongoing:**
+13. Governance UX Patterns
+14. Political Simulation Debugging
+15. Election Security
+16. Progressive Disclosure Design
+
+---
+
+### 12.4 Governance Research Resources
+
+#### Legal & Political
+| Resource | Type | Application |
+|----------|------|-------------|
+| Constitutional Law | Academic | Government structures |
+| Voting Theory | Academic | Election systems |
+| Separation of Powers | Political | Checks/balances |
+| Democratic Theory | Academic | Legitimacy design |
+
+#### Technical
+| Resource | Type | Application |
+|----------|------|-------------|
+| Event-Driven Architecture | Software | Law engine |
+| Rule Engines | Software | Law execution |
+| DSL Design | Software | Law definition |
+| Visual Programming | UX | Law composer |
+
+#### Games & Social
+| Resource | Type | Application |
+|----------|------|-------------|
+| EVE Online | Game | Player organizations |
+| DAOs | Blockchain | Decentralized governance |
+| Minecraft Servers | Game | Player-run systems |
+| WoW Guilds | Game | Social structures |
+
+#### UX Design
+| Resource | Type | Application |
+|----------|------|-------------|
+| Scratch | Tool | Visual programming |
+| Unreal Blueprints | Tool | Node editors |
+| Complex Forms | UX | Governance UI |
+| Decision Support | UX | Law preview |
 
 ---
 
@@ -667,7 +1004,40 @@ Importance = Impact × Urgency × Personal Relevance
 - [ ] UX flows for governance transitions
 - [ ] Law enforcement visibility system
 - [ ] Governance accessibility features
+- [ ] Governance development skills documented
+- [ ] Research sources catalogued
+- [ ] Skill creation workflow defined
 
 ---
 
-**Status**: TEMPLATE - Ready for Day 5 Planning
+**Status**: COMPLETE - Ready for Day 5 Planning & Development
+
+---
+
+## Changes & Revisions Log
+
+### [Date] - Session 5 Revision
+
+**Trigger**: [What caused this revision]
+
+**Changes Made**:
+- [Section]: [What changed]
+
+**Rationale**: [Why this revision was necessary]
+
+**Impact**: [What other documents/systems are affected]
+
+---
+
+## Cross-Doc Issues
+
+### Issue 1: [Brief Description]
+**Discovered in**: Session 5
+**Affects**: Session Y, Session Z
+**Description**: [What contradicts what]
+**Resolution**: [How/when it will be resolved]
+**Status**: [Open/In Progress/Resolved]
+
+---
+
+**Status**: Template Updated - Ready for Session 5 Planning (Depth-Optimized Methodology)
