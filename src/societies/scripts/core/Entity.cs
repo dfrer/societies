@@ -120,14 +120,16 @@ namespace Societies.Core
         }
         
         /// <summary>
-        /// Check if this peer has authority over this entity
+        /// Check if this peer has authority over this entity.
+        /// In single-player mode, always returns true.
+        /// In multiplayer, delegates to Godot's built-in authority check.
         /// </summary>
-        protected bool IsMultiplayerAuthority()
+        protected new bool IsMultiplayerAuthority()
         {
             if (!Multiplayer.HasMultiplayerPeer())
-                return true; // Single player
-                
-            return IsMultiplayerAuthority();
+                return true; // Single player - local authority
+
+            return base.IsMultiplayerAuthority();
         }
         
         public override void _ExitTree()
