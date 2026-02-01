@@ -1,7 +1,7 @@
 # Session 4: Progression and Balance
 
 **Status:** Ready for Review  
-**Main Document:** [day4-progression-and-balance.md](./day4-progression-and-balance.md) (~950 lines)
+**Main Document:** [day4-progression-and-balance.md](./day4-progression-and-balance.md) **(~1,200 lines)**
 
 ---
 
@@ -9,7 +9,7 @@
 
 | Document | Description | Lines |
 |----------|-------------|-------|
-| [day4-progression-and-balance.md](./day4-progression-and-balance.md) | Complete progression and balance specification | ~950 |
+| [day4-progression-and-balance.md](./day4-progression-and-balance.md) | Complete progression and balance specification **(~1,200 lines)** |
 
 ---
 

@@ -29,7 +29,7 @@ Session 2 delivered a **comprehensive AI system specification** covering:
 
 | Decision | Value | Rationale |
 |----------|-------|-----------|
-| **AI Architecture** | Utility AI + Behavior Trees | Scales to 100+ agents, proven in RimWorld/The Sims |
+| **AI Architecture** | Utility AI + Behavior Trees | Scales to 20 agents (MVP), 50-100 post-MVP, proven in RimWorld/The Sims |
 | **Memory System** | 5+5 slots (simplified from DF's 8+8) | Performance: ~640 bytes per agent |
 | **Tick Rate** | 20 TPS with amortization | <2ms per agent budget, 5 buckets of 20 agents |
 | **Personality** | 19 facets (0-100 scale) | Bell curve distribution, gameplay-relevant |

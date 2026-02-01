@@ -13,13 +13,13 @@
 |---------|-------|--------|--------------|------------|--------------|
 | [Session 1](#session-1-technical-architecture) | Technical Architecture | ✅ COMPLETE | Compartmentalized | ~850 | 2026-01-24 |
 | [Session 2](#session-2-ai-system-design) | AI System Design | ✅ COMPLETE | Compartmentalized | ~1,200 | 2026-01-25 |
-| [Session 3](#session-3-core-gameplay-loops) | Core Gameplay Loops | 📝 CONTENT READY | Single File | ~890 | 2026-01-28 |
-| [Session 4](#session-4-progression--balance) | Progression & Balance | 📝 CONTENT READY | Single File | ~950 | 2026-01-28 |
-| [Session 5](#session-5-governance-mechanics) | Governance Mechanics | 📝 CONTENT READY | Single File | ~1,050 | 2026-01-29 |
+| [Session 3](#session-3-core-gameplay-loops) | Core Gameplay Loops | 📝 CONTENT READY | Single File | **~1,050** | 2026-01-31 |
+| [Session 4](#session-4-progression--balance) | Progression & Balance | 📝 CONTENT READY | Single File | **~1,200** | 2026-01-31 |
+| [Session 5](#session-5-governance-mechanics) | Governance Mechanics | 📝 CONTENT READY | Single File | **~1,200** | 2026-01-31 |
 | [Session 6](#session-6-prototyping-roadmap) | Prototyping Roadmap | 📝 CONTENT READY | Single File | ~880 | 2026-01-30 |
 | [Session 7](#session-7-integration-master-plan) | Integration Master Plan | 📝 CONTENT READY | Single File | ~1,020 | 2026-01-31 |
 
-**TOTAL PLANNING CONTENT**: ~5,840 lines across 7 comprehensive sessions
+**TOTAL PLANNING CONTENT**: **~6,400 lines** across 7 comprehensive sessions (including technical validation updates)
 
 ---
 
@@ -124,7 +124,7 @@
 | `RESEARCH-INDEX.md` | Research sources and citations |
 | `[AGENTS-READ-FIRST]-index.md` | Session-specific navigation index |
 
-**Key Topics**: Client-server model, WebSocket communication, PostgreSQL, Redis caching, Unity/Unreal client, 1000+ concurrent agents, 16ms tick rate
+**Key Topics**: Client-server model, WebSocket communication, PostgreSQL (production), SQLite (dev), **25 agents (MVP) to 50-100 agents (post-MVP)**, **20 TPS tick rate**, <2ms per-agent processing budget
 
 ---
 
@@ -147,7 +147,7 @@
 | `[AGENTS-READ-FIRST]-index.md` | Session-specific navigation index |
 | `archive/` | Legacy backup files |
 
-**Key Topics**: GOAP/Utility AI hybrid, BDI architecture, personality simulation, economic modeling, political behavior, 1000+ concurrent agents
+**Key Topics**: GOAP/Utility AI hybrid, BDI architecture, personality simulation, economic modeling, political behavior, **25 agents (MVP) to 50-100 agents (post-MVP)**, **<2ms per-agent decision budget**
 
 ---
 
@@ -157,7 +157,7 @@
 
 | File | Description |
 |------|-------------|
-| `day3-core-gameplay-loops.md` | Comprehensive gameplay systems (~890 lines) |
+| `day3-core-gameplay-loops.md` | Comprehensive gameplay systems **(~1,050 lines)** |
 | `RESEARCH-INDEX.md` | Research sources and citations |
 
 **Key Topics**: Game phases, core loops, economic simulation, player agency, social dynamics, competition mechanics, emergent systems
@@ -170,7 +170,7 @@
 
 | File | Description |
 |------|-------------|
-| `day4-progression-and-balance.md` | Comprehensive progression systems (~950 lines) |
+| `day4-progression-and-balance.md` | Comprehensive progression systems **(~1,200 lines)** |
 | `RESEARCH-INDEX.md` | Research sources and citations |
 
 **Key Topics**: Difficulty curves, economy balance, progression systems, anti-frustration measures, exponential vs linear growth, tuning values
@@ -183,7 +183,7 @@
 
 | File | Description |
 |------|-------------|
-| `day5-governance-mechanics.md` | Comprehensive governance systems (~1,050 lines) |
+| `day5-governance-mechanics.md` | Comprehensive governance systems **(~1,200 lines)** |
 | `RESEARCH-INDEX.md` | Research sources and citations |
 
 **Key Topics**: Political systems, voting mechanics, policy implementation, power dynamics, government transitions, civic engagement
@@ -231,6 +231,28 @@
 - Faster to read complete context
 - Simpler navigation
 - Example: `session-3/day3-core-gameplay-loops.md`
+
+### Technical Validation Updates (2026-01-31)
+
+**Critical Fixes Applied:**
+1. **Session 4 Agent Count**: Fixed contradiction (200 → 100 agents maximum) to align with Session 1 performance budgets
+2. **Session 3**: Added "Technical Validation & Session 2 Integration" section (~160 lines)
+   - 20 TPS constraint compliance
+   - Per-agent budget validation
+   - Session 2 AI behavior integration
+3. **Session 4**: Added "Technical Validation Against Session 1-2 Constraints" section (~250 lines)
+   - Agent count validation (why 100 max, not 200)
+   - Performance budget verification
+   - Economic calculations validated
+4. **Session 5**: Updated "Technical Validation & Integration" section
+   - Law system <1ms validation
+   - AI voting integration with Session 2
+
+**Result**: All sessions now consistently reference:
+- 25 agents (MVP), 50-100 agents (post-MVP)
+- 20 TPS tick rate, <2ms per-agent budget
+- 32 KB/s bandwidth per player (MVP)
+- Full Session 2 AI integration in Sessions 3 and 5
 
 ### Research Integration
 - Every session includes a `RESEARCH-INDEX.md` file
@@ -310,11 +332,11 @@
 | Total Sessions | 7 |
 | Complete Sessions | 2 (Sessions 1-2) |
 | Content Ready Sessions | 5 (Sessions 3-7) |
-| Total Planning Lines | ~5,840 |
+| Total Planning Lines | **~6,400** |
 | Research Citations | 50+ across all sessions |
 | Compartmentalized Files | 14+ (Sessions 1-2) |
 | Archive Files | 2+ |
-| Last Content Update | 2026-01-31 |
+| Last Content Update | **2026-01-31** (Technical validation sections added to Sessions 3-5, agent count standardized to 25)
 
 ---
 

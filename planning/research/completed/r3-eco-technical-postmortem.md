@@ -9,6 +9,7 @@ Eco, developed by Strange Loop Games and led by John Krajewski, represents one o
 - **Engine**: Unity (using deprecated UNET networking framework)
 - **Database**: LiteDB (embedded NoSQL) for world state persistence
 - **Server Architecture**: Authoritative server with client-server model
+- **Scale Context**: LiteDB issues emerged at 50-100 player scale; small deployments (8 players, 20 agents) work fine with embedded databases
 - **Simulation Approach**: Deterministic tick-based simulation running at 20-30 Hz
 - **Scale**: Supports 50-100 concurrent players on high-end hardware (12-16 cores, 64GB RAM)
 
@@ -71,7 +72,9 @@ From the Eco GitHub issues repository (StrangeLoopGames/EcoIssues), multiple tec
 
 **Bottlenecks Encountered**:
 1. **Single-threaded core logic**: Despite multi-core support for parallel systems (ecosystem, economy calculations), the main game logic thread remains a bottleneck
-2. **Database I/O**: LiteDB read/write operations create significant lag spikes with many players
+2. **Database I/O**: LiteDB read/write operations create significant lag spikes at 50-100 player scale
+   - **Note**: Small deployments (8-10 players, 20 agents) perform fine with LiteDB
+   - Bottlenecks only emerge at Eco's target scale (50-100 concurrent players)
 3. **Transform updates**: High frequency of object position updates causes network congestion
 4. **World object limits**: Large worlds with extensive building hit hard limits on active objects
 

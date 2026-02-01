@@ -1,7 +1,7 @@
 # SOCIETIES: Comprehensive Breakdown of Features and Gameplay
 *An AI-Enhanced Multiplayer Civilization Simulation*
 
-A society and ecology simulation and multiplayer game where human players and AI citizens coexist as equals in a low poly-3D, reasonably sized, global simulation, with up to about 100-200 Agents in total. Alongside surviving and working on their own goals, all agents are economic and political participants that participate communally with other agents to make towns, cities, states, nations and even federations that work together, or even against each other to grow and cook food, build shelters, create infrastructure, and much more. Together or in competition they build civilizations that persist, adapt, and survive by navigating ecological, societal, and existential problems.
+A society and ecology simulation and multiplayer game where human players and AI citizens coexist as equals in a low poly-3D, reasonably sized, global simulation, with **25 Agents (MVP) scaling to 50-100 Agents post-MVP**. Alongside surviving and working on their own goals, all agents are economic and political participants that participate communally with other agents to make towns, cities, states, nations and even federations that work together, or even against each other to grow and cook food, build shelters, create infrastructure, and much more. Together or in competition they build civilizations that persist, adapt, and survive by navigating ecological, societal, and existential problems.
 
 The core of the gameplay loop is Agents—Both human and AI—surviving, building, being creative, creating goals, building homes, progressing careers, facilitating connections, manufacturing automation, all while facing escalating challenges, together.
 
@@ -490,6 +490,8 @@ The complete political arc of Societies:
 5.  **State/Country** (federation of towns, regional governance, inter-town coordination)
 6.  **Alliance** (cooperation between states, treaty-based, no unified government)
 7.  **Federation** (planetary government, global issues, existential threat response)
+
+**Scope Confirmation**: All 7 phases of society progression are confirmed in project scope. State/Country (phase 5) and Federation (phase 7) governance systems are deferred to Beta phase (months 7-18) but are NOT cut from the project. They will be implemented after core systems (MVP through Alpha) are validated.
 
 This progression is not linear or mandatory. Some servers may never form federations; others may form them early. Towns may refuse to join states; states may collapse and reform. The political landscape is dynamic, shaped by player choices, AI agent behavior, and the pressures of survival.
 

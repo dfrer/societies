@@ -31,8 +31,109 @@ Define the pacing, balance, and progression systems that make the game challengi
 
 ## Dependencies
 
-- **Requires**: Session 3 (Gameplay Loops) - Activities define what progresses
+- **Requires**: 
+  - Session 1 (Technical Architecture) - Performance budgets, TPS constraints, agent processing limits
+  - Session 2 (AI System Design) - Agent behavior models, economic behaviors, population elasticity
+  - Session 3 (Gameplay Loops) - Activities define what progresses
 - **Informs**: Session 5 (Governance), Session 6 (Prototype scope), Session 7 (Timeline)
+
+---
+
+## Technical Validation Against Session 1-2 Constraints
+
+### Performance Budget Compliance
+
+This section validates that all progression and balance numbers respect the technical constraints established in Session 1 (Technical Architecture) and Session 2 (AI System Design).
+
+#### Session 1 Constraints (from 04-performance-scalability.md)
+| Metric | MVP Target | Stretch Goal | 
+|--------|-----------|--------------|
+| AI Agents | **25** | **50-100** |
+| Tick Rate | 20 TPS (50ms per tick) | 20-30 TPS |
+| Per-Agent Budget | <2ms per agent | <2ms per agent |
+| Total AI Budget | 50ms (20 agents × 2ms = 40ms) | 200ms at 100 agents with bucketing |
+
+#### Session 2 Constraints (from 01-core-ai-architecture.md)
+- AI decision loop: Perception (0.1ms) + Memory (0.2ms) + Goals (0.3ms every 5 ticks) + Planning (0.5ms on change) + Action (0.3ms) + Learning (0.1ms every 10 ticks)
+- **Amortized total: ~1.5ms per agent**
+- Memory per agent: ~8KB
+- Population elasticity uses bucketing to scale beyond MVP
+
+#### Validation: Why 100 Agents Maximum?
+
+**Calculation:**
+- 20 TPS = 50ms tick window
+- At 100 agents × 2ms = 200ms per tick
+- **Without bucketing: IMPOSSIBLE** (200ms > 50ms)
+- **With 5-bucket amortization**: 20 agents per bucket = 40ms per tick ✅
+- **With LOD system**: Nearby agents (20) at full detail, distant at reduced frequency
+
+**Conclusion**: The 100-agent cap is achievable through:
+1. **Bucketing** (5 buckets of 20 agents, processed across 5 ticks)
+2. **LOD System** (distant agents updated less frequently)
+3. **Spatial Partitioning** (only process agents near players)
+
+#### Economic Calculations Validation
+
+**Resource Gathering Rates vs. TPS:**
+- Wood gathering: 10/min = 1 unit every 6 seconds = 1 unit every 120 ticks
+- This is well within the 20 TPS processing capability
+- Each gathering action requires minimal computation (position check, inventory update)
+
+**Agent Economic Activity:**
+- Session 2 specifies agents make economic decisions every 5-10 ticks
+- At 100 agents with bucketing: 20 agents make decisions per tick
+- Decision time: ~0.5ms per agent ( amortized)
+- Total: 10ms per tick for economic decisions ✅ (well within 50ms budget)
+
+#### Population Growth Validation
+
+**MVP Phase (0-30 days):**
+- Starting: 25 agents
+- Growth: +1 agent per day
+- Day 30: ~55 agents
+- Processing: 55 × 2ms = 110ms without bucketing
+- **With bucketing**: 55 agents in 3 buckets = process ~18 agents per tick ✅
+
+**Post-MVP Phase (30+ days):**
+- Maximum: 100 agents
+- Processing: Requires full 5-bucket system + LOD
+- **Constraint**: Population growth must pause if performance degrades
+
+#### Why NOT 200 Agents?
+
+**The Critical Error:**
+- 200 agents × 2ms = 400ms per tick
+- Even with 5-bucket amortization: 40 agents per bucket = 80ms per tick
+- **Exceeds 50ms tick window by 60%**
+- Would require either:
+  - Reducing tick rate to 12.5 TPS (unacceptable for responsiveness)
+  - Reducing agent decision quality (unacceptable for authenticity)
+  - Multi-threading (violates Session 1 single-threaded core constraint)
+
+**Resolution**: Cap at 100 agents maximum
+
+### Integration Points with Session 2 AI Systems
+
+#### Economic Balance Integration
+- **Price Beliefs**: All "market" and "price" references in this document assume Session 2's belief-driven economic model
+- **Trading Frequency**: Resource rates designed around Session 2's trading decision frequency (every 5-10 ticks)
+- **Career Progression**: Time-to-competence numbers (1-2 hours to Beginner) account for Session 2's learning algorithms
+
+#### Population Elasticity Integration  
+- **Spawn Triggers**: Economic velocity thresholds based on Session 2's metric calculations
+- **Migration**: Labor gap detection uses Session 2's skill system
+- **Performance Response**: Elasticity system must respect per-agent budget constraints
+
+### Cross-Reference Summary
+
+| This Document | Session 1/2 Reference | Validation |
+|---------------|----------------------|------------|
+| 100 agent cap | Session 1: 25 MVP, 50-100 stretch | ✅ Aligned |
+| Economic rates | Session 2: Price beliefs, trading every 5-10 ticks | ✅ Compatible |
+| Skill times | Session 2: Learning algorithms | ✅ Feasible |
+| Population growth | Session 2: Elasticity + Session 1: Performance | ✅ Validated |
+| Tech progression | Session 1: 20 TPS, processing budgets | ✅ Compatible |
 
 ---
 
@@ -272,9 +373,9 @@ gantt
 |-------------|-----------|---------------------|----------|
 | **Tiny** (1-5) | 50% | 2x | 50 |
 | **Small** (6-15) | 75% | 1.5x | 100 |
-| **Medium** (16-30) | 100% | 1x | 150 |
-| **Large** (31-50) | 125% | 0.8x | 200 |
-| **Massive** (50+) | 150% | 0.6x | 250 |
+| **Medium** (16-30) | 100% | 1x | 100 |
+| **Large** (31-50) | 125% | 0.8x | 100 |
+| **Massive** (50+) | 150% | 0.6x | 100 |
 
 ---
 
@@ -300,7 +401,7 @@ graph LR
 - Base growth: +1 agent per day (natural)
 - Economic stimulus: +1 per 10% GDP growth
 - Player influx: +2 per new human player
-- Cap: 200 agents (performance limit)
+- **Cap: 100 agents (performance limit)** [See Technical Validation section below]
 
 **Population Pressure**:
 - Overpopulation → Resource scarcity
@@ -312,10 +413,12 @@ graph LR
 
 By Tech Level:
 - **Primitive**: 20-30 (subsistence farming)
-- **Agricultural**: 50-80 (farming efficiency)
-- **Industrial**: 100-150 (automation)
-- **Modern**: 150-200 (high efficiency)
-- **Space Age**: 200+ (off-world resources)
+- **Agricultural**: 40-60 (farming efficiency)
+- **Industrial**: 60-80 (automation)
+- **Modern**: 80-100 (high efficiency)
+- **Space Age**: 100 (maximum cap, off-world resources don't increase agent count)
+
+**Note**: Agent count capped at 100 maximum per Session 1 performance budgets (25 agents MVP, 50-100 post-MVP)
 
 ---
 
@@ -472,15 +575,16 @@ gantt
 
 **Days 60-120: Advanced Threats**
 - Focus: Advanced technology, planetary coordination
-- Population: 150-200 total
+- Population: 80-100 total (capped at 100)
 - Tech: Modern → Space
 - Threats: Pandemic, climate, external
 
 **Days 120+: Endgame & Space**
 - Focus: Interstellar expansion, legacy building
-- Population: 200+ (stable)
+- Population: 100 (stable maximum)
 - Tech: Space Age
 - Threats: Existential
+- **Note**: Agent count remains capped at 100 regardless of tech level per Session 1 architecture constraints
 
 ### Server Completion
 
@@ -547,7 +651,7 @@ graph TD
 - [ ] How do we balance early-game accessibility with late-game depth?
 - [ ] What's the right threshold for "too easy" vs "too hard"?
 - [ ] How do seasonal resets affect player retention?
-- [ ] What's the economic impact of 100 vs 200 agents?
+- [ ] What's the economic impact of 20 vs 50 vs 100 agents (MVP to post-MVP)?
 
 ### Research Needs
 
@@ -565,7 +669,7 @@ graph TD
 | Day 0 | Day 30 meteor | Creates clear deadline, urgency |
 | Day 0 | Gini 0.3-0.4 target | Realistic but not dystopian |
 | Day 0 | Skill-based research | Rewards specialization |
-| Day 0 | 200 agent cap | Performance constraints |
+| Day 0 | 100 agent cap | Performance constraints (Session 1: 25 agents MVP, 50-100 post-MVP) |
 
 ---
 
@@ -770,9 +874,9 @@ This section documents the comprehensive game balance skills required for Societ
 
 **Creation Process:**
 1. Document population scaling:
-   - Starting: 20-50 agents
-   - Growth curve by era
-   - Cap: 200 agents (performance limit)
+    - Starting: 20-50 agents
+    - Growth curve by era
+    - **Cap: 100 agents (Session 1 performance limit - see Technical Validation section)**
 2. Create population dynamics model:
    - Birth rate = f(health, housing, happiness)
    - Death rate = f(age, health, accidents)

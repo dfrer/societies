@@ -21,9 +21,9 @@
 **Revised Risk Assessments**:
 
 **Risk 1: AI Performance** (Probability: High → CONFIRMED)
-- **Evidence**: GOAP degrades past 20 agents; Utility AI handles 100-500 [r7-ai-systems-games.md]
+- **Evidence**: GOAP degrades past 20 agents; Utility AI handles 20 agents (MVP), 50-100 post-MVP [r7-ai-systems-games.md]
 - **Mitigation**: Use Utility AI + BT approach (already planned)
-- **Validation**: Prototype 2 will test 100+ agents
+- **Validation**: Prototype 2 will test 20+ agents (MVP target)
 
 **Risk 4: Database Performance** (Impact: Medium → CRITICAL, Probability: Medium → HIGH)
 - **Evidence**: Eco's LiteDB bottleneck caused database read/write spikes, lag, and timeouts [r3-eco-technical-postmortem.md, Section 1.3]
@@ -46,8 +46,8 @@
 
 **Risk 8: AI Performance at Scale** [r7-ai-systems-games.md] - **MEDIUM**
 - **Evidence**: GOAP fails at 20+ agents; F.E.A.R. rats caused CPU issues
-- **Impact**: Unplayable with 100 agents if wrong architecture chosen
-- **Mitigation**: Utility AI + BT approach (scales to 100-500 agents with optimization per [r7-ai-systems-games.md])
+- **Impact**: Unplayable with 20 agents if wrong architecture chosen
+- **Mitigation**: Utility AI + BT approach (scales to 20 agents MVP, 50-100 post-MVP with optimization per [r7-ai-systems-games.md])
 - **Status**: Mitigated by architecture decision
 
 **Risk 9: Network Library Longevity** [r3-eco-technical-postmortem.md] - **MEDIUM**
@@ -112,7 +112,7 @@
 4. **Godot Headless Validation**: Performance [r1-research-summary.md]
    - **What to measure**: CPU usage, memory footprint, entity limit
    - **When**: Prototype 1 (Month 1, Week 2)
-   - **Success criteria**: 40-60% CPU reduction vs graphical, <1GB RAM for 100 agents
+   - **Success criteria**: 40-60% CPU reduction vs graphical, <200MB RAM for 20 agents (MVP)
    - **Risk if failed**: Re-evaluate server architecture
 
 ### Risk Monitoring Plan
@@ -238,7 +238,7 @@ public class RiskMonitor {
 
 **Q1: What is Godot's actual entity limit?** → **ANSWERED**: 5,000-10,000 entities in headless mode (See [r1-godot-headless-research.md, Section 2])
 
-**Q2: How much bandwidth for 100 agents?** → **ANSWERED**: 112 KB/s per player at 20 TPS (See [r1-research-summary.md, Key Finding 4])
+**Q2: How much bandwidth for 20 agents (MVP)?** → **ANSWERED**: 32 KB/s per player at 20 TPS. Post-MVP (50-100 agents): 112 KB/s per player (See [r1-research-summary.md, Key Finding 4])
 
 **Q3: Optimal snapshot frequency?** → **ANSWERED**: Every 2 seconds (Factorio approach, See [r1-factorio-case-study.md])
 
@@ -330,9 +330,9 @@ public class RiskMonitor {
 **Reversibility**: YES (major refactoring required)
 **Alternatives Considered**: WebSockets (higher latency), Custom TCP (more work)
 
-#### Decision 3: PostgreSQL for Production + SQLite for Dev
-**Decision**: Dual database strategy with PostgreSQL (production) and SQLite (dev/single-player)
-**Rationale**: PostgreSQL proven at scale, SQLite zero-setup for development
+#### Decision 3: PostgreSQL for Large-Scale Production + SQLite for Dev/Single-Player
+**Decision**: Dual database strategy with PostgreSQL (large-scale production servers like Eco's 50-100 player servers) and SQLite (dev/single-player/small servers)
+**Rationale**: PostgreSQL required for production scale (50+ players), SQLite sufficient for MVP (8 players, 20 agents) with zero-setup for development
 **Research Evidence**:
 - PostgreSQL JSONB 0.5-0.8ms queries with GIN indexes ([r1-postgresql-jsonb-research.md])
 - Eco's LiteDB disaster avoided ([r3-eco-technical-postmortem.md])
@@ -393,8 +393,8 @@ public class RiskMonitor {
 #### Decision 8: Utility AI + Behavior Trees
 **Decision**: Hybrid AI architecture (Utility for decisions, BT for actions)
 **Rationale**:
-- Utility AI: 100-500 agents scalable (vs GOAP's 10-20 agents)
-- BT: 50-100+ agents for action execution
+- Utility AI: 20 agents (MVP), 50-100 agents post-MVP scalable (vs GOAP's 10-20 agents)
+- BT: 20 agents (MVP), 50-100+ agents post-MVP for action execution
 - GOAP only scales to 10-20 agents (insufficient for Societies)
 **Research Evidence**:
 - AI architecture comparison ([r7-ai-systems-games.md, Section 7] - R7 contains Utility AI vs GOAP scalability analysis)

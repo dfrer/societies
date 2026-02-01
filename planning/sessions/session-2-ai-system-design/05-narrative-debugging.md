@@ -2002,7 +2002,7 @@ public class AlignedGoalConfiguration
 
 | Metric | Definition | Target | Measurement |
 |--------|-----------|--------|-------------|
-| **Conflict Frequency** | Disputes per 100 agents per day | <2 | Event logging |
+| **Conflict Frequency** | Disputes per 20 agents per day | <1 | Event logging |
 | **Relationship Persistence** | Avg relationship duration | >7 days | Relationship tracking |
 | **Faction Cohesion** | Internal agreement score | >0.6 | Voting alignment |
 | **Social Mobility** | Rate of status change | 10-20% | Reputation tracking |

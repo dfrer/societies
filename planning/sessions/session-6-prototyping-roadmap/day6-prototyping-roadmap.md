@@ -42,7 +42,7 @@ Identify what must be built first and in what order to validate core assumptions
 
 ```mermaid
 graph TD
-    A[Performance] --> B[Can we run 100 AI agents?]
+    A[Performance] --> B[Can we run 20 AI agents? (MVP)]
     C[Networking] --> D[Can we sync 20 players smoothly?]
     E[Godot Limits] --> F[Can Godot handle the simulation?]
     
@@ -134,7 +134,8 @@ graph TD
 
 | Metric | Target | Measurement |
 |--------|--------|-------------|
-| FPS | 60+ | In-game counter |
+| **TPS** (Server Tick Rate) | 20+ | Server metrics |
+| **Client FPS** | 60+ | In-game counter |
 | Load Time | <10s | Stopwatch |
 | Memory | <2GB | System monitor |
 | Stability | No crashes | 4-hour playtest |
@@ -187,12 +188,13 @@ graph TD
 
 ### Success Metrics
 
-| Metric | Target | Measurement |
-|--------|--------|-------------|
-| AI Survival | 100% for 24h sim | Automated test |
-| Economic Velocity | 10+ trades/day | Log analysis |
-| AI Efficiency | 50%+ of human | Comparison test |
-| Multiplayer Latency | <100ms | Network test |
+| Metric | Target | Measurement | Session 1/2 Constraint |
+|--------|--------|-------------|------------------------|
+| **AI Survival** | 100% for 24h sim | Automated test | 25 agents (MVP) |
+| **Economic Velocity** | 10+ trades/day | Log analysis | Session 2: 5-10 tick decision cycle |
+| **AI Efficiency** | 50%+ of human | Comparison test | Baseline: human efficiency |
+| **Multiplayer Latency** | <100ms | Network test | Session 1: 200ms budget |
+| **Agent Decision Time** | <2ms per agent | Profiling | Session 2: Performance budget |
 
 ### Key Learnings
 - AI behavior authenticity
@@ -390,9 +392,9 @@ graph TD
 - Basic tutorial/onboarding
 - Analytics integration
 
-**NOT Included** (Deferred):
+**NOT Included** (Deferred to Beta - NOT Cut from Project):
 - Advanced threats (beyond meteor)
-- State/federation governance
+- **State/federation governance** (Confirmed in scope for Beta phase, months 7-18)
 - Advanced automation
 - Complex biomes
 - Multi-server architecture
@@ -472,21 +474,26 @@ graph TD
 - [ ] Core systems function
 - [ ] No critical bugs
 - [ ] Runs on target hardware
+- [ ] **Meets TPS targets (20 TPS)** [Session 1 constraint]
+- [ ] **Agent processing <2ms per agent** [Session 2 constraint]
 
 **Performance**:
-- [ ] Meets FPS targets
+- [ ] Meets **server tick rate targets (20 TPS)**
 - [ ] Acceptable load times
 - [ ] Stable over extended play
+- [ ] **Network bandwidth within 32 KB/s per player**
 
 **Gameplay**:
 - [ ] Fun to play
 - [ ] Clear goals
 - [ ] Appropriate challenge
+- [ ] **AI behavior authentic** [Session 2 validation]
 
 **Learning**:
 - [ ] Assumptions validated
 - [ ] New insights documented
 - [ ] Next steps clear
+- [ ] **Performance budgets confirmed** [Sessions 1-2 constraints]
 
 ---
 

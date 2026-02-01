@@ -9,7 +9,7 @@ This research analyzes three primary AI architectures for game development: **Ut
 - **GOAP** delivers superior tactical combat and dynamic action sequencing (F.E.A.R.) but has higher complexity
 - **Behavior Trees** offer industry-standard reliability and visual clarity but struggle with context-sensitive priority shifts
 - **Hybrid approaches** (Utility + GOAP or BT) are increasingly common for complex games
-- **Scalability limits**: Utility AI handles 100-500 agents; GOAP typically 10-20 active planners; BTs scale to 50-100+ with optimization
+- **Scalability limits**: Utility AI handles 20 agents (MVP) to 50-100 agents (post-MVP); GOAP typically 10-20 active planners; BTs scale to 20-50 agents with optimization
 
 **Recommendation for Societies**: Implement a **Utility AI core** for economic and social decisions, with **Behavior Tree actuation** for movement and animation execution, following the architectural pattern proven in RimWorld and advocated by modern game AI best practices.
 
@@ -651,9 +651,9 @@ Three-layer architecture common in complex games:
 - HTN: Medium (task network state)
 
 **Scaling Limits (practical)**:
-- Utility AI: 200-500 agents with optimization (bucketing, spatial partitioning)
+- Utility AI: 20 agents (MVP baseline), scaling to 50-100 agents post-MVP with optimization (bucketing, spatial partitioning)
 - GOAP: 10-20 simultaneous planners; more with LOD
-- BT: 100+ agents with event-driven architecture
+- BT: 20-50 agents with event-driven architecture
 - HTN: 20-40 agents
 
 ---

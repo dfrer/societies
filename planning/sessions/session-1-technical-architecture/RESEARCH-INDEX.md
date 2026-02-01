@@ -29,7 +29,7 @@
 ### Performance Targets
 - 20 TPS tick rate (50ms per tick)
 - CPU budget: 25% default, 60% max recommended
-- 25 AI agents (MVP) → 100 agents (stretch)
+- 20 AI agents (MVP) → 50-100 agents (post-MVP)
 - 8 players (MVP) → 20+ players (stretch)
 - 32 KB/s per player (MVP) → 112 KB/s (full scale)
 

@@ -10,7 +10,7 @@
 
 ### Executive Summary
 
-Societies targets **100 AI agents** with **100 concurrent players** at **20 TPS** (ticks per second). Key validated metrics:
+Societies targets **20 AI agents** (MVP) scaling to **50-100 agents** (post-MVP) with **8 concurrent players** (MVP) scaling to **20+ players** at **20 TPS** (ticks per second). Key validated metrics:
 
 - **Bandwidth**: 32 KB/s per player (256 KB/s server upload for 8 players MVP) [r1-research-summary.md, Key Finding 4]. Scales to 112 KB/s per player at full deployment.
 - **Server CPU**: 25-75% utilization target with adaptive quality reduction [r1-eco-performance-research.md, r3-eco-technical-postmortem.md]
@@ -24,7 +24,7 @@ Societies targets **100 AI agents** with **100 concurrent players** at **20 TPS*
 | Metric | MVP Target | Stretch Goal | Validated By | Hardware Requirements |
 |--------|-----------|--------------|--------------|----------------------|
 | World Size | 0.5 km² (3 biomes) | 4 km² (6+ biomes) | [r1-research-summary.md] | - |
-| Max Agents (AI) | 25 | 100 | [r1-godot-headless-research.md] | CPU-bound |
+| Max Agents (AI) | 20 | 50-100 | [r1-godot-headless-research.md] | CPU-bound |
 | Max Players | 8 | 20 | [r3-eco-technical-postmortem.md] | 256 KB/s upload (MVP) |
 | Total Entities | 2,000 | 10,000 | [r1-research-summary.md, Key Finding 6] | RAM-bound |
 | Server Tick Rate | 20 TPS | 30 TPS | [r1-research-summary.md, Key Finding 5] | CPU |
@@ -60,27 +60,27 @@ Societies targets **100 AI agents** with **100 concurrent players** at **20 TPS*
 - Base engine: ~100 MB
 - Rendering (Vulkan): ~200-500 MB
 - Textures/meshes: ~500 MB - 1 GB
-- Entity state cache: ~50 MB (100 agents × ~500 KB each)
+- Entity state cache: ~10 MB (20 agents × ~500 KB each) (MVP)
 - UI/Overlays: ~100 MB
 - **Total**: ~1-3 GB
 
-**Key Clarification**: The "<1GB for 100 agents" claim refers specifically to the Godot headless process, not total server requirements. PostgreSQL and OS require additional RAM.
+**Key Clarification**: The "<1GB for 100 agents" claim refers to post-MVP scale. For MVP (20 agents), headless process uses ~200MB. PostgreSQL and OS require additional RAM only for production servers.
 
 ### Bandwidth Budget Breakdown
 
 **Per-Player Bandwidth Calculation** [r1-research-summary.md, Key Finding 4; r1-enet-protocol-research.md]:
 
-**MVP Scale (25 agents, 8 players)**:
+**MVP Scale (20 agents, 8 players)**:
 | Component | Calculation | Bandwidth |
 |-----------|-------------|-----------|
-| **Agent Positions (nearby)** | 20 TPS × 25 agents × 0.04 KB | 20 KB/s |
+| **Agent Positions (nearby)** | 20 TPS × 20 agents × 0.04 KB | 16 KB/s |
 | **State Updates (batched)** | Batched reliable RPCs | 0.5 KB/s |
 | **World Snapshots** | 5 KB every 2 seconds | 2.5 KB/s avg |
 | **Chat/Commands** | Text + protocol overhead | 2 KB/s |
 | **Protocol Overhead** | ENet headers, acks (~22%) | ~7 KB/s |
 | **Total Per Player** | | **32 KB/s** |
 
-**Full Scale (100 agents, 20+ players)**:
+**Full Scale (50-100 agents, 20+ players) - Post-MVP**:
 | Component | Calculation | Bandwidth |
 |-----------|-------------|-----------|
 | **Agent Positions (nearby)** | 20 TPS × 100 agents × 0.04 KB | 80 KB/s |
@@ -99,7 +99,7 @@ Societies targets **100 AI agents** with **100 concurrent players** at **20 TPS*
 > **Note on Real-World Bandwidth**: Real-world bandwidth is typically 25-50% higher than these calculations due to Godot serialization overhead, full network stack overhead (46-54 bytes per packet), and network conditions.
 
 **Bandwidth Optimization Strategies**:
-1. **Spatial Culling**: Only sync agents within 200m radius (reduces from 500 to ~100 agents)
+1. **Spatial Culling**: Only sync agents within 200m radius (reduces from 100 to ~20 agents at MVP scale)
 2. **Network LOD**: Nearby (20 TPS), medium (10 TPS), far (2 TPS) [r1-network-sync-research.md]
 3. **Delta Compression**: Send state differences only (50-70% reduction) [r1-network-sync-research.md]
 4. **Megapacket Batching**: Batch 6-10 ticks (90% overhead reduction) [r1-factorio-case-study.md]
@@ -186,7 +186,7 @@ public class PerformanceManager {
 
 **Memory per Entity** [r1-godot-headless-research.md]:
 - Agent (complex): ~8.5 KB (Node3D + script + state data)
-- 100 agents: ~850 KB (negligible)
+- 20 agents: ~170 KB (MVP - negligible)
 - Static entity: ~1.5 KB
 - 5,000 entities: ~7.5 MB
 
@@ -202,9 +202,9 @@ public class PerformanceManager {
 The core game simulation logic runs primarily on a **single thread**, which is the main scaling bottleneck for Societies:
 
 - **Diminishing returns**: Adding more than 4-8 CPU cores provides minimal benefit for core simulation
-- **Entity contention**: 100 agents + 20 players all compete for the same thread's processing time  
+- **Entity contention**: 20 agents + 8 players (MVP) all compete for the same thread's processing time  
 - **Vertical scaling limit**: Even with 12-16 cores, the single-threaded core limits maximum player/agent count
-- **Stretch goal risk**: 100 agents + 20 players at 20 TPS may require reducing tick rate to 15 TPS or using 75% CPU utilization
+- **Post-MVP scale**: 50-100 agents + 20 players at 20 TPS may require bucketing/amortization or using 75% CPU utilization
 
 **Mitigation Strategies**:
 1. **Aggressive LOD**: Distant agents use minimal AI (2 TPS updates)

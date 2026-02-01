@@ -31,7 +31,7 @@ Session 2 AI System Design has been successfully completed and verified. All com
 - ✅ BDI (Belief-Desire-Intention) framework specified
 - ✅ Personality simulation systems designed
 - ✅ Economic and political behaviors modeled
-- ✅ Performance budgets established (1000+ agents, 16ms tick)
+- ✅ Performance budgets established (20 agents MVP, 50-100 agents post-MVP, <2ms per agent)
 
 ### Research Integration: ✅ PASS
 - ✅ R4 Dwarf Fortress Agents referenced

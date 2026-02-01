@@ -625,9 +625,9 @@ Identify what must be built first and in what order to validate core assumptions
    - **Success Metrics**: Small group can play through meteor threat
    - **Key Learnings**: Overall game loop, long-term engagement
 
-8. **What We're NOT Building Yet**
+8. **What We're NOT Building Yet** (Deferred to Beta - NOT Cut)
    - Advanced threats (environmental reckoning, space, etc.)
-   - State/federation governance
+   - **State/federation governance** (Confirmed in scope for Beta phase, months 7-18)
    - Advanced automation
    - Complex biomes (start with 2-3)
    - Multiplayer server infrastructure (start local/small)

@@ -408,6 +408,10 @@ CREATE TABLE worlds (
     }'
 );
 
+-- PostgreSQL is for PRODUCTION servers (50+ concurrent players), NOT development
+-- For development/small scale (8 players, 20 agents), use SQLite instead
+-- PostgreSQL only becomes necessary when scaling beyond 50-100 concurrent users
+
 CREATE INDEX idx_worlds_running ON worlds(is_running) WHERE is_running = true;
 
 -- Agents table with hybrid design

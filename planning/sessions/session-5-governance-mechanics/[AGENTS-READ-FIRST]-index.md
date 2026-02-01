@@ -1,7 +1,7 @@
 # Session 5: Governance Mechanics
 
 **Status:** Ready for Review  
-**Main Document:** [day5-governance-mechanics.md](./day5-governance-mechanics.md) (~1,050 lines)
+**Main Document:** [day5-governance-mechanics.md](./day5-governance-mechanics.md) **(~1,200 lines)**
 
 ---
 
@@ -9,7 +9,7 @@
 
 | Document | Description | Lines |
 |----------|-------------|-------|
-| [day5-governance-mechanics.md](./day5-governance-mechanics.md) | Complete governance system specification | ~1,050 |
+| [day5-governance-mechanics.md](./day5-governance-mechanics.md) | Complete governance system specification **(~1,200 lines)** |
 
 ---
 

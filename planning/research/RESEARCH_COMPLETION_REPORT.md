@@ -272,7 +272,7 @@ Eco requires large player populations. Societies must design AI-native systems f
 **Utility AI**:
 - **Games**: RimWorld, The Sims
 - **Scoring**: Response curves, weighted considerations
-- **Scalability**: 100-500 agents
+- **Scalability**: 20 agents (MVP) to 50-100 agents (post-MVP)
 - **Best for**: Economic/social simulation
 
 **GOAP**:
@@ -284,7 +284,7 @@ Eco requires large player populations. Societies must design AI-native systems f
 **Behavior Trees**:
 - **Games**: Halo series
 - **Structure**: Nodes, composites, decorators
-- **Scalability**: 50-100+ agents
+- **Scalability**: 20-50 agents
 - **Best for**: Clear action sequences
 
 #### Recommended Hybrid for Societies:
@@ -298,7 +298,7 @@ Eco requires large player populations. Societies must design AI-native systems f
 
 #### Implementation Roadmap:
 - **Prototype 2**: Basic Utility AI for 10-20 agents
-- **Alpha**: Scale to 100 agents with BT actuation
+- **Alpha**: Scale to 20 agents with BT actuation, target 50-100 agents post-MVP
 - **Beta**: Full hybrid with debugging tools
 
 ---
@@ -374,11 +374,11 @@ Eco requires large player populations. Societies must design AI-native systems f
 ✅ **Godot 4.x + C#** - Headless mode provides 40-60% CPU reduction  
 ✅ **State Synchronization** - 0.6 KB/s per player vs 76 KB/s snapshots  
 ✅ **ENet Networking** - Reliable UDP with channel separation  
-✅ **PostgreSQL + SQLite** - Hybrid JSONB strategy validated  
+✅ **SQLite for development**, PostgreSQL for production (50+ players) - Hybrid JSONB strategy validated  
 ✅ **20 TPS Target** - Achievable with spatial partitioning  
 
 ### AI Architecture (Validated by R4, R7)
-✅ **Utility AI + Behavior Trees** - Scales to 100+ agents  
+✅ **Utility AI + Behavior Trees** - Scales to 20 agents (MVP), 50-100 agents (post-MVP)  
 ✅ **Needs-Based Agents** - 28 needs weighted by personality (DF model)  
 ✅ **Memory Systems** - 3-tier memory creates realistic agents  
 
@@ -388,7 +388,7 @@ Eco requires large player populations. Societies must design AI-native systems f
 ✅ **Predictive Feedback** - Show consequences before commit  
 
 ### Performance Targets (Validated by R1, R3, R6)
-✅ **100 AI Agents** - Achievable with optimization  
+✅ **20 AI Agents** - MVP target, scaling to 50-100 agents post-MVP with optimization  
 ✅ **20 Concurrent Players** - Conservative initial target  
 ✅ **0.5-2 MB/s Bandwidth** - Validated across games  
 

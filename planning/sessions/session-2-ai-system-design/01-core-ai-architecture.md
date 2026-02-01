@@ -50,11 +50,11 @@ Specify how AI agents think, decide, and behave to create believable citizens. T
 - **R4 (Dwarf Fortress)**: Memory systems (short-term 8+8 slots), emotional valence, core memory formation, episodic/semantic/procedural memory types, memory consolidation mechanics
 - **R7 (AI Systems)**: Utility AI architecture, consideration curves, goal hierarchies, interrupt handling, decision loop optimization
 - **R8 (PDF Synthesis)**: Agent-based economic modeling, price belief formation, trading strategies, market equilibrium behaviors
-- **R1 (Technical constraints)**: 20 TPS tick rate, 2ms per-agent budget, 100-1000 agent scale, spatial partitioning for perception
+- **R1 (Technical constraints)**: 20 TPS tick rate, 2ms per-agent budget, 20-50 agent scale (MVP: 20), spatial partitioning for perception
 
 **Key Insights**:
 1. **Memory slot competition creates emergent forgetting**: DF's limited memory slots (5+5 simplified from 8+8) force agents to prioritize only significant events, naturally creating "forgotten" histories without explicit deletion logic
-2. **Utility AI scales better than GOAP for 100+ agents**: Multiplicative consideration scoring provides predictable performance O(n) vs GOAP's exponential planning, while still producing rich emergent behavior
+2. **Utility AI scales better than GOAP for 20+ agents**: Multiplicative consideration scoring provides predictable performance O(n) vs GOAP's exponential planning, while still producing rich emergent behavior
 3. **Price beliefs must include uncertainty ranges**: Agents need min-max bounds (not just mean) to create realistic bid-ask spreads and negotiation behaviors
 4. **Personality traits need non-linear impact curves**: Linear trait-to-behavior mappings produce robotic agents; exponential and logistic curves create more human-like variance
 5. **Weighted random selection prevents hive-mind**: Top-3 goal weighted random (vs pure max) creates essential behavioral diversity even with identical inputs
@@ -270,8 +270,8 @@ public void HandleInterrupt(Agent agent, InterruptType type, float severity)
 #### Performance Optimizations
 
 **Agent Bucketing** (from Session 1):
-- Divide agents into buckets of 100
-- Process one bucket per tick (amortizes 100 agents across 5 ticks)
+- Divide agents into buckets of 20
+- Process one bucket per tick (amortizes 20 agents across 5 ticks = 4 agents per tick at MVP)
 - Critical agents (in combat, player-visible) processed every tick
 
 **LOD (Level of Detail)**:
@@ -490,8 +490,8 @@ Each trait stored as `byte` (0-100) for memory efficiency:
 | **Total per Agent** | **~8KB** | Fits L1 cache |
 
 With 8KB per agent:
-- 100 agents = ~800KB (easily fits in memory)
-- 1000 agents = ~8MB (still reasonable)
+- 20 agents = ~160KB (MVP - easily fits in memory)
+- 100 agents = ~800KB (post-MVP scale)
 
 #### Performance Budget Allocation
 
@@ -593,25 +593,21 @@ sequenceDiagram
 
 #### Processing Buckets
 
-To maintain 20 TPS with 100+ agents, agents are divided into **5 buckets** of 20 agents each:
+To maintain 20 TPS with 20+ agents, agents are divided into **5 buckets**:
 
-| Tick | Bucket | Agents Processed | Processing Time |
-|------|--------|------------------|-----------------|
-| 1 | A | 0-19 | ~30ms |
-| 2 | B | 20-39 | ~30ms |
-| 3 | C | 40-59 | ~30ms |
-| 4 | D | 60-79 | ~30ms |
-| 5 | E | 80-99 | ~30ms |
-| 6 | A | 0-19 (repeat) | ~30ms |
-
-**Benefits**:
-- Distributes 100 agents across 5 ticks = 20 agents per tick
-- Per-tick budget: 20 agents × 2ms = 40ms (fits in 50ms tick)
+**MVP (20 agents)**:
+- All 20 agents can be processed every tick
+- Per-tick budget: 20 agents × 2ms = 40ms (fits comfortably in 50ms tick window)
 - Leaves 10ms for physics, networking, ecosystem
+
+**Post-MVP Scale (50-100 agents)**:
+- Use 5 buckets of 10-20 agents each
+- Process one bucket per tick (amortizes 50-100 agents across 5 ticks)
+- Per-tick budget: 10-20 agents × 2ms = 20-40ms
 
 **Priority Override**:
 - Critical agents (in combat, player-visible, stressed) process every tick
-- Maximum 10% of agents can be critical (10 agents max at 100 agent count)
+- Maximum 10% of agents can be critical (2 agents max at 20 agent MVP count)
 
 #### Amortization Schedule
 

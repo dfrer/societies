@@ -20,8 +20,6 @@ export_presets.cfg
 *.tmp
 
 # C#-specific
-*.csproj
-*.sln
 bin/
 obj/
 .vs/

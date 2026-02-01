@@ -26,18 +26,18 @@ The following questions represent technical challenges, implementation decisions
 
 1. **What is the exact performance cost of 15-20 considerations vs. 5-8?**
    - Current budget assumes 15 considerations at ~0.02ms each
-   - Need empirical testing: does 20 considerations exceed 2ms budget at 100 agents?
+   - Need empirical testing: does 20 considerations exceed 2ms budget at 20 agents (MVP)?
    - May require dynamic LOD: fewer considerations for distant agents
 
 2. **How many agents can we support at 2ms budget with full AI?**
-   - Theoretical: 100 agents × 2ms = 200ms per tick (exceeds 50ms tick window)
-   - Amortization via 5 buckets brings this to 40ms per tick (acceptable)
-   - But what's the practical limit before we need aggressive LOD or reduced tick rates?
+   - MVP: 20 agents × 2ms = 40ms per tick (fits comfortably within 50ms tick window - no amortization needed)
+   - Post-MVP scale: 50-100 agents requires amortization via 5 buckets to bring processing to 20-40ms per tick
+   - What's the practical limit before we need aggressive LOD or reduced tick rates?
 
-3. **What's the memory bandwidth impact of 1000 agents with 10 memories each?**
+3. **What's the memory bandwidth impact of 100 agents with 10 memories each (post-MVP)?**
    - 10 slots × 64 bytes = 640 bytes per agent
-   - 1000 agents = 640KB memory footprint (reasonable)
-   - But consolidation/decay scans all agents every 10 ticks - cache thrashing risk?
+   - 100 agents = 64KB memory footprint (post-MVP - reasonable)
+   - But consolidation/decay scans all agents every 10 ticks - cache thrashing risk at scale?
 
 ### Behavior Quality Questions
 
@@ -67,7 +67,7 @@ The following questions represent technical challenges, implementation decisions
 8. **What's the critical threshold for faction formation vs. solitary behavior?**
    - Current logic: 3+ similar agents + communication network density > 0.6
    - Does this create too many factions (fragmentation) or too few (consolidation)?
-   - Need testing with 100 agents over 7-day simulation
+   - Need testing with 20 agents over 7-day simulation (MVP validation)
 
 9. **How do we detect and handle "behavioral dead ends" (agents stuck in loops)?**
    - Current: goal satisfaction decay should eventually force new goals
@@ -79,7 +79,7 @@ The following questions represent technical challenges, implementation decisions
 10. **What's the optimal serialization format for agent state snapshots?**
      - Options: JSON (readable), MessagePack (fast), custom binary (smallest)
      - Must balance: human debuggability, network transmission, database storage
-     - Need profiling with 1000-agent world save/load
+     - Need profiling with 100-agent world save/load (post-MVP scale)
 
 11. **How do we calibrate population elasticity thresholds to prevent oscillation?**
     - Current: 4 metrics trigger spawn/despawn with fixed thresholds
@@ -96,7 +96,7 @@ The following questions represent technical challenges, implementation decisions
 ### Future Research Areas
 
 **Immediate (Day 3-5):**
-- Prototype tick budget validation with 100, 500, 1000 agents
+- Prototype tick budget validation with 20 agents (MVP), 50 agents (Alpha), 100 agents (post-MVP stress test)
 - Test consideration count impact on decision quality vs. performance
 - Validate memory consolidation timing through simulation
 
@@ -126,7 +126,7 @@ The following questions represent technical challenges, implementation decisions
 **Decision**: Use Utility AI for goal/action selection combined with Behavior Trees for action execution
 
 **Rationale**:
-- **Scalability**: Utility AI evaluates O(n) considerations vs. GOAP's O(n^m) planning (critical for 100+ agents)
+- **Scalability**: Utility AI evaluates O(n) considerations vs. GOAP's O(n^m) planning (critical for 20+ agents, 50-100 post-MVP)
 - **Proven Pattern**: Successfully used in RimWorld (100+ pawns), The Sims (agent needs), Civilization (AI personalities)
 - **Flexibility**: Multiplicative scoring naturally handles competing priorities without explicit priority trees
 - **Debuggability**: Clear consideration values make "why did agent do X?" answerable
@@ -201,7 +201,7 @@ The following questions represent technical challenges, implementation decisions
 
 **Date**: Day 2 - Performance Architecture
 
-**Decision**: Run AI at 20 TPS (50ms ticks) with 5 buckets of agents, processing one bucket per tick (~20 agents per tick at 100 agent scale)
+**Decision**: Run AI at 20 TPS (50ms ticks) with 5 buckets available for post-MVP scaling. At MVP (20 agents), all agents process every tick (~40ms). At 50-100 agent scale, use 5 buckets for amortization.
 
 **Rationale**:
 - **Budget Math**: 20 agents × 2ms = 40ms per tick, leaving 10ms for physics/networking/ecosystem
@@ -210,10 +210,10 @@ The following questions represent technical challenges, implementation decisions
 - **Session 1 Alignment**: Matches server tick architecture defined in technical planning
 
 **Alternatives Considered**:
-- **30 TPS (33ms)**: Rejected - too tight for 100 agents (would need 1.3ms per agent, not achievable)
+- **30 TPS (33ms)**: Rejected - unnecessary complexity, 20 TPS sufficient for MVP
 - **10 TPS (100ms)**: Rejected - too slow, agents would appear unresponsive to players
 - **Variable tick rate**: Rejected - adds complexity, determinism issues, hard to debug
-- **Process all agents every tick**: Rejected - 100 agents × 2ms = 200ms >> 50ms tick window
+- **Process all agents every tick**: Accepted for MVP (20 agents × 2ms = 40ms < 50ms tick window). Post-MVP (50-100 agents) requires bucketing.
 
 **Confidence**: High (90%)
 
@@ -233,7 +233,7 @@ The following questions represent technical challenges, implementation decisions
 - **Expressive Range**: 19 facets create 10,000+ unique personality profiles (vs. 5 facets = 100s of combinations)
 - **Psychological Grounding**: Big Five is well-validated in psychology research; extends naturally
 - **Game-Relevant**: Core 5 directly map to gameplay (trading, crafting, combat, social)
-- **Memory Efficient**: Stored as bytes (0-100), total 19 bytes per agent (negligible cost)
+- **Memory Efficient**: Stored as bytes (0-100 scale), total 19 bytes per agent (negligible cost)
 
 **Alternatives Considered**:
 - **Big Five only**: Rejected - too abstract, doesn't directly map to game behaviors
@@ -283,7 +283,7 @@ The following questions represent technical challenges, implementation decisions
 
 **Rationale**:
 - **Emergent Complexity**: Market prices naturally coordinate agent behavior (no hand-authored scripts)
-- **Scalability**: O(n) local decisions vs. O(n²) global optimization for 1000 agents
+- **Scalability**: O(n) local decisions vs. O(n²) global optimization for 100 agents (post-MVP scale)
 - **Realism**: Matches real-world economic coordination; players understand market dynamics
 - **Robustness**: No single point of failure; if one agent fails, market continues
 
@@ -315,7 +315,7 @@ The following questions represent technical challenges, implementation decisions
 
 **Alternatives Considered**:
 - **Fixed population**: Rejected - wastes resources when no players online, overcrowds when many players active
-- **Pure player-count based**: Rejected - ignores economic needs; could have 100 agents but no food producers
+- **Pure player-count based**: Rejected - ignores economic needs; could have 20 agents but no food producers at MVP scale
 - **Random spawn/despawn**: Rejected - feels arbitrary, breaks player immersion
 - **Time-of-day based**: Rejected - doesn't account for actual player activity or economic state
 
@@ -370,7 +370,7 @@ This section documents contradictions, gaps, or integration issues identified be
 **Discovered in**: Session 2 Section 4.1 (Trading Strategy), Session 1 Section 5.3 (PostgreSQL)
 **Affects**: Session 1 (Database Design), Session 2 (Economic Behavior)
 **Description**:
-- Session 2 agents can trade 3-7 times per day (100 agents = 300-700 transactions/day)
+- Session 2 agents can trade 3-7 times per day (20 agents = 60-140 transactions/day at MVP)
 - Session 1 targets 0.5-0.8ms per transaction write
 - 700 transactions × 0.8ms = 560ms write time (acceptable for daily batch)
 - BUT: If agents trade more frequently (e.g., 20x/day during market events), exceeds write budget
@@ -497,7 +497,7 @@ This section documents the comprehensive AI development skills required for Soci
 - Curve functions for utility scoring (linear, exponential, logistic)
 - Normalization and weighting strategies
 - Decision tree vs utility system tradeoffs
-- Performance optimization for large agent counts (1000+)
+- Performance optimization for large agent counts (50-100 post-MVP)
 - Goal selection algorithms with interruption
 - Multi-criteria decision analysis
 
@@ -513,7 +513,7 @@ This section documents the comprehensive AI development skills required for Soci
 - [ ] Can design utility curves for different goal types
 - [ ] Can implement priority calculations with weights
 - [ ] Can handle goal interruption gracefully
-- [ ] Performance: 1000+ agents < 1ms per tick
+- [ ] Performance: 20 agents < 0.5ms per tick (MVP), 50-100 agents < 1ms per tick (post-MVP)
 - [ ] Creates believable, non-random decision patterns
 
 ---
@@ -553,7 +553,7 @@ This section documents the comprehensive AI development skills required for Soci
 - [ ] Memory decay works realistically over time
 - [ ] Consolidation promotes important memories
 - [ ] Retrieval returns contextually relevant memories
-- [ ] System handles 100+ memories per agent efficiently
+- [ ] System handles 20+ memories per agent efficiently (MVP)
 
 ---
 
@@ -740,7 +740,7 @@ This section documents the comprehensive AI development skills required for Soci
 
 1. **Prototype Implementation (1-2 weeks):**
    - Build minimal working version
-   - Test with 100+ agents
+   - Test with 20+ agents (MVP target)
    - Profile performance
    - Document behavior patterns
 
@@ -751,7 +751,7 @@ This section documents the comprehensive AI development skills required for Soci
    - Can we debug their decisions?
 
 3. **Scale Testing:**
-   - Test with target agent counts (100-1000)
+   - Test with target agent counts (20 MVP, 50-100 post-MVP)
    - Measure tick processing time
    - Memory usage profiling
    - Network synchronization impact
@@ -909,7 +909,7 @@ This section documents the comprehensive AI development skills required for Soci
 - [x] **Skill creation workflow defined**
   - ✓ 4-phase workflow: Research → Prototype → Validate → Document (implied across Section 14)
   - ✓ Research phase: Primary sources, key competencies, creation process (Section 14.1)
-  - ✓ Prototype phase: 1-2 week implementation, 100+ agent testing (Section 14.3)
+   - ✓ Prototype phase: 1-2 week implementation, 20+ agent testing (Section 14.3)
   - ✓ Validation phase: Behavioral validation, scale testing, external review (Section 14.3)
   - ✓ Documentation phase: Update skill with implementation details, performance characteristics (Section 14.3)
 

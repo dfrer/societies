@@ -73,7 +73,7 @@ graph TB
 **Snapshot Frequency**:
 - **Full World State**: Saved every 15 minutes (every 18,000 ticks at 20 TPS)
 - **Initial Connect**: Client receives latest snapshot + events since snapshot
-- **Snapshot Size**: ~5-10 MB compressed for 100 agents + 5,000 entities [r1-factorio-case-study.md]
+- **Snapshot Size**: ~2-5 MB compressed for 20 agents + 5,000 entities (MVP) [r1-factorio-case-study.md]
 
 **Event Log Structure** [r1-research-summary.md, Decision 5]:
 - **Format**: Append-only, immutable log
@@ -215,12 +215,12 @@ Debug Steps:
 
 | Metric | Calculation | Value |
 |--------|-------------|-------|
-| Events per minute | 100 agents × 1 decision/min | ~100 events |
+| Events per minute | 20 agents × 1 decision/min | ~20 events |
 | Size per event | JSON with compression | ~50 bytes |
-| Per minute | 100 × 50 bytes | ~5 KB |
-| Per hour | 5 KB × 60 | ~300 KB |
-| Per day | 300 KB × 24 | ~7.2 MB |
-| Per month | 7.2 MB × 30 | ~216 MB |
+| Per minute | 20 × 50 bytes | ~1 KB |
+| Per hour | 1 KB × 60 | ~60 KB |
+| Per day | 60 KB × 24 | ~1.4 MB |
+| Per month | 1.4 MB × 30 | ~42 MB |
 
 > **Important Clarification**: The ~216 MB/month estimate assumes logging only **significant decisions** (major actions like buying/selling, voting, law changes) at approximately 1 per minute per agent. If logging every tick-level event (20 TPS), storage would be ~41 GB/month. The implementation must sample/batch events or use aggressive compression for tick-level logging.
 
@@ -447,7 +447,14 @@ Eco experienced significant database performance issues with LiteDB, where read/
 - Read/write spikes caused server lag and timeouts
 - Embedded database created bottleneck that was hard to fix post-launch
 
-**Why PostgreSQL from Day One** [r3-eco-technical-postmortem.md]:
+**Why PostgreSQL for Large-Scale Production (NOT Day One Development)** [r3-eco-technical-postmortem.md]:
+
+**Critical Clarification**: Eco's LiteDB disaster occurred at **50-100 player scale**. For Societies MVP (8 players, 20 agents), SQLite is completely sufficient and provides zero-setup development experience. PostgreSQL becomes necessary when scaling to production servers with 50+ concurrent players.
+
+**Development Strategy**:
+- **Prototyping (Months 1-6)**: SQLite only - zero setup, file-based
+- **Alpha (Months 7-12)**: SQLite for testing, optional PostgreSQL stress testing
+- **Beta/Production (Months 13+)**: PostgreSQL for production servers (50+ players)
 
 | Feature | LiteDB (Eco) | PostgreSQL (Societies) |
 |---------|--------------|------------------------|
@@ -458,10 +465,12 @@ Eco experienced significant database performance issues with LiteDB, where read/
 | **Professional Grade** | Hobbyist | Production-proven |
 
 **Lessons Learned**:
-1. **Use dedicated database server** from day one
-2. **Connection pooling** essential for concurrent access
-3. **Async operations** - don't block game thread on DB
-4. **Batch writes** - don't write every change immediately
+1. **Use dedicated database server** for production (50+ player scale), not necessarily for development
+2. **SQLite sufficient for MVP** - Eco's problems don't apply at 8 player / 20 agent scale
+3. **Connection pooling** essential for concurrent access at production scale
+4. **Async operations** - don't block game thread on DB
+5. **Batch writes** - don't write every change immediately
+6. **Migration path** - Start with SQLite, migrate to PostgreSQL when scaling
 
 **Our Mitigation**:
 - PostgreSQL with JSONB (proven at scale)

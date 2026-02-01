@@ -24,15 +24,15 @@ This document establishes the complete technical foundation for Societies, a mul
 **Networking**: ENet state synchronization chosen over lockstep to enable variable tick rates (10-30 TPS), time acceleration (2x-10x), and AI agent randomness. State sync uses 0.6 KB/s baseline (scales to 32-112 KB/s with agents) and allows mid-game joining without replay catchup. *Note: State sync uses 4x more bandwidth than lockstep (0.6 vs 0.14 KB/s) but avoids determinism complexity; 99% reduction is vs naive snapshots (76 KB/s)*.
 
 **Performance Targets**: 
-- **MVP Target**: 25 AI agents + 8 concurrent players at 20 TPS, requiring 32 KB/s bandwidth per player (256 KB/s server upload)
-- **Stretch Goal**: 100+ AI agents + 20+ players at 20 TPS, scaling to 112 KB/s per player
+- **MVP Target**: 20 AI agents + 8 concurrent players at 20 TPS, requiring 32 KB/s bandwidth per player (256 KB/s server upload)
+- **Post-MVP Scale**: 50-100 AI agents + 20+ players at 20 TPS, scaling to 112 KB/s per player
 - **Technical Foundation**: Headless server mode (40-60% CPU reduction, 70-80% memory savings) validated for all scales
 
-**Database**: PostgreSQL JSONB with GIN indexes for production (<1ms queries), SQLite for development/single-player, avoiding Eco's LiteDB disaster.
+**Database**: PostgreSQL JSONB with GIN indexes for large-scale production servers like Eco's 50-100 player servers (<1ms queries), SQLite for development/single-player (MVP: 8 players, 20 agents), avoiding Eco's LiteDB disaster at production scale.
 
 **Architecture**: Server-authoritative with event-sourced saves enabling replay debugging, continuous world simulation with time acceleration (2x-10x), offline-to-multiplayer migration possible via localhost headless server with world export/import.
 
-**Key Risks Mitigated**: AI performance (Utility AI scales to 100-500 agents vs GOAP's 10-20 per [r7-ai-systems-games.md]), database bottlenecks (PostgreSQL with batching), memory usage (headless 70-80% savings), multiplayer sync (state sync proven).
+**Key Risks Mitigated**: AI performance (Utility AI scales to 20 agents (MVP), 50-100 agents post-MVP vs GOAP's 10-20 per [r7-ai-systems-games.md]), database bottlenecks (PostgreSQL with batching for production scale), memory usage (headless 70-80% savings), multiplayer sync (state sync proven).
 
 ---
 
@@ -156,7 +156,7 @@ Define the technical foundation that makes Societies possible. This document est
 - **Finding**: PostgreSQL JSONB with GIN indexes provides flexibility + performance balance
 - **Performance**: Within acceptable range for entity/agent data that changes frequently
 - **Migration**: Schema evolution easier with JSONB for experimental features
-- **Impact**: Confirms Decision 3 (Dual database strategy) - PostgreSQL JSONB for production, SQLite for dev
+- **Impact**: Confirms Decision 3 (Dual database strategy) - PostgreSQL JSONB for large-scale production (50+ players), SQLite for dev/single-player (MVP scale)
 
 #### 5. Event Sourcing for Debugging
 - **Finding**: Factorio's desync debugging approach validates our event-sourced save system
@@ -176,7 +176,7 @@ Define the technical foundation that makes Societies possible. This document est
 
 ### Open Questions from Research
 - [ ] What is Godot's actual entity limit before performance degradation? (Needs prototyping)
-- [ ] How much bandwidth does 100 agents at 20 TPS actually use? (Needs measurement)
+- [ ] How much bandwidth does 20 agents at 20 TPS actually use? (Needs measurement - 100 agents is post-MVP scale)
 - [ ] What is the optimal snapshot frequency for our use case? (Factorio: every 2 seconds)
 
 ## Dependencies
@@ -196,7 +196,7 @@ Define the technical foundation that makes Societies possible. This document est
 
 ### Executive Summary
 
-Societies is a multiplayer ecosystem simulation game built on a **server-authoritative architecture** using Godot 4.x with C#. The architecture supports **25 AI agents** and up to **8 concurrent players** at **20 TPS (ticks per second)** for the MVP, requiring approximately **32 KB/s bandwidth per player** and **256 KB/s total server upload** [r1-research-summary.md, Key Finding 4]. The system is architected to scale to 100+ agents and 20+ players post-MVP. The system is designed to maintain **5,000-10,000 active entities** in headless server mode (theoretical capacity based on hardware specs; requires prototyping validation) through aggressive spatial partitioning and LOD systems [r1-godot-headless-research.md]. 
+Societies is a multiplayer ecosystem simulation game built on a **server-authoritative architecture** using Godot 4.x with C#. The architecture supports **20 AI agents** and up to **8 concurrent players** at **20 TPS (ticks per second)** for the MVP, requiring approximately **32 KB/s bandwidth per player** and **256 KB/s total server upload** [r1-research-summary.md, Key Finding 4]. The system is architected to scale to 50-100 agents and 20+ players post-MVP. The system is designed to maintain **5,000-10,000 active entities** in headless server mode (theoretical capacity based on hardware specs; requires prototyping validation) through aggressive spatial partitioning and LOD systems [r1-godot-headless-research.md]. 
 
 Key architectural decisions validated by research:
 - **State synchronization** over deterministic lockstep (99% bandwidth reduction: 0.6 KB/s vs 76 KB/s) [r1-network-sync-research.md]
@@ -224,7 +224,7 @@ graph TB
     subgraph "Server Layer [Headless Godot 4.x]"
         SS[Simulation Server<br/>Headless Mode<br/>40-60% CPU savings<br/>70-80% memory savings]
         SE[Entity Manager<br/>5,000-10,000 entities max]
-        SA[Agent AI System<br/>100 agents @ 20 TPS]
+        SA[Agent AI System<br/>20 agents @ 20 TPS (MVP)]
         SG[Governance Engine<br/>Server-authoritative]
         EC[Ecosystem Simulation<br/>100m chunk partitioning]
     end
@@ -372,7 +372,7 @@ This section explicitly connects our technical architecture to the core design p
 | **Headless server for single-player** | Deployment complexity | Persistent world, equivalence |
 | **Event-sourced saves** | 216 MB/month storage, replay complexity | Debugging, world continuity |
 | **PostgreSQL over SQLite** | Higher ops cost | Reliability, avoiding Eco's LiteDB issues |
-| **C# over GDScript** | Learning curve | AI performance (enables 100 agents) |
+| **C# over GDScript** | Learning curve | AI performance (enables 20+ agents) |
 | **Server-authoritative everything** | Latency for all actions | Security, equivalence |
 
 **Conclusion**: Every major technical decision in this architecture serves the game's core philosophy. We did not choose convenience; we chose alignment with the vision of AI-human equivalence in a persistent, non-violent simulation.
@@ -389,7 +389,7 @@ This section explicitly connects our technical architecture to the core design p
 | Protocol overhead | ENet headers + acks (~10%) | 7 KB/s |
 | **Total** | | **32 KB/s** |
 
-**Scaling Architecture**: Bandwidth scales linearly with agent density. At full scale (100 agents, 20 players): 112 KB/s per player, 2.24 MB/s total server upload.
+**Scaling Architecture**: Bandwidth scales linearly with agent density. At full scale (50-100 agents, 20 players): 112 KB/s per player, 2.24 MB/s total server upload.
 
 **Total Server Upload for MVP**: 32 KB/s × 8 = **256 KB/s** [r1-research-summary.md, Key Finding 4; r1-enet-protocol-research.md]
 
@@ -405,19 +405,19 @@ This section explicitly connects our technical architecture to the core design p
 |-------------|-----------|---------------|------------|-------|
 | **Static Entities** (buildings, resources) | 3,000 | 10,000-50,000 | Minimal | No AI, minimal processing |
 | **Simple Dynamic** (plants, basic animals) | 1,500 | 5,000-10,000 | Low | Basic growth/behavior |
-| **Complex AI Agents** | 25 | 100-200 | **High** | CPU-bound by decision-making |
+| **Complex AI Agents** | 20 | 50-100 | **High** | CPU-bound by decision-making |
 | **Total MVP Target** | **5,000** | **N/A** | Mixed | Balanced mix of above |
 
-**Important Clarification**: The 5,000-10,000 limit applies to the **combined total** of mostly static and simple entities. Complex AI agents with full Utility AI decision-making have a separate, lower limit of 100-200 agents due to CPU costs.
+**Important Clarification**: The 5,000-10,000 limit applies to the **combined total** of mostly static and simple entities. Complex AI agents with full Utility AI decision-making have a separate, lower limit of 50-100 agents due to CPU costs.
 
-- **Headless Mode**: 5,000-10,000 total entities (mix of static + dynamic + ~25-100 AI agents) on modest hardware (4-core CPU, 8GB RAM)
+- **Headless Mode**: 5,000-10,000 total entities (mix of static + dynamic + ~20-50 AI agents) on modest hardware (4-core CPU, 8GB RAM)
 - **Godot Scene Tree**: 10,000+ nodes per second add/delete capability
 - **CPU Bottleneck**: AI calculations, not raw entity count
 
 **CPU/Memory Targets**:
 - **Server CPU**: 25% default utilization, 75% maximum recommended [r1-eco-performance-research.md]
-- **Headless Memory**: <1GB for 100 agents (vs 1-3GB graphical mode) [r1-godot-headless-research.md]
-- **Client Memory**: 1-3GB for graphical mode with 100 visible agents [r1-godot-headless-research.md]
+- **Headless Memory**: <200MB for 20 agents (vs 1-3GB graphical mode) [r1-godot-headless-research.md]
+- **Client Memory**: 1-3GB for graphical mode with 20-50 visible agents [r1-godot-headless-research.md]
 - **C# Performance**: 2-5x faster than GDScript for AI/economy calculations [r1-godot-headless-research.md]
 
 ---

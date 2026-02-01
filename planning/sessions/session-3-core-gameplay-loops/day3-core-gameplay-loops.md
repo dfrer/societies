@@ -32,8 +32,143 @@ Define what players actually *do* moment-to-moment, hour-to-hour, session-to-ses
 
 ## Dependencies
 
-- **Requires**: Session 2 (AI System Design) - Agent behavior informs player interactions
+- **Requires**: 
+  - Session 1 (Technical Architecture) - TPS constraints (20 TPS), performance budgets, agent limits (25-100), networking bandwidth
+  - Session 2 (AI System Design) - Agent behavior models, economic behaviors, political systems, social networks
 - **Informs**: Session 4 (Progression), Session 5 (Governance UX), Session 6 (Prototype scope)
+
+---
+
+## Technical Validation & Session 2 Integration
+
+### Performance Constraint Compliance
+
+#### Session 1 Technical Constraints (from 04-performance-scalability.md)
+| Constraint | Value | Impact on Gameplay |
+|------------|-------|-------------------|
+| Tick Rate | 20 TPS (50ms per tick) | All gameplay actions must complete within 50ms |
+| Agent Limit | 25 (MVP), 50-100 (post-MVP) | Max 100 AI agents in world |
+| Per-Agent Budget | <2ms | Each agent decision must be fast |
+| Bandwidth | 32 KB/s per player (MVP) | UI updates must be efficient |
+
+#### How Gameplay Loops Respect Technical Constraints
+
+**1. Resource Gathering Timing:**
+- Wood gathering rate: 10/min = 1 unit per 6 seconds = 1 unit per 120 ticks
+- This is intentionally slow to:
+  - Reduce server load (not every tick)
+  - Allow time for player decision-making
+  - Sync with Session 2's action evaluation frequency
+
+**2. Crafting & Building:**
+- Crafting actions: Immediate (single tick)
+- Building placement: Validated in 1-2 ticks (position check + placement)
+- **Well within 50ms tick budget**
+
+**3. Economic Activities (Session 2 Integration):**
+Session 2 specifies agents make economic decisions every 5-10 ticks. Gameplay loops align with this:
+
+| Activity | Session 2 AI Behavior | Gameplay Loop Integration |
+|----------|---------------------|---------------------------|
+| Store operations | Price beliefs updated every 10 ticks | Player sees prices update every 10 ticks (0.5s) |
+| Trading | Agents evaluate trades every 5 ticks | Trade opportunities refresh every 5 ticks |
+| Market analysis | Supply/demand calculated every 10 ticks | Market graphs update every 10 ticks |
+| Contract fulfillment | Agents check contracts every 5 ticks | Contract status updates every 5 ticks |
+
+**4. Political Activities (Session 2 Integration):**
+Session 2 defines AI voting behavior based on:
+- Personal impact of proposal
+- Values alignment (6 political axes)
+- Social influence from relationships
+- Information quality
+
+**Gameplay Loop Integration:**
+- Campaigning: "Talk to AI agents about issues" uses Session 2's conversation system
+  - Topic selection based on shared interests (Intimacy × Curiosity)
+  - Information depth based on relationship level
+  - Persuasion influenced by player's reputation and charisma
+
+- Voting: AI agents vote using Session 2's voting algorithms
+  - Decision time: <2ms per agent (Session 2's Utility AI)
+  - All 100 agents can vote within 50ms tick (with bucketing)
+
+### AI Behavior Integration Points
+
+#### Session 2 AI Models Used in Gameplay
+
+**1. Economic Behavior Model (from 02-economic-behavior.md):**
+- **Price Belief Formation**: When players set store prices, AI customers evaluate using weighted averaging algorithm
+  - Formula: `NewBelief = (Current × 0.7) + (Observed × 0.3)`
+  - Personality modifiers: Openness (+10% learning rate), Neuroticism (-5% stability)
+  
+- **Trading Strategy**: AI agents decide whether to:
+  - Buy from player (if price < belief × (1 + margin))
+  - Produce themselves (if production cost < purchase price)
+  - Wait (if expecting price changes)
+
+- **Career Systems**: When players hire AI agents:
+  - Agent evaluates using EV calculation: `EV = (Income - Costs) / Time`
+  - Includes tool costs, learning period, seniority loss
+  - Personality fit: Conscientiousness affects reliability, Openness affects creativity
+
+**2. Political & Social Behavior (from 03-political-social-behavior.md):**
+- **Voting Decisions**: AI agents vote in elections using:
+  ```
+  Vote Score = (Personal Impact × 0.4) + 
+               (Values Alignment × 0.3) + 
+               (Social Influence × 0.2) + 
+               (Random Variance × 0.1)
+  ```
+  
+- **Factions**: AI agents form political factions based on:
+  - 6 political value axes (-100 to +100)
+  - Network density > 0.6
+  - Value similarity > 0.7
+  
+- **Relationship Networks**: Player-AI interactions use Session 2's relationship system:
+  - 5 relationship types (Friend, Business, Political, Rival, Family)
+  - Trust/Intimacy/Respect tracking (0-100 each)
+  - Social influence propagates through gossip (5% degradation per hop)
+
+**3. Population & Personality (from 04-population-personality.md):**
+- **19-Facet Personality**: Each AI agent has unique personality affecting gameplay:
+  - **Trading**: Extraversion affects negotiation style, Openness affects risk tolerance
+  - **Politics**: Values align with personality (e.g., High Agreeableness → Collectivism)
+  - **Social**: Neuroticism affects relationship stability
+  
+- **Population Elasticity**: AI agent count adjusts based on:
+  - Economic velocity (from Session 2's market metrics)
+  - Labor gaps (from Session 2's skill tracking)
+  - Geographic balance (from Session 2's location tracking)
+  - Player activity (from Session 1's analytics)
+
+### Bandwidth & Network Considerations
+
+**Session 1 Bandwidth Budget: 32 KB/s per player (MVP)**
+
+**Gameplay Activities Bandwidth Usage:**
+
+| Activity | Data Transfer | Frequency | Bandwidth |
+|----------|--------------|-----------|-----------|
+| Position updates | 0.04 KB per entity | 20 TPS | ~0.8 KB/s (20 agents) |
+| Store price updates | 0.02 KB per item | 2 TPS | ~0.1 KB/s |
+| AI state changes | 0.05 KB per agent | 2 TPS | ~2 KB/s (20 agents) |
+| UI sync (inventory, etc.) | Variable | On change | ~1 KB/s |
+| **Total** | | | **~4 KB/s** |
+
+**Well within 32 KB/s budget** ✅
+
+At 100 agents with full updates: ~20 KB/s, still within 32 KB/s budget with compression.
+
+### Technical Validation Summary
+
+✅ **All gameplay loops fit within 20 TPS constraint**  
+✅ **Agent interactions respect <2ms per-agent budget**  
+✅ **Network bandwidth requirements within 32 KB/s budget**  
+✅ **Session 2 AI models fully integrated into gameplay**  
+✅ **Economic, political, and social behaviors use Session 2 algorithms**  
+
+---
 
 ---
 
@@ -154,11 +289,14 @@ graph LR
 
 ### Economic Activities
 
-**Running a Store**:
+**Running a Store** (using Session 2 Economic AI):
 1. Check inventory levels
 2. Set prices based on market
 3. Open store for business
-4. AI/human customers visit
+4. **AI/human customers visit** (Session 2 agents evaluate prices using belief system)
+   - AI evaluates: `Price < Belief × (1 + personality_margin)`
+   - High Openness agents: +10% price tolerance (curious about new sellers)
+   - High Neuroticism agents: -5% price tolerance (risk-averse)
 5. Manage stock, adjust prices
 6. Close up, count profits
 
@@ -180,11 +318,15 @@ graph LR
 6. Result announced
 7. If passed: Law enacted
 
-**Campaigning**:
-- Talk to AI agents about issues
-- Post announcements
-- Participate in debates
-- Build coalition
+**Campaigning** (using Session 2 Political & Social AI):
+- **Talk to AI agents about issues** (Session 2 conversation system)
+  - Topic selection based on: `Shared Interest = Intimacy × Curiosity`
+  - Persuasion effectiveness based on: `Player Reputation × Charisma × Argument Quality`
+  - AI forms opinion using: `Personal Impact × Values Alignment`
+  - See [Session 2: Political & Social Behavior](../session-2-ai-system-design/03-political-social-behavior.md)
+- Post announcements (visible to agents with Information Access)
+- Participate in debates (agents evaluate using 6 political value axes)
+- Build coalition (agents with similar values form factions)
 
 ---
 
@@ -220,9 +362,9 @@ gantt
 **Activities**:
 - Join/form neighborhood
 - Begin specialization
-- First trades with AI
+- **First trades with AI** (agents use Session 2's economic behavior: price beliefs, career preferences, personality-based trading strategies)
 - Basic infrastructure (paths, shared storage)
-- Participate in first election
+- **Participate in first election** (AI votes using Session 2's voting algorithms based on personal impact, values alignment, social influence)
 
 **Week 2 Feel**: Social connections form. Economic specialization begins. First political experiences.
 

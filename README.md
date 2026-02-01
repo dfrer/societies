@@ -71,9 +71,9 @@ societies/
 ### Prerequisites
 
 - **Godot 4.x** with C# support ([Download](https://godotengine.org/download))
-- **.NET 6.0 SDK** ([Download](https://dotnet.microsoft.com/download))
+- **.NET 8.0 SDK** ([Download](https://dotnet.microsoft.com/download))
 - **IDE**: Visual Studio, VS Code, or Rider
-- **PostgreSQL** (for production servers, optional for development)
+- **PostgreSQL** (for large-scale production servers like Eco's 50-100 player servers, NOT for development)
 
 ### Installation
 
@@ -180,8 +180,8 @@ Excel templates in `/planning/spreadsheets/` (convert .md to .xlsx):
 |-----------|-----------|-----------|
 | **Engine** | Godot 4.x + C# | Free, excellent multiplayer, native C# |
 | **Networking** | Godot ENet | UDP-based, low latency, built-in RPC |
-| **Database (Prod)** | PostgreSQL | Complex relational data, JSON support |
-| **Database (Dev)** | SQLite | Zero setup, file-based |
+| **Database (Production)** | PostgreSQL | Large-scale servers (50+ players like Eco) |
+| **Database (Dev/Single-Player)** | SQLite | Zero setup, sufficient for MVP (8 players, 20 agents) |
 | **Server OS** | Linux (Ubuntu) | Stable, headless Godot support |
 | **Version Control** | Git + GitHub | Collaboration, CI/CD |
 
@@ -237,9 +237,9 @@ This is currently a solo project, but contributions will be welcome post-Alpha.
 
 **Scope**:
 - World Size: 0.5-4 km²
-- AI Agents: 100-200
-- Players: 20-100 concurrent
-- Dev Timeline: 18+ months
+- AI Agents: 20 (MVP target) → 50-100 (post-MVP)
+- Players: 8 (MVP) → 20+ (post-MVP)
+- Dev Timeline: 2-3 years (realistic for solo development)
 
 **Performance Targets**:
 - Server: 20 ticks/second

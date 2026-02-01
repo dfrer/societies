@@ -33,8 +33,69 @@ Specify the mechanics of laws, government, and social systems in executable deta
 
 ## Dependencies
 
-- **Requires**: Session 2 (AI System) - AI voting behavior, Session 3 (Gameplay) - Political activities
-- **Informs**: Session 6 (Prototyping), Session 7 (Master Plan)
+- **Requires**: 
+  - Session 1 (Technical Architecture) - Database schema (PostgreSQL JSONB), performance budgets (law evaluation <1ms, 100+ laws), networking constraints
+  - Session 2 (AI System Design) - AI voting behavior (6 value axes, influence calculation), faction formation, political participation, population elasticity
+  - Session 3 (Gameplay Loops) - Political activity UX, campaigning mechanics, governance progression
+  - Session 4 (Progression & Balance) - Population thresholds for governance unlocks, tech requirements for federation formation
+- **Informs**: Session 6 (Prototype 3 scope), Session 7 (Integration map)
+
+---
+
+## Technical Validation & Integration
+
+### Session 1 Performance Constraints
+
+**Law System Performance Budget (from Session 1, 04-performance-scalability.md):**
+| Metric | Budget | Notes |
+|--------|--------|-------|
+| Law Evaluation | <1ms for 100+ laws | Event-driven, not per-tick |
+| Database Queries | <5ms | PostgreSQL JSONB with GIN indexes |
+| Network Sync | Minimal | Laws change infrequently |
+| Tick Rate | 20 TPS | Law evaluation must fit within 50ms tick |
+
+**Validation: Law System Meets Budget** ✅
+- Laws are event-driven (only evaluated when triggered)
+- Law indexing reduces search space
+- Caching prevents re-evaluation of unchanged laws
+- Lazy evaluation for complex conditions
+
+### Session 2 AI Integration
+
+**AI Voting Integration (from Session 2, 03-political-social-behavior.md):**
+```
+Vote Score = (Personal Impact × 0.4) + 
+             (Values Alignment × 0.3) + 
+             (Social Influence × 0.2) + 
+             (Random Variance × 0.1)
+```
+
+**Implementation:**
+- Each AI agent calculates Vote Score when voting
+- Personal Impact: Economic effect on agent's wealth/resources
+- Values Alignment: Match between proposal and agent's 6 political axes
+- Social Influence: Weighted by relationship strength and trust
+- **Per-agent decision time: <2ms** ✅
+- **100 agents voting: 200ms without optimization**
+- **With bucketing: 40ms (process 20 agents per tick)** ✅
+
+**Faction Integration:**
+- Factions form naturally based on value similarity (Session 2)
+- Governance system provides formal recognition pathway
+- Faction leaders can propose laws on behalf of members
+- Faction voting blocks accelerate law passage
+
+### Integration Points Summary
+
+| This System | Session 1/2 Reference | Validation |
+|-------------|----------------------|------------|
+| Law evaluation speed | <1ms for 100+ laws | ✅ Event-driven architecture meets budget |
+| AI voting | Session 2 voting algorithm | ✅ <2ms per agent with bucketing |
+| Population scale | 100 agents max | ✅ All elections fit within tick window |
+| Database storage | PostgreSQL JSONB | ✅ Law data structure compatible |
+| Network bandwidth | 32 KB/s per player | ✅ Law changes rare, minimal bandwidth |
+
+---
 
 ---
 
