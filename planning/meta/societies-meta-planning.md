@@ -1,48 +1,133 @@
-# Societies - Meta-Planning Document
+# Societies - Meta-Planning Document (Depth-Optimized Edition)
 ## Week 1: Deep Planning & Foundation Setting
+
+**Meta-Planning Version**: 2.0 - Depth-Optimized  
+**Target Timeline**: 3-4 Weeks (Session-Based)  
+**Last Updated**: January 2026
 
 ---
 
 ## Purpose of This Document
 
-This meta-planning document provides a structured approach to spend the next week transforming Societies from a comprehensive vision into an actionable development plan. Each day focuses on a critical planning domain, with clear deliverables that build toward a complete development roadmap.
+This meta-planning document provides a **depth-optimized, session-based approach** to transform Societies from a comprehensive vision into an actionable development plan. Rather than compressing into 7 consecutive days, this methodology spreads across 3-4 weeks to allow for deeper research, thoughtful decision-making, and proper integration between planning domains.
+
+Each planning session is time-boxed but can span multiple calendar days, with explicit revision checkpoints to ensure consistency and quality.
 
 ---
 
 ## Planning Philosophy
 
-**Iterative Refinement Over Perfect First Draft**
+### Depth Over Speed
+- **Research thoroughly**: Don't rush the foundational decisions
+- **Revise proactively**: Update earlier work when new insights emerge
+- **Integrate continuously**: Check cross-document consistency regularly
+- **Document decisions**: Every major choice gets logged with rationale
+
+### Iterative Refinement Over Perfect First Draft
 - Create rough drafts quickly, then refine
 - Accept that plans will change as you learn
 - Document assumptions to revisit later
 
-**Prototype-Driven Planning**
+### Prototype-Driven Planning
 - Identify what needs validation through prototyping
 - Plan prototypes that answer critical technical questions
 - Don't plan everything in detail if a prototype would inform better
 
-**Risk-First Approach**
+### Risk-First Approach
 - Tackle highest-risk unknowns early in planning
 - Technical feasibility questions before content design
 - AI behavior validation before deep game balance
 
 ---
 
-## Week Overview
+## Session-Based Structure (Not Calendar Days)
 
-| Day | Focus Area | Core Question | Key Deliverable |
-|-----|-----------|---------------|-----------------|
-| **Day 1** | Technical Architecture | Can we build this? | Architecture blueprint |
-| **Day 2** | AI System Design | How do AI citizens work? | AI behavior specification |
-| **Day 3** | Core Gameplay Loop | What does minute-to-minute play feel like? | Gameplay flow document |
-| **Day 4** | Progression & Balance | How does the game unfold over time? | Progression timeline |
-| **Day 5** | Governance & Systems | How do laws and society actually function? | Governance mechanics spec |
-| **Day 6** | Prototyping Roadmap | What do we build first? | 6-month prototype plan |
-| **Day 7** | Integration & Review | Does it all fit together? | Master development plan |
+### What Changed from "7 Days" to "7 Sessions"
+
+Traditional "7-day planning" assumes consecutive days with 8+ hours each. For depth-optimized planning:
+
+- **Sessions are time-boxed**: Each session targets 8-14 hours total work
+- **Sessions can span multiple days**: A session might take 2-3 calendar days
+- **Built-in revision time**: Integration checks happen throughout, not just at the end
+- **Buffer time included**: Week 4 is buffer + final integration
+
+### Session Schedule (4-Week Cadence)
+
+| Week | Sessions | Focus | Integration Checkpoint |
+|------|----------|-------|----------------------|
+| **Week 1** | Session 1-2 | Architecture, AI | Micro-revisions end of each session |
+| **Week 2** | Session 3-4 | Gameplay, Balance | Mid-cycle revision sweep |
+| **Week 3** | Session 5-6 | Governance, Prototyping | Micro-revisions end of each session |
+| **Week 4** | Session 7 | Integration + Final Review | Full revision sweep |
+
+**Total Time**: 3-4 weeks (including buffer days)
 
 ---
 
-## Day 1: Technical Architecture Planning
+## Week Overview
+
+| Session | Focus Area | Core Question | Key Deliverable | Est. Duration |
+|---------|-----------|---------------|-----------------|---------------|
+| **Session 1** | Technical Architecture | Can we build this? | Architecture blueprint | 2-3 days |
+| **Session 2** | AI System Design | How do AI citizens work? | AI behavior specification | 2-3 days |
+| **Session 3** | Core Gameplay Loop | What does minute-to-minute play feel like? | Gameplay flow document | 2-3 days |
+| **Session 4** | Progression & Balance | How does the game unfold over time? | Progression timeline | 2-3 days |
+| **Session 5** | Governance & Systems | How do laws and society actually function? | Governance mechanics spec | 2-3 days |
+| **Session 6** | Prototyping Roadmap | What do we build first? | 6-month prototype plan | 2-3 days |
+| **Session 7** | Integration & Review | Does it all fit together? | Master development plan | 3-5 days |
+
+---
+
+## Session Structure Template
+
+### Phase 1: Research Intake (2-4 hours, depth-optimized)
+
+Use the **Research Intake Pipeline** (see template in Appendix):
+- **Tier 1 (Must-Read)**: Sources directly affecting this session's deliverables
+- **Tier 2 (Useful)**: Sources that add context but aren't critical
+- **Tier 3 (Later Reference)**: Bookmark for future but don't read now
+
+**Output**: Research notes + list of assumptions + unknowns identified
+
+### Phase 2: Document Drafting (4-8 hours)
+
+Create the session's primary deliverable:
+- Fill all core sections of the planning document
+- Create diagrams, specifications, outlines
+- Make decisions and document rationale immediately (use Decision Log)
+- Don't perfectionism-paralyze; get ideas down
+
+**Output**: Draft document ≥60% complete
+
+### Phase 3: Cross-Check Integration (30-60 minutes)
+
+Run the **Integration Checklist** (see Appendix):
+- Does this contradict prior sessions?
+- Does this change prior assumptions?
+- Are dependencies properly noted?
+
+**If contradictions found**: Create revision task, document in Cross-Doc Issues log
+
+### Phase 4: Refinement & Exit (1-2 hours)
+
+- Review what you created
+- Identify gaps or weak areas
+- Update Decision Log with today's choices
+- Ensure Open Questions are recorded
+- Complete Quality Gates checklist
+
+**Output**: Document ≥80% complete + all logs updated
+
+### Phase 5: Reflection & Next-Session Prep (30 minutes)
+
+- What did you learn today?
+- What questions emerged?
+- What does the next session need?
+- Write down focus areas for tomorrow/next session
+
+---
+
+## Session 1: Technical Architecture Planning
 
 ### Objective
 Define the technical foundation that makes Societies possible.
@@ -105,9 +190,12 @@ Define the technical foundation that makes Societies possible.
 - [ ] Technical risks identified and prioritized
 - [ ] Prototype needs identified
 
+### Integration Dependencies
+- **Informs**: Session 2 (AI performance budgets), Session 6 (Prototype 1 scope)
+
 ---
 
-## Day 2: AI System Design
+## Session 2: AI System Design
 
 ### Objective
 Specify how AI agents think, decide, and behave to create believable citizens.
@@ -183,9 +271,13 @@ Specify how AI agents think, decide, and behave to create believable citizens.
 - [ ] Personality/diversity system designed
 - [ ] Experimental configurations outlined
 
+### Integration Dependencies
+- **Requires**: Session 1 (performance budgets, tech constraints)
+- **Informs**: Session 3 (player-AI interactions), Session 5 (AI voting), Session 6 (Prototype 2)
+
 ---
 
-## Day 3: Core Gameplay Loop Planning
+## Session 3: Core Gameplay Loop Planning
 
 ### Objective
 Define what players actually *do* moment-to-moment, hour-to-hour, session-to-session.
@@ -262,9 +354,13 @@ Define what players actually *do* moment-to-moment, hour-to-hour, session-to-ses
 - [ ] Return triggers identified
 - [ ] Critical UI/UX paths mapped
 
+### Integration Dependencies
+- **Requires**: Session 2 (how AI behaviors create gameplay opportunities)
+- **Informs**: Session 4 (progression pacing), Session 6 (Prototype 4)
+
 ---
 
-## Day 4: Progression & Balance Planning
+## Session 4: Progression & Balance Planning
 
 ### Objective
 Define the pacing, balance, and progression systems that make the game challenging but achievable.
@@ -346,9 +442,14 @@ Define the pacing, balance, and progression systems that make the game challengi
 - [ ] Server lifecycle pacing defined
 - [ ] Configuration options identified
 
+### Integration Dependencies
+- **Requires**: Session 1 (performance limits), Session 3 (activities to balance)
+- **Informs**: Session 5 (economic governance), Session 6 (Prototype 4 scope)
+- **Special**: This is the **Mid-Cycle Revision Sweep** - verify Sessions 1-4 consistency
+
 ---
 
-## Day 5: Governance & Systems Design
+## Session 5: Governance & Systems Design
 
 ### Objective
 Specify the mechanics of laws, government, and social systems in executable detail.
@@ -383,7 +484,7 @@ Specify the mechanics of laws, government, and social systems in executable deta
 3. **Election & Voting Mechanics**
    - Voting UI/UX (how players vote)
    - Vote counting and tallying
-   - AI voting behavior (recall Day 2's spec)
+   - AI voting behavior (recall Session 2's spec)
    - Election schedules and triggers
    - Campaign mechanics (if any)
    - Recall/impeachment processes
@@ -433,9 +534,13 @@ Specify the mechanics of laws, government, and social systems in executable deta
 - [ ] Anti-griefing protections defined
 - [ ] UX flows for governance transitions
 
+### Integration Dependencies
+- **Requires**: Session 2 (AI voting behavior), Session 4 (economy to govern)
+- **Informs**: Session 6 (Prototype 3 scope), Session 7 (integration map)
+
 ---
 
-## Day 6: Prototyping Roadmap
+## Session 6: Prototyping Roadmap
 
 ### Objective
 Identify what must be built first and in what order to validate core assumptions.
@@ -542,12 +647,16 @@ Identify what must be built first and in what order to validate core assumptions
 - [ ] Deferral decisions made (what waits)
 - [ ] Validation criteria established
 
+### Integration Dependencies
+- **Requires**: All previous sessions (scope must be informed by all prior work)
+- **Informs**: Session 7 (development phases, next steps)
+
 ---
 
-## Day 7: Integration & Master Plan
+## Session 7: Integration & Master Plan
 
 ### Objective
-Review all previous days' work, identify gaps, resolve conflicts, create unified plan.
+Review all previous sessions' work, identify gaps, resolve conflicts, create unified plan.
 
 ### Key Questions to Answer
 - Do all the systems fit together coherently?
@@ -622,78 +731,91 @@ Review all previous days' work, identify gaps, resolve conflicts, create unified
 - [ ] Risk management strategy in place
 - [ ] Next steps clear and actionable
 
----
-
-## Daily Planning Process
-
-### Each Day Should Follow This Structure:
-
-**Morning (2-3 hours): Deep Research**
-- Read relevant reference materials
-- Research technical solutions
-- Study similar games/systems
-- Gather information needed for the day's deliverable
-
-**Midday (3-4 hours): Creation**
-- Write the day's document
-- Create diagrams, specifications, outlines
-- Make decisions and document rationale
-- Don't perfectionism-paralyze; get ideas down
-
-**Afternoon (1-2 hours): Review & Refinement**
-- Review what you created
-- Identify gaps or weak areas
-- Cross-reference with other documents
-- Refine and improve
-
-**Evening (30-60 minutes): Reflection & Next-Day Prep**
-- What did you learn today?
-- What questions emerged?
-- What does tomorrow need?
-- Write down thoughts for tomorrow's focus
+### Special Instructions
+- **Full Revision Sweep**: Use Back-Revision Protocol to update all prior documents
+- **Cross-Doc Issues Resolution**: Resolve all logged contradictions
+- **Final Integration Checklist**: Run complete 10-point checklist
 
 ---
 
-## Tools & Resources
+## Revision Protocol (Depth-Optimized)
 
-### Recommended Tools
-- **Documentation**: Markdown editor, Google Docs, Notion, Obsidian
-- **Diagrams**: Draw.io, Miro, Excalidraw, Figma
-- **Spreadsheets**: Google Sheets (for balance calculations, progression curves)
-- **Mind Mapping**: MindMeister, XMind (for system relationships)
-- **Version Control**: GitHub for all planning documents
+### Micro-Revision (End of Each Session)
 
-### Reference Materials to Gather
-- Eco game documentation and design philosophy
-- Dwarf Fortress simulation systems
-- Paradox games (political systems)
-- Multi-agent system research papers
-- Game economy design resources
-- Ecological simulation literature
+**When**: Immediately after completing each session's cross-check
 
-### Templates to Create
-- Law specification template
-- AI behavior specification template
-- Prototype plan template
-- Risk assessment template
+**Process**:
+1. Review the Cross-Doc Issues log
+2. If you found contradictions in this session:
+   - Document the contradiction with context
+   - Identify which prior document(s) need updating
+   - If it's a quick fix (under 30 min): Fix immediately
+   - If it's complex: Add to Mid-Cycle or Final Revision Sweep
+3. Update dependencies in affected documents
+
+**Time Box**: 30-60 minutes maximum
+
+### Mid-Cycle Revision Sweep (End of Session 4)
+
+**When**: After completing Session 4 (Progression & Balance)
+
+**Why**: This is the halfway point - lock in the core gameplay and systems before proceeding to governance and prototyping details
+
+**Process**:
+1. Read through Sessions 1-4 documents sequentially
+2. Identify contradictions or changed assumptions
+3. Update earlier documents to reflect new insights
+4. Ensure Session 4 properly incorporates constraints from Sessions 1-2
+5. Verify technical feasibility of gameplay ideas
+
+**Decision Log Update**: Log all changes made during this sweep
+
+**Time Budget**: 1 full day (4-6 hours)
+
+### Final Integration Sweep (Session 7)
+
+**When**: During Session 7, before finalizing Master Plan
+
+**Process**:
+1. Run Integration Checklist on all 7 documents
+2. Resolve all Cross-Doc Issues
+3. Update any outdated assumptions
+4. Ensure dependencies are correctly mapped
+5. Verify prototyping scope matches all prior constraints
+
+**Output**: Fully consistent set of planning documents
 
 ---
 
-## Quality Gates
+## Quality Gates (Per Session)
 
-### Before Moving to Next Day
-- [ ] Day's document is 80%+ complete (don't perfectionism-stall)
+### Exit Criteria - Must Pass All
+
+- [ ] Session document is 80%+ complete (don't perfectionism-stall)
 - [ ] Key questions have answers (even if tentative)
-- [ ] Major decisions are documented with rationale
-- [ ] Cross-references to other documents are noted
+- [ ] Major decisions are documented with rationale (Decision Log filled)
+- [ ] Open questions are listed (not left as vague concerns)
+- [ ] Dependencies are noted (requires X, informs Y)
+- [ ] Integration Checklist completed (no unresolved contradictions)
 - [ ] You feel like you understand the domain
 
-### End of Week Review Criteria
+### Entry Criteria for Next Session
+
+- [ ] Prior session passed all exit criteria
+- [ ] Cross-check completed and logged
+- [ ] Required research materials gathered (Tier 1)
+- [ ] You know what you need from prior sessions
+
+### End of Planning Phase Criteria
+
+Before declaring the planning phase complete:
+
 - [ ] All 7 documents exist and are substantive
-- [ ] No major contradictions between documents
-- [ ] Critical unknowns are identified
-- [ ] Prototyping path is clear
+- [ ] No major contradictions between documents (all Cross-Doc Issues resolved)
+- [ ] Critical unknowns are identified and prioritized
+- [ ] Prototyping path is clear with success metrics
 - [ ] You could explain the entire game coherently to someone else
+- [ ] Prototype 1 scope is implementable without further design
 
 ---
 
@@ -701,19 +823,51 @@ Review all previous days' work, identify gaps, resolve conflicts, create unified
 
 **This plan is a guide, not a prison.**
 
-- If a day's work reveals it needs 2 days, take 2 days
-- If you discover a critical topic not covered, add a day
-- If Day 3's work changes Day 1's conclusions, update Day 1
+- Sessions are time-boxed but not calendar-locked
+- If a session reveals it needs more time, adjust the schedule
+- If you discover a critical topic not covered, add a session
+- If Session 3's work changes Session 1's conclusions, use the Back-Revision Protocol
 - Documents should be living, not carved in stone
 - The goal is clarity and actionability, not perfection
 
-**Key principle**: By the end of the week, you should be able to start building Prototype 1 with confidence.
+**Key principle**: By the end of the planning phase, you should be able to start building Prototype 1 with confidence.
+
+---
+
+## Meta-Success Definition
+
+### Planning Phase Complete When:
+
+1. **All 7 planning documents are substantive** (≥80% complete each)
+2. **Each document contains**:
+   - Decision Log with ≥3 major decisions per document
+   - Open Questions list
+   - Clear dependencies noted
+3. **Cross-document consistency**:
+   - No unresolved contradictions
+   - Dependencies properly mapped
+   - All Cross-Doc Issues resolved
+4. **Prototype path is executable**:
+   - Prototype 1 scope is clear enough to implement
+   - Success metrics are defined and measurable
+   - Unknowns are identified, not hidden
+5. **Development readiness**:
+   - You can explain the entire game to a developer in 30 minutes
+   - You know what to build first, second, third
+   - You can estimate timelines with reasonable confidence
+
+### You Should Be Able To:
+
+- Start coding Prototype 1 immediately
+- Recruit collaborators with clear documentation
+- Make informed decisions about trade-offs
+- Answer "how?" for every "what?" in your design
 
 ---
 
 ## Success Definition
 
-### By the End of Week 1, You Should Have:
+### By the End of This Planning Process, You Should Have:
 
 1. **Clear technical foundation** - You know what you're building with and how
 2. **Specified AI system** - You understand how AI agents work
@@ -723,59 +877,317 @@ Review all previous days' work, identify gaps, resolve conflicts, create unified
 6. **Actionable roadmap** - You know what to build first, second, third
 7. **Integrated vision** - Everything fits together coherently
 
-### You Should Be Able To:
-- Explain the entire game to a developer in 30 minutes
-- Start coding Prototype 1 on Monday of Week 2
-- Recruit collaborators with clear documentation
-- Make informed decisions about trade-offs
-- Estimate timelines with reasonable confidence
-
 ---
 
 ## Final Notes
 
-**This week is about transforming vision into plan.**
+**This planning phase is about transforming vision into executable plan.**
 
-You've already done the hard creative work - the comprehensive breakdown is excellent. Now you need to translate that vision into executable reality. These 7 days are about asking "how?" for every "what?" in your design.
+You've already done the hard creative work - the comprehensive breakdown is excellent. Now you need to translate that vision into executable reality through deep, thoughtful planning.
+
+With up to a month available, you can:
+- Research thoroughly and make well-informed decisions
+- Revise proactively when insights emerge
+- Integrate continuously to maintain consistency
+- Document decisions so you don't second-guess later
 
 Be ambitious but realistic. Build the scaffolding that lets you start building. Trust that good planning now saves months of thrashing later.
 
-**You've got this. Now let's make it real.**
+**You've got this. Now let's plan it real.**
 
 ---
 
-## Appendix: Document Templates
+## Appendix A: Integration Checklist (Use After Each Session)
 
-### Daily Document Header Template
+### Cross-Document Consistency Check
+
+**Answer for each prior session:**
+
+- [ ] **Session 1 (Architecture)**: Does this respect performance budgets? Does it fit technical constraints?
+- [ ] **Session 2 (AI)**: Does this account for AI behaviors? Does it leverage AI capabilities?
+- [ ] **Session 3 (Gameplay)**: Does this align with the gameplay loops defined?
+- [ ] **Session 4 (Balance)**: Are progression numbers consistent with economic models?
+- [ ] **Session 5 (Governance)**: If governance-focused, does it fit political behavior models?
+- [ ] **Dependencies**: Have you noted what this session requires from prior work?
+- [ ] **Informs**: Have you noted what future sessions depend on this work?
+
+**If "No" to any question:**
+1. Document the contradiction in Cross-Doc Issues
+2. Determine if it's a quick fix or needs revision sweep
+3. Note what prior document(s) need updating
+
+### Dependency Mapping Check
+
+- [ ] List all external dependencies this session requires
+- [ ] Verify those dependencies exist in prior documents
+- [ ] Verify the content actually supports what you need
+- [ ] Document what future sessions will depend on from this work
+
+### Risk Amplification Check
+
+- [ ] Does this introduce new technical risks not in Session 1?
+- [ ] Does this create new AI behavior complexities?
+- [ ] Does this affect the prototyping timeline?
+- [ ] Have you logged new risks in the appropriate document?
+
+---
+
+## Appendix B: Decision Log Template
+
+### Standard Decision Log Entry
+
+```markdown
+## Decisions Log
+
+### Session X - [Date]
+
+#### Decision 1: [Brief Title]
+**Decision**: [What we decided]
+**Rationale**: [Why we decided this]
+**Alternatives Considered**: [What else could we have done?]
+**Implications**: [What does this affect?]
+**Confidence**: [High/Medium/Low]
+**Reversible?**: [Yes/No/With Cost]
+
+#### Decision 2: [Brief Title]
+[Same structure]
+
+#### Decision 3: [Brief Title]
+[Same structure]
+```
+
+### Decision Quality Checklist
+
+- [ ] Decision is specific and unambiguous
+- [ ] Rationale explains the "why" not just the "what"
+- [ ] Alternatives show you considered options
+- [ ] Implications identify affected systems
+- [ ] Confidence level noted (helps with future revision)
+- [ ] Reversibility noted (helps with risk assessment)
+
+---
+
+## Appendix C: Research Intake Pipeline
+
+### Tier System
+
+#### Tier 1: Must-Read (Read Before Drafting)
+**Criteria**:
+- Directly affects this session's deliverables
+- Required to answer key questions
+- Without this, you can't make decisions
+
+**Time Budget**: 60% of research time
+
+**Process**:
+1. List 3-5 Tier 1 sources before starting research
+2. Read thoroughly, take notes
+3. Extract actionable insights
+4. Note any questions the sources raise
+
+#### Tier 2: Useful (Skim If Time Allows)
+**Criteria**:
+- Adds context or depth
+- Validates assumptions
+- Nice to know but not critical
+
+**Time Budget**: 30% of research time
+
+**Process**:
+1. Skim for relevant sections
+2. Extract only key insights
+3. Bookmark for future reference
+
+#### Tier 3: Later Reference (Bookmark Only)
+**Criteria**:
+- Not needed for this session
+- Might be useful for future work
+- Deep background material
+
+**Time Budget**: 10% of research time (just cataloging)
+
+**Process**:
+1. Add to reference list with one-sentence summary
+2. Tag with which future session might need it
+3. Move on - don't read now
+
+### Research Log Template
+
+```markdown
+## Research Intake Log
+
+### Session X - [Date]
+
+#### Tier 1 - Must Read
+1. **[Title]** - [URL/Source]
+   - **Key Insights**: [What you learned]
+   - **Decisions Informed**: [Which decisions this affected]
+   - **Questions Raised**: [New unknowns this surfaced]
+
+2. **[Title]** - [URL/Source]
+   [Same structure]
+
+#### Tier 2 - Useful
+1. **[Title]** - [URL/Source]
+   - **Key Insight**: [Brief note]
+
+#### Tier 3 - Later Reference
+1. **[Title]** - [URL/Source]
+   - **Tag**: [Which future session might need this]
+   - **Summary**: [One sentence]
+```
+
+### Research Time Box
+
+- **Total research time per session**: 2-4 hours
+- **Tier 1 must be complete** before moving to drafting
+- **Tier 2 only if Tier 1 finished and time remains**
+- **Tier 3 is cataloging only, not reading**
+
+---
+
+## Appendix D: Back-Revision Protocol
+
+### When to Use
+
+**Immediate Revision** (End of current session):
+- Contradiction discovered affects only 1-2 sections
+- Can be fixed in under 30 minutes
+- Doesn't require rethinking major decisions
+
+**Mid-Cycle Sweep** (After Session 4):
+- Multiple documents need alignment
+- Core assumptions have evolved
+- New constraints emerged from deeper thinking
+
+**Final Integration** (During Session 7):
+- Comprehensive consistency pass
+- Resolving all Cross-Doc Issues
+- Preparing for implementation
+
+### Revision Process
+
+1. **Identify**: What changed? Which documents are affected?
+2. **Assess**: Is this a quick fix or deep revision?
+3. **Document**: Log the change in Decision Log (why you're revising)
+4. **Update**: Revise affected documents
+5. **Verify**: Run Integration Checklist to confirm consistency
+6. **Cross-Reference**: Update any documents that reference the changed content
+
+### Change Documentation
+
+Always log revisions:
+
+```markdown
+## Changes & Revisions Log
+
+### [Date] - Session X Revision
+
+**Trigger**: [What caused this revision - e.g., "Session 4 revealed performance constraint"]
+
+**Changes Made**:
+- [Section]: [What changed]
+- [Section]: [What changed]
+
+**Rationale**: [Why this revision was necessary]
+
+**Impact**: [What other documents/systems are affected]
+```
+
+### Cross-Doc Issues Tracker
+
+Maintain a running list of inconsistencies found:
+
+```markdown
+## Cross-Document Issues
+
+### Issue 1: [Brief Description]
+**Discovered in**: Session X
+**Affects**: Session Y, Session Z
+**Description**: [What contradicts what]
+**Resolution**: [How/when it will be resolved]
+**Status**: [Open/In Progress/Resolved]
+```
+
+---
+
+## Appendix E: Document Templates
+
+### Session Document Header Template
+
 ```markdown
 # [Topic] - Deep Planning Document
-**Date**: [Date]
-**Planning Day**: [X of 7]
-**Status**: [Draft / In Progress / Complete]
+
+**Session**: [X of 7]  
+**Status**: [Draft / In Progress / Complete]  
+**Date Started**: [Date]  
+**Date Completed**: [Date]  
+
+---
 
 ## Purpose
-[What this document achieves]
+[What this document achieves in 1-2 sentences]
 
 ## Key Questions Addressed
 - [Question 1]
 - [Question 2]
-- [etc.]
+- [Question 3]
+
+## Research Summary
+**Tier 1 Sources**: [List key sources that informed this document]
+**Key Insights**: [Major learnings from research]
 
 ## Dependencies
-- **Requires**: [What information from other docs you need]
-- **Informs**: [What other docs depend on this]
+- **Requires**: [What information from other sessions you need]
+- **Informs**: [What other sessions depend on this]
 
 ## Document Body
 [Main content here]
 
 ## Open Questions & Future Research
-- [Things still unclear]
+- [Things still unclear that don't block this document]
 - [What needs further investigation]
 
-## Changes & Decisions Log
-- [Date]: [What changed and why]
+## Decisions Log
+[See template in Appendix B]
+
+## Changes & Revisions
+[See template in Appendix D]
+
+## Cross-Doc Issues
+[Issues discovered during this session - see Appendix D]
 ```
 
 ---
 
-**Now go build the future of multiplayer simulation games. Start with Day 1 tomorrow.**
+## Tools & Resources
+
+### Recommended Tools
+- **Documentation**: Markdown editor, Obsidian (for linking), Notion (for databases)
+- **Diagrams**: Draw.io, Miro, Excalidraw, Mermaid (built into Markdown)
+- **Spreadsheets**: Google Sheets (for balance calculations, progression curves)
+- **Mind Mapping**: Obsidian graph view, MindMeister, XMind
+- **Version Control**: GitHub for all planning documents (track changes over time)
+- **Research**: Zotero or Notion for reference management
+
+### Reference Materials to Gather
+- Eco game documentation and design philosophy
+- Dwarf Fortress simulation systems
+- Paradox games (political systems - Stellaris, Victoria)
+- Multi-agent system research papers
+- Game economy design resources
+- Ecological simulation literature
+- Godot 4.x documentation and C# best practices
+- ENet networking documentation
+
+### Templates to Create
+- Law specification template
+- AI behavior specification template
+- Prototype plan template
+- Risk assessment template
+- Decision Log template (see Appendix B)
+- Research Intake template (see Appendix C)
+
+---
+
+**Now begin Session 1 when you're ready.**

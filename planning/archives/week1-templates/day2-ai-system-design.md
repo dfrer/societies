@@ -1,9 +1,10 @@
 # Session 2: AI System Design - Deep Planning Document
 
 **Planning Session**: 2 of 7  
-**Status**: Draft  
+**Status**: Draft - Moved to sessions/ folder  
 **Date Started**: [Not Started]  
-**Date Completed**: [Not Completed]
+**Date Completed**: [Not Completed]  
+**Location**: planning/sessions/session-2-ai-system-design/
 
 ---
 

@@ -25,14 +25,14 @@ Societies is an ambitious multiplayer simulation game where you build a civiliza
 societies/
 ├── README.md                    # This file
 ├── planning/                    # All planning documents
-│   ├── week1-deep-planning/     # 7-day planning sprint docs
-│   │   ├── day1-technical-architecture.md
-│   │   ├── day2-ai-system-design.md
-│   │   ├── day3-core-gameplay-loops.md
-│   │   ├── day4-progression-and-balance.md
-│   │   ├── day5-governance-mechanics.md
-│   │   ├── day6-prototyping-roadmap.md
-│   │   └── day7-master-development-plan.md
+│   ├── sessions/                # 7-session planning structure
+│   │   ├── session-1-technical-architecture/
+│   │   ├── session-2-ai-system-design/
+│   │   ├── session-3-core-gameplay-loops/
+│   │   ├── session-4-progression-and-balance/
+│   │   ├── session-5-governance-mechanics/
+│   │   ├── session-6-prototyping-roadmap/
+│   │   └── session-7-integration-master-plan/
 │   ├── research/                # Research materials
 │   │   ├── game-analysis-research-guide.md
 │   │   ├── technical-postmortems-research-guide.md
@@ -198,7 +198,7 @@ Month 7-12: Beta - Balancing & Polish
 Month 13+: Release
 ```
 
-See `planning/week1-deep-planning/day6-prototyping-roadmap.md` for detailed plan.
+See `planning/sessions/session-6-prototyping-roadmap/day6-prototyping-roadmap.md` for detailed plan.
 
 ## 🤝 Contributing
 
@@ -275,8 +275,8 @@ MIT License - See [LICENSE](LICENSE) file
 
 **Getting Started**:
 1. Read `planning/meta/societies-comprehensive-breakdown.md` for vision
-2. Review `planning/week1-deep-planning/day1-technical-architecture.md` for tech
-3. Check `planning/week1-deep-planning/day7-master-development-plan.md` for roadmap
+2. Review `planning/sessions/session-1-technical-architecture/` for technical architecture
+3. Check `planning/sessions/session-7-integration-master-plan/` for integration roadmap
 
 **Research Tasks**:
 - Delegate using `planning/research/agent-research-prompts.md`

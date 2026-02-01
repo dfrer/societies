@@ -1,6 +1,7 @@
 using Godot;
 using System;
 using System.Reflection;
+using Societies.Core;
 
 namespace Societies.Tests
 {
