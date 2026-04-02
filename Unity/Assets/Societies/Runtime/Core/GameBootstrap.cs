@@ -1,4 +1,5 @@
 using UnityEngine;
+using Societies.Runtime.Crafting;
 using Societies.Runtime.Simulation;
 using Societies.Runtime.World;
 using Societies.Runtime.Inventory;
@@ -68,6 +69,10 @@ namespace Societies.Runtime.Core
             var dbGO = new GameObject("DatabaseManager");
             dbGO.AddComponent<Persistence.DatabaseManager>();
             DontDestroyOnLoad(dbGO);
+
+            var craftingGO = new GameObject("CraftingSystem");
+            craftingGO.AddComponent<Crafting.CraftingSystem>();
+            DontDestroyOnLoad(craftingGO);
 
             // Create chunk container
             var chunkContainer = new GameObject("Chunks");
