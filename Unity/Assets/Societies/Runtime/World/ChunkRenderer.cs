@@ -5,12 +5,16 @@ namespace Societies.Runtime.World
     /// <summary>
     /// Renders a voxel chunk as a mesh
     /// </summary>
-    [RequireComponent(typeof(MeshFilter), typeof(MeshRenderer))]
+    [RequireComponent(typeof(MeshFilter), typeof(MeshRenderer), typeof(BoxCollider))]
     public class ChunkRenderer : MonoBehaviour
     {
+        private static readonly Vector3 ChunkColliderSize = new(16f, 256f, 16f);
+        private static readonly Vector3 ChunkColliderCenter = new(8f, 128f, 8f);
+
         private VoxelChunk _chunk;
         private MeshFilter _meshFilter;
         private MeshRenderer _meshRenderer;
+        private BoxCollider _boxCollider;
         private MeshingSystem _meshingSystem;
         private bool _needsRebuild = true;
 
@@ -20,7 +24,9 @@ namespace Societies.Runtime.World
         {
             _meshFilter = GetComponent<MeshFilter>();
             _meshRenderer = GetComponent<MeshRenderer>();
+            _boxCollider = GetComponent<BoxCollider>();
             _meshingSystem = new MeshingSystem();
+            ConfigureCollider();
         }
 
         public void SetChunk(VoxelChunk chunk)
@@ -33,6 +39,7 @@ namespace Societies.Runtime.World
                 chunk.Coord.Z * ChunkCoord.SIZE
             );
             name = $"Chunk_{chunk.Coord.X}_{chunk.Coord.Z}";
+            ConfigureCollider();
         }
 
         private void Update()
@@ -53,6 +60,18 @@ namespace Societies.Runtime.World
             
             _meshFilter.sharedMesh = mesh;
             _meshFilter.mesh = mesh;
+        }
+
+        private void ConfigureCollider()
+        {
+            if (_boxCollider == null)
+            {
+                return;
+            }
+
+            _boxCollider.isTrigger = false;
+            _boxCollider.size = ChunkColliderSize;
+            _boxCollider.center = ChunkColliderCenter;
         }
 
         private void OnDestroy()

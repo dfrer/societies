@@ -16,6 +16,7 @@ namespace Societies.Runtime.World
         [SerializeField] private float _gravity = -15f;
         [SerializeField] private float _stepHeight = 0.5f;
         [SerializeField] private float _slopeLimit = 45f;
+        [SerializeField] private LayerMask _groundLayers = ~0;
 
         [Header("Interaction")]
         [SerializeField] private float _interactionDistance = 5f;
@@ -63,6 +64,8 @@ namespace Societies.Runtime.World
         private void Awake()
         {
             _characterController = GetComponent<CharacterController>();
+            _characterController.stepOffset = _stepHeight;
+            _characterController.slopeLimit = _slopeLimit;
             
             if (_playerCamera == null)
                 _playerCamera = GetComponentInChildren<Camera>();
@@ -119,7 +122,15 @@ namespace Societies.Runtime.World
 
         private void UpdateGroundState()
         {
-            _isGrounded = _characterController.isGrounded;
+            Vector3 checkPosition = GetGroundCheckPosition();
+            float checkRadius = Mathf.Max(0.05f, _characterController.radius * 0.9f);
+
+            _isGrounded = _characterController.isGrounded ||
+                          Physics.CheckSphere(
+                              checkPosition,
+                              checkRadius,
+                              _groundLayers,
+                              QueryTriggerInteraction.Ignore);
             
             if (_isGrounded && _velocity.y < 0)
             {
@@ -151,16 +162,6 @@ namespace Societies.Runtime.World
             // Movement direction
             Vector3 move = transform.right * moveInput.x + transform.forward * moveInput.y;
             
-            // Apply gravity
-            if (!_isGrounded)
-            {
-                _velocity.y += _gravity * Time.deltaTime;
-            }
-
-            // Move
-            _characterController.Move(move * _currentSpeed * Time.deltaTime);
-            _characterController.Move(_velocity * Time.deltaTime);
-            
             // Jump
             if (_jumpAction?.WasPressedThisFrame() ?? false)
             {
@@ -169,6 +170,24 @@ namespace Societies.Runtime.World
                     _velocity.y = _jumpForce;
                 }
             }
+
+            // Apply gravity after jump input is handled.
+            if (!_isGrounded)
+            {
+                _velocity.y += _gravity * Time.deltaTime;
+            }
+
+            Vector3 frameMovement = move * _currentSpeed;
+            frameMovement.y = _velocity.y;
+            _characterController.Move(frameMovement * Time.deltaTime);
+        }
+
+        private Vector3 GetGroundCheckPosition()
+        {
+            float footOffset = (_characterController.height * 0.5f) - _characterController.radius + _groundDistance;
+            return transform.position +
+                   _characterController.center +
+                   Vector3.down * footOffset;
         }
 
         private float GetSpeedMultiplier()

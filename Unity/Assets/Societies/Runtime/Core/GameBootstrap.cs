@@ -71,7 +71,10 @@ namespace Societies.Runtime.Core
             // Subscribe to chunk loading for rendering
             _world.OnChunkLoaded += OnChunkLoaded;
 
-            // Spawn player
+            // Ensure spawn chunks exist before the player is placed.
+            _world.LoadChunksAround(Vector3.zero, _loadRadius);
+
+            // Spawn player at surface
             SpawnPlayer();
 
             _isInitialized = true;
@@ -80,16 +83,19 @@ namespace Societies.Runtime.Core
 
         private void SpawnPlayer()
         {
+            // Get spawn position on surface
+            Vector3 spawnPos = _world.GetSpawnPosition(0, 0);
+            
             GameObject player;
             
             if (_playerPrefab != null)
             {
-                player = Instantiate(_playerPrefab, new Vector3(0, 50, 0), Quaternion.identity);
+                player = Instantiate(_playerPrefab, spawnPos, Quaternion.identity);
             }
             else
             {
                 // Create default player
-                player = CreateDefaultPlayer();
+                player = CreateDefaultPlayer(spawnPos);
             }
             
             player.name = "Player";
@@ -108,9 +114,19 @@ namespace Societies.Runtime.Core
             }
         }
 
-        private GameObject CreateDefaultPlayer()
+        private Vector3 GetSpawnPosition()
+        {
+            const int spawnX = 0;
+            const int spawnZ = 0;
+
+            int surfaceY = _world != null ? _world.GetSurfaceHeight(spawnX, spawnZ) : 30;
+            return new Vector3(spawnX + 0.5f, surfaceY + 0.1f, spawnZ + 0.5f);
+        }
+
+        private GameObject CreateDefaultPlayer(Vector3 spawnPos)
         {
             var player = new GameObject("Player");
+            player.transform.position = spawnPos;
             player.tag = "Player";
             
             // Add CharacterController
@@ -182,9 +198,10 @@ namespace Societies.Runtime.Core
             }
             else
             {
-                // Default material
-                var mat = new Material(Shader.Find("Standard"));
-                mat.color = Color.gray;
+                // Use a vertex-color-friendly default so block tinting is visible.
+                var shader = Shader.Find("Sprites/Default") ?? Shader.Find("Standard");
+                var mat = new Material(shader);
+                mat.color = Color.white;
                 meshRenderer.material = mat;
             }
         }

@@ -39,13 +39,14 @@ namespace Societies.Runtime.World
                 Destroy(gameObject);
                 return;
             }
+
+            _generator = new VoxelGenerator();
+            _worldSeed = PlayerPrefs.GetInt("WorldSeed", Environment.TickCount);
             Instance = this;
         }
 
         private void Start()
         {
-            _generator = new VoxelGenerator();
-            _worldSeed = PlayerPrefs.GetInt("WorldSeed", Environment.TickCount);
             UnityEngine.Debug.Log($"[VoxelWorld] World seed: {_worldSeed}");
             
             // Generate initial chunks around origin
@@ -166,6 +167,30 @@ namespace Societies.Runtime.World
             return coord.X >= minX && coord.X <= maxX &&
                    coord.Y >= 0 && coord.Y < CHUNK_HEIGHT &&
                    coord.Z >= minZ && coord.Z <= maxZ;
+        }
+
+        /// <summary>
+        /// Find the first walkable air block above the terrain surface.
+        /// </summary>
+        public int GetSurfaceHeight(int x, int z)
+        {
+            var coord = ChunkCoord.FromBlock(x, z);
+            var chunk = GetChunk(coord);
+            if (chunk == null || !chunk.IsGenerated)
+            {
+                return 30;
+            }
+
+            var local = coord.ToLocal(new BlockCoord(x, 0, z));
+            for (int y = CHUNK_HEIGHT - 1; y >= 0; y--)
+            {
+                if (!chunk.GetBlock(local.X, y, local.Z).IsAir)
+                {
+                    return y + 1;
+                }
+            }
+
+            return 30;
         }
 
         #endregion
@@ -304,6 +329,44 @@ namespace Societies.Runtime.World
         #region Queries
 
         /// <summary>
+        /// Get surface height at world position (returns -1 if not loaded)
+        /// </summary>
+        public int GetSurfaceHeight(int worldX, int worldZ)
+        {
+            var coord = ChunkCoord.FromBlock(worldX, worldZ);
+            var chunk = GetChunk(coord);
+            
+            if (chunk == null || !chunk.IsGenerated)
+                return -1;
+
+            var local = coord.ToLocal(new BlockCoord(worldX, 0, worldZ));
+            
+            // Search from top down
+            for (int y = CHUNK_HEIGHT - 1; y >= 0; y--)
+            {
+                var block = chunk.GetBlock(local.X, y, local.Z);
+                if (!block.IsAir)
+                    return y;
+            }
+            
+            return -1;
+        }
+
+        /// <summary>
+        /// Get safe spawn position for player
+        /// </summary>
+        public Vector3 GetSpawnPosition(int worldX, int worldZ)
+        {
+            int surfaceY = GetSurfaceHeight(worldX, worldZ);
+            
+            // Default to y=30 if not generated yet
+            if (surfaceY < 0)
+                return new Vector3(worldX, 30f, worldZ);
+            
+            return new Vector3(worldX, surfaceY + 2f, worldZ);
+        }
+
+        /// <summary>
         /// Get all loaded chunks
         /// </summary>
         public IReadOnlyCollection<VoxelChunk> GetLoadedChunks()
@@ -331,10 +394,8 @@ namespace Societies.Runtime.World
         /// <summary>
         /// Get count of chunks pending generation
         /// </summary>
-        public int PendingChunkCount => _chunksToGeneration.Count;
+        public int PendingChunkCount => _chunksToGenerate.Count;
 
         #endregion
-
-        private HashSet<ChunkCoord> _chunksToGeneration = new();
     }
 }
