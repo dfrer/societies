@@ -1,6 +1,7 @@
 using UnityEngine;
 using Societies.Runtime.Crafting;
 using Societies.Runtime.Economy;
+using Societies.Runtime.Persistence;
 using Societies.Runtime.Simulation;
 using Societies.Runtime.World;
 using Societies.Runtime.Inventory;
@@ -86,6 +87,10 @@ namespace Societies.Runtime.Core
             var claimGO = new GameObject("ClaimSystem");
             claimGO.AddComponent<ClaimSystem>();
             DontDestroyOnLoad(claimGO);
+
+            var worldSaverGO = new GameObject("WorldSaver");
+            worldSaverGO.AddComponent<WorldSaver>();
+            DontDestroyOnLoad(worldSaverGO);
 
             // Create chunk container
             var chunkContainer = new GameObject("Chunks");
