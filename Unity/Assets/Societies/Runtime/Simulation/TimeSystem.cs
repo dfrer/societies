@@ -22,7 +22,10 @@ namespace Societies.Runtime.Simulation
 
         private bool _wasNight;
 
+        public enum Weather { Clear, Rain, Overcast, Storm }
+
         public float TimeOfDay01 { get; private set; }
+        public Weather CurrentWeather { get; private set; } = Weather.Clear;
         public int DayNumber { get; private set; }
         public bool IsNight => TimeOfDay01 > 0.75f || TimeOfDay01 < 0.25f;
 
@@ -40,6 +43,12 @@ namespace Societies.Runtime.Simulation
         private void Update()
         {
             TimeOfDay01 += Time.deltaTime / DAY_LENGTH_SECONDS;
+
+            // Occasional weather change
+            if (Random.value < 0.001f) // ~every 1000 seconds
+            {
+                CurrentWeather = (Weather)Random.Range(0, 4);
+            }
 
             if (TimeOfDay01 >= 1f)
             {

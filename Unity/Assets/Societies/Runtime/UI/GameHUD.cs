@@ -26,6 +26,7 @@ namespace Societies.Runtime.UI
         private InventoryManager _inventory;
         private int _selectedSlot;
         private bool _inventoryOpen;
+        private bool _recipesOpen;
         public int SelectedBlockId { get; private set; } = 1;
 
         private void Start()
@@ -67,6 +68,11 @@ namespace Societies.Runtime.UI
             if (Input.GetKeyDown(KeyCode.Tab))
             {
                 ToggleInventory();
+            }
+
+            if (Input.GetKeyDown(KeyCode.R))
+            {
+                ToggleRecipes();
             }
 
             // Number keys for slot selection
@@ -111,6 +117,11 @@ namespace Societies.Runtime.UI
         private void ToggleInventory()
         {
             _inventoryOpen = !_inventoryOpen;
+        }
+
+        private void ToggleRecipes()
+        {
+            _recipesOpen = !_recipesOpen;
         }
 
         public void SelectBlock(int blockId)
@@ -179,6 +190,24 @@ namespace Societies.Runtime.UI
         {
             // Highlight selected slot
             // (Simplified - would need proper slot references)
+        }
+
+        private void OnGUI()
+        {
+            if (!_recipesOpen)
+            {
+                return;
+            }
+
+            GUILayout.BeginArea(new Rect(10, 120, 240, 180), GUI.skin.box);
+            GUILayout.Label("=== RECIPES ===");
+            GUILayout.Label("Wood -> 4 Planks");
+            GUILayout.Label("Stone -> 2 Bricks");
+            GUILayout.Label("Wood+Stone -> Workbench");
+            GUILayout.Label("Copper Ore -> Copper Ingot");
+            GUILayout.Label("Iron Ore -> Iron Ingot");
+            GUILayout.Label("Wood+Stone -> Stone Pickaxe");
+            GUILayout.EndArea();
         }
 
         private void OnDestroy()
