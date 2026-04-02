@@ -25,6 +25,7 @@ namespace Societies.Runtime.UI
 
         private InventoryManager _inventory;
         private int _selectedSlot;
+        private bool _inventoryOpen;
         public int SelectedBlockId { get; private set; } = 1;
 
         private void Start()
@@ -63,6 +64,11 @@ namespace Societies.Runtime.UI
 
         private void HandleInput()
         {
+            if (Input.GetKeyDown(KeyCode.Tab))
+            {
+                ToggleInventory();
+            }
+
             // Number keys for slot selection
             for (int i = 0; i < 9; i++)
             {
@@ -100,6 +106,11 @@ namespace Societies.Runtime.UI
                 int dir = scroll > 0 ? -1 : 1;
                 _inventory?.CycleSlot(dir);
             }
+        }
+
+        private void ToggleInventory()
+        {
+            _inventoryOpen = !_inventoryOpen;
         }
 
         public void SelectBlock(int blockId)
