@@ -62,6 +62,10 @@ namespace Societies.Runtime.Core
             timeGO.AddComponent<TimeSystem>();
             DontDestroyOnLoad(timeGO);
 
+            var weatherGO = new GameObject("WeatherSystem");
+            weatherGO.AddComponent<WeatherSystem>();
+            DontDestroyOnLoad(weatherGO);
+
             // Initialize voxel world
             var worldGO = new GameObject("VoxelWorld");
             _world = worldGO.AddComponent<VoxelWorld>();
