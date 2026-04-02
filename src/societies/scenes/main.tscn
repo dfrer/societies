@@ -1,40 +1,49 @@
-[gd_scene load_steps=3 format=3 uid="uid://c8yvxg3ulq3a"]
+[gd_scene load_steps=9 format=3 uid="uid://c8yvxg3ulq3a"]
 
-[ext_resource type="Script" path="res://scripts/core/GameManager.cs" id="1_game_manager"]
-[ext_resource type="Script" path="res://scripts/multiplayer/NetworkManager.cs" id="2_network_manager"]
+[ext_resource type="Script" path="res://scripts/core/GameManager.cs" id="1"]
+[ext_resource type="Script" path="res://scripts/multiplayer/NetworkManager.cs" id="2"]
+[ext_resource type="Script" path="res://scripts/core/EntityManager.cs" id="3"]
+[ext_resource type="Script" path="res://scripts/core/TerrainGenerator.cs" id="4"]
+[ext_resource type="Script" path="res://scripts/simulation/DayNightCycle.cs" id="5"]
+[ext_resource type="Script" path="res://scripts/simulation/WeatherController.cs" id="6"]
+[ext_resource type="Script" path="res://scripts/ui/PrototypeHud.cs" id="7"]
+[ext_resource type="Script" path="res://scripts/core/PlayerCharacter.cs" id="8"]
+
+[sub_resource type="Environment" id="Environment_1"]
 
 [node name="Main" type="Node"]
-script = ExtResource("1_game_manager")
+script = ExtResource("1")
 
 [node name="NetworkManager" type="Node" parent="."]
-script = ExtResource("2_network_manager")
+script = ExtResource("2")
 
 [node name="EntityManager" type="Node" parent="."]
-script = ExtResource("res://scripts/core/EntityManager.cs")
+script = ExtResource("3")
 
 [node name="World" type="Node3D" parent="."]
 
 [node name="Players" type="Node3D" parent="World"]
 
+[node name="LocalPlayer" type="CharacterBody3D" parent="World/Players"]
+script = ExtResource("8")
+
 [node name="Entities" type="Node3D" parent="World"]
 
 [node name="Environment" type="Node3D" parent="World"]
 
+[node name="WorldEnvironment" type="WorldEnvironment" parent="World/Environment"]
+environment = SubResource("Environment_1")
+
+[node name="DayNightCycle" type="Node3D" parent="World/Environment"]
+script = ExtResource("5")
+
+[node name="Weather" type="Node" parent="World/Environment"]
+script = ExtResource("6")
+
+[node name="Systems" type="Node" parent="World"]
+
+[node name="Terrain" type="Node3D" parent="World/Systems"]
+script = ExtResource("4")
+
 [node name="UI" type="CanvasLayer" parent="."]
-
-[node name="DebugInfo" type="Label" parent="UI"]
-offset_left = 10.0
-offset_top = 10.0
-offset_right = 310.0
-offset_bottom = 110.0
-text = "Societies v0.1.0-alpha
-FPS: 60
-Entities: 0
-Ping: 0ms"
-
-[node name="MultiplayerSpawner" type="MultiplayerSpawner" parent="."]
-_spawnable_scenes = []
-spawn_path = NodePath("World/Players")
-
-[connection signal="PlayerConnected" from="NetworkManager" to="." method="_on_player_connected"]
-[connection signal="PlayerDisconnected" from="NetworkManager" to="." method="_on_player_disconnected"]
+script = ExtResource("7")
