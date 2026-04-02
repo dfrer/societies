@@ -1,5 +1,6 @@
 using UnityEngine;
 using Societies.Runtime.Crafting;
+using Societies.Runtime.Economy;
 using Societies.Runtime.Simulation;
 using Societies.Runtime.World;
 using Societies.Runtime.Inventory;
@@ -77,6 +78,10 @@ namespace Societies.Runtime.Core
             var craftingGO = new GameObject("CraftingSystem");
             craftingGO.AddComponent<Crafting.CraftingSystem>();
             DontDestroyOnLoad(craftingGO);
+
+            var economyGO = new GameObject("EconomySystem");
+            economyGO.AddComponent<EconomySystem>();
+            DontDestroyOnLoad(economyGO);
 
             // Create chunk container
             var chunkContainer = new GameObject("Chunks");
