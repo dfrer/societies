@@ -1,193 +1,82 @@
 using Godot;
 using System;
-using System.Collections.Generic;
 
 namespace Societies.Multiplayer
 {
     /// <summary>
-    /// Central manager for all multiplayer functionality.
-    /// Handles server/client initialization, connection management, and RPC dispatch.
+    /// Prototype networking facade. Prototype 1 runs in a local session but keeps the
+    /// manager interface alive for later ENet/server-authoritative work.
     /// </summary>
     public partial class NetworkManager : Node
     {
-        public static NetworkManager Instance { get; private set; }
-        
-        [Export] private int _port = 7777;
-        [Export] private int _maxPlayers = 100;
-        [Export] private string _serverAddress = "127.0.0.1";
-        
+        public static NetworkManager? Instance { get; private set; }
+
         public bool IsServer { get; private set; }
-        public bool IsConnected => Multiplayer.HasMultiplayerPeer() && Multiplayer.MultiplayerPeer.GetConnectionStatus() == MultiplayerPeer.ConnectionStatus.Connected;
-        
-        // Events
+        public bool IsConnected { get; private set; }
+        public bool IsLocalSession { get; private set; }
+
         public event Action<long>? PlayerConnected;
         public event Action<long>? PlayerDisconnected;
         public event Action? ServerStarted;
         public event Action? ConnectedToServer;
         public event Action? ConnectionFailed;
-        
+
         public override void _Ready()
         {
             Instance = this;
-            
-            // Subscribe to multiplayer events
-            Multiplayer.PeerConnected += OnPeerConnected;
-            Multiplayer.PeerDisconnected += OnPeerDisconnected;
-            Multiplayer.ConnectedToServer += OnConnectedToServer;
-            Multiplayer.ConnectionFailed += OnConnectionFailed;
-            Multiplayer.ServerDisconnected += OnServerDisconnected;
         }
-        
-        /// <summary>
-        /// Start a dedicated server
-        /// </summary>
-        public Error StartServer(int port = -1)
+
+        public Error StartServer(int port = 7777)
         {
-            int actualPort = port > 0 ? port : _port;
-            
-            ENetMultiplayerPeer peer = new();
-            Error err = peer.CreateServer(actualPort, _maxPlayers);
-            
-            if (err != Error.Ok)
-            {
-                GD.PrintErr($"Failed to start server on port {actualPort}: {err}");
-                return err;
-            }
-            
-            Multiplayer.MultiplayerPeer = peer;
             IsServer = true;
-            
-            GD.Print($"Server started on port {actualPort}");
+            IsConnected = true;
+            IsLocalSession = false;
             ServerStarted?.Invoke();
-            
             return Error.Ok;
         }
-        
-        /// <summary>
-        /// Connect to a server as a client
-        /// </summary>
-        public Error ConnectToServer(string address = "", int port = -1)
+
+        public Error ConnectToServer(string address = "127.0.0.1", int port = 7777)
         {
-            string actualAddress = string.IsNullOrEmpty(address) ? _serverAddress : address;
-            int actualPort = port > 0 ? port : _port;
-            
-            ENetMultiplayerPeer peer = new();
-            Error err = peer.CreateClient(actualAddress, actualPort);
-            
-            if (err != Error.Ok)
-            {
-                GD.PrintErr($"Failed to connect to {actualAddress}:{actualPort}: {err}");
-                return err;
-            }
-            
-            Multiplayer.MultiplayerPeer = peer;
             IsServer = false;
-            
-            GD.Print($"Connecting to {actualAddress}:{actualPort}...");
-            
-            return Error.Ok;
-        }
-        
-        /// <summary>
-        /// Disconnect from server or stop hosting
-        /// </summary>
-        public void Disconnect()
-        {
-            if (Multiplayer.HasMultiplayerPeer())
-            {
-                Multiplayer.MultiplayerPeer.Close();
-                Multiplayer.MultiplayerPeer = null;
-            }
-            
-            IsServer = false;
-            GD.Print("Disconnected from network");
-        }
-        
-        private void OnPeerConnected(long id)
-        {
-            GD.Print($"Peer connected: {id}");
-            PlayerConnected?.Invoke(id);
-            
-            if (IsServer)
-            {
-                // Server handles new player
-                OnServerPlayerConnected(id);
-            }
-        }
-        
-        private void OnPeerDisconnected(long id)
-        {
-            GD.Print($"Peer disconnected: {id}");
-            PlayerDisconnected?.Invoke(id);
-            
-            if (IsServer)
-            {
-                OnServerPlayerDisconnected(id);
-            }
-        }
-        
-        private void OnConnectedToServer()
-        {
-            GD.Print("Connected to server");
+            IsConnected = true;
+            IsLocalSession = false;
             ConnectedToServer?.Invoke();
+            return Error.Ok;
         }
-        
-        private void OnConnectionFailed()
+
+        public void StartLocalSession()
         {
-            GD.PrintErr("Connection failed");
-            ConnectionFailed?.Invoke();
+            IsServer = true;
+            IsConnected = true;
+            IsLocalSession = true;
+
+            ServerStarted?.Invoke();
+            ConnectedToServer?.Invoke();
+            PlayerConnected?.Invoke(1);
         }
-        
-        private void OnServerDisconnected()
-        {
-            GD.Print("Server disconnected");
-            Disconnect();
-        }
-        
-        private void OnServerPlayerConnected(long id)
-        {
-            // Server-side handling of new player
-            // TODO: Spawn player entity, send world state, etc.
-            GD.Print($"Server: New player {id} connected");
-            
-            // Send initial world state to new player
-            RpcId(id, MethodName.ReceiveWorldState, "initial_state_data");
-        }
-        
-        private void OnServerPlayerDisconnected(long id)
-        {
-            // Server-side cleanup
-            GD.Print($"Server: Player {id} disconnected");
-            
-            // TODO: Save player state, remove from world, etc.
-        }
-        
-        /// <summary>
-        /// RPC: Receive world state from server (client-side)
-        /// </summary>
-        [Rpc(MultiplayerApi.RpcMode.Authority)]
-        private void ReceiveWorldState(string stateData)
-        {
-            GD.Print($"Received world state: {stateData.Length} bytes");
-            // TODO: Deserialize and apply world state
-        }
-        
-        /// <summary>
-        /// Get unique peer ID for this client
-        /// </summary>
+
         public long GetPeerId()
         {
-            return Multiplayer.GetUniqueId();
+            return 1;
         }
-        
-        /// <summary>
-        /// Check if we're the multiplayer authority
-        /// </summary>
+
         public bool IsMultiplayerAuthority()
         {
-            return IsServer || !IsConnected;
+            return true;
         }
-        
+
+        public void Disconnect()
+        {
+            if (IsConnected)
+            {
+                PlayerDisconnected?.Invoke(1);
+            }
+
+            IsServer = false;
+            IsConnected = false;
+            IsLocalSession = false;
+        }
+
         public override void _ExitTree()
         {
             Disconnect();
