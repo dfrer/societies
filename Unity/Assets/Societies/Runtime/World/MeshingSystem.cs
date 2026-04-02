@@ -1,4 +1,5 @@
 using UnityEngine;
+using System.Collections.Generic;
 namespace Societies.Runtime.World
 {
     /// <summary>
@@ -14,6 +15,28 @@ namespace Societies.Runtime.World
             new(0, -1, 0),  // Bottom
             new(0, 0, 1),   // Front
             new(0, 0, -1)   // Back
+        };
+
+        private static readonly Dictionary<BlockType, Color> BlockColors = new()
+        {
+            [BlockType.Dirt] = new Color(0.45f, 0.30f, 0.18f),
+            [BlockType.Grass] = new Color(0.33f, 0.68f, 0.25f),
+            [BlockType.Stone] = new Color(0.55f, 0.55f, 0.58f),
+            [BlockType.Coal] = new Color(0.15f, 0.15f, 0.18f),
+            [BlockType.CopperOre] = new Color(0.65f, 0.42f, 0.24f),
+            [BlockType.IronOre] = new Color(0.58f, 0.29f, 0.22f),
+            [BlockType.Wood] = new Color(0.40f, 0.24f, 0.12f),
+            [BlockType.Leaves] = new Color(0.24f, 0.52f, 0.20f),
+            [BlockType.Sand] = new Color(0.86f, 0.80f, 0.56f),
+            [BlockType.Clay] = new Color(0.66f, 0.54f, 0.46f),
+            [BlockType.Water] = new Color(0.20f, 0.45f, 0.78f),
+            [BlockType.Snow] = new Color(0.94f, 0.96f, 1.00f),
+            [BlockType.WoodPlank] = new Color(0.64f, 0.45f, 0.26f),
+            [BlockType.StoneBrick] = new Color(0.62f, 0.62f, 0.64f),
+            [BlockType.Brick] = new Color(0.66f, 0.28f, 0.22f),
+            [BlockType.CopperIngot] = new Color(0.76f, 0.46f, 0.26f),
+            [BlockType.IronIngot] = new Color(0.70f, 0.62f, 0.58f),
+            [BlockType.CoalBlock] = new Color(0.08f, 0.08f, 0.10f)
         };
 
         /// <summary>
@@ -152,22 +175,9 @@ namespace Societies.Runtime.World
 
         private Color GetBlockColor(ushort blockId)
         {
-            return (BlockType)blockId switch
-            {
-                BlockType.Dirt => new Color(0.45f, 0.30f, 0.18f),
-                BlockType.Grass => new Color(0.33f, 0.68f, 0.25f),
-                BlockType.Stone => new Color(0.55f, 0.55f, 0.58f),
-                BlockType.Coal => new Color(0.15f, 0.15f, 0.18f),
-                BlockType.CopperOre => new Color(0.65f, 0.42f, 0.24f),
-                BlockType.IronOre => new Color(0.72f, 0.62f, 0.50f),
-                BlockType.Wood => new Color(0.52f, 0.35f, 0.18f),
-                BlockType.Leaves => new Color(0.24f, 0.52f, 0.20f),
-                BlockType.Sand => new Color(0.86f, 0.80f, 0.56f),
-                BlockType.Clay => new Color(0.66f, 0.54f, 0.46f),
-                BlockType.Water => new Color(0.20f, 0.45f, 0.78f),
-                BlockType.Snow => new Color(0.94f, 0.96f, 1.00f),
-                _ => Color.white
-            };
+            return BlockColors.TryGetValue((BlockType)blockId, out var color)
+                ? color
+                : Color.white;
         }
     }
 }

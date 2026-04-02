@@ -1,4 +1,5 @@
 using UnityEngine;
+using Societies.Runtime.Inventory;
 
 namespace Societies.Runtime.World
 {

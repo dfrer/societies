@@ -1,12 +1,13 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
+using Societies.Runtime.Inventory;
 
 namespace Societies.Runtime.World
 {
     /// <summary>
     /// First-person player controller with voxel interaction
     /// </summary>
-    [RequireComponent(typeof(CharacterController))]
+    [RequireComponent(typeof(CharacterController), typeof(InteractionSystem))]
     public class PlayerController : MonoBehaviour
     {
         [Header("Movement")]
@@ -40,13 +41,14 @@ namespace Societies.Runtime.World
         private float _currentSpeed;
         
         // Interaction
+        private InteractionSystem _interactionSystem;
         private BlockCoord _targetBlock;
         private GameObject _targetObject;
         private bool _isMining;
         private float _miningProgress;
         
         // Inventory reference
-        private Inventory.InventoryManager _inventory;
+        private InventoryManager _inventory;
 
         // Input
         private PlayerInput _playerInput;
@@ -70,7 +72,8 @@ namespace Societies.Runtime.World
             if (_playerCamera == null)
                 _playerCamera = GetComponentInChildren<Camera>();
             
-            _inventory = GetComponent<Inventory.InventoryManager>();
+            _inventory = GetComponent<InventoryManager>();
+            _interactionSystem = GetComponent<InteractionSystem>();
         }
 
         private void Start()
@@ -204,28 +207,19 @@ namespace Societies.Runtime.World
             UpdateTarget();
 
             // Mining
-            if (_mineAction?.IsPressed() ?? false)
+            if ((_mineAction?.WasPressedThisFrame() ?? false) && _interactionSystem != null)
             {
-                if (_targetBlock.Y >= 0)
-                {
-                    _isMining = true;
-                    _miningProgress += Time.deltaTime;
-                    
-                    // TODO: Check tool compatibility and calculate mining time
-                    float miningTime = 1f; // Base mining time
-                    
-                    if (_miningProgress >= miningTime)
-                    {
-                        // Harvest the block
-                        HarvestBlock(_targetBlock);
-                        _miningProgress = 0f;
-                    }
-                }
+                _interactionSystem.StartMining();
             }
-            else
+
+            if ((_mineAction?.IsPressed() ?? false) && _interactionSystem != null)
             {
-                _isMining = false;
-                _miningProgress = 0f;
+                _interactionSystem.ContinueMining();
+            }
+
+            if ((_mineAction?.WasReleasedThisFrame() ?? false) && _interactionSystem != null)
+            {
+                _interactionSystem.CancelMining();
             }
 
             // Placing
