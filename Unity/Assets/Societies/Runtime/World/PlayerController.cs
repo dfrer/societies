@@ -45,6 +45,7 @@ namespace Societies.Runtime.World
         private BlockCoord _targetBlock;
         private GameObject _targetObject;
         private bool _isMining;
+        private bool _buildMode;
         private float _miningProgress;
         
         // Inventory reference
@@ -104,6 +105,12 @@ namespace Societies.Runtime.World
 
         private void Update()
         {
+            if (Input.GetKeyDown(KeyCode.B))
+            {
+                _buildMode = !_buildMode;
+                Debug.Log("Build mode: " + _buildMode);
+            }
+
             UpdateEncumbrance();
             UpdateGroundState();
             UpdateMovement();
@@ -225,6 +232,11 @@ namespace Societies.Runtime.World
             // Placing
             if (_placeAction?.WasPressedThisFrame() ?? false)
             {
+                if (_buildMode)
+                {
+                    _interactionSystem.PlaceBlock();
+                }
+
                 if (_targetBlock.Y >= 0)
                 {
                     // Get block to place from inventory

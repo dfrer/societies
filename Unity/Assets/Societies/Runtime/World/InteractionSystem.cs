@@ -29,6 +29,7 @@ namespace Societies.Runtime.World
         public bool IsMining { get; private set; }
         public float MiningProgress { get; private set; }
         public BlockCoord MiningTarget { get; private set; }
+        public int SelectedBlockId { get; private set; } = 1; // Default dirt
 
         private void Awake()
         {
@@ -193,10 +194,15 @@ namespace Societies.Runtime.World
             };
         }
 
+        public void SelectBlockToPlace(int blockId)
+        {
+            SelectedBlockId = blockId;
+        }
+
         /// <summary>
         /// Place a block at position
         /// </summary>
-        public bool PlaceBlock(int blockId)
+        public bool PlaceBlock()
         {
             if (!HasTarget || !_world.IsInBounds(TargetBlock))
                 return false;
@@ -206,10 +212,10 @@ namespace Societies.Runtime.World
             if (!existing.IsAir) return false;
 
             // Check inventory has block
-            if (_inventory != null && _inventory.HasItem(blockId, 1))
+            if (_inventory != null && _inventory.HasItem(SelectedBlockId, 1))
             {
-                _inventory.RemoveItem(blockId, 1);
-                _world.SetBlock(TargetBlock, BlockData.FromType((BlockType)blockId));
+                _inventory.RemoveItem(SelectedBlockId, 1);
+                _world.SetBlock(TargetBlock, BlockData.FromType((BlockType)SelectedBlockId));
                 return true;
             }
 
