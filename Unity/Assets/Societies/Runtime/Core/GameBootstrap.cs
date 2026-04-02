@@ -54,6 +54,11 @@ namespace Societies.Runtime.Core
             clockGO.AddComponent<SimulationClock>();
             DontDestroyOnLoad(clockGO);
 
+            // Initialize time and lighting
+            var timeGO = new GameObject("TimeSystem");
+            timeGO.AddComponent<TimeSystem>();
+            DontDestroyOnLoad(timeGO);
+
             // Initialize voxel world
             var worldGO = new GameObject("VoxelWorld");
             _world = worldGO.AddComponent<VoxelWorld>();
@@ -165,6 +170,7 @@ namespace Societies.Runtime.Core
             _mainCamera.transform.SetParent(player.transform);
             _mainCamera.transform.localPosition = new Vector3(0, 1.6f, 0);
             _mainCamera.transform.localRotation = Quaternion.identity;
+            _mainCamera.tag = "MainCamera";
             
             // Set camera settings
             _mainCamera.clearFlags = CameraClearFlags.Skybox;
