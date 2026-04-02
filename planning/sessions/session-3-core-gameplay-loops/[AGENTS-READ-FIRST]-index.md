@@ -7,6 +7,8 @@
 
 ## Quick Access
 
+### Core Documents
+
 | Document | Description | Lines | Focus |
 |----------|-------------|-------|-------|
 | [01-moment-to-moment-gameplay.md](./01-moment-to-moment-gameplay.md) | 5-15 minute gameplay loop | ~200 | Real-time actions |
@@ -17,6 +19,28 @@
 | [06-return-triggers.md](./06-return-triggers.md) | Engagement mechanics | ~200 | Retention |
 | [07-ui-ux-paths.md](./07-ui-ux-paths.md) | Interface design | ~200 | User experience |
 | [RESEARCH-INDEX.md](./RESEARCH-INDEX.md) | Research sources | ~50 | References |
+
+### Detailed System Specifications (01-Series)
+
+| Document | Description | Lines | Dependencies |
+|----------|-------------|-------|--------------|
+| [01-gameplay-systems-architecture.md](./01-gameplay-systems-architecture.md) | Technical architecture foundation | ~250 | Core systems design |
+| [01b-inventory-crafting-recipes.md](./01b-inventory-crafting-recipes.md) | Crafting recipes and item definitions | ~300 | Inventory system |
+| [01c-movement-interaction-spec.md](./01c-movement-interaction-spec.md) | Player movement and interaction mechanics | ~250 | Core gameplay |
+| [01d-tool-system-spec.md](./01d-tool-system-spec.md) | Tool durability, progression, and usage | ~280 | Gathering system |
+| [01e-inventory-system-spec.md](./01e-inventory-system-spec.md) | Inventory management and storage | ~320 | UI/UX |
+| [01f-voxel-interaction-spec.md](./01f-voxel-interaction-spec.md) | Mining, building, block placement | ~350 | World modification |
+| [01g-entity-block-system.md](./01g-entity-block-system.md) | Custom entities: carts, workshops, vehicles | ~400 | Hybrid block/entity system |
+
+### Support Systems
+
+| Document | Description | Lines | Integration |
+|----------|-------------|-------|-------------|
+| [02b-economic-system-spec.md](./02b-economic-system-spec.md) | Economic mechanics and markets | ~300 | Session gameplay |
+| [02c-governance-mechanics-detail.md](./02c-governance-mechanics-detail.md) | Political system details | ~280 | Governance |
+| [07b-screen-specifications.md](./07b-screen-specifications.md) | UI screen layouts and flows | ~250 | Interface design |
+| [03-weight-carrying-system.md](./03-weight-carrying-system.md) | Weight and encumbrance mechanics | ~280 | Movement, logistics |
+| [04-entity-catalog.md](./04-entity-catalog.md) | Complete game entity reference | ~500 | All entity systems |
 
 ---
 
@@ -46,8 +70,8 @@ Session 3 defines what players actually *do* across different time scales:
   - [Session 2](../session-2-ai-system-design/) - AI behaviors, economic systems, political systems
 - **Informs**: 
   - [Session 4](../session-4-progression-and-balance/) - Progression systems
-  - [Session 5](../session-5-governance-ux/) - Governance UX implementation
-  - [Session 6](../session-6-prototyping/) - Prototype scope
+  - [Session 5](../session-5-governance-mechanics/) - Governance Mechanics implementation
+  - [Session 6](../session-6-prototyping-roadmap/) - Prototype scope
 
 ---
 
@@ -63,6 +87,57 @@ This session defines 6 core player types:
 6. **Socializer** - Community, relationships, events
 
 See [04-player-archetypes.md](./04-player-archetypes.md) for full profiles.
+
+---
+
+## System Architecture
+
+### Core Systems (01-Series Documents)
+
+The 01-series provides detailed technical specifications for core gameplay systems:
+
+**Foundation & Architecture:**
+- **[01-gameplay-systems-architecture.md](./01-gameplay-systems-architecture.md)** - System relationships, tick architecture, state management
+
+**Player Capabilities:**
+- **[01c-movement-interaction-spec.md](./01c-movement-interaction-spec.md)** - Movement, camera, interaction modes
+- **[01d-tool-system-spec.md](./01d-tool-system-spec.md)** - Tool types, durability, progression
+
+**World Interaction:**
+- **[01f-voxel-interaction-spec.md](./01f-voxel-interaction-spec.md)** - Mining, building, block placement/removal
+  - Block interaction mechanics (left/right click)
+  - Mining with tool integration and timing
+  - Building with placement validation
+  - Multiplayer synchronization
+  - Weight/encumbrance integration
+
+**Entity Systems:**
+- **[01g-entity-block-system.md](./01g-entity-block-system.md)** - Hybrid static/dynamic object system
+  - When to use blocks vs entities (decision matrix)
+  - Entity types: vehicles, containers, workshops, furniture
+  - Physics-based interactions (RigidBody3D)
+  - State persistence and ownership
+
+**Inventory & Logistics:**
+- **[01b-inventory-crafting-recipes.md](./01b-inventory-crafting-recipes.md)** - Item definitions and crafting recipes
+- **[01e-inventory-system-spec.md](./01e-inventory-system-spec.md)** - Inventory management UI and mechanics
+- **[03-weight-carrying-system.md](./03-weight-carrying-system.md)** - Weight and encumbrance system
+  - Realistic kg/m³ densities (70+ block types)
+  - Player capacity (100 kg base)
+  - Movement speed impact (0-100% encumbrance)
+  - Vehicle transport (200 kg - 10,000 kg capacity)
+  - Strategic settlement location consequences
+
+### Entity Catalog
+
+**[04-entity-catalog.md](./04-entity-catalog.md)** - Complete reference for all game entities:
+- Transportation entities (minecarts, carts, vehicles)
+- Crafting/production entities (workshops, furnaces)
+- Storage entities (chests, crates, containers)
+- Furniture/decorative (beds, chairs, tables)
+- Infrastructure (doors, mechanisms, platforms)
+- Development priorities (MVP vs Post-MVP)
+- Art and technical specifications
 
 ---
 
@@ -85,6 +160,7 @@ See individual documents for detailed technical integration.
 
 All criteria met:
 
+### Core Gameplay Documents
 - [x] Clear minute-to-minute activity flow ([01](./01-moment-to-moment-gameplay.md))
 - [x] Session goals defined for different player types ([02](./02-session-gameplay.md))
 - [x] Progression feel articulated across timeline ([05](./05-progression-feel.md))
@@ -92,6 +168,16 @@ All criteria met:
 - [x] Critical UI/UX paths mapped ([07](./07-ui-ux-paths.md))
 - [x] Information architecture specified ([07](./07-ui-ux-paths.md))
 - [x] Player archetypes fully defined ([04](./04-player-archetypes.md))
+
+### Detailed System Specifications
+- [x] Gameplay systems architecture defined ([01a](./01-gameplay-systems-architecture.md))
+- [x] Movement and interaction mechanics specified ([01c](./01c-movement-interaction-spec.md))
+- [x] Tool system with durability and progression ([01d](./01d-tool-system-spec.md))
+- [x] Inventory system with UI/UX ([01e](./01e-inventory-system-spec.md))
+- [x] Voxel interaction (mining/building) documented ([01f](./01f-voxel-interaction-spec.md))
+- [x] Entity-block system hybrid approach ([01g](./01g-entity-block-system.md))
+- [x] Weight and encumbrance mechanics ([weight-carrying](./03-weight-carrying-system.md))
+- [x] Complete entity catalog ([entity-catalog](./04-entity-catalog.md))
 
 ---
 
@@ -104,7 +190,38 @@ All criteria met:
 
 ---
 
-## Navigation
+## Document Navigation
+
+### Sequential Reading Path
+1. Start: [01-gameplay-systems-architecture.md](./01-gameplay-systems-architecture.md)
+2. Foundation: [01c-movement-interaction-spec.md](./01c-movement-interaction-spec.md)
+3. Tools: [01d-tool-system-spec.md](./01d-tool-system-spec.md)
+4. World Interaction: [01f-voxel-interaction-spec.md](./01f-voxel-interaction-spec.md)
+5. Hybrid System: [01g-entity-block-system.md](./01g-entity-block-system.md)
+6. Logistics: [03-weight-carrying-system.md](./03-weight-carrying-system.md)
+7. Reference: [04-entity-catalog.md](./04-entity-catalog.md)
+
+### Cross-Reference Map
+
+**Voxel Interaction System (01f)** references:
+- [01c-movement-interaction-spec.md](./01c-movement-interaction-spec.md) - Interaction modes
+- [01d-tool-system-spec.md](./01d-tool-system-spec.md) - Tool integration
+- [01e-inventory-system-spec.md](./01e-inventory-system-spec.md) - Weight/encumbrance
+- [03-weight-carrying-system.md](./03-weight-carrying-system.md) - Block weights
+
+**Entity-Block System (01g)** references:
+- [01e-inventory-system-spec.md](./01e-inventory-system-spec.md) - Container entities
+- [04-entity-catalog.md](./04-entity-catalog.md) - Full entity specifications
+- [01f-voxel-interaction-spec.md](./01f-voxel-interaction-spec.md) - Block interaction
+
+**Weight System** references:
+- [01f-voxel-interaction-spec.md](./01f-voxel-interaction-spec.md) - Mining/building weight
+- [01g-entity-block-system.md](./01g-entity-block-system.md) - Vehicle transport
+- [04-entity-catalog.md](./04-entity-catalog.md) - Entity weights
+
+---
+
+## Session Navigation
 
 - **Previous:** [Session 2: AI System Design](../session-2-ai-system-design/[AGENTS-READ-FIRST]-index.md)
 - **Next:** [Session 4: Progression and Balance](../session-4-progression-and-balance/[AGENTS-READ-FIRST]-index.md)
@@ -114,7 +231,7 @@ All criteria met:
 
 ## Legacy Document
 
-The original single comprehensive document (`day3-core-gameplay-loops.md`, ~1,050 lines) has been compartmentalized into the documents above. It is preserved for reference but should not be used for active planning.
+The original single comprehensive document has been compartmentalized into the documents above and moved to the archives for reference.
 
-- **Deprecated**: `day3-core-gameplay-loops.md` (kept for reference)
+- **Archived**: [../../archives/00-day3-legacy.md](../../archives/00-day3-legacy.md) (~1,050 lines, deprecated)
 - **Current**: Use the numbered documents above

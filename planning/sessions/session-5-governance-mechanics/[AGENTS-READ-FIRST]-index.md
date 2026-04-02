@@ -10,6 +10,7 @@
 | Document | Description | Lines |
 |----------|-------------|-------|
 | [day5-governance-mechanics.md](./day5-governance-mechanics.md) | Complete governance system specification **(~1,200 lines)** |
+| [02d-3d-jurisdiction.md](./02d-3d-jurisdiction.md) | 3D land claims and vertical jurisdiction | ~100 lines |
 
 ---
 
@@ -20,8 +21,25 @@
 3. **Election Mechanics** - Voting and leadership selection
 4. **Government Types** - Monarchy, democracy, oligarchy, etc.
 5. **Jurisdiction** - Authority boundaries and enforcement
+   - **02d-3d-jurisdiction.md** - 3D land claims and vertical jurisdiction
 6. **Anti-Griefing** - Protections against malicious play
 7. **Governance UX** - Interface for political participation
+
+---
+
+## Supplementary Documents
+
+| Document | Description | Dependencies |
+|----------|-------------|--------------|
+| [02d-3d-jurisdiction.md](./02d-3d-jurisdiction.md) | 3D land claims and vertical jurisdiction | Session 1 voxel world docs |
+
+---
+
+## Cross-References
+
+### Session 1 Dependencies
+This session references the following Session 1 documents for technical implementation:
+- **Voxel World Documentation** - For vertical space and land claim boundaries
 
 ---
 

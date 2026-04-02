@@ -16,8 +16,41 @@ Societies is an ambitious multiplayer simulation game where you build a civiliza
 - **Persistent World**: Simulation continues 24/7 with or without players
 - **Emergent Governance**: Create laws and constitutions that affect real AI populations
 - **Environmental Simulation**: Ecosystem, pollution, and climate systems with real consequences
+- **Voxel-Based World**: 1m³ block-based terrain like Eco and Minecraft—fully editable, persistent, and interactable
+- **Realistic Logistics**: Weight-based carrying and material transport system—resources have mass and must be physically moved
+- **Custom Entities**: Vehicles, workshops, storage containers, and machinery alongside blocks—complex shaped objects with unique physics and functionality
 - **Progressive Society**: From homesteading to planetary federations
 - **Godot 4 + C#**: Modern, performant, open-source stack
+
+## 🧱 Core Systems
+
+### Voxel World
+
+A fully editable, persistent block-based world built on 1m³ voxels, inspired by Eco and Minecraft:
+
+- **Destructible Terrain**: Every block can be mined, placed, or modified by players and AI
+- **Material Types**: Stone, soil, wood, ores, and crafted materials with unique properties
+- **Persistence**: All voxel changes saved to database and synchronized across clients
+- **Performance**: Chunk-based rendering with LOD for large world sizes (0.5-4 km²)
+
+### Physics & Logistics
+
+Realistic weight and carrying system that makes resource management a core gameplay element:
+
+- **Weight-Based Inventory**: Every item has mass—players and agents have carrying capacity limits
+- **Material Transport**: Heavy resources must be moved using carts, vehicles, or conveyor systems
+- **Physical Storage**: Items exist in the world in chests, stockpiles, and containers (not just abstract inventory)
+- **Logistics Challenges**: Efficient resource flow requires planning roads, vehicles, and storage networks
+
+### Custom Entities
+
+Beyond blocks—complex shaped objects that enable advanced automation and industry:
+
+- **Vehicles**: Carts, trucks, and transport vehicles for moving heavy materials
+- **Workshops**: Crafting stations, smelters, and production machines with custom models
+- **Storage**: Specialized containers like silos, stockpiles, and warehouses
+- **Machinery**: Pumps, generators, and industrial equipment with unique physics
+- **Entity Physics**: Custom collision shapes and interaction systems alongside the voxel grid
 
 ## 📁 Project Structure
 
@@ -236,9 +269,11 @@ This is currently a solo project, but contributions will be welcome post-Alpha.
 ## 📊 Key Metrics
 
 **Scope**:
-- World Size: 0.5-4 km²
+- World Size: 0.5-4 km² (voxel-based, fully editable)
+- Voxel Resolution: 1m³ blocks
 - AI Agents: 20 (MVP target) → 50-100 (post-MVP)
 - Players: 8 (MVP) → 20+ (post-MVP)
+- Max Carrying Weight: ~50kg per character (realistic logistics)
 - Dev Timeline: 2-3 years (realistic for solo development)
 
 **Performance Targets**:
@@ -254,10 +289,11 @@ MIT License - See [LICENSE](LICENSE) file
 ## 🙏 Acknowledgments
 
 **Inspirations**:
-- **Eco** by Strange Loop Games - Environmental simulation
-- **Dwarf Fortress** by Bay 12 Games - Agent simulation
-- **Factorio** by Wube Software - Automation and optimization
-- **Paradox Games** - Political systems
+- **Eco** by Strange Loop Games - Voxel world, environmental simulation, and logistics
+- **Minecraft** by Mojang - Voxel-based building and world editing
+- **Dwarf Fortress** by Bay 12 Games - Agent simulation and complex systems
+- **Factorio** by Wube Software - Automation, logistics, and material transport
+- **Paradox Games** - Political systems and governance
 
 **Tools**:
 - Godot Engine and community

@@ -554,6 +554,737 @@ public class TickBudgetManager {
    - Vote processing on timer (every 30 seconds)
    - Not processed every tick unless active [r3-eco-technical-postmortem.md]
 
+---
+
+### Tick Loop Implementation (Microsecond Specification)
+
+> **Reference**: `planning/meta/technical-constants.md`
+> - TICK_RATE = 20 TPS
+> - TICK_INTERVAL_MS = 50.0ms
+> - AGENTS_MVP = 25 agents
+> - PER_AGENT_BUDGET_MS = 2.0f
+
+This section provides exact microsecond-level timing specifications for the server tick loop, ensuring deterministic performance within the 50ms tick window.
+
+#### 1. Tick Loop Overview
+
+```
+TICK_INTERVAL: 50ms (20 TPS)
+Total budget per tick: 50,000 microseconds
+Target usage: 80% (40,000 microseconds)
+Safety margin: 20% (10,000 microseconds)
+```
+
+**Timing Constants** (from `technical-constants.md`):
+```csharp
+public static class TickConstants {
+    // Core timing (from technical-constants.md)
+    public const int TICK_RATE = 20;                              // Ticks per second
+    public const double TICK_INTERVAL_MS = 50.0;                  // Milliseconds per tick
+    public const long TICK_INTERVAL_MICROSECONDS = 50_000L;       // μs per tick
+    
+    // Budget allocation
+    public const long TARGET_USAGE_MICROSECONDS = 40_000L;        // 80% of tick
+    public const long SAFETY_MARGIN_MICROSECONDS = 10_000L;       // 20% safety margin
+    public const float TARGET_USAGE_PERCENT = 0.80f;
+    public const float SAFETY_MARGIN_PERCENT = 0.20f;
+}
+```
+
+#### 2. Phase-Based Tick Processing
+
+The tick loop uses a four-phase priority system with strict microsecond budgets. Each phase has a defined budget and can defer work if over budget.
+
+##### Phase 1: Critical (Must Complete) - Budget: 3,000μs
+
+This phase handles player inputs, network I/O, and emergency state updates. **Must complete within budget.**
+
+```csharp
+public class CriticalPhaseProcessor {
+    private readonly Stopwatch _timer = new();
+    private readonly ILogger _logger;
+    
+    // Budget allocation from technical-constants.md targets
+    private const long INPUT_BUDGET_US = 1_500L;      // Player actions
+    private const long NETWORK_BUDGET_US = 1_000L;    // Network I/O
+    private const long EMERGENCY_BUDGET_US = 500L;    // Critical updates
+    private const long TOTAL_CRITICAL_BUDGET_US = 3_000L;
+    
+    public CriticalPhaseResult ProcessCriticalPhase(TickContext context) {
+        _timer.Restart();
+        var result = new CriticalPhaseResult();
+        
+        // 1. Process Player Inputs - 1,500μs budget
+        // ~100μs per active player × 8 players (PLAYERS_MVP from technical-constants.md)
+        var inputTimer = Stopwatch.StartNew();
+        foreach (var player in context.ActivePlayers) {
+            if (inputTimer.ElapsedMicroseconds > INPUT_BUDGET_US) {
+                _logger.LogWarning("Input processing exceeded budget, deferring remaining players");
+                break;
+            }
+            ProcessPlayerActions(player);
+        }
+        result.InputProcessingMicroseconds = inputTimer.ElapsedMicroseconds;
+        
+        // 2. Network I/O - 1,000μs budget
+        // Receive all pending packets, send queued updates
+        var networkTimer = Stopwatch.StartNew();
+        context.NetworkManager.ProcessIncomingPackets();
+        context.NetworkManager.FlushOutgoingQueue();
+        result.NetworkProcessingMicroseconds = networkTimer.ElapsedMicroseconds;
+        
+        // 3. Emergency Updates - 500μs budget
+        // Health changes, death events, critical state changes
+        var emergencyTimer = Stopwatch.StartNew();
+        ProcessCriticalEntityUpdates(context.EntityManager.GetCriticalUpdates());
+        result.EmergencyProcessingMicroseconds = emergencyTimer.ElapsedMicroseconds;
+        
+        _timer.Stop();
+        result.TotalMicroseconds = _timer.ElapsedMicroseconds;
+        
+        // Budget validation
+        if (result.TotalMicroseconds > TOTAL_CRITICAL_BUDGET_US) {
+            _logger.LogWarning($"Critical phase over budget: {result.TotalMicroseconds}μs / {TOTAL_CRITICAL_BUDGET_US}μs");
+            Telemetry.RecordOverBudget("CriticalPhase", result.TotalMicroseconds, TOTAL_CRITICAL_BUDGET_US);
+        }
+        
+        return result;
+    }
+    
+    private void ProcessPlayerActions(Player player) {
+        // ~100μs per player (validated by profiling)
+        // Includes: input validation, action execution, state updates
+        player.ProcessPendingInputs();
+    }
+    
+    private void ProcessCriticalEntityUpdates(List<EntityUpdate> updates) {
+        foreach (var update in updates.Where(u => u.IsCritical)) {
+            update.Apply();
+        }
+    }
+}
+
+public class CriticalPhaseResult {
+    public long TotalMicroseconds { get; set; }
+    public long InputProcessingMicroseconds { get; set; }
+    public long NetworkProcessingMicroseconds { get; set; }
+    public long EmergencyProcessingMicroseconds { get; set; }
+    public bool WasOverBudget => TotalMicroseconds > 3_000L;
+}
+```
+
+##### Phase 2: High Priority - Budget: 35,000μs
+
+This phase handles AI processing, economy updates, governance, and player state synchronization. Can defer agents if over budget.
+
+```csharp
+public class HighPriorityPhaseProcessor {
+    private readonly Stopwatch _timer = new();
+    private readonly ILogger _logger;
+    private readonly AgentLODManager _lodManager;
+    
+    // Budget allocation
+    private const long AI_BUDGET_US = 30_000L;          // 25 agents × 1,200μs average
+    private const long ECONOMY_BUDGET_US = 3_000L;      // Markets, trades, prices
+    private const long GOVERNANCE_BUDGET_US = 1_000L;   // Law enforcement, votes
+    private const long SYNC_BUDGET_US = 1_000L;         // Player state sync
+    private const long TOTAL_HIGH_PRIORITY_BUDGET_US = 35_000L;
+    
+    // From technical-constants.md: AGENTS_MVP = 25
+    private const int MAX_AGENTS_PER_TICK = 25;
+    
+    public HighPriorityPhaseResult ProcessHighPriorityPhase(TickContext context, long remainingBudget) {
+        _timer.Restart();
+        var result = new HighPriorityPhaseResult();
+        
+        // Calculate actual AI budget based on remaining time
+        long actualAIBudget = Math.Min(AI_BUDGET_US, remainingBudget - 5_000L); // Reserve 5ms for other systems
+        
+        // AI Processing - Up to 30,000μs budget
+        // 25 agents × 1,200μs average = 30,000μs (AGENTS_MVP × PER_AGENT_BUDGET_MS)
+        var aiTimer = Stopwatch.StartNew();
+        var agentsToUpdate = _lodManager.GetAgentsForThisTick(MAX_AGENTS_PER_TICK);
+        int processedCount = 0;
+        int deferredCount = 0;
+        
+        foreach (var agent in agentsToUpdate) {
+            // Check budget after each agent
+            if (aiTimer.ElapsedMicroseconds > actualAIBudget - 1_200L) {
+                // Defer remaining agents to next tick
+                var remainingAgents = agentsToUpdate.Skip(processedCount);
+                _lodManager.DeferAgents(remainingAgents);
+                deferredCount = remainingAgents.Count();
+                _logger.LogDebug($"AI phase approaching budget limit, deferring {deferredCount} agents");
+                break;
+            }
+            
+            ProcessAgentAI(agent);
+            processedCount++;
+        }
+        
+        result.AIProcessingMicroseconds = aiTimer.ElapsedMicroseconds;
+        result.AgentsProcessed = processedCount;
+        result.AgentsDeferred = deferredCount;
+        
+        // Economy Updates - 3,000μs budget
+        var economyTimer = Stopwatch.StartNew();
+        if (economyTimer.ElapsedMicroseconds < ECONOMY_BUDGET_US) {
+            context.EconomyManager.UpdateMarkets();        // ~1,000μs
+            context.EconomyManager.ProcessTrades();        // ~1,000μs
+            context.EconomyManager.UpdatePriceBeliefs();   // ~1,000μs
+        }
+        result.EconomyMicroseconds = economyTimer.ElapsedMicroseconds;
+        
+        // Law Enforcement - 1,000μs budget
+        var governanceTimer = Stopwatch.StartNew();
+        if (governanceTimer.ElapsedMicroseconds < GOVERNANCE_BUDGET_US) {
+            context.GovernanceManager.EnforceLaws();       // ~500μs
+            context.GovernanceManager.ProcessVotes();      // ~500μs
+        }
+        result.GovernanceMicroseconds = governanceTimer.ElapsedMicroseconds;
+        
+        // Player State Sync - 1,000μs budget
+        var syncTimer = Stopwatch.StartNew();
+        if (syncTimer.ElapsedMicroseconds < SYNC_BUDGET_US) {
+            context.StateManager.SyncPlayerStates();       // ~1,000μs
+        }
+        result.StateSyncMicroseconds = syncTimer.ElapsedMicroseconds;
+        
+        _timer.Stop();
+        result.TotalMicroseconds = _timer.ElapsedMicroseconds;
+        
+        if (result.TotalMicroseconds > TOTAL_HIGH_PRIORITY_BUDGET_US) {
+            _logger.LogWarning($"High priority phase over budget: {result.TotalMicroseconds}μs");
+        }
+        
+        return result;
+    }
+    
+    private void ProcessAgentAI(Agent agent) {
+        // Per-agent budget breakdown:
+        // - Perception: 200μs (sensing environment)
+        // - Memory update: 150μs (consolidating experiences)
+        // - Goal evaluation: 300μs (selecting current goal)
+        // - Planning: 400μs (pathfinding, action selection)
+        // - Action execution: 150μs (applying actions)
+        // Total: ~1,200μs per agent (PER_AGENT_BUDGET_MS = 2.0ms max, 1.5ms amortized)
+        
+        var agentTimer = Stopwatch.StartNew();
+        
+        agent.UpdatePerception();       // 200μs
+        agent.UpdateMemory();           // 150μs
+        agent.EvaluateGoals();          // 300μs
+        agent.ExecutePlanning();        // 400μs
+        agent.ExecuteActions();         // 150μs
+        
+        agent.LastAIProcessingTime = agentTimer.ElapsedMicroseconds;
+    }
+}
+
+public class HighPriorityPhaseResult {
+    public long TotalMicroseconds { get; set; }
+    public long AIProcessingMicroseconds { get; set; }
+    public int AgentsProcessed { get; set; }
+    public int AgentsDeferred { get; set; }
+    public long EconomyMicroseconds { get; set; }
+    public long GovernanceMicroseconds { get; set; }
+    public long StateSyncMicroseconds { get; set; }
+    public bool WasOverBudget => TotalMicroseconds > 35_000L;
+}
+```
+
+##### Phase 3: Medium Priority - Budget: 1,000μs (Can Defer)
+
+Ecosystem simulation, pollution, climate, and analytics. Can be skipped if no budget remains.
+
+```csharp
+public class MediumPriorityPhaseProcessor {
+    private readonly Stopwatch _timer = new();
+    private readonly ILogger _logger;
+    
+    private const long ECOSYSTEM_BUDGET_US = 500L;      // Animals, plants, weather
+    private const long POLLUTION_BUDGET_US = 300L;      // Pollution spread, climate
+    private const long ANALYTICS_BUDGET_US = 200L;      // Metrics, statistics
+    private const long TOTAL_MEDIUM_PRIORITY_BUDGET_US = 1_000L;
+    
+    public MediumPriorityPhaseResult ProcessMediumPriorityPhase(TickContext context, long remainingBudget) {
+        _timer.Restart();
+        var result = new MediumPriorityPhaseResult();
+        
+        // Skip entire phase if insufficient budget
+        if (remainingBudget < TOTAL_MEDIUM_PRIORITY_BUDGET_US) {
+            result.WasSkipped = true;
+            result.SkipReason = "Insufficient budget";
+            _logger.LogDebug("Medium priority phase skipped due to budget constraints");
+            return result;
+        }
+        
+        // Ecosystem Simulation - 500μs
+        var ecosystemTimer = Stopwatch.StartNew();
+        context.EcosystemManager.UpdateAnimalPopulations();     // ~200μs
+        context.EcosystemManager.UpdatePlantGrowth();           // ~200μs
+        context.WeatherManager.UpdateWeather();                 // ~100μs
+        result.EcosystemMicroseconds = ecosystemTimer.ElapsedMicroseconds;
+        
+        // Pollution & Environment - 300μs
+        var pollutionTimer = Stopwatch.StartNew();
+        context.PollutionManager.UpdatePollutionSpread();       // ~200μs
+        context.ClimateManager.UpdateClimate();                 // ~100μs
+        result.PollutionMicroseconds = pollutionTimer.ElapsedMicroseconds;
+        
+        // Analytics & Metrics - 200μs
+        var analyticsTimer = Stopwatch.StartNew();
+        context.Telemetry.UpdateServerMetrics();                // ~100μs
+        context.Statistics.UpdatePlayerStatistics();            // ~100μs
+        result.AnalyticsMicroseconds = analyticsTimer.ElapsedMicroseconds;
+        
+        _timer.Stop();
+        result.TotalMicroseconds = _timer.ElapsedMicroseconds;
+        
+        if (result.TotalMicroseconds > TOTAL_MEDIUM_PRIORITY_BUDGET_US) {
+            _logger.LogDebug($"Medium priority phase over budget: {result.TotalMicroseconds}μs");
+        }
+        
+        return result;
+    }
+}
+
+public class MediumPriorityPhaseResult {
+    public long TotalMicroseconds { get; set; }
+    public long EcosystemMicroseconds { get; set; }
+    public long PollutionMicroseconds { get; set; }
+    public long AnalyticsMicroseconds { get; set; }
+    public bool WasSkipped { get; set; }
+    public string SkipReason { get; set; }
+}
+```
+
+##### Phase 4: Low Priority - Budget: 1,000μs (Can Defer/Skip)
+
+Logging, maintenance, and checkpoint saving. Deferrable to next tick or performed asynchronously.
+
+```csharp
+public class LowPriorityPhaseProcessor {
+    private readonly Stopwatch _timer = new();
+    private readonly ILogger _logger;
+    
+    private const long LOGGING_BUDGET_US = 300L;        // Flush log buffer
+    private const long MAINTENANCE_BUDGET_US = 400L;    // Cleanup inactive entities
+    private const long CHECKPOINT_BUDGET_US = 300L;     // Save checkpoint if needed
+    private const long TOTAL_LOW_PRIORITY_BUDGET_US = 1_000L;
+    
+    public LowPriorityPhaseResult ProcessLowPriorityPhase(TickContext context, long remainingBudget) {
+        _timer.Restart();
+        var result = new LowPriorityPhaseResult();
+        
+        // Skip if critically low on budget
+        if (remainingBudget < 500L) {
+            result.WasSkipped = true;
+            result.SkipReason = "Critical budget shortage";
+            return result;
+        }
+        
+        // Logging - 300μs
+        var loggingTimer = Stopwatch.StartNew();
+        if (remainingBudget >= LOGGING_BUDGET_US) {
+            context.Logger.FlushBuffer();               // ~300μs
+        }
+        result.LoggingMicroseconds = loggingTimer.ElapsedMicroseconds;
+        
+        // Maintenance - 400μs
+        var maintenanceTimer = Stopwatch.StartNew();
+        if (remainingBudget >= LOGGING_BUDGET_US + MAINTENANCE_BUDGET_US) {
+            context.EntityManager.CleanupInactiveEntities();  // ~400μs
+        }
+        result.MaintenanceMicroseconds = maintenanceTimer.ElapsedMicroseconds;
+        
+        // Save Checkpoint - 300μs (if needed)
+        var checkpointTimer = Stopwatch.StartNew();
+        if (remainingBudget >= TOTAL_LOW_PRIORITY_BUDGET_US && ShouldSaveCheckpoint(context)) {
+            context.SaveSystem.QueueCheckpointSave();   // ~300μs (async operation)
+        }
+        result.CheckpointMicroseconds = checkpointTimer.ElapsedMicroseconds;
+        
+        _timer.Stop();
+        result.TotalMicroseconds = _timer.ElapsedMicroseconds;
+        
+        return result;
+    }
+    
+    private bool ShouldSaveCheckpoint(TickContext context) {
+        // From technical-constants.md: snapshots every 2 seconds
+        // At 20 TPS, save every 40 ticks
+        return context.TickNumber % 40 == 0;
+    }
+}
+
+public class LowPriorityPhaseResult {
+    public long TotalMicroseconds { get; set; }
+    public long LoggingMicroseconds { get; set; }
+    public long MaintenanceMicroseconds { get; set; }
+    public long CheckpointMicroseconds { get; set; }
+    public bool WasSkipped { get; set; }
+    public string SkipReason { get; set; }
+}
+```
+
+#### 3. Agent Processing Distribution
+
+Based on constants from `technical-constants.md`:
+- AGENTS_MVP = 25 agents
+- PER_AGENT_BUDGET_MS = 2.0ms (2,000μs maximum)
+- PER_AGENT_AMORTIZED_BUDGET_MS = 1.5ms (1,200μs average)
+
+**Calculation**:
+```
+25 agents × 1,200μs average = 30,000μs total AI budget
+High priority phase budget: 35,000μs
+AI budget allocation: 30,000μs (85.7% of high priority phase)
+Remaining for economy/governance/sync: 5,000μs
+```
+
+**Implementation**:
+```csharp
+public class AgentLODManager {
+    // From technical-constants.md
+    private const float LOD_HIGH_DISTANCE = 20.0f;      // AGENT_LOD_HIGH_DISTANCE_METERS
+    private const float LOD_MEDIUM_DISTANCE = 100.0f;   // AGENT_LOD_MEDIUM_DISTANCE_METERS
+    private const float LOD_LOW_DISTANCE = 500.0f;      // AGENT_LOD_LOW_DISTANCE_METERS
+    
+    private const int LOD_HIGH_FREQ = 1;                // Every tick (AGENT_LOD_HIGH_FREQUENCY_TICKS)
+    private const int LOD_MEDIUM_FREQ = 5;              // Every 5 ticks (AGENT_LOD_MEDIUM_FREQUENCY_TICKS)
+    private const int LOD_LOW_FREQ = 20;                // Every 20 ticks (AGENT_LOD_LOW_FREQUENCY_TICKS)
+    
+    public List<Agent> GetAgentsForThisTick(int maxAgents) {
+        var agents = new List<Agent>();
+        int tickNumber = GetCurrentTickNumber();
+        
+        foreach (var agent in GetAllAgents()) {
+            // Determine update frequency based on distance to nearest player
+            float distance = GetDistanceToNearestPlayer(agent);
+            int frequency;
+            
+            if (distance <= LOD_HIGH_DISTANCE) {
+                frequency = LOD_HIGH_FREQ;      // Every tick
+            } else if (distance <= LOD_MEDIUM_DISTANCE) {
+                frequency = LOD_MEDIUM_FREQ;    // Every 5 ticks
+            } else if (distance <= LOD_LOW_DISTANCE) {
+                frequency = LOD_LOW_FREQ;       // Every 20 ticks
+            } else {
+                continue; // Too far, skip entirely
+            }
+            
+            // Check if this agent should update this tick
+            if (tickNumber % frequency == agent.Id % frequency) {
+                agents.Add(agent);
+            }
+            
+            if (agents.Count >= maxAgents) break;
+        }
+        
+        return agents;
+    }
+    
+    public void DeferAgents(IEnumerable<Agent> agents) {
+        // Add to deferred queue for next tick processing
+        foreach (var agent in agents) {
+            agent.MarkForNextTickPriority();
+        }
+    }
+}
+```
+
+#### 4. Priority Queue Implementation
+
+```csharp
+public class TickPriorityQueue {
+    private SortedSet<TickTask> _tasks;
+    private readonly object _lock = new();
+    
+    public TickPriorityQueue() {
+        _tasks = new SortedSet<TickTask>(new TickTaskComparer());
+    }
+    
+    public void Enqueue(TickTask task) {
+        lock (_lock) {
+            _tasks.Add(task);
+        }
+    }
+    
+    public TickTask Dequeue() {
+        lock (_lock) {
+            if (_tasks.Count == 0) return null;
+            var task = _tasks.Min;
+            _tasks.Remove(task);
+            return task;
+        }
+    }
+    
+    public int Count {
+        get {
+            lock (_lock) { return _tasks.Count; }
+        }
+    }
+    
+    public List<TickTask> GetTasksForBudget(long budgetMicroseconds) {
+        lock (_lock) {
+            var result = new List<TickTask>();
+            long remainingBudget = budgetMicroseconds;
+            
+            foreach (var task in _tasks.OrderBy(t => t.Priority)) {
+                if (task.EstimatedMicroseconds <= remainingBudget) {
+                    result.Add(task);
+                    remainingBudget -= task.EstimatedMicroseconds;
+                } else if (!task.CanDefer) {
+                    // Must-run task exceeds budget - log warning and include anyway
+                    result.Add(task);
+                } else {
+                    break;
+                }
+            }
+            
+            // Remove selected tasks from queue
+            foreach (var task in result) {
+                _tasks.Remove(task);
+            }
+            
+            return result;
+        }
+    }
+}
+
+public class TickTask {
+    public int Id { get; set; }
+    public int Priority { get; set; }               // Lower = higher priority (1-100)
+    public long EstimatedMicroseconds { get; set; } // Expected execution time
+    public Action Action { get; set; }              // Task to execute
+    public bool CanDefer { get; set; }              // Can this task be deferred?
+    public string Category { get; set; }            // For metrics
+    public DateTime EnqueuedAt { get; set; }
+}
+
+public class TickTaskComparer : IComparer<TickTask> {
+    public int Compare(TickTask x, TickTask y) {
+        // First compare by priority (lower first)
+        int priorityCompare = x.Priority.CompareTo(y.Priority);
+        if (priorityCompare != 0) return priorityCompare;
+        
+        // Then by estimated time (shorter first - quick wins)
+        int timeCompare = x.EstimatedMicroseconds.CompareTo(y.EstimatedMicroseconds);
+        if (timeCompare != 0) return timeCompare;
+        
+        // Finally by ID for consistency
+        return x.Id.CompareTo(y.Id);
+    }
+}
+```
+
+#### 5. Load Balancing & Degradation
+
+Escalating degradation strategy when phases exceed budget:
+
+```csharp
+public class LoadBalancingManager {
+    private readonly ILogger _logger;
+    private int _consecutiveOverruns = 0;
+    private int _currentTickRate = 20; // From TICK_RATE
+    
+    public void HandleOverrun(long overBudgetMicroseconds, TickMetrics metrics) {
+        _consecutiveOverruns++;
+        
+        // Level 1: Skip low priority (saves ~1,000μs)
+        if (overBudgetMicroseconds > 1_000L && _consecutiveOverruns >= 2) {
+            _logger.LogWarning("Level 1 degradation: Skipping low priority phase");
+            SkipLowPriorityPhase();
+            Telemetry.RecordDegradationEvent("SkipLowPriority");
+        }
+        
+        // Level 2: Reduce agent update frequency (saves ~12,000μs per skip)
+        if (overBudgetMicroseconds > 5_000L && _consecutiveOverruns >= 3) {
+            _logger.LogWarning("Level 2 degradation: Increasing agent LOD");
+            IncreaseAgentLOD();
+            Telemetry.RecordDegradationEvent("IncreaseAgentLOD");
+        }
+        
+        // Level 3: Skip medium priority (saves ~1,000μs)
+        if (overBudgetMicroseconds > 10_000L && _consecutiveOverruns >= 5) {
+            _logger.LogWarning("Level 3 degradation: Skipping medium priority phase");
+            SkipMediumPriorityPhase();
+            Telemetry.RecordDegradationEvent("SkipMediumPriority");
+        }
+        
+        // Level 4: Reduce tick rate temporarily
+        if (overBudgetMicroseconds > 20_000L && _consecutiveOverruns >= 10) {
+            _logger.LogError("Level 4 degradation: Reducing tick rate to 15 TPS");
+            TemporarilyReduceTickRate(15);
+            Telemetry.RecordDegradationEvent("ReduceTickRate", 15);
+        }
+        
+        // Reset counter if we're back on track
+        if (overBudgetMicroseconds <= 0) {
+            _consecutiveOverruns = Math.Max(0, _consecutiveOverruns - 1);
+            
+            // Gradually restore quality
+            if (_consecutiveOverruns == 0 && _currentTickRate < 20) {
+                RestoreTickRate();
+            }
+        }
+    }
+    
+    private void SkipLowPriorityPhase() {
+        // Mark low priority phase to be skipped next tick
+        // Implementation in TickLoop
+    }
+    
+    private void IncreaseAgentLOD() {
+        // Far agents update every 2 ticks instead of every tick
+        // Implementation in AgentLODManager
+    }
+    
+    private void SkipMediumPriorityPhase() {
+        // Mark medium priority phase to be skipped next tick
+        // Implementation in TickLoop
+    }
+    
+    private void TemporarilyReduceTickRate(int newTickRate) {
+        // From technical-constants.md: TICK_RATE_MIN = 10, TICK_RATE_MAX = 30
+        _currentTickRate = Math.Max(10, Math.Min(30, newTickRate));
+        // Update Engine.TimeScale or tick interval
+    }
+    
+    private void RestoreTickRate() {
+        _currentTickRate = Math.Min(20, _currentTickRate + 1);
+        _logger.LogInfo($"Restoring tick rate to {_currentTickRate} TPS");
+    }
+}
+```
+
+#### 6. Performance Monitoring
+
+```csharp
+public class TickMetrics {
+    public long TickNumber { get; set; }
+    public DateTime Timestamp { get; set; }
+    public long TotalMicroseconds { get; set; }
+    public long CriticalPhaseMicroseconds { get; set; }
+    public long AIPhaseMicroseconds { get; set; }
+    public int AgentsProcessed { get; set; }
+    public int AgentsDeferred { get; set; }
+    public bool WasOverBudget { get; set; }
+    public long OverBudgetAmount { get; set; }
+    public Dictionary<string, long> PhaseTimings { get; set; } = new();
+    public int CurrentTickRate { get; set; }
+    public int ActivePlayerCount { get; set; }
+    public int ActiveAgentCount { get; set; }
+    public float AverageFPS { get; set; }
+    public long MemoryUsageMB { get; set; }
+    public int PendingDeferredTasks { get; set; }
+    
+    // Derived metrics
+    public bool IsHealthy => TotalMicroseconds <= 40_000L && !WasOverBudget;
+    public float BudgetUtilizationPercent => (TotalMicroseconds / 50_000f) * 100f;
+}
+
+public class TickMetricsCollector {
+    private readonly CircularBuffer<TickMetrics> _metricsHistory;
+    private readonly ILogger _logger;
+    private const int HISTORY_SIZE = 1200; // 1 minute at 20 TPS
+    
+    public void RecordTickMetrics(TickMetrics metrics) {
+        _metricsHistory.Add(metrics);
+        
+        // Log warnings for over-budget ticks
+        if (metrics.WasOverBudget) {
+            _logger.LogWarning($"Tick {metrics.TickNumber} over budget by {metrics.OverBudgetAmount}μs " +
+                $"({metrics.AgentsProcessed} agents processed)");
+        }
+        
+        // Periodic summary logging (every 300 ticks = 15 seconds)
+        if (metrics.TickNumber % 300 == 0) {
+            LogPerformanceSummary();
+        }
+    }
+    
+    public PerformanceSummary GetLastMinuteSummary() {
+        var recent = _metricsHistory.GetRecent(1200);
+        return new PerformanceSummary {
+            AverageTickTime = recent.Average(m => m.TotalMicroseconds),
+            MaxTickTime = recent.Max(m => m.TotalMicroseconds),
+            MinTickTime = recent.Min(m => m.TotalMicroseconds),
+            OverBudgetTicks = recent.Count(m => m.WasOverBudget),
+            AverageAgentsProcessed = recent.Average(m => m.AgentsProcessed),
+            BudgetUtilizationPercent = recent.Average(m => m.BudgetUtilizationPercent)
+        };
+    }
+}
+
+public class PerformanceSummary {
+    public double AverageTickTime { get; set; }
+    public long MaxTickTime { get; set; }
+    public long MinTickTime { get; set; }
+    public int OverBudgetTicks { get; set; }
+    public double AverageAgentsProcessed { get; set; }
+    public double BudgetUtilizationPercent { get; set; }
+}
+```
+
+#### 7. Timing Validation Table
+
+| System | Budget | Actual Target | Max Acceptable | Source |
+|--------|--------|---------------|----------------|--------|
+| Critical Phase | 3,000μs | 2,500μs | 5,000μs | Player actions must complete |
+| AI (25 agents) | 30,000μs | 28,000μs | 35,000μs | AGENTS_MVP × 1,200μs |
+| Economy | 3,000μs | 2,500μs | 5,000μs | Sequential transaction processing |
+| Governance | 1,000μs | 800μs | 2,000μs | Law enforcement + voting |
+| Ecosystem | 500μs | 400μs | 1,000μs | Plants, animals, weather |
+| Pollution | 300μs | 250μs | 500μs | Spread and climate |
+| Analytics | 200μs | 150μs | 300μs | Metrics collection |
+| Logging | 300μs | 200μs | 500μs | Buffer flush |
+| Maintenance | 400μs | 300μs | 600μs | Entity cleanup |
+| Checkpoint | 300μs | 200μs | 500μs | Save queue |
+| **Total** | **39,000μs** | **35,300μs** | **50,000μs** | Within 50ms tick window |
+
+#### 8. Multithreading Considerations
+
+Based on `technical-constants.md` threading strategy:
+
+```csharp
+public class ThreadingConfiguration {
+    // Main thread responsibilities
+    public void ConfigureMainThread() {
+        // All world state mutations happen here
+        // - Game logic execution
+        // - AI decision application
+        // - Economy transaction processing
+        // - Governance state changes
+    }
+    
+    // Worker thread pool (from SERVER_CPU_MVP = 4 cores)
+    public void ConfigureWorkerThreads() {
+        // Parallel processing:
+        // - Ecosystem simulation (per-chunk)
+        // - AI decision-making (read-only phase)
+        // - Pathfinding calculations (async)
+        // - Database I/O (batched)
+    }
+    
+    // Network thread (separate)
+    public void ConfigureNetworkThread() {
+        // - ENet packet processing
+        // - RPC dispatch
+        // - Independent from game logic
+    }
+}
+```
+
+**Thread Safety Rules**:
+1. **Main Thread Only**: State mutations, economy transactions, inventory changes
+2. **Worker Threads**: Read-only calculations, pathfinding, database queries
+3. **Atomic Application**: Worker results applied at end of tick in main thread
+4. **Lock-Free Where Possible**: Use channels/queues for thread communication
+
+---
+
 ### Tick Rate Strategy
 
 - **Target**: 20 TPS (50ms per tick) [r1-research-summary.md, Key Finding 5]

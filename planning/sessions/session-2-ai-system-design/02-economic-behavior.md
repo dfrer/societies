@@ -1132,4 +1132,338 @@ public void AdvanceCareer(Agent agent)
   - Net gain: 1332 - (40×30) - 760 = 92
 - **Decision**: Switch (modest positive gain + better personality fit)
 
+## Recipe System Data Structures
+
+### Overview
+AI agents use recipe data to make economic decisions: what to produce, whether to buy or craft, and how to evaluate production costs.
+
+### Core Data Structures
+
+```csharp
+// Recipe Definition
+public class Recipe {
+    public int Id { get; set; }
+    public string Name { get; set; }
+    public RecipeCategory Category { get; set; }
+    public List<Ingredient> Ingredients { get; set; }
+    public Product Output { get; set; }
+    
+    // Production requirements
+    public float BaseProductionTime { get; set; } // In seconds
+    public SkillType RequiredSkill { get; set; }
+    public int MinSkillLevel { get; set; }
+    public ToolType? RequiredTool { get; set; }
+    public CraftingStationType? RequiredStation { get; set; }
+    
+    // Economic properties
+    public bool CanMassProduce { get; set; }
+    public int MaxBatchSize { get; set; }
+    public float BatchEfficiency { get; set; } // Time multiplier for batches
+    
+    // AI evaluation properties
+    public float BaseDemand { get; set; } // 0-1, how commonly needed
+    public List<string> Tags { get; set; } // For categorization
+}
+
+public class Ingredient {
+    public ItemType Item { get; set; }
+    public int Quantity { get; set; }
+    public bool IsConsumed { get; set; } = true; // Tools not consumed
+    public bool IsTool { get; set; } = false;
+}
+
+public class Product {
+    public ItemType Item { get; set; }
+    public int Quantity { get; set; }
+    public int QualityLevel { get; set; } // 0-4 (Poor to Masterwork)
+}
+```
+
+### Production Cost Calculation
+
+```csharp
+public class ProductionCostCalculator {
+    public ProductionCost CalculateCost(Recipe recipe, Agent agent) {
+        var cost = new ProductionCost();
+        
+        // 1. Material costs
+        foreach (var ingredient in recipe.Ingredients) {
+            if (ingredient.IsConsumed) {
+                float ingredientPrice = agent.GetPriceBelief(ingredient.Item).MeanPrice;
+                cost.MaterialCost += ingredientPrice * ingredient.Quantity;
+            }
+            // Tools not consumed, but must be available
+        }
+        
+        // 2. Time cost (opportunity cost)
+        float agentHourlyRate = agent.GetSkillWage(recipe.RequiredSkill);
+        float productionHours = recipe.BaseProductionTime / 3600f; // Convert to hours
+        
+        // Apply skill speed bonus
+        int skillLevel = agent.Skills.GetLevel(recipe.RequiredSkill);
+        float speedMultiplier = 1.0f - (skillLevel * 0.05f); // 5% faster per level
+        productionHours *= speedMultiplier;
+        
+        cost.TimeCost = agentHourlyRate * productionHours;
+        
+        // 3. Tool wear cost
+        if (recipe.RequiredTool.HasValue) {
+            float toolWearCost = CalculateToolWearCost(recipe, agent);
+            cost.ToolWearCost = toolWearCost;
+        }
+        
+        // 4. Fuel/station cost (if applicable)
+        if (recipe.RequiredStation.HasValue) {
+            float stationCost = GetStationUsageCost(recipe.RequiredStation.Value);
+            cost.StationCost = stationCost;
+        }
+        
+        // Total
+        cost.TotalCost = cost.MaterialCost + cost.TimeCost + cost.ToolWearCost + cost.StationCost;
+        cost.ProductionTime = productionHours;
+        
+        return cost;
+    }
+    
+    private float CalculateToolWearCost(Recipe recipe, Agent agent) {
+        // Tools lose durability with use
+        // Cost = (ToolPrice / TotalDurability) × UsesRequired
+        
+        var tool = recipe.RequiredTool.Value;
+        float toolPrice = agent.GetPriceBelief(tool).MeanPrice;
+        int toolDurability = GetToolDurability(tool);
+        
+        // Each production "hits" the tool once
+        float wearCost = toolPrice / toolDurability;
+        
+        return wearCost;
+    }
+}
+
+public class ProductionCost {
+    public float MaterialCost { get; set; }
+    public float TimeCost { get; set; }
+    public float ToolWearCost { get; set; }
+    public float StationCost { get; set; }
+    public float TotalCost { get; set; }
+    public float ProductionTime { get; set; }
+    
+    // Per-unit cost
+    public float CostPerUnit => TotalCost; // Assuming 1 output unit
+}
+```
+
+### Make vs Buy Decision
+
+```csharp
+public class ProductionDecision {
+    public bool ShouldProduce { get; set; }
+    public bool ShouldBuy { get; set; }
+    public Recipe? BestRecipe { get; set; }
+    public float ExpectedProfit { get; set; }
+    public float MarketPrice { get; set; }
+    public float ProductionCost { get; set; }
+}
+
+public ProductionDecision EvaluateMakeVsBuy(ItemType item, Agent agent) {
+    var decision = new ProductionDecision();
+    
+    // Get market price
+    var priceBelief = agent.GetPriceBelief(item);
+    decision.MarketPrice = priceBelief.MeanPrice;
+    
+    // Find best recipe
+    var availableRecipes = GetRecipesForItem(item)
+        .Where(r => agent.CanCraft(r)) // Has skill, tools, station
+        .ToList();
+    
+    if (!availableRecipes.Any()) {
+        // Can't craft, must buy
+        decision.ShouldBuy = true;
+        decision.ShouldProduce = false;
+        return decision;
+    }
+    
+    // Calculate cost for each recipe
+    Recipe bestRecipe = null;
+    float lowestCost = float.MaxValue;
+    
+    foreach (var recipe in availableRecipes) {
+        var cost = CalculateCost(recipe, agent);
+        if (cost.TotalCost < lowestCost) {
+            lowestCost = cost.TotalCost;
+            bestRecipe = recipe;
+        }
+    }
+    
+    decision.BestRecipe = bestRecipe;
+    decision.ProductionCost = lowestCost;
+    decision.ExpectedProfit = decision.MarketPrice - lowestCost;
+    
+    // Decision logic
+    float profitMargin = decision.ExpectedProfit / decision.MarketPrice;
+    
+    if (profitMargin > 0.3f) {
+        // 30%+ profit margin - definitely produce
+        decision.ShouldProduce = true;
+        decision.ShouldBuy = false;
+    }
+    else if (profitMargin > 0.1f) {
+        // 10-30% margin - produce if we have time
+        decision.ShouldProduce = !agent.IsBusy;
+        decision.ShouldBuy = !decision.ShouldProduce;
+    }
+    else if (profitMargin > -0.1f) {
+        // -10% to 10% - break even, prefer buy to save time
+        decision.ShouldProduce = false;
+        decision.ShouldBuy = true;
+    }
+    else {
+        // >10% loss - never produce, buy if needed
+        decision.ShouldProduce = false;
+        decision.ShouldBuy = agent.NeedsItem(item);
+    }
+    
+    return decision;
+}
+```
+
+### Supply Chain Analysis
+
+```csharp
+public class SupplyChainNode {
+    public ItemType Item { get; set; }
+    public List<Recipe> ProductionMethods { get; set; }
+    public List<SupplyChainNode> Dependencies { get; set; }
+    public float MarketPrice { get; set; }
+    public float MinimumProductionCost { get; set; }
+    public bool IsRawMaterial { get; set; }
+}
+
+public class SupplyChainAnalyzer {
+    public List<SupplyChainNode> BuildSupplyChain(ItemType targetItem, Agent agent) {
+        var chain = new List<SupplyChainNode>();
+        var visited = new HashSet<ItemType>();
+        
+        AnalyzeItem(targetItem, chain, visited, agent);
+        
+        return chain;
+    }
+    
+    private void AnalyzeItem(ItemType item, List<SupplyChainNode> chain, HashSet<ItemType> visited, Agent agent) {
+        if (visited.Contains(item)) return;
+        visited.Add(item);
+        
+        var node = new SupplyChainNode {
+            Item = item,
+            MarketPrice = agent.GetPriceBelief(item).MeanPrice,
+            ProductionMethods = GetRecipesForItem(item),
+            Dependencies = new List<SupplyChainNode>()
+        };
+        
+        // Find minimum production cost
+        float minCost = float.MaxValue;
+        foreach (var recipe in node.ProductionMethods) {
+            var cost = CalculateCost(recipe, agent);
+            if (cost.TotalCost < minCost) {
+                minCost = cost.TotalCost;
+            }
+            
+            // Analyze dependencies (ingredients)
+            foreach (var ingredient in recipe.Ingredients.Where(i => i.IsConsumed)) {
+                AnalyzeItem(ingredient.Item, chain, visited, agent);
+                var depNode = chain.First(n => n.Item == ingredient.Item);
+                node.Dependencies.Add(depNode);
+            }
+        }
+        
+        node.MinimumProductionCost = minCost == float.MaxValue ? 0 : minCost;
+        node.IsRawMaterial = !node.ProductionMethods.Any();
+        
+        chain.Add(node);
+    }
+}
+```
+
+### Recipe Knowledge System
+
+```csharp
+public class RecipeKnowledge {
+    public List<Recipe> KnownRecipes { get; set; }
+    public Dictionary<int, DateTime> LearnedDates { get; set; }
+    public Dictionary<int, int> TimesCrafted { get; set; }
+    
+    public void LearnRecipe(Recipe recipe) {
+        if (!KnownRecipes.Any(r => r.Id == recipe.Id)) {
+            KnownRecipes.Add(recipe);
+            LearnedDates[recipe.Id] = DateTime.Now;
+            TimesCrafted[recipe.Id] = 0;
+        }
+    }
+    
+    public void OnCraftSuccess(int recipeId) {
+        if (TimesCrafted.ContainsKey(recipeId)) {
+            TimesCrafted[recipeId]++;
+        }
+    }
+    
+    public List<Recipe> GetProfitableRecipes(Agent agent) {
+        return KnownRecipes
+            .Where(r => {
+                var cost = CalculateCost(r, agent);
+                var price = agent.GetPriceBelief(r.Output.Item).MeanPrice;
+                return price > cost.TotalCost * 1.2f; // 20% profit margin
+            })
+            .OrderByDescending(r => {
+                var cost = CalculateCost(r, agent);
+                var price = agent.GetPriceBelief(r.Output.Item).MeanPrice;
+                return price - cost.TotalCost;
+            })
+            .ToList();
+    }
+}
+```
+
+### Skill-Based Recipe Availability
+
+```csharp
+public bool CanCraft(Recipe recipe, Agent agent) {
+    // Check skill level
+    if (agent.Skills.GetLevel(recipe.RequiredSkill) < recipe.MinSkillLevel) {
+        return false;
+    }
+    
+    // Check for required tool (must have in inventory or equipped)
+    if (recipe.RequiredTool.HasValue) {
+        if (!agent.Inventory.HasTool(recipe.RequiredTool.Value)) {
+            return false;
+        }
+    }
+    
+    // Check for station access
+    if (recipe.RequiredStation.HasValue) {
+        if (!agent.HasAccessToStation(recipe.RequiredStation.Value)) {
+            return false;
+        }
+    }
+    
+    // Check for ingredients
+    foreach (var ingredient in recipe.Ingredients) {
+        if (ingredient.IsConsumed) {
+            if (agent.Inventory.GetCount(ingredient.Item) < ingredient.Quantity) {
+                return false;
+            }
+        }
+        else if (ingredient.IsTool) {
+            // Just need to have it, not consumed
+            if (!agent.Inventory.HasItem(ingredient.Item)) {
+                return false;
+            }
+        }
+    }
+    
+    return true;
+}
+```
+
 ---

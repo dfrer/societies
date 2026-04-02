@@ -1894,6 +1894,323 @@ public class PoliticalKnowledgeSkill
 
 ---
 
+## Voting Memory Weight Calculation
+
+### Overview
+When agents vote, they recall past experiences with candidates and issues. These memories influence their voting decisions with weights based on importance, recency, and emotional impact.
+
+### Memory Retrieval for Voting
+
+```csharp
+public class VotingMemoryCalculator {
+    public float CalculatePastPerformanceScore(Agent voter, Guid candidateId) {
+        // Retrieve all memories involving this candidate
+        var relevantMemories = voter.Memory.LongTerm
+            .Concat(voter.Memory.ShortTerm)
+            .Where(m => m.InvolvesEntity(candidateId))
+            .ToList();
+        
+        if (!relevantMemories.Any()) {
+            // No memories - neutral score
+            return 0.5f;
+        }
+        
+        // Calculate weighted score for each memory
+        float totalWeightedScore = 0;
+        float totalWeight = 0;
+        
+        foreach (var memory in relevantMemories) {
+            float weight = CalculateMemoryWeight(memory);
+            float score = ConvertValenceToScore(memory.EmotionalValence);
+            
+            totalWeightedScore += score * weight;
+            totalWeight += weight;
+        }
+        
+        // Normalize to 0-1 range
+        if (totalWeight == 0) return 0.5f;
+        return totalWeightedScore / totalWeight;
+    }
+    
+    private float CalculateMemoryWeight(MemorySlot memory) {
+        // Three factors contribute to weight
+        
+        // 1. Importance (40%)
+        float importanceComponent = (memory.Importance / 255f) * 0.4f;
+        
+        // 2. Recency (35%) - exponential decay
+        float daysOld = (DateTime.Now - memory.Timestamp).TotalDays;
+        float recencyFactor = Mathf.Exp(-daysOld / 30f); // 30-day half-life
+        float recencyComponent = recencyFactor * 0.35f;
+        
+        // 3. Emotional intensity (25%)
+        float emotionalIntensity = Mathf.Abs(memory.EmotionalValence) / 100f;
+        float emotionalComponent = emotionalIntensity * 0.25f;
+        
+        return importanceComponent + recencyComponent + emotionalComponent;
+    }
+    
+    private float ConvertValenceToScore(float valence) {
+        // Convert -100 to +100 valence to 0-1 score
+        // -100 (very negative) = 0
+        // 0 (neutral) = 0.5
+        // +100 (very positive) = 1
+        
+        return (valence + 100f) / 200f;
+    }
+}
+```
+
+### Memory Categories for Voting
+
+```csharp
+public enum PoliticalMemoryType {
+    PromiseKept,        // Candidate fulfilled promise
+    PromiseBroken,      // Candidate broke promise
+    GoodPolicy,         // Policy had good outcome
+    BadPolicy,          // Policy had bad outcome
+    Corruption,         // Scandal or corruption
+    Leadership,         // Showed good leadership
+    Betrayal,           // Went against voter's interests
+    Assistance,         // Helped voter personally
+    Representation,     // Represented voter's values
+    Incompetence        // Failed at basic duties
+}
+
+public class PoliticalMemoryWeightModifier {
+    public Dictionary<PoliticalMemoryType, float> TypeMultipliers = new() {
+        { PoliticalMemoryType.PromiseBroken, 1.5f },    // Broken promises weigh heavily
+        { PoliticalMemoryType.Corruption, 1.4f },       // Corruption is very important
+        { PoliticalMemoryType.Betrayal, 1.3f },         // Personal betrayal is significant
+        { PoliticalMemoryType.Assistance, 1.2f },       // Personal help is remembered
+        { PoliticalMemoryType.PromiseKept, 1.0f },      // Standard weight
+        { PoliticalMemoryType.Leadership, 1.0f },
+        { PoliticalMemoryType.GoodPolicy, 0.9f },
+        { PoliticalMemoryType.BadPolicy, 0.9f },
+        { PoliticalMemoryType.Representation, 0.8f },
+        { PoliticalMemoryType.Incompetence, 0.7f }
+    };
+    
+    public float GetModifiedWeight(MemorySlot memory, float baseWeight) {
+        if (memory.Tags.TryGetValue("political_type", out var typeStr) &&
+            Enum.TryParse<PoliticalMemoryType>(typeStr, out var type)) {
+            return baseWeight * TypeMultipliers[type];
+        }
+        return baseWeight;
+    }
+}
+```
+
+### Complete Vote Score Formula
+
+```csharp
+public float CalculateVoteScore(Agent voter, Guid candidateId, LawProposal proposal) {
+    // Four components contribute to vote decision
+    
+    // 1. Personal Impact (30%)
+    float personalImpact = CalculatePersonalImpact(voter, proposal);
+    
+    // 2. Value Alignment (30%)
+    float valueAlignment = CalculateValueAlignment(voter, proposal);
+    
+    // 3. Social Influence (20%)
+    float socialInfluence = CalculateSocialInfluence(voter, candidateId);
+    
+    // 4. Past Performance (20%)
+    float pastPerformance = CalculatePastPerformanceScore(voter, candidateId);
+    
+    // Weighted sum
+    float totalScore = 
+        (personalImpact * 0.3f) +
+        (valueAlignment * 0.3f) +
+        (socialInfluence * 0.2f) +
+        (pastPerformance * 0.2f);
+    
+    return Mathf.Clamp01(totalScore);
+}
+
+private float CalculatePersonalImpact(Agent voter, LawProposal proposal) {
+    // How will this law affect voter personally?
+    float impact = 0.5f; // Neutral baseline
+    
+    // Economic impact
+    if (proposal.AffectsEconomy) {
+        float economicImpact = proposal.GetEconomicImpact(voter.Profession);
+        impact += economicImpact * 0.3f;
+    }
+    
+    // Tax impact
+    if (proposal.IncludesTaxChange) {
+        float taxDelta = proposal.GetTaxImpact(voter.Wealth);
+        impact -= taxDelta * 0.2f; // Higher taxes = negative impact
+    }
+    
+    // Property impact
+    if (proposal.AffectsProperty && voter.OwnsProperty) {
+        float propertyImpact = proposal.GetPropertyImpact(voter.Claims);
+        impact += propertyImpact * 0.25f;
+    }
+    
+    // Rights/Freedom impact
+    if (proposal.RestrictsFreedom) {
+        float freedomValue = voter.PersonalityValues[ValueAxis.AuthorityVsLiberty];
+        if (freedomValue > 50) { // Values liberty
+            impact -= 0.2f; // Restrictions are negative
+        }
+    }
+    
+    return Mathf.Clamp01(impact);
+}
+
+private float CalculateValueAlignment(Agent voter, LawProposal proposal) {
+    // How well does proposal align with voter's political values?
+    
+    float alignment = 0.5f;
+    
+    // Check each political axis
+    foreach (var axis in proposal.AffectedAxes) {
+        float voterValue = voter.PoliticalValues[axis.Axis];
+        float proposalValue = axis.Value;
+        
+        // Calculate distance (closer = more aligned)
+        float distance = Mathf.Abs(voterValue - proposalValue);
+        float axisAlignment = 1f - (distance / 100f);
+        
+        // Weight by importance of this axis to voter
+        alignment += axisAlignment * axis.ImportanceToVoter * 0.1f;
+    }
+    
+    return Mathf.Clamp01(alignment);
+}
+
+private float CalculateSocialInfluence(Agent voter, Guid candidateId) {
+    // How do people voter trusts feel about this candidate?
+    
+    float totalInfluence = 0;
+    float totalWeight = 0;
+    
+    // Get voters with positive relationships
+    var influentialAgents = voter.Relationships
+        .Where(r => r.Value > 30) // Friends and allies
+        .ToList();
+    
+    foreach (var relation in influentialAgents) {
+        var otherAgent = GetAgent(relation.Key);
+        if (otherAgent == null) continue;
+        
+        // Get their opinion of the candidate
+        float theirOpinion = otherAgent.GetOpinion(candidateId);
+        
+        // Weight by strength of relationship
+        float relationshipWeight = relation.Value / 100f;
+        
+        totalInfluence += theirOpinion * relationshipWeight;
+        totalWeight += relationshipWeight;
+    }
+    
+    if (totalWeight == 0) return 0.5f;
+    return Mathf.Clamp01(totalInfluence / totalWeight);
+}
+```
+
+### Voting Decision
+
+```csharp
+public Vote CastVote(Agent voter, Election election) {
+    // Calculate score for each candidate
+    var candidateScores = election.Candidates
+        .Select(c => new {
+            Candidate = c,
+            Score = CalculateVoteScore(voter, c.Id, election.LawProposal)
+        })
+        .ToList();
+    
+    // For plurality voting: pick highest
+    if (election.VotingMethod == VotingMethod.Plurality) {
+        var best = candidateScores.OrderByDescending(c => c.Score).First();
+        return new Vote {
+            VoterId = voter.Id,
+            ElectionId = election.Id,
+            Choice = best.Candidate.Id,
+            Confidence = best.Score
+        };
+    }
+    
+    // For approval voting: approve all above threshold
+    if (election.VotingMethod == VotingMethod.Approval) {
+        float threshold = 0.6f;
+        var approved = candidateScores
+            .Where(c => c.Score >= threshold)
+            .Select(c => c.Candidate.Id)
+            .ToList();
+        
+        return new Vote {
+            VoterId = voter.Id,
+            ElectionId = election.Id,
+            Approvals = approved
+        };
+    }
+    
+    // For ranked choice: order by score
+    if (election.VotingMethod == VotingMethod.RankedChoice) {
+        var ranked = candidateScores
+            .OrderByDescending(c => c.Score)
+            .Select(c => c.Candidate.Id)
+            .ToList();
+        
+        return new Vote {
+            VoterId = voter.Id,
+            ElectionId = election.Id,
+            Ranking = ranked
+        };
+    }
+    
+    return null;
+}
+```
+
+### Memory Consolidation for Politics
+
+```csharp
+public void ConsolidatePoliticalMemory(Agent agent, PoliticalEvent event) {
+    // When something political happens, form a memory
+    var memory = new MemorySlot {
+        Timestamp = DateTime.Now,
+        Importance = CalculatePoliticalImportance(event),
+        EmotionalValence = CalculateEmotionalResponse(agent, event),
+        Tags = {
+            { "type", "political" },
+            { "political_type", event.MemoryType.ToString() },
+            { "candidate_id", event.CandidateId.ToString() }
+        }
+    };
+    
+    agent.Memory.Add(memory);
+}
+
+private int CalculatePoliticalImportance(PoliticalEvent event) {
+    int importance = 100; // Base
+    
+    // Major policy changes are important
+    if (event.IsMajorPolicy) importance += 50;
+    
+    // Scandals are important
+    if (event.IsScandal) importance += 40;
+    
+    // Personal impact increases importance
+    if (event.AffectsPlayerDirectly) importance += 30;
+    
+    // Timing: Election season = more important
+    if (IsNearElection()) importance += 20;
+    
+    return Mathf.Min(importance, 255);
+}
+```
+
+---
+
+---
+
 ## 6. Social Behavior Model
 
 ### Relationship Formation

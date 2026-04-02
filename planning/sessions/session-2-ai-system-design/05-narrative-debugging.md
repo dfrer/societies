@@ -242,6 +242,334 @@ public class GossipPropagationSystem
 | 3 | 85% | 1.3x | 30% |
 | 4+ | 80% | 1.4x | 40%+ |
 
+## Gossip Propagation Algorithm
+
+### Overview
+Gossip is the primary mechanism for social information spread. Agents share memories and observations with each other, creating emergent narratives and shared knowledge.
+
+### Gossip Data Structure
+
+```csharp
+public class GossipEvent {
+    public Guid Id { get; set; }
+    public Guid SubjectId { get; set; }      // Who/what the gossip is about
+    public GossipType Type { get; set; }     // Category of gossip
+    public string Content { get; set; }      // The actual information
+    public float EmotionalValence { get; set; } // -100 to +100
+    public int Importance { get; set; }      // 0-255
+    public Guid OriginalSource { get; set; } // Who first observed this
+    public Guid CurrentSource { get; set; }  // Who told current agent
+    public int PropagationCount { get; set; } // How many hops from source
+    public DateTime Timestamp { get; set; }
+    public float Credibility { get; set; }   // 0-1, degrades with propagation
+    public List<Guid> Audience { get; set; } // Who has heard this
+}
+
+public enum GossipType {
+    Action,         // Someone did something
+    Trait,          // Someone has a trait/personality
+    Relationship,   // Two people have a relationship
+    Event,          // Something happened
+    Reputation,     // Someone's standing
+    Secret,         // Hidden information (higher value)
+    Warning,        // Danger/alert
+    Opportunity     // Economic/political opportunity
+}
+```
+
+### Propagation Network
+
+```csharp
+public class SocialNetwork {
+    public Dictionary<Guid, List<SocialConnection>> Connections { get; set; }
+    
+    public List<Agent> GetGossipCandidates(Agent source) {
+        // Find agents in range who are willing to chat
+        var nearbyAgents = GetAgentsInRadius(source.Position, GOSSIP_RADIUS);
+        
+        return nearbyAgents
+            .Where(agent => {
+                // Must be within social distance
+                float distance = Vector3.Distance(source.Position, agent.Position);
+                if (distance > MAX_CONVERSATION_DISTANCE) return false;
+                
+                // Must have positive or neutral relationship
+                float relationship = source.GetRelationship(agent);
+                if (relationship < -30) return false; // Won't talk to enemies
+                
+                // Must not be busy
+                if (agent.IsBusy) return false;
+                
+                // Must not have heard this gossip already (if same event)
+                return true;
+            })
+            .OrderByDescending(agent => source.GetRelationship(agent))
+            .Take(MAX_GOSSIP_TARGETS)
+            .ToList();
+    }
+}
+
+public class SocialConnection {
+    public Guid AgentId { get; set; }
+    public float RelationshipStrength { get; set; } // -100 to +100
+    public float Trust { get; set; } // 0-100
+    public int InteractionsPerDay { get; set; }
+    public DateTime LastInteraction { get; set; }
+    public List<string> SharedMemories { get; set; }
+}
+```
+
+### Gossip Selection Algorithm
+
+```csharp
+public GossipEvent SelectGossipToShare(Agent agent, Agent target) {
+    var availableGossip = agent.Memory.GossipEvents
+        .Where(g => !g.Audience.Contains(target.Id)) // Target hasn't heard this
+        .ToList();
+    
+    if (!availableGossip.Any()) return null;
+    
+    // Score each gossip for relevance to target
+    var scoredGossip = availableGossip.Select(g => {
+        float score = 0;
+        
+        // Novelty: Newer is better
+        float hoursOld = (DateTime.Now - g.Timestamp).TotalHours;
+        score += NoveltyScore(hoursOld); // 1.0 (fresh) to 0.2 (24+ hours)
+        
+        // Emotional impact: More emotional = more interesting
+        score += Mathf.Abs(g.EmotionalValence) / 100f * 0.3f;
+        
+        // Social relevance: Does target know subject?
+        if (target.Knows(g.SubjectId)) {
+            score += 0.2f;
+        }
+        
+        // Credibility: Agent prefers credible sources
+        score += g.Credibility * 0.15f;
+        
+        // Relationship modifier: Closer friends share more personal things
+        float relationship = agent.GetRelationship(target);
+        if (relationship > 50 && g.Type == GossipType.Secret) {
+            score += 0.3f; // Willing to share secrets with close friends
+        }
+        
+        // Importance: Big news spreads faster
+        score += (g.Importance / 255f) * 0.2f;
+        
+        return new { Gossip = g, Score = score };
+    }).ToList();
+    
+    // Select highest scoring gossip
+    return scoredGossip.OrderByDescending(s => s.Score).First().Gossip;
+}
+
+private float NoveltyScore(float hoursOld) {
+    // Exponential decay: fresh news is much more valuable
+    if (hoursOld < 1) return 1.0f;
+    if (hoursOld < 4) return 0.8f;
+    if (hoursOld < 12) return 0.6f;
+    if (hoursOld < 24) return 0.4f;
+    return 0.2f; // Old news barely worth sharing
+}
+```
+
+### Propagation Mechanics
+
+```csharp
+public void PropagateGossip(GossipEvent gossip, Agent source, Agent target) {
+    // Create copy for target
+    var targetGossip = new GossipEvent {
+        Id = Guid.NewGuid(), // New ID for this agent's version
+        SubjectId = gossip.SubjectId,
+        Type = gossip.Type,
+        Content = MutateContent(gossip.Content, source, target),
+        EmotionalValence = gossip.EmotionalValence * 0.95f, // Slight degradation
+        Importance = gossip.Importance,
+        OriginalSource = gossip.OriginalSource,
+        CurrentSource = source.Id,
+        PropagationCount = gossip.PropagationCount + 1,
+        Timestamp = gossip.Timestamp,
+        Credibility = CalculateNewCredibility(gossip, source, target),
+        Audience = new List<Guid> { target.Id }
+    };
+    
+    // Add to target's knowledge
+    target.Memory.AddGossip(targetGossip);
+    
+    // Mark source as having shared with target
+    gossip.Audience.Add(target.Id);
+    
+    // Log the interaction
+    LogGossipPropagation(source, target, gossip);
+}
+
+private string MutateContent(string content, Agent source, Agent target) {
+    // Each propagation can slightly alter the story
+    // Chinese whispers effect
+    
+    float mutationChance = 0.1f * source.Personality.Neuroticism / 100f;
+    // Neurotic agents exaggerate more
+    
+    if (Random.value < mutationChance) {
+        // Slight exaggeration or emphasis shift
+        if (content.Contains("stole")) {
+            return content.Replace("stole", "robbed"); // Escalation
+        }
+        if (content.Contains("argued")) {
+            return content.Replace("argued", "fought"); // Escalation
+        }
+    }
+    
+    return content;
+}
+
+private float CalculateNewCredibility(GossipEvent gossip, Agent source, Agent target) {
+    float baseCredibility = gossip.Credibility;
+    
+    // Degrade with distance from source
+    baseCredibility *= Mathf.Pow(0.9f, gossip.PropagationCount);
+    
+    // Modifier based on source's credibility with target
+    float sourceTrust = target.GetRelationship(source) / 100f; // -1 to 1
+    sourceTrust = (sourceTrust + 1) / 2f; // Convert to 0-1
+    
+    return baseCredibility * (0.5f + sourceTrust * 0.5f);
+}
+```
+
+### Daily Gossip Limits
+
+```csharp
+public class GossipBudget {
+    public int DailyGossipLimit { get; set; }
+    public int GossipedToday { get; set; }
+    public DateTime LastReset { get; set; }
+    
+    public void ResetIfNeeded() {
+        if (DateTime.Now.Date != LastReset.Date) {
+            GossipedToday = 0;
+            LastReset = DateTime.Now;
+        }
+    }
+    
+    public bool CanGossip() {
+        ResetIfNeeded();
+        return GossipedToday < DailyGossipLimit;
+    }
+    
+    public void OnGossip() {
+        GossipedToday++;
+    }
+}
+
+// Calculate daily limit based on personality
+public int CalculateDailyGossipLimit(Agent agent) {
+    int baseLimit = 3;
+    
+    // Gregarious agents gossip more
+    baseLimit += agent.Personality.Gregariousness / 20; // +0 to +5
+    
+    // Extraverted agents gossip more
+    baseLimit += agent.Personality.Extraversion / 25; // +0 to +4
+    
+    // High conscientiousness = less gossip (more work-focused)
+    baseLimit -= agent.Personality.Conscientiousness / 33; // -0 to -3
+    
+    return Mathf.Clamp(baseLimit, 1, 10);
+}
+```
+
+### Gossip Reception
+
+```csharp
+public void ReceiveGossip(GossipEvent gossip, Agent agent) {
+    // Check if already known
+    if (agent.Memory.GossipEvents.Any(g => 
+        g.SubjectId == gossip.SubjectId && 
+        g.Content == gossip.Content)) {
+        return; // Already know this
+    }
+    
+    // Credibility check
+    if (gossip.Credibility < 0.3f && agent.Personality.Openness < 50) {
+        // Skeptical agent ignores low-credibility gossip
+        return;
+    }
+    
+    // Store gossip
+    agent.Memory.AddGossip(gossip);
+    
+    // Form opinion based on gossip
+    UpdateOpinionFromGossip(agent, gossip);
+    
+    // Emotional reaction
+    if (gossip.EmotionalValence > 50) {
+        agent.EmotionalState.AddHappiness(5);
+    }
+    else if (gossip.EmotionalValence < -50) {
+        agent.EmotionalState.AddConcern(5);
+    }
+}
+
+private void UpdateOpinionFromGossip(Agent agent, GossipEvent gossip) {
+    var subject = GetAgent(gossip.SubjectId);
+    if (subject == null) return;
+    
+    // Adjust relationship based on gossip content
+    float opinionShift = gossip.EmotionalValence * 0.1f * gossip.Credibility;
+    agent.AdjustRelationship(subject, opinionShift);
+}
+```
+
+### Propagation Visualization
+
+```csharp
+public class GossipVisualization {
+    // For debugging: track how gossip spreads
+    
+    public void TrackPropagation(GossipEvent gossip) {
+        var propagationData = new PropagationData {
+            GossipId = gossip.Id,
+            OriginalSource = gossip.OriginalSource,
+            PropagationChain = new List<Guid>(),
+            TimeToReachEachAgent = new Dictionary<Guid, TimeSpan>(),
+            FinalPropagationCount = 0
+        };
+        
+        // Visualize as tree/graph
+        // Node: Agent
+        // Edge: Gossip transmission
+        // Color: Time (blue = fast, red = slow)
+        // Thickness: Credibility
+    }
+}
+```
+
+### Gossip Decay and Forgetting
+
+```csharp
+public void UpdateGossipDecay(Agent agent, float deltaTimeHours) {
+    foreach (var gossip in agent.Memory.GossipEvents) {
+        // Credibility degrades over time even without propagation
+        gossip.Credibility *= (1 - 0.001f * deltaTimeHours);
+        
+        // Emotional impact fades
+        gossip.EmotionalValence *= (1 - 0.002f * deltaTimeHours);
+        
+        // Very old, low-credibility gossip is forgotten
+        float age = (DateTime.Now - gossip.Timestamp).TotalHours;
+        if (age > 168 && gossip.Credibility < 0.2f) { // 1 week old, low cred
+            // Mark for removal
+            gossip.IsStale = true;
+        }
+    }
+    
+    // Remove stale gossip
+    agent.Memory.GossipEvents.RemoveAll(g => g.IsStale);
+}
+```
+
 ### Public Records System
 
 **Accessible Records:**

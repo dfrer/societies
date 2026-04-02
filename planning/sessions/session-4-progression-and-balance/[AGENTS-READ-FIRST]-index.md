@@ -10,6 +10,7 @@
 | Document | Description | Lines |
 |----------|-------------|-------|
 | [day4-progression-and-balance.md](./day4-progression-and-balance.md) | Complete progression and balance specification **(~1,200 lines)** |
+| [03-world-resources.md](./03-world-resources.md) | Resource distribution and gathering in voxel world |
 
 ---
 
@@ -17,11 +18,12 @@
 
 1. **Technology Tree** - Research and unlock progression
 2. **Resource Economy** - Production, consumption, and trade
-3. **Threat Timeline** - Escalation and danger progression
-4. **Population Scaling** - Growth and capacity management
-5. **Economic Balance** - Currency and market dynamics
-6. **Skill Progression** - Character and player advancement
-7. **Server Lifecycle** - World evolution and reset mechanics
+3. **World Resources** - Resource distribution and gathering in voxel world
+4. **Threat Timeline** - Escalation and danger progression
+5. **Population Scaling** - Growth and capacity management
+6. **Economic Balance** - Currency and market dynamics
+7. **Skill Progression** - Character and player advancement
+8. **Server Lifecycle** - World evolution and reset mechanics
 
 ---
 
@@ -31,6 +33,12 @@
 - **IN PROGRESS**: Currently being edited or updated
 - **COMPLETED**: Finalized and approved
 - **DEPRECATED**: No longer current, kept for reference
+
+---
+
+## Cross-References
+
+- **World Resources** ([03-world-resources.md](./03-world-resources.md)) connects to [Session 3: Core Gameplay Loops](../session-3-core-gameplay-loops/[AGENTS-READ-FIRST]-index.md) for gathering mechanics and exploration systems
 
 ---
 
