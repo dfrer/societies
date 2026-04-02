@@ -65,6 +65,10 @@ namespace Societies.Runtime.Core
             _world = worldGO.AddComponent<VoxelWorld>();
             DontDestroyOnLoad(worldGO);
 
+            var agentGO = new GameObject("AgentManager");
+            agentGO.AddComponent<AI.AgentManager>();
+            DontDestroyOnLoad(agentGO);
+
             // Initialize database
             var dbGO = new GameObject("DatabaseManager");
             dbGO.AddComponent<Persistence.DatabaseManager>();
