@@ -83,6 +83,10 @@ namespace Societies.Runtime.Core
             economyGO.AddComponent<EconomySystem>();
             DontDestroyOnLoad(economyGO);
 
+            var claimGO = new GameObject("ClaimSystem");
+            claimGO.AddComponent<ClaimSystem>();
+            DontDestroyOnLoad(claimGO);
+
             // Create chunk container
             var chunkContainer = new GameObject("Chunks");
             DontDestroyOnLoad(chunkContainer);
