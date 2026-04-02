@@ -25,6 +25,7 @@ namespace Societies.Runtime.UI
 
         private InventoryManager _inventory;
         private int _selectedSlot;
+        public int SelectedBlockId { get; private set; } = 1;
 
         private void Start()
         {
@@ -71,12 +72,44 @@ namespace Societies.Runtime.UI
                 }
             }
 
+            if (Input.GetKeyDown(KeyCode.Alpha1))
+            {
+                SelectBlock(1);
+            }
+            else if (Input.GetKeyDown(KeyCode.Alpha2))
+            {
+                SelectBlock(3);
+            }
+            else if (Input.GetKeyDown(KeyCode.Alpha3))
+            {
+                SelectBlock(7);
+            }
+            else if (Input.GetKeyDown(KeyCode.Alpha4))
+            {
+                SelectBlock(20);
+            }
+            else if (Input.GetKeyDown(KeyCode.Alpha5))
+            {
+                SelectBlock(21);
+            }
+
             // Mouse scroll for slot cycling
             float scroll = Input.GetAxis("Mouse ScrollWheel");
             if (scroll != 0)
             {
                 int dir = scroll > 0 ? -1 : 1;
                 _inventory?.CycleSlot(dir);
+            }
+        }
+
+        public void SelectBlock(int blockId)
+        {
+            SelectedBlockId = blockId;
+            var player = GameObject.FindWithTag("Player");
+            if (player != null)
+            {
+                var interaction = player.GetComponent<World.InteractionSystem>();
+                interaction?.SelectBlockToPlace(blockId);
             }
         }
 
