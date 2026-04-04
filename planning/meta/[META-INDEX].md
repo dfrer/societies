@@ -17,7 +17,11 @@ Cross-cutting project documentation and reference materials that span multiple s
 ## Navigation Links
 - [Master Research Index](../research/[MASTER-RESEARCH-INDEX].md) - All research documents by session
 - [Master Session Index](../sessions/[AGENTS-READ-FIRST]-index.md) - All planning sessions overview
-- [Directory Reorganization Report](../archives/REORGANIZATION-REPORT.md) - This reorganization documentation
+
+## Reorganization History
+- [Reorg History Index](navigation/reorg-history/) - Directory reorganization audit trail
+  - [Week 1 to Sessions Migration](navigation/reorg-history/2026-01-31-week1-to-sessions.md) - 2026-01-31
+  - [Naming Standardization](navigation/reorg-history/2026-02-01-naming-standardization.md) - 2026-02-01
 
 ---
 
