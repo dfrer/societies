@@ -30,8 +30,7 @@ namespace Societies.Core
         private NetworkManager? _networkManager;
         private EntityManager? _entityManager;
         private TerrainGenerator? _terrain;
-        private DayNightCycle? _dayNightCycle;
-        private WeatherController? _weatherController;
+        private EnvironmentController? _environmentController;
         private PrototypeHud? _hud;
         private PlayerCharacter? _player;
         private ObserverCameraRig? _observerRig;
@@ -440,18 +439,11 @@ namespace Societies.Core
 
             _terrain.RebuildTerrain();
 
-            _dayNightCycle = _environmentRoot.GetNodeOrNull<DayNightCycle>("DayNightCycle");
-            if (_dayNightCycle == null)
+            _environmentController = _environmentRoot.GetNodeOrNull<EnvironmentController>("Environment");
+            if (_environmentController == null)
             {
-                _dayNightCycle = new DayNightCycle { Name = "DayNightCycle" };
-                _environmentRoot.AddChild(_dayNightCycle);
-            }
-
-            _weatherController = _environmentRoot.GetNodeOrNull<WeatherController>("Weather");
-            if (_weatherController == null)
-            {
-                _weatherController = new WeatherController { Name = "Weather" };
-                _environmentRoot.AddChild(_weatherController);
+                _environmentController = new EnvironmentController { Name = "Environment" };
+                _environmentRoot.AddChild(_environmentController);
             }
 
             _scenePresenter = new PrototypeSettlementScenePresenter(
@@ -499,13 +491,13 @@ namespace Societies.Core
         {
             EnsureWorldShell();
 
-            if (_dayNightCycle == null || _scenePresenter == null || _scenario == null)
+            if (_environmentController == null || _scenePresenter == null || _scenario == null)
             {
                 return;
             }
 
             CreateRuntimeSession(_scenario);
-            _runtimeSession!.Initialize(_dayNightCycle.StartHour);
+            _runtimeSession!.Initialize(_environmentController.StartHour);
             _tickAccumulator = 0.0;
 
             _scenePresenter.ResetDynamicNodes();
@@ -573,14 +565,14 @@ namespace Societies.Core
 
         private void ProcessSimulationTick()
         {
-            if (_runtimeSession == null || _dayNightCycle == null || _scenePresenter == null)
+            if (_runtimeSession == null || _environmentController == null || _scenePresenter == null)
             {
                 return;
             }
 
             PrototypeRuntimeTickResult tickResult = _runtimeSession.Advance(
                 (float)TickIntervalSeconds,
-                _dayNightCycle.DayLengthSeconds,
+                _environmentController.DayLengthSeconds,
                 _scenePresenter.CaptureResourceSites());
 
             foreach (PrototypeHarvestRequest request in tickResult.SettlementResult.HarvestRequests)
@@ -627,8 +619,8 @@ namespace Societies.Core
 
             PrototypeWeather weather = _runtimeSession.CurrentWeather;
             float sunlightMultiplier = PrototypeWeatherService.GetSunlightMultiplier(weather);
-            _dayNightCycle?.ApplyState(_runtimeSession.CurrentHour, sunlightMultiplier);
-            _weatherController?.ApplyState(weather, _runtimeSession.TimeUntilNextWeatherShift);
+            _environmentController?.ApplyState(_runtimeSession.CurrentHour, sunlightMultiplier);
+            _environmentController?.ApplyWeatherState(weather, _runtimeSession.TimeUntilNextWeatherShift);
         }
 
         private void CaptureMetricsSnapshot()
@@ -649,8 +641,8 @@ namespace Societies.Core
             }
 
             string timeText = _runtimeSession != null
-                ? PrototypeClockService.FormatTime(_runtimeSession.CurrentHour)
-                : PrototypeClockService.FormatTime(_dayNightCycle?.CurrentHour ?? 8.0f);
+                ? FormatTime(_runtimeSession.CurrentHour)
+                : FormatTime(_environmentController?.CurrentHour ?? 8.0f);
             string weatherText = _runtimeSession?.CurrentWeatherName ?? "Unknown";
             string interactionText = _cameraMode == CameraMode.Observer
                 ? "Observer mode active - press F8 to return to the player"
@@ -722,6 +714,13 @@ namespace Societies.Core
             {
                 _observerRig.FocusOn(_runtimeSession.SettlementAnchorPosition);
             }
+        }
+
+        private static string FormatTime(float currentHour)
+        {
+            int hours = Mathf.FloorToInt(currentHour);
+            int minutes = Mathf.FloorToInt((currentHour - hours) * 60.0f);
+            return $"{hours:00}:{minutes:00}";
         }
 
         private Vector3 BuildPlayerSpawnPoint()
