@@ -158,7 +158,7 @@ namespace Societies.Core
             IReadOnlyList<PrototypeResourceSiteState> resources)
         {
             SimulationTick++;
-            CurrentHour = PrototypeClockService.AdvanceHour(CurrentHour, tickIntervalSeconds, dayLengthSeconds);
+            CurrentHour = AdvanceHour(CurrentHour, tickIntervalSeconds, dayLengthSeconds);
 
             if (_weatherSimulation != null && _weatherSimulation.Advance(tickIntervalSeconds))
             {
@@ -359,6 +359,17 @@ namespace Societies.Core
             return string.Equals(weatherName, PrototypeWeatherService.GetName(PrototypeWeather.Rain), System.StringComparison.OrdinalIgnoreCase)
                 ? PrototypeWeather.Rain
                 : PrototypeWeather.Clear;
+        }
+
+        private static float AdvanceHour(float currentHour, double tickIntervalSeconds, double dayLengthSeconds)
+        {
+            double hoursPerTick = 24.0 * tickIntervalSeconds / dayLengthSeconds;
+            float next = (float)(currentHour + hoursPerTick);
+            while (next >= 24.0f)
+            {
+                next -= 24.0f;
+            }
+            return next;
         }
     }
 

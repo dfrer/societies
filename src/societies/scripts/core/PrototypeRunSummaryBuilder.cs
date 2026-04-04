@@ -41,9 +41,9 @@ namespace Societies.Core
                 SimulationSeed = snapshot.SimulationSeed,
                 SimulationTick = snapshot.SimulationTick,
                 StartHour = startHour,
-                StartTimeText = PrototypeClockService.FormatTime(startHour),
+                StartTimeText = FormatTime(startHour),
                 EndHour = snapshot.CurrentHour,
-                EndTimeText = PrototypeClockService.FormatTime(snapshot.CurrentHour),
+                EndTimeText = FormatTime(snapshot.CurrentHour),
                 FinalWeather = snapshot.CurrentWeather,
                 PlayerInventory = OrderCounts(snapshot.Inventory),
                 Stockpile = OrderCounts(snapshot.Stockpile),
@@ -213,6 +213,21 @@ namespace Societies.Core
                 .Where(pair => pair.Value > 0)
                 .OrderBy(pair => pair.Key)
                 .ToDictionary(pair => pair.Key, pair => pair.Value);
+        }
+
+        private static string FormatTime(float currentHour)
+        {
+            int hours = (int)System.Math.Floor(currentHour);
+            int minutes = (int)System.Math.Round((currentHour - hours) * 60.0);
+
+            if (minutes >= 60)
+            {
+                hours += 1;
+                minutes = 0;
+            }
+
+            hours = hours % 24;
+            return $"{hours:00}:{minutes:00}";
         }
     }
 

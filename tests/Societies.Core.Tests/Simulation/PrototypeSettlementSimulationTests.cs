@@ -162,10 +162,21 @@ namespace Societies.Core.Tests
                     };
                 }
 
-                currentHour = PrototypeClockService.AdvanceHour(currentHour, 1.0f / 20.0f, 600.0f);
+                currentHour = AdvanceHour(currentHour, 1.0f / 20.0f, 600.0f);
             }
 
             return events;
+        }
+
+        private static float AdvanceHour(float currentHour, double tickIntervalSeconds, double dayLengthSeconds)
+        {
+            double hoursPerTick = 24.0 * tickIntervalSeconds / dayLengthSeconds;
+            float next = (float)(currentHour + hoursPerTick);
+            while (next >= 24.0f)
+            {
+                next -= 24.0f;
+            }
+            return next;
         }
 
         private static List<PrototypeResourceSiteState> BuildResourceSites(WorldGenerationResult world)

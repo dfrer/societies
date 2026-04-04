@@ -4,10 +4,8 @@
 [ext_resource type="Script" path="res://scripts/multiplayer/NetworkManager.cs" id="2"]
 [ext_resource type="Script" path="res://scripts/core/EntityManager.cs" id="3"]
 [ext_resource type="Script" path="res://scripts/core/TerrainGenerator.cs" id="4"]
-[ext_resource type="Script" path="res://scripts/simulation/DayNightCycle.cs" id="5"]
-[ext_resource type="Script" path="res://scripts/simulation/WeatherController.cs" id="6"]
-[ext_resource type="Script" path="res://scripts/ui/PrototypeHud.cs" id="7"]
-[ext_resource type="Script" path="res://scripts/core/PlayerCharacter.cs" id="8"]
+[ext_resource type="Script" path="res://scripts/ui/PrototypeHud.cs" id="5"]
+[ext_resource type="Script" path="res://scripts/core/PlayerCharacter.cs" id="6"]
 
 [sub_resource type="Environment" id="Environment_1"]
 
@@ -25,7 +23,7 @@ script = ExtResource("3")
 [node name="Players" type="Node3D" parent="World"]
 
 [node name="LocalPlayer" type="CharacterBody3D" parent="World/Players"]
-script = ExtResource("8")
+script = ExtResource("6")
 
 [node name="Entities" type="Node3D" parent="World"]
 
@@ -34,16 +32,10 @@ script = ExtResource("8")
 [node name="WorldEnvironment" type="WorldEnvironment" parent="World/Environment"]
 environment = SubResource("Environment_1")
 
-[node name="DayNightCycle" type="Node3D" parent="World/Environment"]
-script = ExtResource("5")
-
-[node name="Weather" type="Node" parent="World/Environment"]
-script = ExtResource("6")
-
 [node name="Systems" type="Node" parent="World"]
 
 [node name="Terrain" type="Node3D" parent="World/Systems"]
 script = ExtResource("4")
 
 [node name="UI" type="CanvasLayer" parent="."]
-script = ExtResource("7")
+script = ExtResource("5")
