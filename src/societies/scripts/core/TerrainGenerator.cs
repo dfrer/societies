@@ -16,9 +16,19 @@ namespace Societies.Core
         {
             if (GetChildCount() == 0)
             {
-                BuildGround();
-                BuildLandmarks();
+                RebuildTerrain();
             }
+        }
+
+        public void RebuildTerrain()
+        {
+            foreach (Node child in GetChildren())
+            {
+                child.Free();
+            }
+
+            BuildGround();
+            BuildLandmarks();
         }
 
         public Vector3 GetPlayerSpawnPoint()

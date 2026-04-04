@@ -1,0 +1,17 @@
+{
+  "resources": [
+    { "id": "wood", "displayName": "Wood", "category": "raw" },
+    { "id": "stone", "displayName": "Stone", "category": "raw" },
+    { "id": "berry", "displayName": "Berry", "category": "raw" },
+    { "id": "logs", "displayName": "Logs", "category": "raw" },
+    { "id": "clay", "displayName": "Clay", "category": "raw" },
+    { "id": "reeds", "displayName": "Reeds", "category": "raw" },
+    { "id": "timber", "displayName": "Timber", "category": "processed" },
+    { "id": "firewood", "displayName": "Firewood", "category": "processed" },
+    { "id": "thatch", "displayName": "Thatch", "category": "processed" },
+    { "id": "brick", "displayName": "Brick", "category": "processed" },
+    { "id": "meals", "displayName": "Meals", "category": "processed" },
+    { "id": "campfire", "displayName": "Campfire", "category": "crafted" },
+    { "id": "stone_axe", "displayName": "Stone Axe", "category": "crafted" }
+  ]
+}

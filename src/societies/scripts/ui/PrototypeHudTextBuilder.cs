@@ -22,15 +22,26 @@ namespace Societies.UI
             string timeText,
             string weatherText,
             string sessionMode,
-            long simulationTick)
+            long simulationTick,
+            string? scenarioId = null)
         {
-            return "Societies Prototype 1\n" +
-                   $"FPS: {fps}\n" +
-                   $"Entities: {entityCount}\n" +
-                   $"Time: {timeText}\n" +
-                   $"Weather: {weatherText}\n" +
-                   $"Mode: {sessionMode}\n" +
-                   $"Tick: {simulationTick}";
+            List<string> lines = new()
+            {
+                "Societies Prototype 1",
+                $"FPS: {fps}",
+                $"Entities: {entityCount}",
+                $"Time: {timeText}",
+                $"Weather: {weatherText}",
+                $"Mode: {sessionMode}"
+            };
+
+            if (!string.IsNullOrWhiteSpace(scenarioId))
+            {
+                lines.Add($"Scenario: {scenarioId}");
+            }
+
+            lines.Add($"Tick: {simulationTick}");
+            return string.Join('\n', lines);
         }
 
         public static string BuildSettlementText(

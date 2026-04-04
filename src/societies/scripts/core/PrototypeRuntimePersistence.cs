@@ -11,7 +11,9 @@ namespace Societies.Core
     /// </summary>
     public sealed class PrototypeRuntimeSnapshot
     {
-        public int SchemaVersion { get; set; } = 1;
+        public int SchemaVersion { get; set; } = 2;
+
+        public string ScenarioId { get; set; } = string.Empty;
 
         public int SimulationSeed { get; set; }
 
@@ -115,7 +117,13 @@ namespace Societies.Core
 
     public sealed class PrototypeRunSummary
     {
-        public int SchemaVersion { get; set; } = 1;
+        public int SchemaVersion { get; set; } = 2;
+
+        public string ScenarioId { get; set; } = string.Empty;
+
+        public string ScenarioDisplayName { get; set; } = string.Empty;
+
+        public string SettlementClassification { get; set; } = string.Empty;
 
         public int SimulationSeed { get; set; }
 
@@ -238,6 +246,28 @@ namespace Societies.Core
         public static PrototypeRunSummary LoadRunSummary(string path)
         {
             return DeserializeRunSummary(File.ReadAllText(path));
+        }
+
+        public static string SerializeWorldSummary(PrototypeWorldSummary summary)
+        {
+            return JsonSerializer.Serialize(summary, JsonOptions);
+        }
+
+        public static PrototypeWorldSummary DeserializeWorldSummary(string json)
+        {
+            PrototypeWorldSummary? summary = JsonSerializer.Deserialize<PrototypeWorldSummary>(json, JsonOptions);
+            return summary ?? new PrototypeWorldSummary();
+        }
+
+        public static void SaveWorldSummary(string path, PrototypeWorldSummary summary)
+        {
+            EnsureDirectory(path);
+            File.WriteAllText(path, SerializeWorldSummary(summary));
+        }
+
+        public static PrototypeWorldSummary LoadWorldSummary(string path)
+        {
+            return DeserializeWorldSummary(File.ReadAllText(path));
         }
 
         public static string? GetLatestFile(string directoryPath, string searchPattern)
