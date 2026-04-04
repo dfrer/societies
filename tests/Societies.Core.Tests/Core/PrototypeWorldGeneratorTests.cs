@@ -28,24 +28,32 @@ namespace Societies.Core.Tests
             PrototypeScenarioDefinition scenario = LoadCatalogs().Scenarios.Resolve("balanced_basin");
             WorldGenerationResult result = PrototypeWorldGenerator.Generate(scenario);
 
-            Assert.Equal(scenario.InitialTrees, result.ResourceSpawns.Count(spawn => spawn.ResourceId == "wood"));
+            Assert.Equal(scenario.InitialTrees, result.ResourceSpawns.Count(spawn => spawn.ResourceId == "logs"));
             Assert.Equal(scenario.InitialRocks, result.ResourceSpawns.Count(spawn => spawn.ResourceId == "stone"));
-            Assert.Equal(scenario.InitialBerryBushes, result.ResourceSpawns.Count(spawn => spawn.ResourceId == "berry"));
+            Assert.Equal(scenario.InitialBerryBushes, result.ResourceSpawns.Count(spawn => spawn.ResourceId == "berries"));
+            Assert.Equal(scenario.InitialClayDeposits, result.ResourceSpawns.Count(spawn => spawn.ResourceId == "clay"));
+            Assert.Equal(scenario.InitialReedBeds, result.ResourceSpawns.Count(spawn => spawn.ResourceId == "reeds"));
 
             foreach (PrototypeResourceSpawn spawn in result.ResourceSpawns)
             {
                 TerrainCell cell = result.WorldMap.GetNearestCell(spawn.Position);
                 switch (spawn.ResourceId)
                 {
-                    case "wood":
+                    case "logs":
                         Assert.Equal(BiomeType.Forest, cell.Biome);
                         break;
                     case "stone":
                         Assert.Equal(BiomeType.RockyUpland, cell.Biome);
                         break;
-                    case "berry":
+                    case "berries":
                         Assert.Equal(BiomeType.Meadow, cell.Biome);
                         Assert.True(result.WorldMap.HasAdjacentBiome(cell.GridX, cell.GridY, BiomeType.Forest));
+                        break;
+                    case "clay":
+                        Assert.True(cell.Biome == BiomeType.Wetland || cell.Biome == BiomeType.RockyUpland);
+                        break;
+                    case "reeds":
+                        Assert.Equal(BiomeType.Wetland, cell.Biome);
                         break;
                 }
             }
@@ -60,8 +68,8 @@ namespace Societies.Core.Tests
 
             Assert.True(anchorCell.IsBuildable);
             Assert.Equal(BiomeType.Meadow, anchorCell.Biome);
-            Assert.InRange(result.StarterResourceDistances["wood"], 0.0f, 40.0f);
-            Assert.InRange(result.StarterResourceDistances["berry"], 0.0f, 50.0f);
+            Assert.InRange(result.StarterResourceDistances["logs"], 0.0f, 40.0f);
+            Assert.InRange(result.StarterResourceDistances["berries"], 0.0f, 50.0f);
             Assert.InRange(result.StarterResourceDistances["stone"], 0.0f, 65.0f);
         }
 

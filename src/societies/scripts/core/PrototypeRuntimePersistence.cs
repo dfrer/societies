@@ -1,4 +1,5 @@
 using Godot;
+using Societies.Simulation;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -11,7 +12,7 @@ namespace Societies.Core
     /// </summary>
     public sealed class PrototypeRuntimeSnapshot
     {
-        public int SchemaVersion { get; set; } = 3;
+        public int SchemaVersion { get; set; } = 5;
 
         public string ScenarioId { get; set; } = string.Empty;
 
@@ -44,6 +45,8 @@ namespace Societies.Core
         public List<PrototypeWorkerSnapshot> Workers { get; set; } = new();
 
         public List<PrototypeResourceSnapshot> Resources { get; set; } = new();
+
+        public PrototypeSettlementSnapshot? Settlement { get; set; } = new();
     }
 
     public sealed class PrototypeResourceSnapshot
@@ -53,6 +56,8 @@ namespace Societies.Core
         public int UnitsRemaining { get; set; }
 
         public PrototypeSerializableVector3 Position { get; set; }
+
+        public string ClusterId { get; set; } = string.Empty;
     }
 
     public sealed class PrototypeWorkerSnapshot
@@ -63,9 +68,17 @@ namespace Societies.Core
 
         public string PreferredResourceId { get; set; } = string.Empty;
 
+        public string RoleId { get; set; } = string.Empty;
+
         public string Phase { get; set; } = string.Empty;
 
         public string TargetResourceNodeName { get; set; } = string.Empty;
+
+        public string TargetStructureId { get; set; } = string.Empty;
+
+        public string SourceStoreId { get; set; } = string.Empty;
+
+        public string DestinationStoreId { get; set; } = string.Empty;
 
         public string CarryItemId { get; set; } = string.Empty;
 
@@ -84,6 +97,46 @@ namespace Societies.Core
         public string TargetLabel { get; set; } = string.Empty;
 
         public string ActivityText { get; set; } = string.Empty;
+
+        public float Nutrition { get; set; } = 100.0f;
+
+        public float Fatigue { get; set; }
+
+        public string LastFailureReason { get; set; } = string.Empty;
+
+        public string CurrentOrderId { get; set; } = string.Empty;
+
+        public string CurrentOrderKind { get; set; } = string.Empty;
+
+        public string CurrentOrderReason { get; set; } = string.Empty;
+
+        public int HomeBedCapacity { get; set; }
+
+        public List<string> RecentEvents { get; set; } = new();
+
+        public int TravelTicksAccumulated { get; set; }
+
+        public int WorkTicksAccumulated { get; set; }
+
+        public float CurrentRouteLengthMeters { get; set; }
+
+        public float CurrentRouteCost { get; set; }
+
+        public int CurrentRouteTravelTicks { get; set; }
+
+        public int CurrentWaypointIndex { get; set; }
+
+        public int CachedRouteVersion { get; set; }
+
+        public int RouteSourceGridX { get; set; }
+
+        public int RouteSourceGridY { get; set; }
+
+        public int RouteDestinationGridX { get; set; }
+
+        public int RouteDestinationGridY { get; set; }
+
+        public List<PrototypeSerializableVector3> RouteWaypoints { get; set; } = new();
     }
 
     public sealed class PrototypeEventLog
@@ -125,7 +178,7 @@ namespace Societies.Core
 
     public sealed class PrototypeRunSummary
     {
-        public int SchemaVersion { get; set; } = 3;
+        public int SchemaVersion { get; set; } = 5;
 
         public string ScenarioId { get; set; } = string.Empty;
 
@@ -166,6 +219,36 @@ namespace Societies.Core
         public Dictionary<string, int> CraftedItemCounts { get; set; } = new();
 
         public Dictionary<string, int> EventCountsByType { get; set; } = new();
+
+        public Dictionary<string, int> ProducedResources { get; set; } = new();
+
+        public Dictionary<string, int> ConsumedResources { get; set; } = new();
+
+        public Dictionary<string, int> BlockedReasonCounts { get; set; } = new();
+
+        public Dictionary<string, int> BuiltStructuresByKind { get; set; } = new();
+
+        public int MealCoveragePercent { get; set; }
+
+        public int BedCoveragePercent { get; set; }
+
+        public int HearthFuel { get; set; }
+
+        public int HearthLitTicks { get; set; }
+
+        public string BuildQueueStatus { get; set; } = string.Empty;
+
+        public string CollapseReason { get; set; } = string.Empty;
+
+        public float AverageRouteLengthMeters { get; set; }
+
+        public float AverageTravelWorkRatio { get; set; }
+
+        public float PathCoverageRatio { get; set; }
+
+        public Dictionary<string, int> DepotThroughputByDepot { get; set; } = new();
+
+        public Dictionary<string, int> RouteBacklogTicksByKind { get; set; } = new();
     }
 
     public struct PrototypeSerializableVector3

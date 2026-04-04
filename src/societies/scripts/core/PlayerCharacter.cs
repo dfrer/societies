@@ -79,7 +79,7 @@ namespace Societies.Core
         {
             if (_focusedResource == null)
             {
-                return "Look at a tree, rock, or berry bush and press E";
+                return "Look at a resource node and press E";
             }
 
             return $"Press E to harvest {_focusedResource.DisplayName} ({_focusedResource.UnitsRemaining} left)";

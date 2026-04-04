@@ -20,7 +20,10 @@ namespace Societies.Core
         None,
         Biome,
         Buildability,
-        MovementCost
+        MovementCost,
+        RouteHeat,
+        BuiltPaths,
+        RemoteDepots
     }
 
     public enum CameraMode
@@ -53,6 +56,10 @@ namespace Societies.Core
         public int StoneClusters { get; set; } = 5;
 
         public int BerryClusters { get; set; } = 4;
+
+        public int ClayClusters { get; set; } = 4;
+
+        public int ReedClusters { get; set; } = 4;
     }
 
     public sealed class TerrainCell
@@ -89,6 +96,8 @@ namespace Societies.Core
 
     public sealed class ResourceClusterState
     {
+        public string ClusterId { get; init; } = string.Empty;
+
         public string ResourceId { get; init; } = string.Empty;
 
         public int ClusterIndex { get; init; }
@@ -279,8 +288,8 @@ namespace Societies.Core
                     continue;
                 }
 
-                if (starterDistances!["wood"] > WoodStarterMaxDistance ||
-                    starterDistances["berry"] > BerryStarterMaxDistance ||
+                if (starterDistances!["logs"] > WoodStarterMaxDistance ||
+                    starterDistances["berries"] > BerryStarterMaxDistance ||
                     starterDistances["stone"] > StoneStarterMaxDistance)
                 {
                     continue;
@@ -536,9 +545,11 @@ namespace Societies.Core
             int worldSeed)
         {
             List<ResourceClusterState> result = new();
-            result.AddRange(CreateResourceClustersForType("wood", worldMap, settlementSpawn, scenario, scenario.ResourceClusters.WoodClusters, BiomeType.Forest, worldSeed));
+            result.AddRange(CreateResourceClustersForType("logs", worldMap, settlementSpawn, scenario, scenario.ResourceClusters.WoodClusters, BiomeType.Forest, worldSeed));
             result.AddRange(CreateResourceClustersForType("stone", worldMap, settlementSpawn, scenario, scenario.ResourceClusters.StoneClusters, BiomeType.RockyUpland, worldSeed));
             result.AddRange(CreateBerryClusters(worldMap, settlementSpawn, scenario, scenario.ResourceClusters.BerryClusters, worldSeed));
+            result.AddRange(CreateClayClusters(worldMap, settlementSpawn, scenario, scenario.ResourceClusters.ClayClusters, worldSeed));
+            result.AddRange(CreateReedClusters(worldMap, settlementSpawn, scenario, scenario.ResourceClusters.ReedClusters, worldSeed));
             return result;
         }
 
@@ -608,17 +619,17 @@ namespace Societies.Core
                 eligibleCells,
                 settlementSpawn.AnchorPosition,
                 BerryStarterMaxDistance,
-                GetIdealStarterDistance("berry"),
+                GetIdealStarterDistance("berries"),
                 0.0f);
 
             List<ResourceClusterState> clusters = new()
             {
-                BuildClusterState("berry", 0, starterCell, settlementSpawn.AnchorPosition, true)
+                BuildClusterState("berries", 0, starterCell, settlementSpawn.AnchorPosition, true)
             };
 
-            float distancePreference = GetClusterDistancePreference("berry", scenario);
-            float minimumSpacing = GetClusterSpacing("berry", worldMap.CellSizeMeters);
-            DeterministicRandom rng = new(PrototypeSeedDerivation.Derive(worldSeed, "clusters.berry"));
+            float distancePreference = GetClusterDistancePreference("berries", scenario);
+            float minimumSpacing = GetClusterSpacing("berries", worldMap.CellSizeMeters);
+            DeterministicRandom rng = new(PrototypeSeedDerivation.Derive(worldSeed, "clusters.berries"));
 
             for (int clusterIndex = 1; clusterIndex < clusterCount; clusterIndex++)
             {
@@ -629,7 +640,99 @@ namespace Societies.Core
                     distancePreference,
                     minimumSpacing,
                     rng);
-                clusters.Add(BuildClusterState("berry", clusterIndex, nextCell, settlementSpawn.AnchorPosition, false));
+                clusters.Add(BuildClusterState("berries", clusterIndex, nextCell, settlementSpawn.AnchorPosition, false));
+            }
+
+            return clusters;
+        }
+
+        private static List<ResourceClusterState> CreateClayClusters(
+            WorldMapState worldMap,
+            SettlementSpawnState settlementSpawn,
+            PrototypeScenarioDefinition scenario,
+            int clusterCount,
+            int worldSeed)
+        {
+            List<TerrainCell> eligibleCells = worldMap.Cells
+                .Where(cell => IsEligibleClayCell(worldMap, cell))
+                .ToList();
+
+            if (eligibleCells.Count == 0)
+            {
+                throw new InvalidOperationException("World generation produced no eligible clay cells.");
+            }
+
+            TerrainCell starterCell = SelectNearestCandidate(
+                eligibleCells,
+                settlementSpawn.AnchorPosition,
+                70.0f,
+                24.0f,
+                0.0f);
+
+            List<ResourceClusterState> clusters = new()
+            {
+                BuildClusterState("clay", 0, starterCell, settlementSpawn.AnchorPosition, true)
+            };
+
+            float minimumSpacing = 16.0f + (worldMap.CellSizeMeters * 2.0f);
+            DeterministicRandom rng = new(PrototypeSeedDerivation.Derive(worldSeed, "clusters.clay"));
+
+            for (int clusterIndex = 1; clusterIndex < clusterCount; clusterIndex++)
+            {
+                TerrainCell nextCell = SelectAdditionalClusterCell(
+                    eligibleCells,
+                    clusters,
+                    settlementSpawn.AnchorPosition,
+                    0.32f,
+                    minimumSpacing,
+                    rng);
+                clusters.Add(BuildClusterState("clay", clusterIndex, nextCell, settlementSpawn.AnchorPosition, false));
+            }
+
+            return clusters;
+        }
+
+        private static List<ResourceClusterState> CreateReedClusters(
+            WorldMapState worldMap,
+            SettlementSpawnState settlementSpawn,
+            PrototypeScenarioDefinition scenario,
+            int clusterCount,
+            int worldSeed)
+        {
+            List<TerrainCell> eligibleCells = worldMap.Cells
+                .Where(cell => cell.Biome == BiomeType.Wetland)
+                .ToList();
+
+            if (eligibleCells.Count == 0)
+            {
+                throw new InvalidOperationException("World generation produced no eligible reed cells.");
+            }
+
+            TerrainCell starterCell = SelectNearestCandidate(
+                eligibleCells,
+                settlementSpawn.AnchorPosition,
+                70.0f,
+                22.0f,
+                0.0f);
+
+            List<ResourceClusterState> clusters = new()
+            {
+                BuildClusterState("reeds", 0, starterCell, settlementSpawn.AnchorPosition, true)
+            };
+
+            float minimumSpacing = 15.0f + (worldMap.CellSizeMeters * 2.0f);
+            DeterministicRandom rng = new(PrototypeSeedDerivation.Derive(worldSeed, "clusters.reeds"));
+
+            for (int clusterIndex = 1; clusterIndex < clusterCount; clusterIndex++)
+            {
+                TerrainCell nextCell = SelectAdditionalClusterCell(
+                    eligibleCells,
+                    clusters,
+                    settlementSpawn.AnchorPosition,
+                    0.28f,
+                    minimumSpacing,
+                    rng);
+                clusters.Add(BuildClusterState("reeds", clusterIndex, nextCell, settlementSpawn.AnchorPosition, false));
             }
 
             return clusters;
@@ -644,9 +747,11 @@ namespace Societies.Core
             HashSet<long> occupiedCells = new();
             List<PrototypeResourceSpawn> spawns = new();
 
-            AppendResourceSpawns("wood", scenario.InitialTrees, clusters.Where(cluster => cluster.ResourceId == "wood").ToList(), worldMap, worldSeed, occupiedCells, spawns);
+            AppendResourceSpawns("logs", scenario.InitialTrees, clusters.Where(cluster => cluster.ResourceId == "logs").ToList(), worldMap, worldSeed, occupiedCells, spawns);
             AppendResourceSpawns("stone", scenario.InitialRocks, clusters.Where(cluster => cluster.ResourceId == "stone").ToList(), worldMap, worldSeed, occupiedCells, spawns);
-            AppendResourceSpawns("berry", scenario.InitialBerryBushes, clusters.Where(cluster => cluster.ResourceId == "berry").ToList(), worldMap, worldSeed, occupiedCells, spawns);
+            AppendResourceSpawns("berries", scenario.InitialBerryBushes, clusters.Where(cluster => cluster.ResourceId == "berries").ToList(), worldMap, worldSeed, occupiedCells, spawns);
+            AppendResourceSpawns("clay", scenario.InitialClayDeposits, clusters.Where(cluster => cluster.ResourceId == "clay").ToList(), worldMap, worldSeed, occupiedCells, spawns);
+            AppendResourceSpawns("reeds", scenario.InitialReedBeds, clusters.Where(cluster => cluster.ResourceId == "reeds").ToList(), worldMap, worldSeed, occupiedCells, spawns);
 
             return spawns
                 .OrderBy(spawn => spawn.ResourceId, StringComparer.Ordinal)
@@ -689,9 +794,10 @@ namespace Societies.Core
                     output.Add(new PrototypeResourceSpawn(
                         resourceId,
                         cell.WorldPosition,
-                        resourceId == "berry"
+                        resourceId == "berries"
                             ? rng.NextIntInclusive(3, 5)
-                            : rng.NextIntInclusive(4, 7)));
+                            : rng.NextIntInclusive(4, 7),
+                        cluster.ClusterId));
                     placed++;
                 }
 
@@ -711,9 +817,10 @@ namespace Societies.Core
                     output.Add(new PrototypeResourceSpawn(
                         resourceId,
                         cell.WorldPosition,
-                        resourceId == "berry"
+                        resourceId == "berries"
                             ? rng.NextIntInclusive(3, 5)
-                            : rng.NextIntInclusive(4, 7)));
+                            : rng.NextIntInclusive(4, 7),
+                        cluster.ClusterId));
                     placed++;
                 }
             }
@@ -723,8 +830,10 @@ namespace Societies.Core
         {
             float clusterRadius = resourceId switch
             {
-                "wood" => 14.0f,
+                "logs" => 14.0f,
                 "stone" => 18.0f,
+                "clay" => 14.0f,
+                "reeds" => 12.0f,
                 _ => 10.0f
             };
 
@@ -739,11 +848,24 @@ namespace Societies.Core
         {
             return resourceId switch
             {
-                "wood" => cell.Biome == BiomeType.Forest,
+                "logs" => cell.Biome == BiomeType.Forest,
                 "stone" => cell.Biome == BiomeType.RockyUpland,
-                "berry" => cell.Biome == BiomeType.Meadow && worldMap.HasAdjacentBiome(cell.GridX, cell.GridY, BiomeType.Forest),
+                "berries" => cell.Biome == BiomeType.Meadow && worldMap.HasAdjacentBiome(cell.GridX, cell.GridY, BiomeType.Forest),
+                "clay" => IsEligibleClayCell(worldMap, cell),
+                "reeds" => cell.Biome == BiomeType.Wetland,
                 _ => false
             };
+        }
+
+        private static bool IsEligibleClayCell(WorldMapState worldMap, TerrainCell cell)
+        {
+            if (cell.Biome == BiomeType.Wetland)
+            {
+                return true;
+            }
+
+            return cell.Biome == BiomeType.RockyUpland &&
+                   worldMap.HasAdjacentBiome(cell.GridX, cell.GridY, BiomeType.Wetland);
         }
 
         private static int[] PartitionNodeCounts(int totalNodes, int clusterCount, int partitionSeed)
@@ -831,6 +953,7 @@ namespace Societies.Core
         {
             return new ResourceClusterState
             {
+                ClusterId = $"{resourceId}_cluster_{clusterIndex + 1}",
                 ResourceId = resourceId,
                 ClusterIndex = clusterIndex,
                 CenterPosition = cell.WorldPosition,
@@ -845,7 +968,7 @@ namespace Societies.Core
         {
             return resourceId switch
             {
-                "wood" => WoodStarterMaxDistance,
+                "logs" => WoodStarterMaxDistance,
                 "stone" => StoneStarterMaxDistance,
                 _ => BerryStarterMaxDistance
             };
@@ -855,7 +978,7 @@ namespace Societies.Core
         {
             return resourceId switch
             {
-                "wood" => 12.0f,
+                "logs" => 12.0f,
                 "stone" => 12.0f,
                 _ => 12.0f
             };
@@ -865,8 +988,10 @@ namespace Societies.Core
         {
             return resourceId switch
             {
-                "wood" => 18.0f + (cellSizeMeters * 2.0f),
+                "logs" => 18.0f + (cellSizeMeters * 2.0f),
                 "stone" => 22.0f + (cellSizeMeters * 2.0f),
+                "clay" => 16.0f + (cellSizeMeters * 2.0f),
+                "reeds" => 14.0f + (cellSizeMeters * 2.0f),
                 _ => 14.0f + (cellSizeMeters * 2.0f)
             };
         }
@@ -882,11 +1007,13 @@ namespace Societies.Core
                     ((0.30f - scenario.WorldGen.ForestCoverage) * 0.40f),
                     0.30f,
                     0.92f),
-                "wood" => Mathf.Clamp(
+                "logs" => Mathf.Clamp(
                     0.28f +
                     ((0.30f - scenario.WorldGen.ForestCoverage) * 0.5f),
                     0.18f,
                     0.55f),
+                "clay" => 0.30f,
+                "reeds" => 0.24f,
                 _ => Mathf.Clamp(
                     0.24f +
                     MathF.Max(0.0f, scenario.WorldGen.WetnessBias) * 0.10f,
@@ -929,9 +1056,9 @@ namespace Societies.Core
                 .OrderBy(cluster => cluster.ResourceId)
                 .ToDictionary(cluster => cluster.ResourceId, cluster => cluster.DistanceFromSettlement);
 
-            return starterDistances.ContainsKey("wood") &&
+            return starterDistances.ContainsKey("logs") &&
                    starterDistances.ContainsKey("stone") &&
-                   starterDistances.ContainsKey("berry");
+                   starterDistances.ContainsKey("berries");
         }
 
         private static float FractalNoise(float x, float y, int seed, int octaves, float lacunarity, float gain)

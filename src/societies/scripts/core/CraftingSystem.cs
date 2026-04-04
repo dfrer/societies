@@ -4,7 +4,7 @@ using System.Linq;
 namespace Societies.Core
 {
     /// <summary>
-    /// Minimal recipe table for Prototype 1.
+    /// Player-side crafting table for the local prototype.
     /// </summary>
     public static class CraftingSystem
     {
@@ -13,14 +13,8 @@ namespace Societies.Core
             new(
                 "stone_axe",
                 "Stone Axe",
-                new Dictionary<string, int> { ["wood"] = 2, ["stone"] = 3 },
+                new Dictionary<string, int> { ["logs"] = 2, ["stone"] = 3 },
                 new Dictionary<string, int> { ["stone_axe"] = 1 }
-            ),
-            new(
-                "campfire",
-                "Campfire",
-                new Dictionary<string, int> { ["wood"] = 3, ["stone"] = 4 },
-                new Dictionary<string, int> { ["campfire"] = 1 }
             )
         };
 

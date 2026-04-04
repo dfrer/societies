@@ -1,6 +1,7 @@
-using Godot;
 using Societies.Simulation;
+using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using Xunit;
 
@@ -9,121 +10,125 @@ namespace Societies.Core.Tests
     public class PrototypeSettlementSimulationTests
     {
         [Fact]
-        public void Advance_DepositsHarvestedResourcesIntoStockpile()
+        public void Advance_BalancedBasin_BuildsHutAndProducesMeals()
         {
-            InventoryComponent stockpile = new();
-            PrototypeSettlementSimulation simulation = new(stockpile, 1, Vector3.Zero);
-            List<PrototypeResourceSiteState> resources = new()
-            {
-                new PrototypeResourceSiteState("wood_1", "wood", new Vector3(12.0f, 0.0f, 0.0f), 10)
-            };
+            PrototypeCatalogBundle bundle = LoadCatalogs();
+            PrototypeScenarioDefinition scenario = bundle.Scenarios.Resolve("balanced_basin");
+            WorldGenerationResult world = PrototypeWorldGenerator.Generate(scenario);
+            PrototypeSettlementSimulation simulation = new(scenario, bundle.RoleQuotas.Roles, world);
+            List<PrototypeResourceSiteState> resources = BuildResourceSites(world);
 
-            List<PrototypeSettlementEvent> events = AdvanceSimulation(simulation, resources, 80);
+            List<PrototypeSettlementEvent> events = AdvanceSimulation(simulation, resources, 1200);
 
-            Assert.True(stockpile.GetCount("wood") > 0);
-            Assert.Contains(events, entry => entry.EventType == PrototypeEventTypes.AiDepositCompleted);
-            Assert.Single(simulation.Workers);
-            Assert.Equal("wood", simulation.Workers[0].PreferredResourceId);
+            Assert.Contains(simulation.Structures, structure => structure.StructureKindId == "hut" && structure.IsBuilt);
+            Assert.True(simulation.CentralDepot.GetCount("meals") > 0 || simulation.ProducedResources.GetValueOrDefault("meals") > 0);
+            Assert.Contains(events, entry => entry.EventType == PrototypeEventTypes.SettlementBuildCompleted);
+            Assert.Contains(events, entry => entry.EventType == PrototypeEventTypes.SettlementProcessCompleted);
         }
 
         [Fact]
-        public void Advance_MovesWorkersThroughWorldInsteadOfTeleporting()
+        public void Advance_ExtractedResourcesFlowThroughCacheAndDepot()
         {
-            InventoryComponent stockpile = new();
-            PrototypeSettlementSimulation simulation = new(stockpile, 1, Vector3.Zero);
-            List<PrototypeResourceSiteState> resources = new()
-            {
-                new PrototypeResourceSiteState("wood_1", "wood", new Vector3(12.0f, 0.0f, 0.0f), 10)
-            };
+            PrototypeCatalogBundle bundle = LoadCatalogs();
+            PrototypeScenarioDefinition scenario = bundle.Scenarios.Resolve("balanced_basin");
+            WorldGenerationResult world = PrototypeWorldGenerator.Generate(scenario);
+            PrototypeSettlementSimulation simulation = new(scenario, bundle.RoleQuotas.Roles, world);
+            List<PrototypeResourceSiteState> resources = BuildResourceSites(world);
 
-            PrototypeWorkerState initialWorker = Assert.Single(simulation.Workers);
-            Vector3 initialPosition = initialWorker.Position;
+            List<PrototypeSettlementEvent> events = AdvanceSimulation(simulation, resources, 900);
 
-            AdvanceSimulation(simulation, resources, 24);
-
-            PrototypeWorkerState worker = Assert.Single(simulation.Workers);
-            Assert.Equal(PrototypeWorkerPhase.MovingToResource, worker.Phase);
-            Assert.True(worker.Position.DistanceTo(initialPosition) > 0.5f);
-            Assert.True(worker.Position.DistanceTo(resources[0].Position) > 0.5f);
-            Assert.Contains("Gathering wood", worker.ActivityText);
-            Assert.Equal("Tree", worker.TargetLabel);
+            Assert.True(
+                events.Any(entry => entry.EventType == PrototypeEventTypes.SettlementCacheDeposit) ||
+                events.Any(entry => entry.EventType == PrototypeEventTypes.SettlementHaulCompleted));
+            Assert.True(simulation.ProducedResources.Values.Sum() > 0 || simulation.CentralDepot.Items.Values.Sum() > scenario.StartingStock.Values.Sum());
         }
 
         [Fact]
-        public void Advance_WithWoodAndStoneWorkers_CraftsCampfire()
+        public void Advance_FoodPoorHighlands_CollapsesUnderShortage()
         {
-            InventoryComponent stockpile = new();
-            PrototypeSettlementSimulation simulation = new(stockpile, 2, Vector3.Zero);
-            List<PrototypeResourceSiteState> resources = new()
-            {
-                new PrototypeResourceSiteState("wood_1", "wood", new Vector3(10.0f, 0.0f, 0.0f), 20),
-                new PrototypeResourceSiteState("stone_1", "stone", new Vector3(-10.0f, 0.0f, 0.0f), 20)
-            };
+            PrototypeCatalogBundle bundle = LoadCatalogs();
+            PrototypeScenarioDefinition scenario = bundle.Scenarios.Resolve("food_poor_highlands");
+            WorldGenerationResult world = PrototypeWorldGenerator.Generate(scenario);
+            PrototypeSettlementSimulation simulation = new(scenario, bundle.RoleQuotas.Roles, world);
+            simulation.CentralDepot.Items.Clear();
+            List<PrototypeResourceSiteState> resources = BuildResourceSites(world);
 
-            List<PrototypeSettlementEvent> events = AdvanceSimulation(simulation, resources, 420);
+            AdvanceSimulation(simulation, resources, 1200);
 
-            Assert.Equal(1, stockpile.GetCount("campfire"));
-            Assert.Contains(events, entry => entry.EventType == PrototypeEventTypes.AiCraftCompleted);
-            Assert.All(simulation.Workers, worker => Assert.False(string.IsNullOrWhiteSpace(worker.DisplayName)));
+            Assert.Equal(PrototypeSettlementClassification.Collapsed, simulation.Classification);
+            Assert.Contains(simulation.Citizens, citizen => citizen.Phase == PrototypeWorkerPhase.Incapacitated);
         }
 
         [Fact]
-        public void OnHarvestFailed_ReturnsWorkerToIdleAtStockpile()
+        public void BuildQueueSelectionAndPause_AffectCurrentEntry()
         {
-            InventoryComponent stockpile = new();
-            PrototypeSettlementSimulation simulation = new(stockpile, 1, Vector3.Zero);
-            List<PrototypeResourceSiteState> resources = new()
-            {
-                new PrototypeResourceSiteState("wood_1", "wood", new Vector3(8.0f, 0.0f, 0.0f), 10)
-            };
+            PrototypeCatalogBundle bundle = LoadCatalogs();
+            PrototypeScenarioDefinition scenario = bundle.Scenarios.Resolve("balanced_basin");
+            WorldGenerationResult world = PrototypeWorldGenerator.Generate(scenario);
+            PrototypeSettlementSimulation simulation = new(scenario, bundle.RoleQuotas.Roles, world);
 
-            AdvanceSimulation(simulation, resources, 40);
-            simulation.OnHarvestFailed("worker_1");
+            Assert.True(simulation.SelectNextBuildQueueEntry());
+            string selectedBeforePause = simulation.SelectedBuildQueueStatusText;
+            Assert.True(simulation.ToggleSelectedBuildQueuePause());
+            string selectedAfterPause = simulation.SelectedBuildQueueStatusText;
 
-            PrototypeWorkerState worker = Assert.Single(simulation.Workers);
-            Assert.Equal(PrototypeWorkerPhase.MovingToStockpile, worker.Phase);
-            Assert.True(worker.Position.DistanceTo(worker.HomePosition) > 0.1f);
-            Assert.Equal(0, worker.CarryAmount);
-            Assert.Equal(string.Empty, worker.TargetResourceNodeName);
-            Assert.Contains("empty-handed", worker.ActivityText);
+            Assert.NotEqual(selectedBeforePause, selectedAfterPause);
+            Assert.Contains("paused", selectedAfterPause, StringComparison.OrdinalIgnoreCase);
         }
 
         [Fact]
-        public void Advance_WhenResourcesExhausted_DoesNotGenerateNegativeCounts()
+        public void CaptureAndLoadState_RoundTripsCitizensAndStructures()
         {
-            InventoryComponent stockpile = new();
-            PrototypeSettlementSimulation simulation = new(stockpile, 1, Vector3.Zero);
-            List<PrototypeResourceSiteState> resources = new()
-            {
-                new PrototypeResourceSiteState("wood_1", "wood", new Vector3(12.0f, 0.0f, 0.0f), 1)
-            };
+            PrototypeCatalogBundle bundle = LoadCatalogs();
+            PrototypeScenarioDefinition scenario = bundle.Scenarios.Resolve("wetland_builder");
+            WorldGenerationResult world = PrototypeWorldGenerator.Generate(scenario);
+            PrototypeSettlementSimulation simulation = new(scenario, bundle.RoleQuotas.Roles, world);
+            List<PrototypeResourceSiteState> resources = BuildResourceSites(world);
 
-            List<PrototypeSettlementEvent> events = AdvanceSimulation(simulation, resources, 220);
+            AdvanceSimulation(simulation, resources, 240);
+            PrototypeSettlementSnapshot snapshot = simulation.CaptureSnapshot(420);
 
-            Assert.All(resources, site => Assert.True(site.UnitsRemaining >= 0));
-            Assert.Equal(1, stockpile.GetCount("wood"));
-            Assert.Contains(events, entry => entry.EventType == PrototypeEventTypes.AiTaskAssigned);
+            PrototypeSettlementSimulation restored = new(scenario, bundle.RoleQuotas.Roles, world);
+            restored.LoadState(snapshot);
+
+            Assert.Equal(simulation.Citizens.Count, restored.Citizens.Count);
+            Assert.Equal(simulation.Structures.Count, restored.Structures.Count);
+            Assert.Equal(simulation.CentralDepot.Items, restored.CentralDepot.Items);
+            Assert.Equal(simulation.Classification, restored.Classification);
         }
 
         [Fact]
-        public void Advance_PrioritizesCampfireIngredientsBeforeFoodReserve()
+        public void LongHaulQuarry_PlansAndBuildsRemoteLogisticsInfrastructure()
         {
-            InventoryComponent stockpile = new();
-            stockpile.AddItem("wood", 3);
-            stockpile.AddItem("berry", 4);
+            PrototypeCatalogBundle bundle = LoadCatalogs();
+            PrototypeScenarioDefinition scenario = bundle.Scenarios.Resolve("long_haul_quarry");
+            WorldGenerationResult world = PrototypeWorldGenerator.Generate(scenario);
+            PrototypeSettlementSimulation simulation = new(scenario, bundle.RoleQuotas.Roles, world);
+            List<PrototypeResourceSiteState> resources = BuildResourceSites(world);
 
-            PrototypeSettlementSimulation simulation = new(stockpile, 1, Vector3.Zero);
-            List<PrototypeResourceSiteState> resources = new()
-            {
-                new PrototypeResourceSiteState("stone_1", "stone", new Vector3(8.0f, 0.0f, 0.0f), 8),
-                new PrototypeResourceSiteState("berry_1", "berry", new Vector3(4.0f, 0.0f, 0.0f), 8)
-            };
+            Assert.Contains(simulation.BuildQueue, entry => entry.StructureKindId == "remote_stockpile");
+            Assert.Contains(simulation.BuildQueue, entry => entry.StructureKindId == "path_segment");
 
-            AdvanceSimulation(simulation, resources, 20);
+            AdvanceSimulation(simulation, resources, 1400);
 
-            PrototypeWorkerState worker = Assert.Single(simulation.Workers);
-            Assert.Equal("stone_1", worker.TargetResourceNodeName);
-            Assert.Contains("campfire", worker.ActivityText.ToLowerInvariant());
+            Assert.True(simulation.PathSegments.Any(segment => segment.IsBuilt) || simulation.RemoteDepots.Any(depot => depot.IsBuilt));
+            Assert.True(simulation.AverageRouteLengthMeters > 0.0f);
+        }
+
+        [Fact]
+        public void BalancedBasin_BuildsUsablePathsAndTracksRouteHeat()
+        {
+            PrototypeCatalogBundle bundle = LoadCatalogs();
+            PrototypeScenarioDefinition scenario = bundle.Scenarios.Resolve("balanced_basin");
+            WorldGenerationResult world = PrototypeWorldGenerator.Generate(scenario);
+            PrototypeSettlementSimulation simulation = new(scenario, bundle.RoleQuotas.Roles, world);
+            List<PrototypeResourceSiteState> resources = BuildResourceSites(world);
+
+            AdvanceSimulation(simulation, resources, 1000);
+
+            Assert.True(simulation.PathCoverageRatio >= 0.0f);
+            Assert.True(simulation.PathHeatByCell.Count > 0);
+            Assert.True(simulation.AverageTravelWorkRatio >= 0.0f);
         }
 
         private static List<PrototypeSettlementEvent> AdvanceSimulation(
@@ -132,10 +137,11 @@ namespace Societies.Core.Tests
             int ticks)
         {
             List<PrototypeSettlementEvent> events = new();
+            float currentHour = 8.0f;
 
             for (int i = 0; i < ticks; i++)
             {
-                PrototypeSettlementTickResult result = simulation.Advance(resources);
+                PrototypeSettlementTickResult result = simulation.Advance(resources, currentHour, PrototypeWeather.Clear);
                 events.AddRange(result.Events);
 
                 foreach (PrototypeHarvestRequest request in result.HarvestRequests)
@@ -144,14 +150,61 @@ namespace Societies.Core.Tests
                     Assert.True(index >= 0, $"Missing resource node {request.TargetNodeName}");
 
                     PrototypeResourceSiteState site = resources[index];
+                    if (site.UnitsRemaining < request.Amount)
+                    {
+                        simulation.OnHarvestFailed(request.WorkerId);
+                        continue;
+                    }
+
                     resources[index] = site with
                     {
                         UnitsRemaining = site.UnitsRemaining - request.Amount
                     };
                 }
+
+                currentHour = PrototypeClockService.AdvanceHour(currentHour, 1.0f / 20.0f, 600.0f);
             }
 
             return events;
+        }
+
+        private static List<PrototypeResourceSiteState> BuildResourceSites(WorldGenerationResult world)
+        {
+            return world.ResourceSpawns
+                .GroupBy(spawn => spawn.ResourceId)
+                .OrderBy(group => group.Key)
+                .SelectMany(group => group.Select((spawn, index) => new PrototypeResourceSiteState(
+                    $"{spawn.ResourceId}_{index + 1}",
+                    spawn.ResourceId,
+                    spawn.Position,
+                    spawn.UnitsRemaining,
+                    spawn.ClusterId)))
+                .ToList();
+        }
+
+        private static PrototypeCatalogBundle LoadCatalogs()
+        {
+            return PrototypeCatalogLoader.LoadFromDirectory(GetCatalogDirectoryPath());
+        }
+
+        private static string GetCatalogDirectoryPath()
+        {
+            string baseDirectory = AppContext.BaseDirectory;
+            string? current = baseDirectory;
+
+            while (!string.IsNullOrWhiteSpace(current))
+            {
+                string candidate = Path.Combine(current, "src", "societies", "data");
+                if (Directory.Exists(candidate))
+                {
+                    return candidate;
+                }
+
+                DirectoryInfo? parent = Directory.GetParent(current);
+                current = parent?.FullName;
+            }
+
+            throw new DirectoryNotFoundException($"Could not find src/societies/data from '{baseDirectory}'.");
         }
     }
 }

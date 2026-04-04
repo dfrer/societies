@@ -26,7 +26,19 @@ namespace Societies.UI
             InventoryComponent inventory,
             IReadOnlyDictionary<string, int> stockpile,
             IReadOnlyList<PrototypeWorkerState> workers,
+            IReadOnlyList<PrototypeStructureState> structures,
+            PrototypeSettlementClassification settlementClassification,
+            string buildQueueStatusText,
+            int mealCoveragePercent,
+            int bedCoveragePercent,
+            int hearthFuel,
+            float averageRouteLengthMeters,
+            float averageTravelWorkRatio,
+            float pathCoverageRatio,
+            IReadOnlyDictionary<string, int> routeBacklogTicksByKind,
             string interactionText,
+            PrototypeWorkerState? selectedCitizen = null,
+            PrototypeStructureState? selectedStructure = null,
             string? scenarioId = null,
             int? worldSeed = null,
             CameraMode cameraMode = CameraMode.Player,
@@ -47,14 +59,28 @@ namespace Societies.UI
                     overlayMode));
             hud.SetInventoryText(inventory.GetSummaryText());
             hud.SetCraftingText(CraftingSystem.GetRecipeSummary(inventory));
-            hud.SetSettlementText(PrototypeHudTextBuilder.BuildSettlementText(stockpile, workers));
+            hud.SetSettlementText(
+                PrototypeHudTextBuilder.BuildSettlementText(
+                    stockpile,
+                    workers,
+                    settlementClassification,
+                    buildQueueStatusText,
+                    mealCoveragePercent,
+                    bedCoveragePercent,
+                    hearthFuel,
+                    structures,
+                    averageTravelWorkRatio,
+                    routeBacklogTicksByKind));
             hud.SetWorldText(
                 PrototypeHudTextBuilder.BuildWorldText(
                     scenarioId ?? "unknown",
                     worldSeed ?? 0,
                     cameraMode,
                     overlayMode,
-                    worldSummary));
+                    worldSummary,
+                    averageRouteLengthMeters,
+                    pathCoverageRatio));
+            hud.SetInspectorText(PrototypeHudTextBuilder.BuildInspectorText(selectedCitizen, selectedStructure));
             hud.SetInteractionText(interactionText);
         }
     }

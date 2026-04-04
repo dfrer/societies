@@ -3,7 +3,7 @@ using Godot;
 namespace Societies.Simulation
 {
     /// <summary>
-    /// Shared spatial layout helpers for the prototype settlement hub.
+    /// Shared spatial layout helpers for the prototype settlement center.
     /// </summary>
     public static class PrototypeSettlementLayout
     {
@@ -42,8 +42,12 @@ namespace Societies.Simulation
             return resourceId switch
             {
                 "wood" => "Tree",
+                "logs" => "Tree",
                 "stone" => "Rock",
                 "berry" => "Berry Bush",
+                "berries" => "Berry Bush",
+                "clay" => "Clay Deposit",
+                "reeds" => "Reed Bed",
                 _ => "Resource"
             };
         }

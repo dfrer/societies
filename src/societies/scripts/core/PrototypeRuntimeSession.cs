@@ -11,13 +11,13 @@ namespace Societies.Core
     /// </summary>
     public sealed class PrototypeRuntimeSession
     {
-        private readonly int _defaultWorkerCount;
+        private readonly IReadOnlyList<PrototypeRoleQuotaDefinition> _roleQuotas;
         private PrototypeWeatherSimulation? _weatherSimulation;
         private PrototypeSettlementSimulation? _settlementSimulation;
         private WorldGenerationResult? _world;
         private int _simulationSeed;
 
-        public PrototypeRuntimeSession(PrototypeScenarioDefinition scenario)
+        public PrototypeRuntimeSession(PrototypeScenarioDefinition scenario, IReadOnlyList<PrototypeRoleQuotaDefinition>? roleQuotas = null)
         {
             Scenario = scenario;
             Inventory = new InventoryComponent();
@@ -25,7 +25,7 @@ namespace Societies.Core
             EventLog = new PrototypeEventLog();
             MetricsTracker = new PrototypeMetricsTracker();
             _simulationSeed = scenario.SimulationSeed;
-            _defaultWorkerCount = scenario.InitialWorkers;
+            _roleQuotas = roleQuotas?.ToList() ?? new List<PrototypeRoleQuotaDefinition>();
         }
 
         public PrototypeScenarioDefinition Scenario { get; }
@@ -56,6 +56,51 @@ namespace Societies.Core
 
         public IReadOnlyList<PrototypeWorkerState> Workers => _settlementSimulation?.Workers ?? System.Array.Empty<PrototypeWorkerState>();
 
+        public IReadOnlyList<PrototypeStructureState> Structures => _settlementSimulation?.Structures ?? System.Array.Empty<PrototypeStructureState>();
+
+        public IReadOnlyList<PrototypePathSegmentState> PathSegments => _settlementSimulation?.PathSegments ?? System.Array.Empty<PrototypePathSegmentState>();
+
+        public IReadOnlyList<PrototypeRemoteDepotState> RemoteDepots => _settlementSimulation?.RemoteDepots ?? System.Array.Empty<PrototypeRemoteDepotState>();
+
+        public IReadOnlyList<PrototypeBuildQueueEntry> BuildQueue => _settlementSimulation?.BuildQueue ?? System.Array.Empty<PrototypeBuildQueueEntry>();
+
+        public PrototypeSettlementClassification SettlementClassification => _settlementSimulation?.Classification ?? PrototypeSettlementClassification.Strained;
+
+        public int BedCoveragePercent => _settlementSimulation?.BedCoveragePercent ?? 0;
+
+        public int MealCoveragePercent => _settlementSimulation?.MealCoveragePercent ?? 0;
+
+        public int HearthFuel => _settlementSimulation?.HearthFuel ?? 0;
+
+        public int HearthLitTicks => _settlementSimulation?.HearthLitTicks ?? 0;
+
+        public float AverageRouteLengthMeters => _settlementSimulation?.AverageRouteLengthMeters ?? 0.0f;
+
+        public float AverageTravelWorkRatio => _settlementSimulation?.AverageTravelWorkRatio ?? 0.0f;
+
+        public float PathCoverageRatio => _settlementSimulation?.PathCoverageRatio ?? 0.0f;
+
+        public IReadOnlyDictionary<string, int> DepotThroughputByDepot => _settlementSimulation?.DepotThroughputByDepot ?? new Dictionary<string, int>();
+
+        public IReadOnlyDictionary<string, int> RouteBacklogTicksByKind => _settlementSimulation?.RouteBacklogTicksByKind ?? new Dictionary<string, int>();
+
+        public IReadOnlyList<PrototypeRouteHeatCellState> RouteHeatCells =>
+            _settlementSimulation == null || _world == null
+                ? System.Array.Empty<PrototypeRouteHeatCellState>()
+                : _settlementSimulation.PathHeatByCell
+                    .OrderBy(pair => pair.Key.X)
+                    .ThenBy(pair => pair.Key.Y)
+                    .Select(pair => new PrototypeRouteHeatCellState
+                    {
+                        GridX = pair.Key.X,
+                        GridY = pair.Key.Y,
+                        Position = _world.WorldMap.GetCell(pair.Key.X, pair.Key.Y).WorldPosition,
+                        UsageCount = pair.Value
+                    })
+                    .ToList();
+
+        public string SelectedBuildQueueStatusText => _settlementSimulation?.SelectedBuildQueueStatusText ?? "Build Queue: empty";
+
         public WorldGenerationResult? World => _world;
 
         public int WorldSeed => _world?.WorldSeed ?? 0;
@@ -79,7 +124,8 @@ namespace Societies.Core
             Stockpile.ReplaceContents(new Dictionary<string, int>());
             _world = PrototypeWorldGenerator.Generate(Scenario);
             _weatherSimulation = new PrototypeWeatherSimulation(_simulationSeed);
-            _settlementSimulation = new PrototypeSettlementSimulation(Stockpile, _defaultWorkerCount, SettlementAnchorPosition, _world.WorldMap);
+            _settlementSimulation = new PrototypeSettlementSimulation(Scenario, _roleQuotas, _world);
+            SyncSettlementViews();
         }
 
         public bool TryCraftRecipe(string recipeId, out string statusText)
@@ -119,7 +165,8 @@ namespace Societies.Core
                 RecordEvent(PrototypeEventTypes.WeatherShifted, $"Weather shifted to {CurrentWeatherName}");
             }
 
-            PrototypeSettlementTickResult settlementResult = _settlementSimulation?.Advance(resources) ?? new PrototypeSettlementTickResult();
+            PrototypeSettlementTickResult settlementResult = _settlementSimulation?.Advance(resources, CurrentHour, CurrentWeather) ?? new PrototypeSettlementTickResult();
+            SyncSettlementViews();
             return new PrototypeRuntimeTickResult(
                 settlementResult,
                 SimulationTick % 20 == 0);
@@ -136,6 +183,7 @@ namespace Societies.Core
         public void OnHarvestFailed(string workerId, string workerDisplayName, string resourceId)
         {
             _settlementSimulation?.OnHarvestFailed(workerId);
+            SyncSettlementViews();
             RecordEvent(PrototypeEventTypes.AiHarvestFailed, $"{workerDisplayName} could not harvest {resourceId}");
         }
 
@@ -151,6 +199,28 @@ namespace Societies.Core
                 $"Harvested {InventoryComponent.FormatItemName(itemId)} x{amount}");
         }
 
+        public bool SelectNextBuildQueueEntry()
+        {
+            if (_settlementSimulation == null || !_settlementSimulation.SelectNextBuildQueueEntry())
+            {
+                return false;
+            }
+
+            RecordEvent(PrototypeEventTypes.BuildQueueChanged, _settlementSimulation.SelectedBuildQueueStatusText);
+            return true;
+        }
+
+        public bool ToggleSelectedBuildQueuePause()
+        {
+            if (_settlementSimulation == null || !_settlementSimulation.ToggleSelectedBuildQueuePause())
+            {
+                return false;
+            }
+
+            RecordEvent(PrototypeEventTypes.BuildQueueChanged, _settlementSimulation.SelectedBuildQueueStatusText);
+            return true;
+        }
+
         public void CaptureMetrics(IReadOnlyList<PrototypeResourceSnapshot> resources)
         {
             MetricsTracker.Capture(
@@ -160,7 +230,18 @@ namespace Societies.Core
                 Inventory.Items,
                 Stockpile.Items,
                 Workers,
-                resources);
+                resources,
+                SettlementClassification,
+                MealCoveragePercent,
+                BedCoveragePercent,
+                HearthFuel,
+                Structures.Count(structure => structure.IsBuilt),
+                Structures.Count(structure => structure.IsBlocked),
+                AverageRouteLengthMeters,
+                AverageTravelWorkRatio,
+                PathCoverageRatio,
+                DepotThroughputByDepot,
+                RouteBacklogTicksByKind);
         }
 
         public PrototypeRuntimeSnapshot CaptureSnapshot(
@@ -174,8 +255,12 @@ namespace Societies.Core
                     WorkerId = worker.WorkerId,
                     DisplayName = worker.DisplayName,
                     PreferredResourceId = worker.PreferredResourceId,
+                    RoleId = worker.Role.ToString(),
                     Phase = worker.Phase.ToString(),
                     TargetResourceNodeName = worker.TargetResourceNodeName,
+                    TargetStructureId = worker.TargetStructureId,
+                    SourceStoreId = worker.SourceStoreId,
+                    DestinationStoreId = worker.DestinationStoreId,
                     CarryItemId = worker.CarryItemId,
                     CarryAmount = worker.CarryAmount,
                     TicksRemaining = worker.TicksRemaining,
@@ -184,13 +269,33 @@ namespace Societies.Core
                     HomePosition = PrototypeSerializableVector3.FromVector3(worker.HomePosition),
                     TargetPosition = PrototypeSerializableVector3.FromVector3(worker.TargetPosition),
                     TargetLabel = worker.TargetLabel,
-                    ActivityText = worker.ActivityText
+                    ActivityText = worker.ActivityText,
+                    Nutrition = worker.Needs.Nutrition,
+                    Fatigue = worker.Needs.Fatigue,
+                    LastFailureReason = worker.LastFailureReason,
+                    CurrentOrderId = worker.CurrentOrderId,
+                    CurrentOrderKind = worker.CurrentOrderKind?.ToString() ?? string.Empty,
+                    CurrentOrderReason = worker.CurrentOrderReason,
+                    HomeBedCapacity = worker.HomeBedCapacity,
+                    RecentEvents = worker.RecentEvents.ToList(),
+                    TravelTicksAccumulated = worker.TravelTicksAccumulated,
+                    WorkTicksAccumulated = worker.WorkTicksAccumulated,
+                    CurrentRouteLengthMeters = worker.Navigation.CurrentRouteLengthMeters,
+                    CurrentRouteCost = worker.Navigation.CurrentRouteCost,
+                    CurrentRouteTravelTicks = worker.Navigation.CurrentRouteTravelTicks,
+                    CurrentWaypointIndex = worker.Navigation.CurrentWaypointIndex,
+                    CachedRouteVersion = worker.Navigation.CachedRouteVersion,
+                    RouteSourceGridX = worker.Navigation.SourceGridX,
+                    RouteSourceGridY = worker.Navigation.SourceGridY,
+                    RouteDestinationGridX = worker.Navigation.DestinationGridX,
+                    RouteDestinationGridY = worker.Navigation.DestinationGridY,
+                    RouteWaypoints = worker.Navigation.RouteWaypoints.ToList()
                 })
                 .ToList();
 
             return new PrototypeRuntimeSnapshot
             {
-                SchemaVersion = 3,
+                SchemaVersion = 5,
                 ScenarioId = Scenario.Id,
                 WorldSeed = WorldSeed,
                 WorldGenerationAttempt = WorldGenerationAttempt,
@@ -206,7 +311,8 @@ namespace Societies.Core
                 Inventory = new Dictionary<string, int>(Inventory.Items),
                 Stockpile = new Dictionary<string, int>(Stockpile.Items),
                 Workers = workers,
-                Resources = resources.ToList()
+                Resources = resources.ToList(),
+                Settlement = _settlementSimulation?.CaptureSnapshot(SimulationTick) ?? new PrototypeSettlementSnapshot()
             };
         }
 
@@ -224,9 +330,9 @@ namespace Societies.Core
             _weatherSimulation = new PrototypeWeatherSimulation(_simulationSeed, ParseWeather(snapshot.CurrentWeather));
             _weatherSimulation.SetState(ParseWeather(snapshot.CurrentWeather), snapshot.TimeUntilNextWeatherShift, snapshot.WeatherRandomState);
 
-            int workerCount = snapshot.Workers.Count > 0 ? snapshot.Workers.Count : _defaultWorkerCount;
-            _settlementSimulation = new PrototypeSettlementSimulation(Stockpile, workerCount, SettlementAnchorPosition, _world.WorldMap);
-            _settlementSimulation.LoadState(snapshot.Workers, SettlementAnchorPosition, _world.WorldMap);
+            _settlementSimulation = new PrototypeSettlementSimulation(Scenario, _roleQuotas, _world);
+            _settlementSimulation.LoadState(snapshot.Settlement ?? new PrototypeSettlementSnapshot());
+            SyncSettlementViews();
             MetricsTracker.Clear();
         }
 
@@ -241,6 +347,11 @@ namespace Societies.Core
         public void RecordEvent(string eventType, string message)
         {
             EventLog.Record(SimulationTick, eventType, message);
+        }
+
+        private void SyncSettlementViews()
+        {
+            _settlementSimulation?.CopyStockpileTo(Stockpile);
         }
 
         private static PrototypeWeather ParseWeather(string weatherName)

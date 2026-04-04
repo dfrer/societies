@@ -25,7 +25,8 @@ namespace Societies.Core
                 plan.Add(new PrototypeResourceSpawn(
                     resourceId,
                     GetRandomPoint(bounds, rng),
-                    unitsRemaining));
+                    unitsRemaining,
+                    string.Empty));
             }
 
             return plan;
@@ -44,7 +45,8 @@ namespace Societies.Core
             return new PrototypeResourceSpawn(
                 resourceId,
                 settlementAnchorPosition + offset,
-                resourceId == "berry" ? 4 : 6);
+                resourceId == "berry" ? 4 : 6,
+                string.Empty);
         }
 
         public static Vector3 GetRandomPoint(PrototypeSpawnBounds bounds, DeterministicRandom rng)
@@ -72,5 +74,6 @@ namespace Societies.Core
     public readonly record struct PrototypeResourceSpawn(
         string ResourceId,
         Vector3 Position,
-        int UnitsRemaining);
+        int UnitsRemaining,
+        string ClusterId);
 }
