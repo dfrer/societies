@@ -156,7 +156,8 @@ namespace Societies.Tests
                 GameManager manager = scene as GameManager ?? throw new Exception("Main scene root is not GameManager");
                 NetworkManager network = manager.GetNodeOrNull<NetworkManager>("NetworkManager") ?? throw new Exception("NetworkManager missing");
                 PrototypeHud hud = manager.GetNodeOrNull<PrototypeHud>("UI") ?? throw new Exception("PrototypeHud missing");
-                DayNightCycle dayNight = manager.GetNodeOrNull<DayNightCycle>("World/Environment/DayNightCycle") ?? throw new Exception("DayNightCycle missing");
+                EnvironmentController? envController = manager.GetNodeOrNull<EnvironmentController>("World/Environment/Environment");
+                Assert(envController != null, "EnvironmentController missing (was DayNightCycle)");
                 TerrainGenerator terrain = manager.GetNodeOrNull<TerrainGenerator>("World/Systems/Terrain") ?? throw new Exception("TerrainGenerator missing");
                 PrototypeScenarioDefinition scenario = LoadCatalogBundle().Scenarios.Resolve("balanced_basin");
 
