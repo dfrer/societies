@@ -185,8 +185,8 @@ The Voxel World System spans multiple sessions with specific dependencies:
 | Physics & Collision | 1 | 18-physics-collision.md | 13 | Movement |
 | Voxel Interaction | 3 | 01f-voxel-interaction-spec.md | 13, 18 | Mining/Building |
 | Entity-Block System | 3 | 01g-entity-block-system.md | 13, 18 | Complex objects |
-| Weight Carrying | 3 | weight-carrying-system.md | 13 | Logistics |
-| Entity Catalog | 3 | comprehensive-entity-catalog.md | 01g | Art/Design |
+| Weight Carrying | 3 | 03-weight-carrying-system.md | 13 | Logistics |
+| Entity Catalog | 3 | 04-entity-catalog.md | 01g | Art/Design |
 | World Resources | 4 | 03-world-resources.md | 13, 14 | Economy |
 | 3D Jurisdiction | 5 | 02d-3d-jurisdiction.md | 13 | Governance |
 
@@ -252,8 +252,6 @@ The Voxel World System spans multiple sessions with specific dependencies:
 | `06-ai-skills-reference.md` | Technical skills and reference guide |
 | `RESEARCH-INDEX.md` | Research sources and citations |
 | `SESSION-3-HANDOFF.md` | Transition notes for gameplay implementation |
-| `VERIFICATION-PROMPT.md` | AI verification checklist |
-| `VERIFICATION-REPORT.md` | Completion verification report |
 | `[AGENTS-READ-FIRST]-index.md` | Session-specific navigation index |
 | `archive/` | Legacy backup files |
 
@@ -268,7 +266,7 @@ The Voxel World System spans multiple sessions with specific dependencies:
 
 | File | Description | Key Topics |
 |------|-------------|------------|
-| `day3-core-gameplay-loops.md` | Original comprehensive gameplay systems (~1,050 lines) |
+| `archives/00-day3-legacy.md` | Original comprehensive gameplay systems (~1,050 lines) - moved to archives |
 | `01-moment-to-moment-gameplay.md` | Core moment-to-moment mechanics |
 | `01b-inventory-crafting-recipes.md` | Inventory and crafting recipes |
 | `01c-movement-interaction-spec.md` | Movement and interaction systems |
@@ -285,8 +283,8 @@ The Voxel World System spans multiple sessions with specific dependencies:
 | `06-return-triggers.md` | Player return triggers |
 | `07-ui-ux-paths.md` | UI/UX design paths |
 | `07b-screen-specifications.md` | Screen specifications |
-| `weight-carrying-system.md` | **NEW** - Weight carrying system | Carrying capacity, strength modifiers, vehicles |
-| `comprehensive-entity-catalog.md` | **NEW** - Entity catalog | Transportation, crafting, storage, furniture |
+| `03-weight-carrying-system.md` | **NEW** - Weight carrying system | Carrying capacity, strength modifiers, vehicles |
+| `04-entity-catalog.md` | **NEW** - Entity catalog | Transportation, crafting, storage, furniture |
 | `01-gameplay-systems-architecture.md` | Gameplay systems architecture |
 | `RESEARCH-INDEX.md` | Research sources and citations |
 | `[AGENTS-READ-FIRST]-index.md` | Session-specific navigation index |
@@ -365,7 +363,7 @@ The Voxel World System spans multiple sessions with specific dependencies:
 
 **Sessions 3-5**: Mixed Structure
 - Core content in consolidated files
-- NEW: Voxel-specific documents compartmentalized (01f, 01g, weight-carrying, entity-catalog, 03-world-resources, 02d-3d-jurisdiction)
+- NEW: Voxel-specific documents compartmentalized (01f, 01g, 03-weight-carrying, 04-entity-catalog, 03-world-resources, 02d-3d-jurisdiction)
 - Balance between readability and reference
 
 **Sessions 6-7**: Single File Structure
@@ -389,8 +387,8 @@ The Voxel World System spans multiple sessions with specific dependencies:
 2. **Session 3** (4 documents, ~800 lines):
    - 01f-voxel-interaction-spec.md: Player interaction
    - 01g-entity-block-system.md: Hybrid entity system
-   - weight-carrying-system.md: Logistics and carrying
-   - comprehensive-entity-catalog.md: Entity specifications
+   - 03-weight-carrying-system.md: Logistics and carrying
+   - 04-entity-catalog.md: Entity specifications
 
 3. **Session 4** (1 document, ~300 lines):
    - 03-world-resources.md: Resource distribution
@@ -431,8 +429,8 @@ All voxel documentation aligns with Session 1 constraints:
 - [Physics & Collision](./session-1-technical-architecture/18-physics-collision.md)
 - [Voxel Interaction](./session-3-core-gameplay-loops/01f-voxel-interaction-spec.md)
 - [Entity-Block System](./session-3-core-gameplay-loops/01g-entity-block-system.md)
-- [Weight Carrying](./session-3-core-gameplay-loops/weight-carrying-system.md)
-- [Entity Catalog](./session-3-core-gameplay-loops/comprehensive-entity-catalog.md)
+- [Weight Carrying](./session-3-core-gameplay-loops/03-weight-carrying-system.md)
+- [Entity Catalog](./session-3-core-gameplay-loops/04-entity-catalog.md)
 - [World Resources](./session-4-progression-and-balance/03-world-resources.md)
 - [3D Jurisdiction](./session-5-governance-mechanics/02d-3d-jurisdiction.md)
 
@@ -464,6 +462,8 @@ All voxel documentation aligns with Session 1 constraints:
 ---
 
 ## 📅 Next Steps
+
+> **Note**: These are pre-prototype planning checkboxes, not current tasks.
 
 ### Immediate (Next 2 Weeks)
 1. [ ] Review voxel world documentation (Session 1 docs 13-18)
