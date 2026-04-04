@@ -1,0 +1,9 @@
+{
+  "roles": [
+    { "roleId": "gatherers", "share": 0.30 },
+    { "roleId": "haulers", "share": 0.25 },
+    { "roleId": "processors", "share": 0.20 },
+    { "roleId": "builders", "share": 0.15 },
+    { "roleId": "reserve", "share": 0.10 }
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "structures": [
+    { "id": "central_hearth", "displayName": "Central Hearth", "category": "hub" },
+    { "id": "central_depot", "displayName": "Central Depot", "category": "storage" },
+    { "id": "cookfire", "displayName": "Cookfire", "category": "production" },
+    { "id": "wood_yard", "displayName": "Wood Yard", "category": "production" },
+    { "id": "drying_rack", "displayName": "Drying Rack", "category": "production" },
+    { "id": "kiln", "displayName": "Kiln", "category": "production" },
+    { "id": "storehouse", "displayName": "Storehouse", "category": "storage" },
+    { "id": "hut", "displayName": "Hut", "category": "housing" },
+    { "id": "path_segment", "displayName": "Path Segment", "category": "infrastructure" },
+    { "id": "campfire", "displayName": "Campfire", "category": "prototype" }
+  ]
+}

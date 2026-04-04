@@ -217,6 +217,11 @@ namespace Societies.Tests
                 Assert(File.Exists(snapshotPath), "Snapshot file should exist after saving");
                 Assert(File.Exists(Path.Combine(outputDirectory, "latest-event-log.json")), "Event log should exist after saving");
                 Assert(File.Exists(Path.Combine(outputDirectory, "latest-run-summary.json")), "Run summary should exist after saving");
+                Assert(File.Exists(Path.Combine(outputDirectory, "snapshot-v2.json")), "V2 snapshot should exist after saving");
+                Assert(File.Exists(Path.Combine(outputDirectory, "event-log-v2.json")), "V2 event log should exist after saving");
+                Assert(File.Exists(Path.Combine(outputDirectory, "run-summary-v2.json")), "V2 run summary should exist after saving");
+                Assert(File.Exists(Path.Combine(outputDirectory, "metrics-timeseries-v2.csv")), "V2 metrics csv should exist after saving");
+                Assert(File.Exists(Path.Combine(outputDirectory, "world-summary-v2.json")), "V2 world summary should exist after saving");
 
                 manager.Inventory.ReplaceContents(new Dictionary<string, int>());
                 Assert(manager.Inventory.GetCount("campfire") == 0, "Inventory should be clear before load");
@@ -421,6 +426,11 @@ namespace Societies.Tests
                 Assert(File.Exists(snapshotPath), "Soak snapshot should exist");
                 Assert(File.Exists(Path.Combine(outputDirectory, "latest-event-log.json")), "Soak event log should exist");
                 Assert(File.Exists(Path.Combine(outputDirectory, "latest-run-summary.json")), "Soak run summary should exist");
+                Assert(File.Exists(Path.Combine(outputDirectory, "snapshot-v2.json")), "Soak V2 snapshot should exist");
+                Assert(File.Exists(Path.Combine(outputDirectory, "event-log-v2.json")), "Soak V2 event log should exist");
+                Assert(File.Exists(Path.Combine(outputDirectory, "run-summary-v2.json")), "Soak V2 run summary should exist");
+                Assert(File.Exists(Path.Combine(outputDirectory, "metrics-timeseries-v2.csv")), "Soak V2 metrics csv should exist");
+                Assert(File.Exists(Path.Combine(outputDirectory, "world-summary-v2.json")), "Soak V2 world summary should exist");
                 Assert(agentsRoot.GetChildCount() == snapshot.Workers.Select(worker => worker.WorkerId).Distinct().Count(), "Worker visuals should remain unique");
                 Assert(snapshot.Stockpile.GetValueOrDefault("campfire", 0) <= 1, "Soak should not craft more than one campfire");
                 Assert(snapshot.Inventory.Values.All(count => count >= 0), "Player inventory counts should not go negative");

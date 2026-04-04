@@ -5,27 +5,23 @@ using Societies.UI;
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 
 namespace Societies.Core
 {
     /// <summary>
-    /// Prototype 1 bootstrapper. Builds the playable slice while routing repeatable
-    /// simulation work through deterministic services that can be tested outside the scene tree.
+    /// Prototype runtime orchestrator. Scene setup and presentation stay here; deterministic
+    /// simulation state lives in <see cref="PrototypeRuntimeSession"/>.
     /// </summary>
     public partial class GameManager : Node
     {
         private const double TickIntervalSeconds = 1.0 / 20.0;
-        private const string DefaultRunOutputDirectory = "user://prototype_runs";
-        private const string SnapshotFileName = "latest-snapshot.json";
-        private const string EventLogFileName = "latest-event-log.json";
-        private const string RunSummaryFileName = "latest-run-summary.json";
-        private const string RunOutputDirectoryEnvironmentVariable = "SOCIETIES_RUN_OUTPUT_DIR";
+        private const string DefaultScenarioId = "balanced_basin";
         private static readonly Vector3 SettlementAnchorPosition = new(16.0f, 0.0f, 14.0f);
 
         public static GameManager? Instance { get; private set; }
 
         [Export] private bool _autoStartSinglePlayer = true;
+        [Export] private string _scenarioId = DefaultScenarioId;
         [Export] private int _simulationSeed = 1337;
         [Export] private int _initialTrees = 36;
         [Export] private int _initialRocks = 24;
@@ -37,47 +33,47 @@ namespace Societies.Core
         private TerrainGenerator? _terrain;
         private DayNightCycle? _dayNightCycle;
         private WeatherController? _weatherController;
-        private PrototypeSettlementHub? _settlementHub;
         private PrototypeHud? _hud;
         private PlayerCharacter? _player;
-        private readonly InventoryComponent _inventory = new();
-        private readonly InventoryComponent _stockpile = new();
-        private readonly PrototypeEventLog _eventLog = new();
         private Node3D? _worldRoot;
         private Node3D? _playersRoot;
         private Node3D? _agentsRoot;
         private Node3D? _entitiesRoot;
         private Node3D? _environmentRoot;
         private Node? _systemsRoot;
-        private PrototypeWeatherSimulation? _weatherSimulation;
-        private PrototypeSettlementSimulation? _settlementSimulation;
-        private readonly Dictionary<string, PrototypeWorkerAgent> _workerNodes = new();
+        private PrototypeCatalogBundle? _catalogs;
+        private PrototypeScenarioDefinition? _scenario;
+        private PrototypeRunArtifactManager? _artifactManager;
+        private PrototypeRuntimeSession? _runtimeSession;
+        private PrototypeSettlementScenePresenter? _scenePresenter;
+        private readonly InventoryComponent _fallbackInventory = new();
         private double _tickAccumulator;
-        private long _simulationTick;
-        private float _currentHour;
-        private float _runStartHour;
 
         public bool IsGameRunning { get; private set; }
 
-        public int SimulationSeed => _simulationSeed;
+        public int SimulationSeed => _runtimeSession?.SimulationSeed ?? _simulationSeed;
 
-        public long SimulationTick => _simulationTick;
+        public long SimulationTick => _runtimeSession?.SimulationTick ?? 0;
 
-        public InventoryComponent Inventory => _inventory;
+        public InventoryComponent Inventory => _runtimeSession?.Inventory ?? _fallbackInventory;
 
         public override void _Ready()
         {
             Instance = this;
 
             EnsureSceneStructure();
+            LoadCatalogs();
             ConfigureLocalSession();
-            BuildPrototypeWorld();
+            EnsureWorldShell();
+            StartNewPrototypeRun(resetPlayerPosition: true);
 
-            _inventory.Changed += OnInventoryChanged;
-            _stockpile.Changed += OnStockpileChanged;
-            UpdateHud();
+            if (_autoStartSinglePlayer)
+            {
+                RecordEvent(PrototypeEventTypes.SessionStarted, "Started local prototype session");
+            }
 
             RecordEvent(PrototypeEventTypes.RuntimeReady, "Societies Prototype 1 initialized");
+            UpdateHud();
             GD.Print("Societies Prototype 1 initialized");
         }
 
@@ -153,153 +149,105 @@ namespace Societies.Core
 
         public bool TryCraftRecipe(string recipeId)
         {
-            bool crafted = CraftingSystem.TryCraft(recipeId, _inventory, out CraftingRecipe? recipe);
-            string statusText = crafted
-                ? $"Crafted {recipe!.DisplayName}"
-                : CraftingSystem.GetFailureText(recipeId, _inventory);
+            if (_runtimeSession == null)
+            {
+                return false;
+            }
 
+            bool crafted = _runtimeSession.TryCraftRecipe(recipeId, out string statusText);
             _hud?.SetStatusText(statusText);
-            RecordEvent(crafted ? PrototypeEventTypes.PlayerCraftSucceeded : PrototypeEventTypes.PlayerCraftFailed, statusText);
             UpdateHud();
             return crafted;
         }
 
         public void ResetPrototypeRun()
         {
-            if (_entitiesRoot == null || _agentsRoot == null)
-            {
-                return;
-            }
-
-            _eventLog.Clear();
-            _inventory.ReplaceContents(new Dictionary<string, int>());
-            _stockpile.ReplaceContents(new Dictionary<string, int>());
-            ClearChildren(_entitiesRoot);
-            ClearChildren(_agentsRoot);
-            _workerNodes.Clear();
-
-            _simulationTick = 0;
-            _tickAccumulator = 0.0;
-            _weatherSimulation = null;
-            _settlementSimulation = null;
-
-            BuildPrototypeWorld();
-
-            if (_terrain != null && _player != null)
-            {
-                _player.ResetForPrototypeRun(_terrain.GetPlayerSpawnPoint());
-            }
-
-            _runStartHour = _currentHour;
-            RecordEvent(PrototypeEventTypes.RuntimeReset, $"Reset prototype run with seed {_simulationSeed}");
+            StartNewPrototypeRun(resetPlayerPosition: true);
+            RecordEvent(PrototypeEventTypes.RuntimeReset, $"Reset prototype run with seed {SimulationSeed}");
             _hud?.SetStatusText("Prototype run reset");
             UpdateHud();
         }
 
         public void ToggleWeatherState()
         {
-            if (_weatherSimulation == null)
+            if (_runtimeSession == null)
             {
                 return;
             }
 
-            _weatherSimulation.ToggleWeather();
-            ApplySimulationStateToScene();
-
-            string statusText = $"Weather set to {PrototypeWeatherService.GetName(_weatherSimulation.CurrentWeather)}";
+            string statusText = _runtimeSession.ToggleWeatherState();
+            ApplyRuntimeStateToScene();
             _hud?.SetStatusText(statusText);
-            RecordEvent(PrototypeEventTypes.WeatherToggled, statusText);
             UpdateHud();
         }
 
         public PrototypeRuntimeSnapshot CaptureSnapshot()
         {
-            List<PrototypeResourceSnapshot> resources = _entitiesRoot == null
-                ? new List<PrototypeResourceSnapshot>()
-                : _entitiesRoot
-                    .GetChildren()
-                    .OfType<ResourceNode>()
-                    .OrderBy(node => node.Name.ToString())
-                    .Select(node => new PrototypeResourceSnapshot
-                    {
-                        ResourceId = node.ResourceId,
-                        UnitsRemaining = node.UnitsRemaining,
-                        Position = PrototypeSerializableVector3.FromVector3(node.Position)
-                    })
-                    .ToList();
-
-            List<PrototypeWorkerSnapshot> workers = _settlementSimulation?.Workers
-                .OrderBy(worker => worker.WorkerId)
-                .Select(worker => new PrototypeWorkerSnapshot
-                {
-                    WorkerId = worker.WorkerId,
-                    DisplayName = worker.DisplayName,
-                    PreferredResourceId = worker.PreferredResourceId,
-                    Phase = worker.Phase.ToString(),
-                    TargetResourceNodeName = worker.TargetResourceNodeName,
-                    CarryItemId = worker.CarryItemId,
-                    CarryAmount = worker.CarryAmount,
-                    TicksRemaining = worker.TicksRemaining,
-                    PhaseDurationTicks = worker.PhaseDurationTicks,
-                    Position = PrototypeSerializableVector3.FromVector3(worker.Position),
-                    HomePosition = PrototypeSerializableVector3.FromVector3(worker.HomePosition),
-                    TargetPosition = PrototypeSerializableVector3.FromVector3(worker.TargetPosition),
-                    TargetLabel = worker.TargetLabel,
-                    ActivityText = worker.ActivityText
-                })
-                .ToList() ?? new List<PrototypeWorkerSnapshot>();
-
-            return new PrototypeRuntimeSnapshot
+            if (_runtimeSession == null || _scenePresenter == null)
             {
-                SimulationSeed = _simulationSeed,
-                SimulationTick = _simulationTick,
-                CurrentHour = _currentHour,
-                CurrentWeather = _weatherSimulation != null
-                    ? PrototypeWeatherService.GetName(_weatherSimulation.CurrentWeather)
-                    : PrototypeWeatherService.GetName(PrototypeWeather.Clear),
-                TimeUntilNextWeatherShift = _weatherSimulation?.TimeUntilNextShift ?? 0.0f,
-                WeatherRandomState = _weatherSimulation?.RandomState ?? 0u,
-                PlayerPosition = PrototypeSerializableVector3.FromVector3(_player?.Position ?? Vector3.Zero),
-                Inventory = new Dictionary<string, int>(_inventory.Items),
-                Stockpile = new Dictionary<string, int>(_stockpile.Items),
-                Workers = workers,
-                Resources = resources
-            };
+                return new PrototypeRuntimeSnapshot();
+            }
+
+            return _runtimeSession.CaptureSnapshot(
+                _player?.Position ?? Vector3.Zero,
+                _scenePresenter.CaptureResourceSnapshots());
         }
 
         public string SaveSnapshotToDisk()
         {
-            string snapshotPath = GetLatestSnapshotPath();
-            string eventLogPath = GetLatestEventLogPath();
-            string runSummaryPath = GetLatestRunSummaryPath();
+            if (_runtimeSession == null || _artifactManager == null || _scenePresenter == null)
+            {
+                return string.Empty;
+            }
 
-            RecordEvent(PrototypeEventTypes.SnapshotSaved, $"Saved snapshot to {Path.GetFileName(snapshotPath)}");
+            PrototypeArtifactPaths artifactPaths = _artifactManager.GetArtifactPaths();
+            RecordEvent(PrototypeEventTypes.SnapshotSaved, $"Saved snapshot to {Path.GetFileName(artifactPaths.LegacySnapshotPath)}");
+
             PrototypeRuntimeSnapshot snapshot = CaptureSnapshot();
+            CaptureMetricsSnapshot();
+            PrototypeWorldSummary worldSummary = PrototypeWorldSummaryBuilder.Build(_runtimeSession, _terrain, snapshot.Resources);
 
-            PrototypePersistenceService.SaveSnapshot(snapshotPath, snapshot);
-            PrototypePersistenceService.SaveEventLog(eventLogPath, _eventLog);
-            PrototypePersistenceService.SaveRunSummary(
-                runSummaryPath,
-                PrototypeRunSummaryBuilder.Build(snapshot, _eventLog.Entries, _runStartHour));
-
+            string snapshotPath = _artifactManager.SaveArtifacts(_runtimeSession, snapshot, worldSummary);
             _hud?.SetStatusText($"Saved snapshot to {Path.GetFileName(snapshotPath)}");
             return snapshotPath;
         }
 
         public bool LoadLatestSnapshotFromDisk()
         {
-            string snapshotPath = GetLatestSnapshotPath();
-            if (!File.Exists(snapshotPath))
+            _artifactManager ??= new PrototypeRunArtifactManager();
+            PrototypeLoadedArtifacts? loadedArtifacts = _artifactManager.LoadLatestArtifacts();
+            if (loadedArtifacts == null)
             {
                 _hud?.SetStatusText("No snapshot found");
                 return false;
             }
 
-            PrototypeRuntimeSnapshot snapshot = PrototypePersistenceService.LoadSnapshot(snapshotPath);
-            LoadRunArtifactsForSnapshot(snapshot);
-            ApplySnapshot(snapshot);
-            RecordEvent(PrototypeEventTypes.SnapshotLoaded, $"Loaded snapshot from {Path.GetFileName(snapshotPath)}");
-            _hud?.SetStatusText($"Loaded snapshot from {Path.GetFileName(snapshotPath)}");
+            EnsureWorldShell();
+
+            PrototypeLoadedArtifacts artifacts = loadedArtifacts.Value;
+            PrototypeScenarioDefinition scenario = ResolveScenarioDefinition(artifacts.Snapshot.ScenarioId);
+            CreateRuntimeSession(scenario);
+
+            _tickAccumulator = 0.0;
+            _runtimeSession!.ApplySnapshot(artifacts.Snapshot, SettlementAnchorPosition);
+            _runtimeSession.RestoreArtifacts(artifacts.EventLog, artifacts.RunSummary);
+
+            _scenePresenter?.ResetDynamicNodes();
+            _scenePresenter?.ReplaceResourceNodes(artifacts.Snapshot.Resources);
+            ApplyRuntimeStateToScene();
+            _scenePresenter?.SyncWorkers(_runtimeSession.Workers);
+            _scenePresenter?.UpdateSettlementPresentation(_runtimeSession.Stockpile.Items, _runtimeSession.Workers);
+
+            if (_player != null)
+            {
+                _player.Velocity = Vector3.Zero;
+                _player.Position = artifacts.Snapshot.PlayerPosition.ToVector3();
+                BindPlayerToRuntime();
+            }
+
+            CaptureMetricsSnapshot();
+            RecordEvent(PrototypeEventTypes.SnapshotLoaded, $"Loaded snapshot from {Path.GetFileName(_artifactManager.GetArtifactPaths().LegacySnapshotPath)}");
+            _hud?.SetStatusText($"Loaded snapshot from {Path.GetFileName(_artifactManager.GetArtifactPaths().LegacySnapshotPath)}");
             UpdateHud();
             return true;
         }
@@ -329,22 +277,41 @@ namespace Societies.Core
             _hud = GetOrCreateChild<PrototypeHud>(this, "UI");
         }
 
+        private void LoadCatalogs()
+        {
+            string dataDirectory = ProjectSettings.GlobalizePath("res://data");
+
+            try
+            {
+                _catalogs = PrototypeCatalogLoader.LoadFromDirectory(dataDirectory);
+            }
+            catch (Exception ex)
+            {
+                GD.PushWarning($"Failed to load prototype catalogs from {dataDirectory}: {ex.Message}. Falling back to built-in legacy defaults.");
+                _catalogs = CreateFallbackCatalogBundle();
+            }
+
+            _scenario = ResolveScenarioDefinition(_scenarioId);
+            ApplyScenarioDefaults(_scenario);
+        }
+
         private void ConfigureLocalSession()
         {
             if (_autoStartSinglePlayer)
             {
                 _networkManager?.StartLocalSession();
                 IsGameRunning = true;
-                RecordEvent(PrototypeEventTypes.SessionStarted, "Started local prototype session");
             }
         }
 
-        private void BuildPrototypeWorld()
+        private void EnsureWorldShell()
         {
-            if (_worldRoot == null || _playersRoot == null || _agentsRoot == null || _entitiesRoot == null || _environmentRoot == null || _systemsRoot == null)
+            if (_playersRoot == null || _agentsRoot == null || _entitiesRoot == null || _environmentRoot == null || _systemsRoot == null)
             {
                 return;
             }
+
+            _artifactManager ??= new PrototypeRunArtifactManager();
 
             _terrain = _systemsRoot.GetNodeOrNull<TerrainGenerator>("Terrain");
             if (_terrain == null)
@@ -352,6 +319,13 @@ namespace Societies.Core
                 _terrain = new TerrainGenerator { Name = "Terrain" };
                 _systemsRoot.AddChild(_terrain);
             }
+
+            if (_scenario != null)
+            {
+                _terrain.WorldSize = _scenario.WorldSize;
+            }
+
+            _terrain.RebuildTerrain();
 
             _dayNightCycle = _environmentRoot.GetNodeOrNull<DayNightCycle>("DayNightCycle");
             if (_dayNightCycle == null)
@@ -367,317 +341,155 @@ namespace Societies.Core
                 _environmentRoot.AddChild(_weatherController);
             }
 
-            _settlementHub = _environmentRoot.GetNodeOrNull<PrototypeSettlementHub>("SettlementHub");
-            if (_settlementHub == null)
-            {
-                _settlementHub = new PrototypeSettlementHub { Name = "SettlementHub" };
-                _environmentRoot.AddChild(_settlementHub);
-            }
-
-            _settlementHub.Position = SettlementAnchorPosition;
-
-            InitializeSimulationStateIfNeeded();
-            InitializeSettlementSimulationIfNeeded();
-
-            if (_entitiesRoot.GetChildCount() == 0)
-            {
-                DeterministicRandom rng = new(_simulationSeed);
-                SpawnResourceSet("wood", _initialTrees, rng);
-                SpawnResourceSet("stone", _initialRocks, rng);
-                SpawnResourceSet("berry", _initialBerryBushes, rng);
-                RecordEvent(PrototypeEventTypes.WorldSeeded, $"Spawned prototype resources using seed {_simulationSeed}");
-            }
+            _scenePresenter = new PrototypeSettlementScenePresenter(
+                _agentsRoot,
+                _entitiesRoot,
+                _environmentRoot,
+                _terrain,
+                SettlementAnchorPosition);
+            _scenePresenter.EnsureSettlementHub();
 
             _player = _playersRoot.GetNodeOrNull<PlayerCharacter>("LocalPlayer");
-
             if (_player == null || !IsInstanceValid(_player))
             {
                 _player = new PlayerCharacter
                 {
-                    Name = "LocalPlayer",
-                    Inventory = _inventory,
-                    Terrain = _terrain
+                    Name = "LocalPlayer"
                 };
                 _playersRoot.AddChild(_player);
                 _player.Position = _terrain.GetPlayerSpawnPoint();
             }
 
-            if (_player != null)
+            _player.Harvested -= OnPlayerHarvested;
+            _player.Harvested += OnPlayerHarvested;
+            _player.Terrain = _terrain;
+
+            if (_hud != null)
             {
-                _player.Harvested -= OnPlayerHarvested;
-                _player.Harvested += OnPlayerHarvested;
-                _player.Inventory = _inventory;
-                _player.Terrain = _terrain;
+                PrototypeHudPresenter.Initialize(_hud);
+            }
+        }
+
+        private void StartNewPrototypeRun(bool resetPlayerPosition)
+        {
+            EnsureWorldShell();
+
+            if (_dayNightCycle == null || _scenePresenter == null || _scenario == null)
+            {
+                return;
             }
 
-            _hud?.SetHelpText(PrototypeHudTextBuilder.BuildHelpText());
+            CreateRuntimeSession(_scenario);
+            _runtimeSession!.Initialize(_dayNightCycle.StartHour, SettlementAnchorPosition);
+            _tickAccumulator = 0.0;
+
+            _scenePresenter.ResetDynamicNodes();
+            _scenePresenter.SeedResources(
+                _runtimeSession.SimulationSeed,
+                _initialTrees,
+                _initialRocks,
+                _initialBerryBushes);
+
+            RecordEvent(PrototypeEventTypes.WorldSeeded, $"Spawned prototype resources using seed {SimulationSeed}");
+
+            if (resetPlayerPosition && _player != null && _terrain != null)
+            {
+                _player.ResetForPrototypeRun(_terrain.GetPlayerSpawnPoint());
+            }
+
+            BindPlayerToRuntime();
+            ApplyRuntimeStateToScene();
+            _scenePresenter.SyncWorkers(_runtimeSession.Workers);
+            _scenePresenter.UpdateSettlementPresentation(_runtimeSession.Stockpile.Items, _runtimeSession.Workers);
+            CaptureMetricsSnapshot();
+
             _hud?.SetStatusText("Prototype 1 ready");
-            ApplySimulationStateToScene();
-            SyncWorkerNodes();
-            UpdateSettlementPresentation();
         }
 
-        private void InitializeSimulationStateIfNeeded()
+        private void CreateRuntimeSession(PrototypeScenarioDefinition scenario)
         {
-            if (_dayNightCycle == null || _weatherController == null || _weatherSimulation != null)
+            DetachRuntimeObservers();
+            _scenario = scenario;
+            ApplyScenarioDefaults(scenario);
+
+            if (_terrain != null)
+            {
+                _terrain.RebuildTerrain();
+                _scenePresenter?.UpdateTerrain(_terrain);
+            }
+
+            _runtimeSession = new PrototypeRuntimeSession(scenario);
+            AttachRuntimeObservers();
+            BindPlayerToRuntime();
+        }
+
+        private void BindPlayerToRuntime()
+        {
+            if (_player == null)
             {
                 return;
             }
 
-            _currentHour = _dayNightCycle.StartHour;
-            _runStartHour = _currentHour;
-            _weatherSimulation = new PrototypeWeatherSimulation(_simulationSeed);
-            ApplySimulationStateToScene();
-        }
-
-        private void InitializeSettlementSimulationIfNeeded()
-        {
-            if (_settlementSimulation != null)
-            {
-                return;
-            }
-
-            _settlementSimulation = new PrototypeSettlementSimulation(_stockpile, _initialWorkers, SettlementAnchorPosition);
-        }
-
-        private void SpawnResourceSet(string resourceId, int count, DeterministicRandom rng)
-        {
-            if (_terrain == null || _entitiesRoot == null)
-            {
-                return;
-            }
-
-            List<PrototypeResourceSpawn> plan = new(count);
-            if (count > 0)
-            {
-                plan.Add(PrototypeResourceSpawnPlanner.CreateStarterSpawn(resourceId, SettlementAnchorPosition));
-            }
-
-            if (count > 1)
-            {
-                plan.AddRange(PrototypeResourceSpawnPlanner.CreatePlan(resourceId, count - 1, _terrain.GetSpawnBounds(), rng));
-            }
-
-            for (int i = 0; i < plan.Count; i++)
-            {
-                SpawnResourceNode(plan[i].ResourceId, plan[i].Position, plan[i].UnitsRemaining, i + 1);
-            }
-        }
-
-        private void SpawnResourceNode(string resourceId, Vector3 position, int unitsRemaining, int sequence)
-        {
-            if (_entitiesRoot == null)
-            {
-                return;
-            }
-
-            ResourceNode node = new()
-            {
-                Name = $"{resourceId}_{sequence}",
-                ResourceId = resourceId,
-                UnitsRemaining = unitsRemaining
-            };
-            _entitiesRoot.AddChild(node);
-            node.Position = position;
+            _player.Inventory = _runtimeSession?.Inventory ?? _fallbackInventory;
+            _player.Terrain = _terrain;
         }
 
         private void ProcessSimulationTick()
         {
-            _simulationTick++;
-
-            if (_dayNightCycle != null)
+            if (_runtimeSession == null || _dayNightCycle == null || _scenePresenter == null)
             {
-                _currentHour = PrototypeClockService.AdvanceHour(_currentHour, (float)TickIntervalSeconds, _dayNightCycle.DayLengthSeconds);
+                return;
             }
 
-            if (_weatherSimulation != null && _weatherSimulation.Advance((float)TickIntervalSeconds))
+            PrototypeRuntimeTickResult tickResult = _runtimeSession.Advance(
+                (float)TickIntervalSeconds,
+                _dayNightCycle.DayLengthSeconds,
+                _scenePresenter.CaptureResourceSites());
+
+            foreach (PrototypeHarvestRequest request in tickResult.SettlementResult.HarvestRequests)
             {
-                RecordEvent(PrototypeEventTypes.WeatherShifted, $"Weather shifted to {PrototypeWeatherService.GetName(_weatherSimulation.CurrentWeather)}");
+                if (_scenePresenter.ApplyHarvestRequest(request, out string itemId, out int harvestedAmount))
+                {
+                    _runtimeSession.RecordAiHarvestSucceeded(request.WorkerDisplayName, itemId, harvestedAmount);
+                }
+                else
+                {
+                    _runtimeSession.OnHarvestFailed(request.WorkerId, request.WorkerDisplayName, request.ResourceId);
+                }
             }
 
-            ProcessSettlementSimulationTick();
-            ApplySimulationStateToScene();
+            _runtimeSession.RecordSettlementEvents(tickResult.SettlementResult.Events);
+            ApplyRuntimeStateToScene();
+            _scenePresenter.SyncWorkers(_runtimeSession.Workers);
+            _scenePresenter.UpdateSettlementPresentation(_runtimeSession.Stockpile.Items, _runtimeSession.Workers);
+
+            if (tickResult.ShouldCaptureMetrics)
+            {
+                CaptureMetricsSnapshot();
+            }
         }
 
-        private void ApplySimulationStateToScene()
+        private void ApplyRuntimeStateToScene()
         {
-            PrototypeWeather weather = _weatherSimulation?.CurrentWeather ?? PrototypeWeather.Clear;
+            if (_runtimeSession == null)
+            {
+                return;
+            }
+
+            PrototypeWeather weather = _runtimeSession.CurrentWeather;
             float sunlightMultiplier = PrototypeWeatherService.GetSunlightMultiplier(weather);
-            float timeUntilNextShift = _weatherSimulation?.TimeUntilNextShift ?? 0.0f;
-
-            _dayNightCycle?.ApplyState(_currentHour, sunlightMultiplier);
-            _weatherController?.ApplyState(weather, timeUntilNextShift);
+            _dayNightCycle?.ApplyState(_runtimeSession.CurrentHour, sunlightMultiplier);
+            _weatherController?.ApplyState(weather, _runtimeSession.TimeUntilNextWeatherShift);
         }
 
-        private void ProcessSettlementSimulationTick()
+        private void CaptureMetricsSnapshot()
         {
-            if (_settlementSimulation == null || _entitiesRoot == null)
+            if (_runtimeSession == null || _scenePresenter == null)
             {
                 return;
             }
 
-            List<PrototypeResourceSiteState> resources = _entitiesRoot
-                .GetChildren()
-                .OfType<ResourceNode>()
-                .OrderBy(node => node.Name.ToString())
-                .Select(node => new PrototypeResourceSiteState(
-                    node.Name.ToString(),
-                    node.ResourceId,
-                    node.Position,
-                    node.UnitsRemaining))
-                .ToList();
-
-            PrototypeSettlementTickResult result = _settlementSimulation.Advance(resources);
-
-            foreach (PrototypeHarvestRequest request in result.HarvestRequests)
-            {
-                ApplyHarvestRequest(request);
-            }
-
-            foreach (PrototypeSettlementEvent settlementEvent in result.Events)
-            {
-                RecordEvent(settlementEvent.EventType, settlementEvent.Message);
-            }
-
-            SyncWorkerNodes();
-            UpdateSettlementPresentation();
-        }
-
-        private void ApplyHarvestRequest(PrototypeHarvestRequest request)
-        {
-            if (_entitiesRoot == null)
-            {
-                return;
-            }
-
-            ResourceNode? node = _entitiesRoot
-                .GetChildren()
-                .OfType<ResourceNode>()
-                .FirstOrDefault(candidate => candidate.Name.ToString() == request.TargetNodeName);
-
-            if (node == null || !node.TryHarvest(request.Amount, out string itemId, out int harvestedAmount))
-            {
-                _settlementSimulation?.OnHarvestFailed(request.WorkerId);
-                RecordEvent(PrototypeEventTypes.AiHarvestFailed, $"{request.WorkerDisplayName} could not harvest {request.ResourceId}");
-                return;
-            }
-
-            RecordEvent(PrototypeEventTypes.AiHarvestSucceeded, $"{request.WorkerDisplayName} harvested {itemId} x{harvestedAmount}");
-        }
-
-        private void ApplySnapshot(PrototypeRuntimeSnapshot snapshot)
-        {
-            _simulationSeed = snapshot.SimulationSeed;
-            _simulationTick = snapshot.SimulationTick;
-            _tickAccumulator = 0.0;
-            _currentHour = snapshot.CurrentHour;
-            _weatherSimulation = new PrototypeWeatherSimulation(_simulationSeed, ParseWeather(snapshot.CurrentWeather));
-            _weatherSimulation.SetState(ParseWeather(snapshot.CurrentWeather), snapshot.TimeUntilNextWeatherShift, snapshot.WeatherRandomState);
-
-            _inventory.ReplaceContents(snapshot.Inventory);
-            _stockpile.ReplaceContents(snapshot.Stockpile);
-            InitializeSettlementSimulationIfNeeded();
-            _settlementSimulation?.LoadState(snapshot.Workers, SettlementAnchorPosition);
-
-            if (_player != null)
-            {
-                _player.Velocity = Vector3.Zero;
-                _player.Position = snapshot.PlayerPosition.ToVector3();
-            }
-
-            ReplaceResourceNodes(snapshot.Resources);
-            ApplySimulationStateToScene();
-            SyncWorkerNodes();
-            UpdateSettlementPresentation();
-            UpdateHud();
-        }
-
-        private void ReplaceResourceNodes(IReadOnlyList<PrototypeResourceSnapshot> resourceSnapshots)
-        {
-            if (_entitiesRoot == null)
-            {
-                return;
-            }
-
-            foreach (Node child in _entitiesRoot.GetChildren())
-            {
-                child.Free();
-            }
-
-            Dictionary<string, int> counters = new();
-            foreach (PrototypeResourceSnapshot snapshot in resourceSnapshots)
-            {
-                int sequence = counters.TryGetValue(snapshot.ResourceId, out int current) ? current + 1 : 1;
-                counters[snapshot.ResourceId] = sequence;
-                SpawnResourceNode(snapshot.ResourceId, snapshot.Position.ToVector3(), snapshot.UnitsRemaining, sequence);
-            }
-        }
-
-        private void OnInventoryChanged()
-        {
-            UpdateHud();
-        }
-
-        private void OnPlayerHarvested(string itemId, int amount)
-        {
-            string message = $"Harvested {InventoryComponent.FormatItemName(itemId)} x{amount}";
-            _hud?.SetStatusText(message);
-            RecordEvent(PrototypeEventTypes.PlayerHarvestSucceeded, message);
-            UpdateHud();
-        }
-
-        private void OnStockpileChanged()
-        {
-            UpdateHud();
-        }
-
-        private void SyncWorkerNodes()
-        {
-            if (_agentsRoot == null || _settlementSimulation == null)
-            {
-                return;
-            }
-
-            HashSet<string> activeWorkerIds = _settlementSimulation.Workers
-                .Select(worker => worker.WorkerId)
-                .ToHashSet();
-
-            foreach ((string workerId, PrototypeWorkerAgent node) in _workerNodes.ToList())
-            {
-                if (activeWorkerIds.Contains(workerId))
-                {
-                    continue;
-                }
-
-                if (IsInstanceValid(node))
-                {
-                    node.QueueFree();
-                }
-
-                _workerNodes.Remove(workerId);
-            }
-
-            foreach (PrototypeWorkerState worker in _settlementSimulation.Workers.OrderBy(candidate => candidate.WorkerId))
-            {
-                if (!_workerNodes.TryGetValue(worker.WorkerId, out PrototypeWorkerAgent? node) || !IsInstanceValid(node))
-                {
-                    node = new PrototypeWorkerAgent
-                    {
-                        Name = worker.WorkerId
-                    };
-                    _agentsRoot.AddChild(node);
-                    _workerNodes[worker.WorkerId] = node;
-                }
-
-                node.ApplyState(worker);
-            }
-        }
-
-        private void UpdateSettlementPresentation()
-        {
-            _settlementHub?.ApplyState(
-                _stockpile.Items,
-                _settlementSimulation?.Workers ?? Array.Empty<PrototypeWorkerState>());
+            _runtimeSession.CaptureMetrics(_scenePresenter.CaptureResourceSnapshots());
         }
 
         private void UpdateHud()
@@ -687,87 +499,112 @@ namespace Societies.Core
                 return;
             }
 
-            string timeText = PrototypeClockService.FormatTime(_currentHour);
-            string weatherText = _weatherSimulation != null
-                ? PrototypeWeatherService.GetName(_weatherSimulation.CurrentWeather)
-                : "Unknown";
+            string timeText = _runtimeSession != null
+                ? PrototypeClockService.FormatTime(_runtimeSession.CurrentHour)
+                : PrototypeClockService.FormatTime(_dayNightCycle?.CurrentHour ?? 8.0f);
+            string weatherText = _runtimeSession?.CurrentWeatherName ?? "Unknown";
             string interactionText = _player?.GetInteractionText() ?? "Look at a resource node and press E";
             string sessionMode = _networkManager?.IsLocalSession == true ? "Local" : "Network";
 
-            _hud.SetDebugText(
-                PrototypeHudTextBuilder.BuildDebugText(
-                    Mathf.RoundToInt((float)Engine.GetFramesPerSecond()),
-                    _entityManager.EntityCount,
-                    timeText,
-                    weatherText,
-                    sessionMode,
-                    _simulationTick));
-            _hud.SetInventoryText(_inventory.GetSummaryText());
-            _hud.SetCraftingText(CraftingSystem.GetRecipeSummary(_inventory));
-            _hud.SetSettlementText(
-                PrototypeHudTextBuilder.BuildSettlementText(
-                    _stockpile.Items,
-                    _settlementSimulation?.Workers ?? System.Array.Empty<PrototypeWorkerState>()));
-            _hud.SetInteractionText(interactionText);
-            UpdateSettlementPresentation();
+            PrototypeHudPresenter.Apply(
+                _hud,
+                Mathf.RoundToInt((float)Engine.GetFramesPerSecond()),
+                _entityManager.EntityCount,
+                timeText,
+                weatherText,
+                sessionMode,
+                SimulationTick,
+                Inventory,
+                _runtimeSession?.Stockpile.Items ?? new Dictionary<string, int>(),
+                _runtimeSession?.Workers ?? System.Array.Empty<PrototypeWorkerState>(),
+                interactionText,
+                _runtimeSession?.Scenario.Id);
+
+            _scenePresenter?.UpdateSettlementPresentation(
+                _runtimeSession?.Stockpile.Items ?? new Dictionary<string, int>(),
+                _runtimeSession?.Workers ?? System.Array.Empty<PrototypeWorkerState>());
         }
 
         private void RecordEvent(string eventType, string message)
         {
-            _eventLog.Record(_simulationTick, eventType, message);
+            _runtimeSession?.RecordEvent(eventType, message);
         }
 
-        private string GetLatestSnapshotPath()
+        private void ApplyScenarioDefaults(PrototypeScenarioDefinition scenario)
         {
-            return Path.Combine(GetRunOutputDirectoryPath(), SnapshotFileName);
-        }
+            _scenarioId = scenario.Id;
+            _simulationSeed = scenario.SimulationSeed;
+            _initialTrees = scenario.InitialTrees;
+            _initialRocks = scenario.InitialRocks;
+            _initialBerryBushes = scenario.InitialBerryBushes;
+            _initialWorkers = scenario.InitialWorkers;
 
-        private string GetLatestEventLogPath()
-        {
-            return Path.Combine(GetRunOutputDirectoryPath(), EventLogFileName);
-        }
-
-        private string GetLatestRunSummaryPath()
-        {
-            return Path.Combine(GetRunOutputDirectoryPath(), RunSummaryFileName);
-        }
-
-        private string GetRunOutputDirectoryPath()
-        {
-            string? overrideDirectory = System.Environment.GetEnvironmentVariable(RunOutputDirectoryEnvironmentVariable);
-            if (!string.IsNullOrWhiteSpace(overrideDirectory))
+            if (_terrain != null)
             {
-                return Path.GetFullPath(overrideDirectory);
+                _terrain.WorldSize = scenario.WorldSize;
+            }
+        }
+
+        private PrototypeScenarioDefinition ResolveScenarioDefinition(string? scenarioId)
+        {
+            if (_catalogs == null)
+            {
+                return CreateFallbackCatalogBundle().Scenarios.ResolveDefault();
             }
 
-            return ProjectSettings.GlobalizePath(DefaultRunOutputDirectory);
-        }
-
-        private void LoadRunArtifactsForSnapshot(PrototypeRuntimeSnapshot snapshot)
-        {
-            string eventLogPath = GetLatestEventLogPath();
-            _eventLog.Clear();
-
-            if (File.Exists(eventLogPath))
+            if (!string.IsNullOrWhiteSpace(scenarioId))
             {
-                _eventLog.ReplaceEntries(PrototypePersistenceService.LoadEventLog(eventLogPath));
+                try
+                {
+                    return _catalogs.Scenarios.Resolve(scenarioId);
+                }
+                catch (InvalidOperationException)
+                {
+                    GD.PushWarning($"Unknown scenario '{scenarioId}', falling back to '{_catalogs.Scenarios.DefaultScenarioId}'.");
+                }
             }
 
-            string runSummaryPath = GetLatestRunSummaryPath();
-            if (File.Exists(runSummaryPath))
+            return _catalogs.Scenarios.ResolveDefault();
+        }
+
+        private void AttachRuntimeObservers()
+        {
+            if (_runtimeSession == null)
             {
-                _runStartHour = PrototypePersistenceService.LoadRunSummary(runSummaryPath).StartHour;
                 return;
             }
 
-            _runStartHour = snapshot.CurrentHour;
+            _runtimeSession.Inventory.Changed += OnInventoryChanged;
+            _runtimeSession.Stockpile.Changed += OnStockpileChanged;
         }
 
-        private static PrototypeWeather ParseWeather(string weatherName)
+        private void DetachRuntimeObservers()
         {
-            return string.Equals(weatherName, PrototypeWeatherService.GetName(PrototypeWeather.Rain), StringComparison.OrdinalIgnoreCase)
-                ? PrototypeWeather.Rain
-                : PrototypeWeather.Clear;
+            if (_runtimeSession == null)
+            {
+                return;
+            }
+
+            _runtimeSession.Inventory.Changed -= OnInventoryChanged;
+            _runtimeSession.Stockpile.Changed -= OnStockpileChanged;
+        }
+
+        private void OnInventoryChanged()
+        {
+            UpdateHud();
+        }
+
+        private void OnStockpileChanged()
+        {
+            UpdateHud();
+        }
+
+        private void OnPlayerHarvested(string itemId, int amount)
+        {
+            string message = $"Harvested {InventoryComponent.FormatItemName(itemId)} x{amount}";
+            _hud?.SetStatusText(message);
+            _runtimeSession?.RecordPlayerHarvest(itemId, amount);
+            UpdateHud();
         }
 
         private static T GetOrCreateChild<T>(Node parent, string name) where T : Node, new()
@@ -783,12 +620,58 @@ namespace Societies.Core
             return node;
         }
 
-        private static void ClearChildren(Node parent)
+        private PrototypeCatalogBundle CreateFallbackCatalogBundle()
         {
-            foreach (Node child in parent.GetChildren())
+            return new PrototypeCatalogBundle
             {
-                child.Free();
-            }
+                Scenarios = new PrototypeScenarioCatalog
+                {
+                    DefaultScenarioId = DefaultScenarioId,
+                    Scenarios = new List<PrototypeScenarioDefinition>
+                    {
+                        new()
+                        {
+                            Id = DefaultScenarioId,
+                            DisplayName = "Balanced Basin",
+                            SimulationSeed = _simulationSeed,
+                            InitialTrees = _initialTrees,
+                            InitialRocks = _initialRocks,
+                            InitialBerryBushes = _initialBerryBushes,
+                            InitialWorkers = _initialWorkers,
+                            WorldSize = _terrain?.WorldSize ?? 500.0f
+                        }
+                    }
+                },
+                Resources = new PrototypeResourceCatalog
+                {
+                    Resources = new List<PrototypeResourceDefinition>
+                    {
+                        new() { Id = "wood", DisplayName = "Wood", Category = "raw" },
+                        new() { Id = "stone", DisplayName = "Stone", Category = "raw" },
+                        new() { Id = "berry", DisplayName = "Berry", Category = "raw" },
+                        new() { Id = "campfire", DisplayName = "Campfire", Category = "crafted" },
+                        new() { Id = "stone_axe", DisplayName = "Stone Axe", Category = "crafted" }
+                    }
+                },
+                Structures = new PrototypeStructureCatalog
+                {
+                    Structures = new List<PrototypeStructureDefinition>
+                    {
+                        new() { Id = "campfire", DisplayName = "Campfire", Category = "prototype" }
+                    }
+                },
+                RoleQuotas = new PrototypeRoleQuotaCatalog
+                {
+                    Roles = new List<PrototypeRoleQuotaDefinition>
+                    {
+                        new() { RoleId = "gatherers", Share = 0.30d },
+                        new() { RoleId = "haulers", Share = 0.25d },
+                        new() { RoleId = "processors", Share = 0.20d },
+                        new() { RoleId = "builders", Share = 0.15d },
+                        new() { RoleId = "reserve", Share = 0.10d }
+                    }
+                }
+            };
         }
 
         public override void _ExitTree()
@@ -803,8 +686,7 @@ namespace Societies.Core
                 _player.Harvested -= OnPlayerHarvested;
             }
 
-            _inventory.Changed -= OnInventoryChanged;
-            _stockpile.Changed -= OnStockpileChanged;
+            DetachRuntimeObservers();
             Instance = null;
         }
     }

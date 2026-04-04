@@ -1,0 +1,49 @@
+{
+  "defaultScenarioId": "balanced_basin",
+  "scenarios": [
+    {
+      "id": "balanced_basin",
+      "displayName": "Balanced Basin",
+      "expectedOutcome": "stable",
+      "simulationSeed": 1337,
+      "initialTrees": 36,
+      "initialRocks": 24,
+      "initialBerryBushes": 14,
+      "initialWorkers": 3,
+      "worldSize": 500.0
+    },
+    {
+      "id": "long_haul_quarry",
+      "displayName": "Long-Haul Quarry",
+      "expectedOutcome": "strained",
+      "simulationSeed": 2048,
+      "initialTrees": 28,
+      "initialRocks": 40,
+      "initialBerryBushes": 10,
+      "initialWorkers": 3,
+      "worldSize": 500.0
+    },
+    {
+      "id": "food_poor_highlands",
+      "displayName": "Food-Poor Highlands",
+      "expectedOutcome": "collapsed",
+      "simulationSeed": 4096,
+      "initialTrees": 26,
+      "initialRocks": 30,
+      "initialBerryBushes": 6,
+      "initialWorkers": 3,
+      "worldSize": 500.0
+    },
+    {
+      "id": "wetland_builder",
+      "displayName": "Wetland Builder",
+      "expectedOutcome": "strained",
+      "simulationSeed": 8192,
+      "initialTrees": 32,
+      "initialRocks": 20,
+      "initialBerryBushes": 18,
+      "initialWorkers": 4,
+      "worldSize": 500.0
+    }
+  ]
+}

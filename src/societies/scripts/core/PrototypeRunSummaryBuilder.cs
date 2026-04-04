@@ -14,10 +14,24 @@ namespace Societies.Core
             IReadOnlyList<PrototypeEventRecord> eventRecords,
             float startHour)
         {
+            return Build(snapshot, eventRecords, startHour, snapshot.ScenarioId, string.Empty);
+        }
+
+        public static PrototypeRunSummary Build(
+            PrototypeRuntimeSnapshot snapshot,
+            IReadOnlyList<PrototypeEventRecord> eventRecords,
+            float startHour,
+            string scenarioId,
+            string scenarioDisplayName)
+        {
             Dictionary<string, int> craftedItemCounts = BuildCraftedItemCounts(snapshot);
 
             return new PrototypeRunSummary
             {
+                SchemaVersion = snapshot.SchemaVersion,
+                ScenarioId = scenarioId,
+                ScenarioDisplayName = scenarioDisplayName,
+                SettlementClassification = ClassifySettlement(snapshot),
                 SimulationSeed = snapshot.SimulationSeed,
                 SimulationTick = snapshot.SimulationTick,
                 StartHour = startHour,
@@ -41,6 +55,21 @@ namespace Societies.Core
                         .GroupBy(record => record.EventType)
                         .ToDictionary(group => group.Key, group => group.Count()))
             };
+        }
+
+        private static string ClassifySettlement(PrototypeRuntimeSnapshot snapshot)
+        {
+            if (snapshot.Stockpile.GetValueOrDefault("campfire", 0) > 0)
+            {
+                return "stable";
+            }
+
+            if (snapshot.Stockpile.Values.Sum() > 0 || snapshot.Inventory.Values.Sum() > 0)
+            {
+                return "strained";
+            }
+
+            return "collapsed";
         }
 
         private static Dictionary<string, int> BuildCraftedItemCounts(PrototypeRuntimeSnapshot snapshot)
