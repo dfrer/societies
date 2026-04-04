@@ -139,7 +139,7 @@ namespace Societies.UI
             _craftingLabel = CreateLabel(new Vector2(176.0f, 12.0f), new Vector2(172.0f, 280.0f), 17);
             _inventoryPanel.AddChild(_craftingLabel);
 
-            _settlementLabel = CreateLabel(new Vector2(1520.0f, 360.0f), new Vector2(360.0f, 280.0f), 16);
+            _settlementLabel = CreateLabel(new Vector2(1460.0f, 360.0f), new Vector2(420.0f, 340.0f), 16);
             root.AddChild(_settlementLabel);
         }
 

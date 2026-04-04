@@ -63,7 +63,17 @@ namespace Societies.Core
 
         public int TicksRemaining { get; set; }
 
+        public int PhaseDurationTicks { get; set; }
+
         public PrototypeSerializableVector3 Position { get; set; }
+
+        public PrototypeSerializableVector3 HomePosition { get; set; }
+
+        public PrototypeSerializableVector3 TargetPosition { get; set; }
+
+        public string TargetLabel { get; set; } = string.Empty;
+
+        public string ActivityText { get; set; } = string.Empty;
     }
 
     public sealed class PrototypeEventLog

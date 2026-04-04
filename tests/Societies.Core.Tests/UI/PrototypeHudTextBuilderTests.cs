@@ -42,6 +42,10 @@ namespace Societies.Core.Tests
                     {
                         DisplayName = "Worker 1",
                         Phase = PrototypeWorkerPhase.Harvesting,
+                        ActivityText = "Harvesting Tree",
+                        TargetLabel = "Tree",
+                        PhaseDurationTicks = 10,
+                        TicksRemaining = 4,
                         CarryItemId = "wood",
                         CarryAmount = 1,
                         Position = new Vector3(1.0f, 0.0f, 1.0f)
@@ -50,7 +54,9 @@ namespace Societies.Core.Tests
 
             Assert.Contains("Settlement", settlementText);
             Assert.Contains("campfire x1", settlementText);
-            Assert.Contains("Worker 1: Harvesting carrying wood x1", settlementText);
+            Assert.Contains("Worker 1: Harvesting Tree", settlementText);
+            Assert.Contains("-> Tree", settlementText);
+            Assert.Contains("[wood x1]", settlementText);
         }
     }
 }

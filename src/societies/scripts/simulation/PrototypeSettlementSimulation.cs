@@ -1,5 +1,6 @@
 using Godot;
 using Societies.Core;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -7,31 +8,40 @@ namespace Societies.Simulation
 {
     /// <summary>
     /// Deterministic worker + stockpile + workstation loop for the prototype validation sandbox.
-    /// Workers gather from live resource nodes, deposit into a shared stockpile, and craft a campfire
-    /// once the stockpile can afford it.
+    /// Workers physically travel through the world, deposit into a shared stockpile, and craft
+    /// a campfire when the settlement can afford it.
     /// </summary>
     public sealed class PrototypeSettlementSimulation
     {
-        private const int TravelTicks = 12;
+        private const float WorkerTravelUnitsPerTick = 0.55f;
+        private const int MinimumTravelTicks = 6;
         private const int HarvestTicks = 10;
-        private const int DepositTicks = 3;
-        private const int CraftTicks = 24;
-        private const int IdleTicks = 12;
+        private const int DepositTicks = 4;
+        private const int CraftTicks = 26;
+        private const int IdleTicks = 18;
+        private const int BerryReserveTarget = 4;
+        private const int WoodReserveTargetAfterCampfire = 6;
+        private const int StoneReserveTargetAfterCampfire = 3;
 
         private static readonly string[] DefaultResourceFocus = { "wood", "stone", "berry" };
 
         private readonly List<PrototypeWorkerState> _workers = new();
         private readonly InventoryComponent _stockpile;
+        private readonly Vector3 _settlementAnchorPosition;
         private readonly Vector3 _stockpilePosition;
+        private readonly Vector3 _workstationPosition;
 
-        public PrototypeSettlementSimulation(InventoryComponent stockpile, int workerCount, Vector3 stockpilePosition)
+        public PrototypeSettlementSimulation(InventoryComponent stockpile, int workerCount, Vector3 settlementAnchorPosition)
         {
             _stockpile = stockpile;
-            _stockpilePosition = stockpilePosition;
+            _settlementAnchorPosition = settlementAnchorPosition;
+            _stockpilePosition = PrototypeSettlementLayout.GetStockpileWorldPosition(settlementAnchorPosition);
+            _workstationPosition = PrototypeSettlementLayout.GetWorkstationWorldPosition(settlementAnchorPosition);
 
             for (int i = 0; i < workerCount; i++)
             {
                 string preferredResourceId = DefaultResourceFocus[i % DefaultResourceFocus.Length];
+                Vector3 homePosition = PrototypeSettlementLayout.GetWorkerHomeWorldPosition(settlementAnchorPosition, i, workerCount);
                 _workers.Add(new PrototypeWorkerState
                 {
                     WorkerId = $"worker_{i + 1}",
@@ -39,7 +49,12 @@ namespace Societies.Simulation
                     PreferredResourceId = preferredResourceId,
                     Phase = PrototypeWorkerPhase.Idle,
                     TicksRemaining = IdleTicks,
-                    Position = stockpilePosition
+                    PhaseDurationTicks = IdleTicks,
+                    Position = homePosition,
+                    HomePosition = homePosition,
+                    TargetPosition = homePosition,
+                    TargetLabel = "Settlement",
+                    ActivityText = "Waiting for work"
                 });
             }
         }
@@ -53,46 +68,71 @@ namespace Societies.Simulation
 
             foreach (PrototypeWorkerState worker in _workers)
             {
-                if (worker.TicksRemaining > 0)
-                {
-                    worker.TicksRemaining--;
-                    continue;
-                }
-
                 switch (worker.Phase)
                 {
                     case PrototypeWorkerPhase.Idle:
-                        QueueNextTask(worker, resourceByNodeName.Values.ToList(), result);
+                        if (!AdvanceStationaryPhase(worker, worker.HomePosition))
+                        {
+                            break;
+                        }
+
+                        QueueNextTask(worker, resources, result);
                         break;
 
                     case PrototypeWorkerPhase.MovingToResource:
-                        worker.Phase = PrototypeWorkerPhase.Harvesting;
-                        worker.TicksRemaining = HarvestTicks;
-                        if (!string.IsNullOrWhiteSpace(worker.TargetResourceNodeName) &&
-                            resourceByNodeName.TryGetValue(worker.TargetResourceNodeName, out PrototypeResourceSiteState targetSite))
+                        if (!AdvanceTravelPhase(worker))
                         {
-                            worker.Position = targetSite.Position;
+                            break;
                         }
+
+                        BeginHarvestPhase(worker);
                         break;
 
                     case PrototypeWorkerPhase.Harvesting:
+                        if (!AdvanceStationaryPhase(worker, worker.TargetPosition))
+                        {
+                            break;
+                        }
+
                         CompleteHarvest(worker, resourceByNodeName, result);
                         break;
 
                     case PrototypeWorkerPhase.MovingToStockpile:
-                        worker.Position = _stockpilePosition;
-                        worker.Phase = PrototypeWorkerPhase.Depositing;
-                        worker.TicksRemaining = DepositTicks;
+                        if (!AdvanceTravelPhase(worker))
+                        {
+                            break;
+                        }
+
+                        BeginDepositPhase(worker);
                         break;
 
                     case PrototypeWorkerPhase.Depositing:
+                        if (!AdvanceStationaryPhase(worker, worker.HomePosition))
+                        {
+                            break;
+                        }
+
                         CompleteDeposit(worker, result);
-                        QueueNextTask(worker, resourceByNodeName.Values.ToList(), result);
+                        QueueNextTask(worker, resources, result);
+                        break;
+
+                    case PrototypeWorkerPhase.MovingToWorkstation:
+                        if (!AdvanceTravelPhase(worker))
+                        {
+                            break;
+                        }
+
+                        BeginCraftPhase(worker, result);
                         break;
 
                     case PrototypeWorkerPhase.Crafting:
+                        if (!AdvanceStationaryPhase(worker, _workstationPosition))
+                        {
+                            break;
+                        }
+
                         CompleteCraft(worker, result);
-                        QueueNextTask(worker, resourceByNodeName.Values.ToList(), result);
+                        QueueNextTask(worker, resources, result);
                         break;
                 }
             }
@@ -111,17 +151,34 @@ namespace Societies.Simulation
             worker.CarryAmount = 0;
             worker.CarryItemId = string.Empty;
             worker.TargetResourceNodeName = string.Empty;
-            worker.Position = _stockpilePosition;
-            worker.Phase = PrototypeWorkerPhase.Idle;
-            worker.TicksRemaining = IdleTicks;
+            BeginTravel(
+                worker,
+                PrototypeWorkerPhase.MovingToStockpile,
+                worker.HomePosition,
+                "Settlement",
+                "Returning empty-handed");
         }
 
-        public void LoadState(IReadOnlyList<PrototypeWorkerSnapshot> snapshots, Vector3 stockpilePosition)
+        public void LoadState(IReadOnlyList<PrototypeWorkerSnapshot> snapshots, Vector3 settlementAnchorPosition)
         {
             _workers.Clear();
 
-            foreach (PrototypeWorkerSnapshot snapshot in snapshots)
+            for (int i = 0; i < snapshots.Count; i++)
             {
+                PrototypeWorkerSnapshot snapshot = snapshots[i];
+                Vector3 fallbackHomePosition = PrototypeSettlementLayout.GetWorkerHomeWorldPosition(settlementAnchorPosition, i, snapshots.Count);
+                Vector3 homePosition = snapshot.HomePosition.ToVector3();
+                if (homePosition == Vector3.Zero)
+                {
+                    homePosition = fallbackHomePosition;
+                }
+
+                Vector3 targetPosition = snapshot.TargetPosition.ToVector3();
+                if (targetPosition == Vector3.Zero)
+                {
+                    targetPosition = homePosition;
+                }
+
                 _workers.Add(new PrototypeWorkerState
                 {
                     WorkerId = snapshot.WorkerId,
@@ -132,12 +189,18 @@ namespace Societies.Simulation
                     CarryItemId = snapshot.CarryItemId,
                     CarryAmount = snapshot.CarryAmount,
                     TicksRemaining = snapshot.TicksRemaining,
-                    Position = snapshot.Position.ToVector3()
+                    PhaseDurationTicks = snapshot.PhaseDurationTicks <= 0 ? snapshot.TicksRemaining : snapshot.PhaseDurationTicks,
+                    Position = snapshot.Position.ToVector3(),
+                    HomePosition = homePosition,
+                    TargetPosition = targetPosition,
+                    TargetLabel = string.IsNullOrWhiteSpace(snapshot.TargetLabel) ? "Settlement" : snapshot.TargetLabel,
+                    ActivityText = string.IsNullOrWhiteSpace(snapshot.ActivityText) ? "Waiting for work" : snapshot.ActivityText
                 });
             }
 
             if (_workers.Count == 0)
             {
+                Vector3 homePosition = PrototypeSettlementLayout.GetWorkerHomeWorldPosition(settlementAnchorPosition, 0, 1);
                 _workers.Add(new PrototypeWorkerState
                 {
                     WorkerId = "worker_1",
@@ -145,7 +208,12 @@ namespace Societies.Simulation
                     PreferredResourceId = "wood",
                     Phase = PrototypeWorkerPhase.Idle,
                     TicksRemaining = IdleTicks,
-                    Position = stockpilePosition
+                    PhaseDurationTicks = IdleTicks,
+                    Position = homePosition,
+                    HomePosition = homePosition,
+                    TargetPosition = homePosition,
+                    TargetLabel = "Settlement",
+                    ActivityText = "Waiting for work"
                 });
             }
         }
@@ -157,28 +225,75 @@ namespace Societies.Simulation
         {
             if (CanStartCampfireCraft(worker))
             {
-                worker.Phase = PrototypeWorkerPhase.Crafting;
-                worker.TicksRemaining = CraftTicks;
-                worker.Position = _stockpilePosition;
-                result.Events.Add(new PrototypeSettlementEvent(PrototypeEventTypes.AiCraftStarted, $"{worker.DisplayName} started crafting a Campfire"));
+                BeginTravel(
+                    worker,
+                    PrototypeWorkerPhase.MovingToWorkstation,
+                    _workstationPosition,
+                    "Workbench",
+                    "Walking to workstation");
+                result.Events.Add(new PrototypeSettlementEvent(
+                    PrototypeEventTypes.AiTaskAssigned,
+                    $"{worker.DisplayName} is heading to the workstation to craft a Campfire"));
                 return;
             }
 
-            PrototypeResourceSiteState? target = SelectTargetSite(worker, resources);
-            if (target == null)
+            PrototypeTaskSelection? taskSelection = SelectTargetSite(worker, resources);
+            if (taskSelection == null)
             {
-                worker.Phase = PrototypeWorkerPhase.Idle;
-                worker.TicksRemaining = IdleTicks;
-                worker.TargetResourceNodeName = string.Empty;
-                worker.Position = _stockpilePosition;
+                BeginIdle(worker, "Waiting for work");
                 return;
             }
 
-            worker.TargetResourceNodeName = target.Value.NodeName;
-            worker.Phase = PrototypeWorkerPhase.MovingToResource;
-            worker.TicksRemaining = TravelTicks;
-            worker.Position = _stockpilePosition;
-            result.Events.Add(new PrototypeSettlementEvent(PrototypeEventTypes.AiTaskAssigned, $"{worker.DisplayName} is gathering {target.Value.ResourceId}"));
+            BeginTravel(
+                worker,
+                PrototypeWorkerPhase.MovingToResource,
+                taskSelection.Value.TargetSite.Position,
+                taskSelection.Value.TargetLabel,
+                taskSelection.Value.ActivityText);
+            worker.TargetResourceNodeName = taskSelection.Value.TargetSite.NodeName;
+
+            result.Events.Add(new PrototypeSettlementEvent(
+                PrototypeEventTypes.AiTaskAssigned,
+                $"{worker.DisplayName} is gathering {taskSelection.Value.TargetSite.ResourceId} because {taskSelection.Value.ReasonText.ToLowerInvariant()}"));
+        }
+
+        private void BeginHarvestPhase(PrototypeWorkerState worker)
+        {
+            BeginStationaryPhase(
+                worker,
+                PrototypeWorkerPhase.Harvesting,
+                HarvestTicks,
+                worker.TargetPosition,
+                worker.TargetLabel,
+                $"Harvesting {worker.TargetLabel}");
+        }
+
+        private void BeginDepositPhase(PrototypeWorkerState worker)
+        {
+            string carriedItemName = string.IsNullOrWhiteSpace(worker.CarryItemId)
+                ? "goods"
+                : InventoryComponent.FormatItemName(worker.CarryItemId);
+            BeginStationaryPhase(
+                worker,
+                PrototypeWorkerPhase.Depositing,
+                DepositTicks,
+                worker.HomePosition,
+                "Settlement",
+                $"Depositing {carriedItemName}");
+        }
+
+        private void BeginCraftPhase(PrototypeWorkerState worker, PrototypeSettlementTickResult result)
+        {
+            BeginStationaryPhase(
+                worker,
+                PrototypeWorkerPhase.Crafting,
+                CraftTicks,
+                _workstationPosition,
+                "Workbench",
+                "Crafting campfire");
+            result.Events.Add(new PrototypeSettlementEvent(
+                PrototypeEventTypes.AiCraftStarted,
+                $"{worker.DisplayName} started crafting a Campfire"));
         }
 
         private void CompleteHarvest(
@@ -190,17 +305,24 @@ namespace Societies.Simulation
                 !resourceByNodeName.TryGetValue(worker.TargetResourceNodeName, out PrototypeResourceSiteState targetSite) ||
                 targetSite.UnitsRemaining <= 0)
             {
-                worker.Phase = PrototypeWorkerPhase.Idle;
-                worker.TicksRemaining = IdleTicks;
-                worker.TargetResourceNodeName = string.Empty;
+                BeginTravel(
+                    worker,
+                    PrototypeWorkerPhase.MovingToStockpile,
+                    worker.HomePosition,
+                    "Settlement",
+                    "Returning empty-handed");
                 return;
             }
 
             worker.CarryItemId = targetSite.ResourceId;
             worker.CarryAmount = 1;
-            worker.Phase = PrototypeWorkerPhase.MovingToStockpile;
-            worker.TicksRemaining = TravelTicks;
-            worker.Position = targetSite.Position;
+
+            BeginTravel(
+                worker,
+                PrototypeWorkerPhase.MovingToStockpile,
+                worker.HomePosition,
+                "Settlement",
+                $"Returning with {InventoryComponent.FormatItemName(targetSite.ResourceId)}");
 
             result.HarvestRequests.Add(new PrototypeHarvestRequest(
                 worker.WorkerId,
@@ -212,34 +334,36 @@ namespace Societies.Simulation
 
         private void CompleteDeposit(PrototypeWorkerState worker, PrototypeSettlementTickResult result)
         {
-            if (worker.CarryAmount <= 0 || string.IsNullOrWhiteSpace(worker.CarryItemId))
+            if (worker.CarryAmount > 0 && !string.IsNullOrWhiteSpace(worker.CarryItemId))
             {
-                return;
+                _stockpile.AddItem(worker.CarryItemId, worker.CarryAmount);
+                result.Events.Add(new PrototypeSettlementEvent(
+                    PrototypeEventTypes.AiDepositCompleted,
+                    $"{worker.DisplayName} deposited {InventoryComponent.FormatItemName(worker.CarryItemId)} x{worker.CarryAmount}"));
             }
-
-            _stockpile.AddItem(worker.CarryItemId, worker.CarryAmount);
-            result.Events.Add(new PrototypeSettlementEvent(
-                PrototypeEventTypes.AiDepositCompleted,
-                $"{worker.DisplayName} deposited {InventoryComponent.FormatItemName(worker.CarryItemId)} x{worker.CarryAmount}"));
 
             worker.CarryItemId = string.Empty;
             worker.CarryAmount = 0;
             worker.TargetResourceNodeName = string.Empty;
-            worker.Position = _stockpilePosition;
+            worker.Position = worker.HomePosition;
         }
 
         private void CompleteCraft(PrototypeWorkerState worker, PrototypeSettlementTickResult result)
         {
             if (CraftingSystem.TryCraft("campfire", _stockpile, out CraftingRecipe? recipe))
             {
-                result.Events.Add(new PrototypeSettlementEvent(PrototypeEventTypes.AiCraftCompleted, $"{worker.DisplayName} crafted {recipe!.DisplayName}"));
+                result.Events.Add(new PrototypeSettlementEvent(
+                    PrototypeEventTypes.AiCraftCompleted,
+                    $"{worker.DisplayName} crafted {recipe!.DisplayName}"));
             }
             else
             {
-                result.Events.Add(new PrototypeSettlementEvent(PrototypeEventTypes.AiCraftBlocked, $"{worker.DisplayName} could not complete Campfire crafting"));
+                result.Events.Add(new PrototypeSettlementEvent(
+                    PrototypeEventTypes.AiCraftBlocked,
+                    $"{worker.DisplayName} could not complete Campfire crafting"));
             }
 
-            worker.Position = _stockpilePosition;
+            worker.Position = _workstationPosition;
         }
 
         private bool CanStartCampfireCraft(PrototypeWorkerState worker)
@@ -254,7 +378,9 @@ namespace Societies.Simulation
                 return false;
             }
 
-            if (_workers.Any(candidate => candidate.WorkerId != worker.WorkerId && candidate.Phase == PrototypeWorkerPhase.Crafting))
+            if (_workers.Any(candidate =>
+                candidate.WorkerId != worker.WorkerId &&
+                (candidate.Phase == PrototypeWorkerPhase.Crafting || candidate.Phase == PrototypeWorkerPhase.MovingToWorkstation)))
             {
                 return false;
             }
@@ -262,28 +388,221 @@ namespace Societies.Simulation
             return _stockpile.GetCount("wood") >= 3 && _stockpile.GetCount("stone") >= 4;
         }
 
-        private static PrototypeResourceSiteState? SelectTargetSite(
+        private PrototypeTaskSelection? SelectTargetSite(
             PrototypeWorkerState worker,
             IReadOnlyList<PrototypeResourceSiteState> resources)
         {
-            PrototypeResourceSiteState? preferred = resources
-                .Where(site => site.ResourceId == worker.PreferredResourceId && site.UnitsRemaining > 0)
-                .OrderBy(site => site.Position.LengthSquared())
-                .ThenBy(site => site.NodeName)
-                .Cast<PrototypeResourceSiteState?>()
-                .FirstOrDefault();
+            Dictionary<string, int> committed = BuildCommittedResourceCounts(worker.WorkerId);
+            bool hasCampfire = _stockpile.GetCount("campfire") > 0;
+            List<PrototypeResourceDemand> demands = BuildResourceDemandList(worker, committed, hasCampfire, resources);
 
-            if (preferred != null)
+            foreach (PrototypeResourceDemand demand in demands)
             {
-                return preferred;
+                PrototypeResourceSiteState candidate = resources
+                    .Where(site => site.ResourceId == demand.ResourceId && site.UnitsRemaining > 0)
+                    .OrderBy(site => site.Position.DistanceTo(worker.Position))
+                    .ThenBy(site => site.NodeName)
+                    .FirstOrDefault();
+
+                if (!string.IsNullOrWhiteSpace(candidate.NodeName))
+                {
+                    return new PrototypeTaskSelection(
+                        candidate,
+                        PrototypeSettlementLayout.GetResourceTargetLabel(candidate.ResourceId),
+                        demand.ActivityText,
+                        demand.ReasonText);
+                }
             }
 
-            return resources
-                .Where(site => site.UnitsRemaining > 0)
-                .OrderBy(site => site.Position.LengthSquared())
-                .ThenBy(site => site.NodeName)
-                .Cast<PrototypeResourceSiteState?>()
-                .FirstOrDefault();
+            return null;
+        }
+
+        private Dictionary<string, int> BuildCommittedResourceCounts(string excludingWorkerId)
+        {
+            Dictionary<string, int> committed = new(StringComparer.Ordinal);
+
+            foreach (PrototypeWorkerState worker in _workers.Where(candidate => candidate.WorkerId != excludingWorkerId))
+            {
+                if (!string.IsNullOrWhiteSpace(worker.CarryItemId) && worker.CarryAmount > 0)
+                {
+                    committed[worker.CarryItemId] = committed.GetValueOrDefault(worker.CarryItemId) + worker.CarryAmount;
+                }
+
+                if (!string.IsNullOrWhiteSpace(worker.TargetResourceNodeName) &&
+                    !string.IsNullOrWhiteSpace(worker.TargetLabel) &&
+                    worker.Phase == PrototypeWorkerPhase.MovingToResource)
+                {
+                    string resourceId = InferTargetResourceId(worker.TargetLabel, worker.PreferredResourceId);
+                    committed[resourceId] = committed.GetValueOrDefault(resourceId) + 1;
+                }
+            }
+
+            return committed;
+        }
+
+        private List<PrototypeResourceDemand> BuildResourceDemandList(
+            PrototypeWorkerState worker,
+            IReadOnlyDictionary<string, int> committed,
+            bool hasCampfire,
+            IReadOnlyList<PrototypeResourceSiteState> resources)
+        {
+            List<PrototypeResourceDemand> demands = new();
+
+            int woodTarget = hasCampfire ? WoodReserveTargetAfterCampfire : 3;
+            int stoneTarget = hasCampfire ? StoneReserveTargetAfterCampfire : 4;
+
+            AddDemand(
+                demands,
+                worker,
+                resources,
+                "wood",
+                woodTarget,
+                committed.GetValueOrDefault("wood"),
+                hasCampfire ? "fuel and building reserve" : "the first campfire",
+                hasCampfire ? "Gathering wood for settlement reserve" : "Gathering wood for the campfire");
+            AddDemand(
+                demands,
+                worker,
+                resources,
+                "stone",
+                stoneTarget,
+                committed.GetValueOrDefault("stone"),
+                hasCampfire ? "stone reserve" : "the first campfire",
+                hasCampfire ? "Gathering stone for settlement reserve" : "Gathering stone for the campfire");
+            AddDemand(
+                demands,
+                worker,
+                resources,
+                "berry",
+                BerryReserveTarget,
+                committed.GetValueOrDefault("berry"),
+                "food reserve",
+                "Gathering berries for the food reserve");
+
+            return demands
+                .OrderByDescending(demand => demand.Priority)
+                .ThenByDescending(demand => demand.ResourceId == worker.PreferredResourceId)
+                .ThenBy(demand => demand.ResourceId)
+                .ToList();
+        }
+
+        private void AddDemand(
+            List<PrototypeResourceDemand> demands,
+            PrototypeWorkerState worker,
+            IReadOnlyList<PrototypeResourceSiteState> resources,
+            string resourceId,
+            int targetAmount,
+            int committedAmount,
+            string reasonText,
+            string activityText)
+        {
+            if (!resources.Any(site => site.ResourceId == resourceId && site.UnitsRemaining > 0))
+            {
+                return;
+            }
+
+            int effectiveAmount = _stockpile.GetCount(resourceId) + committedAmount;
+            int deficit = Math.Max(0, targetAmount - effectiveAmount);
+            if (deficit == 0)
+            {
+                return;
+            }
+
+            int priority = deficit * 10;
+            if (worker.PreferredResourceId == resourceId)
+            {
+                priority += 2;
+            }
+
+            demands.Add(new PrototypeResourceDemand(resourceId, priority, reasonText, activityText));
+        }
+
+        private void BeginIdle(PrototypeWorkerState worker, string activityText)
+        {
+            BeginStationaryPhase(
+                worker,
+                PrototypeWorkerPhase.Idle,
+                IdleTicks,
+                worker.HomePosition,
+                "Settlement",
+                activityText);
+        }
+
+        private void BeginTravel(
+            PrototypeWorkerState worker,
+            PrototypeWorkerPhase phase,
+            Vector3 targetPosition,
+            string targetLabel,
+            string activityText)
+        {
+            worker.Phase = phase;
+            worker.TargetPosition = targetPosition;
+            worker.TargetLabel = targetLabel;
+            worker.ActivityText = activityText;
+            worker.PhaseDurationTicks = CalculateTravelTicks(worker.Position, targetPosition);
+            worker.TicksRemaining = worker.PhaseDurationTicks;
+        }
+
+        private void BeginStationaryPhase(
+            PrototypeWorkerState worker,
+            PrototypeWorkerPhase phase,
+            int durationTicks,
+            Vector3 position,
+            string targetLabel,
+            string activityText)
+        {
+            worker.Phase = phase;
+            worker.Position = position;
+            worker.TargetPosition = position;
+            worker.TargetLabel = targetLabel;
+            worker.ActivityText = activityText;
+            worker.PhaseDurationTicks = durationTicks;
+            worker.TicksRemaining = durationTicks;
+        }
+
+        private static bool AdvanceStationaryPhase(PrototypeWorkerState worker, Vector3 position)
+        {
+            worker.Position = position;
+            if (worker.TicksRemaining > 0)
+            {
+                worker.TicksRemaining--;
+            }
+
+            return worker.TicksRemaining <= 0;
+        }
+
+        private static bool AdvanceTravelPhase(PrototypeWorkerState worker)
+        {
+            worker.Position = worker.Position.MoveToward(worker.TargetPosition, WorkerTravelUnitsPerTick);
+            if (worker.TicksRemaining > 0)
+            {
+                worker.TicksRemaining--;
+            }
+
+            if (worker.TicksRemaining <= 0 || worker.Position.DistanceTo(worker.TargetPosition) <= 0.01f)
+            {
+                worker.Position = worker.TargetPosition;
+                worker.TicksRemaining = 0;
+                return true;
+            }
+
+            return false;
+        }
+
+        private static int CalculateTravelTicks(Vector3 start, Vector3 destination)
+        {
+            return Math.Max(MinimumTravelTicks, Mathf.CeilToInt(start.DistanceTo(destination) / WorkerTravelUnitsPerTick));
+        }
+
+        private static string InferTargetResourceId(string targetLabel, string fallbackResourceId)
+        {
+            return targetLabel switch
+            {
+                "Tree" => "wood",
+                "Rock" => "stone",
+                "Berry Bush" => "berry",
+                _ => fallbackResourceId
+            };
         }
 
         private static PrototypeWorkerPhase ParsePhase(string phase)
@@ -319,7 +638,31 @@ namespace Societies.Simulation
 
         public int TicksRemaining { get; set; }
 
+        public int PhaseDurationTicks { get; set; }
+
         public Vector3 Position { get; set; }
+
+        public Vector3 HomePosition { get; set; }
+
+        public Vector3 TargetPosition { get; set; }
+
+        public string TargetLabel { get; set; } = string.Empty;
+
+        public string ActivityText { get; set; } = string.Empty;
+
+        public int ProgressPercent
+        {
+            get
+            {
+                if (PhaseDurationTicks <= 0)
+                {
+                    return 100;
+                }
+
+                float completedRatio = 1.0f - (TicksRemaining / (float)PhaseDurationTicks);
+                return Mathf.Clamp(Mathf.RoundToInt(completedRatio * 100.0f), 0, 100);
+            }
+        }
     }
 
     public enum PrototypeWorkerPhase
@@ -329,6 +672,7 @@ namespace Societies.Simulation
         Harvesting,
         MovingToStockpile,
         Depositing,
+        MovingToWorkstation,
         Crafting
     }
 
@@ -348,4 +692,16 @@ namespace Societies.Simulation
     public readonly record struct PrototypeSettlementEvent(
         string EventType,
         string Message);
+
+    internal readonly record struct PrototypeResourceDemand(
+        string ResourceId,
+        int Priority,
+        string ReasonText,
+        string ActivityText);
+
+    internal readonly record struct PrototypeTaskSelection(
+        PrototypeResourceSiteState TargetSite,
+        string TargetLabel,
+        string ActivityText,
+        string ReasonText);
 }

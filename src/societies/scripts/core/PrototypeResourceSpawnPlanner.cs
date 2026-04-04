@@ -31,6 +31,22 @@ namespace Societies.Core
             return plan;
         }
 
+        public static PrototypeResourceSpawn CreateStarterSpawn(string resourceId, Vector3 settlementAnchorPosition)
+        {
+            Vector3 offset = resourceId switch
+            {
+                "wood" => new Vector3(9.0f, 0.0f, -4.5f),
+                "stone" => new Vector3(-8.0f, 0.0f, 5.5f),
+                "berry" => new Vector3(6.5f, 0.0f, 8.0f),
+                _ => new Vector3(10.0f, 0.0f, 0.0f)
+            };
+
+            return new PrototypeResourceSpawn(
+                resourceId,
+                settlementAnchorPosition + offset,
+                resourceId == "berry" ? 4 : 6);
+        }
+
         public static Vector3 GetRandomPoint(PrototypeSpawnBounds bounds, DeterministicRandom rng)
         {
             while (true)

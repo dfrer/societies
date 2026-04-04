@@ -21,7 +21,7 @@ namespace Societies.Core
         private const string EventLogFileName = "latest-event-log.json";
         private const string RunSummaryFileName = "latest-run-summary.json";
         private const string RunOutputDirectoryEnvironmentVariable = "SOCIETIES_RUN_OUTPUT_DIR";
-        private static readonly Vector3 SettlementAnchorPosition = Vector3.Zero;
+        private static readonly Vector3 SettlementAnchorPosition = new(16.0f, 0.0f, 14.0f);
 
         public static GameManager? Instance { get; private set; }
 
@@ -37,6 +37,7 @@ namespace Societies.Core
         private TerrainGenerator? _terrain;
         private DayNightCycle? _dayNightCycle;
         private WeatherController? _weatherController;
+        private PrototypeSettlementHub? _settlementHub;
         private PrototypeHud? _hud;
         private PlayerCharacter? _player;
         private readonly InventoryComponent _inventory = new();
@@ -239,7 +240,12 @@ namespace Societies.Core
                     CarryItemId = worker.CarryItemId,
                     CarryAmount = worker.CarryAmount,
                     TicksRemaining = worker.TicksRemaining,
-                    Position = PrototypeSerializableVector3.FromVector3(worker.Position)
+                    PhaseDurationTicks = worker.PhaseDurationTicks,
+                    Position = PrototypeSerializableVector3.FromVector3(worker.Position),
+                    HomePosition = PrototypeSerializableVector3.FromVector3(worker.HomePosition),
+                    TargetPosition = PrototypeSerializableVector3.FromVector3(worker.TargetPosition),
+                    TargetLabel = worker.TargetLabel,
+                    ActivityText = worker.ActivityText
                 })
                 .ToList() ?? new List<PrototypeWorkerSnapshot>();
 
@@ -361,6 +367,15 @@ namespace Societies.Core
                 _environmentRoot.AddChild(_weatherController);
             }
 
+            _settlementHub = _environmentRoot.GetNodeOrNull<PrototypeSettlementHub>("SettlementHub");
+            if (_settlementHub == null)
+            {
+                _settlementHub = new PrototypeSettlementHub { Name = "SettlementHub" };
+                _environmentRoot.AddChild(_settlementHub);
+            }
+
+            _settlementHub.Position = SettlementAnchorPosition;
+
             InitializeSimulationStateIfNeeded();
             InitializeSettlementSimulationIfNeeded();
 
@@ -399,6 +414,7 @@ namespace Societies.Core
             _hud?.SetStatusText("Prototype 1 ready");
             ApplySimulationStateToScene();
             SyncWorkerNodes();
+            UpdateSettlementPresentation();
         }
 
         private void InitializeSimulationStateIfNeeded()
@@ -431,7 +447,17 @@ namespace Societies.Core
                 return;
             }
 
-            List<PrototypeResourceSpawn> plan = PrototypeResourceSpawnPlanner.CreatePlan(resourceId, count, _terrain.GetSpawnBounds(), rng);
+            List<PrototypeResourceSpawn> plan = new(count);
+            if (count > 0)
+            {
+                plan.Add(PrototypeResourceSpawnPlanner.CreateStarterSpawn(resourceId, SettlementAnchorPosition));
+            }
+
+            if (count > 1)
+            {
+                plan.AddRange(PrototypeResourceSpawnPlanner.CreatePlan(resourceId, count - 1, _terrain.GetSpawnBounds(), rng));
+            }
+
             for (int i = 0; i < plan.Count; i++)
             {
                 SpawnResourceNode(plan[i].ResourceId, plan[i].Position, plan[i].UnitsRemaining, i + 1);
@@ -514,6 +540,7 @@ namespace Societies.Core
             }
 
             SyncWorkerNodes();
+            UpdateSettlementPresentation();
         }
 
         private void ApplyHarvestRequest(PrototypeHarvestRequest request)
@@ -561,6 +588,7 @@ namespace Societies.Core
             ReplaceResourceNodes(snapshot.Resources);
             ApplySimulationStateToScene();
             SyncWorkerNodes();
+            UpdateSettlementPresentation();
             UpdateHud();
         }
 
@@ -645,6 +673,13 @@ namespace Societies.Core
             }
         }
 
+        private void UpdateSettlementPresentation()
+        {
+            _settlementHub?.ApplyState(
+                _stockpile.Items,
+                _settlementSimulation?.Workers ?? Array.Empty<PrototypeWorkerState>());
+        }
+
         private void UpdateHud()
         {
             if (_hud == null || _entityManager == null)
@@ -674,6 +709,7 @@ namespace Societies.Core
                     _stockpile.Items,
                     _settlementSimulation?.Workers ?? System.Array.Empty<PrototypeWorkerState>()));
             _hud.SetInteractionText(interactionText);
+            UpdateSettlementPresentation();
         }
 
         private void RecordEvent(string eventType, string message)

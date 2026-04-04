@@ -32,7 +32,12 @@ namespace Societies.Core.Tests
                         CarryItemId = "wood",
                         CarryAmount = 1,
                         TicksRemaining = 5,
-                        Position = PrototypeSerializableVector3.FromVector3(new Vector3(4.0f, 0.0f, -2.0f))
+                        PhaseDurationTicks = 18,
+                        Position = PrototypeSerializableVector3.FromVector3(new Vector3(4.0f, 0.0f, -2.0f)),
+                        HomePosition = PrototypeSerializableVector3.FromVector3(new Vector3(0.0f, 0.0f, 0.0f)),
+                        TargetPosition = PrototypeSerializableVector3.FromVector3(new Vector3(0.0f, 0.0f, 0.0f)),
+                        TargetLabel = "Settlement",
+                        ActivityText = "Returning with Wood"
                     }
                 },
                 Resources = new List<PrototypeResourceSnapshot>
@@ -58,6 +63,8 @@ namespace Societies.Core.Tests
             Assert.Equal(6, restored.Stockpile["berry"]);
             Assert.Single(restored.Workers);
             Assert.Equal("MovingToStockpile", restored.Workers[0].Phase);
+            Assert.Equal("Settlement", restored.Workers[0].TargetLabel);
+            Assert.Equal("Returning with Wood", restored.Workers[0].ActivityText);
             Assert.Single(restored.Resources);
             Assert.Equal(new Vector3(10.0f, 0.0f, -5.0f), restored.Resources[0].Position.ToVector3());
         }

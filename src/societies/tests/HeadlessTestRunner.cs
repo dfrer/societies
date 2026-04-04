@@ -50,6 +50,7 @@ namespace Societies.Tests
             Test_Node_Creation();
             Test_SceneTree_Access();
             await Test_MainScene_BootstrapSmoke();
+            await Test_MainScene_WorkerVisualizationSmoke();
             await Test_MainScene_CraftingAndSnapshotSmoke();
             await Test_MainScene_ResetAndRestoreSmoke();
             await Test_MainScene_SettlementLoopSmoke();
@@ -242,6 +243,53 @@ namespace Societies.Tests
             }
         }
 
+        private async Task Test_MainScene_WorkerVisualizationSmoke()
+        {
+            Node? scene = null;
+
+            try
+            {
+                PackedScene packedScene = GD.Load<PackedScene>("res://scenes/main.tscn");
+                Assert(packedScene != null, "Main scene failed to load");
+
+                scene = packedScene!.Instantiate();
+                AddChild(scene);
+                await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+
+                GameManager manager = scene as GameManager ?? throw new Exception("Main scene root is not GameManager");
+                PrototypeHud hud = manager.GetNodeOrNull<PrototypeHud>("UI") ?? throw new Exception("PrototypeHud missing");
+                Node3D agentsRoot = manager.GetNodeOrNull<Node3D>("World/Agents") ?? throw new Exception("Agents root missing");
+                PrototypeSettlementHub hub = manager.GetNodeOrNull<PrototypeSettlementHub>("World/Environment/SettlementHub") ?? throw new Exception("SettlementHub missing");
+
+                PrototypeRuntimeSnapshot initialSnapshot = manager.CaptureSnapshot();
+                manager.StepSimulationTicks(24);
+                PrototypeRuntimeSnapshot movedSnapshot = manager.CaptureSnapshot();
+
+                Assert(movedSnapshot.Workers.Any(worker => worker.Position.ToVector3().DistanceTo(worker.HomePosition.ToVector3()) > 0.5f), "At least one worker should physically move away from home");
+                Assert(hud.SettlementText.Contains("->"), "Settlement HUD should show worker targets");
+                Assert(!string.IsNullOrWhiteSpace(hub.StatusText), "Settlement hub label should not be empty");
+
+                PrototypeWorkerAgent? workerNode = agentsRoot.GetChildren().OfType<PrototypeWorkerAgent>().FirstOrDefault();
+                Assert(workerNode != null, "Worker visual should exist");
+                Assert(!string.IsNullOrWhiteSpace(workerNode!.LabelText), "Worker label should describe current work");
+                Assert(initialSnapshot.Workers.Count == movedSnapshot.Workers.Count, "Worker count should remain stable while moving");
+
+                Pass(nameof(Test_MainScene_WorkerVisualizationSmoke));
+            }
+            catch (Exception ex)
+            {
+                Fail(nameof(Test_MainScene_WorkerVisualizationSmoke), ex);
+            }
+            finally
+            {
+                if (scene != null)
+                {
+                    scene.QueueFree();
+                    await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+                }
+            }
+        }
+
         private async Task Test_MainScene_ResetAndRestoreSmoke()
         {
             Node? scene = null;
@@ -317,6 +365,7 @@ namespace Societies.Tests
                 GameManager manager = scene as GameManager ?? throw new Exception("Main scene root is not GameManager");
                 PrototypeHud hud = manager.GetNodeOrNull<PrototypeHud>("UI") ?? throw new Exception("PrototypeHud missing");
                 Node3D agentsRoot = manager.GetNodeOrNull<Node3D>("World/Agents") ?? throw new Exception("Agents root missing");
+                PrototypeSettlementHub hub = manager.GetNodeOrNull<PrototypeSettlementHub>("World/Environment/SettlementHub") ?? throw new Exception("SettlementHub missing");
 
                 manager.StepSimulationTicks(320);
                 PrototypeRuntimeSnapshot snapshot = manager.CaptureSnapshot();
@@ -326,6 +375,7 @@ namespace Societies.Tests
                 Assert(snapshot.Stockpile.GetValueOrDefault("campfire", 0) == 1, "Settlement should craft one campfire during the smoke run");
                 Assert(!string.IsNullOrWhiteSpace(hud.SettlementText), "Settlement HUD text should not be empty");
                 Assert(hud.SettlementText.Contains("Settlement"), "Settlement HUD should include the section header");
+                Assert(hub.IsCampfireLit, "Settlement hub should light the campfire after crafting");
 
                 Pass(nameof(Test_MainScene_SettlementLoopSmoke));
             }

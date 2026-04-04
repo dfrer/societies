@@ -61,9 +61,18 @@ namespace Societies.UI
                 lines.AddRange(workers.Select(worker =>
                 {
                     string carry = worker.CarryAmount > 0
-                        ? $" carrying {worker.CarryItemId} x{worker.CarryAmount}"
+                        ? $" [{InventoryComponent.FormatItemName(worker.CarryItemId)} x{worker.CarryAmount}]"
                         : string.Empty;
-                    return $"{worker.DisplayName}: {worker.Phase}{carry}";
+                    string target = string.IsNullOrWhiteSpace(worker.TargetLabel)
+                        ? string.Empty
+                        : $" -> {worker.TargetLabel}";
+                    string activity = string.IsNullOrWhiteSpace(worker.ActivityText)
+                        ? worker.Phase.ToString()
+                        : worker.ActivityText;
+                    string progress = worker.Phase == PrototypeWorkerPhase.Idle
+                        ? string.Empty
+                        : $" ({worker.ProgressPercent} %)";
+                    return $"{worker.DisplayName}: {activity}{progress}{target}{carry}";
                 }));
             }
 

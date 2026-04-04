@@ -60,5 +60,22 @@ namespace Societies.Core.Tests
             Assert.Equal(25, plan.Count);
             Assert.True(plan.Select(spawn => spawn.Position).Distinct().Count() > 10);
         }
+
+        [Fact]
+        public void ResourceSpawnPlanner_CreateStarterSpawn_PlacesReadableNearbyNodes()
+        {
+            Vector3 settlementAnchor = new(16.0f, 0.0f, 14.0f);
+
+            PrototypeResourceSpawn wood = PrototypeResourceSpawnPlanner.CreateStarterSpawn("wood", settlementAnchor);
+            PrototypeResourceSpawn stone = PrototypeResourceSpawnPlanner.CreateStarterSpawn("stone", settlementAnchor);
+            PrototypeResourceSpawn berry = PrototypeResourceSpawnPlanner.CreateStarterSpawn("berry", settlementAnchor);
+
+            Assert.Equal(new Vector3(25.0f, 0.0f, 9.5f), wood.Position);
+            Assert.Equal(new Vector3(8.0f, 0.0f, 19.5f), stone.Position);
+            Assert.Equal(new Vector3(22.5f, 0.0f, 22.0f), berry.Position);
+            Assert.Equal(6, wood.UnitsRemaining);
+            Assert.Equal(6, stone.UnitsRemaining);
+            Assert.Equal(4, berry.UnitsRemaining);
+        }
     }
 }
