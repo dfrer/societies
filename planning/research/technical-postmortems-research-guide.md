@@ -8,7 +8,6 @@ This guide provides structured research tasks for gathering technical insights f
 1. **GDC Vault** (gdcvault.com) - Conference talks and postmortems
 2. **Gamasutra/Game Developer** - Postmortem articles
 3. **GDC YouTube Channel** - Free video content
-4. **Reddit r/gamedev** - Community postmortems
 5. **Game Developer Magazine Archives** - Historical articles
 
 ### Secondary Sources
@@ -185,7 +184,6 @@ Eco is a multiplayer environmental simulation with player-run governments and a 
 
 ### Multiplayer Architecture
 1. What networking solution did they use?
-   - Engine (Unity?) and networking library
    - Client-server or P2P architecture
    - How do they handle 100+ concurrent players?
    - What synchronization challenges did they face?
@@ -331,7 +329,6 @@ Find technical postmortems and talks about multiplayer simulation games (Factori
 4. What networking libraries work well?
    - ENet, WebSocket, custom solutions
    - Godot multiplayer experiences
-   - Unity Mirror/FishNet experiences
    - Custom UDP implementations
 
 ### Performance

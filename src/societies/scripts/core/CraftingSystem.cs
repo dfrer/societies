@@ -82,6 +82,15 @@ namespace Societies.Core
 
             return string.Join('\n', lines);
         }
+
+        public static IReadOnlyList<string> GetCraftedItemIds()
+        {
+            return Recipes
+                .SelectMany(recipe => recipe.Outputs.Keys)
+                .Distinct()
+                .OrderBy(itemId => itemId)
+                .ToList();
+        }
     }
 
     public sealed class CraftingRecipe

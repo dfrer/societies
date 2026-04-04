@@ -10,11 +10,18 @@ Societies is an AI-powered multiplayer civilization simulation game where humans
 - `planning/` - Comprehensive 7-session planning structure
 - `tests/` - C# unit tests and Godot integration tests
 
+## Current Build Reality
+
+- The authoritative build is the Godot project under `src/societies/`
+- The current default branch in this repository is `master`
+- Use `CURRENT_BUILD.md` as the repo-truth summary before assuming stale planning still reflects implementation
+- Treat `planning/` as aspirational unless the current Godot code confirms it
+
 ## Tech Stack
 
 - **Engine**: Godot 4.x + C#
-- **Networking**: Godot ENet (UDP-based)
-- **Database**: PostgreSQL (prod), SQLite (dev)
+- **Networking**: Local session in the current prototype, ENet deferred
+- **Persistence**: Local JSON snapshot/event-log/run-summary output in the current prototype
 - **Testing**: .NET Test + Godot headless runner
 - **Planning**: Markdown-based documentation
 
@@ -36,16 +43,15 @@ Societies is an AI-powered multiplayer civilization simulation game where humans
 
 ```bash
 # Run C# unit tests
-dotnet test tests/Societies.Core.Tests/
+dotnet test tests/Societies.Core.Tests/Societies.Core.Tests.csproj
 
 # Run Godot headless tests (requires Godot)
-cd src/societies
-godot --headless --script tests/HeadlessTestRunner.cs
+godot --headless --path src/societies res://tests/HeadlessTestRunner.tscn
 ```
 
 ## Git Workflow
 
-- Main branch: `main`
+- Current default branch: `master`
 - Feature branches: `feature/<description>`
 - Commit planning documents to `planning/sessions/`
 
@@ -75,10 +81,13 @@ Each session is in `planning/sessions/session-N-<name>/`
 dotnet build src/societies/Societies.csproj
 
 # Run tests
-dotnet test tests/Societies.Core.Tests/
+dotnet test tests/Societies.Core.Tests/Societies.Core.Tests.csproj
 
 # Open in Godot
 godot --path src/societies
+
+# Run the full local validation loop
+./scripts/run-prototype-validation.ps1
 ```
 
 ## Getting Started

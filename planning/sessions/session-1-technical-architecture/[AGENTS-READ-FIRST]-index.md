@@ -1,5 +1,7 @@
 # Day 1: Technical Architecture - Agent Navigation Hub
 
+> Prototype reality note (2026-04-03): the authoritative implementation is currently the Godot prototype under `src/societies/`. This session documents long-term architecture goals and should not be treated as current implementation truth without code confirmation.
+
 > **[AGENTS-READ-FIRST]**: This is the navigation hub for all Day 1 Technical Architecture documentation. Start here to understand what each file contains and how to navigate between them.
 
 ---
@@ -33,7 +35,7 @@
 
 This Day 1 Technical Architecture document establishes the complete technical foundation for Societies, a multiplayer ecosystem simulation game. Key architectural decisions validated through comprehensive research, including the new voxel world system:
 
-**Technology Stack**: Godot 4.x + C# selected over Unity/Unreal for MIT licensing, production-ready MultiplayerAPI, and 2-5x performance advantage over GDScript.
+**Technology Stack**: Godot 4.x + C# selected for MIT licensing, production-ready MultiplayerAPI, and 2-5x performance advantage over GDScript.
 
 **Networking**: ENet state synchronization chosen over lockstep to enable variable tick rates (10-30 TPS), time acceleration (2x-10x), and AI agent randomness.
 

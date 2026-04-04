@@ -6,7 +6,6 @@ Eco, developed by Strange Loop Games and led by John Krajewski, represents one o
 
 **Key Technical Architecture Highlights:**
 
-- **Engine**: Unity (using deprecated UNET networking framework)
 - **Database**: LiteDB (embedded NoSQL) for world state persistence
 - **Server Architecture**: Authoritative server with client-server model
 - **Scale Context**: LiteDB issues emerged at 50-100 player scale; small deployments (8 players, 20 agents) work fine with embedded databases
@@ -28,8 +27,6 @@ The following analysis examines Eco's technical architecture across multiplayer 
 
 **Developer**: Strange Loop Games (Seattle-based indie studio)
 **Founder/Lead Designer**: John Krajewski
-**Engine**: Unity (confirmed via GitHub issues and Steam technical discussions)
-**Networking**: Unity UNET (now deprecated, caused ongoing technical debt)
 **Database**: LiteDB (embedded NoSQL database for .NET)
 **Release Timeline**:
 - Development began: September 2014
@@ -39,7 +36,7 @@ The following analysis examines Eco's technical architecture across multiplayer 
 
 **Scale Metrics**:
 - Target player count: 50-100 concurrent players per server
-- World size: Configurable from 72x72 (0.52 km²) to 200x200+ (4+ km²)
+- World size: Configurable from 72x72 (0.52 kmÂ²) to 200x200+ (4+ kmÂ²)
 - Server requirements for 100 players: 12-16 CPU cores, 64GB RAM, NVMe storage
 - Player base: 800,000+ members (as of 2023)
 
@@ -50,13 +47,10 @@ The following analysis examines Eco's technical architecture across multiplayer 
 ### Networking Solution
 
 **Technical Details**:
-- **Engine**: Unity (confirmed via multiple sources including GitHub issue tracker)
-- **Networking Library**: Unity UNET (Unity Networking High Level API) - *deprecated by Unity in 2018*
 - **Architecture**: Client-server with authoritative server validation
 - **Network Model**: Authoritative server processes all game logic; clients send inputs and receive state updates
 
 **Evidence from Sources**:
-From the Eco GitHub issues repository (StrangeLoopGames/EcoIssues), multiple technical discussions confirm the use of Unity's networking stack. Issue #11405 specifically mentions "Network plugin randomly spiking to high utilisation" - referring to UNET's network layer. The developer response mentions "LiteDB" and "stat reads/writes" as compounding factors, confirming the tech stack.
 
 ### Player Scaling
 
@@ -119,7 +113,6 @@ From GitHub issues (#11405, #11118):
 
 ### Lessons for Societies
 
-1. **Choose Networking Technology Carefully**: Eco's use of Unity UNET became technical debt when Unity deprecated it. Consider mature, actively maintained networking libraries.
 
 2. **Plan for Vertical Scaling Limits**: Eco's architecture relies heavily on single-threaded performance. Consider:
    - Horizontal scaling through world sharding
@@ -168,7 +161,6 @@ From the Eco Wiki: "Thousands of plants and animals simulate 24/7, and everythin
 **Performance Optimization Techniques**:
 1. **Spatial Partitioning**: World divided into chunks; only active chunks simulate in detail
 2. **LOD for Ecosystem**: Distant ecosystem elements use simplified simulation
-3. **DOTS Integration** (Update 9.7): Strange Loop Games planned to "fully replace these game objects with Unity DOTS lightweight entities" for plants
 4. **Caching**: Frequently accessed ecosystem data cached to reduce database queries
 
 **State Synchronization**:
@@ -242,7 +234,6 @@ From John Krajewski (WIRED interview): "You can see population and heat maps of 
 4. **Plan for Visual Impact**: Performance issues around trees/stockpiles show that visual representation affects gameplay. Consider:
    - Mesh-based LOD systems (Eco's solution for trees)
    - Static mesh batching for common objects
-   - Unity DOTS or similar for massive object counts
 
 ---
 
@@ -343,7 +334,7 @@ From the Skills Wiki page:
 
 ### Lessons for Societies
 
-1. **Economic Systems Need Flexibility**: Eco's shift from personal credit → backed currency shows the importance of:
+1. **Economic Systems Need Flexibility**: Eco's shift from personal credit â†’ backed currency shows the importance of:
    - Modular currency system allowing multiple types
    - Player-defined economic rules
    - Support for both barter and currency systems
@@ -453,7 +444,6 @@ From John Krajewski ("The Design Pillars of Eco"):
 - Demographics caching (pre-calculated groups)
 
 **Modding Support** (EcoLawExtensionsMod):
-Community mods extend law system with:
 - New game values (distance metrics, skill counts)
 - New legal actions (turn on machines, etc.)
 - New triggers (power consumption)
@@ -525,7 +515,6 @@ From John Krajewski interviews:
    - Government type transitions
    - Law versioning and history
 
-5. **Extensibility is Valuable**: Community mods extend law system significantly:
    - Design modular law system from start
    - Expose hooks for custom triggers/conditions/actions
    - Document API for modders
@@ -538,9 +527,6 @@ From John Krajewski interviews:
 
 **What Would They Do Differently?**
 
-**1. Unity UNET Choice**:
-From GitHub issues and community discussions, Eco's use of Unity UNET became significant technical debt:
-- Unity deprecated UNET in 2018
 - Forced Strange Loop Games to maintain deprecated networking code
 - Limited access to modern networking features
 - **Lesson**: Choose networking libraries with long-term support
@@ -605,10 +591,8 @@ While Eco doesn't use deterministic lockstep, floating-point consistency still m
 
 **1. Modding System Architecture**:
 From mod.io and GitHub:
-- EcoModKit enables extensive community contributions
 - Server auto-syncs mods with clients
 - Supports deep gameplay modifications
-- **Success metric**: Active modding community 7+ years after release
 
 **2. Educational Integration**:
 From multiple sources (WIRED, iThrive):
@@ -648,13 +632,11 @@ From government system evolution:
 **Technology Choices**:
 
 **Use**:
-- **Unity ECS/DOTS**: For handling massive object counts (Eco's planned solution)
 - **Dedicated Database**: PostgreSQL or similar for production scale
 - **Modular Networking**: Mirror, FishNet, or custom solution (not deprecated tech)
 
 **Avoid**:
 - **Embedded Databases**: For high-traffic multiplayer (LiteDB limitations)
-- **Deprecated Frameworks**: Unity UNET cautionary tale
 - **Single-Threaded Core**: Plan for parallelization
 
 **Team Structure**:
@@ -662,14 +644,12 @@ From government system evolution:
 From John Krajewski (various interviews):
 - Small, focused team with clear ownership
 - Remote work (pre-pandemic) requires strong communication
-- Community involvement in development process
 - Cross-disciplinary skills valuable (design + technical)
 
 **Timeline Advice**:
 
 **1. Early Access Strategy**:
-- Eco's Early Access (Feb 2018) → ongoing 7+ years later
-- Community feedback invaluable but extends timeline
+- Eco's Early Access (Feb 2018) â†’ ongoing 7+ years later
 - Set clear expectations for "1.0" features
 
 **2. Performance Budget**:
@@ -690,7 +670,6 @@ From John Krajewski (various interviews):
 - Mods extend game lifespan significantly
 
 **3. Technical Debt Accumulates Quickly**:
-- Unity UNET deprecation forced ongoing maintenance
 - Legacy code complicates new features
 - Refactor aggressively during Early Access
 
@@ -719,7 +698,6 @@ From John Krajewski (various interviews):
   - Plan for read replicas if needed
 
 **2. Networking Technology Commitment** (Validated Risk)
-- **Evidence**: Eco's UNET choice became technical debt when Unity deprecated it
 - **Recommendation**:
   - Choose actively maintained networking library (Mirror, FishNet, or Netcode for GameObjects)
   - Abstract networking layer to allow future swaps
@@ -739,7 +717,6 @@ From John Krajewski (various interviews):
 - **Recommendation**:
   - Profile early with realistic loads
   - Consider horizontal scaling (world sharding) for >100 players
-  - Use Unity ECS/DOTS for massive object counts
 
 **5. Player-Driven Systems Create Edge Cases** (Design Complexity)
 - **Evidence**: Eco's law system required complete rewrite for Constitution update; edge cases in player governments
@@ -758,13 +735,10 @@ From John Krajewski (various interviews):
 **Low Priority** (Nice to have):
 
 **7. Modding Support Architecture** (Longevity)
-- **Evidence**: Eco's modding community extended game life and added features
 - **Recommendation**:
   - Design extensible systems from start
-  - Expose APIs for community extensions
   - Consider mod support for governance/economic systems
 
-**8. Educational Integration Potential** (Market Opportunity)
 - **Evidence**: Eco received Department of Education grant; deployed in schools
 - **Recommendation**:
   - Design with educational use cases in mind
@@ -879,8 +853,6 @@ From John Krajewski (various interviews):
 | Eco Wiki - Economy | Documentation | 2024 | https://wiki.play.eco/en/Economy | HIGH | Currency types, trade mechanics |
 | Eco Wiki - Skills | Documentation | 2024 | https://wiki.play.eco/en/Skills | HIGH | Skill system implementation, progression |
 | Eco Wiki - Pollution | Documentation | 2024 | https://wiki.play.eco/en/Pollution | HIGH | Pollution mechanics, spread algorithms |
-| EcoLawExtensionsMod | GitHub/Community | 2021 | https://github.com/thomasfn/EcoLawExtensionsMod | MEDIUM | Modding API reveals law system internals |
-| Indie Interview: John Krajewski | TechRaptor | Aug 22, 2018 | https://techraptor.net/gaming/interview/indie-interview-john-krajewski-strange-loop-games-eco | MEDIUM | Development approach, community involvement |
 | Building a Beneficial Metaverse, Part II | Strange Loop Games | 2023 | https://strangeloopgames.com/worlds-of-consequence/ | HIGH | John Krajewski's principles for virtual world design |
 | Game Dev Unchained Podcast - Episode 0330 | Podcast | Aug 22, 2023 | https://creators.spotify.com/pod/profile/gamedevunchained/ | MEDIUM | 800k members, metaverse vision, 14-year history |
 
@@ -897,14 +869,11 @@ From John Krajewski (various interviews):
 
 **High Confidence Findings** (Multiple primary sources, developer statements):
 
-- **Engine**: Unity (confirmed by GitHub issues, multiple interviews)
 - **Database**: LiteDB (confirmed by GitHub issue #11405 and server file structure)
-- **Networking**: Unity UNET (implied by "Network plugin" references in GitHub issues, deprecation timeline aligns)
 - **Player count**: 50-100 supported with high-end hardware (multiple server hosting guides)
 - **Ecosystem approach**: Agent-based simulation with pollution (John Krajewski interviews, wiki documentation)
 - **Economy system**: Player-driven with personal credit and backed currencies (Krajewski's "Economy as Gameplay" blog)
 
-**Medium Confidence Findings** (Some inference or community reports):
 
 - **Specific tick rate**: 20-30 Hz (mentioned in server guides, may vary by configuration)
 - **Pollution algorithm details**: Uses "hydrology rules" and diffusion (wiki description, not explicit algorithm)
@@ -921,7 +890,6 @@ From John Krajewski (various interviews):
 **Uncertain** (Could not find sufficient evidence):
 
 - **Exact deterministic lockstep implementation**: Eco uses authoritative server, may not use traditional lockstep
-- **Specific Unity version used**: Not documented in available sources
 - **Whether they migrated from UNET**: Likely still using it (evidence of "network plugin" issues in 2019-2023)
 - **Current team size or structure**: Limited current information
 
@@ -958,7 +926,6 @@ From John Krajewski (various interviews):
 3. **Recent Patch Notes**: Analyze Update 10.x technical changes
    - **What it would tell us**: Current performance status, recent architectural changes
 
-4. **Server Hosting Community**: Interview large Eco server operators
    - **What it would tell us**: Real-world performance data, workarounds for limitations
 
 5. **Mod Developer Interviews**: Talk to EcoLawExtensionsMod and other mod creators
@@ -997,7 +964,7 @@ From John Krajewski (various interviews):
 
 **Validate**: Player-driven pricing works
 - Eco proves no central price authority needed
-- Personal credit → backed currency progression validated
+- Personal credit â†’ backed currency progression validated
 - Contract system enables asynchronous collaboration
 
 ### For Session 4 (World Systems):
@@ -1035,7 +1002,6 @@ From John Krajewski (various interviews):
   - Secondary: Multiple wiki pages, server hosting guides, podcast interview
 
 - [x] Technical architecture details documented
-  - Engine: Unity
   - Database: LiteDB
   - Networking: UNET (with caveats about deprecation)
   - Server model: Authoritative client-server
@@ -1074,7 +1040,6 @@ From John Krajewski (various interviews):
 
 ## Conclusion
 
-Eco represents a pioneering but cautionary tale in multiplayer simulation game development. Strange Loop Games successfully created a deeply interconnected system of ecology, economy, and governance that delivers unique gameplay experiences and educational value. However, their technical architecture choices - particularly Unity UNET and LiteDB - created significant technical debt and performance limitations that continue to affect the game 7+ years into development.
 
 For Societies, the key lessons are:
 

@@ -36,7 +36,7 @@ HTN planning decomposes high-level tasks into subtasks recursively until reachin
 ### Games Using Utility AI
 
 **RimWorld** (Primary Case Study):
-- **Implementation**: Tynan Sylvester's design philosophy emphasizes "apophenia"—creating systems where players perceive stories in emergent behavior. The AI uses a utility-based system for pawn (colonist) decision-making where needs (food, rest, joy, social) compete for attention
+- **Implementation**: Tynan Sylvester's design philosophy emphasizes "apophenia"â€”creating systems where players perceive stories in emergent behavior. The AI uses a utility-based system for pawn (colonist) decision-making where needs (food, rest, joy, social) compete for attention
 - **Scale**: Supports colonies of 20-50 pawns actively making decisions simultaneously, plus passive world simulation
 - **Performance**: Need-based scoring recalculated periodically (not every tick); prioritized scheduling reduces computation
 - **Pros**: 
@@ -47,13 +47,13 @@ HTN planning decomposes high-level tasks into subtasks recursively until reachin
   - Can create repetitive behavior without randomness
   - Difficult to enforce narrative sequences
   - Requires careful curve tuning
-- **Developer Insights**: Sylvester emphasizes that "the simulation dream" works when systems interact to create unexpected but logical outcomes. The scoring isn't pure optimization—randomness and personality traits create variation
+- **Developer Insights**: Sylvester emphasizes that "the simulation dream" works when systems interact to create unexpected but logical outcomes. The scoring isn't pure optimizationâ€”randomness and personality traits create variation
 
 **The Sims Series** (Classic Utility AI):
 - **Implementation**: Based on Maslow's hierarchy of needs (8 core needs: hunger, comfort, hygiene, bladder, energy, fun, social, room). Each need decays over time and generates utility scores for actions that satisfy it
-- **Architecture**: "Smart Objects" paradigm—objects broadcast what needs they can satisfy rather than agents knowing all possible actions
+- **Architecture**: "Smart Objects" paradigmâ€”objects broadcast what needs they can satisfy rather than agents knowing all possible actions
 - **Scoring**: Actions scored by: (1) Need urgency (curved decay), (2) Object attractiveness, (3) Distance/accessibility, (4) Personality modifiers
-- **Performance**: Handles 8+ Sims per household with continuous autonomy; optimization through "bucketing"—only top-priority needs are considered for action selection
+- **Performance**: Handles 8+ Sims per household with continuous autonomy; optimization through "bucketing"â€”only top-priority needs are considered for action selection
 - **Innovation**: The Sims 4 introduced "autonomy hierarchy" evaluating commodities (needs) priority before action selection, improving performance over The Sims 3's broader search
 - **Developer Insights**: Weighted random selection among top-scoring actions prevents robotic behavior. When needs are critical, Sims pick optimal solutions; when comfortable, more randomness creates personality
 
@@ -76,12 +76,12 @@ The mathematical foundation of Utility AI transforms raw game data into comparab
 
 **Basic Formula**:
 ```
-ActionScore = Σ(Consideration_i × Weight_i) / Σ|Weight_i|
+ActionScore = Î£(Consideration_i Ã— Weight_i) / Î£|Weight_i|
 ```
 
 Or using multiplicative combination (recommended by Dave Mark):
 ```
-ActionScore = Π(ConsiderationScore_i^Weight_i)
+ActionScore = Î (ConsiderationScore_i^Weight_i)
 ```
 
 **Normalization**:
@@ -107,7 +107,6 @@ Response Curve: Inverted exponential (hunger urgency accelerates)
 
 **Structure Types**:
 1. **Needs-Based**: Sims-style decaying needs (hunger, energy)
-2. **Opportunity-Based**: Evaluate available interactions in environment
 3. **Personality-Modified**: Traits adjust weights (neurotic = higher safety priority)
 
 **Performance Optimization**:
@@ -130,7 +129,7 @@ Response Curve: Inverted exponential (hunger urgency accelerates)
 - **Tuning Hell**: Too many considerations make balancing difficult. Solution: Start with core needs, add modifiers incrementally
 
 **Lessons for Societies**:
-1. **Start with core needs**: Food, shelter, safety, social—then add economic motives (wealth, status)
+1. **Start with core needs**: Food, shelter, safety, socialâ€”then add economic motives (wealth, status)
 2. **Use response curves**: Linear scoring is rarely appropriate; most human motivations follow curves (diminishing returns, urgency thresholds)
 3. **Embrace randomness**: Perfect optimization creates boring agents; weighted randomness creates personality
 4. **Bucketing for scale**: When agent counts grow, evaluate only high-priority action categories
@@ -162,10 +161,10 @@ Response Curve: Inverted exponential (hunger urgency accelerates)
   - Created "smart" enemy behavior through dynamic action chaining
   - Enemies could react to player actions (e.g., door slamming triggers re-plan to flank)
 - **Limitations**:
-  - No agent coordination—AI doesn't know other AI exist
+  - No agent coordinationâ€”AI doesn't know other AI exist
   - "Cooperative" behavior is emergent from aligned individual goals
-  - Brittle plans—world changes invalidate plans mid-execution
-  - Debugging difficulty—understanding why AI chose specific plan is challenging
+  - Brittle plansâ€”world changes invalidate plans mid-execution
+  - Debugging difficultyâ€”understanding why AI chose specific plan is challenging
 
 **Other GOAP Games**:
 - **Condemned: Criminal Origins**
@@ -222,7 +221,7 @@ struct Action {
 - **Frequency**: Plan at 1-5Hz, not every tick
 
 **Common Issues**:
-- **The "Rats Problem"**: Background agents (like F.E.A.R.'s rats) shouldn't plan when not relevant. Solution: Planning LOD—reduce frequency or disable planning for distant/unimportant agents
+- **The "Rats Problem"**: Background agents (like F.E.A.R.'s rats) shouldn't plan when not relevant. Solution: Planning LODâ€”reduce frequency or disable planning for distant/unimportant agents
 - **Plan Invalidation**: World changes break plans. Solutions: 
   - Monitor preconditions during execution
   - ReplanRequired() triggers
@@ -239,7 +238,7 @@ struct Action {
 - **Rich Environment Interaction**: Many interactable objects with complex relationships
 
 **Inappropriate Use Cases**:
-- **Simple Environments**: Fewer than 10 actions—overkill
+- **Simple Environments**: Fewer than 10 actionsâ€”overkill
 - **High Agent Counts**: >20 simultaneous planners becomes expensive
 - **Predictable Patterns Needed**: GOAP creates variability; use BTs for scripted sequences
 - **Performance-Critical**: Mobile/VR with tight CPU budgets
@@ -262,8 +261,8 @@ struct Action {
 
 **Lessons for Societies**:
 1. **GOAP is likely overkill** for economic/social simulation where actions are more discrete and less emergent
-2. **Consider HTN instead** if planning is needed—better performance, easier debugging
-3. **GOAP shines in physical environment interaction**—Societies' focus on economic systems may not leverage GOAP's strengths
+2. **Consider HTN instead** if planning is neededâ€”better performance, easier debugging
+3. **GOAP shines in physical environment interaction**â€”Societies' focus on economic systems may not leverage GOAP's strengths
 
 ---
 
@@ -273,11 +272,11 @@ struct Action {
 
 **Halo Series** (Bungie/Damian Isla):
 - **Halo 2**: Dynamic behavior trees (DAG structure) with stimulus-driven behavior switching. Architecture evolved from Finite State Machines to hierarchical decision trees
-- **Halo 3**: Shifted to "Objective Trees"—declarative approach where designers specify tasks and system distributes AI squads. AI became more static, less dynamic
+- **Halo 3**: Shifted to "Objective Trees"â€”declarative approach where designers specify tasks and system distributes AI squads. AI became more static, less dynamic
 - **Scale**: 
   - Halo 2: Complex trees but scalable through modularity
   - Halo 3: Multi-squad coordination (20-40 AI simultaneously)
-- **Key Innovation**: Behavior impulses—conditional redirections based on stimuli (e.g., "see player" impulse overrides patrol)
+- **Key Innovation**: Behavior impulsesâ€”conditional redirections based on stimuli (e.g., "see player" impulse overrides patrol)
 - **Performance**: Event-driven execution prevents constant polling; behaviors sleep when not active
 
 **Other Notable BT Games**:
@@ -518,7 +517,6 @@ Three-layer architecture common in complex games:
 
 **Specific Tools**:
 - **Unreal Engine**: Built-in AI debugging ( Behavior Tree visualizer, EQS visualizer)
-- **Unity**: NodeCanvas, Behavior Designer provide visualization
 - **Custom**: RimWorld's extensive dev mode with logging
 
 ### Logging Strategies
@@ -665,7 +663,7 @@ Three-layer architecture common in complex games:
 **Primary Approach**: **Utility AI Core + Behavior Tree Actuation**
 
 **Justification**:
-1. **Economic simulation alignment**: Utility AI proven in The Sims, RimWorld—games with economic and social focus
+1. **Economic simulation alignment**: Utility AI proven in The Sims, RimWorldâ€”games with economic and social focus
 2. **Scalability**: Can support 100+ agents with bucketing and LOD
 3. **Emergent narrative**: Competing priorities create interesting agent stories without scripting
 4. **Flexibility**: Easy to add new considerations (personality, culture, professions) without architectural changes
@@ -674,8 +672,8 @@ Three-layer architecture common in complex games:
 **Rationale**:
 1. **Simulation focus**: Societies is a simulation game, not a tactical combat game. GOAP's strengths (environment interaction, tactical planning) don't align with core needs.
 2. **Agent count**: Expecting many citizens (50-200+). Utility AI scales; GOAP doesn't.
-3. **Economic complexity**: Resource management, production chains, market dynamics—Utility AI naturally handles competing economic priorities.
-4. **Social dynamics**: Relationship networks, status, cultural values—Utility AI's consideration-based scoring adapts well.
+3. **Economic complexity**: Resource management, production chains, market dynamicsâ€”Utility AI naturally handles competing economic priorities.
+4. **Social dynamics**: Relationship networks, status, cultural valuesâ€”Utility AI's consideration-based scoring adapts well.
 
 ### Implementation Roadmap
 

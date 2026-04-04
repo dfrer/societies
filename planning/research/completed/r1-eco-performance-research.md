@@ -16,8 +16,7 @@ Eco represents a close analog to Societies - a multiplayer ecosystem simulation 
 ### Eco Server Architecture Overview
 
 **Evidence**:
-- Eco runs on .NET with a dedicated server application (not headless Unity/Godot like Societies)
-- Server can be hosted via Steam (Tools → Eco Server) or direct download
+- Server can be hosted via Steam (Tools â†’ Eco Server) or direct download
 - Supports both Windows and Linux server builds
 - Configuration through `.eco` files (JSON format) or in-game Server UI (Windows)
 - Built-in profiling and diagnostic tools available
@@ -25,14 +24,14 @@ Eco represents a close analog to Societies - a multiplayer ecosystem simulation 
 **Server Components**:
 ```
 Eco Server Architecture:
-├── Network Layer (TCP/UDP hybrid)
-├── Simulation Core (tick-based, variable rate)
-├── World Generation & Management
-├── Economy System (similar to Societies)
-├── Ecosystem Simulation (pollution, species, resources)
-├── Governance & Laws
-├── Persistence Layer (database)
-└── Admin & Profiling Tools
+â”œâ”€â”€ Network Layer (TCP/UDP hybrid)
+â”œâ”€â”€ Simulation Core (tick-based, variable rate)
+â”œâ”€â”€ World Generation & Management
+â”œâ”€â”€ Economy System (similar to Societies)
+â”œâ”€â”€ Ecosystem Simulation (pollution, species, resources)
+â”œâ”€â”€ Governance & Laws
+â”œâ”€â”€ Persistence Layer (database)
+â””â”€â”€ Admin & Profiling Tools
 ```
 
 **Configuration System**:
@@ -737,14 +736,12 @@ public partial class PerformanceManager : Node
 ## Confidence Assessment
 
 - **Overall Confidence**: High
-- **Evidence Quality**: Official Eco wiki, server configuration docs, community experience
 - **Applicability**: Very High - Eco is extremely similar to Societies in design and challenges
 
 ## Related Sources
 
 - Eco Wiki - Server Profiling: https://wiki.play.eco/en/Server_Profiling
 - Eco Wiki - Server Configuration: https://wiki.play.eco/en/Server_Configuration
-- Eco Discord (community performance discussions)
 
 ## Open Questions
 

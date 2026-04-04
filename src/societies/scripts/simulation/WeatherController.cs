@@ -7,42 +7,20 @@ namespace Societies.Simulation
     /// </summary>
     public partial class WeatherController : Node
     {
-        private readonly RandomNumberGenerator _rng = new();
-        private float _timeUntilNextShift = 45.0f;
-
         public PrototypeWeather CurrentWeather { get; private set; } = PrototypeWeather.Clear;
-        public string CurrentWeatherName => CurrentWeather == PrototypeWeather.Clear ? "Clear" : "Rain";
-        public float SunlightMultiplier => CurrentWeather == PrototypeWeather.Clear ? 1.0f : 0.72f;
+        public float TimeUntilNextShift { get; private set; }
+        public string CurrentWeatherName => PrototypeWeatherService.GetName(CurrentWeather);
+        public float SunlightMultiplier => PrototypeWeatherService.GetSunlightMultiplier(CurrentWeather);
 
         public override void _Ready()
         {
-            _rng.Randomize();
-            QueueNextShift();
+            ApplyState(PrototypeWeather.Clear, 45.0f);
         }
 
-        public override void _Process(double delta)
+        public void ApplyState(PrototypeWeather weather, float timeUntilNextShift)
         {
-            _timeUntilNextShift -= (float)delta;
-            if (_timeUntilNextShift <= 0.0f)
-            {
-                CurrentWeather = CurrentWeather == PrototypeWeather.Clear
-                    ? PrototypeWeather.Rain
-                    : PrototypeWeather.Clear;
-                QueueNextShift();
-            }
-        }
-
-        public void ToggleWeather()
-        {
-            CurrentWeather = CurrentWeather == PrototypeWeather.Clear
-                ? PrototypeWeather.Rain
-                : PrototypeWeather.Clear;
-            QueueNextShift();
-        }
-
-        private void QueueNextShift()
-        {
-            _timeUntilNextShift = _rng.RandfRange(40.0f, 90.0f);
+            CurrentWeather = weather;
+            TimeUntilNextShift = timeUntilNextShift;
         }
     }
 

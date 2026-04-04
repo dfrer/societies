@@ -4,8 +4,8 @@ using System;
 namespace Societies.Multiplayer
 {
     /// <summary>
-    /// Manages player session data, authentication, and state persistence.
-    /// Runs on both client and server.
+    /// Deferred multiplayer session placeholder. The current authoritative prototype
+    /// does not use this in the active runtime path.
     /// </summary>
     public partial class PlayerSession : Node
     {
@@ -35,7 +35,7 @@ namespace Societies.Multiplayer
         /// </summary>
         public void Authenticate(string playerId, string playerName)
         {
-            if (!NetworkManager.Instance.IsServer)
+            if (NetworkManager.Instance?.IsServer != true)
             {
                 GD.PrintErr("Authentication can only be performed on server");
                 return;
@@ -77,14 +77,11 @@ namespace Societies.Multiplayer
         }
         
         /// <summary>
-        /// Save player state to database
+        /// Deferred persistence hook retained for future non-local runtime work.
         /// </summary>
         public void SaveState()
         {
-            // TODO: Implement database persistence
-            GD.Print($"Saving state for player: {PlayerName}");
-            
-            var state = new PlayerStateData
+            PlayerStateData state = new()
             {
                 PlayerId = PlayerId,
                 Position = Position,
@@ -93,19 +90,16 @@ namespace Societies.Multiplayer
                 Hunger = Hunger,
                 LastSaved = DateTime.UtcNow
             };
-            
-            // TODO: Save to database
+
+            GD.Print($"Deferred PlayerSession.SaveState invoked for {state.PlayerId}");
         }
         
         /// <summary>
-        /// Load player state from database
+        /// Deferred persistence hook retained for future non-local runtime work.
         /// </summary>
         public void LoadState()
         {
-            // TODO: Implement database loading
-            GD.Print($"Loading state for player: {PlayerName}");
-            
-            // TODO: Load from database
+            GD.Print($"Deferred PlayerSession.LoadState invoked for {PlayerName}");
         }
         
         public override void _Process(double delta)

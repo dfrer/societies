@@ -10,11 +10,9 @@ This research analyzes multiplayer architectures and optimization strategies fro
 
 2. **Client-Server architectures dominate** modern multiplayer simulation games. Space Engineers' complete netcode rewrite (Update 1.187, 2018) moved from problematic peer-to-peer to a robust client-server model, achieving 1.0 sim-speed with 16-32 players and 100,000 PCU (Performance Cost Units).
 
-3. **Entity counts are the primary bottleneck**. Factorio optimizes for 10,000+ entities per player, Space Engineers manages 100,000 PCUs, and Eco uses Unity DOTS to parallelize plant/entity updates. All games use spatial partitioning and LOD systems to manage scale.
 
 4. **Multi-threading requires careful design**. Factorio's multithreading of belt readers and control behaviors achieved 9.5% performance gains, but their attempt to multithread electric networks failed because it was memory-throughput limited rather than CPU-bound.
 
-5. **Multiplayer implementation takes 4+ years** for complex simulation games. Space Engineers required 4+ years of iteration, Factorio continuously refined their multiplayer over 6+ years, and RimWorld's multiplayer was added by a community mod team rather than the core developers.
 
 **Recommendation for Societies:** Use a **deterministic client-server architecture** with **tick-based simulation** (30-60 TPS), implement **latency hiding** for player actions, and adopt **entity-component-system (ECS)** patterns for scalability. Target 100-200 concurrent players per server with spatial partitioning for world zones.
 
@@ -36,9 +34,7 @@ Factorio represents the pinnacle of deterministic multiplayer simulation. Their 
 **Developer:** Ludeon Studios (Tynan Sylvester)  
 **Release:** 2018 (Multiplayer added 1.3/1.4 via mod)  
 **Multiplayer Scale:** 8-16 players typically  
-**Architecture:** Community-implemented mod using lockstep synchronization  
 
-RimWorld's multiplayer was not implemented by Ludeon Studios but by the community (rwmt/Multiplayer mod). The game uses deterministic lockstep similar to Factorio but with added complexity from RimWorld's AI systems and mod support. The mod required extensive transpiler patches to synchronize the game's thousands of random events and AI decisions.
 
 **Key Technical Challenge:** Synchronizing RimWorld's complex storyteller AI and mod interactions across clients while maintaining deterministic behavior.
 
@@ -55,12 +51,9 @@ Space Engineers underwent a **complete netcode rewrite** in Update 1.187 (July 2
 ### Eco
 **Developer:** Strange Loop Games  
 **Release:** 2018  
-**Multiplayer Scale:** 100-200 players (official servers), 1km² world  
-**Architecture:** Client-server with Unity DOTS for entity optimization  
+**Multiplayer Scale:** 100-200 players (official servers), 1kmÂ² world  
 
-Eco focuses on environmental simulation with complex pollution, resource depletion, and player-driven economies. Update 9.7 (2022) introduced significant optimizations using Unity DOTS (Data-Oriented Technology Stack) to parallelize entity updates, particularly for plants and world chunks.
 
-**Key Technical Innovation:** Unity DOTS integration allowing multi-threaded updates of 10,000+ plants and efficient chunk processing for the voxel-based world.
 
 ---
 
@@ -71,9 +64,7 @@ Eco focuses on environmental simulation with complex pollution, resource depleti
 | Game | Architecture | Determinism | Max Players | Key Technology |
 |------|-------------|-------------|-------------|----------------|
 | **Factorio** | Peer-to-Peer (P2P) lockstep | Full determinism | 200+ (tested), 10-50 (typical) | Latency state prediction, CRC checks per tick |
-| **RimWorld** | P2P lockstep (community mod) | Full determinism | 8-16 | Transpiler patches, mod API |
 | **Space Engineers** | Client-Server | Physics prediction | 16 (official), 64 (tested) | PCU limits, async physics |
-| **Eco** | Client-Server | State sync | 100-200 | Unity DOTS, spatial partitioning |
 | **Stardew Valley** | Host-as-Server | State sync | 4-8 | Galaxy P2P (Steam uses Steam Networking) |
 | **Terraria** | Client-Server | State sync | 8-16 (default), 256 (max) | TCP on port 7777, tile-based sync |
 
@@ -81,7 +72,7 @@ Eco focuses on environmental simulation with complex pollution, resource depleti
 
 **When to Use Client-Server** (Evidence from games):
 - **Space Engineers (post-2018)**: Moved from P2P to client-server because P2P couldn't handle 300+ physically simulated grids with complex interactions (rotors, pistons, collisions). Server acts as authoritative source of truth, reducing desync issues.
-- **Eco**: Uses client-server to handle 100+ players in a shared 1km² world with complex pollution simulation. Server manages the authoritative world state.
+- **Eco**: Uses client-server to handle 100+ players in a shared 1kmÂ² world with complex pollution simulation. Server manages the authoritative world state.
 - **Terraria**: Dedicated server model allows persistent worlds independent of host presence.
 
 **When to Use P2P** (Evidence from games):
@@ -125,7 +116,6 @@ Use **deterministic lockstep for economic simulation** (prices, resource counts,
 - **Factorio**: 60 TPS (ticks per second) fixed. Every entity updates every tick unless optimized.
 - **RimWorld**: Tick-based with variable time compression (player controls speed).
 - **Space Engineers**: Physics ticks at 60Hz, simulation speed adjusts based on server load (1.0 = full speed).
-- **Eco**: Fixed tick rate with Unity DOTS batch processing.
 
 **Event-Driven** (Supplementary):
 - Used for non-time-critical updates (chat, UI, non-simulation events).
@@ -163,7 +153,6 @@ Use **tick-based simulation at 30 TPS** (lower than Factorio's 60 to reduce CPU 
 - **Priority Checking**: Critical systems (player characters, nearby ships) prioritized over distant objects.
 
 **Eco Approach** (Update 9.7 optimizations):
-- **Unity DOTS**: Replaced GameObject-based plants with DOTS lightweight entities.
   - Benefits: Faster instantiation/destruction, multi-threaded updates, better memory usage
 - **Chunk Processing**: World divided into chunks; DOTS heavily parallelizes chunk updates.
 - **Tree Optimization**: Simplified tree models, distant LODs use single meshes.
@@ -173,7 +162,7 @@ Use **tick-based simulation at 30 TPS** (lower than Factorio's 60 to reduce CPU 
 
 **Implementations**:
 - **Factorio**: Chunks (32x32 tiles). Only active chunks process entity updates.
-- **Eco**: 1km² world divided into chunks for rendering and simulation.
+- **Eco**: 1kmÂ² world divided into chunks for rendering and simulation.
 - **Space Engineers**: Sector-based with dynamic unloading (discussion in 2018 blog comments).
 
 **Performance Impact**:
@@ -197,7 +186,6 @@ Use **tick-based simulation at 30 TPS** (lower than Factorio's 60 to reduce CPU 
 - **Factorio (FFF #421, 2024)**: Belt readers, circuit networks, roboport logic.
   - 9.5% overall performance improvement
   - 14.9x speedup in synthetic benchmarks
-- **Eco (Update 9.7)**: Plant updates, chunk processing via Unity DOTS.
 - **Space Engineers (planned)**: Future updates aim for actor-model parallelism.
 
 **What Must Be Sequential** (Failed attempts):
@@ -210,7 +198,6 @@ Use **tick-based simulation at 30 TPS** (lower than Factorio's 60 to reduce CPU 
 3. **Profile first** - Factorio's electric network multithreading failed because the bottleneck was memory, not CPU.
 
 **Recommendation for Societies:**
-Use **Unity DOTS or similar ECS** for entity updates. Parallelize:
 - Agent AI decision-making (read-only world state)
 - Economic calculations (market prices, production)
 - Chunk/world zone updates
@@ -290,7 +277,6 @@ Target **2-5 KB/s per player** using hybrid approach:
 |---------|------|------|------|-------|
 | **Custom (UDP)** | Factorio | Minimal overhead, deterministic | Complex to implement correctly | Wube Software built custom stack |
 | **Steam Networking** | Stardew Valley (SteamDew mod) | Robust relay, connection-oriented | Steam dependency, not cross-platform | SteamDew replaces Galaxy P2P |
-| **Unity Netcode/MLAPI** | Eco | Integrated with Unity | Less control than custom | DOTS Netcode for ECS |
 | **TCP (Custom)** | Terraria | Reliable, simple | Higher latency than UDP | Port 7777 default |
 | **Custom + Havok** | Space Engineers | Physics integration | Complex, took 4+ years to refine | VRAGE engine |
 
@@ -311,7 +297,6 @@ While none of the analyzed games use Godot's ENet directly, **Factorio's custom 
 
 **Cautionary Tales**:
 - **Space Engineers**: Original netcode took 4+ years to get right. Marek Rosa stated: "There are no available resources and experiences... we had to discover all solutions by ourselves."
-- **Stardew Valley**: Original Galaxy P2P networking caused frequent disconnects, prompting community mod (SteamDew) to rewrite using Steam Networking.
 
 **Recommendation for Societies:**
 Use **Godot's built-in ENet** for prototyping (low implementation cost), but plan for **custom networking layer** if scaling beyond 100 players. The custom layer should support:
@@ -329,7 +314,6 @@ Use **Godot's built-in ENet** for prototyping (low implementation cost), but pla
 - **Factorio**: Built-in debug UI (F4) showing UPS (updates per second) and entity time usage by class.
 - **Space Engineers**: External company conducted 3-week testing with thousands of test cases. Server CPU/memory monitoring over 7-day periods.
 - **Eco**: `dotTrace` for CPU profiling, `dotnet-dump` for memory analysis (Update 9.6.4+).
-- **RimWorld**: Community mod uses transpiler logging and debug builds.
 
 **What to Profile**:
 - **UPS (Updates Per Second)**: Primary metric for simulation games. Factorio targets 60 UPS; drops indicate bottlenecks.
@@ -344,9 +328,9 @@ Use **Godot's built-in ENet** for prototyping (low implementation cost), but pla
 3. **Collision Detection**: Space Engineers' grid collisions, Terraria's tile interactions.
 
 **Factorio Examples** (FFF #421, 2024):
-- **Roboport Optimization**: Turn off when idle (1ms → 0.025ms per tick).
-- **Radar Logic**: Registration system for overlapping coverage → 3.6% overall improvement.
-- **Construction Robots**: Pre-calculate roboport areas, binary search instead of O(N) → "essentially free" checks.
+- **Roboport Optimization**: Turn off when idle (1ms â†’ 0.025ms per tick).
+- **Radar Logic**: Registration system for overlapping coverage â†’ 3.6% overall improvement.
+- **Construction Robots**: Pre-calculate roboport areas, binary search instead of O(N) â†’ "essentially free" checks.
 
 **RimWorld Examples**:
 - Mod uses transpiler patches to intercept and synchronize random events (ensuring deterministic outcomes).
@@ -377,7 +361,6 @@ Use **Godot's built-in ENet** for prototyping (low implementation cost), but pla
 
 ### ECS (Entity Component System) Benefits
 
-**Eco's Unity DOTS Implementation** (Update 9.7):
 - **Lightweight Entities**: 10,000+ plants as DOTS entities instead of GameObjects.
 - **Multi-threading**: Job system parallelizes updates.
 - **Memory Efficiency**: Structs instead of objects, better cache locality.
@@ -474,12 +457,10 @@ Implement **ECS architecture** using Godot's components or a custom system:
 **Space Engineers Multiplayer Overhaul**:
 - Duration: 6 months dedicated development (Update 1.187, July 2018)
 - Scope: 800+ work tickets, complete engine rewrite
-- Testing: Multiple public tests with community, 3 weeks external testing
 - History: 4+ years from initial multiplayer (2014) to "solved" (2018)
 
 **RimWorld Multiplayer**:
 - Not implemented by Ludeon Studios
-- Community mod (rwmt/Multiplayer): Multi-year development
 - Challenge: Adding multiplayer to existing complex single-player game
 
 **Eco Optimizations**:
@@ -606,7 +587,7 @@ Implement **ECS architecture** using Godot's components or a custom system:
 
 **Performance**:
 1. **Profile everything**: Build profiling tools early (Factorio's F4 debug UI).
-2. **Sleep inactive entities**: Factorio roboports: 1ms → 0.025ms when idle.
+2. **Sleep inactive entities**: Factorio roboports: 1ms â†’ 0.025ms when idle.
 3. **Batch updates**: Group similar entities for cache efficiency.
 4. **Test with realistic scale**: Space Engineers tested with 16-64 players, 100,000 PCUs.
 
@@ -626,7 +607,6 @@ Implement **ECS architecture** using Godot's components or a custom system:
 
 **Long-term (Alpha+)**:
 1. **Evaluate custom networking**: If scaling beyond 100 players, consider custom UDP stack like Factorio.
-2. **Implement Unity DOTS or similar**: For 10,000+ entity support.
 3. **Multi-threading**: Parallelize agent AI and economic calculations.
 4. **Advanced spatial partitioning**: Dynamic zone loading based on player density.
 
@@ -644,7 +624,6 @@ Implement **ECS architecture** using Godot's components or a custom system:
 - **From Factorio**: Prioritize determinism, implement latency hiding, optimize bandwidth aggressively.
 - **From Space Engineers**: Set performance limits (PCU equivalents), test at scale early, don't underestimate netcode complexity.
 - **From Eco**: Use DOTS/ECS for entity-heavy systems, parallelize where possible.
-- **From RimWorld**: Community can provide multiplayer if core game is solid, but native is better.
 
 ---
 
@@ -659,7 +638,6 @@ Implement **ECS architecture** using Godot's components or a custom system:
 | FFF #421 | Blog | factorio.com/blog/post/fff-421 | Optimizations 2.0, multithreading successes and failures |
 | FFF #415 | Blog | factorio.com/blog/post/fff-415 | Desync bugs, deterministic multithreading |
 | FFF #182 | Blog | factorio.com/blog/post/fff-182 | GUI optimizations |
-| Forums | Discussion | forums.factorio.com | Community multiplayer concerns, architecture validation |
 
 ### Space Engineers Sources
 | Source | Type | URL | Key Info |
@@ -672,7 +650,6 @@ Implement **ECS architecture** using Godot's components or a custom system:
 | Source | Type | URL | Key Info |
 |--------|------|-----|----------|
 | Multiplayer Mod Wiki | Documentation | hackmd.io/@rimworldmultiplayer/docs | Handshake process, mod API |
-| GitHub - Multiplayer | Code | github.com/rwmt/Multiplayer | Community implementation, transpiler patches |
 | GitHub - MultiplayerAPI | Code | github.com/rwmt/MultiplayerAPI | API documentation |
 
 ### Eco Sources
@@ -698,13 +675,11 @@ Implement **ECS architecture** using Godot's components or a custom system:
 - Entity count optimizations (all games provide specific numbers and techniques).
 
 **Medium Confidence**:
-- RimWorld multiplayer implementation details (based on community mod documentation, not official Ludeon sources).
 - Eco DOTS performance gains (documented in update notes but limited specific metrics).
 - Bandwidth numbers (estimated from various sources, not all games publish exact KB/s).
 
 **Low Confidence**:
 - Specific hardware requirements for various player counts (varies by server configuration and game complexity).
-- Exact development timelines (based on blog post dates and community recollections).
 
 ## Gaps & Future Research
 
@@ -715,7 +690,6 @@ Implement **ECS architecture** using Godot's components or a custom system:
 
 **Suggested Research**:
 - **R7: Godot Networking Deep Dive**: Evaluate Godot 4.x multiplayer capabilities against requirements.
-- **R9: ECS Architecture Comparison**: Compare Unity DOTS, Bevy ECS, and custom solutions for Societies.
 - **R10: Economic Simulation Synchronization**: How to synchronize dynamic economies deterministically (more specific than general lockstep).
 
 ## Integration Notes
@@ -742,4 +716,4 @@ Implement **ECS architecture** using Godot's components or a custom system:
 **Research Completed**: January 30, 2026  
 **Word Count**: ~3,800 words  
 **Games Analyzed**: 4 primary (Factorio, RimWorld, Space Engineers, Eco) + 2 secondary (Stardew Valley, Terraria)  
-**Quality Gates**: All passed ✓
+**Quality Gates**: All passed âœ“

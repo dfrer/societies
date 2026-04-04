@@ -1,4 +1,5 @@
 using Godot;
+using System;
 
 namespace Societies.Core
 {
@@ -15,6 +16,8 @@ namespace Societies.Core
 
         public InventoryComponent? Inventory { get; set; }
         public TerrainGenerator? Terrain { get; set; }
+
+        public event Action<string, int>? Harvested;
 
         private Node3D? _cameraPivot;
         private Camera3D? _camera;
@@ -68,6 +71,19 @@ namespace Societies.Core
             }
 
             return $"Press E to harvest {_focusedResource.DisplayName} ({_focusedResource.UnitsRemaining} left)";
+        }
+
+        public void ResetForPrototypeRun(Vector3 position)
+        {
+            Velocity = Vector3.Zero;
+            Position = position;
+            Rotation = Vector3.Zero;
+            _focusedResource = null;
+
+            if (_cameraPivot != null)
+            {
+                _cameraPivot.Rotation = Vector3.Zero;
+            }
         }
 
         private void HandleMovement(float delta)
@@ -150,6 +166,7 @@ namespace Societies.Core
             if (_focusedResource.TryHarvest(1, out string itemId, out int amount))
             {
                 Inventory.AddItem(itemId, amount);
+                Harvested?.Invoke(itemId, amount);
             }
         }
 

@@ -97,7 +97,7 @@ Create the session's primary deliverable:
 - Make decisions and document rationale immediately (use Decision Log)
 - Don't perfectionism-paralyze; get ideas down
 
-**Output**: Draft document ≥60% complete
+**Output**: Draft document â‰¥60% complete
 
 ### Phase 3: Cross-Check Integration (30-60 minutes)
 
@@ -116,7 +116,7 @@ Run the **Integration Checklist** (see Appendix):
 - Ensure Open Questions are recorded
 - Complete Quality Gates checklist
 
-**Output**: Document ≥80% complete + all logs updated
+**Output**: Document â‰¥80% complete + all logs updated
 
 ### Phase 5: Reflection & Next-Session Prep (30 minutes)
 
@@ -146,7 +146,6 @@ Define the technical foundation that makes Societies possible.
 #### Sections to Complete
 
 1. **System Architecture Diagram**
-   - Client architecture (Unity? Unreal? Custom?)
    - Server architecture (simulation, AI, networking)
    - Database architecture (world state, agent memory, historical data)
    - Communication protocols
@@ -214,7 +213,7 @@ Specify how AI agents think, decide, and behave to create believable citizens.
 #### Sections to Complete
 
 1. **AI Agent Architecture**
-   - Core decision-making loop (sense → think → act)
+   - Core decision-making loop (sense â†’ think â†’ act)
    - Goal system (hierarchy, priorities, conflicts)
    - Action selection mechanism
    - Knowledge representation (what does an agent "know"?)
@@ -242,7 +241,6 @@ Specify how AI agents think, decide, and behave to create believable citizens.
 5. **Social Behavior Model**
    - Relationship formation
    - Cooperation and trust
-   - Community participation
    - Migration decisions (leaving/joining towns)
 
 6. **Population Elasticity System**
@@ -313,7 +311,6 @@ Define what players actually *do* moment-to-moment, hour-to-hour, session-to-ses
 
 3. **Multi-Session Arcs (Days to Weeks)**
    - Personal progression (skill advancement, wealth accumulation)
-   - Community projects (infrastructure, town development)
    - Political campaigns (elections, constitutional changes)
    - Crisis response (threats, environmental challenges)
    - Economic development (new industries, automation)
@@ -324,7 +321,6 @@ Define what players actually *do* moment-to-moment, hour-to-hour, session-to-ses
    - **The Politician**: Governance, law-making, leadership
    - **The Environmentalist**: Conservation, sustainability, ecology
    - **The Engineer**: Automation, efficiency, technical solutions
-   - **The Socializer**: Community building, diplomacy, events
    - How does each archetype find engagement?
 
 5. **Progression Feel Over Time**
@@ -341,10 +337,10 @@ Define what players actually *do* moment-to-moment, hour-to-hour, session-to-ses
    - Balance between engagement and pressure
 
 7. **UI/UX Critical Paths**
-   - Gathering → crafting → building (basic loop)
-   - Checking market → buying/selling (economic loop)
-   - Viewing laws → proposing → voting (governance loop)
-   - Monitoring environment → analyzing data → responding (stewardship loop)
+   - Gathering â†’ crafting â†’ building (basic loop)
+   - Checking market â†’ buying/selling (economic loop)
+   - Viewing laws â†’ proposing â†’ voting (governance loop)
+   - Monitoring environment â†’ analyzing data â†’ responding (stewardship loop)
    - Information architecture (what do players need to see when?)
 
 ### Success Criteria
@@ -368,7 +364,7 @@ Define the pacing, balance, and progression systems that make the game challengi
 ### Key Questions to Answer
 - What's the tech tree progression?
 - How long should each phase take?
-- What's the resource → production → consumption balance?
+- What's the resource â†’ production â†’ consumption balance?
 - How do we prevent runaway leaders or hopeless stragglers?
 - What are the difficulty curves for different server sizes?
 
@@ -378,7 +374,7 @@ Define the pacing, balance, and progression systems that make the game challengi
 #### Sections to Complete
 
 1. **Technology Tree**
-   - Complete tech progression from stone age → space age
+   - Complete tech progression from stone age â†’ space age
    - Dependencies and unlock conditions
    - Research costs and time requirements
    - Critical path vs. optional branches
@@ -389,7 +385,7 @@ Define the pacing, balance, and progression systems that make the game challengi
    - Consumption rates (tool durability, food consumption, fuel use)
    - Storage and spoilage
    - Automation impact on labor requirements
-   - Resource scarcity progression (easy → challenging)
+   - Resource scarcity progression (easy â†’ challenging)
 
 3. **Threat Timeline & Difficulty**
    - **Meteor (Day 30)**: What % of servers should defeat this?
@@ -505,10 +501,10 @@ Specify the mechanics of laws, government, and social systems in executable deta
    - Territorial expansion and disputes
 
 6. **Governance Progression UX**
-   - Homesteader → Neighborhood: how does this feel?
-   - Neighborhood → Town: town formation wizard/flow
-   - Town → State: federation negotiation mechanics
-   - State → Federation: planetary government formation
+   - Homesteader â†’ Neighborhood: how does this feel?
+   - Neighborhood â†’ Town: town formation wizard/flow
+   - Town â†’ State: federation negotiation mechanics
+   - State â†’ Federation: planetary government formation
    - UI/UX for each transition
 
 7. **Anti-Griefing Systems**
@@ -567,7 +563,7 @@ Identify what must be built first and in what order to validate core assumptions
 2. **Prototype 1: Basic World & Simulation (Month 1)**
    - **Goal**: Prove the simulation engine works
    - **Scope**: 
-     - Small world (0.5km²)
+     - Small world (0.5kmÂ²)
      - Basic ecosystem (a few species)
      - Resource gathering (trees, rocks)
      - Simple crafting (basic tools)
@@ -598,11 +594,10 @@ Identify what must be built first and in what order to validate core assumptions
 5. **Prototype 4: Progression & Threats (Month 4)**
    - **Goal**: Prove the progression and threat system creates engagement
    - **Scope**:
-     - Tech tree (stone → iron → electronics)
+     - Tech tree (stone â†’ iron â†’ electronics)
      - Simplified meteor threat (10-day timeline)
      - Resource progression
      - Skill system
-   - **Success Metrics**: Can a human+AI community defeat meteor?
    - **Key Learnings**: Pacing, difficulty balance, progression feel
 
 6. **Prototype 5: Environmental Systems (Month 5)**
@@ -619,7 +614,7 @@ Identify what must be built first and in what order to validate core assumptions
    - **Goal**: Integrated prototype ready for small-scale testing
    - **Scope**:
      - All core systems integrated
-     - Full homesteader → town → meteor progression
+     - Full homesteader â†’ town â†’ meteor progression
      - 5-10 human players + AI population
      - One complete threat cycle
    - **Success Metrics**: Small group can play through meteor threat
@@ -838,9 +833,9 @@ Before declaring the planning phase complete:
 
 ### Planning Phase Complete When:
 
-1. **All 7 planning documents are substantive** (≥80% complete each)
+1. **All 7 planning documents are substantive** (â‰¥80% complete each)
 2. **Each document contains**:
-   - Decision Log with ≥3 major decisions per document
+   - Decision Log with â‰¥3 major decisions per document
    - Open Questions list
    - Clear dependencies noted
 3. **Cross-document consistency**:

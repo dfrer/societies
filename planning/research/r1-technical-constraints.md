@@ -2,7 +2,6 @@
 
 **Research ID**: R1  
 **Date**: January 31, 2026  
-**Source**: Industry standards, Unity documentation, game optimization patterns  
 **Referenced In**: Session 2 AI System Design
 
 ---
@@ -23,16 +22,16 @@ This research establishes foundational technical constraints for real-time AI ag
 
 ### Session 2 Rationale
 ```
-20 TPS × 50ms = 1 second
-100 agents × 2ms = 200ms total processing
-200ms ÷ 5 buckets = 40ms per tick (fits in 50ms window with 10ms buffer)
+20 TPS Ã— 50ms = 1 second
+100 agents Ã— 2ms = 200ms total processing
+200ms Ã· 5 buckets = 40ms per tick (fits in 50ms window with 10ms buffer)
 ```
 
 ### Benefits
-- ✅ Amortization-friendly (divides evenly)
-- ✅ Network synchronization manageable
-- ✅ Sufficient for believable AI behavior
-- ✅ Allows 2ms per-agent budget at scale
+- âœ… Amortization-friendly (divides evenly)
+- âœ… Network synchronization manageable
+- âœ… Sufficient for believable AI behavior
+- âœ… Allows 2ms per-agent budget at scale
 
 ---
 
@@ -57,7 +56,6 @@ This research establishes foundational technical constraints for real-time AI ag
 - The Sims 4: ~1-3ms per Sim
 - **Session 2 Target**: <2ms is conservative and achievable
 
-### Unity-Specific Considerations
 - Use `Time.deltaTime` for frame-independent calculations
 - Coroutines for spreading work across frames
 - Job System for parallel processing
@@ -70,7 +68,7 @@ This research establishes foundational technical constraints for real-time AI ag
 ### 5-Bucket Approach
 ```csharp
 // Divide 100 agents into 5 buckets of 20
-// Process one bucket per tick (20 agents × 2ms = 40ms)
+// Process one bucket per tick (20 agents Ã— 2ms = 40ms)
 // Critical agents processed every tick regardless of bucket
 ```
 
@@ -101,8 +99,8 @@ This research establishes foundational technical constraints for real-time AI ag
 |-----------|------|-------|
 | Agent Core | 256 bytes | Base data |
 | AgentState | 32 bytes | Current condition |
-| Personality | 15 bytes | 15 traits × 1 byte |
-| Memory System | 640 bytes | 5+5 slots × 64 bytes |
+| Personality | 15 bytes | 15 traits Ã— 1 byte |
+| Memory System | 640 bytes | 5+5 slots Ã— 64 bytes |
 | Goal System | 256 bytes | Active goals + scores |
 | Economic | 2KB | Inventory is largest |
 | Social | 4KB | Relationships are largest |
@@ -135,7 +133,7 @@ This research establishes foundational technical constraints for real-time AI ag
 
 ### Spatial Partitioning
 - 100m chunks for perception queries
-- Reduces O(n²) to O(1) for proximity checks
+- Reduces O(nÂ²) to O(1) for proximity checks
 - Grid-based or octree depending on 2D/3D
 
 ### Early-Out Optimization
@@ -169,21 +167,20 @@ This research establishes foundational technical constraints for real-time AI ag
 ## 8. Session 2 Integration Points
 
 ### From Session 1
-- ✅ 20 TPS tick rate maintained
-- ✅ Spatial partitioning for perception
-- ✅ Performance budgets enforced
-- ✅ Determinism requirements defined
+- âœ… 20 TPS tick rate maintained
+- âœ… Spatial partitioning for perception
+- âœ… Performance budgets enforced
+- âœ… Determinism requirements defined
 
 ### To Session 3
-- ⚠️ Agent state serialization format (Question #10)
-- ⚠️ Network sync for multiplayer (Issue #1)
-- ⚠️ Save/load memory consolidation (Issue #2)
+- âš ï¸ Agent state serialization format (Question #10)
+- âš ï¸ Network sync for multiplayer (Issue #1)
+- âš ï¸ Save/load memory consolidation (Issue #2)
 
 ---
 
 ## References
 
-1. Unity Documentation: "Optimizing scripts" - docs.unity3d.com
 2. Valve Developer Wiki: "Source Multiplayer Networking" - developer.valvesoftware.com
 3. "Game Engine Architecture" - Jason Gregory (Chapter 7: Game Loop)
 4. GDC 2018: "Winding Road Ahead: Designing Utility AI with Curvature" - Mike Lewis

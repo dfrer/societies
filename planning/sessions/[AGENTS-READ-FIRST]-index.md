@@ -1,5 +1,7 @@
 # Societies Planning - Master Sessions Index
 
+> Prototype reality note (2026-04-03): the authoritative implementation is currently the Godot prototype under `src/societies/`. The planning documents below include long-term and aspirational material that is not yet implemented in code.
+
 > **PROJECT**: Societies - AI-Powered Society Simulation Game  
 > **STATUS**: 🟢 Active Development  
 > **LAST UPDATED**: 2026-02-01  

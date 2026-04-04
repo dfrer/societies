@@ -1,4 +1,4 @@
-> 📚 **Complete Research Catalog**: See [Master Research Index](../../research/[MASTER-RESEARCH-INDEX].md)
+> ðŸ“š **Complete Research Catalog**: See [Master Research Index](../../research/[MASTER-RESEARCH-INDEX].md)
 
 ---
 
@@ -36,16 +36,15 @@ Research documents specifically relevant to server architecture, networking, dat
 
 - **Tick Rate**: 20 TPS (50ms per tick)
 - **CPU Budget**: 25% default, 60% max recommended
-- **Agent Scaling**: 20 AI agents (MVP) → 50-100 agents (post-MVP)
-- **Player Scaling**: 8 players (MVP) → 20+ players (stretch)
-- **Bandwidth**: 32 KB/s per player (MVP) → 112 KB/s (full scale)
+- **Agent Scaling**: 20 AI agents (MVP) â†’ 50-100 agents (post-MVP)
+- **Player Scaling**: 8 players (MVP) â†’ 20+ players (stretch)
+- **Bandwidth**: 32 KB/s per player (MVP) â†’ 112 KB/s (full scale)
 
 ## Critical Warnings
 
-⚠️ **Eco's LiteDB disaster**: Server lag, timeouts, eventual database migration
-⚠️ **Unity UNET deprecation**: Created 7+ years technical debt
-⚠️ **Factorio lockstep**: Years to perfect deterministic simulation
-⚠️ **Single-threaded bottleneck**: Main scaling constraint for agent count
+âš ï¸ **Eco's LiteDB disaster**: Server lag, timeouts, eventual database migration
+âš ï¸ **Factorio lockstep**: Years to perfect deterministic simulation
+âš ï¸ **Single-threaded bottleneck**: Main scaling constraint for agent count
 
 ## Session Documents
 
@@ -61,7 +60,7 @@ Research documents specifically relevant to server architecture, networking, dat
 
 ## Navigation
 
-- [← Previous: Master Index](../../research/[MASTER-RESEARCH-INDEX].md)
-- [→ Next: Session 2 AI Research](../session-2-ai-system-design/RESEARCH-INDEX.md)
+- [â† Previous: Master Index](../../research/[MASTER-RESEARCH-INDEX].md)
+- [â†’ Next: Session 2 AI Research](../session-2-ai-system-design/RESEARCH-INDEX.md)
 - [Session 2: AI System Design](../session-2-ai-system-design/)
 - [Research Folder](../../research/completed/)

@@ -65,6 +65,21 @@ namespace Societies.Core
             return true;
         }
 
+        public void ReplaceContents(IReadOnlyDictionary<string, int> items)
+        {
+            _items.Clear();
+
+            foreach ((string itemId, int amount) in items)
+            {
+                if (amount > 0)
+                {
+                    _items[itemId] = amount;
+                }
+            }
+
+            Changed?.Invoke();
+        }
+
         public string GetSummaryText()
         {
             if (_items.Count == 0)

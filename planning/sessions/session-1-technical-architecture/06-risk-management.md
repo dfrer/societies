@@ -1,6 +1,6 @@
 # Day 1: Risk Management
 
-> **Navigation**: [← Previous: Technology & Testing](05-technology-testing.md) | [Index]([AGENTS-READ-FIRST]-index.md) | [Next: Appendices](07-appendices.md)
+> **Navigation**: [â† Previous: Technology & Testing](05-technology-testing.md) | [Index]([AGENTS-READ-FIRST]-index.md) | [Next: Appendices](07-appendices.md)
 > 
 > **Part of**: [Day 1 Technical Architecture]([AGENTS-READ-FIRST]-index.md)
 
@@ -16,16 +16,15 @@
 | 2 | **Multiplayer Sync** | **MANAGEABLE MEDIUM** | Critical | ENet + state sync + delta compression | Solutions documented; 0.6 KB/s achievable [r1-network-sync-research.md] |
 | 3 | **Memory Usage** | **MANAGEABLE MEDIUM** | High | Object pooling, headless mode (70-80% savings), spatial partitioning | Headless mode validated; 5,000-10,000 entity limit [r1-godot-headless-research.md] |
 | 4 | **Database Performance** | **HIGH if not careful** | **CRITICAL** | PostgreSQL from day one, connection pooling, batching | Eco's LiteDB disaster caused lag, timeouts [r3-eco-technical-postmortem.md] |
-| 5 | **Godot Limitations** | **LOW** | High | Production-ready; active community | Godot 4.x proven in multiple multiplayer titles [r1-godot-multiplayer-research.md] |
 
 **Revised Risk Assessments**:
 
-**Risk 1: AI Performance** (Probability: High → CONFIRMED)
+**Risk 1: AI Performance** (Probability: High â†’ CONFIRMED)
 - **Evidence**: GOAP degrades past 20 agents; Utility AI handles 20 agents (MVP), 50-100 post-MVP [r7-ai-systems-games.md]
 - **Mitigation**: Use Utility AI + BT approach (already planned)
 - **Validation**: Prototype 2 will test 20+ agents (MVP target)
 
-**Risk 4: Database Performance** (Impact: Medium → CRITICAL, Probability: Medium → HIGH)
+**Risk 4: Database Performance** (Impact: Medium â†’ CRITICAL, Probability: Medium â†’ HIGH)
 - **Evidence**: Eco's LiteDB bottleneck caused database read/write spikes, lag, and timeouts [r3-eco-technical-postmortem.md, Section 1.3]
 - **Impact**: Will cause server lag, timeouts, unplayable experience
 - **Mitigation**: PostgreSQL from day one with GIN indexes, connection pooling, batching
@@ -51,10 +50,8 @@
 - **Status**: Mitigated by architecture decision
 
 **Risk 9: Network Library Longevity** [r3-eco-technical-postmortem.md] - **MEDIUM**
-- **Evidence**: Unity UNET deprecated, caused 7+ years of technical debt for Eco
 - **Impact**: Forced migration, technical debt, feature limitations
 - **Mitigation**: Godot ENet is native, actively maintained by Godot team
-- **Status**: Lower risk than Unity UNET
 
 **Risk 10: Single-Thread Limits** [r3-eco-technical-postmortem.md, r6-multiplayer-simulation-tech.md] - **MEDIUM**
 - **Evidence**: Eco's core logic single-threaded; requires 12-16 cores for 100 players
@@ -128,11 +125,11 @@
 | Tick Rate | TPS stability | <18 TPS | <15 TPS | Reduce quality, alert admin |
 
 **Early Warning Indicators**:
-- **CPU > 75% sustained** → Reduce tick rate or sync radius
-- **Database queries > 100ms** → Enable read replicas, check indexes
-- **AI decision time > 5ms per agent** → Switch to simpler behavior trees
-- **Bandwidth > 150 KB/s per player** → Aggressive spatial culling
-- **Memory growth > 100MB/hour** → Object pool tuning, leak detection
+- **CPU > 75% sustained** â†’ Reduce tick rate or sync radius
+- **Database queries > 100ms** â†’ Enable read replicas, check indexes
+- **AI decision time > 5ms per agent** â†’ Switch to simpler behavior trees
+- **Bandwidth > 150 KB/s per player** â†’ Aggressive spatial culling
+- **Memory growth > 100MB/hour** â†’ Object pool tuning, leak detection
 
 **Contingency Triggers**:
 - **If CPU > 90%**: Immediately reduce tick rate to 15 TPS, reduce sync radius 50%
@@ -236,11 +233,11 @@ public class RiskMonitor {
 
 ### Answered Questions (From Research)
 
-**Q1: What is Godot's actual entity limit?** → **ANSWERED**: 5,000-10,000 entities in headless mode (See [r1-godot-headless-research.md, Section 2])
+**Q1: What is Godot's actual entity limit?** â†’ **ANSWERED**: 5,000-10,000 entities in headless mode (See [r1-godot-headless-research.md, Section 2])
 
-**Q2: How much bandwidth for 20 agents (MVP)?** → **ANSWERED**: 32 KB/s per player at 20 TPS. Post-MVP (50-100 agents): 112 KB/s per player (See [r1-research-summary.md, Key Finding 4])
+**Q2: How much bandwidth for 20 agents (MVP)?** â†’ **ANSWERED**: 32 KB/s per player at 20 TPS. Post-MVP (50-100 agents): 112 KB/s per player (See [r1-research-summary.md, Key Finding 4])
 
-**Q3: Optimal snapshot frequency?** → **ANSWERED**: Every 2 seconds (Factorio approach, See [r1-factorio-case-study.md])
+**Q3: Optimal snapshot frequency?** â†’ **ANSWERED**: Every 2 seconds (Factorio approach, See [r1-factorio-case-study.md])
 
 ### New Questions Identified in Research
 
@@ -251,7 +248,7 @@ public class RiskMonitor {
 - **Answer Path**: Prototype 2 economic testing
 
 **Q5: Entity Count Threshold for ECS Migration**
-- **Question**: At what entity count does OOP → ECS become necessary?
+- **Question**: At what entity count does OOP â†’ ECS become necessary?
 - **Impact**: Architecture decision timeline  
 - **Priority**: MEDIUM
 - **Answer Path**: Prototype 1 stress testing
@@ -317,7 +314,6 @@ public class RiskMonitor {
 - C# 2-5x faster than GDScript ([r1-godot-headless-research.md])
 **Confidence**: HIGH (validated by research)
 **Reversibility**: NO (fundamental choice)
-**Alternatives Considered**: Unity (expensive, UNET deprecated per [r3-eco-technical-postmortem.md]), Unreal (overkill)
 
 #### Decision 2: Use ENet Networking
 **Decision**: Godot's native ENet implementation for multiplayer
@@ -407,16 +403,16 @@ public class RiskMonitor {
 #### Decision 9: Spatial Partitioning Mandatory
 **Decision**: Implement 100m chunk spatial partitioning from day one
 **Rationale**:
-- O(n²) → O(n) for entity interactions
+- O(nÂ²) â†’ O(n) for entity interactions
 - Mandatory for 1000+ entities
 - Eco used successfully ([r1-eco-performance-research.md])
 
 **100m Chunk Size Derivation**:
-- Based on agent interaction radius (50m) × 2 for neighbor coverage
+- Based on agent interaction radius (50m) Ã— 2 for neighbor coverage
 - Cache-friendly alignment with spatial query patterns  
 - Eco's successful implementation at similar scale ([r1-eco-performance-research.md])
 - Balances granularity (more chunks = more overhead) vs. query efficiency
-- 0.5 km² world = 50 chunks (manageable memory overhead)
+- 0.5 kmÂ² world = 50 chunks (manageable memory overhead)
 
 **Alternatives Considered**:
 - **Quadtree**: Better for uneven entity distribution, but higher overhead for uniform worlds; more complex implementation
@@ -453,4 +449,4 @@ public class RiskMonitor {
 
 ---
 
-**Previous**: [← Technology & Testing](05-technology-testing.md) | **Next**: [Appendices →](07-appendices.md)
+**Previous**: [â† Technology & Testing](05-technology-testing.md) | **Next**: [Appendices â†’](07-appendices.md)

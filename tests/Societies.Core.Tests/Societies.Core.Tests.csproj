@@ -6,6 +6,8 @@
     <Nullable>enable</Nullable>
     <IsPackable>false</IsPackable>
     <RootNamespace>Societies.Core.Tests</RootNamespace>
+    <GodotProjectDir>$(MSBuildThisFileDirectory)..\..\src\societies</GodotProjectDir>
+    <NoWarn>$(NoWarn);CS8785</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
@@ -19,9 +21,6 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
-    <PackageReference Include="Moq" Version="4.20.69" />
-    <PackageReference Include="Testcontainers.PostgreSql" Version="3.6.0" />
-    <PackageReference Include="Microsoft.Data.Sqlite" Version="7.0.0" />
   </ItemGroup>
 
   <ItemGroup>

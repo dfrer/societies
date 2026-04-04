@@ -1,6 +1,6 @@
 # Day 1: Technology & Testing
 
-> **Navigation**: [← Previous: Performance & Scalability](04-performance-scalability.md) | [Index]([AGENTS-READ-FIRST]-index.md) | [Next: Risk Management](06-risk-management.md)
+> **Navigation**: [â† Previous: Performance & Scalability](04-performance-scalability.md) | [Index]([AGENTS-READ-FIRST]-index.md) | [Next: Risk Management](06-risk-management.md)
 > 
 > **Part of**: [Day 1 Technical Architecture]([AGENTS-READ-FIRST]-index.md)
 
@@ -27,31 +27,31 @@
 ### Technology Validation Report
 
 **Godot 4.x + C#** [r1-godot-multiplayer-research.md, r1-godot-headless-research.md]:
-- ✅ **Production-ready**: MultiplayerAPI fully functional in Godot 4.x
-- ✅ **ENet integration**: Native, no external dependencies
-- ✅ **Headless mode**: Stable and performant (40-60% CPU reduction)
-- ✅ **C# performance**: 2-5x faster than GDScript for compute-heavy operations
+- âœ… **Production-ready**: MultiplayerAPI fully functional in Godot 4.x
+- âœ… **ENet integration**: Native, no external dependencies
+- âœ… **Headless mode**: Stable and performant (40-60% CPU reduction)
+- âœ… **C# performance**: 2-5x faster than GDScript for compute-heavy operations
 - **Evidence**: Multiple indie multiplayer titles successfully using Godot 4.x
 
 **ENet Networking** [r1-enet-protocol-research.md]:
-- ✅ **Bandwidth validated**: 112 KB/s per player achievable
-- ✅ **Channel separation**: 255 channels, critical for reliable vs unreliable traffic
-- ✅ **Latency**: <1ms localhost, 2-10ms LAN, 20-150ms internet
-- ✅ **Packet loss tolerance**: Up to 5% with automatic retransmission
+- âœ… **Bandwidth validated**: 112 KB/s per player achievable
+- âœ… **Channel separation**: 255 channels, critical for reliable vs unreliable traffic
+- âœ… **Latency**: <1ms localhost, 2-10ms LAN, 20-150ms internet
+- âœ… **Packet loss tolerance**: Up to 5% with automatic retransmission
 - **Evidence**: Originally developed for FPS game Cube; proven in production
 
 **PostgreSQL + JSONB** [r1-postgresql-jsonb-research.md]:
-- ✅ **GIN index queries**: 0.5-0.8ms (vs 300ms+ without index)
-- ✅ **Read penalty**: Only 10-20% vs normalized tables (acceptable)
-- ✅ **Schema flexibility**: Add fields without ALTER TABLE
-- ✅ **Scale**: Proven in production at Netflix, Instagram scale
+- âœ… **GIN index queries**: 0.5-0.8ms (vs 300ms+ without index)
+- âœ… **Read penalty**: Only 10-20% vs normalized tables (acceptable)
+- âœ… **Schema flexibility**: Add fields without ALTER TABLE
+- âœ… **Scale**: Proven in production at Netflix, Instagram scale
 - **Evidence**: ScaleGrid benchmarks, AWS documentation
 
 **State Synchronization** [r1-network-sync-research.md]:
-- ✅ **Bandwidth**: 0.6 KB/s per player (vs 76 KB/s snapshot interpolation)
-- ✅ **No determinism required**: AI randomness and floating-point economy don't break sync
-- ✅ **Mid-game join**: Easy with initial state + delta
-- ✅ **Time acceleration**: Supported (unlike lockstep)
+- âœ… **Bandwidth**: 0.6 KB/s per player (vs 76 KB/s snapshot interpolation)
+- âœ… **No determinism required**: AI randomness and floating-point economy don't break sync
+- âœ… **Mid-game join**: Easy with initial state + delta
+- âœ… **Time acceleration**: Supported (unlike lockstep)
 - **Evidence**: Glenn Fiedler's authoritative analysis, AAA game implementations
 
 **C# vs GDScript** [r1-godot-headless-research.md]:
@@ -64,25 +64,22 @@
 
 ### Alternative Analysis
 
-**Unity** [r3-eco-technical-postmortem.md, Section 1]:
-- ❌ **UNET deprecated**: Eco's use of Unity UNET became major technical debt
-- ❌ **Cost**: Prohibitive licensing for multiplayer servers
-- ❌ **Overhead**: Heavier than Godot for our use case
-- ✅ **Ecosystem**: Larger asset store, more tutorials
+- âŒ **Cost**: Prohibitive licensing for multiplayer servers
+- âŒ **Overhead**: Heavier than Godot for our use case
+- âœ… **Ecosystem**: Larger asset store, more tutorials
 - **Verdict**: Rejected due to UNET deprecation and cost
 
 **Unreal Engine**:
-- ❌ **Overkill**: Too heavy for our low-poly, simulation-focused game
-- ❌ **Learning curve**: Steeper than Godot for small team
-- ❌ **C++ overhead**: Blueprints not suitable for complex simulation
-- ✅ **Graphics**: Superior visual capabilities
+- âŒ **Overkill**: Too heavy for our low-poly, simulation-focused game
+- âŒ **Learning curve**: Steeper than Godot for small team
+- âŒ **C++ overhead**: Blueprints not suitable for complex simulation
+- âœ… **Graphics**: Superior visual capabilities
 - **Verdict**: Rejected - overkill for our requirements
 
 **Custom Engine**:
-- ❌ **Time prohibitive**: 2-3 years to build multiplayer infrastructure
-- ❌ **Maintenance burden**: Custom netcode requires ongoing support
-- ❌ **Community**: No community support or tutorials
-- ✅ **Control**: Full control over architecture
+- âŒ **Time prohibitive**: 2-3 years to build multiplayer infrastructure
+- âŒ **Maintenance burden**: Custom netcode requires ongoing support
+- âœ… **Control**: Full control over architecture
 - **Verdict**: Rejected - time better spent on gameplay
 
 **Decision**: Godot 4.x + C# is optimal balance of capability, performance, and development velocity.
@@ -185,24 +182,24 @@ Our testing strategy follows these principles, validated by research [r1-researc
 
 ```
 tests/
-├── Societies.Core.Tests/          # Unit tests for pure C# logic
-│   ├── Entities/
-│   │   └── EntityTests.cs
-│   ├── Economy/
-│   │   └── MarketTests.cs
-│   ├── Database/
-│   │   └── RepositoryTests.cs
-│   └── Governance/
-│       └── LawTests.cs
-├── Societies.Integration.Tests/   # Integration tests
-│   ├── PostgreSQL/
-│   │   └── PostgreSQLTests.cs
-│   ├── SQLite/
-│   │   └── SQLiteTests.cs
-│   └── SaveLoad/
-│       └── SaveSystemTests.cs
-└── Societies.Godot.Tests/         # Godot-specific tests (future)
-    └── SceneTests.cs
+â”œâ”€â”€ Societies.Core.Tests/          # Unit tests for pure C# logic
+â”‚   â”œâ”€â”€ Entities/
+â”‚   â”‚   â””â”€â”€ EntityTests.cs
+â”‚   â”œâ”€â”€ Economy/
+â”‚   â”‚   â””â”€â”€ MarketTests.cs
+â”‚   â”œâ”€â”€ Database/
+â”‚   â”‚   â””â”€â”€ RepositoryTests.cs
+â”‚   â””â”€â”€ Governance/
+â”‚       â””â”€â”€ LawTests.cs
+â”œâ”€â”€ Societies.Integration.Tests/   # Integration tests
+â”‚   â”œâ”€â”€ PostgreSQL/
+â”‚   â”‚   â””â”€â”€ PostgreSQLTests.cs
+â”‚   â”œâ”€â”€ SQLite/
+â”‚   â”‚   â””â”€â”€ SQLiteTests.cs
+â”‚   â””â”€â”€ SaveLoad/
+â”‚       â””â”€â”€ SaveSystemTests.cs
+â””â”€â”€ Societies.Godot.Tests/         # Godot-specific tests (future)
+    â””â”€â”€ SceneTests.cs
 ```
 
 ### Code Organization for Testability
@@ -309,9 +306,9 @@ public class EntityNodeTests {
 ```
 
 **Limitations & Workarounds**:
-- Scene tree requires Godot runtime → Use headless mode
-- Visual/UI testing difficult → Focus on state/logic testing
-- Multiplayer requires network → Mock `INetworkManager` for unit tests
+- Scene tree requires Godot runtime â†’ Use headless mode
+- Visual/UI testing difficult â†’ Focus on state/logic testing
+- Multiplayer requires network â†’ Mock `INetworkManager` for unit tests
 
 ### Network Testing Strategy
 
@@ -358,7 +355,7 @@ public class MockNetworkManager : INetworkManager { ... }
 - **Trigger**: Every PR and push to `main`
 - **Matrix**: Windows + Linux (macOS optional)
 - **Databases**: PostgreSQL service container + SQLite
-- **Steps**: Build → Unit Tests → Integration Tests → Coverage Report
+- **Steps**: Build â†’ Unit Tests â†’ Integration Tests â†’ Coverage Report
 
 **Sample Workflow** (see `.github/workflows/tests.yml` for full implementation):
 
@@ -512,7 +509,7 @@ public static class TestDataFactory {
 
 | Phase | Line Coverage | Branch Coverage | Test Count |
 |-------|--------------|-----------------|------------|
-| Week 2 (Setup) | 0% → 30% | 0% → 20% | 10-20 |
+| Week 2 (Setup) | 0% â†’ 30% | 0% â†’ 20% | 10-20 |
 | Proto 1 Complete | 50% | 40% | 50-100 |
 | Proto 2 Complete | 60% | 50% | 100-200 |
 | Alpha | 80% | 70% | 500+ |
@@ -520,4 +517,4 @@ public static class TestDataFactory {
 
 ---
 
-**Previous**: [← Performance & Scalability](04-performance-scalability.md) | **Next**: [Risk Management →](06-risk-management.md)
+**Previous**: [â† Performance & Scalability](04-performance-scalability.md) | **Next**: [Risk Management â†’](06-risk-management.md)

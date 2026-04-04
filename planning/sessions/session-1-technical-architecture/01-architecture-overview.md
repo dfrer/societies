@@ -9,7 +9,7 @@
 # Session 1: Technical Architecture - Deep Planning Document
 
 **Planning Session**: 1 of 7  
-**Status**: ✅ Complete  
+**Status**: âœ… Complete  
 **Date Started**: 2026-01-30  
 **Date Completed**: 2026-01-30
 
@@ -19,7 +19,6 @@
 
 This document establishes the complete technical foundation for Societies, a multiplayer ecosystem simulation game. Key architectural decisions validated through comprehensive research:
 
-**Technology Stack**: Godot 4.x + C# selected over Unity/Unreal for MIT licensing, production-ready MultiplayerAPI, and 2-5x performance advantage over GDScript.
 
 **Networking**: ENet state synchronization chosen over lockstep to enable variable tick rates (10-30 TPS), time acceleration (2x-10x), and AI agent randomness. State sync uses 0.6 KB/s baseline (scales to 32-112 KB/s with agents) and allows mid-game joining without replay catchup. *Note: State sync uses 4x more bandwidth than lockstep (0.6 vs 0.14 KB/s) but avoids determinism complexity; 99% reduction is vs naive snapshots (76 KB/s)*.
 
@@ -205,7 +204,7 @@ Key architectural decisions validated by research:
 - **Event-sourced save system** enabling replay debugging and branching world timelines [r1-factorio-case-study.md]
 - **Seamless offline-to-multiplayer transition** via localhost headless server (no code duplication) [r1-research-summary.md, Decision 4]
 
-The architecture prioritizes **continuous world simulation**—the ecosystem evolves even without players online, with support for time acceleration when players are away. This is achieved through a tick-based simulation loop running at 20 TPS, with priority-based CPU budgeting (25-75% utilization) to maintain performance under load [r1-eco-performance-research.md].
+The architecture prioritizes **continuous world simulation**â€”the ecosystem evolves even without players online, with support for time acceleration when players are away. This is achieved through a tick-based simulation loop running at 20 TPS, with priority-based CPU budgeting (25-75% utilization) to maintain performance under load [r1-eco-performance-research.md].
 
 ### High-Level Architecture
 
@@ -290,11 +289,11 @@ graph TB
 **Implementation**: Server maintains tick loop independent of player connections; configurable `TimeScale` multiplier [r1-research-summary.md]
 
 #### Principle 4: Deterministic for Debugging Only
-**Statement**: Reproducible results for debugging and replay system—NOT for lockstep gameplay
+**Statement**: Reproducible results for debugging and replay systemâ€”NOT for lockstep gameplay
 
 **Research Validation**:
 - **CRITICAL DISTINCTION**: We use state sync (not lockstep) for gameplay; determinism is only for replay/debugging [r1-network-sync-research.md, Section 4]
-- Lockstep requires perfect bit-level determinism across all clients—difficult with floating-point economy and AI randomness [r1-factorio-case-study.md, Section 3]
+- Lockstep requires perfect bit-level determinism across all clientsâ€”difficult with floating-point economy and AI randomness [r1-factorio-case-study.md, Section 3]
 - State sync bandwidth: 0.6 KB/s vs 76 KB/s for snapshots vs 2.8 KB/s for lockstep (with input overhead) [r1-network-sync-research.md]
 - Factorio spent years perfecting deterministic simulation; we avoid this complexity by using authoritative state sync [r1-factorio-case-study.md]
 - Deterministic replay requires: same random seeds, same tick rate, same initial conditions [r1-factorio-case-study.md, Section 4]
@@ -305,7 +304,7 @@ graph TB
 
 This section explicitly connects our technical architecture to the core design philosophy outlined in `societies-comprehensive-breakdown.md`. Each architectural principle embodies a game design value:
 
-#### Principle 1: Server-Authoritative → **Equivalence Principle**
+#### Principle 1: Server-Authoritative â†’ **Equivalence Principle**
 
 **Game Philosophy**: "AI agents and human players are the same type of entity, differing only in their controller."
 
@@ -317,7 +316,7 @@ This section explicitly connects our technical architecture to the core design p
 
 **Why This Matters**: There is no "NPC subsystem" or second-class AI economy. The architecture enforces genuine equality by making it technically impossible to treat AI differently.
 
-#### Principle 2: Offline = Local Server → **Persistent World Vision**
+#### Principle 2: Offline = Local Server â†’ **Persistent World Vision**
 
 **Game Philosophy**: "The simulation continues whether humans are online or not, creating a living world rather than a session-based experience."
 
@@ -329,7 +328,7 @@ This section explicitly connects our technical architecture to the core design p
 
 **Why This Matters**: The world doesn't reset when you log off. The architecture treats player absence as a network disconnection, not a game session end.
 
-#### Principle 3: Continuous Simulation → **Simulation-First Approach**
+#### Principle 3: Continuous Simulation â†’ **Simulation-First Approach**
 
 **Game Philosophy**: "The world exists as a simulation first, with humans being one type of participant among many."
 
@@ -341,7 +340,7 @@ This section explicitly connects our technical architecture to the core design p
 
 **Why This Matters**: You're joining a living world, not initializing a game state. The architecture puts the simulation at the center, with players as participants.
 
-#### Principle 4: State Sync Over Lockstep → **No Artificial Constraints**
+#### Principle 4: State Sync Over Lockstep â†’ **No Artificial Constraints**
 
 **Game Philosophy**: "Societies avoids gamey/artificial constraints that break immersion in the simulation."
 
@@ -352,9 +351,9 @@ This section explicitly connects our technical architecture to the core design p
 
 **Why This Matters**: Real economies use floating-point numbers. Real AI makes non-deterministic decisions. The architecture serves simulation realism over technical convenience.
 
-#### Governance Through Code → **Non-Violent Conflict Resolution**
+#### Governance Through Code â†’ **Non-Violent Conflict Resolution**
 
-**Game Philosophy**: "Conflicts are resolved through negotiation, voting, trade, and law—not through violence."
+**Game Philosophy**: "Conflicts are resolved through negotiation, voting, trade, and lawâ€”not through violence."
 
 **Technical Embodiment**:
 - **Server-authoritative law enforcement**: Laws are validated and enforced by the server, not optional
@@ -382,7 +381,7 @@ This section explicitly connects our technical architecture to the core design p
 **Bandwidth Budget** (MVP: 25 agents, 8 players):
 | Component | Calculation | Per Player |
 |-----------|-------------|------------|
-| Agent positions (nearby) | 20 TPS × 25 agents × 0.04 KB | 20 KB/s |
+| Agent positions (nearby) | 20 TPS Ã— 25 agents Ã— 0.04 KB | 20 KB/s |
 | State updates (batched) | Reliable RPC overhead | 0.5 KB/s |
 | World snapshots | Every 2 seconds, 5 KB each | 2.5 KB/s avg |
 | Chat/commands | Text + protocol overhead | 2 KB/s |
@@ -391,7 +390,7 @@ This section explicitly connects our technical architecture to the core design p
 
 **Scaling Architecture**: Bandwidth scales linearly with agent density. At full scale (50-100 agents, 20 players): 112 KB/s per player, 2.24 MB/s total server upload.
 
-**Total Server Upload for MVP**: 32 KB/s × 8 = **256 KB/s** [r1-research-summary.md, Key Finding 4; r1-enet-protocol-research.md]
+**Total Server Upload for MVP**: 32 KB/s Ã— 8 = **256 KB/s** [r1-research-summary.md, Key Finding 4; r1-enet-protocol-research.md]
 
 **Tick Rate Budget**:
 - **Target**: 20 TPS (50ms per tick) [r1-research-summary.md, Key Finding 5]
@@ -426,7 +425,7 @@ This section explicitly connects our technical architecture to the core design p
 
 ### Biome Design Philosophy
 
-Societies features a **dynamic biome system** where elevation creates emergent sub-biomes, enabling rich environmental diversity within a compact 0.5 km² world. This approach maximizes gameplay variety while maintaining technical feasibility for the MVP scope.
+Societies features a **dynamic biome system** where elevation creates emergent sub-biomes, enabling rich environmental diversity within a compact 0.5 kmÂ² world. This approach maximizes gameplay variety while maintaining technical feasibility for the MVP scope.
 
 ### Core Biomes (MVP)
 
@@ -513,10 +512,10 @@ public SubBiomeType GetSubBiome(BiomeCell cell)
 ### Climate Simulation
 
 **Temperature Calculation**:
-- Base temperature determined by biome type (Boreal: -10°C to 15°C, Desert: 15°C to 45°C, Jungle: 20°C to 35°C)
-- Elevation modifier: -6.5°C per 1000m (realistic lapse rate)
-- Seasonal variation: ±15°C amplitude with offset by hemisphere
-- Daily variation: Desert (+20°C day/night swing), Jungle (+5°C), Boreal (+10°C)
+- Base temperature determined by biome type (Boreal: -10Â°C to 15Â°C, Desert: 15Â°C to 45Â°C, Jungle: 20Â°C to 35Â°C)
+- Elevation modifier: -6.5Â°C per 1000m (realistic lapse rate)
+- Seasonal variation: Â±15Â°C amplitude with offset by hemisphere
+- Daily variation: Desert (+20Â°C day/night swing), Jungle (+5Â°C), Boreal (+10Â°C)
 
 **Precipitation Model**:
 - Jungle: High base (2000-4000mm/year), orographic increase at elevation
@@ -543,7 +542,7 @@ AI agents consider sub-biome characteristics when choosing settlement locations:
 ### MVP Scope Constraints
 
 - **3 base biomes** with **4 sub-biomes each** = 12 distinct environmental zones
-- **0.5 km² world** provides sufficient elevation range (0-1000m) for meaningful sub-biome diversity
+- **0.5 kmÂ² world** provides sufficient elevation range (0-1000m) for meaningful sub-biome diversity
 - **Simplified climate**: 4-season cycle, no complex weather simulation (deferred to post-MVP)
 - **Static resource nodes**: Resources don't regenerate dynamically (deferred to ecosystem simulation)
 
@@ -590,15 +589,15 @@ AI agents consider sub-biome characteristics when choosing settlement locations:
 
 ### Quick Reference Guide
 
-**Find Performance Numbers** → [Performance Budgets](04-performance-technology.md#8-performance-budgets)
-**Find AI Architecture** → Session 2 (AI System Design document) - detailed AI behavior specification  
-**Find Database Details** → [Database Architecture](03-offline-save-database.md#7-database-architecture)
-**Find Testing Setup** → [Testing Architecture](05-testing-scalability.md#10-testing-architecture)
-**Find Risk Assessment** → [Technical Risk Assessment](06-risks-research.md#12-technical-risk-assessment)
-**Find Decisions** → [Decisions Log](07-decisions-skills.md#14-decisions-log)
-**Find Bandwidth Calculations** → [Performance Budgets - Bandwidth Section](04-performance-technology.md#bandwidth-budget-breakdown)
-**Find AI Scaling Data** → [Performance Budgets](04-performance-technology.md#8-performance-budgets) - agent and entity limits
+**Find Performance Numbers** â†’ [Performance Budgets](04-performance-technology.md#8-performance-budgets)
+**Find AI Architecture** â†’ Session 2 (AI System Design document) - detailed AI behavior specification  
+**Find Database Details** â†’ [Database Architecture](03-offline-save-database.md#7-database-architecture)
+**Find Testing Setup** â†’ [Testing Architecture](05-testing-scalability.md#10-testing-architecture)
+**Find Risk Assessment** â†’ [Technical Risk Assessment](06-risks-research.md#12-technical-risk-assessment)
+**Find Decisions** â†’ [Decisions Log](07-decisions-skills.md#14-decisions-log)
+**Find Bandwidth Calculations** â†’ [Performance Budgets - Bandwidth Section](04-performance-technology.md#bandwidth-budget-breakdown)
+**Find AI Scaling Data** â†’ [Performance Budgets](04-performance-technology.md#8-performance-budgets) - agent and entity limits
 
 ---
 
-**Next**: [Client & Server Architecture →](02-client-server-architecture.md)
+**Next**: [Client & Server Architecture â†’](02-client-server-architecture.md)

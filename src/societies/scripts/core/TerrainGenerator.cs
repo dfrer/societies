@@ -26,22 +26,9 @@ namespace Societies.Core
             return new Vector3(0.0f, GroundHeight + 2.0f, 0.0f);
         }
 
-        public Vector3 GetRandomResourcePoint(RandomNumberGenerator rng)
+        public PrototypeSpawnBounds GetSpawnBounds()
         {
-            float safeMargin = 24.0f;
-            float minDistanceFromSpawn = 18.0f;
-
-            while (true)
-            {
-                float x = rng.RandfRange(-WorldHalfSize + safeMargin, WorldHalfSize - safeMargin);
-                float z = rng.RandfRange(-WorldHalfSize + safeMargin, WorldHalfSize - safeMargin);
-                Vector2 flat = new Vector2(x, z);
-
-                if (flat.Length() >= minDistanceFromSpawn)
-                {
-                    return new Vector3(x, GroundHeight, z);
-                }
-            }
+            return new PrototypeSpawnBounds(WorldHalfSize, GroundHeight);
         }
 
         private void BuildGround()
