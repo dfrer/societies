@@ -7,6 +7,34 @@
 
 ---
 
+## Prototype Reality Markers
+
+Cross-referenced against the authoritative build (`src/societies/`, Prototype V2 M3) and `CURRENT_BUILD.md` as of 2026-04-04.
+
+Each section is classified as one of:
+- **(a) Implemented** — constants exist in current code and match this document
+- **(b) Planned** — aspirational; not yet in code but tracked here for future implementation
+- **(c) In Code, Missing Here** — constants exist in code but are NOT in this document (see `src/societies/PROTOTYPE-CONSTANTS.md`)
+
+| # | Section | Status | Notes |
+|---|---|---|---|
+| 1 | Performance Budgets | **(b) + (c)** | TICK_RATE=20 and TICK_INTERVAL_SECONDS=0.05 match GameManager.cs:17. All agent limits, bandwidth, memory, CPU, and DB budgets are aspirational. Citizen tick constants (HarvestTicks, SleepTicks, etc.) are in code but missing here — see PROTOTYPE-CONSTANTS.md. |
+| 2 | Timing Constants | **(b) + partial (a)** | TICKS_PER_* derived from implemented tick rate. GAME_TIME_SCALE, day/season/year lengths and time acceleration are not yet in code. |
+| 3 | World Generation | **partial (a) + (b)** | World size and biome system partially implemented via scenario/terrain generator. Chunk sizes and sub-biome thresholds from planning not yet coded. |
+| 4 | Economy & Resources | **(b)** | No credits, currency, or price system in current build. See PROTOTYPE-CONSTANTS.md for actual structure costs. Inventory uses simple stores, not slot-based. |
+| 5 | Player Stats | **partial (a) + (b)** | Fatigue/sleep implemented. Max 100 scale not confirmed. Regen/decay rates aspirational. Movement speeds partially implemented via player character. |
+| 6 | Skills System | **(b)** | No XP or skill levels in current code. |
+| 7 | AI Agent Constants | **(b) + (c)** | Citizens use deterministic work loops, not the memory/personality/trading AI described here. See PROTOTYPE-CONSTANTS.md for all actual citizen tick constants, need timings, and thresholds. |
+| 8 | Building & Claims | **partial (a) + (b)** | Structures exist with hardcoded costs (see PROTOTYPE-CONSTANTS.md). Claim system not implemented. Building limits/decorators aspirational. |
+| 9 | Tools & Equipment | **partial (a)** | Crafting exists. Tool durability and repair constants are aspirational. |
+| 10 | Governance | **(b)** | Not implemented. Deferred per CURRENT_BUILD.md. |
+| 11 | Crafting & Production | **partial (a) + (b)** | Crafting/built queue implemented (tick-based). Production timing in seconds is aspirational. Quality thresholds not yet in code. |
+| 12 | Social & Reputation | **(b)** | Not implemented. Deferred per CURRENT_BUILD.md. |
+| 13 | Progression & Threats | **(b)** | Meteor timeline, pollution, ecosystem, climate change all aspirational. |
+| 14 | Network & Synchronization | **(b)** | Not implemented. Prototype is single-player local only per CURRENT_BUILD.md. |
+
+---
+
 ## How to Use This Document
 
 This document contains ALL numerical constants referenced throughout the Societies planning documents. When implementing features:
