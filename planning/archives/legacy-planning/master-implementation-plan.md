@@ -1,3 +1,5 @@
+> **DEPRECATED**: This document describes sessions 1-3 gap-filling tasks that have already been completed. Archived 2026-04-04.
+
 # Societies Complete Documentation Master Plan
 **Full Implementation of Missing Game Specifications**
 

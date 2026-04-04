@@ -35,3 +35,7 @@ obj/
 build/
 dist/
 releases/
+# AI Tooling
+.claude/
+.opencode/
+

@@ -111,7 +111,8 @@ environment/defaults/default_clear_color=Color(0.301961, 0.301961, 0.301961, 1)
 
 [server]
 
-#Serverconfigurationforheadlessmodetick_rate=20
+# Server configuration for headless mode
+tick_rate=20
 max_players=100
 max_agents=200
 world_size=0.5
