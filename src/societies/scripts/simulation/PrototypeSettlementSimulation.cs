@@ -13,8 +13,8 @@ namespace Societies.Simulation
     /// </summary>
     public sealed class PrototypeSettlementSimulation
     {
-        private const float WorkerTravelUnitsPerTick = 0.55f;
-        private const int MinimumTravelTicks = 6;
+        private const float WorkerTravelUnitsPerTick = 0.80f;
+        private const int MinimumTravelTicks = 4;
         private const int HarvestTicks = 10;
         private const int DepositTicks = 4;
         private const int CraftTicks = 26;
@@ -30,18 +30,20 @@ namespace Societies.Simulation
         private readonly Vector3 _settlementAnchorPosition;
         private readonly Vector3 _stockpilePosition;
         private readonly Vector3 _workstationPosition;
+        private readonly WorldMapState? _worldMap;
 
-        public PrototypeSettlementSimulation(InventoryComponent stockpile, int workerCount, Vector3 settlementAnchorPosition)
+        public PrototypeSettlementSimulation(InventoryComponent stockpile, int workerCount, Vector3 settlementAnchorPosition, WorldMapState? worldMap = null)
         {
             _stockpile = stockpile;
+            _worldMap = worldMap;
             _settlementAnchorPosition = settlementAnchorPosition;
-            _stockpilePosition = PrototypeSettlementLayout.GetStockpileWorldPosition(settlementAnchorPosition);
-            _workstationPosition = PrototypeSettlementLayout.GetWorkstationWorldPosition(settlementAnchorPosition);
+            _stockpilePosition = ProjectToSurface(PrototypeSettlementLayout.GetStockpileWorldPosition(settlementAnchorPosition));
+            _workstationPosition = ProjectToSurface(PrototypeSettlementLayout.GetWorkstationWorldPosition(settlementAnchorPosition));
 
             for (int i = 0; i < workerCount; i++)
             {
                 string preferredResourceId = DefaultResourceFocus[i % DefaultResourceFocus.Length];
-                Vector3 homePosition = PrototypeSettlementLayout.GetWorkerHomeWorldPosition(settlementAnchorPosition, i, workerCount);
+                Vector3 homePosition = ProjectToSurface(PrototypeSettlementLayout.GetWorkerHomeWorldPosition(settlementAnchorPosition, i, workerCount));
                 _workers.Add(new PrototypeWorkerState
                 {
                     WorkerId = $"worker_{i + 1}",
@@ -159,14 +161,14 @@ namespace Societies.Simulation
                 "Returning empty-handed");
         }
 
-        public void LoadState(IReadOnlyList<PrototypeWorkerSnapshot> snapshots, Vector3 settlementAnchorPosition)
+        public void LoadState(IReadOnlyList<PrototypeWorkerSnapshot> snapshots, Vector3 settlementAnchorPosition, WorldMapState? worldMap = null)
         {
             _workers.Clear();
 
             for (int i = 0; i < snapshots.Count; i++)
             {
                 PrototypeWorkerSnapshot snapshot = snapshots[i];
-                Vector3 fallbackHomePosition = PrototypeSettlementLayout.GetWorkerHomeWorldPosition(settlementAnchorPosition, i, snapshots.Count);
+                Vector3 fallbackHomePosition = ProjectToSurface(PrototypeSettlementLayout.GetWorkerHomeWorldPosition(settlementAnchorPosition, i, snapshots.Count));
                 Vector3 homePosition = snapshot.HomePosition.ToVector3();
                 if (homePosition == Vector3.Zero)
                 {
@@ -200,7 +202,7 @@ namespace Societies.Simulation
 
             if (_workers.Count == 0)
             {
-                Vector3 homePosition = PrototypeSettlementLayout.GetWorkerHomeWorldPosition(settlementAnchorPosition, 0, 1);
+                Vector3 homePosition = ProjectToSurface(PrototypeSettlementLayout.GetWorkerHomeWorldPosition(settlementAnchorPosition, 0, 1));
                 _workers.Add(new PrototypeWorkerState
                 {
                     WorkerId = "worker_1",
@@ -400,7 +402,7 @@ namespace Societies.Simulation
             {
                 PrototypeResourceSiteState candidate = resources
                     .Where(site => site.ResourceId == demand.ResourceId && site.UnitsRemaining > 0)
-                    .OrderBy(site => site.Position.DistanceTo(worker.Position))
+                    .OrderBy(site => GetHorizontalDistance(site.Position, worker.Position))
                     .ThenBy(site => site.NodeName)
                     .FirstOrDefault();
 
@@ -573,13 +575,18 @@ namespace Societies.Simulation
 
         private static bool AdvanceTravelPhase(PrototypeWorkerState worker)
         {
-            worker.Position = worker.Position.MoveToward(worker.TargetPosition, WorkerTravelUnitsPerTick);
+            Vector3 nextHorizontalPosition = new Vector3(worker.Position.X, 0.0f, worker.Position.Z)
+                .MoveToward(new Vector3(worker.TargetPosition.X, 0.0f, worker.TargetPosition.Z), WorkerTravelUnitsPerTick);
+            worker.Position = new Vector3(
+                nextHorizontalPosition.X,
+                Mathf.Lerp(worker.Position.Y, worker.TargetPosition.Y, 0.35f),
+                nextHorizontalPosition.Z);
             if (worker.TicksRemaining > 0)
             {
                 worker.TicksRemaining--;
             }
 
-            if (worker.TicksRemaining <= 0 || worker.Position.DistanceTo(worker.TargetPosition) <= 0.01f)
+            if (worker.TicksRemaining <= 0 || GetHorizontalDistance(worker.Position, worker.TargetPosition) <= 0.01f)
             {
                 worker.Position = worker.TargetPosition;
                 worker.TicksRemaining = 0;
@@ -591,7 +598,12 @@ namespace Societies.Simulation
 
         private static int CalculateTravelTicks(Vector3 start, Vector3 destination)
         {
-            return Math.Max(MinimumTravelTicks, Mathf.CeilToInt(start.DistanceTo(destination) / WorkerTravelUnitsPerTick));
+            return Math.Max(MinimumTravelTicks, Mathf.CeilToInt(GetHorizontalDistance(start, destination) / WorkerTravelUnitsPerTick));
+        }
+
+        private static float GetHorizontalDistance(Vector3 a, Vector3 b)
+        {
+            return new Vector2(a.X, a.Z).DistanceTo(new Vector2(b.X, b.Z));
         }
 
         private static string InferTargetResourceId(string targetLabel, string fallbackResourceId)
@@ -610,6 +622,11 @@ namespace Societies.Simulation
             return System.Enum.TryParse(phase, out PrototypeWorkerPhase parsed)
                 ? parsed
                 : PrototypeWorkerPhase.Idle;
+        }
+
+        private Vector3 ProjectToSurface(Vector3 position)
+        {
+            return _worldMap?.ProjectToSurface(position) ?? position;
         }
     }
 

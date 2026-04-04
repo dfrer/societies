@@ -15,16 +15,60 @@ namespace Societies.Core.Tests
 
             Assert.Contains("F6 save snapshot", helpText);
             Assert.Contains("F7 reset run", helpText);
+            Assert.Contains("F8 observer", helpText);
             Assert.Contains("F9 load snapshot", helpText);
+            Assert.Contains("F10 overlays", helpText);
         }
 
         [Fact]
-        public void BuildDebugText_IncludesSessionModeAndTick()
+        public void BuildDebugText_IncludesWorldCameraAndOverlay()
         {
-            string debugText = PrototypeHudTextBuilder.BuildDebugText(60, 12, "08:30", "Clear", "Local", 45);
+            string debugText = PrototypeHudTextBuilder.BuildDebugText(
+                60,
+                12,
+                "08:30",
+                "Clear",
+                "Local",
+                45,
+                "balanced_basin",
+                777,
+                CameraMode.Observer,
+                TerrainOverlayMode.Buildability);
 
             Assert.Contains("Mode: Local", debugText);
+            Assert.Contains("Scenario: balanced_basin", debugText);
+            Assert.Contains("World Seed: 777", debugText);
+            Assert.Contains("Camera: Observer", debugText);
+            Assert.Contains("Overlay: Buildability", debugText);
             Assert.Contains("Tick: 45", debugText);
+        }
+
+        [Fact]
+        public void BuildWorldText_IncludesTerrainAndBiomeSummary()
+        {
+            PrototypeWorldSummary summary = new()
+            {
+                TerrainMode = "heightfield_v1",
+                BuildableCellRatio = 0.58f,
+                BiomeCellCounts = new Dictionary<string, int>
+                {
+                    ["Forest"] = 12,
+                    ["Meadow"] = 18
+                }
+            };
+
+            string worldText = PrototypeHudTextBuilder.BuildWorldText(
+                "balanced_basin",
+                777,
+                CameraMode.Player,
+                TerrainOverlayMode.None,
+                summary);
+
+            Assert.Contains("World", worldText);
+            Assert.Contains("Terrain: heightfield_v1", worldText);
+            Assert.Contains("Buildable: 58 %", worldText);
+            Assert.Contains("Forest 12", worldText);
+            Assert.Contains("Meadow 18", worldText);
         }
 
         [Fact]

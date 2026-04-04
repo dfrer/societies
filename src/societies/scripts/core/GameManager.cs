@@ -16,7 +16,6 @@ namespace Societies.Core
     {
         private const double TickIntervalSeconds = 1.0 / 20.0;
         private const string DefaultScenarioId = "balanced_basin";
-        private static readonly Vector3 SettlementAnchorPosition = new(16.0f, 0.0f, 14.0f);
 
         public static GameManager? Instance { get; private set; }
 
@@ -35,6 +34,7 @@ namespace Societies.Core
         private WeatherController? _weatherController;
         private PrototypeHud? _hud;
         private PlayerCharacter? _player;
+        private ObserverCameraRig? _observerRig;
         private Node3D? _worldRoot;
         private Node3D? _playersRoot;
         private Node3D? _agentsRoot;
@@ -48,6 +48,9 @@ namespace Societies.Core
         private PrototypeSettlementScenePresenter? _scenePresenter;
         private readonly InventoryComponent _fallbackInventory = new();
         private double _tickAccumulator;
+        private CameraMode _cameraMode = CameraMode.Player;
+        private TerrainOverlayMode _overlayMode = TerrainOverlayMode.None;
+        private PrototypeWorldSummary? _lastWorldSummary;
 
         public bool IsGameRunning { get; private set; }
 
@@ -56,6 +59,14 @@ namespace Societies.Core
         public long SimulationTick => _runtimeSession?.SimulationTick ?? 0;
 
         public InventoryComponent Inventory => _runtimeSession?.Inventory ?? _fallbackInventory;
+
+        public CameraMode CurrentCameraMode => _cameraMode;
+
+        public TerrainOverlayMode CurrentOverlayMode => _overlayMode;
+
+        public string CurrentScenarioId => _scenario?.Id ?? _scenarioId;
+
+        public int CurrentWorldSeed => _runtimeSession?.WorldSeed ?? 0;
 
         public override void _Ready()
         {
@@ -72,9 +83,9 @@ namespace Societies.Core
                 RecordEvent(PrototypeEventTypes.SessionStarted, "Started local prototype session");
             }
 
-            RecordEvent(PrototypeEventTypes.RuntimeReady, "Societies Prototype 1 initialized");
+            RecordEvent(PrototypeEventTypes.RuntimeReady, "Societies Prototype V2 M1 initialized");
             UpdateHud();
-            GD.Print("Societies Prototype 1 initialized");
+            GD.Print("Societies Prototype V2 M1 initialized");
         }
 
         public override void _Process(double delta)
@@ -130,8 +141,16 @@ namespace Societies.Core
                     ResetPrototypeRun();
                     GetViewport().SetInputAsHandled();
                     break;
+                case Key.F8:
+                    ToggleCameraMode();
+                    GetViewport().SetInputAsHandled();
+                    break;
                 case Key.F9:
                     LoadLatestSnapshotFromDisk();
+                    GetViewport().SetInputAsHandled();
+                    break;
+                case Key.F10:
+                    CycleOverlayMode();
                     GetViewport().SetInputAsHandled();
                     break;
             }
@@ -166,6 +185,21 @@ namespace Societies.Core
             RecordEvent(PrototypeEventTypes.RuntimeReset, $"Reset prototype run with seed {SimulationSeed}");
             _hud?.SetStatusText("Prototype run reset");
             UpdateHud();
+        }
+
+        public void SetScenario(string scenarioId, bool restart = true)
+        {
+            PrototypeScenarioDefinition scenario = ResolveScenarioDefinition(scenarioId);
+            _scenario = scenario;
+            ApplyScenarioDefaults(scenario);
+
+            if (restart)
+            {
+                StartNewPrototypeRun(resetPlayerPosition: true);
+                RecordEvent(PrototypeEventTypes.WorldSeeded, $"Scenario switched to {scenario.Id}");
+                _hud?.SetStatusText($"Scenario set to {scenario.DisplayName}");
+                UpdateHud();
+            }
         }
 
         public void ToggleWeatherState()
@@ -206,6 +240,7 @@ namespace Societies.Core
             PrototypeRuntimeSnapshot snapshot = CaptureSnapshot();
             CaptureMetricsSnapshot();
             PrototypeWorldSummary worldSummary = PrototypeWorldSummaryBuilder.Build(_runtimeSession, _terrain, snapshot.Resources);
+            _lastWorldSummary = worldSummary;
 
             string snapshotPath = _artifactManager.SaveArtifacts(_runtimeSession, snapshot, worldSummary);
             _hud?.SetStatusText($"Saved snapshot to {Path.GetFileName(snapshotPath)}");
@@ -229,10 +264,11 @@ namespace Societies.Core
             CreateRuntimeSession(scenario);
 
             _tickAccumulator = 0.0;
-            _runtimeSession!.ApplySnapshot(artifacts.Snapshot, SettlementAnchorPosition);
+            _runtimeSession!.ApplySnapshot(artifacts.Snapshot);
             _runtimeSession.RestoreArtifacts(artifacts.EventLog, artifacts.RunSummary);
 
             _scenePresenter?.ResetDynamicNodes();
+            ApplyWorldToScene();
             _scenePresenter?.ReplaceResourceNodes(artifacts.Snapshot.Resources);
             ApplyRuntimeStateToScene();
             _scenePresenter?.SyncWorkers(_runtimeSession.Workers);
@@ -242,10 +278,11 @@ namespace Societies.Core
             {
                 _player.Velocity = Vector3.Zero;
                 _player.Position = artifacts.Snapshot.PlayerPosition.ToVector3();
-                BindPlayerToRuntime();
             }
 
+            BindPlayerToRuntime();
             CaptureMetricsSnapshot();
+            _lastWorldSummary = PrototypeWorldSummaryBuilder.Build(_runtimeSession, _terrain, artifacts.Snapshot.Resources);
             RecordEvent(PrototypeEventTypes.SnapshotLoaded, $"Loaded snapshot from {Path.GetFileName(_artifactManager.GetArtifactPaths().LegacySnapshotPath)}");
             _hud?.SetStatusText($"Loaded snapshot from {Path.GetFileName(_artifactManager.GetArtifactPaths().LegacySnapshotPath)}");
             UpdateHud();
@@ -345,8 +382,7 @@ namespace Societies.Core
                 _agentsRoot,
                 _entitiesRoot,
                 _environmentRoot,
-                _terrain,
-                SettlementAnchorPosition);
+                _terrain);
             _scenePresenter.EnsureSettlementHub();
 
             _player = _playersRoot.GetNodeOrNull<PlayerCharacter>("LocalPlayer");
@@ -363,6 +399,19 @@ namespace Societies.Core
             _player.Harvested -= OnPlayerHarvested;
             _player.Harvested += OnPlayerHarvested;
             _player.Terrain = _terrain;
+            _player.SetControlEnabled(_cameraMode == CameraMode.Player);
+
+            _observerRig = _playersRoot.GetNodeOrNull<ObserverCameraRig>("ObserverCamera");
+            if (_observerRig == null || !IsInstanceValid(_observerRig))
+            {
+                _observerRig = new ObserverCameraRig
+                {
+                    Name = "ObserverCamera"
+                };
+                _playersRoot.AddChild(_observerRig);
+            }
+
+            _observerRig.SetControlEnabled(_cameraMode == CameraMode.Observer);
 
             if (_hud != null)
             {
@@ -380,21 +429,18 @@ namespace Societies.Core
             }
 
             CreateRuntimeSession(_scenario);
-            _runtimeSession!.Initialize(_dayNightCycle.StartHour, SettlementAnchorPosition);
+            _runtimeSession!.Initialize(_dayNightCycle.StartHour);
             _tickAccumulator = 0.0;
 
             _scenePresenter.ResetDynamicNodes();
-            _scenePresenter.SeedResources(
-                _runtimeSession.SimulationSeed,
-                _initialTrees,
-                _initialRocks,
-                _initialBerryBushes);
+            ApplyWorldToScene();
+            _lastWorldSummary = PrototypeWorldSummaryBuilder.Build(_runtimeSession, _terrain, _scenePresenter.CaptureResourceSnapshots());
 
-            RecordEvent(PrototypeEventTypes.WorldSeeded, $"Spawned prototype resources using seed {SimulationSeed}");
+            RecordEvent(PrototypeEventTypes.WorldSeeded, $"Spawned world for scenario {_runtimeSession.Scenario.Id} using world seed {_runtimeSession.WorldSeed}");
 
             if (resetPlayerPosition && _player != null && _terrain != null)
             {
-                _player.ResetForPrototypeRun(_terrain.GetPlayerSpawnPoint());
+                _player.ResetForPrototypeRun(BuildPlayerSpawnPoint());
             }
 
             BindPlayerToRuntime();
@@ -403,7 +449,7 @@ namespace Societies.Core
             _scenePresenter.UpdateSettlementPresentation(_runtimeSession.Stockpile.Items, _runtimeSession.Workers);
             CaptureMetricsSnapshot();
 
-            _hud?.SetStatusText("Prototype 1 ready");
+            _hud?.SetStatusText("Prototype V2 M1 ready");
         }
 
         private void CreateRuntimeSession(PrototypeScenarioDefinition scenario)
@@ -414,7 +460,7 @@ namespace Societies.Core
 
             if (_terrain != null)
             {
-                _terrain.RebuildTerrain();
+                _terrain.WorldSize = scenario.WorldSize;
                 _scenePresenter?.UpdateTerrain(_terrain);
             }
 
@@ -425,13 +471,14 @@ namespace Societies.Core
 
         private void BindPlayerToRuntime()
         {
-            if (_player == null)
+            if (_player != null)
             {
-                return;
+                _player.Inventory = _runtimeSession?.Inventory ?? _fallbackInventory;
+                _player.Terrain = _terrain;
+                _player.SetControlEnabled(_cameraMode == CameraMode.Player);
             }
 
-            _player.Inventory = _runtimeSession?.Inventory ?? _fallbackInventory;
-            _player.Terrain = _terrain;
+            _observerRig?.SetControlEnabled(_cameraMode == CameraMode.Observer);
         }
 
         private void ProcessSimulationTick()
@@ -503,7 +550,9 @@ namespace Societies.Core
                 ? PrototypeClockService.FormatTime(_runtimeSession.CurrentHour)
                 : PrototypeClockService.FormatTime(_dayNightCycle?.CurrentHour ?? 8.0f);
             string weatherText = _runtimeSession?.CurrentWeatherName ?? "Unknown";
-            string interactionText = _player?.GetInteractionText() ?? "Look at a resource node and press E";
+            string interactionText = _cameraMode == CameraMode.Observer
+                ? "Observer mode active - press F8 to return to the player"
+                : _player?.GetInteractionText() ?? "Look at a resource node and press E";
             string sessionMode = _networkManager?.IsLocalSession == true ? "Local" : "Network";
 
             PrototypeHudPresenter.Apply(
@@ -518,7 +567,11 @@ namespace Societies.Core
                 _runtimeSession?.Stockpile.Items ?? new Dictionary<string, int>(),
                 _runtimeSession?.Workers ?? System.Array.Empty<PrototypeWorkerState>(),
                 interactionText,
-                _runtimeSession?.Scenario.Id);
+                _runtimeSession?.Scenario.Id,
+                _runtimeSession?.WorldSeed,
+                _cameraMode,
+                _overlayMode,
+                _lastWorldSummary);
 
             _scenePresenter?.UpdateSettlementPresentation(
                 _runtimeSession?.Stockpile.Items ?? new Dictionary<string, int>(),
@@ -528,6 +581,66 @@ namespace Societies.Core
         private void RecordEvent(string eventType, string message)
         {
             _runtimeSession?.RecordEvent(eventType, message);
+        }
+
+        private void ApplyWorldToScene()
+        {
+            if (_runtimeSession?.World == null || _terrain == null || _scenePresenter == null)
+            {
+                return;
+            }
+
+            _terrain.ApplyWorld(_runtimeSession.World.WorldMap, _overlayMode);
+            _scenePresenter.UpdateTerrain(_terrain);
+            _scenePresenter.ApplyWorld(_runtimeSession.World);
+
+            if (_observerRig != null)
+            {
+                _observerRig.FocusOn(_runtimeSession.SettlementAnchorPosition);
+            }
+        }
+
+        private Vector3 BuildPlayerSpawnPoint()
+        {
+            if (_terrain == null || _runtimeSession?.World == null)
+            {
+                return Vector3.Zero;
+            }
+
+            Vector3 desiredPosition = _runtimeSession.SettlementAnchorPosition + new Vector3(0.0f, 0.0f, -8.0f);
+            return _terrain.GetPlayerSpawnPoint(desiredPosition);
+        }
+
+        private void ToggleCameraMode()
+        {
+            _cameraMode = _cameraMode == CameraMode.Player
+                ? CameraMode.Observer
+                : CameraMode.Player;
+
+            BindPlayerToRuntime();
+
+            if (_cameraMode == CameraMode.Observer)
+            {
+                _observerRig?.FocusOn(_runtimeSession?.SettlementAnchorPosition ?? Vector3.Zero);
+            }
+
+            _hud?.SetStatusText(_cameraMode == CameraMode.Observer ? "Observer camera enabled" : "Player camera enabled");
+            UpdateHud();
+        }
+
+        private void CycleOverlayMode()
+        {
+            _overlayMode = _overlayMode switch
+            {
+                TerrainOverlayMode.None => TerrainOverlayMode.Biome,
+                TerrainOverlayMode.Biome => TerrainOverlayMode.Buildability,
+                TerrainOverlayMode.Buildability => TerrainOverlayMode.MovementCost,
+                _ => TerrainOverlayMode.None
+            };
+
+            _terrain?.SetOverlayMode(_overlayMode);
+            _hud?.SetStatusText($"Terrain overlay: {_overlayMode}");
+            UpdateHud();
         }
 
         private void ApplyScenarioDefaults(PrototypeScenarioDefinition scenario)

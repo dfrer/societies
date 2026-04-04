@@ -14,7 +14,7 @@ namespace Societies.Simulation
         private readonly Node3D _entitiesRoot;
         private readonly Node3D _environmentRoot;
         private readonly Dictionary<string, PrototypeWorkerAgent> _workerNodes = new();
-        private readonly Vector3 _settlementAnchorPosition;
+        private Vector3 _settlementAnchorPosition;
         private TerrainGenerator _terrain;
         private PrototypeSettlementHub? _settlementHub;
 
@@ -22,14 +22,13 @@ namespace Societies.Simulation
             Node3D agentsRoot,
             Node3D entitiesRoot,
             Node3D environmentRoot,
-            TerrainGenerator terrain,
-            Vector3 settlementAnchorPosition)
+            TerrainGenerator terrain)
         {
             _agentsRoot = agentsRoot;
             _entitiesRoot = entitiesRoot;
             _environmentRoot = environmentRoot;
             _terrain = terrain;
-            _settlementAnchorPosition = settlementAnchorPosition;
+            _settlementAnchorPosition = Vector3.Zero;
         }
 
         public bool HasAnyResources => _entitiesRoot.GetChildren().OfType<ResourceNode>().Any();
@@ -44,12 +43,14 @@ namespace Societies.Simulation
             }
 
             _settlementHub.Position = _settlementAnchorPosition;
+            _settlementHub.ApplyTerrainProfile(_terrain, _settlementAnchorPosition);
             return _settlementHub;
         }
 
         public void UpdateTerrain(TerrainGenerator terrain)
         {
             _terrain = terrain;
+            _settlementHub?.ApplyTerrainProfile(_terrain, _settlementAnchorPosition);
         }
 
         public void ResetDynamicNodes()
@@ -59,12 +60,19 @@ namespace Societies.Simulation
             _workerNodes.Clear();
         }
 
-        public void SeedResources(int simulationSeed, int treeCount, int rockCount, int berryCount)
+        public void ApplyWorld(WorldGenerationResult result)
         {
-            DeterministicRandom rng = new(simulationSeed);
-            SpawnResourceSet("wood", treeCount, rng);
-            SpawnResourceSet("stone", rockCount, rng);
-            SpawnResourceSet("berry", berryCount, rng);
+            _settlementAnchorPosition = result.SettlementSpawn.AnchorPosition;
+            EnsureSettlementHub();
+            ReplaceResourceNodes(
+                result.ResourceSpawns
+                    .Select(spawn => new PrototypeResourceSnapshot
+                    {
+                        ResourceId = spawn.ResourceId,
+                        UnitsRemaining = spawn.UnitsRemaining,
+                        Position = PrototypeSerializableVector3.FromVector3(spawn.Position)
+                    })
+                    .ToList());
         }
 
         public IReadOnlyList<PrototypeResourceSnapshot> CaptureResourceSnapshots()
@@ -162,25 +170,6 @@ namespace Societies.Simulation
             IReadOnlyList<PrototypeWorkerState> workers)
         {
             EnsureSettlementHub().ApplyState(stockpile, workers);
-        }
-
-        private void SpawnResourceSet(string resourceId, int count, DeterministicRandom rng)
-        {
-            List<PrototypeResourceSpawn> plan = new(count);
-            if (count > 0)
-            {
-                plan.Add(PrototypeResourceSpawnPlanner.CreateStarterSpawn(resourceId, _settlementAnchorPosition));
-            }
-
-            if (count > 1)
-            {
-                plan.AddRange(PrototypeResourceSpawnPlanner.CreatePlan(resourceId, count - 1, _terrain.GetSpawnBounds(), rng));
-            }
-
-            for (int i = 0; i < plan.Count; i++)
-            {
-                SpawnResourceNode(plan[i].ResourceId, plan[i].Position, plan[i].UnitsRemaining, i + 1);
-            }
         }
 
         private void SpawnResourceNode(string resourceId, Vector3 position, int unitsRemaining, int sequence)

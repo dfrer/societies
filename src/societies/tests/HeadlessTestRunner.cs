@@ -53,6 +53,8 @@ namespace Societies.Tests
             await Test_MainScene_WorkerVisualizationSmoke();
             await Test_MainScene_CraftingAndSnapshotSmoke();
             await Test_MainScene_ResetAndRestoreSmoke();
+            await Test_MainScene_ScenarioSwitchWorldSummarySmoke();
+            await Test_MainScene_ObserverAndOverlaySmoke();
             await Test_MainScene_SettlementLoopSmoke();
             await Test_MainScene_FixedTickSoakSmoke();
         }
@@ -157,10 +159,11 @@ namespace Societies.Tests
                 TerrainGenerator terrain = manager.GetNodeOrNull<TerrainGenerator>("World/Systems/Terrain") ?? throw new Exception("TerrainGenerator missing");
 
                 PrototypeRuntimeSnapshot snapshot = manager.CaptureSnapshot();
+                float playerSurfaceHeight = terrain.SampleHeight(snapshot.PlayerPosition.ToVector3());
 
                 Assert(manager.IsGameRunning, "GameManager should auto-start the local session");
                 Assert(network.IsLocalSession, "NetworkManager should be in local session mode");
-                Assert(snapshot.PlayerPosition.Y > terrain.GroundHeight, "Player should spawn above ground");
+                Assert(snapshot.PlayerPosition.Y > playerSurfaceHeight, "Player should spawn above the sampled terrain height");
                 Assert(snapshot.Resources.Count(resource => resource.ResourceId == "wood") == 36, "Tree spawn count mismatch");
                 Assert(snapshot.Resources.Count(resource => resource.ResourceId == "stone") == 24, "Rock spawn count mismatch");
                 Assert(snapshot.Resources.Count(resource => resource.ResourceId == "berry") == 14, "Berry spawn count mismatch");
@@ -222,6 +225,9 @@ namespace Societies.Tests
                 Assert(File.Exists(Path.Combine(outputDirectory, "run-summary-v2.json")), "V2 run summary should exist after saving");
                 Assert(File.Exists(Path.Combine(outputDirectory, "metrics-timeseries-v2.csv")), "V2 metrics csv should exist after saving");
                 Assert(File.Exists(Path.Combine(outputDirectory, "world-summary-v2.json")), "V2 world summary should exist after saving");
+                PrototypeWorldSummary worldSummary = PrototypePersistenceService.LoadWorldSummary(Path.Combine(outputDirectory, "world-summary-v2.json"));
+                Assert(worldSummary.TerrainMode == "heightfield_v1", "World summary should report the heightfield terrain mode");
+                Assert(worldSummary.WorldSeed != 0, "World summary should contain a world seed");
 
                 manager.Inventory.ReplaceContents(new Dictionary<string, int>());
                 Assert(manager.Inventory.GetCount("campfire") == 0, "Inventory should be clear before load");
@@ -346,6 +352,105 @@ namespace Societies.Tests
             {
                 System.Environment.SetEnvironmentVariable("SOCIETIES_RUN_OUTPUT_DIR", null);
 
+                if (scene != null)
+                {
+                    scene.QueueFree();
+                    await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+                }
+            }
+        }
+
+        private async Task Test_MainScene_ScenarioSwitchWorldSummarySmoke()
+        {
+            Node? scene = null;
+            string outputDirectory = CreateRunOutputDirectory(nameof(Test_MainScene_ScenarioSwitchWorldSummarySmoke));
+
+            try
+            {
+                System.Environment.SetEnvironmentVariable("SOCIETIES_RUN_OUTPUT_DIR", outputDirectory);
+                PackedScene packedScene = GD.Load<PackedScene>("res://scenes/main.tscn");
+                Assert(packedScene != null, "Main scene failed to load");
+
+                scene = packedScene!.Instantiate();
+                AddChild(scene);
+                await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+
+                GameManager manager = scene as GameManager ?? throw new Exception("Main scene root is not GameManager");
+
+                manager.SaveSnapshotToDisk();
+                PrototypeWorldSummary basinSummary = PrototypePersistenceService.LoadWorldSummary(Path.Combine(outputDirectory, "world-summary-v2.json"));
+
+                manager.SetScenario("food_poor_highlands");
+                manager.SaveSnapshotToDisk();
+                PrototypeWorldSummary highlandsSummary = PrototypePersistenceService.LoadWorldSummary(Path.Combine(outputDirectory, "world-summary-v2.json"));
+
+                Assert(basinSummary.WorldHash != highlandsSummary.WorldHash, "Different scenarios should produce different world hashes");
+                Assert(basinSummary.BuildableCellRatio != highlandsSummary.BuildableCellRatio, "Different scenarios should produce different buildable ratios");
+                Assert(manager.CurrentScenarioId == "food_poor_highlands", "Scenario switch should update the active scenario");
+
+                Pass(nameof(Test_MainScene_ScenarioSwitchWorldSummarySmoke));
+            }
+            catch (Exception ex)
+            {
+                Fail(nameof(Test_MainScene_ScenarioSwitchWorldSummarySmoke), ex);
+            }
+            finally
+            {
+                System.Environment.SetEnvironmentVariable("SOCIETIES_RUN_OUTPUT_DIR", null);
+
+                if (scene != null)
+                {
+                    scene.QueueFree();
+                    await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+                }
+            }
+        }
+
+        private async Task Test_MainScene_ObserverAndOverlaySmoke()
+        {
+            Node? scene = null;
+
+            try
+            {
+                PackedScene packedScene = GD.Load<PackedScene>("res://scenes/main.tscn");
+                Assert(packedScene != null, "Main scene failed to load");
+
+                scene = packedScene!.Instantiate();
+                AddChild(scene);
+                await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+
+                GameManager manager = scene as GameManager ?? throw new Exception("Main scene root is not GameManager");
+                PrototypeRuntimeSnapshot initialSnapshot = manager.CaptureSnapshot();
+                InputEventKey observerToggle = new()
+                {
+                    Pressed = true,
+                    Keycode = Key.F8
+                };
+                InputEventKey overlayToggle = new()
+                {
+                    Pressed = true,
+                    Keycode = Key.F10
+                };
+
+                manager._UnhandledInput(observerToggle);
+                Assert(manager.CurrentCameraMode == CameraMode.Observer, "F8 should switch to observer mode");
+                Assert(manager.SimulationTick == initialSnapshot.SimulationTick, "Observer toggle should not advance simulation ticks");
+
+                manager._UnhandledInput(overlayToggle);
+                Assert(manager.CurrentOverlayMode == TerrainOverlayMode.Biome, "F10 should cycle to the biome overlay first");
+                Assert(manager.CaptureSnapshot().WorldHash == initialSnapshot.WorldHash, "Overlay changes should not mutate the world state");
+
+                manager._UnhandledInput(observerToggle);
+                Assert(manager.CurrentCameraMode == CameraMode.Player, "F8 should switch back to player mode");
+
+                Pass(nameof(Test_MainScene_ObserverAndOverlaySmoke));
+            }
+            catch (Exception ex)
+            {
+                Fail(nameof(Test_MainScene_ObserverAndOverlaySmoke), ex);
+            }
+            finally
+            {
                 if (scene != null)
                 {
                     scene.QueueFree();

@@ -40,7 +40,8 @@ namespace Societies.Core
                 session.EventLog.Entries,
                 session.RunStartHour,
                 session.Scenario.Id,
-                session.Scenario.DisplayName);
+                session.Scenario.DisplayName,
+                worldSummary);
 
             PrototypePersistenceService.SaveSnapshot(paths.LegacySnapshotPath, snapshot);
             PrototypePersistenceService.SaveSnapshot(paths.SnapshotV2Path, snapshot);

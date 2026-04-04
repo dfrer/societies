@@ -14,6 +14,7 @@ namespace Societies.Core
         private readonly int _defaultWorkerCount;
         private PrototypeWeatherSimulation? _weatherSimulation;
         private PrototypeSettlementSimulation? _settlementSimulation;
+        private WorldGenerationResult? _world;
         private int _simulationSeed;
 
         public PrototypeRuntimeSession(PrototypeScenarioDefinition scenario)
@@ -55,7 +56,17 @@ namespace Societies.Core
 
         public IReadOnlyList<PrototypeWorkerState> Workers => _settlementSimulation?.Workers ?? System.Array.Empty<PrototypeWorkerState>();
 
-        public void Initialize(float startHour, Vector3 settlementAnchorPosition)
+        public WorldGenerationResult? World => _world;
+
+        public int WorldSeed => _world?.WorldSeed ?? 0;
+
+        public int WorldGenerationAttempt => _world?.WorldGenerationAttempt ?? 0;
+
+        public string WorldHash => _world?.WorldHash ?? string.Empty;
+
+        public Vector3 SettlementAnchorPosition => _world?.SettlementSpawn.AnchorPosition ?? Vector3.Zero;
+
+        public void Initialize(float startHour)
         {
             SimulationTick = 0;
             CurrentHour = startHour;
@@ -66,8 +77,9 @@ namespace Societies.Core
             MetricsTracker.Clear();
             Inventory.ReplaceContents(new Dictionary<string, int>());
             Stockpile.ReplaceContents(new Dictionary<string, int>());
+            _world = PrototypeWorldGenerator.Generate(Scenario);
             _weatherSimulation = new PrototypeWeatherSimulation(_simulationSeed);
-            _settlementSimulation = new PrototypeSettlementSimulation(Stockpile, _defaultWorkerCount, settlementAnchorPosition);
+            _settlementSimulation = new PrototypeSettlementSimulation(Stockpile, _defaultWorkerCount, SettlementAnchorPosition, _world.WorldMap);
         }
 
         public bool TryCraftRecipe(string recipeId, out string statusText)
@@ -178,8 +190,11 @@ namespace Societies.Core
 
             return new PrototypeRuntimeSnapshot
             {
-                SchemaVersion = 2,
+                SchemaVersion = 3,
                 ScenarioId = Scenario.Id,
+                WorldSeed = WorldSeed,
+                WorldGenerationAttempt = WorldGenerationAttempt,
+                WorldHash = WorldHash,
                 SimulationSeed = _simulationSeed,
                 SimulationTick = SimulationTick,
                 CurrentHour = CurrentHour,
@@ -187,6 +202,7 @@ namespace Societies.Core
                 TimeUntilNextWeatherShift = TimeUntilNextWeatherShift,
                 WeatherRandomState = WeatherRandomState,
                 PlayerPosition = PrototypeSerializableVector3.FromVector3(playerPosition),
+                SettlementAnchorPosition = PrototypeSerializableVector3.FromVector3(SettlementAnchorPosition),
                 Inventory = new Dictionary<string, int>(Inventory.Items),
                 Stockpile = new Dictionary<string, int>(Stockpile.Items),
                 Workers = workers,
@@ -194,7 +210,7 @@ namespace Societies.Core
             };
         }
 
-        public void ApplySnapshot(PrototypeRuntimeSnapshot snapshot, Vector3 settlementAnchorPosition)
+        public void ApplySnapshot(PrototypeRuntimeSnapshot snapshot)
         {
             _simulationSeed = snapshot.SimulationSeed;
             SimulationTick = snapshot.SimulationTick;
@@ -203,13 +219,14 @@ namespace Societies.Core
 
             Inventory.ReplaceContents(snapshot.Inventory);
             Stockpile.ReplaceContents(snapshot.Stockpile);
+            _world = PrototypeWorldGenerator.Regenerate(Scenario, snapshot.WorldSeed, snapshot.WorldGenerationAttempt);
 
             _weatherSimulation = new PrototypeWeatherSimulation(_simulationSeed, ParseWeather(snapshot.CurrentWeather));
             _weatherSimulation.SetState(ParseWeather(snapshot.CurrentWeather), snapshot.TimeUntilNextWeatherShift, snapshot.WeatherRandomState);
 
             int workerCount = snapshot.Workers.Count > 0 ? snapshot.Workers.Count : _defaultWorkerCount;
-            _settlementSimulation = new PrototypeSettlementSimulation(Stockpile, workerCount, settlementAnchorPosition);
-            _settlementSimulation.LoadState(snapshot.Workers, settlementAnchorPosition);
+            _settlementSimulation = new PrototypeSettlementSimulation(Stockpile, workerCount, SettlementAnchorPosition, _world.WorldMap);
+            _settlementSimulation.LoadState(snapshot.Workers, SettlementAnchorPosition, _world.WorldMap);
             MetricsTracker.Clear();
         }
 

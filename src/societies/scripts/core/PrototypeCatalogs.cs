@@ -126,6 +126,43 @@ namespace Societies.Core
                 {
                     throw new InvalidOperationException($"Scenario '{scenario.Id}' must define a positive world size.");
                 }
+
+                if (scenario.WorldGen == null)
+                {
+                    throw new InvalidOperationException($"Scenario '{scenario.Id}' is missing world-generation settings.");
+                }
+
+                if (scenario.ResourceClusters == null)
+                {
+                    throw new InvalidOperationException($"Scenario '{scenario.Id}' is missing resource-cluster settings.");
+                }
+
+                if (scenario.WorldGen.CellSizeMeters <= 0.0f)
+                {
+                    throw new InvalidOperationException($"Scenario '{scenario.Id}' must define a positive cell size.");
+                }
+
+                if (scenario.WorldGen.ForestCoverage <= 0.0f || scenario.WorldGen.ForestCoverage >= 0.95f)
+                {
+                    throw new InvalidOperationException($"Scenario '{scenario.Id}' forest coverage must be between 0 and 0.95.");
+                }
+
+                if (scenario.WorldGen.RockyCoverage <= 0.0f || scenario.WorldGen.RockyCoverage >= 0.95f)
+                {
+                    throw new InvalidOperationException($"Scenario '{scenario.Id}' rocky coverage must be between 0 and 0.95.");
+                }
+
+                if (scenario.WorldGen.MaxSettlementPlacementAttempts <= 0)
+                {
+                    throw new InvalidOperationException($"Scenario '{scenario.Id}' must allow at least one settlement placement attempt.");
+                }
+
+                if (scenario.ResourceClusters.WoodClusters <= 0 ||
+                    scenario.ResourceClusters.StoneClusters <= 0 ||
+                    scenario.ResourceClusters.BerryClusters <= 0)
+                {
+                    throw new InvalidOperationException($"Scenario '{scenario.Id}' resource cluster counts must be positive.");
+                }
             }
         }
     }
@@ -149,6 +186,10 @@ namespace Societies.Core
         public int InitialWorkers { get; set; } = 3;
 
         public float WorldSize { get; set; } = 500.0f;
+
+        public WorldGenerationDefinition WorldGen { get; set; } = new();
+
+        public ResourceClusterDefinition ResourceClusters { get; set; } = new();
     }
 
     public sealed class PrototypeResourceCatalog

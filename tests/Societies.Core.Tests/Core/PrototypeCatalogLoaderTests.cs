@@ -20,6 +20,11 @@ namespace Societies.Core.Tests
             Assert.Equal(24, scenario.InitialRocks);
             Assert.Equal(14, scenario.InitialBerryBushes);
             Assert.Equal(3, scenario.InitialWorkers);
+            Assert.Equal(2.0f, scenario.WorldGen.CellSizeMeters);
+            Assert.Equal(10.0f, scenario.WorldGen.HeightAmplitude);
+            Assert.Equal(7, scenario.ResourceClusters.WoodClusters);
+            Assert.Equal(5, scenario.ResourceClusters.StoneClusters);
+            Assert.Equal(4, scenario.ResourceClusters.BerryClusters);
         }
 
         [Fact]
@@ -32,6 +37,14 @@ namespace Societies.Core.Tests
             Assert.Contains(bundle.Structures.Structures, structure => structure.Id == "kiln");
             Assert.Contains(bundle.RoleQuotas.Roles, role => role.RoleId == "haulers");
             Assert.Equal(1.0d, bundle.RoleQuotas.Roles.Sum(role => role.Share), 3);
+            Assert.All(bundle.Scenarios.Scenarios, scenario =>
+            {
+                Assert.True(scenario.WorldGen.CellSizeMeters > 0.0f);
+                Assert.True(scenario.WorldGen.MaxSettlementPlacementAttempts > 0);
+                Assert.True(scenario.ResourceClusters.WoodClusters > 0);
+                Assert.True(scenario.ResourceClusters.StoneClusters > 0);
+                Assert.True(scenario.ResourceClusters.BerryClusters > 0);
+            });
         }
 
         private static string GetCatalogDirectoryPath()

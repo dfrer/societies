@@ -1,4 +1,5 @@
 using Godot;
+using Societies.Core;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -13,6 +14,9 @@ namespace Societies.Simulation
         private MeshInstance3D? _campfireFlame;
         private OmniLight3D? _campfireLight;
         private Label3D? _label;
+        private Node3D? _stockpileRoot;
+        private Node3D? _workbenchRoot;
+        private Node3D? _campfireRoot;
         private double _animationTime;
 
         public string StatusText => _label?.Text ?? string.Empty;
@@ -80,6 +84,31 @@ namespace Societies.Simulation
             }
         }
 
+        public void ApplyTerrainProfile(TerrainGenerator terrain, Vector3 settlementAnchorPosition)
+        {
+            if (_stockpileRoot == null || _workbenchRoot == null || _campfireRoot == null)
+            {
+                return;
+            }
+
+            Vector3 stockpileWorld = PrototypeSettlementLayout.GetStockpileWorldPosition(settlementAnchorPosition);
+            Vector3 workbenchWorld = PrototypeSettlementLayout.GetWorkstationWorldPosition(settlementAnchorPosition);
+            Vector3 campfireWorld = PrototypeSettlementLayout.GetCampfireWorldPosition(settlementAnchorPosition);
+
+            _stockpileRoot.Position = new Vector3(
+                stockpileWorld.X - settlementAnchorPosition.X,
+                terrain.SampleHeight(stockpileWorld) - settlementAnchorPosition.Y,
+                stockpileWorld.Z - settlementAnchorPosition.Z);
+            _workbenchRoot.Position = new Vector3(
+                workbenchWorld.X - settlementAnchorPosition.X,
+                terrain.SampleHeight(workbenchWorld) - settlementAnchorPosition.Y,
+                workbenchWorld.Z - settlementAnchorPosition.Z);
+            _campfireRoot.Position = new Vector3(
+                campfireWorld.X - settlementAnchorPosition.X,
+                terrain.SampleHeight(campfireWorld) - settlementAnchorPosition.Y,
+                campfireWorld.Z - settlementAnchorPosition.Z);
+        }
+
         private void BuildVisuals()
         {
             MeshInstance3D plaza = CreateMesh(
@@ -111,18 +140,18 @@ namespace Societies.Simulation
 
         private void BuildStockpileVisual()
         {
-            Node3D stockpileRoot = new()
+            _stockpileRoot = new Node3D
             {
                 Name = "StockpileRoot",
                 Position = PrototypeSettlementLayout.GetStockpileWorldPosition(Vector3.Zero)
             };
-            AddChild(stockpileRoot);
+            AddChild(_stockpileRoot);
 
             MeshInstance3D pallet = CreateMesh(
                 new BoxMesh { Size = new Vector3(2.1f, 0.22f, 1.7f) },
                 new Color(0.45f, 0.31f, 0.19f),
                 new Vector3(0.0f, 0.11f, 0.0f));
-            stockpileRoot.AddChild(pallet);
+            _stockpileRoot.AddChild(pallet);
 
             Vector3[] crateOffsets =
             {
@@ -138,25 +167,25 @@ namespace Societies.Simulation
                     new Color(0.67f, 0.5f, 0.28f),
                     offset);
                 crate.Visible = false;
-                stockpileRoot.AddChild(crate);
+                _stockpileRoot.AddChild(crate);
                 _stockpileCrates.Add(crate);
             }
         }
 
         private void BuildWorkbenchVisual()
         {
-            Node3D workbenchRoot = new()
+            _workbenchRoot = new Node3D
             {
                 Name = "WorkbenchRoot",
                 Position = PrototypeSettlementLayout.GetWorkstationWorldPosition(Vector3.Zero)
             };
-            AddChild(workbenchRoot);
+            AddChild(_workbenchRoot);
 
             MeshInstance3D tableTop = CreateMesh(
                 new BoxMesh { Size = new Vector3(2.2f, 0.18f, 1.05f) },
                 new Color(0.43f, 0.29f, 0.18f),
                 new Vector3(0.0f, 0.92f, 0.0f));
-            workbenchRoot.AddChild(tableTop);
+            _workbenchRoot.AddChild(tableTop);
 
             Vector3[] legOffsets =
             {
@@ -172,18 +201,18 @@ namespace Societies.Simulation
                     new BoxMesh { Size = new Vector3(0.12f, 0.9f, 0.12f) },
                     new Color(0.36f, 0.24f, 0.15f),
                     offset);
-                workbenchRoot.AddChild(leg);
+                _workbenchRoot.AddChild(leg);
             }
         }
 
         private void BuildCampfireVisual()
         {
-            Node3D campfireRoot = new()
+            _campfireRoot = new Node3D
             {
                 Name = "CampfireRoot",
-                Position = new Vector3(0.0f, 0.0f, 0.85f)
+                Position = PrototypeSettlementLayout.GetCampfireWorldPosition(Vector3.Zero)
             };
-            AddChild(campfireRoot);
+            AddChild(_campfireRoot);
 
             Vector3[] stoneRing =
             {
@@ -200,7 +229,7 @@ namespace Societies.Simulation
                     new BoxMesh { Size = new Vector3(0.26f, 0.22f, 0.26f) },
                     new Color(0.46f, 0.48f, 0.52f),
                     offset);
-                campfireRoot.AddChild(stone);
+                _campfireRoot.AddChild(stone);
             }
 
             _campfireFlame = CreateMesh(
@@ -215,7 +244,7 @@ namespace Societies.Simulation
                 Emission = new Color(0.96f, 0.58f, 0.18f),
                 EmissionEnergyMultiplier = 0.9f
             };
-            campfireRoot.AddChild(_campfireFlame);
+            _campfireRoot.AddChild(_campfireFlame);
 
             _campfireLight = new OmniLight3D
             {
@@ -226,7 +255,7 @@ namespace Societies.Simulation
                 LightEnergy = 0.0f,
                 Visible = false
             };
-            campfireRoot.AddChild(_campfireLight);
+            _campfireRoot.AddChild(_campfireLight);
         }
 
         private static MeshInstance3D CreateMesh(PrimitiveMesh mesh, Color color, Vector3 position)

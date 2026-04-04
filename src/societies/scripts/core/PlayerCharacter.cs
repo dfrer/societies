@@ -16,6 +16,7 @@ namespace Societies.Core
 
         public InventoryComponent? Inventory { get; set; }
         public TerrainGenerator? Terrain { get; set; }
+        public bool ControlsEnabled => _controlsEnabled;
 
         public event Action<string, int>? Harvested;
 
@@ -23,6 +24,7 @@ namespace Societies.Core
         private Camera3D? _camera;
         private RayCast3D? _interactionRay;
         private ResourceNode? _focusedResource;
+        private bool _controlsEnabled = true;
 
         public override void _Ready()
         {
@@ -32,6 +34,11 @@ namespace Societies.Core
 
         public override void _Input(InputEvent @event)
         {
+            if (!_controlsEnabled)
+            {
+                return;
+            }
+
             if (@event is InputEventMouseMotion motion && Input.MouseMode == Input.MouseModeEnum.Captured)
             {
                 RotateY(-motion.Relative.X * MouseSensitivity);
@@ -54,6 +61,11 @@ namespace Societies.Core
 
         public override void _PhysicsProcess(double delta)
         {
+            if (!_controlsEnabled)
+            {
+                return;
+            }
+
             HandleMovement((float)delta);
             UpdateInteractionTarget();
 
@@ -83,6 +95,16 @@ namespace Societies.Core
             if (_cameraPivot != null)
             {
                 _cameraPivot.Rotation = Vector3.Zero;
+            }
+        }
+
+        public void SetControlEnabled(bool enabled)
+        {
+            _controlsEnabled = enabled;
+
+            if (_camera != null)
+            {
+                _camera.Current = enabled;
             }
         }
 
@@ -179,12 +201,13 @@ namespace Societies.Core
 
             Vector3 position = GlobalPosition;
             float limit = Terrain.WorldHalfSize - 1.0f;
+            float terrainHeight = Terrain.SampleHeight(position);
 
             position.X = Mathf.Clamp(position.X, -limit, limit);
             position.Z = Mathf.Clamp(position.Z, -limit, limit);
-            if (position.Y < Terrain.GroundHeight + 0.95f)
+            if (position.Y < terrainHeight + 0.95f)
             {
-                position.Y = Terrain.GroundHeight + 0.95f;
+                position.Y = terrainHeight + 0.95f;
             }
 
             GlobalPosition = position;

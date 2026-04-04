@@ -27,7 +27,11 @@ namespace Societies.UI
             IReadOnlyDictionary<string, int> stockpile,
             IReadOnlyList<PrototypeWorkerState> workers,
             string interactionText,
-            string? scenarioId = null)
+            string? scenarioId = null,
+            int? worldSeed = null,
+            CameraMode cameraMode = CameraMode.Player,
+            TerrainOverlayMode overlayMode = TerrainOverlayMode.None,
+            PrototypeWorldSummary? worldSummary = null)
         {
             hud.SetDebugText(
                 PrototypeHudTextBuilder.BuildDebugText(
@@ -37,10 +41,20 @@ namespace Societies.UI
                     weatherText,
                     sessionMode,
                     simulationTick,
-                    scenarioId));
+                    scenarioId,
+                    worldSeed,
+                    cameraMode,
+                    overlayMode));
             hud.SetInventoryText(inventory.GetSummaryText());
             hud.SetCraftingText(CraftingSystem.GetRecipeSummary(inventory));
             hud.SetSettlementText(PrototypeHudTextBuilder.BuildSettlementText(stockpile, workers));
+            hud.SetWorldText(
+                PrototypeHudTextBuilder.BuildWorldText(
+                    scenarioId ?? "unknown",
+                    worldSeed ?? 0,
+                    cameraMode,
+                    overlayMode,
+                    worldSummary));
             hud.SetInteractionText(interactionText);
         }
     }

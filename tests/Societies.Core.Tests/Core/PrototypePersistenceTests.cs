@@ -11,6 +11,9 @@ namespace Societies.Core.Tests
         {
             PrototypeRuntimeSnapshot snapshot = new()
             {
+                WorldSeed = 777,
+                WorldGenerationAttempt = 2,
+                WorldHash = "world-hash",
                 SimulationSeed = 42,
                 SimulationTick = 120,
                 CurrentHour = 9.75f,
@@ -18,6 +21,7 @@ namespace Societies.Core.Tests
                 TimeUntilNextWeatherShift = 61.5f,
                 WeatherRandomState = 123456u,
                 PlayerPosition = PrototypeSerializableVector3.FromVector3(new Vector3(1.0f, 2.0f, 3.0f)),
+                SettlementAnchorPosition = PrototypeSerializableVector3.FromVector3(new Vector3(4.0f, 5.0f, 6.0f)),
                 Inventory = new Dictionary<string, int> { ["wood"] = 4, ["stone"] = 2 },
                 Stockpile = new Dictionary<string, int> { ["berry"] = 6, ["campfire"] = 1 },
                 Workers = new List<PrototypeWorkerSnapshot>
@@ -54,6 +58,9 @@ namespace Societies.Core.Tests
             string json = PrototypePersistenceService.SerializeSnapshot(snapshot);
             PrototypeRuntimeSnapshot restored = PrototypePersistenceService.DeserializeSnapshot(json);
 
+            Assert.Equal(777, restored.WorldSeed);
+            Assert.Equal(2, restored.WorldGenerationAttempt);
+            Assert.Equal("world-hash", restored.WorldHash);
             Assert.Equal(42, restored.SimulationSeed);
             Assert.Equal(120, restored.SimulationTick);
             Assert.Equal("Rain", restored.CurrentWeather);
@@ -89,6 +96,10 @@ namespace Societies.Core.Tests
         {
             PrototypeRunSummary summary = new()
             {
+                WorldSeed = 777,
+                TerrainMode = "heightfield_v1",
+                BuildableCellRatio = 0.62f,
+                BiomeCellCounts = new Dictionary<string, int> { ["Meadow"] = 20, ["Forest"] = 12 },
                 SimulationSeed = 99,
                 SimulationTick = 320,
                 StartHour = 8.0f,
@@ -107,6 +118,10 @@ namespace Societies.Core.Tests
             string json = PrototypePersistenceService.SerializeRunSummary(summary);
             PrototypeRunSummary restored = PrototypePersistenceService.DeserializeRunSummary(json);
 
+            Assert.Equal(777, restored.WorldSeed);
+            Assert.Equal("heightfield_v1", restored.TerrainMode);
+            Assert.Equal(0.62f, restored.BuildableCellRatio);
+            Assert.Equal(20, restored.BiomeCellCounts["Meadow"]);
             Assert.Equal(99, restored.SimulationSeed);
             Assert.Equal("14:30", restored.EndTimeText);
             Assert.Equal(1, restored.CraftedItemCounts["campfire"]);

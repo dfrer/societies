@@ -14,6 +14,7 @@ namespace Societies.UI
         private Label? _statusLabel;
         private Label? _helpLabel;
         private Label? _settlementLabel;
+        private Label? _worldLabel;
         private Panel? _inventoryPanel;
 
         public string DebugText => _debugLabel?.Text ?? string.Empty;
@@ -27,6 +28,8 @@ namespace Societies.UI
         public string HelpText => _helpLabel?.Text ?? string.Empty;
 
         public string SettlementText => _settlementLabel?.Text ?? string.Empty;
+
+        public string WorldText => _worldLabel?.Text ?? string.Empty;
 
         public bool IsInventoryVisible => _inventoryPanel?.Visible ?? false;
 
@@ -99,6 +102,14 @@ namespace Societies.UI
             }
         }
 
+        public void SetWorldText(string text)
+        {
+            if (_worldLabel != null)
+            {
+                _worldLabel.Text = text;
+            }
+        }
+
         private void BuildHud()
         {
             Control root = new()
@@ -141,6 +152,9 @@ namespace Societies.UI
 
             _settlementLabel = CreateLabel(new Vector2(1460.0f, 360.0f), new Vector2(420.0f, 340.0f), 16);
             root.AddChild(_settlementLabel);
+
+            _worldLabel = CreateLabel(new Vector2(14.0f, 256.0f), new Vector2(420.0f, 180.0f), 16);
+            root.AddChild(_worldLabel);
         }
 
         private static Label CreateLabel(Vector2 position, Vector2 size, int fontSize)
