@@ -14,7 +14,7 @@ namespace Societies.Core
             IReadOnlyList<PrototypeEventRecord> eventRecords,
             float startHour)
         {
-            return Build(snapshot, eventRecords, startHour, snapshot.ScenarioId, string.Empty);
+            return Build(snapshot, eventRecords, startHour, snapshot.ScenarioId, string.Empty, null);
         }
 
         public static PrototypeRunSummary Build(
@@ -22,7 +22,8 @@ namespace Societies.Core
             IReadOnlyList<PrototypeEventRecord> eventRecords,
             float startHour,
             string scenarioId,
-            string scenarioDisplayName)
+            string scenarioDisplayName,
+            PrototypeWorldSummary? worldSummary)
         {
             Dictionary<string, int> craftedItemCounts = BuildCraftedItemCounts(snapshot);
 
@@ -32,6 +33,10 @@ namespace Societies.Core
                 ScenarioId = scenarioId,
                 ScenarioDisplayName = scenarioDisplayName,
                 SettlementClassification = ClassifySettlement(snapshot),
+                WorldSeed = worldSummary?.WorldSeed ?? snapshot.WorldSeed,
+                TerrainMode = worldSummary?.TerrainMode ?? string.Empty,
+                BuildableCellRatio = worldSummary?.BuildableCellRatio ?? 0.0f,
+                BiomeCellCounts = worldSummary?.BiomeCellCounts.ToDictionary(pair => pair.Key, pair => pair.Value) ?? new Dictionary<string, int>(),
                 SimulationSeed = snapshot.SimulationSeed,
                 SimulationTick = snapshot.SimulationTick,
                 StartHour = startHour,

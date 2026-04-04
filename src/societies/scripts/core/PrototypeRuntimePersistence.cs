@@ -11,9 +11,15 @@ namespace Societies.Core
     /// </summary>
     public sealed class PrototypeRuntimeSnapshot
     {
-        public int SchemaVersion { get; set; } = 2;
+        public int SchemaVersion { get; set; } = 3;
 
         public string ScenarioId { get; set; } = string.Empty;
+
+        public int WorldSeed { get; set; }
+
+        public int WorldGenerationAttempt { get; set; }
+
+        public string WorldHash { get; set; } = string.Empty;
 
         public int SimulationSeed { get; set; }
 
@@ -28,6 +34,8 @@ namespace Societies.Core
         public uint WeatherRandomState { get; set; }
 
         public PrototypeSerializableVector3 PlayerPosition { get; set; }
+
+        public PrototypeSerializableVector3 SettlementAnchorPosition { get; set; }
 
         public Dictionary<string, int> Inventory { get; set; } = new();
 
@@ -117,13 +125,21 @@ namespace Societies.Core
 
     public sealed class PrototypeRunSummary
     {
-        public int SchemaVersion { get; set; } = 2;
+        public int SchemaVersion { get; set; } = 3;
 
         public string ScenarioId { get; set; } = string.Empty;
 
         public string ScenarioDisplayName { get; set; } = string.Empty;
 
         public string SettlementClassification { get; set; } = string.Empty;
+
+        public int WorldSeed { get; set; }
+
+        public string TerrainMode { get; set; } = string.Empty;
+
+        public float BuildableCellRatio { get; set; }
+
+        public Dictionary<string, int> BiomeCellCounts { get; set; } = new();
 
         public int SimulationSeed { get; set; }
 

@@ -45,8 +45,24 @@ namespace Societies.Core.Tests
                 new() { Tick = 20, EventType = PrototypeEventTypes.AiCraftCompleted, Message = "craft" }
             };
 
-            PrototypeRunSummary summary = PrototypeRunSummaryBuilder.Build(snapshot, eventRecords, 8.0f);
+            PrototypeWorldSummary worldSummary = new()
+            {
+                WorldSeed = 777,
+                TerrainMode = "heightfield_v1",
+                BuildableCellRatio = 0.61f,
+                BiomeCellCounts = new Dictionary<string, int>
+                {
+                    ["Forest"] = 12,
+                    ["Meadow"] = 18
+                }
+            };
 
+            PrototypeRunSummary summary = PrototypeRunSummaryBuilder.Build(snapshot, eventRecords, 8.0f, "balanced_basin", "Balanced Basin", worldSummary);
+
+            Assert.Equal(777, summary.WorldSeed);
+            Assert.Equal("heightfield_v1", summary.TerrainMode);
+            Assert.Equal(0.61f, summary.BuildableCellRatio);
+            Assert.Equal(18, summary.BiomeCellCounts["Meadow"]);
             Assert.Equal(1337, summary.SimulationSeed);
             Assert.Equal("08:00", summary.StartTimeText);
             Assert.Equal("12:30", summary.EndTimeText);

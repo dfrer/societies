@@ -10,7 +10,21 @@
       "initialRocks": 24,
       "initialBerryBushes": 14,
       "initialWorkers": 3,
-      "worldSize": 500.0
+      "worldSize": 500.0,
+      "worldGen": {
+        "cellSizeMeters": 2.0,
+        "heightAmplitude": 10.0,
+        "ridgeStrength": 0.20,
+        "wetnessBias": -0.10,
+        "forestCoverage": 0.30,
+        "rockyCoverage": 0.14,
+        "maxSettlementPlacementAttempts": 12
+      },
+      "resourceClusters": {
+        "woodClusters": 7,
+        "stoneClusters": 5,
+        "berryClusters": 4
+      }
     },
     {
       "id": "long_haul_quarry",
@@ -21,7 +35,21 @@
       "initialRocks": 40,
       "initialBerryBushes": 10,
       "initialWorkers": 3,
-      "worldSize": 500.0
+      "worldSize": 500.0,
+      "worldGen": {
+        "cellSizeMeters": 2.0,
+        "heightAmplitude": 12.0,
+        "ridgeStrength": 0.30,
+        "wetnessBias": -0.20,
+        "forestCoverage": 0.22,
+        "rockyCoverage": 0.26,
+        "maxSettlementPlacementAttempts": 12
+      },
+      "resourceClusters": {
+        "woodClusters": 5,
+        "stoneClusters": 8,
+        "berryClusters": 3
+      }
     },
     {
       "id": "food_poor_highlands",
@@ -32,7 +60,21 @@
       "initialRocks": 30,
       "initialBerryBushes": 6,
       "initialWorkers": 3,
-      "worldSize": 500.0
+      "worldSize": 500.0,
+      "worldGen": {
+        "cellSizeMeters": 2.0,
+        "heightAmplitude": 18.0,
+        "ridgeStrength": 0.55,
+        "wetnessBias": -0.35,
+        "forestCoverage": 0.18,
+        "rockyCoverage": 0.30,
+        "maxSettlementPlacementAttempts": 12
+      },
+      "resourceClusters": {
+        "woodClusters": 5,
+        "stoneClusters": 6,
+        "berryClusters": 2
+      }
     },
     {
       "id": "wetland_builder",
@@ -43,7 +85,21 @@
       "initialRocks": 20,
       "initialBerryBushes": 18,
       "initialWorkers": 4,
-      "worldSize": 500.0
+      "worldSize": 500.0,
+      "worldGen": {
+        "cellSizeMeters": 2.0,
+        "heightAmplitude": 8.0,
+        "ridgeStrength": 0.18,
+        "wetnessBias": 0.35,
+        "forestCoverage": 0.24,
+        "rockyCoverage": 0.10,
+        "maxSettlementPlacementAttempts": 12
+      },
+      "resourceClusters": {
+        "woodClusters": 6,
+        "stoneClusters": 4,
+        "berryClusters": 6
+      }
     }
   ]
 }
