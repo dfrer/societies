@@ -51,6 +51,8 @@ namespace Societies.Core
         private CameraMode _cameraMode = CameraMode.Player;
         private TerrainOverlayMode _overlayMode = TerrainOverlayMode.None;
         private PrototypeWorldSummary? _lastWorldSummary;
+        private int _selectedCitizenInspectionIndex;
+        private int _selectedStructureInspectionIndex;
 
         public bool IsGameRunning { get; private set; }
 
@@ -83,9 +85,9 @@ namespace Societies.Core
                 RecordEvent(PrototypeEventTypes.SessionStarted, "Started local prototype session");
             }
 
-            RecordEvent(PrototypeEventTypes.RuntimeReady, "Societies Prototype V2 M1 initialized");
+            RecordEvent(PrototypeEventTypes.RuntimeReady, "Societies Prototype V2 M3 initialized");
             UpdateHud();
-            GD.Print("Societies Prototype V2 M1 initialized");
+            GD.Print("Societies Prototype V2 M3 initialized");
         }
 
         public override void _Process(double delta)
@@ -125,8 +127,12 @@ namespace Societies.Core
                     TryCraftRecipe("stone_axe");
                     GetViewport().SetInputAsHandled();
                     break;
-                case Key.Key2:
-                    TryCraftRecipe("campfire");
+                case Key.F3:
+                    SelectNextInspectedCitizen();
+                    GetViewport().SetInputAsHandled();
+                    break;
+                case Key.F4:
+                    SelectNextInspectedStructure();
                     GetViewport().SetInputAsHandled();
                     break;
                 case Key.F5:
@@ -153,6 +159,14 @@ namespace Societies.Core
                     CycleOverlayMode();
                     GetViewport().SetInputAsHandled();
                     break;
+                case Key.F11:
+                    SelectNextBuildQueueEntry();
+                    GetViewport().SetInputAsHandled();
+                    break;
+                case Key.F12:
+                    ToggleSelectedBuildQueuePause();
+                    GetViewport().SetInputAsHandled();
+                    break;
             }
         }
 
@@ -177,6 +191,56 @@ namespace Societies.Core
             _hud?.SetStatusText(statusText);
             UpdateHud();
             return crafted;
+        }
+
+        public bool SelectNextBuildQueueEntry()
+        {
+            if (_runtimeSession == null || !_runtimeSession.SelectNextBuildQueueEntry())
+            {
+                return false;
+            }
+
+            _hud?.SetStatusText(_runtimeSession.SelectedBuildQueueStatusText);
+            UpdateHud();
+            return true;
+        }
+
+        public bool ToggleSelectedBuildQueuePause()
+        {
+            if (_runtimeSession == null || !_runtimeSession.ToggleSelectedBuildQueuePause())
+            {
+                return false;
+            }
+
+            _hud?.SetStatusText(_runtimeSession.SelectedBuildQueueStatusText);
+            UpdateHud();
+            return true;
+        }
+
+        public bool SelectNextInspectedCitizen()
+        {
+            if (_runtimeSession == null || _runtimeSession.Workers.Count == 0)
+            {
+                return false;
+            }
+
+            _selectedCitizenInspectionIndex = (_selectedCitizenInspectionIndex + 1) % _runtimeSession.Workers.Count;
+            _hud?.SetStatusText($"Inspecting {_runtimeSession.Workers[_selectedCitizenInspectionIndex].DisplayName}");
+            UpdateHud();
+            return true;
+        }
+
+        public bool SelectNextInspectedStructure()
+        {
+            if (_runtimeSession == null || _runtimeSession.Structures.Count == 0)
+            {
+                return false;
+            }
+
+            _selectedStructureInspectionIndex = (_selectedStructureInspectionIndex + 1) % _runtimeSession.Structures.Count;
+            _hud?.SetStatusText($"Inspecting {_runtimeSession.Structures[_selectedStructureInspectionIndex].DisplayName}");
+            UpdateHud();
+            return true;
         }
 
         public void ResetPrototypeRun()
@@ -272,7 +336,19 @@ namespace Societies.Core
             _scenePresenter?.ReplaceResourceNodes(artifacts.Snapshot.Resources);
             ApplyRuntimeStateToScene();
             _scenePresenter?.SyncWorkers(_runtimeSession.Workers);
-            _scenePresenter?.UpdateSettlementPresentation(_runtimeSession.Stockpile.Items, _runtimeSession.Workers);
+            _scenePresenter?.UpdateSettlementPresentation(
+                _runtimeSession.Stockpile.Items,
+                _runtimeSession.Workers,
+                _runtimeSession.Structures,
+                _runtimeSession.SettlementClassification,
+                _runtimeSession.SelectedBuildQueueStatusText,
+                _runtimeSession.MealCoveragePercent,
+                _runtimeSession.BedCoveragePercent,
+                _runtimeSession.HearthFuel,
+                _overlayMode,
+                _runtimeSession.PathSegments,
+                _runtimeSession.RemoteDepots,
+                _runtimeSession.RouteHeatCells);
 
             if (_player != null)
             {
@@ -446,10 +522,24 @@ namespace Societies.Core
             BindPlayerToRuntime();
             ApplyRuntimeStateToScene();
             _scenePresenter.SyncWorkers(_runtimeSession.Workers);
-            _scenePresenter.UpdateSettlementPresentation(_runtimeSession.Stockpile.Items, _runtimeSession.Workers);
+            _scenePresenter.UpdateSettlementPresentation(
+                _runtimeSession.Stockpile.Items,
+                _runtimeSession.Workers,
+                _runtimeSession.Structures,
+                _runtimeSession.SettlementClassification,
+                _runtimeSession.SelectedBuildQueueStatusText,
+                _runtimeSession.MealCoveragePercent,
+                _runtimeSession.BedCoveragePercent,
+                _runtimeSession.HearthFuel,
+                _overlayMode,
+                _runtimeSession.PathSegments,
+                _runtimeSession.RemoteDepots,
+                _runtimeSession.RouteHeatCells);
             CaptureMetricsSnapshot();
 
-            _hud?.SetStatusText("Prototype V2 M1 ready");
+            _selectedCitizenInspectionIndex = 0;
+            _selectedStructureInspectionIndex = 0;
+            _hud?.SetStatusText("Prototype V2 M3 ready");
         }
 
         private void CreateRuntimeSession(PrototypeScenarioDefinition scenario)
@@ -464,7 +554,7 @@ namespace Societies.Core
                 _scenePresenter?.UpdateTerrain(_terrain);
             }
 
-            _runtimeSession = new PrototypeRuntimeSession(scenario);
+            _runtimeSession = new PrototypeRuntimeSession(scenario, _catalogs?.RoleQuotas.Roles);
             AttachRuntimeObservers();
             BindPlayerToRuntime();
         }
@@ -508,7 +598,19 @@ namespace Societies.Core
             _runtimeSession.RecordSettlementEvents(tickResult.SettlementResult.Events);
             ApplyRuntimeStateToScene();
             _scenePresenter.SyncWorkers(_runtimeSession.Workers);
-            _scenePresenter.UpdateSettlementPresentation(_runtimeSession.Stockpile.Items, _runtimeSession.Workers);
+            _scenePresenter.UpdateSettlementPresentation(
+                _runtimeSession.Stockpile.Items,
+                _runtimeSession.Workers,
+                _runtimeSession.Structures,
+                _runtimeSession.SettlementClassification,
+                _runtimeSession.SelectedBuildQueueStatusText,
+                _runtimeSession.MealCoveragePercent,
+                _runtimeSession.BedCoveragePercent,
+                _runtimeSession.HearthFuel,
+                _overlayMode,
+                _runtimeSession.PathSegments,
+                _runtimeSession.RemoteDepots,
+                _runtimeSession.RouteHeatCells);
 
             if (tickResult.ShouldCaptureMetrics)
             {
@@ -566,7 +668,19 @@ namespace Societies.Core
                 Inventory,
                 _runtimeSession?.Stockpile.Items ?? new Dictionary<string, int>(),
                 _runtimeSession?.Workers ?? System.Array.Empty<PrototypeWorkerState>(),
+                _runtimeSession?.Structures ?? System.Array.Empty<PrototypeStructureState>(),
+                _runtimeSession?.SettlementClassification ?? PrototypeSettlementClassification.Strained,
+                _runtimeSession?.SelectedBuildQueueStatusText ?? "Build Queue: empty",
+                _runtimeSession?.MealCoveragePercent ?? 0,
+                _runtimeSession?.BedCoveragePercent ?? 0,
+                _runtimeSession?.HearthFuel ?? 0,
+                _runtimeSession?.AverageRouteLengthMeters ?? 0.0f,
+                _runtimeSession?.AverageTravelWorkRatio ?? 0.0f,
+                _runtimeSession?.PathCoverageRatio ?? 0.0f,
+                _runtimeSession?.RouteBacklogTicksByKind ?? new Dictionary<string, int>(),
                 interactionText,
+                GetSelectedCitizen(),
+                GetSelectedStructure(),
                 _runtimeSession?.Scenario.Id,
                 _runtimeSession?.WorldSeed,
                 _cameraMode,
@@ -575,7 +689,17 @@ namespace Societies.Core
 
             _scenePresenter?.UpdateSettlementPresentation(
                 _runtimeSession?.Stockpile.Items ?? new Dictionary<string, int>(),
-                _runtimeSession?.Workers ?? System.Array.Empty<PrototypeWorkerState>());
+                _runtimeSession?.Workers ?? System.Array.Empty<PrototypeWorkerState>(),
+                _runtimeSession?.Structures ?? System.Array.Empty<PrototypeStructureState>(),
+                _runtimeSession?.SettlementClassification ?? PrototypeSettlementClassification.Strained,
+                _runtimeSession?.SelectedBuildQueueStatusText ?? "Build Queue: empty",
+                _runtimeSession?.MealCoveragePercent ?? 0,
+                _runtimeSession?.BedCoveragePercent ?? 0,
+                _runtimeSession?.HearthFuel ?? 0,
+                _overlayMode,
+                _runtimeSession?.PathSegments ?? System.Array.Empty<PrototypePathSegmentState>(),
+                _runtimeSession?.RemoteDepots ?? System.Array.Empty<PrototypeRemoteDepotState>(),
+                _runtimeSession?.RouteHeatCells ?? System.Array.Empty<PrototypeRouteHeatCellState>());
         }
 
         private void RecordEvent(string eventType, string message)
@@ -635,6 +759,9 @@ namespace Societies.Core
                 TerrainOverlayMode.None => TerrainOverlayMode.Biome,
                 TerrainOverlayMode.Biome => TerrainOverlayMode.Buildability,
                 TerrainOverlayMode.Buildability => TerrainOverlayMode.MovementCost,
+                TerrainOverlayMode.MovementCost => TerrainOverlayMode.RouteHeat,
+                TerrainOverlayMode.RouteHeat => TerrainOverlayMode.BuiltPaths,
+                TerrainOverlayMode.BuiltPaths => TerrainOverlayMode.RemoteDepots,
                 _ => TerrainOverlayMode.None
             };
 
@@ -750,8 +877,30 @@ namespace Societies.Core
                             InitialTrees = _initialTrees,
                             InitialRocks = _initialRocks,
                             InitialBerryBushes = _initialBerryBushes,
-                            InitialWorkers = _initialWorkers,
-                            WorldSize = _terrain?.WorldSize ?? 500.0f
+                            InitialCitizens = _initialWorkers,
+                            WorldSize = _terrain?.WorldSize ?? 500.0f,
+                            StartingStock = new Dictionary<string, int>
+                            {
+                                ["logs"] = 10,
+                                ["stone"] = 8,
+                                ["berries"] = 8,
+                                ["firewood"] = 6,
+                                ["meals"] = 2
+                            },
+                            StartingStructures = new List<string>
+                            {
+                                "central_hearth",
+                                "central_depot",
+                                "cookfire",
+                                "wood_yard"
+                            },
+                            StartingBuildQueue = new List<string>
+                            {
+                                "drying_rack",
+                                "hut",
+                                "storehouse",
+                                "kiln"
+                            }
                         }
                     }
                 },
@@ -759,10 +908,16 @@ namespace Societies.Core
                 {
                     Resources = new List<PrototypeResourceDefinition>
                     {
-                        new() { Id = "wood", DisplayName = "Wood", Category = "raw" },
+                        new() { Id = "logs", DisplayName = "Logs", Category = "raw" },
                         new() { Id = "stone", DisplayName = "Stone", Category = "raw" },
-                        new() { Id = "berry", DisplayName = "Berry", Category = "raw" },
-                        new() { Id = "campfire", DisplayName = "Campfire", Category = "crafted" },
+                        new() { Id = "berries", DisplayName = "Berries", Category = "raw" },
+                        new() { Id = "clay", DisplayName = "Clay", Category = "raw" },
+                        new() { Id = "reeds", DisplayName = "Reeds", Category = "raw" },
+                        new() { Id = "timber", DisplayName = "Timber", Category = "processed" },
+                        new() { Id = "firewood", DisplayName = "Firewood", Category = "processed" },
+                        new() { Id = "thatch", DisplayName = "Thatch", Category = "processed" },
+                        new() { Id = "brick", DisplayName = "Brick", Category = "processed" },
+                        new() { Id = "meals", DisplayName = "Meals", Category = "processed" },
                         new() { Id = "stone_axe", DisplayName = "Stone Axe", Category = "crafted" }
                     }
                 },
@@ -770,21 +925,54 @@ namespace Societies.Core
                 {
                     Structures = new List<PrototypeStructureDefinition>
                     {
-                        new() { Id = "campfire", DisplayName = "Campfire", Category = "prototype" }
+                        new() { Id = "central_hearth", DisplayName = "Central Hearth", Category = "core" },
+                        new() { Id = "central_depot", DisplayName = "Central Depot", Category = "core" },
+                        new() { Id = "cookfire", DisplayName = "Cookfire", Category = "processing" },
+                        new() { Id = "wood_yard", DisplayName = "Wood Yard", Category = "processing" },
+                        new() { Id = "drying_rack", DisplayName = "Drying Rack", Category = "processing" },
+                        new() { Id = "kiln", DisplayName = "Kiln", Category = "processing" },
+                        new() { Id = "storehouse", DisplayName = "Storehouse", Category = "storage" },
+                        new() { Id = "hut", DisplayName = "Hut", Category = "housing" },
+                        new() { Id = "remote_stockpile", DisplayName = "Remote Stockpile", Category = "infrastructure" },
+                        new() { Id = "path_segment", DisplayName = "Path Segment", Category = "infrastructure" }
                     }
                 },
                 RoleQuotas = new PrototypeRoleQuotaCatalog
                 {
                     Roles = new List<PrototypeRoleQuotaDefinition>
                     {
-                        new() { RoleId = "gatherers", Share = 0.30d },
-                        new() { RoleId = "haulers", Share = 0.25d },
-                        new() { RoleId = "processors", Share = 0.20d },
-                        new() { RoleId = "builders", Share = 0.15d },
-                        new() { RoleId = "reserve", Share = 0.10d }
+                        new() { RoleId = "logger", Share = 0.18d },
+                        new() { RoleId = "mason", Share = 0.14d },
+                        new() { RoleId = "forager", Share = 0.18d },
+                        new() { RoleId = "hauler", Share = 0.20d },
+                        new() { RoleId = "processor", Share = 0.14d },
+                        new() { RoleId = "builder", Share = 0.08d },
+                        new() { RoleId = "generalist", Share = 0.08d }
                     }
                 }
             };
+        }
+
+        private PrototypeWorkerState? GetSelectedCitizen()
+        {
+            if (_runtimeSession == null || _runtimeSession.Workers.Count == 0)
+            {
+                return null;
+            }
+
+            int index = Mathf.Clamp(_selectedCitizenInspectionIndex, 0, _runtimeSession.Workers.Count - 1);
+            return _runtimeSession.Workers[index];
+        }
+
+        private PrototypeStructureState? GetSelectedStructure()
+        {
+            if (_runtimeSession == null || _runtimeSession.Structures.Count == 0)
+            {
+                return null;
+            }
+
+            int index = Mathf.Clamp(_selectedStructureInspectionIndex, 0, _runtimeSession.Structures.Count - 1);
+            return _runtimeSession.Structures[index];
         }
 
         public override void _ExitTree()

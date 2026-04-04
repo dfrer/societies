@@ -1,9 +1,11 @@
 {
   "roles": [
-    { "roleId": "gatherers", "share": 0.30 },
-    { "roleId": "haulers", "share": 0.25 },
-    { "roleId": "processors", "share": 0.20 },
-    { "roleId": "builders", "share": 0.15 },
-    { "roleId": "reserve", "share": 0.10 }
+    { "roleId": "logger", "share": 0.18 },
+    { "roleId": "mason", "share": 0.16 },
+    { "roleId": "forager", "share": 0.14 },
+    { "roleId": "hauler", "share": 0.18 },
+    { "roleId": "processor", "share": 0.12 },
+    { "roleId": "builder", "share": 0.12 },
+    { "roleId": "generalist", "share": 0.10 }
   ]
 }

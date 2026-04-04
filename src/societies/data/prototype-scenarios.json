@@ -9,7 +9,10 @@
       "initialTrees": 36,
       "initialRocks": 24,
       "initialBerryBushes": 14,
-      "initialWorkers": 3,
+      "initialClayDeposits": 12,
+      "initialReedBeds": 10,
+      "initialCitizens": 16,
+      "stressPopulationOverride": 24,
       "worldSize": 500.0,
       "worldGen": {
         "cellSizeMeters": 2.0,
@@ -23,8 +26,40 @@
       "resourceClusters": {
         "woodClusters": 7,
         "stoneClusters": 5,
-        "berryClusters": 4
-      }
+        "berryClusters": 4,
+        "clayClusters": 4,
+        "reedClusters": 4
+      },
+      "pathBuildPolicy": {
+        "corridorBudget": 3,
+        "pauseDuringCriticalShortage": true
+      },
+      "remoteDepotPolicy": {
+        "activationDistanceMeters": 55.0,
+        "placementRadiusMeters": 12.0
+      },
+      "startingStock": {
+        "logs": 14,
+        "stone": 10,
+        "berries": 10,
+        "firewood": 8,
+        "meals": 4,
+        "timber": 8,
+        "thatch": 6
+      },
+      "startingStructures": [
+        "central_hearth",
+        "central_depot",
+        "cookfire",
+        "wood_yard"
+      ],
+      "startingBuildQueue": [
+        "drying_rack",
+        "hut",
+        "hut",
+        "storehouse",
+        "kiln"
+      ]
     },
     {
       "id": "long_haul_quarry",
@@ -34,7 +69,10 @@
       "initialTrees": 28,
       "initialRocks": 40,
       "initialBerryBushes": 10,
-      "initialWorkers": 3,
+      "initialClayDeposits": 14,
+      "initialReedBeds": 8,
+      "initialCitizens": 18,
+      "stressPopulationOverride": 0,
       "worldSize": 500.0,
       "worldGen": {
         "cellSizeMeters": 2.0,
@@ -48,8 +86,40 @@
       "resourceClusters": {
         "woodClusters": 5,
         "stoneClusters": 8,
-        "berryClusters": 3
-      }
+        "berryClusters": 3,
+        "clayClusters": 5,
+        "reedClusters": 3
+      },
+      "pathBuildPolicy": {
+        "corridorBudget": 3,
+        "pauseDuringCriticalShortage": true
+      },
+      "remoteDepotPolicy": {
+        "activationDistanceMeters": 55.0,
+        "placementRadiusMeters": 12.0
+      },
+      "startingStock": {
+        "logs": 12,
+        "stone": 14,
+        "berries": 8,
+        "firewood": 10,
+        "meals": 4,
+        "timber": 6,
+        "brick": 4
+      },
+      "startingStructures": [
+        "central_hearth",
+        "central_depot",
+        "cookfire",
+        "wood_yard"
+      ],
+      "startingBuildQueue": [
+        "hut",
+        "drying_rack",
+        "kiln",
+        "hut",
+        "storehouse"
+      ]
     },
     {
       "id": "food_poor_highlands",
@@ -59,7 +129,10 @@
       "initialTrees": 26,
       "initialRocks": 30,
       "initialBerryBushes": 6,
-      "initialWorkers": 3,
+      "initialClayDeposits": 8,
+      "initialReedBeds": 4,
+      "initialCitizens": 12,
+      "stressPopulationOverride": 0,
       "worldSize": 500.0,
       "worldGen": {
         "cellSizeMeters": 2.0,
@@ -73,8 +146,38 @@
       "resourceClusters": {
         "woodClusters": 5,
         "stoneClusters": 6,
-        "berryClusters": 2
-      }
+        "berryClusters": 2,
+        "clayClusters": 3,
+        "reedClusters": 2
+      },
+      "pathBuildPolicy": {
+        "corridorBudget": 3,
+        "pauseDuringCriticalShortage": true
+      },
+      "remoteDepotPolicy": {
+        "activationDistanceMeters": 55.0,
+        "placementRadiusMeters": 12.0
+      },
+      "startingStock": {
+        "logs": 8,
+        "stone": 8,
+        "berries": 4,
+        "firewood": 4,
+        "meals": 1
+      },
+      "startingStructures": [
+        "central_hearth",
+        "central_depot",
+        "cookfire",
+        "wood_yard"
+      ],
+      "startingBuildQueue": [
+        "hut",
+        "drying_rack",
+        "hut",
+        "kiln",
+        "storehouse"
+      ]
     },
     {
       "id": "wetland_builder",
@@ -84,7 +187,10 @@
       "initialTrees": 32,
       "initialRocks": 20,
       "initialBerryBushes": 18,
-      "initialWorkers": 4,
+      "initialClayDeposits": 14,
+      "initialReedBeds": 18,
+      "initialCitizens": 16,
+      "stressPopulationOverride": 0,
       "worldSize": 500.0,
       "worldGen": {
         "cellSizeMeters": 2.0,
@@ -98,8 +204,40 @@
       "resourceClusters": {
         "woodClusters": 6,
         "stoneClusters": 4,
-        "berryClusters": 6
-      }
+        "berryClusters": 6,
+        "clayClusters": 5,
+        "reedClusters": 7
+      },
+      "pathBuildPolicy": {
+        "corridorBudget": 3,
+        "pauseDuringCriticalShortage": true
+      },
+      "remoteDepotPolicy": {
+        "activationDistanceMeters": 55.0,
+        "placementRadiusMeters": 12.0
+      },
+      "startingStock": {
+        "logs": 12,
+        "stone": 8,
+        "berries": 12,
+        "firewood": 6,
+        "meals": 3,
+        "timber": 4,
+        "thatch": 6
+      },
+      "startingStructures": [
+        "central_hearth",
+        "central_depot",
+        "cookfire",
+        "wood_yard"
+      ],
+      "startingBuildQueue": [
+        "drying_rack",
+        "hut",
+        "storehouse",
+        "hut",
+        "kiln"
+      ]
     }
   ]
 }

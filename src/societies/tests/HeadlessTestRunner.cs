@@ -55,6 +55,7 @@ namespace Societies.Tests
             await Test_MainScene_ResetAndRestoreSmoke();
             await Test_MainScene_ScenarioSwitchWorldSummarySmoke();
             await Test_MainScene_ObserverAndOverlaySmoke();
+            await Test_MainScene_BuildQueueAndInspectorSmoke();
             await Test_MainScene_SettlementLoopSmoke();
             await Test_MainScene_FixedTickSoakSmoke();
         }
@@ -157,6 +158,7 @@ namespace Societies.Tests
                 PrototypeHud hud = manager.GetNodeOrNull<PrototypeHud>("UI") ?? throw new Exception("PrototypeHud missing");
                 DayNightCycle dayNight = manager.GetNodeOrNull<DayNightCycle>("World/Environment/DayNightCycle") ?? throw new Exception("DayNightCycle missing");
                 TerrainGenerator terrain = manager.GetNodeOrNull<TerrainGenerator>("World/Systems/Terrain") ?? throw new Exception("TerrainGenerator missing");
+                PrototypeScenarioDefinition scenario = LoadCatalogBundle().Scenarios.Resolve("balanced_basin");
 
                 PrototypeRuntimeSnapshot snapshot = manager.CaptureSnapshot();
                 float playerSurfaceHeight = terrain.SampleHeight(snapshot.PlayerPosition.ToVector3());
@@ -164,13 +166,16 @@ namespace Societies.Tests
                 Assert(manager.IsGameRunning, "GameManager should auto-start the local session");
                 Assert(network.IsLocalSession, "NetworkManager should be in local session mode");
                 Assert(snapshot.PlayerPosition.Y > playerSurfaceHeight, "Player should spawn above the sampled terrain height");
-                Assert(snapshot.Resources.Count(resource => resource.ResourceId == "wood") == 36, "Tree spawn count mismatch");
-                Assert(snapshot.Resources.Count(resource => resource.ResourceId == "stone") == 24, "Rock spawn count mismatch");
-                Assert(snapshot.Resources.Count(resource => resource.ResourceId == "berry") == 14, "Berry spawn count mismatch");
+                Assert(snapshot.Resources.Count(resource => resource.ResourceId == "logs") == scenario.InitialTrees, "Tree spawn count mismatch");
+                Assert(snapshot.Resources.Count(resource => resource.ResourceId == "stone") == scenario.InitialRocks, "Rock spawn count mismatch");
+                Assert(snapshot.Resources.Count(resource => resource.ResourceId == "berries") == scenario.InitialBerryBushes, "Berry spawn count mismatch");
+                Assert(snapshot.Resources.Count(resource => resource.ResourceId == "clay") == scenario.InitialClayDeposits, "Clay spawn count mismatch");
+                Assert(snapshot.Resources.Count(resource => resource.ResourceId == "reeds") == scenario.InitialReedBeds, "Reed spawn count mismatch");
                 Assert(!string.IsNullOrWhiteSpace(hud.DebugText), "Debug HUD text should not be empty");
                 Assert(!string.IsNullOrWhiteSpace(hud.InventoryText), "Inventory HUD text should not be empty");
                 Assert(!string.IsNullOrWhiteSpace(hud.CraftingText), "Crafting HUD text should not be empty");
                 Assert(!string.IsNullOrWhiteSpace(hud.HelpText), "Help HUD text should not be empty");
+                Assert(hud.HelpText.Contains("F11 next build"), "Help HUD should expose build queue controls");
 
                 float initialHour = dayNight.CurrentHour;
                 manager.StepSimulationTicks(5);
@@ -209,12 +214,12 @@ namespace Societies.Tests
                 await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
 
                 GameManager manager = scene as GameManager ?? throw new Exception("Main scene root is not GameManager");
-                manager.Inventory.AddItem("wood", 3);
+                manager.Inventory.AddItem("logs", 3);
                 manager.Inventory.AddItem("stone", 4);
 
-                bool crafted = manager.TryCraftRecipe("campfire");
-                Assert(crafted, "Campfire recipe should craft after adding required resources");
-                Assert(manager.Inventory.GetCount("campfire") == 1, "Campfire should be present in inventory");
+                bool crafted = manager.TryCraftRecipe("stone_axe");
+                Assert(crafted, "Stone axe recipe should craft after adding required resources");
+                Assert(manager.Inventory.GetCount("stone_axe") == 1, "Stone axe should be present in inventory");
 
                 string snapshotPath = manager.SaveSnapshotToDisk();
                 Assert(File.Exists(snapshotPath), "Snapshot file should exist after saving");
@@ -230,11 +235,11 @@ namespace Societies.Tests
                 Assert(worldSummary.WorldSeed != 0, "World summary should contain a world seed");
 
                 manager.Inventory.ReplaceContents(new Dictionary<string, int>());
-                Assert(manager.Inventory.GetCount("campfire") == 0, "Inventory should be clear before load");
+                Assert(manager.Inventory.GetCount("stone_axe") == 0, "Inventory should be clear before load");
 
                 bool loaded = manager.LoadLatestSnapshotFromDisk();
                 Assert(loaded, "Snapshot load should succeed");
-                Assert(manager.Inventory.GetCount("campfire") == 1, "Snapshot load should restore crafted item");
+                Assert(manager.Inventory.GetCount("stone_axe") == 1, "Snapshot load should restore crafted item");
 
                 Pass(nameof(Test_MainScene_CraftingAndSnapshotSmoke));
             }
@@ -278,6 +283,7 @@ namespace Societies.Tests
 
                 Assert(movedSnapshot.Workers.Any(worker => worker.Position.ToVector3().DistanceTo(worker.HomePosition.ToVector3()) > 0.5f), "At least one worker should physically move away from home");
                 Assert(hud.SettlementText.Contains("->"), "Settlement HUD should show worker targets");
+                Assert(hud.SettlementText.Contains("Citizens:"), "Settlement HUD should expose citizen state");
                 Assert(!string.IsNullOrWhiteSpace(hub.StatusText), "Settlement hub label should not be empty");
 
                 PrototypeWorkerAgent? workerNode = agentsRoot.GetChildren().OfType<PrototypeWorkerAgent>().FirstOrDefault();
@@ -318,6 +324,7 @@ namespace Societies.Tests
 
                 GameManager manager = scene as GameManager ?? throw new Exception("Main scene root is not GameManager");
                 Node3D agentsRoot = manager.GetNodeOrNull<Node3D>("World/Agents") ?? throw new Exception("Agents root missing");
+                PrototypeScenarioDefinition scenario = LoadCatalogBundle().Scenarios.Resolve("balanced_basin");
 
                 manager.StepSimulationTicks(320);
                 manager.SaveSnapshotToDisk();
@@ -328,17 +335,19 @@ namespace Societies.Tests
 
                 Assert(resetSnapshot.SimulationTick == 0, "Reset should zero simulation ticks");
                 Assert(resetSnapshot.Inventory.Count == 0, "Reset should clear player inventory");
-                Assert(resetSnapshot.Stockpile.Count == 0, "Reset should clear stockpile");
-                Assert(resetSnapshot.Workers.Count == 3, "Reset should rebuild workers");
-                Assert(resetSnapshot.Resources.Count == 74, "Reset should respawn the initial resource set");
-                Assert(agentsRoot.GetChildCount() == 3, "Reset should rebuild worker visuals");
+                Assert(resetSnapshot.Stockpile.Values.Sum() >= scenario.StartingStock.Values.Sum(), "Reset should restore starting settlement reserves");
+                Assert(resetSnapshot.Workers.Count == scenario.InitialCitizens, "Reset should rebuild citizens");
+                Assert(resetSnapshot.Resources.Count == savedSnapshot.Resources.Count, "Reset should respawn the initial resource set");
+                Assert(agentsRoot.GetChildCount() == scenario.InitialCitizens, "Reset should rebuild citizen visuals");
 
                 bool loaded = manager.LoadLatestSnapshotFromDisk();
                 Assert(loaded, "Snapshot load should succeed after reset");
 
                 PrototypeRuntimeSnapshot restoredSnapshot = manager.CaptureSnapshot();
                 Assert(restoredSnapshot.SimulationTick == savedSnapshot.SimulationTick, "Load should restore tick count");
-                Assert(restoredSnapshot.Stockpile.GetValueOrDefault("campfire", 0) == savedSnapshot.Stockpile.GetValueOrDefault("campfire", 0), "Load should restore stockpile");
+                Assert(
+                    restoredSnapshot.Stockpile.OrderBy(pair => pair.Key).SequenceEqual(savedSnapshot.Stockpile.OrderBy(pair => pair.Key)),
+                    "Load should restore stockpile");
                 Assert(restoredSnapshot.Workers.Count == savedSnapshot.Workers.Count, "Load should restore worker count");
                 Assert(agentsRoot.GetChildCount() == restoredSnapshot.Workers.Count, "Worker visuals should match restored workers");
 
@@ -459,6 +468,52 @@ namespace Societies.Tests
             }
         }
 
+        private async Task Test_MainScene_BuildQueueAndInspectorSmoke()
+        {
+            Node? scene = null;
+
+            try
+            {
+                PackedScene packedScene = GD.Load<PackedScene>("res://scenes/main.tscn");
+                Assert(packedScene != null, "Main scene failed to load");
+
+                scene = packedScene!.Instantiate();
+                AddChild(scene);
+                await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+
+                GameManager manager = scene as GameManager ?? throw new Exception("Main scene root is not GameManager");
+                PrototypeHud hud = manager.GetNodeOrNull<PrototypeHud>("UI") ?? throw new Exception("PrototypeHud missing");
+
+                bool buildQueueAdvanced = manager.SelectNextBuildQueueEntry();
+                bool buildQueuePaused = manager.ToggleSelectedBuildQueuePause();
+                bool citizenSelected = manager.SelectNextInspectedCitizen();
+                bool structureSelected = manager.SelectNextInspectedStructure();
+
+                Assert(buildQueueAdvanced, "Build queue focus should advance");
+                Assert(buildQueuePaused, "Build queue entry should pause or resume");
+                Assert(citizenSelected, "Citizen inspection should cycle");
+                Assert(structureSelected, "Structure inspection should cycle");
+                Assert(hud.SettlementText.Contains("Build Queue Focus:"), "Settlement HUD should show build queue state");
+                Assert(hud.InspectorText.Contains("Inspector"), "Inspector HUD should render");
+                Assert(hud.InspectorText.Contains("Citizen:"), "Inspector HUD should show a citizen");
+                Assert(hud.InspectorText.Contains("Structure:"), "Inspector HUD should show a structure");
+
+                Pass(nameof(Test_MainScene_BuildQueueAndInspectorSmoke));
+            }
+            catch (Exception ex)
+            {
+                Fail(nameof(Test_MainScene_BuildQueueAndInspectorSmoke), ex);
+            }
+            finally
+            {
+                if (scene != null)
+                {
+                    scene.QueueFree();
+                    await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+                }
+            }
+        }
+
         private async Task Test_MainScene_SettlementLoopSmoke()
         {
             Node? scene = null;
@@ -477,15 +532,23 @@ namespace Societies.Tests
                 Node3D agentsRoot = manager.GetNodeOrNull<Node3D>("World/Agents") ?? throw new Exception("Agents root missing");
                 PrototypeSettlementHub hub = manager.GetNodeOrNull<PrototypeSettlementHub>("World/Environment/SettlementHub") ?? throw new Exception("SettlementHub missing");
 
-                manager.StepSimulationTicks(320);
+                manager.StepSimulationTicks(2400);
                 PrototypeRuntimeSnapshot snapshot = manager.CaptureSnapshot();
 
-                Assert(snapshot.Workers.Count == 3, "Settlement worker count mismatch");
+                Assert(snapshot.Settlement != null, "Settlement snapshot should exist");
+                Assert(snapshot.Workers.Count == snapshot.Settlement!.Citizens.Count, "Settlement citizen count mismatch");
                 Assert(agentsRoot.GetChildCount() == snapshot.Workers.Count, "Worker visuals should match simulated workers");
-                Assert(snapshot.Stockpile.GetValueOrDefault("campfire", 0) == 1, "Settlement should craft one campfire during the smoke run");
+                Assert(snapshot.Stockpile.GetValueOrDefault("meals", 0) > 0 || snapshot.Settlement.ProducedResources.GetValueOrDefault("meals", 0) > 0, "Settlement should produce food during the smoke run");
+                Assert(snapshot.Stockpile.GetValueOrDefault("hearth_fuel", 0) > 0 || snapshot.Settlement.HearthLitTicks > 0, "Settlement should maintain hearth fuel");
+                Assert(snapshot.Settlement.Structures.Any(structure => structure.StructureKindId == "hut" && structure.IsBuilt), "Settlement should complete at least one hut");
                 Assert(!string.IsNullOrWhiteSpace(hud.SettlementText), "Settlement HUD text should not be empty");
                 Assert(hud.SettlementText.Contains("Settlement"), "Settlement HUD should include the section header");
-                Assert(hub.IsCampfireLit, "Settlement hub should light the campfire after crafting");
+                Assert(hud.SettlementText.Contains("Build Queue Focus:"), "Settlement HUD should expose the build queue");
+                Assert(
+                    hub.IsHearthLit ||
+                    snapshot.Stockpile.GetValueOrDefault("hearth_fuel", 0) > 0 ||
+                    snapshot.Settlement.HearthLitTicks > 0,
+                    "Settlement hub should communicate a fueled hearth");
 
                 Pass(nameof(Test_MainScene_SettlementLoopSmoke));
             }
@@ -537,11 +600,13 @@ namespace Societies.Tests
                 Assert(File.Exists(Path.Combine(outputDirectory, "metrics-timeseries-v2.csv")), "Soak V2 metrics csv should exist");
                 Assert(File.Exists(Path.Combine(outputDirectory, "world-summary-v2.json")), "Soak V2 world summary should exist");
                 Assert(agentsRoot.GetChildCount() == snapshot.Workers.Select(worker => worker.WorkerId).Distinct().Count(), "Worker visuals should remain unique");
-                Assert(snapshot.Stockpile.GetValueOrDefault("campfire", 0) <= 1, "Soak should not craft more than one campfire");
                 Assert(snapshot.Inventory.Values.All(count => count >= 0), "Player inventory counts should not go negative");
                 Assert(snapshot.Stockpile.Values.All(count => count >= 0), "Stockpile counts should not go negative");
                 Assert(snapshot.Resources.All(resource => resource.UnitsRemaining >= 0), "Resource units should not go negative");
                 Assert(summary.EventCountsByType.Count > 0, "Run summary should include event counts");
+                Assert(summary.ProducedResources.Count > 0 || snapshot.Settlement?.ProducedResources.Count > 0, "Soak should produce economy outputs");
+                Assert(summary.BedCoveragePercent >= 0, "Run summary should capture bed coverage");
+                Assert(summary.BuildQueueStatus.Contains("Build Queue"), "Run summary should capture build queue focus");
 
                 Pass(nameof(Test_MainScene_FixedTickSoakSmoke));
             }
@@ -607,6 +672,11 @@ namespace Societies.Tests
 
             Directory.CreateDirectory(directory);
             return directory;
+        }
+
+        private static PrototypeCatalogBundle LoadCatalogBundle()
+        {
+            return PrototypeCatalogLoader.LoadFromDirectory(ProjectSettings.GlobalizePath("res://data"));
         }
     }
 }

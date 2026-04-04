@@ -8,7 +8,7 @@
     { "id": "kiln", "displayName": "Kiln", "category": "production" },
     { "id": "storehouse", "displayName": "Storehouse", "category": "storage" },
     { "id": "hut", "displayName": "Hut", "category": "housing" },
-    { "id": "path_segment", "displayName": "Path Segment", "category": "infrastructure" },
-    { "id": "campfire", "displayName": "Campfire", "category": "prototype" }
+    { "id": "remote_stockpile", "displayName": "Remote Stockpile", "category": "infrastructure" },
+    { "id": "path_segment", "displayName": "Path Segment", "category": "infrastructure" }
   ]
 }

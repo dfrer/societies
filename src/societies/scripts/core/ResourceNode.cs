@@ -3,12 +3,13 @@ using Godot;
 namespace Societies.Core
 {
     /// <summary>
-    /// Harvestable world node for trees, rocks, and berry bushes.
+    /// Harvestable world node for settlement-economy resources.
     /// </summary>
     public partial class ResourceNode : Entity
     {
-        [Export] public string ResourceId { get; set; } = "wood";
+        [Export] public string ResourceId { get; set; } = "logs";
         [Export] public int UnitsRemaining { get; set; } = 5;
+        [Export] public string ClusterId { get; set; } = string.Empty;
 
         private Node3D? _visualRoot;
 
@@ -18,8 +19,12 @@ namespace Societies.Core
             DisplayName = ResourceId switch
             {
                 "wood" => "Tree",
+                "logs" => "Tree",
                 "stone" => "Rock",
                 "berry" => "Berry Bush",
+                "berries" => "Berry Bush",
+                "clay" => "Clay Deposit",
+                "reeds" => "Reed Bed",
                 _ => "Resource"
             };
 
@@ -73,13 +78,21 @@ namespace Societies.Core
             switch (ResourceId)
             {
                 case "wood":
+                case "logs":
                     CreateTreeVisual();
                     break;
                 case "stone":
                     CreateRockVisual();
                     break;
                 case "berry":
+                case "berries":
                     CreateBerryVisual();
+                    break;
+                case "clay":
+                    CreateClayVisual();
+                    break;
+                case "reeds":
+                    CreateReedVisual();
                     break;
             }
         }
@@ -134,6 +147,30 @@ namespace Societies.Core
                 new Vector3(0.38f, 1.15f, 0.08f)
             );
             _visualRoot?.AddChild(berries);
+        }
+
+        private void CreateClayVisual()
+        {
+            MeshInstance3D pit = CreateMesh(
+                new BoxMesh { Size = new Vector3(1.6f, 0.45f, 1.4f) },
+                new Color(0.58f, 0.42f, 0.28f),
+                new Vector3(0.0f, 0.22f, 0.0f)
+            );
+            _visualRoot?.AddChild(pit);
+        }
+
+        private void CreateReedVisual()
+        {
+            for (int i = 0; i < 4; i++)
+            {
+                float x = -0.35f + (i * 0.22f);
+                MeshInstance3D stalk = CreateMesh(
+                    new CylinderMesh { TopRadius = 0.04f, BottomRadius = 0.06f, Height = 1.4f },
+                    new Color(0.62f, 0.71f, 0.34f),
+                    new Vector3(x, 0.7f, 0.0f)
+                );
+                _visualRoot?.AddChild(stalk);
+            }
         }
 
         private void UpdateVisualState()

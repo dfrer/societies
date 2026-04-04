@@ -18,6 +18,8 @@ namespace Societies.Core.Tests
             Assert.Contains("F8 observer", helpText);
             Assert.Contains("F9 load snapshot", helpText);
             Assert.Contains("F10 overlays", helpText);
+            Assert.Contains("F11 next build", helpText);
+            Assert.Contains("F12 pause build", helpText);
         }
 
         [Fact]
@@ -62,45 +64,115 @@ namespace Societies.Core.Tests
                 777,
                 CameraMode.Player,
                 TerrainOverlayMode.None,
-                summary);
+                summary,
+                24.5f,
+                0.12f);
 
             Assert.Contains("World", worldText);
             Assert.Contains("Terrain: heightfield_v1", worldText);
             Assert.Contains("Buildable: 58 %", worldText);
+            Assert.Contains("Avg Route: 24.5 m", worldText);
+            Assert.Contains("Path Cover: 12%", worldText);
             Assert.Contains("Forest 12", worldText);
             Assert.Contains("Meadow 18", worldText);
         }
 
         [Fact]
-        public void BuildSettlementText_IncludesStockpileAndWorkerStates()
+        public void BuildSettlementText_IncludesEconomyAndCitizenStates()
         {
             string settlementText = PrototypeHudTextBuilder.BuildSettlementText(
                 new Dictionary<string, int>
                 {
-                    ["wood"] = 3,
-                    ["campfire"] = 1
+                    ["logs"] = 3,
+                    ["firewood"] = 2,
+                    ["meals"] = 1
                 },
                 new[]
                 {
                     new PrototypeWorkerState
                     {
-                        DisplayName = "Worker 1",
+                        DisplayName = "Citizen 1",
+                        Role = PrototypeCitizenRole.Hauler,
                         Phase = PrototypeWorkerPhase.Harvesting,
-                        ActivityText = "Harvesting Tree",
+                        ActivityText = "Hauling to depot",
                         TargetLabel = "Tree",
                         PhaseDurationTicks = 10,
                         TicksRemaining = 4,
-                        CarryItemId = "wood",
+                        CarryItemId = "logs",
                         CarryAmount = 1,
-                        Position = new Vector3(1.0f, 0.0f, 1.0f)
+                        Position = new Vector3(1.0f, 0.0f, 1.0f),
+                        Needs = new PrototypeNeedState
+                        {
+                            Nutrition = 78.0f,
+                            Fatigue = 24.0f
+                        }
                     }
-                });
+                },
+                PrototypeSettlementClassification.Stable,
+                "Build Queue Focus: Hut (active)",
+                50,
+                25,
+                3,
+                new[]
+                {
+                    new PrototypeStructureState
+                    {
+                        StructureKindId = "hut",
+                        IsBuilt = true
+                    }
+                },
+                1.10f,
+                new Dictionary<string, int> { ["haultodepot"] = 4 });
 
             Assert.Contains("Settlement", settlementText);
-            Assert.Contains("campfire x1", settlementText);
-            Assert.Contains("Worker 1: Harvesting Tree", settlementText);
+            Assert.Contains("State: Stable", settlementText);
+            Assert.Contains("Build Queue Focus: Hut (active)", settlementText);
+            Assert.Contains("Travel/Work: 1.10", settlementText);
+            Assert.Contains("meals x1", settlementText);
+            Assert.Contains("hut 1/1", settlementText);
+            Assert.Contains("Citizen 1 [Hauler", settlementText);
             Assert.Contains("-> Tree", settlementText);
-            Assert.Contains("[wood x1]", settlementText);
+            Assert.Contains("[logs x1]", settlementText);
+        }
+
+        [Fact]
+        public void BuildInspectorText_IncludesCitizenAndStructureDetails()
+        {
+            string inspectorText = PrototypeHudTextBuilder.BuildInspectorText(
+                new PrototypeWorkerState
+                {
+                    DisplayName = "Citizen 2",
+                    Role = PrototypeCitizenRole.Builder,
+                    CurrentOrderKind = PrototypeWorkOrderKind.Build,
+                    CurrentOrderReason = "hut.priority",
+                    CarryItemId = "timber",
+                    CarryAmount = 2,
+                    Needs = new PrototypeNeedState
+                    {
+                        Nutrition = 64.0f,
+                        Fatigue = 40.0f
+                    },
+                    Navigation = new PrototypeCitizenNavigationState
+                    {
+                        CurrentRouteLengthMeters = 12.5f,
+                        CurrentRouteTravelTicks = 16
+                    },
+                    TravelTicksAccumulated = 10,
+                    WorkTicksAccumulated = 8
+                },
+                new PrototypeStructureState
+                {
+                    DisplayName = "Hut",
+                    IsBuilt = false,
+                    InputStore = new PrototypeResourceStoreState(),
+                    OutputStore = new PrototypeResourceStoreState()
+                });
+
+            Assert.Contains("Inspector", inspectorText);
+            Assert.Contains("Citizen: Citizen 2 [Builder]", inspectorText);
+            Assert.Contains("Structure: Hut", inspectorText);
+            Assert.Contains("Carry: timber x2", inspectorText);
+            Assert.Contains("Route: 12.5 m", inspectorText);
         }
     }
 }

@@ -122,6 +122,11 @@ namespace Societies.Core
                     throw new InvalidOperationException($"Scenario '{scenario.Id}' contains invalid starting counts.");
                 }
 
+                if (scenario.InitialClayDeposits < 0 || scenario.InitialReedBeds < 0)
+                {
+                    throw new InvalidOperationException($"Scenario '{scenario.Id}' contains invalid clay or reed counts.");
+                }
+
                 if (scenario.WorldSize <= 0.0f)
                 {
                     throw new InvalidOperationException($"Scenario '{scenario.Id}' must define a positive world size.");
@@ -135,6 +140,16 @@ namespace Societies.Core
                 if (scenario.ResourceClusters == null)
                 {
                     throw new InvalidOperationException($"Scenario '{scenario.Id}' is missing resource-cluster settings.");
+                }
+
+                if (scenario.PathBuildPolicy == null)
+                {
+                    throw new InvalidOperationException($"Scenario '{scenario.Id}' is missing path-build policy settings.");
+                }
+
+                if (scenario.RemoteDepotPolicy == null)
+                {
+                    throw new InvalidOperationException($"Scenario '{scenario.Id}' is missing remote-depot policy settings.");
                 }
 
                 if (scenario.WorldGen.CellSizeMeters <= 0.0f)
@@ -159,9 +174,37 @@ namespace Societies.Core
 
                 if (scenario.ResourceClusters.WoodClusters <= 0 ||
                     scenario.ResourceClusters.StoneClusters <= 0 ||
-                    scenario.ResourceClusters.BerryClusters <= 0)
+                    scenario.ResourceClusters.BerryClusters <= 0 ||
+                    scenario.ResourceClusters.ClayClusters <= 0 ||
+                    scenario.ResourceClusters.ReedClusters <= 0)
                 {
                     throw new InvalidOperationException($"Scenario '{scenario.Id}' resource cluster counts must be positive.");
+                }
+
+                if (scenario.StartingStructures.Count == 0)
+                {
+                    throw new InvalidOperationException($"Scenario '{scenario.Id}' must define at least one starting structure.");
+                }
+
+                if (scenario.StartingBuildQueue.Count == 0)
+                {
+                    throw new InvalidOperationException($"Scenario '{scenario.Id}' must define an initial build queue.");
+                }
+
+                if (scenario.StartingStock.Any(pair => string.IsNullOrWhiteSpace(pair.Key) || pair.Value < 0))
+                {
+                    throw new InvalidOperationException($"Scenario '{scenario.Id}' contains invalid starting stock values.");
+                }
+
+                if (scenario.PathBuildPolicy.CorridorBudget <= 0)
+                {
+                    throw new InvalidOperationException($"Scenario '{scenario.Id}' must define a positive corridor budget.");
+                }
+
+                if (scenario.RemoteDepotPolicy.ActivationDistanceMeters <= 0.0f ||
+                    scenario.RemoteDepotPolicy.PlacementRadiusMeters <= 0.0f)
+                {
+                    throw new InvalidOperationException($"Scenario '{scenario.Id}' must define positive remote depot policy distances.");
                 }
             }
         }
@@ -185,11 +228,47 @@ namespace Societies.Core
 
         public int InitialWorkers { get; set; } = 3;
 
+        public int InitialCitizens
+        {
+            get => InitialWorkers;
+            set => InitialWorkers = value;
+        }
+
+        public int InitialClayDeposits { get; set; } = 10;
+
+        public int InitialReedBeds { get; set; } = 10;
+
         public float WorldSize { get; set; } = 500.0f;
 
         public WorldGenerationDefinition WorldGen { get; set; } = new();
 
         public ResourceClusterDefinition ResourceClusters { get; set; } = new();
+
+        public PathBuildPolicyDefinition PathBuildPolicy { get; set; } = new();
+
+        public RemoteDepotPolicyDefinition RemoteDepotPolicy { get; set; } = new();
+
+        public Dictionary<string, int> StartingStock { get; set; } = new();
+
+        public List<string> StartingStructures { get; set; } = new();
+
+        public List<string> StartingBuildQueue { get; set; } = new();
+
+        public int StressPopulationOverride { get; set; }
+    }
+
+    public sealed class PathBuildPolicyDefinition
+    {
+        public int CorridorBudget { get; set; } = 3;
+
+        public bool PauseDuringCriticalShortage { get; set; } = true;
+    }
+
+    public sealed class RemoteDepotPolicyDefinition
+    {
+        public float ActivationDistanceMeters { get; set; } = 55.0f;
+
+        public float PlacementRadiusMeters { get; set; } = 12.0f;
     }
 
     public sealed class PrototypeResourceCatalog

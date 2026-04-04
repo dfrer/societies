@@ -17,6 +17,9 @@ namespace Societies.Simulation
         private Vector3 _settlementAnchorPosition;
         private TerrainGenerator _terrain;
         private PrototypeSettlementHub? _settlementHub;
+        private Node3D? _overlayRoot;
+        private TerrainOverlayMode _lastOverlayMode;
+        private int _lastOverlaySignature;
 
         public PrototypeSettlementScenePresenter(
             Node3D agentsRoot,
@@ -57,6 +60,8 @@ namespace Societies.Simulation
         {
             ClearChildren(_entitiesRoot);
             ClearChildren(_agentsRoot);
+            _overlayRoot?.QueueFree();
+            _overlayRoot = null;
             _workerNodes.Clear();
         }
 
@@ -70,7 +75,8 @@ namespace Societies.Simulation
                     {
                         ResourceId = spawn.ResourceId,
                         UnitsRemaining = spawn.UnitsRemaining,
-                        Position = PrototypeSerializableVector3.FromVector3(spawn.Position)
+                        Position = PrototypeSerializableVector3.FromVector3(spawn.Position),
+                        ClusterId = spawn.ClusterId
                     })
                     .ToList());
         }
@@ -85,7 +91,8 @@ namespace Societies.Simulation
                 {
                     ResourceId = node.ResourceId,
                     UnitsRemaining = node.UnitsRemaining,
-                    Position = PrototypeSerializableVector3.FromVector3(node.Position)
+                    Position = PrototypeSerializableVector3.FromVector3(node.Position),
+                    ClusterId = node.ClusterId
                 })
                 .ToList();
         }
@@ -100,7 +107,8 @@ namespace Societies.Simulation
                     node.Name.ToString(),
                     node.ResourceId,
                     node.Position,
-                    node.UnitsRemaining))
+                    node.UnitsRemaining,
+                    node.ClusterId))
                 .ToList();
         }
 
@@ -126,7 +134,7 @@ namespace Societies.Simulation
             {
                 int sequence = counters.TryGetValue(snapshot.ResourceId, out int current) ? current + 1 : 1;
                 counters[snapshot.ResourceId] = sequence;
-                SpawnResourceNode(snapshot.ResourceId, snapshot.Position.ToVector3(), snapshot.UnitsRemaining, sequence);
+                SpawnResourceNode(snapshot.ResourceId, snapshot.Position.ToVector3(), snapshot.UnitsRemaining, sequence, snapshot.ClusterId);
             }
         }
 
@@ -167,18 +175,138 @@ namespace Societies.Simulation
 
         public void UpdateSettlementPresentation(
             IReadOnlyDictionary<string, int> stockpile,
-            IReadOnlyList<PrototypeWorkerState> workers)
+            IReadOnlyList<PrototypeWorkerState> workers,
+            IReadOnlyList<PrototypeStructureState> structures,
+            PrototypeSettlementClassification classification,
+            string buildQueueStatusText,
+            int mealCoveragePercent,
+            int bedCoveragePercent,
+            int hearthFuel,
+            TerrainOverlayMode overlayMode = TerrainOverlayMode.None,
+            IReadOnlyList<PrototypePathSegmentState>? pathSegments = null,
+            IReadOnlyList<PrototypeRemoteDepotState>? remoteDepots = null,
+            IReadOnlyList<PrototypeRouteHeatCellState>? routeHeatCells = null)
         {
-            EnsureSettlementHub().ApplyState(stockpile, workers);
+            EnsureSettlementHub().ApplyState(
+                stockpile,
+                workers,
+                structures,
+                classification,
+                buildQueueStatusText,
+                mealCoveragePercent,
+                bedCoveragePercent,
+                hearthFuel);
+
+            UpdateNavigationOverlays(overlayMode, pathSegments ?? new List<PrototypePathSegmentState>(), remoteDepots ?? new List<PrototypeRemoteDepotState>(), routeHeatCells ?? new List<PrototypeRouteHeatCellState>());
         }
 
-        private void SpawnResourceNode(string resourceId, Vector3 position, int unitsRemaining, int sequence)
+        private void UpdateNavigationOverlays(
+            TerrainOverlayMode overlayMode,
+            IReadOnlyList<PrototypePathSegmentState> pathSegments,
+            IReadOnlyList<PrototypeRemoteDepotState> remoteDepots,
+            IReadOnlyList<PrototypeRouteHeatCellState> routeHeatCells)
+        {
+            int signature =
+                (pathSegments.Count(segment => segment.IsBuilt) * 1000000) +
+                (remoteDepots.Count(depot => depot.IsBuilt) * 1000) +
+                routeHeatCells.Sum(cell => cell.UsageCount);
+            if (_overlayRoot != null && _lastOverlayMode == overlayMode && _lastOverlaySignature == signature)
+            {
+                return;
+            }
+
+            _lastOverlayMode = overlayMode;
+            _lastOverlaySignature = signature;
+
+            _overlayRoot ??= new Node3D { Name = "SettlementOverlays" };
+            if (_overlayRoot.GetParent() == null)
+            {
+                _environmentRoot.AddChild(_overlayRoot);
+            }
+
+            ClearChildren(_overlayRoot);
+
+            switch (overlayMode)
+            {
+                case TerrainOverlayMode.BuiltPaths:
+                    foreach (PrototypePathSegmentState segment in pathSegments.Where(segment => segment.IsBuilt))
+                    {
+                        _overlayRoot.AddChild(CreatePathMarker(segment.Position));
+                    }
+
+                    break;
+
+                case TerrainOverlayMode.RemoteDepots:
+                    foreach (PrototypeRemoteDepotState depot in remoteDepots)
+                    {
+                        _overlayRoot.AddChild(CreateDepotMarker(depot.Position, depot.IsBuilt));
+                    }
+
+                    break;
+
+                case TerrainOverlayMode.RouteHeat:
+                    foreach (PrototypeRouteHeatCellState cell in routeHeatCells
+                        .OrderByDescending(cell => cell.UsageCount)
+                        .Take(96))
+                    {
+                        _overlayRoot.AddChild(CreateHeatMarker(cell.Position, cell.UsageCount));
+                    }
+
+                    break;
+            }
+        }
+
+        private static MeshInstance3D CreatePathMarker(Vector3 position)
+        {
+            return new MeshInstance3D
+            {
+                Mesh = new BoxMesh { Size = new Vector3(1.6f, 0.12f, 1.6f) },
+                Position = position + new Vector3(0.0f, 0.06f, 0.0f),
+                MaterialOverride = new StandardMaterial3D
+                {
+                    AlbedoColor = new Color(0.86f, 0.72f, 0.28f),
+                    Transparency = BaseMaterial3D.TransparencyEnum.Alpha
+                }
+            };
+        }
+
+        private static MeshInstance3D CreateDepotMarker(Vector3 position, bool isBuilt)
+        {
+            return new MeshInstance3D
+            {
+                Mesh = new CylinderMesh { TopRadius = 1.1f, BottomRadius = 1.1f, Height = 1.8f },
+                Position = position + new Vector3(0.0f, 0.9f, 0.0f),
+                MaterialOverride = new StandardMaterial3D
+                {
+                    AlbedoColor = isBuilt ? new Color(0.31f, 0.67f, 0.84f) : new Color(0.54f, 0.58f, 0.63f),
+                    Transparency = BaseMaterial3D.TransparencyEnum.Alpha
+                }
+            };
+        }
+
+        private static MeshInstance3D CreateHeatMarker(Vector3 position, int usageCount)
+        {
+            float intensity = Mathf.Clamp(usageCount / 24.0f, 0.15f, 1.0f);
+            return new MeshInstance3D
+            {
+                Mesh = new BoxMesh { Size = new Vector3(1.8f, 0.14f, 1.8f) },
+                Position = position + new Vector3(0.0f, 0.08f + (intensity * 0.04f), 0.0f),
+                MaterialOverride = new StandardMaterial3D
+                {
+                    AlbedoColor = new Color(0.92f, Mathf.Lerp(0.76f, 0.18f, intensity), 0.20f),
+                    Transparency = BaseMaterial3D.TransparencyEnum.Alpha
+                }
+            };
+        }
+
+        private void SpawnResourceNode(string resourceId, Vector3 position, int unitsRemaining, int sequence, string clusterId)
         {
             ResourceNode node = new()
             {
                 Name = $"{resourceId}_{sequence}",
                 ResourceId = resourceId,
-                UnitsRemaining = unitsRemaining
+                UnitsRemaining = unitsRemaining,
+                ClusterId = clusterId
             };
 
             _entitiesRoot.AddChild(node);
