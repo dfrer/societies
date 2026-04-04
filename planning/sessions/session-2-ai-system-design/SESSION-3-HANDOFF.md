@@ -1,5 +1,7 @@
 # Session 2 Completion - Handoff to Session 3
 
+> **NOTE**: This handoff is complete — Session 3 is done.
+
 **From**: Session 2 - AI System Design  
 **To**: Session 3 - Core Gameplay Loop Planning  
 **Date**: January 31, 2026  
@@ -164,7 +166,7 @@ From Session 2 Open Questions, these affect gameplay:
 ## Key Files for Session 3 Reference
 
 **Primary Document**:
-- `day2-ai-system-design.md` - Complete AI specification
+- `planning/archives/session-2-ai-backups/day2-ai-system-design.legacy.md` - Complete AI specification
 
 **Specific Sections to Review**:
 - Section 4: Economic Behavior (trading mechanics)
