@@ -199,6 +199,7 @@ namespace Societies.Simulation
         }
         private PrototypePathPlan FindPathPlan(Vector3 startPosition, Vector3 destinationPosition)
         {
+            _pathPlanLookupsThisTick++;
             _navigationGrid ??= new PrototypeNavigationGrid(_world.WorldMap, new HashSet<Vector2I>(), _navigationRulesVersion);
 
             TerrainCell startCell = _world.WorldMap.GetNearestCell(startPosition);
@@ -206,6 +207,7 @@ namespace Societies.Simulation
             PrototypePathCacheKey cacheKey = new(startCell.GridX, startCell.GridY, destinationCell.GridX, destinationCell.GridY, _navigationRulesVersion);
             if (_pathCache.TryGetValue(cacheKey, out PrototypePathPlan? cachedPlan))
             {
+                _pathPlanCacheHitsThisTick++;
                 return cachedPlan;
             }
 

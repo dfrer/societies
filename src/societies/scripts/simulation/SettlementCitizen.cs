@@ -75,6 +75,7 @@ namespace Societies.Simulation
             PrototypeSettlementTickResult result,
             List<PrototypeWorkOrder> availableOrders)
         {
+            _citizensEvaluatedThisTick++;
             TrackCitizenPhaseTick(citizen);
 
             switch (citizen.Phase)
