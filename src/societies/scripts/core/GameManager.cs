@@ -335,19 +335,7 @@ namespace Societies.Core
             _scenePresenter?.ReplaceResourceNodes(artifacts.Snapshot.Resources);
             ApplyRuntimeStateToScene();
             _scenePresenter?.SyncWorkers(_runtimeSession.Workers);
-            _scenePresenter?.UpdateSettlementPresentation(
-                _runtimeSession.Stockpile.Items,
-                _runtimeSession.Workers,
-                _runtimeSession.Structures,
-                _runtimeSession.SettlementClassification,
-                _runtimeSession.SelectedBuildQueueStatusText,
-                _runtimeSession.MealCoveragePercent,
-                _runtimeSession.BedCoveragePercent,
-                _runtimeSession.HearthFuel,
-                _overlayMode,
-                _runtimeSession.PathSegments,
-                _runtimeSession.RemoteDepots,
-                _runtimeSession.RouteHeatCells);
+            UpdateSettlementPresentationFromSession();
 
             if (_player != null)
             {
@@ -359,8 +347,7 @@ namespace Societies.Core
             CaptureMetricsSnapshot();
             _lastWorldSummary = PrototypeWorldSummaryBuilder.Build(_runtimeSession, _terrain, artifacts.Snapshot.Resources);
             RecordEvent(PrototypeEventTypes.SnapshotLoaded, $"Loaded snapshot from {Path.GetFileName(_artifactManager.GetArtifactPaths().LegacySnapshotPath)}");
-            _hud?.SetStatusText($"Loaded snapshot from {Path.GetFileName(_artifactManager.GetArtifactPaths().LegacySnapshotPath)}");
-            UpdateHud();
+            NotifyStatus($"Loaded snapshot from {Path.GetFileName(_artifactManager.GetArtifactPaths().LegacySnapshotPath)}");
             return true;
         }
 
@@ -514,24 +501,12 @@ namespace Societies.Core
             BindPlayerToRuntime();
             ApplyRuntimeStateToScene();
             _scenePresenter.SyncWorkers(_runtimeSession.Workers);
-            _scenePresenter.UpdateSettlementPresentation(
-                _runtimeSession.Stockpile.Items,
-                _runtimeSession.Workers,
-                _runtimeSession.Structures,
-                _runtimeSession.SettlementClassification,
-                _runtimeSession.SelectedBuildQueueStatusText,
-                _runtimeSession.MealCoveragePercent,
-                _runtimeSession.BedCoveragePercent,
-                _runtimeSession.HearthFuel,
-                _overlayMode,
-                _runtimeSession.PathSegments,
-                _runtimeSession.RemoteDepots,
-                _runtimeSession.RouteHeatCells);
+            UpdateSettlementPresentationFromSession();
             CaptureMetricsSnapshot();
 
             _selectedCitizenInspectionIndex = 0;
             _selectedStructureInspectionIndex = 0;
-            _hud?.SetStatusText("Prototype V2 M3 ready");
+            NotifyStatus("Prototype V2 M3 ready");
         }
 
         private void CreateRuntimeSession(PrototypeScenarioDefinition scenario)
@@ -590,19 +565,7 @@ namespace Societies.Core
             _runtimeSession.RecordSettlementEvents(tickResult.SettlementResult.Events);
             ApplyRuntimeStateToScene();
             _scenePresenter.SyncWorkers(_runtimeSession.Workers);
-            _scenePresenter.UpdateSettlementPresentation(
-                _runtimeSession.Stockpile.Items,
-                _runtimeSession.Workers,
-                _runtimeSession.Structures,
-                _runtimeSession.SettlementClassification,
-                _runtimeSession.SelectedBuildQueueStatusText,
-                _runtimeSession.MealCoveragePercent,
-                _runtimeSession.BedCoveragePercent,
-                _runtimeSession.HearthFuel,
-                _overlayMode,
-                _runtimeSession.PathSegments,
-                _runtimeSession.RemoteDepots,
-                _runtimeSession.RouteHeatCells);
+            UpdateSettlementPresentationFromSession();
 
             if (tickResult.ShouldCaptureMetrics)
             {
@@ -621,6 +584,56 @@ namespace Societies.Core
             float sunlightMultiplier = PrototypeWeatherService.GetSunlightMultiplier(weather);
             _environmentController?.ApplyState(_runtimeSession.CurrentHour, sunlightMultiplier);
             _environmentController?.ApplyWeatherState(weather, _runtimeSession.TimeUntilNextWeatherShift);
+        }
+
+        private void UpdateSettlementPresentationFromSession()
+        {
+            if (_scenePresenter == null || _runtimeSession == null)
+            {
+                return;
+            }
+
+            _scenePresenter.UpdateSettlementPresentation(
+                _runtimeSession.Stockpile.Items,
+                _runtimeSession.Workers,
+                _runtimeSession.Structures,
+                _runtimeSession.SettlementClassification,
+                _runtimeSession.SelectedBuildQueueStatusText,
+                _runtimeSession.MealCoveragePercent,
+                _runtimeSession.BedCoveragePercent,
+                _runtimeSession.HearthFuel,
+                _overlayMode,
+                _runtimeSession.PathSegments,
+                _runtimeSession.RemoteDepots,
+                _runtimeSession.RouteHeatCells);
+        }
+
+        private void UpdateSettlementPresentationFromSessionOrFallback()
+        {
+            if (_scenePresenter == null)
+            {
+                return;
+            }
+
+            _scenePresenter.UpdateSettlementPresentation(
+                _runtimeSession?.Stockpile.Items ?? new Dictionary<string, int>(),
+                _runtimeSession?.Workers ?? System.Array.Empty<PrototypeWorkerState>(),
+                _runtimeSession?.Structures ?? System.Array.Empty<PrototypeStructureState>(),
+                _runtimeSession?.SettlementClassification ?? PrototypeSettlementClassification.Strained,
+                _runtimeSession?.SelectedBuildQueueStatusText ?? "Build Queue: empty",
+                _runtimeSession?.MealCoveragePercent ?? 0,
+                _runtimeSession?.BedCoveragePercent ?? 0,
+                _runtimeSession?.HearthFuel ?? 0,
+                _overlayMode,
+                _runtimeSession?.PathSegments ?? System.Array.Empty<PrototypePathSegmentState>(),
+                _runtimeSession?.RemoteDepots ?? System.Array.Empty<PrototypeRemoteDepotState>(),
+                _runtimeSession?.RouteHeatCells ?? System.Array.Empty<PrototypeRouteHeatCellState>());
+        }
+
+        private void NotifyStatus(string message)
+        {
+            _hud?.SetStatusText(message);
+            UpdateHud();
         }
 
         private void CaptureMetricsSnapshot()
@@ -679,19 +692,7 @@ namespace Societies.Core
                 _overlayMode,
                 _lastWorldSummary);
 
-            _scenePresenter?.UpdateSettlementPresentation(
-                _runtimeSession?.Stockpile.Items ?? new Dictionary<string, int>(),
-                _runtimeSession?.Workers ?? System.Array.Empty<PrototypeWorkerState>(),
-                _runtimeSession?.Structures ?? System.Array.Empty<PrototypeStructureState>(),
-                _runtimeSession?.SettlementClassification ?? PrototypeSettlementClassification.Strained,
-                _runtimeSession?.SelectedBuildQueueStatusText ?? "Build Queue: empty",
-                _runtimeSession?.MealCoveragePercent ?? 0,
-                _runtimeSession?.BedCoveragePercent ?? 0,
-                _runtimeSession?.HearthFuel ?? 0,
-                _overlayMode,
-                _runtimeSession?.PathSegments ?? System.Array.Empty<PrototypePathSegmentState>(),
-                _runtimeSession?.RemoteDepots ?? System.Array.Empty<PrototypeRemoteDepotState>(),
-                _runtimeSession?.RouteHeatCells ?? System.Array.Empty<PrototypeRouteHeatCellState>());
+            UpdateSettlementPresentationFromSessionOrFallback();
         }
 
         private void RecordEvent(string eventType, string message)
