@@ -178,10 +178,10 @@ namespace Societies.Tests
                 Assert(!string.IsNullOrWhiteSpace(hud.HelpText), "Help HUD text should not be empty");
                 Assert(hud.HelpText.Contains("F11 next build"), "Help HUD should expose build queue controls");
 
-                float initialHour = dayNight.CurrentHour;
+                float initialHour = envController!.CurrentHour;
                 manager.StepSimulationTicks(5);
                 Assert(manager.SimulationTick == 5, "Simulation tick count should advance deterministically");
-                Assert(dayNight.CurrentHour != initialHour, "Day/night state should advance through the fixed-tick runner");
+                Assert(envController.CurrentHour != initialHour, "Day/night state should advance through the fixed-tick runner");
 
                 Pass(nameof(Test_MainScene_BootstrapSmoke));
             }

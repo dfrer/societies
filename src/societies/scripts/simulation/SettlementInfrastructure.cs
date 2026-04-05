@@ -177,6 +177,7 @@ namespace Societies.Simulation
                 .FirstOrDefault();
 
             return placementCell != null;
+        }
         private void EnsureDynamicInfrastructurePlans()
         {
             EnsureRemoteDepotPlans();
@@ -251,7 +252,5 @@ namespace Societies.Simulation
         private float GetRemoteDepotActivationDistance() => Math.Max(12.0f, _scenario.RemoteDepotPolicy?.ActivationDistanceMeters ?? 55.0f);
         private float GetRemoteDepotPlacementRadius() => Math.Max(6.0f, _scenario.RemoteDepotPolicy?.PlacementRadiusMeters ?? 12.0f);
 
-    }
-        }
     }
 }
