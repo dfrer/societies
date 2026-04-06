@@ -77,13 +77,16 @@ namespace Societies.Simulation
         private int _selectedBuildQueueIndex;
         private int _hearthLitTicks;
         private int _totalTicks;
+        private readonly bool _uncappedOrders;
         public PrototypeSettlementSimulation(
             PrototypeScenarioDefinition scenario,
             IReadOnlyList<PrototypeRoleQuotaDefinition> roleQuotas,
-            WorldGenerationResult world)
+            WorldGenerationResult world,
+            bool uncappedOrders = false)
         {
             _scenario = scenario;
             _world = world;
+            _uncappedOrders = uncappedOrders;
             _centralDepot = CreateStore("central_depot", "Central Depot", 120, GetStructurePosition("central_depot", 0));
             SeedStartingStock();
             InitializeSiteCaches();

@@ -82,7 +82,7 @@ namespace Societies.Simulation
         }
         private List<PrototypeWorkOrder> ApplyWorkOrderFrontierLimit(List<PrototypeWorkOrder> orders)
         {
-            if (System.Environment.GetEnvironmentVariable("SOCIETIES_UNCAPPED") == "1")
+            if (_uncappedOrders)
             {
                 return orders;
             }

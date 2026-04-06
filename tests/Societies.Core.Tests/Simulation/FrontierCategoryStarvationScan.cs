@@ -14,8 +14,9 @@ namespace Societies.Core.Tests
         public void Compare_CappedVsUncapped_CategoryComposition()
         {
             var configs = new[] {
-                ("balanced_basin", 6, 60),
-                ("balanced_basin", 18, 60),
+                ("balanced_basin", 6, 120),
+                ("balanced_basin", 18, 120),
+                ("food_poor_highlands", 6, 120),
             };
 
             var sb = new StringBuilder();
@@ -24,15 +25,33 @@ namespace Societies.Core.Tests
             sb.AppendLine($"Generated: {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss} UTC");
             sb.AppendLine();
             sb.AppendLine("## Outcome Parity (Capped vs Uncapped)");
+            sb.AppendLine("| Scenario | Workers | Duration | Mode | AvgGen | AvgRem | Huts | Paths | Depots | Meals | HearthFuel | HearthLit | Bed% | Class |");
+            sb.AppendLine("|----------|---------|----------|------|--------|--------|------|-------|--------|-------|------------|----------|------|-------|");
 
             bool starvationFound = false;
+
+            foreach (var (sid, w, dur) in configs)
+            {
+                foreach (var capped in new[] { true, false })
+                {
+                    var r = Run(sid, w, dur, capped);
+                    if (sb.Length > 0) sb.AppendLine();
+
+                    string mode = capped ? "Capped" : "Uncap";
+                    sb.AppendLine($"| {sid} | {w} | {dur} | {mode} | {r.avgGen} | {r.avgRem} | {r.huts} | {r.paths} | {r.depots} | {r.meals} | {r.hfuel} | {r.hlits} | {r.bed}% | {r.cls} |");
+                }
+                sb.AppendLine();
+            }
+
+            // Starvation analysis
+            sb.AppendLine("## Starvation Analysis");
+            sb.AppendLine();
 
             foreach (var (sid, w, dur) in configs)
             {
                 var cap = Run(sid, w, dur, true);
                 var unc = Run(sid, w, dur, false);
 
-                if (sb.Length > 0) sb.AppendLine();
                 sb.AppendLine($"### {sid} {w}w/{dur}t");
                 sb.AppendLine($"- Huts built: {cap.huts} vs {unc.huts} ({(cap.huts == unc.huts ? "SAME" : "DIFF")})");
                 sb.AppendLine($"- Paths built: {cap.paths} vs {unc.paths} ({(cap.paths == unc.paths ? "SAME" : "DIFF")})");
@@ -47,76 +66,71 @@ namespace Societies.Core.Tests
                 if (cap.paths != unc.paths) starvationFound = true;
                 if (cap.depots != unc.depots) starvationFound = true;
                 if (cap.cls != unc.cls) starvationFound = true;
+
+                sb.AppendLine();
             }
 
-            sb.AppendLine();
             sb.AppendLine("## Starvation Verdict");
             sb.AppendLine(starvationFound ? "**STARVATION DETECTED**" : "**NO STARVATION DETECTED**");
 
-            var mdPath = Path.Combine("/tmp/starvation-report.md");
+            var mdPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "starvation-report.md");
             File.WriteAllText(mdPath, sb.ToString());
-            Console.Error.WriteLine(sb.ToString());
             Console.Error.WriteLine($"Report: {mdPath}");
+            Console.Error.WriteLine(System.Environment.NewLine + sb.ToString());
 
-            Assert.False(starvationFound, "Starvation detected - outcomes differ between capped and uncapped");
+            Assert.False(starvationFound, "Starvation detected - outcome metrics differ");
         }
 
-        static (int huts, int paths, int depots, int meals, int hfuel, int hlits, int bed, string cls, int avgGen, int avgRem)
-            Run(string sid, int workers, int duration, bool capped)
+        class RunResult
         {
-            string prior = Environment.GetEnvironmentVariable("SOCIETIES_UNCAPPED");
-            Environment.SetEnvironmentVariable("SOCIETIES_UNCAPPED", capped ? null : "1");
+            public int huts, paths, depots, meals, hfuel, hlits, bed, avgGen, avgRem;
+            public string cls = "";
+        }
 
-            try
+        static RunResult Run(string sid, int workers, int duration, bool capped)
+        {
+            var bundle = LoadCatalogs();
+            var scenario = CloneScenario(bundle.Scenarios.Resolve(sid));
+            scenario.InitialWorkers = workers;
+            var world = PrototypeWorldGenerator.Generate(scenario);
+            var sim = new PrototypeSettlementSimulation(scenario, bundle.RoleQuotas.Roles, world, uncappedOrders: !capped);
+            var resources = BuildResourceSites(world);
+
+            long tg = 0, tr = 0;
+            float hour = 8.0f;
+
+            for (int t = 0; t < duration; t++)
             {
-                var bundle = LoadCatalogs();
-                var scenario = CloneScenario(bundle.Scenarios.Resolve(sid));
-                scenario.InitialWorkers = workers;
-                var world = PrototypeWorldGenerator.Generate(scenario);
-                var sim = new PrototypeSettlementSimulation(scenario, bundle.RoleQuotas.Roles, world);
-                var resources = BuildResourceSites(world);
-
-                long tg = 0, tr = 0;
-                float hour = 8.0f;
-
-                for (int t = 0; t < duration; t++)
+                var tickResult = sim.Advance(resources, hour, PrototypeWeather.Clear);
+                tg += sim.Diagnostics.WorkOrdersGenerated;
+                tr += sim.Diagnostics.WorkOrdersRemaining;
+                foreach (var req in tickResult.HarvestRequests)
                 {
-                    var tickResult = sim.Advance(resources, hour, PrototypeWeather.Clear);
-                    tg += sim.Diagnostics.WorkOrdersGenerated;
-                    tr += sim.Diagnostics.WorkOrdersRemaining;
-
-                    foreach (var req in tickResult.HarvestRequests)
+                    int idx = resources.FindIndex(s => s.NodeName == req.TargetNodeName);
+                    if (idx >= 0)
                     {
-                        int idx = resources.FindIndex(s => s.NodeName == req.TargetNodeName);
-                        if (idx >= 0)
-                        {
-                            var site = resources[idx];
-                            if (site.UnitsRemaining >= req.Amount)
-                                resources[idx] = site with { UnitsRemaining = site.UnitsRemaining - req.Amount };
-                            else
-                                sim.OnHarvestFailed(req.WorkerId);
-                        }
+                        var site = resources[idx];
+                        if (site.UnitsRemaining >= req.Amount)
+                            resources[idx] = site with { UnitsRemaining = site.UnitsRemaining - req.Amount };
+                        else
+                            sim.OnHarvestFailed(req.WorkerId);
                     }
-                    hour = AdvanceHour(hour);
                 }
+                hour = AdvanceHour(hour);
+            }
 
-                return (
-                    huts: sim.Structures.Count(s => s.StructureKindId == "hut" && s.IsBuilt),
-                    paths: sim.PathSegments.Count(s => s.IsBuilt),
-                    depots: sim.RemoteDepots.Count(d => d.IsBuilt),
-                    meals: Math.Max(sim.CentralDepot.GetCount("meals"), sim.ProducedResources.GetValueOrDefault("meals")),
-                    hfuel: sim.HearthFuel,
-                    hlits: sim.HearthLitTicks,
-                    bed: sim.BedCoveragePercent,
-                    cls: sim.Classification.ToString(),
-                    avgGen: (int)Math.Round(tg / (double)duration),
-                    avgRem: (int)Math.Round(tr / (double)duration)
-                );
-            }
-            finally
-            {
-                Environment.SetEnvironmentVariable("SOCIETIES_UNCAPPED", prior);
-            }
+            return new RunResult {
+                huts = sim.Structures.Count(s => s.StructureKindId == "hut" && s.IsBuilt),
+                paths = sim.PathSegments.Count(s => s.IsBuilt),
+                depots = sim.RemoteDepots.Count(d => d.IsBuilt),
+                meals = Math.Max(sim.CentralDepot.GetCount("meals"), sim.ProducedResources.GetValueOrDefault("meals", 0)),
+                hfuel = sim.HearthFuel,
+                hlits = sim.HearthLitTicks,
+                bed = sim.BedCoveragePercent,
+                avgGen = (int)Math.Round(tg / (double)duration),
+                avgRem = (int)Math.Round(tr / (double)duration),
+                cls = sim.Classification.ToString(),
+            };
         }
 
         static PrototypeScenarioDefinition CloneScenario(PrototypeScenarioDefinition o) =>
