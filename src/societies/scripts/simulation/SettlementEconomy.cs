@@ -82,6 +82,10 @@ namespace Societies.Simulation
         }
         private List<PrototypeWorkOrder> ApplyWorkOrderFrontierLimit(List<PrototypeWorkOrder> orders)
         {
+            if (System.Environment.GetEnvironmentVariable("SOCIETIES_UNCAPPED") == "1")
+            {
+                return orders;
+            }
             int frontierBudget = Math.Max(50, _citizens.Count * 5);
             if (orders.Count <= frontierBudget)
             {
