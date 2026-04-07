@@ -19,6 +19,15 @@ namespace Societies.Simulation
         private const int HearthBurnIntervalTicks = 80;
         private const int PathBuildTicks = 6;
 
+        // Carrying capacity by role -- each trip can move multiple units.
+        private const int CarryCapacityGeneralist = 2;
+        private const int CarryCapacityHauler = 4;
+        private const int CarryCapacityBuilder = 3;
+        private const int CarryCapacityLogger = 3;
+        private const int CarryCapacityMason = 3;
+        private const int CarryCapacityForager = 2;
+        private const int CarryCapacityProcessor = 2;
+
         private static readonly IReadOnlyDictionary<string, int> HutCost = new Dictionary<string, int>
         {
             ["timber"] = 6,

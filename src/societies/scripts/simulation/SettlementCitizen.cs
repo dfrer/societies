@@ -747,6 +747,7 @@ namespace Societies.Simulation
                 Fatigue = citizen.Needs.Fatigue,
                 LastFailureReason = citizen.LastFailureReason,
                 CurrentOrderId = citizen.CurrentOrderId,
+                CurrentOrderAmount = citizen.CurrentOrderAmount,
                 CurrentOrderKind = citizen.CurrentOrderKind?.ToString() ?? string.Empty,
                 CurrentOrderReason = citizen.CurrentOrderReason,
                 HomeBedCapacity = citizen.HomeBedCapacity,
@@ -829,6 +830,7 @@ namespace Societies.Simulation
                 },
                 LastFailureReason = snapshot.LastFailureReason,
                 CurrentOrderId = snapshot.CurrentOrderId,
+                CurrentOrderAmount = snapshot.CurrentOrderAmount,
                 CurrentOrderKind = orderKind,
                 CurrentOrderReason = snapshot.CurrentOrderReason,
                 HomeBedCapacity = snapshot.HomeBedCapacity,
@@ -1025,12 +1027,16 @@ namespace Societies.Simulation
                 return false;
             }
 
-            if (!source.Remove(citizen.CarryItemId, 1))
+            int available = source.GetCount(citizen.CarryItemId);
+            int capacity = GetCarryCapacity(citizen.Role);
+            int toCarry = Math.Max(1, Math.Min(available, capacity));
+
+            if (!source.Remove(citizen.CarryItemId, toCarry))
             {
                 return false;
             }
 
-            citizen.CarryAmount = 1;
+            citizen.CarryAmount = toCarry;
             return true;
         }
         private static string InferHarvestItemFromNode(string nodeName) => nodeName.Split('_')[0] switch
@@ -1087,6 +1093,16 @@ namespace Societies.Simulation
             return _world.SettlementSpawn.AnchorPosition + new Vector3(Mathf.Cos(angle) * 3.8f, 0.0f, Mathf.Sin(angle) * 3.8f);
         }
         private Vector3 ProjectToSurface(Vector3 position) => _world.WorldMap.ProjectToSurface(position);
+        private static int GetCarryCapacity(PrototypeCitizenRole role) => role switch
+        {
+            PrototypeCitizenRole.Hauler => CarryCapacityHauler,
+            PrototypeCitizenRole.Builder => CarryCapacityBuilder,
+            PrototypeCitizenRole.Logger => CarryCapacityLogger,
+            PrototypeCitizenRole.Mason => CarryCapacityMason,
+            PrototypeCitizenRole.Forager => CarryCapacityForager,
+            PrototypeCitizenRole.Processor => CarryCapacityProcessor,
+            _ => CarryCapacityGeneralist,
+        };
         private static List<PrototypeCitizenRole> BuildRolePlan(IReadOnlyList<PrototypeRoleQuotaDefinition> roleQuotas, int citizenCount)
         {
             List<PrototypeCitizenRole> roles = new(citizenCount);

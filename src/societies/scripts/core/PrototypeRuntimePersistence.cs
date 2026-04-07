@@ -105,6 +105,7 @@ namespace Societies.Core
         public string LastFailureReason { get; set; } = string.Empty;
 
         public string CurrentOrderId { get; set; } = string.Empty;
+        public int CurrentOrderAmount { get; set; }
 
         public string CurrentOrderKind { get; set; } = string.Empty;
 

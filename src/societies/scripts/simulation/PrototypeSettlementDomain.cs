@@ -409,6 +409,8 @@ namespace Societies.Simulation
 
         public PrototypeWorkOrderKind? CurrentOrderKind { get; set; }
 
+        public int CurrentOrderAmount { get; set; }
+
         public string CurrentOrderReason { get; set; } = string.Empty;
 
         public List<string> RecentEvents { get; set; } = new();
