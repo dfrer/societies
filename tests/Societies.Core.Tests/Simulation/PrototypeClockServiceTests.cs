@@ -59,7 +59,7 @@ namespace Societies.Core.Tests
         private static (float SunEnergy, float AmbientIntensity, float AmbientR, float AmbientG, float AmbientB) CalculateLighting(float currentHour, float weatherLightMultiplier)
         {
             float sunAngle = ((currentHour - 6.0f) / 12.0f) * System.MathF.PI;
-            float rawSunEnergy = System.Math.Max(0.0f, System.Math.Sin(sunAngle));
+            float rawSunEnergy = (float)System.Math.Max(0.0, System.Math.Sin(sunAngle));
             float sunEnergy = rawSunEnergy * weatherLightMultiplier;
             float ambientIntensity = 0.15f + 0.35f * rawSunEnergy * weatherLightMultiplier;
 

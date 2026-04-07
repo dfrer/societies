@@ -77,13 +77,16 @@ namespace Societies.Simulation
         private int _selectedBuildQueueIndex;
         private int _hearthLitTicks;
         private int _totalTicks;
+        private readonly bool _uncappedOrders;
         public PrototypeSettlementSimulation(
             PrototypeScenarioDefinition scenario,
             IReadOnlyList<PrototypeRoleQuotaDefinition> roleQuotas,
-            WorldGenerationResult world)
+            WorldGenerationResult world,
+            bool uncappedOrders = false)
         {
             _scenario = scenario;
             _world = world;
+            _uncappedOrders = uncappedOrders;
             _centralDepot = CreateStore("central_depot", "Central Depot", 120, GetStructurePosition("central_depot", 0));
             SeedStartingStock();
             InitializeSiteCaches();
@@ -121,6 +124,27 @@ namespace Societies.Simulation
         public IReadOnlyDictionary<Vector2I, int> PathHeatByCell => _pathHeatByCell;
 
         public PrototypeResourceStoreState CentralDepot => _centralDepot;
+
+        public sealed class PrototypeSettlementDiagnosticsState
+        {
+            public int TotalTicksMeasured;
+            public int WorkOrdersGenerated;
+            public int WorkOrdersClaimed;
+            public int WorkOrdersRemaining;
+            public int PathPlanLookups;
+            public int PathPlanCacheHits;
+            public int CitizensEvaluated;
+            public int PeakOrdersThisSession;
+        }
+
+        private readonly PrototypeSettlementDiagnosticsState _diagnostics = new();
+        private int _workOrdersGeneratedThisTick;
+        private int _workOrdersRemainingAfterAssignment;
+        private int _pathPlanLookupsThisTick;
+        private int _pathPlanCacheHitsThisTick;
+        private int _citizensEvaluatedThisTick;
+
+        public PrototypeSettlementDiagnosticsState Diagnostics => _diagnostics;
 
         public PrototypeSettlementClassification Classification { get; private set; } = PrototypeSettlementClassification.Strained;
 
@@ -191,6 +215,12 @@ namespace Societies.Simulation
             PrototypeSettlementTickResult result = new();
             _totalTicks++;
 
+            _workOrdersGeneratedThisTick = 0;
+            _workOrdersRemainingAfterAssignment = 0;
+            _pathPlanLookupsThisTick = 0;
+            _pathPlanCacheHitsThisTick = 0;
+            _citizensEvaluatedThisTick = 0;
+
             foreach (PrototypeResourceSiteState resource in resources)
             {
                 if (!_resourceNodeClusterMap.ContainsKey(resource.NodeName))
@@ -209,11 +239,25 @@ namespace Societies.Simulation
             }
 
             List<PrototypeWorkOrder> availableOrders = BuildWorkOrders(resources, currentHour, weather);
+            _workOrdersGeneratedThisTick = availableOrders.Count;
             UpdateRouteBacklogMetrics(availableOrders);
 
             foreach (PrototypeWorkerState citizen in _citizens.OrderBy(candidate => candidate.WorkerId, StringComparer.Ordinal))
             {
                 AdvanceCitizen(citizen, resources, currentHour, weather, result, availableOrders);
+            }
+
+            _workOrdersRemainingAfterAssignment = availableOrders.Count;
+            _diagnostics.TotalTicksMeasured++;
+            _diagnostics.WorkOrdersGenerated = _workOrdersGeneratedThisTick;
+            _diagnostics.WorkOrdersClaimed = _workOrdersGeneratedThisTick - availableOrders.Count;
+            _diagnostics.WorkOrdersRemaining = _workOrdersRemainingAfterAssignment;
+            _diagnostics.PathPlanLookups = _pathPlanLookupsThisTick;
+            _diagnostics.PathPlanCacheHits = _pathPlanCacheHitsThisTick;
+            _diagnostics.CitizensEvaluated = _citizensEvaluatedThisTick;
+            if (_workOrdersGeneratedThisTick > _diagnostics.PeakOrdersThisSession)
+            {
+                _diagnostics.PeakOrdersThisSession = _workOrdersGeneratedThisTick;
             }
 
             UpdateClassification();

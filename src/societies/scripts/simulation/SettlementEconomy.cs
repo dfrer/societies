@@ -76,7 +76,27 @@ namespace Societies.Simulation
             AddProductionOrders(orders);
             AddBuildOrders(orders);
             AddReserveExtractionOrders(orders, resources, committedCarries, currentHour, weather);
-            return RemoveClaimedOrders(orders);
+            orders = RemoveClaimedOrders(orders);
+            orders = ApplyWorkOrderFrontierLimit(orders);
+            return orders;
+        }
+        private List<PrototypeWorkOrder> ApplyWorkOrderFrontierLimit(List<PrototypeWorkOrder> orders)
+        {
+            if (_uncappedOrders)
+            {
+                return orders;
+            }
+            int frontierBudget = Math.Max(50, _citizens.Count * 5);
+            if (orders.Count <= frontierBudget)
+            {
+                return orders;
+            }
+
+            return orders
+                .OrderByDescending(order => order.Priority)
+                .ThenBy(order => order.OrderId, StringComparer.Ordinal)
+                .Take(frontierBudget)
+                .ToList();
         }
         private void AddRefuelOrders(List<PrototypeWorkOrder> orders)
         {

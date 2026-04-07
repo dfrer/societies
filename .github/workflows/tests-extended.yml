@@ -1,0 +1,80 @@
+name: Extended Tests
+
+# Extended characterization/comparison tests.
+# NOT part of the default PR gate.
+# Triggered manually or on a weekly schedule.
+on:
+  workflow_dispatch:
+    inputs:
+      filter:
+        description: 'Optional dotnet test --filter expression'
+        required: false
+        type: string
+        default: ''
+  schedule:
+    # Every Saturday at 02:00 UTC
+    - cron: '0 2 * * 6'
+
+jobs:
+  run-extended-tests:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-extended-${{ hashFiles('**/*.csproj') }}
+          restore-keys: |
+            ${{ runner.os }}-nuget-
+
+      - name: Build extended test project
+        run: dotnet build tests/Societies.Core.Tests.Extended/Societies.Core.Tests.Extended.csproj --configuration Release
+
+      - name: Run extended tests
+        if: inputs.filter == null || inputs.filter == ''
+        run: >
+          dotnet test tests/Societies.Core.Tests.Extended/Societies.Core.Tests.Extended.csproj
+          --configuration Release
+          --logger "trx;LogFileName=extended-tests.trx"
+          --logger "console;verbosity=detailed"
+          --no-build
+
+      - name: Run extended tests (custom filter)
+        if: inputs.filter != null && inputs.filter != ''
+        run: >
+          dotnet test tests/Societies.Core.Tests.Extended/Societies.Core.Tests.Extended.csproj
+          --configuration Release
+          --logger "trx;LogFileName=extended-tests.trx"
+          --logger "console;verbosity=detailed"
+          --no-build
+          --filter "${{ inputs.filter }}"
+
+      - name: Generate test report
+        uses: dorny/test-reporter@v1
+        if: success() || failure()
+        with:
+          name: Extended Test Results
+          path: '**/TestResults/*extended*.trx'
+          reporter: dotnet-trx
+          fail-on-error: false
+
+      - name: Upload extended test artifacts
+        uses: actions/upload-artifact@v4
+        if: success() || failure()
+        with:
+          name: extended-test-reports
+          path: |
+            **/TestResults/*.trx
+            **/starvation-report.md
+            **/characterization-output.csv
+            **/path-logistics-impact-report.md
+          retention-days: 30

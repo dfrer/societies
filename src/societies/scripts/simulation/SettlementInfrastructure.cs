@@ -177,6 +177,7 @@ namespace Societies.Simulation
                 .FirstOrDefault();
 
             return placementCell != null;
+        }
         private void EnsureDynamicInfrastructurePlans()
         {
             EnsureRemoteDepotPlans();
@@ -198,6 +199,7 @@ namespace Societies.Simulation
         }
         private PrototypePathPlan FindPathPlan(Vector3 startPosition, Vector3 destinationPosition)
         {
+            _pathPlanLookupsThisTick++;
             _navigationGrid ??= new PrototypeNavigationGrid(_world.WorldMap, new HashSet<Vector2I>(), _navigationRulesVersion);
 
             TerrainCell startCell = _world.WorldMap.GetNearestCell(startPosition);
@@ -205,6 +207,7 @@ namespace Societies.Simulation
             PrototypePathCacheKey cacheKey = new(startCell.GridX, startCell.GridY, destinationCell.GridX, destinationCell.GridY, _navigationRulesVersion);
             if (_pathCache.TryGetValue(cacheKey, out PrototypePathPlan? cachedPlan))
             {
+                _pathPlanCacheHitsThisTick++;
                 return cachedPlan;
             }
 
@@ -251,7 +254,5 @@ namespace Societies.Simulation
         private float GetRemoteDepotActivationDistance() => Math.Max(12.0f, _scenario.RemoteDepotPolicy?.ActivationDistanceMeters ?? 55.0f);
         private float GetRemoteDepotPlacementRadius() => Math.Max(6.0f, _scenario.RemoteDepotPolicy?.PlacementRadiusMeters ?? 12.0f);
 
-    }
-        }
     }
 }
