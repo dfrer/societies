@@ -81,6 +81,8 @@ namespace Societies.Simulation
             structure.Progress = 1.0f;
             structure.IsBlocked = false;
             structure.BlockedReason = string.Empty;
+            _structuresCompletedThisTick++;
+
             if (structure.StructureKindId == "hut")
             {
                 structure.BedCapacity = 2;
@@ -95,6 +97,7 @@ namespace Societies.Simulation
                     segment.IsBuilt = true;
                 }
 
+                _pathSegmentCompletedThisTick = true;
                 InvalidateNavigation();
             }
 

@@ -9,7 +9,7 @@ namespace Societies.Core
     /// Authoritative deterministic runtime state for the local prototype session.
     /// Godot scene code should treat this as the simulation kernel and keep view logic outside it.
     /// </summary>
-    public sealed class PrototypeRuntimeSession
+    public sealed partial class PrototypeRuntimeSession
     {
         private readonly IReadOnlyList<PrototypeRoleQuotaDefinition> _roleQuotas;
         private PrototypeWeatherSimulation? _weatherSimulation;
@@ -129,6 +129,15 @@ namespace Societies.Core
         public string WorldHash => _world?.WorldHash ?? string.Empty;
 
         public Vector3 SettlementAnchorPosition => _world?.SettlementSpawn.AnchorPosition ?? Vector3.Zero;
+
+        /// <summary>
+        /// Export per-tick spike diagnostics from the settlement simulation to a CSV file.
+        /// Only useful when RuntimeFrameMetrics.IsEnabled was true during the run.
+        /// </summary>
+        public void ExportTickDiagnostics(string path)
+        {
+            _settlementSimulation?.ExportTickDiagnostics(path);
+        }
 
         public void Initialize(float startHour)
         {

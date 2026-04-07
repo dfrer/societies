@@ -1090,5 +1090,14 @@ namespace Societies.Core
             DetachRuntimeObservers();
             Instance = null;
         }
+
+        /// <summary>
+        /// Export per-tick spike diagnostics from the settlement simulation to a CSV file.
+        /// Only useful when RuntimeFrameMetrics.IsEnabled was true during the run.
+        /// </summary>
+        public void ExportTickDiagnostics(string path)
+        {
+            _runtimeSession?.ExportTickDiagnostics(path);
+        }
     }
 }

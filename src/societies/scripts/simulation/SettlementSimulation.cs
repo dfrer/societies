@@ -146,6 +146,13 @@ namespace Societies.Simulation
         private int _pathPlanCacheHitsThisTick;
         private int _citizensEvaluatedThisTick;
 
+        // Per-tick spike diagnostics (only populated when RuntimeFrameMetrics.IsEnabled)
+        private bool _navInvalidatedThisTick;
+        private bool _pathSegmentCompletedThisTick;
+        private int _pathCacheSizeBeforeInvalidation;
+        private double _navRebuildDurationMs;
+        private int _structuresCompletedThisTick;
+
         public PrototypeSettlementDiagnosticsState Diagnostics => _diagnostics;
 
         public PrototypeSettlementClassification Classification { get; private set; } = PrototypeSettlementClassification.Strained;
@@ -216,12 +223,18 @@ namespace Societies.Simulation
         {
             PrototypeSettlementTickResult result = new();
             _totalTicks++;
+            RecordTickStart();
 
             _workOrdersGeneratedThisTick = 0;
             _workOrdersRemainingAfterAssignment = 0;
             _pathPlanLookupsThisTick = 0;
             _pathPlanCacheHitsThisTick = 0;
             _citizensEvaluatedThisTick = 0;
+            _navInvalidatedThisTick = false;
+            _pathSegmentCompletedThisTick = false;
+            _pathCacheSizeBeforeInvalidation = 0;
+            _navRebuildDurationMs = 0;
+            _structuresCompletedThisTick = 0;
 
             foreach (PrototypeResourceSiteState resource in resources)
             {
@@ -270,6 +283,13 @@ namespace Societies.Simulation
             }
 
             UpdateClassification();
+
+            // Per-tick spike diagnostic logging (only when perf metrics enabled)
+            if (RuntimeFrameMetrics.Instance.IsEnabled && _totalTicks > 0)
+            {
+                RecordTickDiagnostic();
+            }
+
             return result;
         }
         public void OnHarvestFailed(string workerId)
@@ -600,6 +620,51 @@ namespace Societies.Simulation
             }
 
             Classification = PrototypeSettlementClassification.Strained;
+        }
+
+        // ------------------------------------------------------------------
+        // Per-tick spike diagnostics (only active when RuntimeFrameMetrics.IsEnabled)
+        // ------------------------------------------------------------------
+
+        private readonly List<string> _tickDiagnosticRows = new();
+        private double _lastTickStartMs;
+
+        /// <summary>
+        /// Called at the start of each Advance to mark the wall-clock start time.
+        /// </summary>
+        internal void RecordTickStart()
+        {
+            if (RuntimeFrameMetrics.Instance.IsEnabled)
+            {
+                _lastTickStartMs = System.Diagnostics.Stopwatch.GetTimestamp() * 1000.0 / System.Diagnostics.Stopwatch.Frequency;
+            }
+        }
+
+        private void RecordTickDiagnostic()
+        {
+            double now = System.Diagnostics.Stopwatch.GetTimestamp() * 1000.0 / System.Diagnostics.Stopwatch.Frequency;
+            double tickWallMs = now - _lastTickStartMs;
+            int pathCacheSize = _pathCache.Count;
+
+            string row = $"{_totalTicks},{tickWallMs:F2},{_navInvalidatedThisTick},{_pathSegmentCompletedThisTick},{_structuresCompletedThisTick},{_pathCacheSizeBeforeInvalidation},{pathCacheSize},{_navRebuildDurationMs:F2},{_pathPlanLookupsThisTick},{_pathPlanCacheHitsThisTick},{_workOrdersGeneratedThisTick},{_citizens.Count}";
+            _tickDiagnosticRows.Add(row);
+        }
+
+        /// <summary>
+        /// Export per-tick diagnostic CSV to a file. Header + all rows.
+        /// </summary>
+        public void ExportTickDiagnostics(string path)
+        {
+            if (_tickDiagnosticRows.Count == 0) return;
+            var sb = new System.Text.StringBuilder();
+            sb.AppendLine("tick,tick_wall_ms,nav_invalidated,path_segment_completed,structures_completed,cache_size_before_invalid,cache_size_after,nav_rebuild_ms,path_lookups,path_hits,orders_gen,citizen_count");
+            foreach (string row in _tickDiagnosticRows)
+            {
+                sb.AppendLine(row);
+            }
+            string? dir = System.IO.Path.GetDirectoryName(path);
+            if (!string.IsNullOrEmpty(dir)) System.IO.Directory.CreateDirectory(dir);
+            System.IO.File.WriteAllText(path, sb.ToString());
         }
 
     }

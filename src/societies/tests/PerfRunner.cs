@@ -90,6 +90,38 @@ namespace Societies.Tests
                 GD.Print($"=== Perf Runner Complete ===");
                 GD.Print($"Pass: {tickCount} ticks in {timerElapsed}ms");
 
+                // Export per-tick spike diagnostics
+                var diagnosticsCsvPath = Path.Combine(outputDir, "tick-diagnostics.csv");
+                manager.ExportTickDiagnostics(diagnosticsCsvPath);
+                GD.Print($"Tick diagnostics CSV: {diagnosticsCsvPath} (exists={File.Exists(diagnosticsCsvPath)})");
+
+                if (File.Exists(diagnosticsCsvPath))
+                {
+                    var diagLines = File.ReadAllLines(diagnosticsCsvPath);
+                    GD.Print($"=== tick-diagnostics.csv ({diagLines.Length} lines) ===");
+                    // Print header + first 5 data lines + any spike lines
+                    for (int i = 0; i < Math.Min(6, diagLines.Length); i++)
+                    {
+                        GD.Print(diagLines[i]);
+                    }
+                    // Print all ticks where nav_invalidated=true or tick_wall_ms > 100
+                    GD.Print("--- Spike ticks (nav_invalidated=true OR tick_wall_ms > 100ms) ---");
+                    for (int i = 1; i < diagLines.Length; i++)
+                    {
+                        string line = diagLines[i];
+                        string[] parts = line.Split(',');
+                        if (parts.Length >= 3)
+                        {
+                            bool navInvalid = parts[2] == "True";
+                            bool slowTick = double.TryParse(parts[1], out double wallMs) && wallMs > 100.0;
+                            if (navInvalid || slowTick)
+                            {
+                                GD.Print($"  Line {i}: {line}");
+                            }
+                        }
+                    }
+                }
+
                 // Check perf output file exists (if the metrics are enabled and the singleton captured data)
                 var perfCsvPath = Path.Combine(outputDir, "perf-frame-timings.csv");
                 var perfTxtPath = Path.Combine(outputDir, "perf-summary.txt");

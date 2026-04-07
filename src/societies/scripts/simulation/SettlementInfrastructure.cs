@@ -194,8 +194,13 @@ namespace Societies.Simulation
         }
         private void InvalidateNavigation()
         {
+            _navInvalidatedThisTick = true;
+            _pathCacheSizeBeforeInvalidation = _pathCache.Count;
+            double start = System.Diagnostics.Stopwatch.GetTimestamp() * 1000.0 / System.Diagnostics.Stopwatch.Frequency;
             _navigationRulesVersion++;
             RebuildNavigation();
+            double end = System.Diagnostics.Stopwatch.GetTimestamp() * 1000.0 / System.Diagnostics.Stopwatch.Frequency;
+            _navRebuildDurationMs = end - start;
         }
         private PrototypePathPlan FindPathPlan(Vector3 startPosition, Vector3 destinationPosition)
         {
@@ -282,6 +287,21 @@ namespace Societies.Simulation
             foreach (var cache in _siteCaches.Values)
             {
                 FindPathPlan(cache.Position, _centralDepot.Position);
+            }
+
+            // Central depot -> all destinations (depot is the primary logistics hub)
+            foreach (var spawn in _world.ResourceSpawns)
+            {
+                FindPathPlan(_centralDepot.Position, spawn.Position);
+            }
+            foreach (var cache in _siteCaches.Values)
+            {
+                FindPathPlan(_centralDepot.Position, cache.Position);
+                FindPathPlan(cache.Position, _centralDepot.Position);
+            }
+            foreach (var structure in _structures)
+            {
+                FindPathPlan(_centralDepot.Position, structure.Position);
             }
 
             // Cache -> spawn (for cache-to-resource return trips)
