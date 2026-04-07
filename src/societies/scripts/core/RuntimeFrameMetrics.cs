@@ -245,6 +245,20 @@ namespace Societies.Core
         }
 
         /// <summary>
+        /// Call after each individual simulation tick when not going through the frame
+        /// loop (e.g., StepSimulationTicks, headless characterization).
+        /// Records the same tick data that _Process would have accumulated.
+        /// </summary>
+        public void AccumulateSingleTick(double tickDurationMs)
+        {
+            if (!IsEnabled) return;
+            _totalTicksProcessed++;
+            // Record the tick in the ring buffer (already done by RecordTickDurationMs)
+            // Also update the peak
+            if (tickDurationMs > _peakTickMs) _peakTickMs = tickDurationMs;
+        }
+
+        /// <summary>
         /// Export all accumulated CSV rows to a file.
         /// </summary>
         private readonly System.Collections.Generic.List<string> _csvRows = new();

@@ -220,9 +220,27 @@ namespace Societies.Core
 
         public void StepSimulationTicks(int tickCount)
         {
-            for (int i = 0; i < tickCount; i++)
+            RuntimeFrameMetrics m = RuntimeFrameMetrics.Instance;
+            double totalWallMs = 0;
+            if (m.IsEnabled)
             {
-                ProcessSimulationTick();
+                var sw = System.Diagnostics.Stopwatch.StartNew();
+                for (int i = 0; i < tickCount; i++)
+                {
+                    ProcessSimulationTick();
+                    // ProcessSimulationTick already records tick duration via RecordTickDurationMs
+                    m.AccumulateSingleTick(0); // placeholder, real value is in ring buffer
+                }
+                totalWallMs = sw.Elapsed.TotalMilliseconds;
+                GD.Print($"[PERF] StepSimulationTicks({tickCount}): {totalWallMs:F0}ms total, {totalWallMs / tickCount:F2}ms/tick avg");
+                GD.Print($"[PERF] Peak tick: {m.PeakTickMs:F2}ms  Avg recent: {m.GetAverageTickMs():F2}ms");
+            }
+            else
+            {
+                for (int i = 0; i < tickCount; i++)
+                {
+                    ProcessSimulationTick();
+                }
             }
 
             UpdateHud();

@@ -234,6 +234,86 @@ namespace Societies.Simulation
         {
             return FindPathPlan(startPosition, destinationPosition).TotalDistanceMeters;
         }
+
+        /// <summary>
+        /// Pre-populate the path cache for all citizen-to-destination combinations that will
+        /// be needed on the first simulation tick. This eliminates the 10–19s first-tick freeze
+        /// caused by cold A* path computation. Must be called after InitializeCitizens and after
+        /// RebuildNavigation has been called at least once.
+        /// </summary>
+        public void WarmPathCache()
+        {
+            Vector3 anchor = _world.SettlementSpawn.AnchorPosition;
+
+            // Settlement anchor to resource spawns, caches, and depot
+            foreach (var spawn in _world.ResourceSpawns)
+            {
+                FindPathPlan(anchor, spawn.Position);
+                FindPathPlan(anchor, _centralDepot.Position);
+            }
+
+            // From each citizen's home to each resource spawn, cache, depot, and structure
+            foreach (var citizen in _citizens)
+            {
+                foreach (var spawn in _world.ResourceSpawns)
+                {
+                    FindPathPlan(citizen.HomePosition, spawn.Position);
+                    // Also citizen home -> depot (for hauling paths)
+                    FindPathPlan(citizen.HomePosition, _centralDepot.Position);
+                }
+
+                // To each resource cache
+                foreach (var cache in _siteCaches.Values)
+                {
+                    FindPathPlan(citizen.HomePosition, cache.Position);
+                }
+
+                // To central depot
+                FindPathPlan(citizen.HomePosition, _centralDepot.Position);
+
+                // To each structure
+                foreach (var structure in _structures)
+                {
+                    FindPathPlan(citizen.HomePosition, structure.Position);
+                }
+            }
+
+            // Resource cache -> central depot (hauling paths)
+            foreach (var cache in _siteCaches.Values)
+            {
+                FindPathPlan(cache.Position, _centralDepot.Position);
+            }
+
+            // Cache -> spawn (for cache-to-resource return trips)
+            foreach (var cache in _siteCaches.Values)
+            {
+                foreach (var spawn in _world.ResourceSpawns.Where(s => s.ClusterId == cache.LinkedClusterId))
+                {
+                    FindPathPlan(cache.Position, spawn.Position);
+                }
+            }
+
+            // Depot -> structure (for processing/building supply paths)
+            foreach (var structure in _structures)
+            {
+                FindPathPlan(_centralDepot.Position, structure.Position);
+            }
+        }
+
+        /// <summary>
+        /// Warm path cache from each citizen to each resource spawn position.
+        /// Called during the first Advance tick when resource positions become available.
+        /// </summary>
+        public void WarmPathCacheToResourceSites(IReadOnlyList<PrototypeResourceSiteState> resources)
+        {
+            foreach (var citizen in _citizens)
+            {
+                foreach (var site in resources)
+                {
+                    FindPathPlan(citizen.HomePosition, site.Position);
+                }
+            }
+        }
         private PrototypeRemoteDepotState? GetRemoteDepot(string clusterId, bool requireBuilt = false)
         {
             PrototypeRemoteDepotState? depot = _remoteDepots.FirstOrDefault(candidate => string.Equals(candidate.ClusterId, clusterId, StringComparison.Ordinal));

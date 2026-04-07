@@ -96,7 +96,9 @@ namespace Societies.Simulation
             RebuildNavigation();
             InitializeCitizens(roleQuotas);
             UpdateClassification();
+            WarmPathCache();
         }
+
         public IReadOnlyList<PrototypeWorkerState> Workers => _citizens;
 
         public IReadOnlyList<PrototypeWorkerState> Citizens => _citizens;
