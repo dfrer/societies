@@ -8,6 +8,11 @@ using Xunit;
 
 namespace Societies.Core.Tests
 {
+    /// <summary>
+    /// Extended (long-running) test: workload characterization sweep across
+    /// scenario/worker/duration matrix.
+    /// Run via: dotnet test tests/Societies.Core.Tests.Extended/Societies.Core.Tests.Extended.csproj --filter "Category=Frontier"
+    /// </summary>
     public class SettlementWorkloadCharacterization
     {
         private class RunRec
@@ -17,6 +22,7 @@ namespace Societies.Core.Tests
         }
 
         [Fact]
+        [Trait("Category", "Frontier")]
         public void Characterize_SettlementWorkloadAcrossSizes()
         {
             var bundle = LoadCatalogs();

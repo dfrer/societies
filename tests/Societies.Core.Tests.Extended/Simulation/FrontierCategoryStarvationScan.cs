@@ -8,9 +8,15 @@ using Xunit;
 
 namespace Societies.Core.Tests
 {
+    /// <summary>
+    /// Extended (long-running) test: compares capped vs uncapped frontier behavior
+    /// across multiple scenario/worker configurations.
+    /// Run via: dotnet test tests/Societies.Core.Tests.Extended/Societies.Core.Tests.Extended.csproj --filter "Category=Frontier"
+    /// </summary>
     public class FrontierCategoryStarvationScan
     {
         [Fact]
+        [Trait("Category", "Frontier")]
         public void Compare_CappedVsUncapped_CategoryComposition()
         {
             var configs = new[] {
@@ -147,17 +153,20 @@ namespace Societies.Core.Tests
                 PathBuildPolicy = o.PathBuildPolicy, RemoteDepotPolicy = o.RemoteDepotPolicy,
             };
 
-        static PrototypeCatalogBundle LoadCatalogs()
+        static PrototypeCatalogBundle LoadCatalogs() =>
+            PrototypeCatalogLoader.LoadFromDirectory(GetCatalogDir());
+
+        static string GetCatalogDir()
         {
-            string? cur = AppContext.BaseDirectory;
+            string cur = AppContext.BaseDirectory;
             while (!string.IsNullOrWhiteSpace(cur))
             {
                 string c = Path.Combine(cur, "src", "societies", "data");
-                if (Directory.Exists(c)) return PrototypeCatalogLoader.LoadFromDirectory(c);
+                if (Directory.Exists(c)) return c;
                 var p = Directory.GetParent(cur);
                 cur = p?.FullName;
             }
-            throw new DirectoryNotFoundException("Cannot find societies data");
+            throw new DirectoryNotFoundException("Cannot find src/societies/data");
         }
 
         static List<PrototypeResourceSiteState> BuildResourceSites(WorldGenerationResult world) =>
