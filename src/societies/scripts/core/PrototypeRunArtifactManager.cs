@@ -26,7 +26,8 @@ namespace Societies.Core
                 Path.Combine(root, "event-log-v2.json"),
                 Path.Combine(root, "run-summary-v2.json"),
                 Path.Combine(root, "metrics-timeseries-v2.csv"),
-                Path.Combine(root, "world-summary-v2.json"));
+                Path.Combine(root, "world-summary-v2.json"),
+                Path.Combine(root, "perf-frame-timings.csv"));
         }
 
         public string SaveArtifacts(
@@ -105,7 +106,8 @@ namespace Societies.Core
         string EventLogV2Path,
         string RunSummaryV2Path,
         string MetricsCsvPath,
-        string WorldSummaryV2Path);
+        string WorldSummaryV2Path,
+        string PerfFrameTimingsCsvPath);
 
     public readonly record struct PrototypeLoadedArtifacts(
         PrototypeRuntimeSnapshot Snapshot,

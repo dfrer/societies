@@ -238,9 +238,16 @@ namespace Societies.Simulation
                 AdvanceCitizenNeeds(citizen, currentHour, weather, result);
             }
 
+            long bwoStart = System.Diagnostics.Stopwatch.GetTimestamp();
             List<PrototypeWorkOrder> availableOrders = BuildWorkOrders(resources, currentHour, weather);
+            double bwoMs = (System.Diagnostics.Stopwatch.GetTimestamp() - bwoStart) * 1000.0 / System.Diagnostics.Stopwatch.Frequency;
             _workOrdersGeneratedThisTick = availableOrders.Count;
             UpdateRouteBacklogMetrics(availableOrders);
+
+            if (RuntimeFrameMetrics.Instance.IsEnabled)
+            {
+                RuntimeFrameMetrics.Instance.BuildWorkOrdersTotalMs = bwoMs;
+            }
 
             foreach (PrototypeWorkerState citizen in _citizens.OrderBy(candidate => candidate.WorkerId, StringComparer.Ordinal))
             {

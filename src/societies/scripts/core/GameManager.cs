@@ -4,6 +4,7 @@ using Societies.Simulation;
 using Societies.UI;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 
 namespace Societies.Core
@@ -89,6 +90,17 @@ namespace Societies.Core
             GD.Print("Societies Prototype V2 M3 initialized");
         }
 
+        private int _frameCounter;
+
+        /// <summary>
+        /// Maximum simulation ticks to process in a single rendered frame.
+        /// Prevents pathological catch-up cascades when a single tick is expensive
+        /// (e.g., first-tick warm-up at 10s+ or cache-invalidation spikes).
+        /// At 20 ticks/sec and 60 fps, the theoretical max is ~3, but in practice
+        /// we allow a small burst to clear normal backlog while capping runaway.
+        /// </summary>
+        private const int MaxTicksPerFrame = 12;
+
         public override void _Process(double delta)
         {
             if (!IsGameRunning)
@@ -96,14 +108,51 @@ namespace Societies.Core
                 return;
             }
 
+            RuntimeFrameMetrics m = RuntimeFrameMetrics.Instance;
+            if (m.IsEnabled) m.BeginPhase(RuntimeFrameMetrics.Phase.FrameTotal);
+            if (m.IsEnabled) m.BeginFrame();
+
             _tickAccumulator += delta;
-            while (_tickAccumulator >= TickIntervalSeconds)
+            int ticksThisFrame = 0;
+            while (_tickAccumulator >= TickIntervalSeconds && ticksThisFrame < MaxTicksPerFrame)
             {
                 _tickAccumulator -= TickIntervalSeconds;
                 ProcessSimulationTick();
+                ticksThisFrame++;
+                if (m.IsEnabled) m.RecordTickProcessed();
             }
 
+            if (m.IsEnabled)
+            {
+                m.PathPlanLookupsLastTick = _runtimeSession?.SettlementSimulationDiagnostics?.PathPlanLookups ?? 0;
+                m.PathPlanCacheHitsLastTick = _runtimeSession?.SettlementSimulationDiagnostics?.PathPlanCacheHits ?? 0;
+                m.WorkOrdersGeneratedLastTick = _runtimeSession?.SettlementSimulationDiagnostics?.WorkOrdersGenerated ?? 0;
+                m.WorkOrdersRemainingLastTick = _runtimeSession?.SettlementSimulationDiagnostics?.WorkOrdersRemaining ?? 0;
+            }
+
+            if (m.IsEnabled) m.BeginPhase(RuntimeFrameMetrics.Phase.UpdateHud);
             UpdateHud();
+            if (m.IsEnabled) m.EndPhase(RuntimeFrameMetrics.Phase.UpdateHud);
+
+            if (m.IsEnabled)
+            {
+                m.EndFrame();
+                m.AccumulateSessionStats();
+                m.WriteCsvRow(m.ToCsvRow(_frameCounter));
+                _frameCounter++;
+                if (_frameCounter % 50 == 0) // Summary every 50 frames
+                {
+                    GD.Print(m.BuildFrameSummary());
+                }
+            }
+
+            // Watchdog: warn when backlog is building up (catch-up cap is being hit)
+            if (_tickAccumulator >= TickIntervalSeconds * 2)
+            {
+                int backlogTicks = (int)(_tickAccumulator / TickIntervalSeconds);
+                GD.Print($"[PERF WARNING] Tick backlog: {backlogTicks} ticks, capping at {MaxTicksPerFrame} per frame. Frame wall: {RuntimeFrameMetrics.Instance.FrameWallMs:F1}ms");
+            }
+            if (m.IsEnabled) m.EndPhase(RuntimeFrameMetrics.Phase.FrameTotal);
         }
 
         public override void _UnhandledInput(InputEvent @event)
@@ -305,7 +354,18 @@ namespace Societies.Core
             PrototypeWorldSummary worldSummary = PrototypeWorldSummaryBuilder.Build(_runtimeSession, _terrain, snapshot.Resources);
             _lastWorldSummary = worldSummary;
 
+            RuntimeFrameMetrics m = RuntimeFrameMetrics.Instance;
+            if (m.IsEnabled) m.BeginPhase(RuntimeFrameMetrics.Phase.SaveArtifact);
             string snapshotPath = _artifactManager.SaveArtifacts(_runtimeSession, snapshot, worldSummary);
+
+            if (RuntimeFrameMetrics.Instance.IsEnabled)
+            {
+                string perfPath = _artifactManager.GetArtifactPaths().PerfFrameTimingsCsvPath;
+                RuntimeFrameMetrics.Instance.ExportToCsv(perfPath);
+                string summaryPath = perfPath.Replace("perf-frame-timings.csv", "perf-summary.txt");
+                System.IO.File.WriteAllText(summaryPath, RuntimeFrameMetrics.Instance.BuildSessionSummary());
+            }
+            if (m.IsEnabled) m.EndPhase(RuntimeFrameMetrics.Phase.SaveArtifact);
             _hud?.SetStatusText($"Saved snapshot to {Path.GetFileName(snapshotPath)}");
             return snapshotPath;
         }
@@ -545,11 +605,20 @@ namespace Societies.Core
                 return;
             }
 
+            RuntimeFrameMetrics m = RuntimeFrameMetrics.Instance;
+
+            if (m.IsEnabled) m.BeginPhase(RuntimeFrameMetrics.Phase.SessionAdvance);
+            double tickStart = 0;
+            if (m.IsEnabled) tickStart = System.Diagnostics.Stopwatch.GetTimestamp();
+
             PrototypeRuntimeTickResult tickResult = _runtimeSession.Advance(
                 (float)TickIntervalSeconds,
                 _environmentController.DayLengthSeconds,
                 _scenePresenter.CaptureResourceSites());
 
+            if (m.IsEnabled) m.EndPhase(RuntimeFrameMetrics.Phase.SessionAdvance);
+
+            if (m.IsEnabled) m.BeginPhase(RuntimeFrameMetrics.Phase.HarvestApply);
             foreach (PrototypeHarvestRequest request in tickResult.SettlementResult.HarvestRequests)
             {
                 if (_scenePresenter.ApplyHarvestRequest(request, out string itemId, out int harvestedAmount))
@@ -561,15 +630,25 @@ namespace Societies.Core
                     _runtimeSession.OnHarvestFailed(request.WorkerId, request.WorkerDisplayName, request.ResourceId);
                 }
             }
+            if (m.IsEnabled) m.EndPhase(RuntimeFrameMetrics.Phase.HarvestApply);
 
             _runtimeSession.RecordSettlementEvents(tickResult.SettlementResult.Events);
+
+            if (m.IsEnabled) m.BeginPhase(RuntimeFrameMetrics.Phase.SceneSync);
             ApplyRuntimeStateToScene();
             _scenePresenter.SyncWorkers(_runtimeSession.Workers);
             UpdateSettlementPresentationFromSession();
+            if (m.IsEnabled) m.EndPhase(RuntimeFrameMetrics.Phase.SceneSync);
 
             if (tickResult.ShouldCaptureMetrics)
             {
                 CaptureMetricsSnapshot();
+            }
+
+            if (m.IsEnabled)
+            {
+                double tickElapsed = (System.Diagnostics.Stopwatch.GetTimestamp() - tickStart) * 1000.0 / System.Diagnostics.Stopwatch.Frequency;
+                m.RecordTickDurationMs(tickElapsed);
             }
         }
 
@@ -807,6 +886,11 @@ namespace Societies.Core
             return _catalogs.Scenarios.ResolveDefault();
         }
 
+        // Inventory/stockpile change observers. NOTE: These do NOT trigger
+        // UpdateHud() anymore because _Process already calls UpdateHud() every
+        // rendered frame. Triggering on every inventory mutation caused N+1 HUD
+        // rebuilds per simulation tick (one for the tick itself + one per
+        // inventory mutation via the Changed event).
         private void AttachRuntimeObservers()
         {
             if (_runtimeSession == null)
@@ -814,8 +898,8 @@ namespace Societies.Core
                 return;
             }
 
-            _runtimeSession.Inventory.Changed += OnInventoryChanged;
-            _runtimeSession.Stockpile.Changed += OnStockpileChanged;
+            _runtimeSession.Inventory.Changed += OnRuntimeStateChanged;
+            _runtimeSession.Stockpile.Changed += OnRuntimeStateChanged;
         }
 
         private void DetachRuntimeObservers()
@@ -825,18 +909,16 @@ namespace Societies.Core
                 return;
             }
 
-            _runtimeSession.Inventory.Changed -= OnInventoryChanged;
-            _runtimeSession.Stockpile.Changed -= OnStockpileChanged;
+            _runtimeSession.Inventory.Changed -= OnRuntimeStateChanged;
+            _runtimeSession.Stockpile.Changed -= OnRuntimeStateChanged;
         }
 
-        private void OnInventoryChanged()
+        private void OnRuntimeStateChanged()
         {
-            UpdateHud();
-        }
-
-        private void OnStockpileChanged()
-        {
-            UpdateHud();
+            // No-op: HUD is rebuilt once per frame in _Process, so we don't
+            // need to fire UpdateHud() on every inventory mutation. The
+            // observer is attached only to keep the wiring in place for any
+            // future code that may depend on these events.
         }
 
         private void OnPlayerHarvested(string itemId, int amount)

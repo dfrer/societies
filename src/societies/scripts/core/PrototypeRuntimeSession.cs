@@ -99,6 +99,25 @@ namespace Societies.Core
                     })
                     .ToList();
 
+        /// <summary>
+        /// Exposes settlement-level diagnostics (work orders, path lookups, etc.) for observability.
+        /// Returns null when settlement simulation is not initialized.
+        /// </summary>
+        public SettlementDiagnosticsSnapshot? SettlementSimulationDiagnostics =>
+            _settlementSimulation?.Diagnostics == null
+                ? null
+                : new SettlementDiagnosticsSnapshot
+                {
+                    TotalTicksMeasured = _settlementSimulation.Diagnostics.TotalTicksMeasured,
+                    WorkOrdersGenerated = _settlementSimulation.Diagnostics.WorkOrdersGenerated,
+                    WorkOrdersClaimed = _settlementSimulation.Diagnostics.WorkOrdersClaimed,
+                    WorkOrdersRemaining = _settlementSimulation.Diagnostics.WorkOrdersRemaining,
+                    PathPlanLookups = _settlementSimulation.Diagnostics.PathPlanLookups,
+                    PathPlanCacheHits = _settlementSimulation.Diagnostics.PathPlanCacheHits,
+                    CitizensEvaluated = _settlementSimulation.Diagnostics.CitizensEvaluated,
+                    PeakOrdersThisSession = _settlementSimulation.Diagnostics.PeakOrdersThisSession,
+                };
+
         public string SelectedBuildQueueStatusText => _settlementSimulation?.SelectedBuildQueueStatusText ?? "Build Queue: empty";
 
         public WorldGenerationResult? World => _world;
@@ -371,6 +390,22 @@ namespace Societies.Core
             }
             return next;
         }
+    }
+
+    /// <summary>
+    /// Decoupled snapshot of settlement diagnostics for external observers.
+    /// Avoids coupling callers to the internal PrototypeSettlementDiagnosticsState.
+    /// </summary>
+    public readonly record struct SettlementDiagnosticsSnapshot
+    {
+        public int TotalTicksMeasured { get; init; }
+        public int WorkOrdersGenerated { get; init; }
+        public int WorkOrdersClaimed { get; init; }
+        public int WorkOrdersRemaining { get; init; }
+        public int PathPlanLookups { get; init; }
+        public int PathPlanCacheHits { get; init; }
+        public int CitizensEvaluated { get; init; }
+        public int PeakOrdersThisSession { get; init; }
     }
 
     public readonly record struct PrototypeRuntimeTickResult(
