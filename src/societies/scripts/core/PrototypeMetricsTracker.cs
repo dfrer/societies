@@ -1,6 +1,7 @@
 using Societies.Simulation;
 using System.Collections.Generic;
 using System.Globalization;
+using System.ComponentModel;
 using System.Linq;
 using System.Text;
 
@@ -77,7 +78,7 @@ namespace Societies.Core
                 builder.Append(',');
                 builder.Append(frame.CurrentHour.ToString("0.###", CultureInfo.InvariantCulture));
                 builder.Append(',');
-                builder.Append(frame.WeatherName);
+                AppendCsvField(builder, frame.WeatherName);
                 builder.Append(',');
                 builder.Append(frame.InventoryTotal.ToString(CultureInfo.InvariantCulture));
                 builder.Append(',');
@@ -91,7 +92,7 @@ namespace Societies.Core
                 builder.Append(',');
                 builder.Append(frame.RemainingResourceUnits.ToString(CultureInfo.InvariantCulture));
                 builder.Append(',');
-                builder.Append(frame.SettlementClassification);
+                AppendCsvField(builder, frame.SettlementClassification);
                 builder.Append(',');
                 builder.Append(frame.MealCoveragePercent.ToString(CultureInfo.InvariantCulture));
                 builder.Append(',');
@@ -117,10 +118,28 @@ namespace Societies.Core
 
             return builder.ToString();
         }
+
+        private static void AppendCsvField(StringBuilder builder, string field)
+        {
+            if (field.Contains(',') || field.Contains('"') || field.Contains('\n') || field.Contains('\r'))
+            {
+                builder.Append('"');
+                builder.Append(field.Replace("\"", "\"\""));
+                builder.Append('"');
+            }
+            else
+            {
+                builder.Append(field);
+            }
+        }
     }
 
-    public sealed class PrototypeMetricsFrame
+    public sealed class PrototypeMetricsFrame : INotifyPropertyChanged
     {
+        public event PropertyChangedEventHandler? PropertyChanged;
+
+        private int _workerCount;
+
         public long SimulationTick { get; set; }
 
         public float CurrentHour { get; set; }
@@ -131,7 +150,20 @@ namespace Societies.Core
 
         public int StockpileTotal { get; set; }
 
-        public int WorkerCount { get; set; }
+        public int WorkerCount
+        {
+            get => _workerCount;
+            set
+            {
+                if (_workerCount == value)
+                {
+                    return;
+                }
+
+                _workerCount = value;
+                OnPropertyChanged(nameof(WorkerCount));
+            }
+        }
 
         public int ActiveWorkerCount { get; set; }
 
@@ -160,5 +192,10 @@ namespace Societies.Core
         public int DepotThroughputTotal { get; set; }
 
         public int RouteBacklogTickTotal { get; set; }
+
+        private void OnPropertyChanged(string propertyName)
+        {
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        }
     }
 }
