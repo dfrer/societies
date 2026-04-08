@@ -77,6 +77,7 @@ namespace Societies.Simulation
             AddBuildOrders(orders);
             AddReserveExtractionOrders(orders, resources, committedCarries, currentHour, weather);
             orders = RemoveClaimedOrders(orders);
+            _workOrdersGeneratedUncappedThisTick = orders.Count;
             orders = ApplyWorkOrderFrontierLimit(orders);
             return orders;
         }
@@ -572,6 +573,10 @@ namespace Societies.Simulation
             committedCarries.GetValueOrDefault(resourceId);
         private int GetMealTarget() => Math.Max(8, _citizens.Count * 3);
         private int GetFirewoodTarget() => Math.Max(6, _citizens.Count * 2);
+        public int GetActiveOrderCount() =>
+            _citizens.Count(citizen =>
+                citizen.Phase != PrototypeWorkerPhase.Idle &&
+                citizen.Phase != PrototypeWorkerPhase.Incapacitated);
         private int GetLogTarget() => Math.Max(8, GetPendingConstructionRequirement("timber") + GetPendingConstructionRequirement("firewood") + 4);
         private int GetBerryTarget() => Math.Max(6, _citizens.Count * 2);
         private int GetPendingConstructionRequirement(string resourceId)

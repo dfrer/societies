@@ -131,6 +131,7 @@ namespace Societies.Simulation
             public int WorkOrdersGenerated;
             public int WorkOrdersClaimed;
             public int WorkOrdersRemaining;
+            public int WorkOrdersGeneratedUncapped;
             public int PathPlanLookups;
             public int PathPlanCacheHits;
             public int CitizensEvaluated;
@@ -139,6 +140,7 @@ namespace Societies.Simulation
 
         private readonly PrototypeSettlementDiagnosticsState _diagnostics = new();
         private int _workOrdersGeneratedThisTick;
+        private int _workOrdersGeneratedUncappedThisTick;
         private int _workOrdersRemainingAfterAssignment;
         private int _pathPlanLookupsThisTick;
         private int _pathPlanCacheHitsThisTick;
@@ -216,6 +218,7 @@ namespace Societies.Simulation
             _totalTicks++;
 
             _workOrdersGeneratedThisTick = 0;
+            _workOrdersGeneratedUncappedThisTick = 0;
             _workOrdersRemainingAfterAssignment = 0;
             _pathPlanLookupsThisTick = 0;
             _pathPlanCacheHitsThisTick = 0;
@@ -250,6 +253,7 @@ namespace Societies.Simulation
             _workOrdersRemainingAfterAssignment = availableOrders.Count;
             _diagnostics.TotalTicksMeasured++;
             _diagnostics.WorkOrdersGenerated = _workOrdersGeneratedThisTick;
+            _diagnostics.WorkOrdersGeneratedUncapped = _workOrdersGeneratedUncappedThisTick;
             _diagnostics.WorkOrdersClaimed = _workOrdersGeneratedThisTick - availableOrders.Count;
             _diagnostics.WorkOrdersRemaining = _workOrdersRemainingAfterAssignment;
             _diagnostics.PathPlanLookups = _pathPlanLookupsThisTick;
