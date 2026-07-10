@@ -1,5 +1,11 @@
 # Planning
 
+## Active Plan
+
+- [Societies V3: Two-Week Development Plan](active/v3-two-week-development-plan.md) — July 13–24, 2026
+
+Short-horizon plans under `planning/active/` are grounded in the current build and take priority over older aspirational documents during their execution window. The code and `CURRENT_BUILD.md` remain authoritative for what is implemented.
+
 ## What Is This?
 
 The `planning/` tree contains design documents, session outputs, research, and spreadsheets for the Societies project. These are **aspirational** — they describe systems we want to build, not systems that are currently implemented.
@@ -8,22 +14,24 @@ The `planning/` tree contains design documents, session outputs, research, and s
 
 **Planning documents are not authoritative.** If a planning document conflicts with the code, the code wins. The current authoritative implementation lives in `src/societies/` — see `CURRENT_BUILD.md` at repo root for what actually exists today.
 
-Many planning documents (especially Sessions 1–7) describe systems that are not yet built: multiplayer networking, GOAP/Utility AI, voxel terrain, markets, governance, event sourcing, PostgreSQL persistence. The current prototype is a **local deterministic settlement simulation** with 3–18 AI agents, heightfield terrain, JSON persistence, and no networking.
+Many planning documents (especially Sessions 1–7) describe systems that are not yet built: multiplayer networking, GOAP/Utility AI, voxel terrain, markets, governance, event sourcing, PostgreSQL persistence. The current prototype is a **local deterministic settlement simulation** with 12–18 citizens in shipped scenarios (plus smaller test fixtures and a 24-citizen stress override), heightfield terrain, JSON persistence, and no networking.
 
 > **Staleness notice:** Some planning docs describe systems that don't exist in code yet. Others reference files that were renamed or moved during reorganizations. Read with caution. When in doubt, check the code first.
 
 ## How to Navigate
 
 1. **Start here:** `CURRENT_BUILD.md` — what is actually implemented right now
-2. **Then:** `planning/sessions/[AGENTS-READ-FIRST]-index.md` — full planning session index
-3. **For constants:** `planning/meta/technical-constants.md` — aspirational numerical reference (not yet a shared C# class)
-4. **For research:** `planning/research/[MASTER-RESEARCH-INDEX].md` — game analysis and technical research
-5. **For reference:** `planning/meta/[META-INDEX].md` — cross-cutting project documentation
+2. **For current execution:** `planning/active/README.md` — active short-horizon development plans
+3. **Then:** `planning/sessions/[AGENTS-READ-FIRST]-index.md` — full planning session index
+4. **For constants:** `planning/meta/technical-constants.md` — aspirational numerical reference (not yet a shared C# class)
+5. **For research:** `planning/research/[MASTER-RESEARCH-INDEX].md` — game analysis and technical research
+6. **For reference:** `planning/meta/[META-INDEX].md` — cross-cutting project documentation
 
 ## Directory Structure
 
 ```
 planning/
+├── active/            # Current short-horizon execution plans
 ├── sessions/          # Core planning sessions 1–7
 ├── research/          # Game analysis, technical research, reference PDFs
 ├── meta/              # Cross-cutting reference docs and constants
@@ -41,4 +49,4 @@ planning/
 - Research files use `r##-` prefixes: `r1-eco-performance-research.md`
 - Archive reorganization trail is in `planning/meta/navigation/reorg-history/`
 
-*Last updated: 2026-04-04*
+*Last updated: 2026-07-09*

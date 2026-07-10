@@ -14,7 +14,7 @@ namespace Societies.Core.Tests
             var tracker = new PrototypeMetricsTracker();
             string csv = tracker.BuildCsv();
 
-            string[] lines = csv.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+            string[] lines = SplitCsvLines(csv);
             Assert.Single(lines);
             Assert.Equal("simulation_tick,current_hour,weather,inventory_total,stockpile_total,worker_count,active_worker_count,resource_node_count,remaining_resource_units,settlement_classification,meal_coverage_percent,bed_coverage_percent,hearth_fuel,built_structure_count,blocked_structure_count,average_route_length_meters,average_travel_work_ratio,path_coverage_ratio,depot_throughput_total,route_backlog_tick_total", lines[0].Trim());
         }
@@ -26,7 +26,7 @@ namespace Societies.Core.Tests
             CaptureFrame(tracker, tick: 100, hour: 8.5f, weather: "Clear", workers: 3, classification: "stable");
 
             string csv = tracker.BuildCsv();
-            string[] lines = csv.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+            string[] lines = SplitCsvLines(csv);
 
             Assert.Equal(2, lines.Length);
             string data = lines[1];
@@ -47,7 +47,7 @@ namespace Societies.Core.Tests
             CaptureFrame(tracker, tick: 1, hour: 0f, weather: "Clear, Windy", workers: 0, classification: "stable");
 
             string csv = tracker.BuildCsv();
-            string dataLine = csv.Split('\n')[1];
+            string dataLine = SplitCsvLines(csv)[1];
             // The weather field should be quoted since it contains a comma
             Assert.Contains("\"Clear, Windy\"", dataLine);
         }
@@ -59,7 +59,7 @@ namespace Societies.Core.Tests
             CaptureFrame(tracker, tick: 1, hour: 0f, weather: "He said \"hello\"", workers: 0, classification: "stable");
 
             string csv = tracker.BuildCsv();
-            string dataLine = csv.Split('\n')[1];
+            string dataLine = SplitCsvLines(csv)[1];
             Assert.Contains("\"He said \"\"hello\"\"\"", dataLine);
         }
 
@@ -84,7 +84,7 @@ namespace Societies.Core.Tests
 
             string csv = tracker.BuildCsv();
             // Verify data was captured (header + data row)
-            string[] lines = csv.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+            string[] lines = SplitCsvLines(csv);
             Assert.Equal(2, lines.Length);
             // Classification field shows "strained" since the parse fell back
             string[] fields = lines[1].Split(',');
@@ -112,7 +112,7 @@ namespace Societies.Core.Tests
             CaptureFrame(tracker, tick: 40, hour: 2f, weather: "Clear", workers: 3, classification: "stable");
 
             string csv = tracker.BuildCsv();
-            string[] lines = csv.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+            string[] lines = SplitCsvLines(csv);
             Assert.Equal(4, lines.Length); // 1 header + 3 data
         }
 
@@ -123,7 +123,7 @@ namespace Societies.Core.Tests
             CaptureFrame(tracker, tick: 0, hour: 0f, weather: "Clear", workers: 0, classification: "stable");
 
             string csv = tracker.BuildCsv();
-            string dataLine = csv.Split('\n')[1];
+            string dataLine = SplitCsvLines(csv)[1];
             string[] fields = dataLine.Split(',');
 
             Assert.Equal("0", fields[0]);   // simulation_tick
@@ -144,7 +144,7 @@ namespace Societies.Core.Tests
             // Override specific fields by capturing a second frame with large values
             // (the helper uses reasonable defaults; this test checks no localized commas appear)
             string csv = tracker.BuildCsv();
-            string dataLine = csv.Split('\n')[1];
+            string dataLine = SplitCsvLines(csv)[1];
             // Verify no localized formatting (no commas as thousand separators in tick)
             Assert.DoesNotContain("1,234,567,890,123", dataLine);
         }
@@ -157,7 +157,7 @@ namespace Societies.Core.Tests
             tracker.Clear();
 
             string csv = tracker.BuildCsv();
-            string[] lines = csv.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+            string[] lines = SplitCsvLines(csv);
             Assert.Single(lines); // header only
         }
 
@@ -204,6 +204,13 @@ namespace Societies.Core.Tests
                 pathCoverageRatio: 0.1f,
                 depotThroughputByDepot: new Dictionary<string, int> { ["d1"] = 1 },
                 routeBacklogTicksByKind: new Dictionary<string, int> { ["haul"] = 1 });
+        }
+
+        private static string[] SplitCsvLines(string csv)
+        {
+            return csv
+                .ReplaceLineEndings("\n")
+                .Split('\n', StringSplitOptions.RemoveEmptyEntries);
         }
 
         private static PrototypeWorkerState[] MakeWorkers(int count)
