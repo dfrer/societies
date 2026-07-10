@@ -51,6 +51,7 @@ namespace Societies.Tests
             Test_SceneTree_Access();
             await Test_MainScene_BootstrapSmoke();
             await Test_MainScene_FrameCatchUpCapSmoke();
+            await Test_MainScene_HudRefreshCoalescingSmoke();
             await Test_MainScene_WorkerVisualizationSmoke();
             await Test_MainScene_CraftingAndSnapshotSmoke();
             await Test_MainScene_ResetAndRestoreSmoke();
@@ -228,6 +229,46 @@ namespace Societies.Tests
             catch (Exception ex)
             {
                 Fail(nameof(Test_MainScene_FrameCatchUpCapSmoke), ex);
+            }
+            finally
+            {
+                if (scene != null)
+                {
+                    scene.QueueFree();
+                    await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+                }
+            }
+        }
+
+        private async Task Test_MainScene_HudRefreshCoalescingSmoke()
+        {
+            Node? scene = null;
+
+            try
+            {
+                PackedScene packedScene = GD.Load<PackedScene>("res://scenes/main.tscn");
+                Assert(packedScene != null, "Main scene failed to load");
+
+                scene = packedScene!.Instantiate();
+                AddChild(scene);
+                await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+
+                GameManager manager = scene as GameManager ?? throw new Exception("Main scene root is not GameManager");
+                PrototypeHud hud = manager.GetNodeOrNull<PrototypeHud>("UI") ?? throw new Exception("PrototypeHud missing");
+                manager.SetProcess(false);
+
+                string inventoryBeforeMutation = hud.InventoryText;
+                manager.Inventory.AddItem("hud_refresh_probe", 1);
+                Assert(hud.InventoryText == inventoryBeforeMutation, "Inventory mutation should not rebuild the HUD synchronously");
+
+                manager._Process(0.0);
+                Assert(hud.InventoryText.Contains("hud refresh probe: 1"), "The next rendered-frame update should present the inventory mutation");
+
+                Pass(nameof(Test_MainScene_HudRefreshCoalescingSmoke));
+            }
+            catch (Exception ex)
+            {
+                Fail(nameof(Test_MainScene_HudRefreshCoalescingSmoke), ex);
             }
             finally
             {

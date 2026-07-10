@@ -539,7 +539,6 @@ namespace Societies.Core
 
         private void CreateRuntimeSession(PrototypeScenarioDefinition scenario)
         {
-            DetachRuntimeObservers();
             _scenario = scenario;
             ApplyScenarioDefaults(scenario);
 
@@ -550,7 +549,6 @@ namespace Societies.Core
             }
 
             _runtimeSession = new PrototypeRuntimeSession(scenario, _catalogs?.RoleQuotas.Roles);
-            AttachRuntimeObservers();
             BindPlayerToRuntime();
         }
 
@@ -835,38 +833,6 @@ namespace Societies.Core
             return _catalogs.Scenarios.ResolveDefault();
         }
 
-        private void AttachRuntimeObservers()
-        {
-            if (_runtimeSession == null)
-            {
-                return;
-            }
-
-            _runtimeSession.Inventory.Changed += OnInventoryChanged;
-            _runtimeSession.Stockpile.Changed += OnStockpileChanged;
-        }
-
-        private void DetachRuntimeObservers()
-        {
-            if (_runtimeSession == null)
-            {
-                return;
-            }
-
-            _runtimeSession.Inventory.Changed -= OnInventoryChanged;
-            _runtimeSession.Stockpile.Changed -= OnStockpileChanged;
-        }
-
-        private void OnInventoryChanged()
-        {
-            UpdateHud();
-        }
-
-        private void OnStockpileChanged()
-        {
-            UpdateHud();
-        }
-
         private void OnPlayerHarvested(string itemId, int amount)
         {
             string message = $"Harvested {InventoryComponent.FormatItemName(itemId)} x{amount}";
@@ -1015,7 +981,6 @@ namespace Societies.Core
                 _player.Harvested -= OnPlayerHarvested;
             }
 
-            DetachRuntimeObservers();
             Instance = null;
         }
     }

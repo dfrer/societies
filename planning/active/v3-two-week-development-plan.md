@@ -22,6 +22,7 @@ This is the authoritative short-horizon execution plan for the next two weeks. `
 - **Baseline correction:** synchronized master contains 79 required .NET tests. Its first Windows run passed 77 and exposed two CRLF-sensitive CSV test assertions; the runtime CSV was valid.
 - **First green checkpoint:** normalized line endings in the CSV test parser, then captured a zero-warning Release build, 79/79 .NET tests, and 13/13 Godot headless tests. See `planning/active/evidence/v3-day1-validation-manifest.json`.
 - **First runtime hardening unit:** added a 12-tick rendered-frame cap that retains backlog, restores unattempted intervals after a tick failure, and leaves direct test/soak stepping uncapped. Validation passed 85/85 .NET and 14/14 Godot tests; see `planning/active/evidence/v3-w1-02a-catchup-validation.json`.
+- **HUD coalescing unit:** removed redundant inventory/stockpile event-driven HUD rebuilds while retaining rendered-frame and explicit command refreshes. Validation passed 85/85 .NET and 15/15 Godot tests; see `planning/active/evidence/v3-w1-02b-hud-coalescing-validation.json`.
 
 ## Decision and Intended Outcome
 

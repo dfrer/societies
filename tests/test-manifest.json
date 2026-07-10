@@ -31,7 +31,7 @@
       "projectPath": "src/societies",
       "scene": "res://tests/HeadlessTestRunner.tscn",
       "command": "godot --headless --path src/societies res://tests/HeadlessTestRunner.tscn",
-      "expectedTestCount": 14,
+      "expectedTestCount": 15,
       "selectiveExecutionSupported": false,
       "tiers": {
         "fast": [
@@ -43,6 +43,7 @@
         ],
         "integration": [
           "Test_MainScene_FrameCatchUpCapSmoke",
+          "Test_MainScene_HudRefreshCoalescingSmoke",
           "Test_MainScene_WorkerVisualizationSmoke",
           "Test_MainScene_CraftingAndSnapshotSmoke",
           "Test_MainScene_ResetAndRestoreSmoke",
