@@ -5,10 +5,10 @@
     "dotnet": {
       "project": "tests/Societies.Core.Tests/Societies.Core.Tests.csproj",
       "command": "dotnet test tests/Societies.Core.Tests/Societies.Core.Tests.csproj --configuration Release",
-      "expectedTestCount": 85,
+      "expectedTestCount": 91,
       "tiers": {
         "fast": {
-          "expectedTestCount": 69,
+          "expectedTestCount": 75,
           "filter": "FullyQualifiedName!~PrototypeRuntimeSessionTests&FullyQualifiedName!~PrototypeSettlementSimulationTests&FullyQualifiedName!~SettlementDiagnosticsTests&FullyQualifiedName!~WorkOrderGenerationDiagnosticsTests"
         },
         "integration": {
