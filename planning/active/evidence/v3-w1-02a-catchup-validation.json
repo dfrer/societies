@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "capturedUtc": "2026-07-10T04:39:29.8519054Z",
+  "status": "pass",
+  "branch": "feature/v3-runtime-hardening",
+  "baseCommit": "74d9528092b1f305442dcab2915b10ccaa708dcd",
+  "unit": "bounded rendered-frame catch-up with retained backlog",
+  "contract": {
+    "tickIntervalSeconds": 0.05,
+    "maximumTicksPerRenderedFrame": 12,
+    "backlogIsRetained": true,
+    "unattemptedTicksAreRestoredAfterFailure": true,
+    "directStepSimulationRemainsUncapped": true
+  },
+  "validation": {
+    "fastDotnet": {
+      "passed": 69,
+      "failed": 0,
+      "durationSeconds": 3
+    },
+    "requiredDotnet": {
+      "passed": 85,
+      "failed": 0,
+      "skipped": 0,
+      "testDurationSeconds": 318,
+      "commandWallDurationSeconds": 321
+    },
+    "godotBuildSolutions": {
+      "passed": true
+    },
+    "godotHeadless": {
+      "passed": 14,
+      "failed": 0,
+      "durationSeconds": 360.4,
+      "requiredTest": "Test_MainScene_FrameCatchUpCapSmoke",
+      "expectedWarning": "Simulation backlog: 8 ticks remain after the 12-tick frame cap."
+    }
+  },
+  "reviewCorrection": "The initial batch reservation could discard unattempted intervals if a tick threw. The accepted implementation restores every interval whose tick did not begin while leaving the failed tick consumed, matching the prior loop's semantics."
+}

@@ -15,6 +15,8 @@ namespace Societies.Core
     public partial class GameManager : Node
     {
         private const double TickIntervalSeconds = 1.0 / 20.0;
+        private const int MaxTicksPerFrame = 12;
+        private const double BacklogWarningCooldownSeconds = 5.0;
         private const string DefaultScenarioId = "balanced_basin";
 
         public static GameManager? Instance { get; private set; }
@@ -46,7 +48,8 @@ namespace Societies.Core
         private PrototypeRuntimeSession? _runtimeSession;
         private PrototypeSettlementScenePresenter? _scenePresenter;
         private readonly InventoryComponent _fallbackInventory = new();
-        private double _tickAccumulator;
+        private readonly FixedStepAccumulator _fixedStepAccumulator = new(TickIntervalSeconds, MaxTicksPerFrame);
+        private double _backlogWarningCooldownSeconds;
         private CameraMode _cameraMode = CameraMode.Player;
         private TerrainOverlayMode _overlayMode = TerrainOverlayMode.None;
         private PrototypeWorldSummary? _lastWorldSummary;
@@ -96,11 +99,30 @@ namespace Societies.Core
                 return;
             }
 
-            _tickAccumulator += delta;
-            while (_tickAccumulator >= TickIntervalSeconds)
+            _backlogWarningCooldownSeconds = Math.Max(0.0, _backlogWarningCooldownSeconds - delta);
+            int ticksToProcess = _fixedStepAccumulator.Consume(delta);
+            int ticksAttempted = 0;
+            try
             {
-                _tickAccumulator -= TickIntervalSeconds;
-                ProcessSimulationTick();
+                for (; ticksAttempted < ticksToProcess; ticksAttempted++)
+                {
+                    ProcessSimulationTick();
+                }
+            }
+            catch
+            {
+                // The failing tick was attempted and keeps its interval. Only work that never
+                // started returns to the backlog for a future rendered frame.
+                int unattemptedTicks = ticksToProcess - ticksAttempted - 1;
+                _fixedStepAccumulator.RestoreUnprocessedTicks(unattemptedTicks);
+                throw;
+            }
+
+            if (_fixedStepAccumulator.HasBacklog && _backlogWarningCooldownSeconds <= 0.0)
+            {
+                GD.PushWarning(
+                    $"Simulation backlog: {_fixedStepAccumulator.PendingWholeTicks} ticks remain after the {MaxTicksPerFrame}-tick frame cap.");
+                _backlogWarningCooldownSeconds = BacklogWarningCooldownSeconds;
             }
 
             UpdateHud();
@@ -326,7 +348,7 @@ namespace Societies.Core
             PrototypeScenarioDefinition scenario = ResolveScenarioDefinition(artifacts.Snapshot.ScenarioId);
             CreateRuntimeSession(scenario);
 
-            _tickAccumulator = 0.0;
+            ResetFrameScheduler();
             _runtimeSession!.ApplySnapshot(artifacts.Snapshot);
             _runtimeSession.RestoreArtifacts(artifacts.EventLog, artifacts.RunSummary);
 
@@ -485,7 +507,7 @@ namespace Societies.Core
 
             CreateRuntimeSession(_scenario);
             _runtimeSession!.Initialize(_environmentController.StartHour);
-            _tickAccumulator = 0.0;
+            ResetFrameScheduler();
 
             _scenePresenter.ResetDynamicNodes();
             ApplyWorldToScene();
@@ -507,6 +529,12 @@ namespace Societies.Core
             _selectedCitizenInspectionIndex = 0;
             _selectedStructureInspectionIndex = 0;
             NotifyStatus("Prototype V2 M3 ready");
+        }
+
+        private void ResetFrameScheduler()
+        {
+            _fixedStepAccumulator.Reset();
+            _backlogWarningCooldownSeconds = 0.0;
         }
 
         private void CreateRuntimeSession(PrototypeScenarioDefinition scenario)

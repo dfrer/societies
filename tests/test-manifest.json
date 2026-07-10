@@ -5,10 +5,10 @@
     "dotnet": {
       "project": "tests/Societies.Core.Tests/Societies.Core.Tests.csproj",
       "command": "dotnet test tests/Societies.Core.Tests/Societies.Core.Tests.csproj --configuration Release",
-      "expectedTestCount": 79,
+      "expectedTestCount": 85,
       "tiers": {
         "fast": {
-          "expectedTestCount": 63,
+          "expectedTestCount": 69,
           "filter": "FullyQualifiedName!~PrototypeRuntimeSessionTests&FullyQualifiedName!~PrototypeSettlementSimulationTests&FullyQualifiedName!~SettlementDiagnosticsTests&FullyQualifiedName!~WorkOrderGenerationDiagnosticsTests"
         },
         "integration": {
@@ -31,7 +31,7 @@
       "projectPath": "src/societies",
       "scene": "res://tests/HeadlessTestRunner.tscn",
       "command": "godot --headless --path src/societies res://tests/HeadlessTestRunner.tscn",
-      "expectedTestCount": 13,
+      "expectedTestCount": 14,
       "selectiveExecutionSupported": false,
       "tiers": {
         "fast": [
@@ -42,6 +42,7 @@
           "Test_MainScene_BootstrapSmoke"
         ],
         "integration": [
+          "Test_MainScene_FrameCatchUpCapSmoke",
           "Test_MainScene_WorkerVisualizationSmoke",
           "Test_MainScene_CraftingAndSnapshotSmoke",
           "Test_MainScene_ResetAndRestoreSmoke",

@@ -50,6 +50,7 @@ namespace Societies.Tests
             Test_Node_Creation();
             Test_SceneTree_Access();
             await Test_MainScene_BootstrapSmoke();
+            await Test_MainScene_FrameCatchUpCapSmoke();
             await Test_MainScene_WorkerVisualizationSmoke();
             await Test_MainScene_CraftingAndSnapshotSmoke();
             await Test_MainScene_ResetAndRestoreSmoke();
@@ -188,6 +189,45 @@ namespace Societies.Tests
             catch (Exception ex)
             {
                 Fail(nameof(Test_MainScene_BootstrapSmoke), ex);
+            }
+            finally
+            {
+                if (scene != null)
+                {
+                    scene.QueueFree();
+                    await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+                }
+            }
+        }
+
+        private async Task Test_MainScene_FrameCatchUpCapSmoke()
+        {
+            Node? scene = null;
+
+            try
+            {
+                PackedScene packedScene = GD.Load<PackedScene>("res://scenes/main.tscn");
+                Assert(packedScene != null, "Main scene failed to load");
+
+                scene = packedScene!.Instantiate();
+                AddChild(scene);
+                await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+
+                GameManager manager = scene as GameManager ?? throw new Exception("Main scene root is not GameManager");
+                manager.ResetPrototypeRun();
+                long initialTick = manager.SimulationTick;
+
+                manager._Process(1.0);
+                Assert(manager.SimulationTick == initialTick + 12, "A rendered frame must process no more than 12 catch-up ticks");
+
+                manager._Process(0.0);
+                Assert(manager.SimulationTick == initialTick + 20, "Deferred catch-up ticks must remain queued for the next frame");
+
+                Pass(nameof(Test_MainScene_FrameCatchUpCapSmoke));
+            }
+            catch (Exception ex)
+            {
+                Fail(nameof(Test_MainScene_FrameCatchUpCapSmoke), ex);
             }
             finally
             {
