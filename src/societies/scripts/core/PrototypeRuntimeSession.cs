@@ -84,6 +84,32 @@ namespace Societies.Core
 
         public IReadOnlyDictionary<string, int> RouteBacklogTicksByKind => _settlementSimulation?.RouteBacklogTicksByKind ?? new Dictionary<string, int>();
 
+        public RuntimeTickDiagnostics LastTickRuntimeDiagnostics
+        {
+            get
+            {
+                PrototypeSettlementSimulation.PrototypeSettlementDiagnosticsState? diagnostics = _settlementSimulation?.Diagnostics;
+                return diagnostics == null
+                    ? default
+                    : new RuntimeTickDiagnostics(
+                        diagnostics.WorkOrdersGenerated,
+                        diagnostics.WorkOrdersGeneratedUncapped,
+                        diagnostics.WorkOrdersClaimed,
+                        diagnostics.WorkOrdersRemaining,
+                        diagnostics.PathPlanLookups,
+                        diagnostics.PathPlanCacheHits,
+                        diagnostics.CitizensEvaluated)
+                    {
+                        PathPlanCacheMisses = diagnostics.PathPlanCacheMisses,
+                        PathPlanCacheSize = diagnostics.PathPlanCacheSize,
+                        NavigationInvalidations = diagnostics.NavigationInvalidations,
+                        WorkerCount = diagnostics.WorkerCount,
+                        IdleCitizensConsideringWorkOrders = diagnostics.IdleCitizensConsideringWorkOrders,
+                        CandidateOrdersEvaluated = diagnostics.CandidateOrdersEvaluated
+                    };
+            }
+        }
+
         public IReadOnlyList<PrototypeRouteHeatCellState> RouteHeatCells =>
             _settlementSimulation == null || _world == null
                 ? System.Array.Empty<PrototypeRouteHeatCellState>()
@@ -155,7 +181,8 @@ namespace Societies.Core
         public PrototypeRuntimeTickResult Advance(
             float tickIntervalSeconds,
             float dayLengthSeconds,
-            IReadOnlyList<PrototypeResourceSiteState> resources)
+            IReadOnlyList<PrototypeResourceSiteState> resources,
+            RuntimeMetricsCollector? runtimeMetrics = null)
         {
             SimulationTick++;
             CurrentHour = AdvanceHour(CurrentHour, tickIntervalSeconds, dayLengthSeconds);
@@ -165,7 +192,7 @@ namespace Societies.Core
                 RecordEvent(PrototypeEventTypes.WeatherShifted, $"Weather shifted to {CurrentWeatherName}");
             }
 
-            PrototypeSettlementTickResult settlementResult = _settlementSimulation?.Advance(resources, CurrentHour, CurrentWeather) ?? new PrototypeSettlementTickResult();
+            PrototypeSettlementTickResult settlementResult = _settlementSimulation?.Advance(resources, CurrentHour, CurrentWeather, runtimeMetrics) ?? new PrototypeSettlementTickResult();
             SyncSettlementViews();
             return new PrototypeRuntimeTickResult(
                 settlementResult,

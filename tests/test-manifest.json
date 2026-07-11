@@ -1,0 +1,92 @@
+{
+  "schemaVersion": 1,
+  "updatedUtc": "2026-07-11T03:37:20.4724853Z",
+  "required": {
+    "dotnet": {
+      "project": "tests/Societies.Core.Tests/Societies.Core.Tests.csproj",
+      "command": "dotnet test tests/Societies.Core.Tests/Societies.Core.Tests.csproj --configuration Release",
+      "expectedTestCount": 95,
+      "tiers": {
+        "fast": {
+          "expectedTestCount": 79,
+          "filter": "FullyQualifiedName!~PrototypeRuntimeSessionTests&FullyQualifiedName!~PrototypeSettlementSimulationTests&FullyQualifiedName!~SettlementDiagnosticsTests&FullyQualifiedName!~WorkOrderGenerationDiagnosticsTests"
+        },
+        "integration": {
+          "expectedTestCount": 8,
+          "classes": [
+            "Societies.Core.Tests.SettlementDiagnosticsTests",
+            "Societies.Core.Tests.WorkOrderGenerationDiagnosticsTests"
+          ]
+        },
+        "soak": {
+          "expectedTestCount": 8,
+          "classes": [
+            "Societies.Core.Tests.PrototypeRuntimeSessionTests",
+            "Societies.Core.Tests.PrototypeSettlementSimulationTests"
+          ]
+        }
+      }
+    },
+    "godot": {
+      "projectPath": "src/societies",
+      "scene": "res://tests/HeadlessTestRunner.tscn",
+      "command": "godot --headless --path src/societies res://tests/HeadlessTestRunner.tscn",
+      "expectedTestCount": 16,
+      "selectiveExecutionSupported": false,
+      "tiers": {
+        "fast": [
+          "Test_EntityState_Serialization",
+          "Test_Vector3_Operations",
+          "Test_Node_Creation",
+          "Test_SceneTree_Access",
+          "Test_MainScene_BootstrapSmoke"
+        ],
+        "integration": [
+          "Test_MainScene_FrameCatchUpCapSmoke",
+          "Test_MainScene_HudRefreshCoalescingSmoke",
+          "Test_MainScene_RuntimeMetricsBatchSmoke",
+          "Test_MainScene_WorkerVisualizationSmoke",
+          "Test_MainScene_CraftingAndSnapshotSmoke",
+          "Test_MainScene_ResetAndRestoreSmoke",
+          "Test_MainScene_ScenarioSwitchWorldSummarySmoke",
+          "Test_MainScene_ObserverAndOverlaySmoke",
+          "Test_MainScene_BuildQueueAndInspectorSmoke"
+        ],
+        "soak": [
+          "Test_MainScene_SettlementLoopSmoke",
+          "Test_MainScene_FixedTickSoakSmoke"
+        ]
+      }
+    },
+    "extended": {
+      "project": "tests/Societies.Core.Tests.Extended/Societies.Core.Tests.Extended.csproj",
+      "declaredTestCount": 3,
+      "enabledTestCount": 2,
+      "skippedTestCount": 1,
+      "requiredForPullRequest": false
+    }
+  },
+  "optional": {
+    "performancePair": {
+      "script": "scripts/run-performance-pair.ps1",
+      "command": "./scripts/run-performance-pair.ps1 -Scenario balanced_basin -Seed 1337 -Citizens 3 -Ticks 3",
+      "requiredForPullRequest": false,
+      "runModes": [
+        "metrics-off",
+        "metrics-on"
+      ],
+      "buildConfiguration": "Debug",
+      "classification": "debug_characterization",
+      "requiresCleanSource": true,
+      "artifactRoot": "artifacts/performance/",
+      "artifactsIgnoredByGit": true,
+      "releaseEvidence": false,
+      "note": "The current Godot editor/headless route is Debug characterization only. W1-03 Release evidence requires a verified Release route plus the full cold/warm/invalidation matrix and median reference runs."
+    }
+  },
+  "history": {
+    "preSyncCommit": "c58e3de",
+    "preSyncDotnetTestCount": 64,
+    "note": "The synchronized master adds 12 PrototypeMetricsTracker tests and 3 WorkOrderGenerationDiagnostics tests for a historical 79-test floor. The current V3 hardening manifest declares 95 required .NET tests."
+  }
+}

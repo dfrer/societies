@@ -34,6 +34,15 @@ namespace Societies.Core
             PrototypeRuntimeSnapshot snapshot,
             PrototypeWorldSummary worldSummary)
         {
+            return SaveArtifacts(session, snapshot, worldSummary, runtimeMetrics: null);
+        }
+
+        public string SaveArtifacts(
+            PrototypeRuntimeSession session,
+            PrototypeRuntimeSnapshot snapshot,
+            PrototypeWorldSummary worldSummary,
+            RuntimeMetricsCollector? runtimeMetrics)
+        {
             PrototypeArtifactPaths paths = GetArtifactPaths();
             PrototypeRunSummary runSummary = PrototypeRunSummaryBuilder.Build(
                 snapshot,
@@ -51,6 +60,7 @@ namespace Societies.Core
             PrototypePersistenceService.SaveRunSummary(paths.RunSummaryV2Path, runSummary);
             PrototypePersistenceService.SaveWorldSummary(paths.WorldSummaryV2Path, worldSummary);
             SaveText(paths.MetricsCsvPath, session.MetricsTracker.BuildCsv());
+            SaveRuntimeMetricsBestEffort(paths.RuntimeMetricsCsvPath, runtimeMetrics);
 
             return paths.LegacySnapshotPath;
         }
@@ -85,6 +95,28 @@ namespace Societies.Core
             File.WriteAllText(path, content);
         }
 
+        private static void SaveRuntimeMetricsBestEffort(string path, RuntimeMetricsCollector? runtimeMetrics)
+        {
+            try
+            {
+                if (runtimeMetrics != null)
+                {
+                    runtimeMetrics.ExportCsv(path);
+                    return;
+                }
+
+                if (File.Exists(path))
+                {
+                    File.Delete(path);
+                }
+            }
+            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+            {
+                Console.Error.WriteLine(
+                    $"WARNING: Optional runtime metrics artifact '{path}' was not updated: {exception.Message}");
+            }
+        }
+
         private static string GetRunOutputDirectoryPath()
         {
             string? overrideDirectory = System.Environment.GetEnvironmentVariable(RunOutputDirectoryEnvironmentVariable);
@@ -105,7 +137,12 @@ namespace Societies.Core
         string EventLogV2Path,
         string RunSummaryV2Path,
         string MetricsCsvPath,
-        string WorldSummaryV2Path);
+        string WorldSummaryV2Path)
+    {
+        public string RuntimeMetricsCsvPath => Path.Combine(
+            Path.GetDirectoryName(LegacySnapshotPath) ?? string.Empty,
+            "runtime-batch-metrics-v3.csv");
+    }
 
     public readonly record struct PrototypeLoadedArtifacts(
         PrototypeRuntimeSnapshot Snapshot,

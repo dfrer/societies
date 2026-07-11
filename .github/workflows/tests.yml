@@ -31,7 +31,12 @@ jobs:
         run: |
           wget -q -O godot.zip https://github.com/godotengine/godot/releases/download/4.6-stable/Godot_v4.6-stable_mono_linux_x86_64.zip
           unzip -q godot.zip -d godot-bin
-          GODOT_BIN=$(find godot-bin -type f \( -name 'Godot*' -o -name 'godot*' \) | head -n 1)
+          GODOT_BIN=$(find godot-bin -type f -name 'Godot_v*_mono_linux.*' -print -quit)
+          if [[ -z "$GODOT_BIN" ]]; then
+            echo "::error::Godot Mono Linux executable was not found in the release archive."
+            exit 1
+          fi
+          file "$GODOT_BIN"
           chmod +x "$GODOT_BIN"
           sudo ln -sf "$PWD/$GODOT_BIN" /usr/local/bin/godot
           godot --version
@@ -63,6 +68,7 @@ jobs:
           path: '**/TestResults/*.trx'
           reporter: dotnet-trx
           fail-on-error: false
+          fail-on-empty: false
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4

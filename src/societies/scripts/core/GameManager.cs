@@ -5,6 +5,7 @@ using Societies.UI;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Text.Json;
 
 namespace Societies.Core
 {
@@ -15,6 +16,9 @@ namespace Societies.Core
     public partial class GameManager : Node
     {
         private const double TickIntervalSeconds = 1.0 / 20.0;
+        private const int MaxTicksPerFrame = 12;
+        private const double BacklogWarningCooldownSeconds = 5.0;
+        private const string RuntimeMetricsEnvironmentVariable = "SOCIETIES_PERF_METRICS";
         private const string DefaultScenarioId = "balanced_basin";
 
         public static GameManager? Instance { get; private set; }
@@ -46,18 +50,29 @@ namespace Societies.Core
         private PrototypeRuntimeSession? _runtimeSession;
         private PrototypeSettlementScenePresenter? _scenePresenter;
         private readonly InventoryComponent _fallbackInventory = new();
-        private double _tickAccumulator;
+        private readonly FixedStepAccumulator _fixedStepAccumulator = new(TickIntervalSeconds, MaxTicksPerFrame);
+        private readonly RuntimeMetricsCollector? _runtimeMetrics = CreateRuntimeMetricsCollector();
+        private double _backlogWarningCooldownSeconds;
         private CameraMode _cameraMode = CameraMode.Player;
         private TerrainOverlayMode _overlayMode = TerrainOverlayMode.None;
         private PrototypeWorldSummary? _lastWorldSummary;
         private int _selectedCitizenInspectionIndex;
         private int _selectedStructureInspectionIndex;
+        private bool _hasPerformanceStartupOverride;
+        private string? _performanceScenarioIdOverride;
+        private int _performanceSimulationSeedOverride;
+        private int _performanceCitizenCountOverride;
+        private bool _readyStarted;
 
         public bool IsGameRunning { get; private set; }
 
         public int SimulationSeed => _runtimeSession?.SimulationSeed ?? _simulationSeed;
 
         public long SimulationTick => _runtimeSession?.SimulationTick ?? 0;
+
+        public int CitizenCount => _runtimeSession?.Workers.Count ?? _initialWorkers;
+
+        public double? PerformanceBootstrapMilliseconds { get; private set; }
 
         public InventoryComponent Inventory => _runtimeSession?.Inventory ?? _fallbackInventory;
 
@@ -69,8 +84,11 @@ namespace Societies.Core
 
         public int CurrentWorldSeed => _runtimeSession?.WorldSeed ?? 0;
 
+        public RuntimeMetricsCollector? RuntimeMetrics => _runtimeMetrics;
+
         public override void _Ready()
         {
+            _readyStarted = true;
             Instance = this;
 
             EnsureSceneStructure();
@@ -96,14 +114,29 @@ namespace Societies.Core
                 return;
             }
 
-            _tickAccumulator += delta;
-            while (_tickAccumulator >= TickIntervalSeconds)
+            _backlogWarningCooldownSeconds = Math.Max(0.0, _backlogWarningCooldownSeconds - delta);
+            int ticksToProcess = _fixedStepAccumulator.Consume(delta);
+            int ticksAttempted = 0;
+            try
             {
-                _tickAccumulator -= TickIntervalSeconds;
-                ProcessSimulationTick();
+                RunTickBatch(ticksToProcess, RuntimeMetricsBatchKind.RenderedFrame, ref ticksAttempted);
+            }
+            catch
+            {
+                // Attempted ticks keep their interval. Work that never started returns to the
+                // backlog for a future rendered frame.
+                int unattemptedTicks = ticksToProcess - ticksAttempted;
+                _fixedStepAccumulator.RestoreUnprocessedTicks(unattemptedTicks);
+                throw;
             }
 
-            UpdateHud();
+            if (_fixedStepAccumulator.HasBacklog && _backlogWarningCooldownSeconds <= 0.0)
+            {
+                GD.PushWarning(
+                    $"Simulation backlog: {_fixedStepAccumulator.PendingWholeTicks} ticks remain after the {MaxTicksPerFrame}-tick frame cap.");
+                _backlogWarningCooldownSeconds = BacklogWarningCooldownSeconds;
+            }
+
         }
 
         public override void _UnhandledInput(InputEvent @event)
@@ -171,12 +204,31 @@ namespace Societies.Core
 
         public void StepSimulationTicks(int tickCount)
         {
-            for (int i = 0; i < tickCount; i++)
+            int ticksAttempted = 0;
+            RunTickBatch(Math.Max(0, tickCount), RuntimeMetricsBatchKind.ManualStep, ref ticksAttempted);
+        }
+
+        internal void ConfigurePerformanceStartup(string scenarioId, int simulationSeed, int citizenCount)
+        {
+            if (_readyStarted || IsInsideTree())
             {
-                ProcessSimulationTick();
+                throw new InvalidOperationException("Performance startup must be configured before the game manager first enters the scene tree.");
             }
 
-            UpdateHud();
+            if (string.IsNullOrWhiteSpace(scenarioId))
+            {
+                throw new ArgumentException("A scenario id is required.", nameof(scenarioId));
+            }
+
+            if (citizenCount is < 1 or > 256)
+            {
+                throw new ArgumentOutOfRangeException(nameof(citizenCount), citizenCount, "Citizen count must be between 1 and 256.");
+            }
+
+            _hasPerformanceStartupOverride = true;
+            _performanceScenarioIdOverride = scenarioId;
+            _performanceSimulationSeedOverride = simulationSeed;
+            _performanceCitizenCountOverride = citizenCount;
         }
 
         public bool TryCraftRecipe(string recipeId)
@@ -305,7 +357,7 @@ namespace Societies.Core
             PrototypeWorldSummary worldSummary = PrototypeWorldSummaryBuilder.Build(_runtimeSession, _terrain, snapshot.Resources);
             _lastWorldSummary = worldSummary;
 
-            string snapshotPath = _artifactManager.SaveArtifacts(_runtimeSession, snapshot, worldSummary);
+            string snapshotPath = _artifactManager.SaveArtifacts(_runtimeSession, snapshot, worldSummary, _runtimeMetrics);
             _hud?.SetStatusText($"Saved snapshot to {Path.GetFileName(snapshotPath)}");
             return snapshotPath;
         }
@@ -326,7 +378,7 @@ namespace Societies.Core
             PrototypeScenarioDefinition scenario = ResolveScenarioDefinition(artifacts.Snapshot.ScenarioId);
             CreateRuntimeSession(scenario);
 
-            _tickAccumulator = 0.0;
+            ResetFrameScheduler();
             _runtimeSession!.ApplySnapshot(artifacts.Snapshot);
             _runtimeSession.RestoreArtifacts(artifacts.EventLog, artifacts.RunSummary);
 
@@ -386,12 +438,33 @@ namespace Societies.Core
             }
             catch (Exception ex)
             {
+                if (_hasPerformanceStartupOverride)
+                {
+                    throw new InvalidOperationException(
+                        $"Performance startup requires the validated catalog at '{dataDirectory}'.",
+                        ex);
+                }
+
                 GD.PushWarning($"Failed to load prototype catalogs from {dataDirectory}: {ex.Message}. Falling back to built-in legacy defaults.");
                 _catalogs = CreateFallbackCatalogBundle();
             }
 
-            _scenario = ResolveScenarioDefinition(_scenarioId);
-            ApplyScenarioDefaults(_scenario);
+            if (!_hasPerformanceStartupOverride)
+            {
+                _scenario = ResolveScenarioDefinition(_scenarioId);
+                ApplyScenarioDefaults(_scenario);
+                return;
+            }
+
+            PrototypeScenarioDefinition requestedScenario = _catalogs!.Scenarios.Resolve(_performanceScenarioIdOverride!);
+            PrototypeScenarioDefinition configuredScenario = JsonSerializer.Deserialize<PrototypeScenarioDefinition>(
+                JsonSerializer.Serialize(requestedScenario))
+                ?? throw new InvalidOperationException($"Failed to clone performance scenario '{requestedScenario.Id}'.");
+            configuredScenario.SimulationSeed = _performanceSimulationSeedOverride;
+            configuredScenario.InitialCitizens = _performanceCitizenCountOverride;
+
+            _scenario = configuredScenario;
+            ApplyScenarioDefaults(configuredScenario);
         }
 
         private void ConfigureLocalSession()
@@ -484,8 +557,11 @@ namespace Societies.Core
             }
 
             CreateRuntimeSession(_scenario);
+            long performanceBootstrapStartTimestamp = _hasPerformanceStartupOverride
+                ? System.Diagnostics.Stopwatch.GetTimestamp()
+                : 0;
             _runtimeSession!.Initialize(_environmentController.StartHour);
-            _tickAccumulator = 0.0;
+            ResetFrameScheduler();
 
             _scenePresenter.ResetDynamicNodes();
             ApplyWorldToScene();
@@ -503,15 +579,24 @@ namespace Societies.Core
             _scenePresenter.SyncWorkers(_runtimeSession.Workers);
             UpdateSettlementPresentationFromSession();
             CaptureMetricsSnapshot();
+            PerformanceBootstrapMilliseconds = _hasPerformanceStartupOverride
+                ? System.Diagnostics.Stopwatch.GetElapsedTime(performanceBootstrapStartTimestamp).TotalMilliseconds
+                : null;
 
             _selectedCitizenInspectionIndex = 0;
             _selectedStructureInspectionIndex = 0;
             NotifyStatus("Prototype V2 M3 ready");
         }
 
+        private void ResetFrameScheduler()
+        {
+            _fixedStepAccumulator.Reset();
+            _backlogWarningCooldownSeconds = 0.0;
+            _runtimeMetrics?.Reset();
+        }
+
         private void CreateRuntimeSession(PrototypeScenarioDefinition scenario)
         {
-            DetachRuntimeObservers();
             _scenario = scenario;
             ApplyScenarioDefaults(scenario);
 
@@ -522,7 +607,6 @@ namespace Societies.Core
             }
 
             _runtimeSession = new PrototypeRuntimeSession(scenario, _catalogs?.RoleQuotas.Roles);
-            AttachRuntimeObservers();
             BindPlayerToRuntime();
         }
 
@@ -538,34 +622,129 @@ namespace Societies.Core
             _observerRig?.SetControlEnabled(_cameraMode == CameraMode.Observer);
         }
 
-        private void ProcessSimulationTick()
+        private void RunTickBatch(
+            int requestedTicks,
+            RuntimeMetricsBatchKind batchKind,
+            ref int ticksAttempted)
         {
-            if (_runtimeSession == null || _environmentController == null || _scenePresenter == null)
+            RuntimeMetricsCollector? metrics = _runtimeMetrics;
+            if (metrics == null)
             {
+                for (int tick = 0; tick < requestedTicks; tick++)
+                {
+                    ticksAttempted++;
+                    ProcessSimulationTick(metrics: null);
+                }
+
+                UpdateHud();
                 return;
             }
 
-            PrototypeRuntimeTickResult tickResult = _runtimeSession.Advance(
-                (float)TickIntervalSeconds,
-                _environmentController.DayLengthSeconds,
-                _scenePresenter.CaptureResourceSites());
-
-            foreach (PrototypeHarvestRequest request in tickResult.SettlementResult.HarvestRequests)
+            metrics.BeginBatch(batchKind, SimulationTick);
+            try
             {
-                if (_scenePresenter.ApplyHarvestRequest(request, out string itemId, out int harvestedAmount))
+                for (int tick = 0; tick < requestedTicks; tick++)
                 {
-                    _runtimeSession.RecordAiHarvestSucceeded(request.WorkerDisplayName, itemId, harvestedAmount);
+                    RuntimeMetricsPhaseToken tickPhase = metrics.BeginPhase(RuntimeMetricsPhase.SimulationTick);
+                    ticksAttempted++;
+                    try
+                    {
+                        ProcessSimulationTick(metrics);
+                    }
+                    finally
+                    {
+                        tickPhase.Complete();
+                    }
+
+                    metrics.RecordCompletedTick(_runtimeSession?.LastTickRuntimeDiagnostics ?? default);
                 }
-                else
+
+                RuntimeMetricsPhaseToken hudPhase = metrics.BeginPhase(RuntimeMetricsPhase.UpdateHud);
+                try
                 {
-                    _runtimeSession.OnHarvestFailed(request.WorkerId, request.WorkerDisplayName, request.ResourceId);
+                    UpdateHud();
+                }
+                finally
+                {
+                    hudPhase.Complete();
+                }
+
+                metrics.EndBatch(SimulationTick);
+            }
+            catch
+            {
+                metrics.AbortBatch();
+                throw;
+            }
+        }
+
+        private void ProcessSimulationTick(RuntimeMetricsCollector? metrics)
+        {
+            if (_runtimeSession == null || _environmentController == null || _scenePresenter == null)
+            {
+                throw new InvalidOperationException("Runtime tick dependencies are unavailable.");
+            }
+
+            PrototypeRuntimeTickResult tickResult;
+            IReadOnlyList<PrototypeResourceSiteState> resourceSites = _scenePresenter.CaptureResourceSites();
+            if (metrics == null)
+            {
+                tickResult = _runtimeSession.Advance(
+                    (float)TickIntervalSeconds,
+                    _environmentController.DayLengthSeconds,
+                    resourceSites);
+            }
+            else
+            {
+                RuntimeMetricsPhaseToken sessionPhase = metrics.BeginPhase(RuntimeMetricsPhase.SessionAdvance);
+                try
+                {
+                    tickResult = _runtimeSession.Advance(
+                        (float)TickIntervalSeconds,
+                        _environmentController.DayLengthSeconds,
+                        resourceSites,
+                        metrics);
+                }
+                finally
+                {
+                    sessionPhase.Complete();
                 }
             }
 
+            RuntimeMetricsPhaseToken harvestPhase = metrics?.BeginPhase(RuntimeMetricsPhase.HarvestApply) ?? default;
+            try
+            {
+                foreach (PrototypeHarvestRequest request in tickResult.SettlementResult.HarvestRequests)
+                {
+                    if (_scenePresenter.ApplyHarvestRequest(request, out string itemId, out int harvestedAmount))
+                    {
+                        _runtimeSession.RecordAiHarvestSucceeded(request.WorkerDisplayName, itemId, harvestedAmount);
+                    }
+                    else
+                    {
+                        _runtimeSession.OnHarvestFailed(request.WorkerId, request.WorkerDisplayName, request.ResourceId);
+                    }
+                }
+
+            }
+            finally
+            {
+                harvestPhase.Complete();
+            }
+
             _runtimeSession.RecordSettlementEvents(tickResult.SettlementResult.Events);
-            ApplyRuntimeStateToScene();
-            _scenePresenter.SyncWorkers(_runtimeSession.Workers);
-            UpdateSettlementPresentationFromSession();
+
+            RuntimeMetricsPhaseToken scenePhase = metrics?.BeginPhase(RuntimeMetricsPhase.SceneSync) ?? default;
+            try
+            {
+                ApplyRuntimeStateToScene();
+                _scenePresenter.SyncWorkers(_runtimeSession.Workers);
+                UpdateSettlementPresentationFromSession();
+            }
+            finally
+            {
+                scenePhase.Complete();
+            }
 
             if (tickResult.ShouldCaptureMetrics)
             {
@@ -807,38 +986,6 @@ namespace Societies.Core
             return _catalogs.Scenarios.ResolveDefault();
         }
 
-        private void AttachRuntimeObservers()
-        {
-            if (_runtimeSession == null)
-            {
-                return;
-            }
-
-            _runtimeSession.Inventory.Changed += OnInventoryChanged;
-            _runtimeSession.Stockpile.Changed += OnStockpileChanged;
-        }
-
-        private void DetachRuntimeObservers()
-        {
-            if (_runtimeSession == null)
-            {
-                return;
-            }
-
-            _runtimeSession.Inventory.Changed -= OnInventoryChanged;
-            _runtimeSession.Stockpile.Changed -= OnStockpileChanged;
-        }
-
-        private void OnInventoryChanged()
-        {
-            UpdateHud();
-        }
-
-        private void OnStockpileChanged()
-        {
-            UpdateHud();
-        }
-
         private void OnPlayerHarvested(string itemId, int amount)
         {
             string message = $"Harvested {InventoryComponent.FormatItemName(itemId)} x{amount}";
@@ -858,6 +1005,14 @@ namespace Societies.Core
             T node = new() { Name = name };
             parent.AddChild(node);
             return node;
+        }
+
+        private static RuntimeMetricsCollector? CreateRuntimeMetricsCollector()
+        {
+            string? enabled = System.Environment.GetEnvironmentVariable(RuntimeMetricsEnvironmentVariable);
+            return string.Equals(enabled, "1", StringComparison.Ordinal)
+                ? new RuntimeMetricsCollector()
+                : null;
         }
 
         private PrototypeCatalogBundle CreateFallbackCatalogBundle()
@@ -987,7 +1142,6 @@ namespace Societies.Core
                 _player.Harvested -= OnPlayerHarvested;
             }
 
-            DetachRuntimeObservers();
             Instance = null;
         }
     }

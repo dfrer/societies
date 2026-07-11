@@ -134,6 +134,12 @@ namespace Societies.Simulation
             public int WorkOrdersGeneratedUncapped;
             public int PathPlanLookups;
             public int PathPlanCacheHits;
+            public int PathPlanCacheMisses;
+            public int PathPlanCacheSize;
+            public int NavigationInvalidations;
+            public int WorkerCount;
+            public int IdleCitizensConsideringWorkOrders;
+            public int CandidateOrdersEvaluated;
             public int CitizensEvaluated;
             public int PeakOrdersThisSession;
         }
@@ -144,6 +150,10 @@ namespace Societies.Simulation
         private int _workOrdersRemainingAfterAssignment;
         private int _pathPlanLookupsThisTick;
         private int _pathPlanCacheHitsThisTick;
+        private int _pathPlanCacheMissesThisTick;
+        private int _navigationInvalidationsThisTick;
+        private int _idleCitizensConsideringWorkOrdersThisTick;
+        private int _candidateOrdersEvaluatedThisTick;
         private int _citizensEvaluatedThisTick;
 
         public PrototypeSettlementDiagnosticsState Diagnostics => _diagnostics;
@@ -212,7 +222,8 @@ namespace Societies.Simulation
         public PrototypeSettlementTickResult Advance(
             IReadOnlyList<PrototypeResourceSiteState> resources,
             float currentHour,
-            PrototypeWeather weather)
+            PrototypeWeather weather,
+            RuntimeMetricsCollector? runtimeMetrics = null)
         {
             PrototypeSettlementTickResult result = new();
             _totalTicks++;
@@ -222,6 +233,10 @@ namespace Societies.Simulation
             _workOrdersRemainingAfterAssignment = 0;
             _pathPlanLookupsThisTick = 0;
             _pathPlanCacheHitsThisTick = 0;
+            _pathPlanCacheMissesThisTick = 0;
+            _navigationInvalidationsThisTick = 0;
+            _idleCitizensConsideringWorkOrdersThisTick = 0;
+            _candidateOrdersEvaluatedThisTick = 0;
             _citizensEvaluatedThisTick = 0;
 
             foreach (PrototypeResourceSiteState resource in resources)
@@ -241,13 +256,22 @@ namespace Societies.Simulation
                 AdvanceCitizenNeeds(citizen, currentHour, weather, result);
             }
 
-            List<PrototypeWorkOrder> availableOrders = BuildWorkOrders(resources, currentHour, weather);
+            List<PrototypeWorkOrder> availableOrders;
+            RuntimeMetricsPhaseToken buildWorkOrdersPhase = runtimeMetrics?.BeginPhase(RuntimeMetricsPhase.BuildWorkOrders) ?? default;
+            try
+            {
+                availableOrders = BuildWorkOrders(resources, currentHour, weather);
+            }
+            finally
+            {
+                buildWorkOrdersPhase.Complete();
+            }
             _workOrdersGeneratedThisTick = availableOrders.Count;
             UpdateRouteBacklogMetrics(availableOrders);
 
             foreach (PrototypeWorkerState citizen in _citizens.OrderBy(candidate => candidate.WorkerId, StringComparer.Ordinal))
             {
-                AdvanceCitizen(citizen, resources, currentHour, weather, result, availableOrders);
+                AdvanceCitizen(citizen, resources, currentHour, weather, result, availableOrders, runtimeMetrics);
             }
 
             _workOrdersRemainingAfterAssignment = availableOrders.Count;
@@ -258,6 +282,12 @@ namespace Societies.Simulation
             _diagnostics.WorkOrdersRemaining = _workOrdersRemainingAfterAssignment;
             _diagnostics.PathPlanLookups = _pathPlanLookupsThisTick;
             _diagnostics.PathPlanCacheHits = _pathPlanCacheHitsThisTick;
+            _diagnostics.PathPlanCacheMisses = _pathPlanCacheMissesThisTick;
+            _diagnostics.PathPlanCacheSize = _pathCache.Count;
+            _diagnostics.NavigationInvalidations = _navigationInvalidationsThisTick;
+            _diagnostics.WorkerCount = _citizens.Count;
+            _diagnostics.IdleCitizensConsideringWorkOrders = _idleCitizensConsideringWorkOrdersThisTick;
+            _diagnostics.CandidateOrdersEvaluated = _candidateOrdersEvaluatedThisTick;
             _diagnostics.CitizensEvaluated = _citizensEvaluatedThisTick;
             if (_workOrdersGeneratedThisTick > _diagnostics.PeakOrdersThisSession)
             {

@@ -1,0 +1,61 @@
+{
+  "schemaVersion": 1,
+  "capturedUtc": "2026-07-10T21:23:18.4050371Z",
+  "status": "pass",
+  "branch": "feature/v3-runtime-hardening",
+  "baseCommit": "637908a058c8f8f5b5cbdfb3f037b150241b44d5",
+  "unit": "optional runtime metrics wiring for rendered frames and manual stepping",
+  "enablement": {
+    "environmentVariable": "SOCIETIES_PERF_METRICS",
+    "enabledValue": "1",
+    "disabledCollector": "null"
+  },
+  "contract": {
+    "renderedFramesRespectTwelveTickCap": true,
+    "manualStepBatchesRemainUncapped": true,
+    "schedulerRestoresRequestedMinusAttemptedOnFailure": true,
+    "metricsFailureAbortsPartialBatch": true,
+    "newRunAndSnapshotLoadResetMetrics": true,
+    "zeroTickRenderedFramesHaveNoWorkOrderGauge": true,
+    "deterministicGameplayMetricsRemainAlwaysEnabled": true
+  },
+  "measuredPhases": [
+    "SimulationTick",
+    "SessionAdvance",
+    "BuildWorkOrders",
+    "HarvestApply",
+    "SceneSync",
+    "UpdateHud"
+  ],
+  "validation": {
+    "fastDotnet": {
+      "passed": 75,
+      "failed": 0,
+      "durationSeconds": 3
+    },
+    "requiredDotnet": {
+      "passed": 91,
+      "failed": 0,
+      "skipped": 0,
+      "testDurationSeconds": 300,
+      "commandWallDurationSeconds": 302.9
+    },
+    "godotBuildSolutions": {
+      "passed": true
+    },
+    "godotHeadless": {
+      "passed": 16,
+      "failed": 0,
+      "durationSeconds": 359.6,
+      "requiredTest": "Test_MainScene_RuntimeMetricsBatchSmoke"
+    }
+  },
+  "smokeProof": [
+    "No collector is allocated when the environment flag is absent.",
+    "Manual and rendered work create distinct batch kinds with exact tick bounds.",
+    "BuildWorkOrders is timed at its actual simulation call site.",
+    "Uncapped work-order and citizen-evaluation diagnostics cross the session boundary.",
+    "A zero-tick frame records no fabricated work-order gauge.",
+    "Starting a new run clears all runtime batches."
+  ]
+}

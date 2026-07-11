@@ -62,12 +62,65 @@ namespace Societies.Core.Tests
             PrototypeSettlementSimulation simulation = New(scenario, bundle.RoleQuotas.Roles, world);
             List<PrototypeResourceSiteState> resources = BuildResourceSites(world);
 
-            simulation.Advance(resources, 8.0f, PrototypeWeather.Clear);
+            PrototypePathSegmentState pathSegment = simulation.PathSegments.First(segment => !segment.IsBuilt);
+            PrototypeStructureState pathStructure = simulation.Structures.Single(
+                structure => structure.StructureId == pathSegment.StructureId);
+            PrototypeBuildQueueEntry pathQueueEntry = simulation.BuildQueue.Single(
+                entry => entry.StructureId == pathSegment.StructureId);
+            pathQueueEntry.IsPaused = true;
 
-            Assert.True(simulation.Diagnostics.PathPlanLookups > 0, "Path plan lookups should occur during citizen assignment");
-            Assert.True(
-                simulation.Diagnostics.PathPlanCacheHits <= simulation.Diagnostics.PathPlanLookups,
-                "Cache hits cannot exceed total lookups");
+            PrototypeWorkerState builder = simulation.Workers
+                .OrderBy(worker => worker.WorkerId, StringComparer.Ordinal)
+                .First();
+            builder.Phase = PrototypeWorkerPhase.Building;
+            builder.CurrentOrderKind = PrototypeWorkOrderKind.BuildPath;
+            builder.CurrentOrderId = "diagnostic.path.build";
+            builder.TargetStructureId = pathStructure.StructureId;
+            builder.TargetPosition = pathStructure.Position;
+            builder.TargetLabel = pathStructure.DisplayName;
+            builder.PhaseDurationTicks = 1;
+            builder.TicksRemaining = 1;
+
+            var collector = new RuntimeMetricsCollector(capacity: 4, new IncrementingTimeProvider());
+            long startTick = simulation.TotalTicks;
+            collector.BeginBatch(RuntimeMetricsBatchKind.ManualStep, startTick);
+            RuntimeMetricsPhaseToken simulationTickPhase = collector.BeginPhase(RuntimeMetricsPhase.SimulationTick);
+
+            simulation.Advance(resources, 8.0f, PrototypeWeather.Clear, collector);
+            simulationTickPhase.Complete();
+
+            PrototypeSettlementSimulation.PrototypeSettlementDiagnosticsState diagnostics = simulation.Diagnostics;
+            collector.RecordCompletedTick(
+                new RuntimeTickDiagnostics(
+                    diagnostics.WorkOrdersGenerated,
+                    diagnostics.WorkOrdersGeneratedUncapped,
+                    diagnostics.WorkOrdersClaimed,
+                    diagnostics.WorkOrdersRemaining,
+                    diagnostics.PathPlanLookups,
+                    diagnostics.PathPlanCacheHits,
+                    diagnostics.CitizensEvaluated)
+                {
+                    PathPlanCacheMisses = diagnostics.PathPlanCacheMisses,
+                    PathPlanCacheSize = diagnostics.PathPlanCacheSize,
+                    NavigationInvalidations = diagnostics.NavigationInvalidations,
+                    WorkerCount = diagnostics.WorkerCount,
+                    IdleCitizensConsideringWorkOrders = diagnostics.IdleCitizensConsideringWorkOrders,
+                    CandidateOrdersEvaluated = diagnostics.CandidateOrdersEvaluated
+                });
+            collector.EndBatch(simulation.TotalTicks);
+
+            RuntimeMetricsBatch batch = Assert.Single(collector.SnapshotBatches());
+
+            Assert.True(pathSegment.IsBuilt, "The forced path completion should build its segment");
+            Assert.True(diagnostics.PathPlanLookups > 0, "Path plan lookups should occur during citizen assignment");
+            Assert.Equal(
+                diagnostics.PathPlanLookups,
+                diagnostics.PathPlanCacheHits + diagnostics.PathPlanCacheMisses);
+            Assert.True(diagnostics.PathPlanCacheSize > 0, "The path-plan cache should retain plans after assignment");
+            Assert.Equal(1, diagnostics.NavigationInvalidations);
+            Assert.Equal(1, batch.NavigationInvalidationsTotal);
+            Assert.Equal(diagnostics.PathPlanCacheSize, batch.PathPlanCacheSizeLast);
+            Assert.True(batch.Phases.NavigationRebuildMilliseconds > 0.0, "Runtime invalidation rebuild time should be measured");
         }
 
         [Fact]
@@ -108,6 +161,19 @@ namespace Societies.Core.Tests
             Assert.True(
                 simulation.Workers.Count == simulation.Diagnostics.CitizensEvaluated,
                 $"Expected {simulation.Workers.Count} citizens evaluated, got {simulation.Diagnostics.CitizensEvaluated}");
+            Assert.Equal(simulation.Workers.Count, simulation.Diagnostics.WorkerCount);
+            Assert.InRange(
+                simulation.Diagnostics.IdleCitizensConsideringWorkOrders,
+                0,
+                simulation.Diagnostics.WorkerCount);
+            Assert.True(
+                simulation.Diagnostics.IdleCitizensConsideringWorkOrders > 0,
+                "At least one idle citizen should reach generic work-order scoring on the first tick");
+            int expectedCandidateOrdersEvaluated =
+                simulation.Diagnostics.WorkOrdersClaimed *
+                ((2 * simulation.Diagnostics.WorkOrdersGenerated) - simulation.Diagnostics.WorkOrdersClaimed + 1) /
+                2;
+            Assert.Equal(expectedCandidateOrdersEvaluated, simulation.Diagnostics.CandidateOrdersEvaluated);
         }
 
         private static PrototypeSettlementSimulation New(
@@ -155,6 +221,19 @@ namespace Societies.Core.Tests
             }
 
             throw new DirectoryNotFoundException($"Could not find src/societies/data from '{baseDirectory}'.");
+        }
+
+        private sealed class IncrementingTimeProvider : TimeProvider
+        {
+            private long _timestamp;
+
+            public override long TimestampFrequency => TimeSpan.TicksPerSecond;
+
+            public override long GetTimestamp()
+            {
+                _timestamp += TimeSpan.TicksPerMillisecond;
+                return _timestamp;
+            }
         }
     }
 }

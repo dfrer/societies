@@ -1,0 +1,52 @@
+{
+  "schemaVersion": 1,
+  "capturedUtc": "2026-07-10T20:54:14.7575310Z",
+  "status": "pass",
+  "branch": "feature/v3-runtime-hardening",
+  "baseCommit": "4653995211d2820660f7a394a4ef842846644424",
+  "unit": "pure bounded instance-owned runtime metrics collector",
+  "runtimeWiringIncluded": false,
+  "contract": {
+    "defaultCapacity": 4096,
+    "storage": "typed circular buffer",
+    "batchKinds": [
+      "rendered_frame",
+      "manual_step"
+    ],
+    "disabledRepresentation": "null collector at the future integration seam",
+    "csvCulture": "invariant",
+    "phaseTokens": "collector-identified, one-shot, reset-aware",
+    "zeroTickGauge": "blank",
+    "tickDurationSource": "completed SimulationTick phase",
+    "tickDeltaMustMatchCompletedTicks": true
+  },
+  "validation": {
+    "focusedCollector": {
+      "passed": 6,
+      "failed": 0,
+      "durationMilliseconds": 38
+    },
+    "fastDotnet": {
+      "passed": 75,
+      "failed": 0,
+      "durationSeconds": 3
+    },
+    "requiredDotnet": {
+      "passed": 91,
+      "failed": 0,
+      "skipped": 0,
+      "testDurationSeconds": 309,
+      "commandWallDurationSeconds": 311.6
+    },
+    "godot": {
+      "status": "not_rerun_for_unused_pure_component",
+      "mostRecentBaseCommitResult": "15 passed, 0 failed"
+    }
+  },
+  "reviewCorrections": [
+    "Copied phase tokens can no longer double-count.",
+    "EndBatch rejects outstanding phases and mismatched simulation tick deltas.",
+    "Zero-tick batches no longer fabricate a WorkOrdersRemaining gauge.",
+    "Maximum tick duration and SimulationTick phase time share one measured source."
+  ]
+}
