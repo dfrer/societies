@@ -323,7 +323,7 @@ namespace Societies.Core
             PrototypeWorldSummary worldSummary = PrototypeWorldSummaryBuilder.Build(_runtimeSession, _terrain, snapshot.Resources);
             _lastWorldSummary = worldSummary;
 
-            string snapshotPath = _artifactManager.SaveArtifacts(_runtimeSession, snapshot, worldSummary);
+            string snapshotPath = _artifactManager.SaveArtifacts(_runtimeSession, snapshot, worldSummary, _runtimeMetrics);
             _hud?.SetStatusText($"Saved snapshot to {Path.GetFileName(snapshotPath)}");
             return snapshotPath;
         }

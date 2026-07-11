@@ -284,12 +284,17 @@ namespace Societies.Tests
         private async Task Test_MainScene_RuntimeMetricsBatchSmoke()
         {
             const string metricsEnvironmentVariable = "SOCIETIES_PERF_METRICS";
+            const string outputEnvironmentVariable = "SOCIETIES_RUN_OUTPUT_DIR";
             string? previousMetricsSetting = System.Environment.GetEnvironmentVariable(metricsEnvironmentVariable);
+            string? previousOutputDirectory = System.Environment.GetEnvironmentVariable(outputEnvironmentVariable);
+            string outputDirectory = CreateRunOutputDirectory(nameof(Test_MainScene_RuntimeMetricsBatchSmoke));
+            string runtimeMetricsPath = Path.Combine(outputDirectory, "runtime-batch-metrics-v3.csv");
             Node? disabledScene = null;
             Node? scene = null;
 
             try
             {
+                System.Environment.SetEnvironmentVariable(outputEnvironmentVariable, outputDirectory);
                 PackedScene packedScene = GD.Load<PackedScene>("res://scenes/main.tscn");
                 Assert(packedScene != null, "Main scene failed to load");
 
@@ -300,6 +305,9 @@ namespace Societies.Tests
                 GameManager disabledManager = disabledScene as GameManager ?? throw new Exception("Disabled metrics scene root is not GameManager");
                 disabledManager.SetProcess(false);
                 Assert(disabledManager.RuntimeMetrics == null, "Runtime metrics should remain unallocated when the environment flag is absent");
+                File.WriteAllText(runtimeMetricsPath, "stale runtime metrics");
+                disabledManager.SaveSnapshotToDisk();
+                Assert(!File.Exists(runtimeMetricsPath), "A metrics-disabled save should remove a stale runtime metrics artifact");
                 disabledScene.QueueFree();
                 await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
                 disabledScene = null;
@@ -314,6 +322,13 @@ namespace Societies.Tests
                 RuntimeMetricsCollector metrics = manager.RuntimeMetrics ?? throw new Exception("Runtime metrics should be enabled by the environment flag");
                 manager.ResetPrototypeRun();
                 Assert(metrics.Count == 0, "Reset should clear runtime metrics batches");
+
+                Directory.CreateDirectory(runtimeMetricsPath);
+                manager.SaveSnapshotToDisk();
+                Assert(
+                    Directory.Exists(runtimeMetricsPath),
+                    "An optional metrics export failure should not fail the core save");
+                Directory.Delete(runtimeMetricsPath);
 
                 manager.StepSimulationTicks(2);
                 RuntimeMetricsBatch[] afterManualStep = metrics.SnapshotBatches();
@@ -346,6 +361,13 @@ namespace Societies.Tests
                 Assert(!afterZeroTickFrame[2].WorkOrdersRemainingLast.HasValue, "Zero-tick frame should not fabricate a work-order gauge");
                 Assert(afterZeroTickFrame[2].StartSimulationTick == 4 && afterZeroTickFrame[2].EndSimulationTick == 4, "Zero-tick frame bounds should remain unchanged");
 
+                manager.SaveSnapshotToDisk();
+                Assert(File.Exists(runtimeMetricsPath), "A metrics-enabled save should export runtime batch metrics");
+                string runtimeMetricsCsv = File.ReadAllText(runtimeMetricsPath);
+                Assert(runtimeMetricsCsv.StartsWith("sequence,batch_kind,start_simulation_tick", StringComparison.Ordinal), "Runtime metrics CSV header mismatch");
+                Assert(runtimeMetricsCsv.Contains("manual_step", StringComparison.Ordinal), "Runtime metrics CSV should contain the manual batch");
+                Assert(runtimeMetricsCsv.Contains("rendered_frame", StringComparison.Ordinal), "Runtime metrics CSV should contain rendered batches");
+
                 manager.ResetPrototypeRun();
                 Assert(metrics.Count == 0, "Starting a new run should reset runtime metrics");
 
@@ -358,6 +380,7 @@ namespace Societies.Tests
             finally
             {
                 System.Environment.SetEnvironmentVariable(metricsEnvironmentVariable, previousMetricsSetting);
+                System.Environment.SetEnvironmentVariable(outputEnvironmentVariable, previousOutputDirectory);
                 if (disabledScene != null)
                 {
                     disabledScene.QueueFree();
