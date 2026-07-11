@@ -300,11 +300,26 @@ namespace Societies.Tests
 
                 System.Environment.SetEnvironmentVariable(metricsEnvironmentVariable, null);
                 disabledScene = packedScene!.Instantiate();
+                GameManager disabledManager = disabledScene as GameManager ?? throw new Exception("Disabled metrics scene root is not GameManager");
+                disabledManager.ConfigurePerformanceStartup("balanced_basin", simulationSeed: 4242, citizenCount: 3);
+                disabledManager.SetProcess(false);
                 AddChild(disabledScene);
                 await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
-                GameManager disabledManager = disabledScene as GameManager ?? throw new Exception("Disabled metrics scene root is not GameManager");
-                disabledManager.SetProcess(false);
                 Assert(disabledManager.RuntimeMetrics == null, "Runtime metrics should remain unallocated when the environment flag is absent");
+                Assert(disabledManager.CurrentScenarioId == "balanced_basin", "Performance startup should preserve the requested scenario");
+                Assert(disabledManager.SimulationSeed == 4242, "Performance startup should apply the requested simulation seed");
+                Assert(disabledManager.CitizenCount == 3, "Performance startup should apply the requested citizen count");
+                Assert(disabledManager.PerformanceBootstrapMilliseconds is > 0.0, "Performance startup should capture the internal bootstrap interval");
+                bool reconfigurationRejected = false;
+                try
+                {
+                    disabledManager.ConfigurePerformanceStartup("balanced_basin", simulationSeed: 1337, citizenCount: 16);
+                }
+                catch (InvalidOperationException)
+                {
+                    reconfigurationRejected = true;
+                }
+                Assert(reconfigurationRejected, "Performance startup should reject configuration after the first tree entry");
                 File.WriteAllText(runtimeMetricsPath, "stale runtime metrics");
                 disabledManager.SaveSnapshotToDisk();
                 Assert(!File.Exists(runtimeMetricsPath), "A metrics-disabled save should remove a stale runtime metrics artifact");

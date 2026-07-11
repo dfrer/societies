@@ -38,6 +38,16 @@ Treat planning documents as aspirational unless they are confirmed by the curren
 - `planning/` - long-term design and research material
 - `scripts/` - local workflow scripts
 
+## Optional Performance Characterization
+
+Run a matching metrics-off/metrics-on Debug characterization pair from clean committed source:
+
+```powershell
+./scripts/run-performance-pair.ps1 -Scenario balanced_basin -Seed 1337 -Citizens 3 -Ticks 3
+```
+
+This is not part of the pull-request gate. The runner writes ignored artifacts under `artifacts/performance/` and rejects a dirty source tree by default so results identify reproducible code. It discovers Godot from `-GodotPath`, `GODOT_BIN`, `PATH`, or the standard WinGet package location. The current Godot editor/headless route is Debug characterization only; V3-W1-03 Release evidence still requires a verified Release route, the full cold/warm/invalidation matrix, and median reference runs.
+
 ## Status
 
 This tranche is about stabilizing the Godot validation base so the next prototype step can build from a truthful, deterministic, testable foundation.

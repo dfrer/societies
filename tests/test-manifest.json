@@ -1,14 +1,14 @@
 {
   "schemaVersion": 1,
-  "updatedUtc": "2026-07-10T03:38:14.0707856Z",
+  "updatedUtc": "2026-07-11T03:37:20.4724853Z",
   "required": {
     "dotnet": {
       "project": "tests/Societies.Core.Tests/Societies.Core.Tests.csproj",
       "command": "dotnet test tests/Societies.Core.Tests/Societies.Core.Tests.csproj --configuration Release",
-      "expectedTestCount": 91,
+      "expectedTestCount": 95,
       "tiers": {
         "fast": {
-          "expectedTestCount": 75,
+          "expectedTestCount": 79,
           "filter": "FullyQualifiedName!~PrototypeRuntimeSessionTests&FullyQualifiedName!~PrototypeSettlementSimulationTests&FullyQualifiedName!~SettlementDiagnosticsTests&FullyQualifiedName!~WorkOrderGenerationDiagnosticsTests"
         },
         "integration": {
@@ -66,9 +66,27 @@
       "requiredForPullRequest": false
     }
   },
+  "optional": {
+    "performancePair": {
+      "script": "scripts/run-performance-pair.ps1",
+      "command": "./scripts/run-performance-pair.ps1 -Scenario balanced_basin -Seed 1337 -Citizens 3 -Ticks 3",
+      "requiredForPullRequest": false,
+      "runModes": [
+        "metrics-off",
+        "metrics-on"
+      ],
+      "buildConfiguration": "Debug",
+      "classification": "debug_characterization",
+      "requiresCleanSource": true,
+      "artifactRoot": "artifacts/performance/",
+      "artifactsIgnoredByGit": true,
+      "releaseEvidence": false,
+      "note": "The current Godot editor/headless route is Debug characterization only. W1-03 Release evidence requires a verified Release route plus the full cold/warm/invalidation matrix and median reference runs."
+    }
+  },
   "history": {
     "preSyncCommit": "c58e3de",
     "preSyncDotnetTestCount": 64,
-    "note": "The synchronized master adds 12 PrototypeMetricsTracker tests and 3 WorkOrderGenerationDiagnostics tests. The 79-test count is the current preservation floor."
+    "note": "The synchronized master adds 12 PrototypeMetricsTracker tests and 3 WorkOrderGenerationDiagnostics tests for a historical 79-test floor. The current V3 hardening manifest declares 95 required .NET tests."
   }
 }

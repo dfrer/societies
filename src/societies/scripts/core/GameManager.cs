@@ -5,6 +5,7 @@ using Societies.UI;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Text.Json;
 
 namespace Societies.Core
 {
@@ -57,12 +58,21 @@ namespace Societies.Core
         private PrototypeWorldSummary? _lastWorldSummary;
         private int _selectedCitizenInspectionIndex;
         private int _selectedStructureInspectionIndex;
+        private bool _hasPerformanceStartupOverride;
+        private string? _performanceScenarioIdOverride;
+        private int _performanceSimulationSeedOverride;
+        private int _performanceCitizenCountOverride;
+        private bool _readyStarted;
 
         public bool IsGameRunning { get; private set; }
 
         public int SimulationSeed => _runtimeSession?.SimulationSeed ?? _simulationSeed;
 
         public long SimulationTick => _runtimeSession?.SimulationTick ?? 0;
+
+        public int CitizenCount => _runtimeSession?.Workers.Count ?? _initialWorkers;
+
+        public double? PerformanceBootstrapMilliseconds { get; private set; }
 
         public InventoryComponent Inventory => _runtimeSession?.Inventory ?? _fallbackInventory;
 
@@ -78,6 +88,7 @@ namespace Societies.Core
 
         public override void _Ready()
         {
+            _readyStarted = true;
             Instance = this;
 
             EnsureSceneStructure();
@@ -195,6 +206,29 @@ namespace Societies.Core
         {
             int ticksAttempted = 0;
             RunTickBatch(Math.Max(0, tickCount), RuntimeMetricsBatchKind.ManualStep, ref ticksAttempted);
+        }
+
+        internal void ConfigurePerformanceStartup(string scenarioId, int simulationSeed, int citizenCount)
+        {
+            if (_readyStarted || IsInsideTree())
+            {
+                throw new InvalidOperationException("Performance startup must be configured before the game manager first enters the scene tree.");
+            }
+
+            if (string.IsNullOrWhiteSpace(scenarioId))
+            {
+                throw new ArgumentException("A scenario id is required.", nameof(scenarioId));
+            }
+
+            if (citizenCount is < 1 or > 256)
+            {
+                throw new ArgumentOutOfRangeException(nameof(citizenCount), citizenCount, "Citizen count must be between 1 and 256.");
+            }
+
+            _hasPerformanceStartupOverride = true;
+            _performanceScenarioIdOverride = scenarioId;
+            _performanceSimulationSeedOverride = simulationSeed;
+            _performanceCitizenCountOverride = citizenCount;
         }
 
         public bool TryCraftRecipe(string recipeId)
@@ -404,12 +438,33 @@ namespace Societies.Core
             }
             catch (Exception ex)
             {
+                if (_hasPerformanceStartupOverride)
+                {
+                    throw new InvalidOperationException(
+                        $"Performance startup requires the validated catalog at '{dataDirectory}'.",
+                        ex);
+                }
+
                 GD.PushWarning($"Failed to load prototype catalogs from {dataDirectory}: {ex.Message}. Falling back to built-in legacy defaults.");
                 _catalogs = CreateFallbackCatalogBundle();
             }
 
-            _scenario = ResolveScenarioDefinition(_scenarioId);
-            ApplyScenarioDefaults(_scenario);
+            if (!_hasPerformanceStartupOverride)
+            {
+                _scenario = ResolveScenarioDefinition(_scenarioId);
+                ApplyScenarioDefaults(_scenario);
+                return;
+            }
+
+            PrototypeScenarioDefinition requestedScenario = _catalogs!.Scenarios.Resolve(_performanceScenarioIdOverride!);
+            PrototypeScenarioDefinition configuredScenario = JsonSerializer.Deserialize<PrototypeScenarioDefinition>(
+                JsonSerializer.Serialize(requestedScenario))
+                ?? throw new InvalidOperationException($"Failed to clone performance scenario '{requestedScenario.Id}'.");
+            configuredScenario.SimulationSeed = _performanceSimulationSeedOverride;
+            configuredScenario.InitialCitizens = _performanceCitizenCountOverride;
+
+            _scenario = configuredScenario;
+            ApplyScenarioDefaults(configuredScenario);
         }
 
         private void ConfigureLocalSession()
@@ -502,6 +557,9 @@ namespace Societies.Core
             }
 
             CreateRuntimeSession(_scenario);
+            long performanceBootstrapStartTimestamp = _hasPerformanceStartupOverride
+                ? System.Diagnostics.Stopwatch.GetTimestamp()
+                : 0;
             _runtimeSession!.Initialize(_environmentController.StartHour);
             ResetFrameScheduler();
 
@@ -521,6 +579,9 @@ namespace Societies.Core
             _scenePresenter.SyncWorkers(_runtimeSession.Workers);
             UpdateSettlementPresentationFromSession();
             CaptureMetricsSnapshot();
+            PerformanceBootstrapMilliseconds = _hasPerformanceStartupOverride
+                ? System.Diagnostics.Stopwatch.GetElapsedTime(performanceBootstrapStartTimestamp).TotalMilliseconds
+                : null;
 
             _selectedCitizenInspectionIndex = 0;
             _selectedStructureInspectionIndex = 0;
