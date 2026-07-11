@@ -98,7 +98,15 @@ namespace Societies.Core
                         diagnostics.WorkOrdersRemaining,
                         diagnostics.PathPlanLookups,
                         diagnostics.PathPlanCacheHits,
-                        diagnostics.CitizensEvaluated);
+                        diagnostics.CitizensEvaluated)
+                    {
+                        PathPlanCacheMisses = diagnostics.PathPlanCacheMisses,
+                        PathPlanCacheSize = diagnostics.PathPlanCacheSize,
+                        NavigationInvalidations = diagnostics.NavigationInvalidations,
+                        WorkerCount = diagnostics.WorkerCount,
+                        IdleCitizensConsideringWorkOrders = diagnostics.IdleCitizensConsideringWorkOrders,
+                        CandidateOrdersEvaluated = diagnostics.CandidateOrdersEvaluated
+                    };
             }
         }
 

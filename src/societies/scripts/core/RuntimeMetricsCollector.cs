@@ -18,7 +18,8 @@ namespace Societies.Core
         BuildWorkOrders,
         HarvestApply,
         SceneSync,
-        UpdateHud
+        UpdateHud,
+        NavigationRebuild
     }
 
     public readonly record struct RuntimeTickDiagnostics(
@@ -28,7 +29,20 @@ namespace Societies.Core
         int WorkOrdersRemaining,
         int PathPlanLookups,
         int PathPlanCacheHits,
-        int CitizensEvaluated);
+        int CitizensEvaluated)
+    {
+        public int PathPlanCacheMisses { get; init; } = 0;
+
+        public int PathPlanCacheSize { get; init; } = 0;
+
+        public int NavigationInvalidations { get; init; } = 0;
+
+        public int WorkerCount { get; init; } = 0;
+
+        public int IdleCitizensConsideringWorkOrders { get; init; } = 0;
+
+        public int CandidateOrdersEvaluated { get; init; } = 0;
+    }
 
     public readonly record struct RuntimePhaseTotals(
         double SimulationTickMilliseconds,
@@ -36,7 +50,10 @@ namespace Societies.Core
         double BuildWorkOrdersMilliseconds,
         double HarvestApplyMilliseconds,
         double SceneSyncMilliseconds,
-        double UpdateHudMilliseconds);
+        double UpdateHudMilliseconds)
+    {
+        public double NavigationRebuildMilliseconds { get; init; } = 0.0;
+    }
 
     public readonly record struct RuntimeMetricsBatch(
         long Sequence,
@@ -53,7 +70,24 @@ namespace Societies.Core
         int? WorkOrdersRemainingLast,
         long PathPlanLookupsTotal,
         long PathPlanCacheHitsTotal,
-        long CitizensEvaluatedTotal);
+        long CitizensEvaluatedTotal)
+    {
+        public long PathPlanCacheMissesTotal { get; init; } = 0;
+
+        public int? PathPlanCacheSizeLast { get; init; } = null;
+
+        public long NavigationInvalidationsTotal { get; init; } = 0;
+
+        public int? WorkerCountLast { get; init; } = null;
+
+        public long IdleCitizensConsideringWorkOrdersTotal { get; init; } = 0;
+
+        public long CandidateOrdersEvaluatedTotal { get; init; } = 0;
+
+        public double? CandidateOrdersPerIdleCitizen => IdleCitizensConsideringWorkOrdersTotal > 0
+            ? (double)CandidateOrdersEvaluatedTotal / IdleCitizensConsideringWorkOrdersTotal
+            : null;
+    }
 
     /// <summary>
     /// Bounded, instance-owned runtime performance telemetry. A null collector represents
@@ -65,7 +99,10 @@ namespace Societies.Core
             "sequence,batch_kind,start_simulation_tick,end_simulation_tick,completed_ticks,wall_ms,max_tick_ms," +
             "simulation_tick_ms,session_advance_ms,build_work_orders_ms,harvest_apply_ms,scene_sync_ms,update_hud_ms," +
             "work_orders_generated_total,work_orders_generated_uncapped_total,work_orders_claimed_total," +
-            "work_orders_remaining_last,path_plan_lookups_total,path_plan_cache_hits_total,citizens_evaluated_total";
+            "work_orders_remaining_last,path_plan_lookups_total,path_plan_cache_hits_total,citizens_evaluated_total," +
+            "path_plan_cache_misses_total,path_plan_cache_size_last,navigation_invalidations_total,worker_count_last," +
+            "idle_citizens_considering_work_orders_total,candidate_orders_evaluated_total," +
+            "candidate_orders_per_idle_citizen,navigation_rebuild_ms";
 
         private readonly RuntimeMetricsBatch[] _batches;
         private readonly TimeProvider _clock;
@@ -92,6 +129,7 @@ namespace Societies.Core
         private double _harvestApplyMilliseconds;
         private double _sceneSyncMilliseconds;
         private double _updateHudMilliseconds;
+        private double _navigationRebuildMilliseconds;
         private long _workOrdersGeneratedTotal;
         private long _workOrdersGeneratedUncappedTotal;
         private long _workOrdersClaimedTotal;
@@ -99,6 +137,12 @@ namespace Societies.Core
         private long _pathPlanLookupsTotal;
         private long _pathPlanCacheHitsTotal;
         private long _citizensEvaluatedTotal;
+        private long _pathPlanCacheMissesTotal;
+        private int? _pathPlanCacheSizeLast;
+        private long _navigationInvalidationsTotal;
+        private int? _workerCountLast;
+        private long _idleCitizensConsideringWorkOrdersTotal;
+        private long _candidateOrdersEvaluatedTotal;
 
         public RuntimeMetricsCollector(int capacity = 4096, TimeProvider? clock = null)
         {
@@ -199,6 +243,12 @@ namespace Societies.Core
             _pathPlanLookupsTotal += diagnostics.PathPlanLookups;
             _pathPlanCacheHitsTotal += diagnostics.PathPlanCacheHits;
             _citizensEvaluatedTotal += diagnostics.CitizensEvaluated;
+            _pathPlanCacheMissesTotal += diagnostics.PathPlanCacheMisses;
+            _pathPlanCacheSizeLast = diagnostics.PathPlanCacheSize;
+            _navigationInvalidationsTotal += diagnostics.NavigationInvalidations;
+            _workerCountLast = diagnostics.WorkerCount;
+            _idleCitizensConsideringWorkOrdersTotal += diagnostics.IdleCitizensConsideringWorkOrders;
+            _candidateOrdersEvaluatedTotal += diagnostics.CandidateOrdersEvaluated;
         }
 
         public void EndBatch(long endSimulationTick)
@@ -240,14 +290,25 @@ namespace Societies.Core
                     _buildWorkOrdersMilliseconds,
                     _harvestApplyMilliseconds,
                     _sceneSyncMilliseconds,
-                    _updateHudMilliseconds),
+                    _updateHudMilliseconds)
+                {
+                    NavigationRebuildMilliseconds = _navigationRebuildMilliseconds
+                },
                 _workOrdersGeneratedTotal,
                 _workOrdersGeneratedUncappedTotal,
                 _workOrdersClaimedTotal,
                 _workOrdersRemainingLast,
                 _pathPlanLookupsTotal,
                 _pathPlanCacheHitsTotal,
-                _citizensEvaluatedTotal);
+                _citizensEvaluatedTotal)
+            {
+                PathPlanCacheMissesTotal = _pathPlanCacheMissesTotal,
+                PathPlanCacheSizeLast = _pathPlanCacheSizeLast,
+                NavigationInvalidationsTotal = _navigationInvalidationsTotal,
+                WorkerCountLast = _workerCountLast,
+                IdleCitizensConsideringWorkOrdersTotal = _idleCitizensConsideringWorkOrdersTotal,
+                CandidateOrdersEvaluatedTotal = _candidateOrdersEvaluatedTotal
+            };
 
             Store(batch);
             _batchOpen = false;
@@ -353,6 +414,9 @@ namespace Societies.Core
                 case RuntimeMetricsPhase.UpdateHud:
                     _updateHudMilliseconds += elapsedMilliseconds;
                     break;
+                case RuntimeMetricsPhase.NavigationRebuild:
+                    _navigationRebuildMilliseconds += elapsedMilliseconds;
+                    break;
                 default:
                     throw new ArgumentOutOfRangeException(nameof(phase), phase, "Unknown runtime metrics phase.");
             }
@@ -403,6 +467,7 @@ namespace Societies.Core
             _harvestApplyMilliseconds = 0.0;
             _sceneSyncMilliseconds = 0.0;
             _updateHudMilliseconds = 0.0;
+            _navigationRebuildMilliseconds = 0.0;
             _workOrdersGeneratedTotal = 0;
             _workOrdersGeneratedUncappedTotal = 0;
             _workOrdersClaimedTotal = 0;
@@ -410,6 +475,12 @@ namespace Societies.Core
             _pathPlanLookupsTotal = 0;
             _pathPlanCacheHitsTotal = 0;
             _citizensEvaluatedTotal = 0;
+            _pathPlanCacheMissesTotal = 0;
+            _pathPlanCacheSizeLast = null;
+            _navigationInvalidationsTotal = 0;
+            _workerCountLast = null;
+            _idleCitizensConsideringWorkOrdersTotal = 0;
+            _candidateOrdersEvaluatedTotal = 0;
             Array.Clear(_activePhaseTokenIds);
         }
 
@@ -436,7 +507,17 @@ namespace Societies.Core
                 batch.WorkOrdersRemainingLast?.ToString(CultureInfo.InvariantCulture) ?? string.Empty,
                 batch.PathPlanLookupsTotal.ToString(CultureInfo.InvariantCulture),
                 batch.PathPlanCacheHitsTotal.ToString(CultureInfo.InvariantCulture),
-                batch.CitizensEvaluatedTotal.ToString(CultureInfo.InvariantCulture)
+                batch.CitizensEvaluatedTotal.ToString(CultureInfo.InvariantCulture),
+                batch.PathPlanCacheMissesTotal.ToString(CultureInfo.InvariantCulture),
+                batch.PathPlanCacheSizeLast?.ToString(CultureInfo.InvariantCulture) ?? string.Empty,
+                batch.NavigationInvalidationsTotal.ToString(CultureInfo.InvariantCulture),
+                batch.WorkerCountLast?.ToString(CultureInfo.InvariantCulture) ?? string.Empty,
+                batch.IdleCitizensConsideringWorkOrdersTotal.ToString(CultureInfo.InvariantCulture),
+                batch.CandidateOrdersEvaluatedTotal.ToString(CultureInfo.InvariantCulture),
+                batch.CandidateOrdersPerIdleCitizen.HasValue
+                    ? FormatDouble(batch.CandidateOrdersPerIdleCitizen.Value)
+                    : string.Empty,
+                FormatDouble(batch.Phases.NavigationRebuildMilliseconds)
             };
 
             writer.WriteLine(string.Join(',', values));

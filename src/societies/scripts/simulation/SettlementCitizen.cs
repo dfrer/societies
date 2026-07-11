@@ -73,7 +73,8 @@ namespace Societies.Simulation
             float currentHour,
             PrototypeWeather weather,
             PrototypeSettlementTickResult result,
-            List<PrototypeWorkOrder> availableOrders)
+            List<PrototypeWorkOrder> availableOrders,
+            RuntimeMetricsCollector? runtimeMetrics)
         {
             _citizensEvaluatedThisTick++;
             TrackCitizenPhaseTick(citizen);
@@ -106,7 +107,7 @@ namespace Societies.Simulation
                         return;
                     }
 
-                    ResolveStationaryCompletion(citizen, result);
+                    ResolveStationaryCompletion(citizen, result, runtimeMetrics);
                     return;
 
                 case PrototypeWorkerPhase.Incapacitated:
@@ -125,6 +126,8 @@ namespace Societies.Simulation
                 return;
             }
 
+            _idleCitizensConsideringWorkOrdersThisTick++;
+            _candidateOrdersEvaluatedThisTick += availableOrders.Count;
             PrototypeWorkOrder? order = availableOrders
                 .OrderByDescending(candidate => ScoreOrder(citizen, candidate))
                 .ThenBy(candidate => candidate.OrderId, StringComparer.Ordinal)
@@ -327,7 +330,10 @@ namespace Societies.Simulation
                     return;
             }
         }
-        private void ResolveStationaryCompletion(PrototypeWorkerState citizen, PrototypeSettlementTickResult result)
+        private void ResolveStationaryCompletion(
+            PrototypeWorkerState citizen,
+            PrototypeSettlementTickResult result,
+            RuntimeMetricsCollector? runtimeMetrics)
         {
             switch (citizen.CurrentOrderKind)
             {
@@ -448,7 +454,7 @@ namespace Societies.Simulation
                 case PrototypeWorkOrderKind.Build:
                 case PrototypeWorkOrderKind.BuildPath:
                 case PrototypeWorkOrderKind.EstablishRemoteDepot:
-                    if (!CompleteBuild(citizen, result))
+                    if (!CompleteBuild(citizen, result, runtimeMetrics))
                     {
                         return;
                     }

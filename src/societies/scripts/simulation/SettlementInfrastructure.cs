@@ -192,10 +192,19 @@ namespace Societies.Simulation
                 .ToHashSet();
             _navigationGrid = new PrototypeNavigationGrid(_world.WorldMap, builtPathCells, _navigationRulesVersion);
         }
-        private void InvalidateNavigation()
+        private void InvalidateNavigation(RuntimeMetricsCollector? runtimeMetrics)
         {
-            _navigationRulesVersion++;
-            RebuildNavigation();
+            RuntimeMetricsPhaseToken navigationRebuildPhase = runtimeMetrics?.BeginPhase(RuntimeMetricsPhase.NavigationRebuild) ?? default;
+            try
+            {
+                _navigationInvalidationsThisTick++;
+                _navigationRulesVersion++;
+                RebuildNavigation();
+            }
+            finally
+            {
+                navigationRebuildPhase.Complete();
+            }
         }
         private PrototypePathPlan FindPathPlan(Vector3 startPosition, Vector3 destinationPosition)
         {
@@ -211,6 +220,7 @@ namespace Societies.Simulation
                 return cachedPlan;
             }
 
+            _pathPlanCacheMissesThisTick++;
             PrototypePathPlan plan = _navigationGrid.FindPath(startPosition, destinationPosition);
             _pathCache[cacheKey] = plan;
             return plan;

@@ -343,7 +343,14 @@ namespace Societies.Tests
                 Assert(afterManualStep[0].Phases.UpdateHudMilliseconds > 0.0, "Manual batch should measure its coalesced HUD refresh");
                 Assert(afterManualStep[0].WorkOrdersGeneratedUncappedTotal >= afterManualStep[0].WorkOrdersGeneratedTotal, "Uncapped work-order diagnostics must be preserved");
                 Assert(afterManualStep[0].WorkOrdersRemainingLast.HasValue, "Completed ticks should publish the last work-order gauge");
-                Assert(afterManualStep[0].PathPlanLookupsTotal >= afterManualStep[0].PathPlanCacheHitsTotal, "Path cache hits cannot exceed lookups");
+                Assert(
+                    afterManualStep[0].PathPlanCacheHitsTotal + afterManualStep[0].PathPlanCacheMissesTotal == afterManualStep[0].PathPlanLookupsTotal,
+                    "Path cache hits and misses should account for every lookup");
+                Assert(afterManualStep[0].PathPlanCacheSizeLast.HasValue, "Completed ticks should publish the last path-cache size");
+                Assert(afterManualStep[0].WorkerCountLast is > 0, "Completed ticks should publish a positive worker count");
+                Assert(afterManualStep[0].IdleCitizensConsideringWorkOrdersTotal > 0, "Assignment diagnostics should report idle citizens considering work orders");
+                Assert(afterManualStep[0].CandidateOrdersEvaluatedTotal > 0, "Assignment diagnostics should report evaluated candidate orders");
+                Assert(afterManualStep[0].CandidateOrdersPerIdleCitizen is > 0.0, "Completed ticks should publish a positive candidate-orders-per-idle-citizen ratio");
                 Assert(afterManualStep[0].CitizensEvaluatedTotal > 0, "Session diagnostics should report evaluated citizens");
 
                 manager._Process(0.1);
@@ -359,12 +366,33 @@ namespace Societies.Tests
                 Assert(afterZeroTickFrame[2].Kind == RuntimeMetricsBatchKind.RenderedFrame, "Zero-tick work should remain a rendered-frame batch");
                 Assert(afterZeroTickFrame[2].CompletedTicks == 0, "Zero-tick frame should not fabricate a completed simulation tick");
                 Assert(!afterZeroTickFrame[2].WorkOrdersRemainingLast.HasValue, "Zero-tick frame should not fabricate a work-order gauge");
+                Assert(!afterZeroTickFrame[2].PathPlanCacheSizeLast.HasValue, "Zero-tick frame should not fabricate a path-cache size");
+                Assert(!afterZeroTickFrame[2].WorkerCountLast.HasValue, "Zero-tick frame should not fabricate a worker count");
+                Assert(!afterZeroTickFrame[2].CandidateOrdersPerIdleCitizen.HasValue, "Zero-tick frame should not fabricate an assignment ratio");
                 Assert(afterZeroTickFrame[2].StartSimulationTick == 4 && afterZeroTickFrame[2].EndSimulationTick == 4, "Zero-tick frame bounds should remain unchanged");
 
                 manager.SaveSnapshotToDisk();
                 Assert(File.Exists(runtimeMetricsPath), "A metrics-enabled save should export runtime batch metrics");
                 string runtimeMetricsCsv = File.ReadAllText(runtimeMetricsPath);
                 Assert(runtimeMetricsCsv.StartsWith("sequence,batch_kind,start_simulation_tick", StringComparison.Ordinal), "Runtime metrics CSV header mismatch");
+                string[] runtimeMetricsHeader = runtimeMetricsCsv.Split('\n', 2, StringSplitOptions.None)[0].TrimEnd('\r').Split(',');
+                string[] requiredDiagnosticHeaders =
+                {
+                    "navigation_rebuild_ms",
+                    "path_plan_cache_misses_total",
+                    "path_plan_cache_size_last",
+                    "navigation_invalidations_total",
+                    "worker_count_last",
+                    "idle_citizens_considering_work_orders_total",
+                    "candidate_orders_evaluated_total",
+                    "candidate_orders_per_idle_citizen"
+                };
+                string[] missingDiagnosticHeaders = requiredDiagnosticHeaders
+                    .Where(header => !runtimeMetricsHeader.Contains(header, StringComparer.Ordinal))
+                    .ToArray();
+                Assert(
+                    missingDiagnosticHeaders.Length == 0,
+                    $"Runtime metrics CSV is missing navigation/assignment headers: {string.Join(", ", missingDiagnosticHeaders)}");
                 Assert(runtimeMetricsCsv.Contains("manual_step", StringComparison.Ordinal), "Runtime metrics CSV should contain the manual batch");
                 Assert(runtimeMetricsCsv.Contains("rendered_frame", StringComparison.Ordinal), "Runtime metrics CSV should contain rendered batches");
 

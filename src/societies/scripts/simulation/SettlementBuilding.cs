@@ -56,7 +56,10 @@ namespace Societies.Simulation
                 _centralDepot.Capacity = 220;
             }
         }
-        private bool CompleteBuild(PrototypeWorkerState citizen, PrototypeSettlementTickResult result)
+        private bool CompleteBuild(
+            PrototypeWorkerState citizen,
+            PrototypeSettlementTickResult result,
+            RuntimeMetricsCollector? runtimeMetrics)
         {
             PrototypeStructureState? structure = GetStructure(citizen.TargetStructureId);
             if (structure == null)
@@ -95,7 +98,7 @@ namespace Societies.Simulation
                     segment.IsBuilt = true;
                 }
 
-                InvalidateNavigation();
+                InvalidateNavigation(runtimeMetrics);
             }
 
             if (structure.StructureKindId == "remote_stockpile")

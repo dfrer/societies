@@ -35,6 +35,21 @@ namespace Societies.Core.Tests
             var clock = new ManualTimeProvider();
             var collector = new RuntimeMetricsCollector(capacity: 2, clock);
             collector.BeginBatch(RuntimeMetricsBatchKind.RenderedFrame, 10);
+            RuntimeMetricsPhaseToken tick = collector.BeginPhase(RuntimeMetricsPhase.SimulationTick);
+            RuntimeMetricsPhaseToken navigation = collector.BeginPhase(RuntimeMetricsPhase.NavigationRebuild);
+            clock.AdvanceMilliseconds(2);
+            navigation.Complete();
+            tick.Complete();
+            collector.RecordCompletedTick(
+                new RuntimeTickDiagnostics(0, 0, 0, 0, 0, 0, 0)
+                {
+                    PathPlanCacheMisses = 5,
+                    PathPlanCacheSize = 10,
+                    NavigationInvalidations = 3,
+                    WorkerCount = 4,
+                    IdleCitizensConsideringWorkOrders = 2,
+                    CandidateOrdersEvaluated = 12
+                });
             RuntimeMetricsPhaseToken staleToken = collector.BeginPhase(RuntimeMetricsPhase.SessionAdvance);
             clock.AdvanceMilliseconds(5);
 
@@ -49,6 +64,14 @@ namespace Societies.Core.Tests
             Assert.Equal(0, batch.Sequence);
             Assert.Equal(0, collector.DroppedBatchCount);
             Assert.Equal(0.0, batch.Phases.SessionAdvanceMilliseconds);
+            Assert.Equal(0.0, batch.Phases.NavigationRebuildMilliseconds);
+            Assert.Equal(0, batch.PathPlanCacheMissesTotal);
+            Assert.Null(batch.PathPlanCacheSizeLast);
+            Assert.Equal(0, batch.NavigationInvalidationsTotal);
+            Assert.Null(batch.WorkerCountLast);
+            Assert.Equal(0, batch.IdleCitizensConsideringWorkOrdersTotal);
+            Assert.Equal(0, batch.CandidateOrdersEvaluatedTotal);
+            Assert.Null(batch.CandidateOrdersPerIdleCitizen);
         }
 
         [Fact]
@@ -62,7 +85,9 @@ namespace Societies.Core.Tests
             clock.AdvanceMilliseconds(1);
             RuntimeMetricsPhaseToken inner = collector.BeginPhase(RuntimeMetricsPhase.SessionAdvance);
             RuntimeMetricsPhaseToken copiedInner = inner;
+            RuntimeMetricsPhaseToken navigation = collector.BeginPhase(RuntimeMetricsPhase.NavigationRebuild);
             clock.AdvanceMilliseconds(2);
+            Assert.Equal(2.0, navigation.Complete());
             Assert.Equal(2.0, inner.Complete());
             Assert.Equal(0.0, copiedInner.Complete());
             clock.AdvanceMilliseconds(1);
@@ -74,6 +99,7 @@ namespace Societies.Core.Tests
             Assert.Equal(4.0, batch.WallMilliseconds);
             Assert.Equal(4.0, batch.Phases.SimulationTickMilliseconds);
             Assert.Equal(2.0, batch.Phases.SessionAdvanceMilliseconds);
+            Assert.Equal(2.0, batch.Phases.NavigationRebuildMilliseconds);
         }
 
         [Fact]
@@ -87,12 +113,28 @@ namespace Societies.Core.Tests
             clock.AdvanceMilliseconds(1);
             firstTickPhase.Complete();
             collector.RecordCompletedTick(
-                new RuntimeTickDiagnostics(10, 14, 2, 8, 100, 80, 4));
+                new RuntimeTickDiagnostics(10, 14, 2, 8, 100, 80, 4)
+                {
+                    PathPlanCacheMisses = 20,
+                    PathPlanCacheSize = 7,
+                    NavigationInvalidations = 2,
+                    WorkerCount = 3,
+                    IdleCitizensConsideringWorkOrders = 4,
+                    CandidateOrdersEvaluated = 40
+                });
             RuntimeMetricsPhaseToken secondTickPhase = collector.BeginPhase(RuntimeMetricsPhase.SimulationTick);
             clock.AdvanceMilliseconds(2);
             secondTickPhase.Complete();
             collector.RecordCompletedTick(
-                new RuntimeTickDiagnostics(20, 27, 3, 5, 150, 140, 6));
+                new RuntimeTickDiagnostics(20, 27, 3, 5, 150, 140, 6)
+                {
+                    PathPlanCacheMisses = 10,
+                    PathPlanCacheSize = 9,
+                    NavigationInvalidations = 1,
+                    WorkerCount = 5,
+                    IdleCitizensConsideringWorkOrders = 6,
+                    CandidateOrdersEvaluated = 90
+                });
             collector.EndBatch(22);
 
             RuntimeMetricsBatch batch = Assert.Single(collector.SnapshotBatches());
@@ -107,6 +149,13 @@ namespace Societies.Core.Tests
             Assert.Equal(250, batch.PathPlanLookupsTotal);
             Assert.Equal(220, batch.PathPlanCacheHitsTotal);
             Assert.Equal(10, batch.CitizensEvaluatedTotal);
+            Assert.Equal(30, batch.PathPlanCacheMissesTotal);
+            Assert.Equal(9, batch.PathPlanCacheSizeLast);
+            Assert.Equal(3, batch.NavigationInvalidationsTotal);
+            Assert.Equal(5, batch.WorkerCountLast);
+            Assert.Equal(10, batch.IdleCitizensConsideringWorkOrdersTotal);
+            Assert.Equal(130, batch.CandidateOrdersEvaluatedTotal);
+            Assert.Equal(13.0, batch.CandidateOrdersPerIdleCitizen);
         }
 
         [Fact]
@@ -149,9 +198,21 @@ namespace Societies.Core.Tests
 
                 collector.BeginBatch(RuntimeMetricsBatchKind.RenderedFrame, 0);
                 RuntimeMetricsPhaseToken tickPhase = collector.BeginPhase(RuntimeMetricsPhase.SimulationTick);
-                clock.AdvanceMilliseconds(1.5);
+                RuntimeMetricsPhaseToken navigation = collector.BeginPhase(RuntimeMetricsPhase.NavigationRebuild);
+                clock.AdvanceMilliseconds(0.25);
+                navigation.Complete();
+                clock.AdvanceMilliseconds(1.25);
                 tickPhase.Complete();
-                collector.RecordCompletedTick(default);
+                collector.RecordCompletedTick(
+                    new RuntimeTickDiagnostics(0, 0, 0, 0, 0, 0, 0)
+                    {
+                        PathPlanCacheMisses = 2,
+                        PathPlanCacheSize = 7,
+                        NavigationInvalidations = 1,
+                        WorkerCount = 4,
+                        IdleCitizensConsideringWorkOrders = 2,
+                        CandidateOrdersEvaluated = 3
+                    });
                 collector.EndBatch(1);
 
                 using var writer = new StringWriter();
@@ -160,10 +221,17 @@ namespace Societies.Core.Tests
                     .Split('\n', StringSplitOptions.RemoveEmptyEntries);
 
                 Assert.Equal(3, lines.Length);
-                Assert.Equal(20, lines[0].Split(',').Length);
-                Assert.Equal(20, lines[1].Split(',').Length);
+                Assert.Equal(28, lines[0].Split(',').Length);
+                Assert.Equal(28, lines[1].Split(',').Length);
                 Assert.Equal(string.Empty, lines[1].Split(',')[16]);
-                Assert.Equal(20, lines[2].Split(',').Length);
+                Assert.Equal(string.Empty, lines[1].Split(',')[21]);
+                Assert.Equal(string.Empty, lines[1].Split(',')[23]);
+                Assert.Equal(string.Empty, lines[1].Split(',')[26]);
+                Assert.Equal(28, lines[2].Split(',').Length);
+                Assert.Equal("path_plan_cache_misses_total", lines[0].Split(',')[20]);
+                Assert.Equal("navigation_rebuild_ms", lines[0].Split(',')[27]);
+                Assert.Equal("1.5", lines[2].Split(',')[26]);
+                Assert.Equal("0.25", lines[2].Split(',')[27]);
                 Assert.Contains("rendered_frame", lines[2]);
                 Assert.Contains("1.5", lines[2]);
                 Assert.DoesNotContain("1,5", lines[2]);

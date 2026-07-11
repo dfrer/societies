@@ -1,0 +1,113 @@
+{
+  "schemaVersion": 1,
+  "capturedUtc": "2026-07-11T02:52:20.4015640Z",
+  "status": "pass",
+  "branch": "feature/v3-runtime-hardening",
+  "baseCommit": "3dce984e5bf24443c016b0dffdfa1837b8871ba1",
+  "unit": "runtime navigation and assignment diagnostics",
+  "diagnostics": {
+    "perCompletedTick": [
+      "path plan cache misses",
+      "path plan cache size",
+      "navigation invalidations",
+      "worker count",
+      "idle citizens considering generic work orders",
+      "candidate orders evaluated"
+    ],
+    "batchAggregation": [
+      "path plan cache misses total",
+      "path plan cache size last",
+      "navigation invalidations total",
+      "worker count last",
+      "idle citizens considering work orders total",
+      "candidate orders evaluated total",
+      "candidate orders per idle citizen"
+    ],
+    "newTimedPhase": "NavigationRebuild"
+  },
+  "csv": {
+    "existingPrefixColumnsPreserved": 20,
+    "totalColumns": 28,
+    "appendedColumns": [
+      "path_plan_cache_misses_total",
+      "path_plan_cache_size_last",
+      "navigation_invalidations_total",
+      "worker_count_last",
+      "idle_citizens_considering_work_orders_total",
+      "candidate_orders_evaluated_total",
+      "candidate_orders_per_idle_citizen",
+      "navigation_rebuild_ms"
+    ]
+  },
+  "contract": {
+    "pathHitsPlusMissesEqualLookups": true,
+    "cacheAndWorkerGaugesUseLastCompletedTick": true,
+    "zeroTickGaugesAndRatioAreNull": true,
+    "assignmentCandidatesCountOnlyGenericScoringAfterNeedDrivenAssignmentFails": true,
+    "candidateRatioUsesAggregateCandidateAndIdleTotals": true,
+    "constructorAndLoadNavigationRebuildsAreExcludedFromRuntimeInvalidations": true,
+    "runtimeInvalidationTimesCounterVersionAndGridRebuild": true,
+    "metricsDisabledReadsNoClockAndAllocatesNoDiagnosticRows": true,
+    "existingPositionalRecordConstructorsPreserved": true,
+    "testManifestChanged": false
+  },
+  "validation": {
+    "collectorFocused": {
+      "passed": 6,
+      "failed": 0,
+      "durationMilliseconds": 36
+    },
+    "settlementDiagnosticsFocused": {
+      "passed": 5,
+      "failed": 0,
+      "durationSeconds": 73
+    },
+    "fastDotnet": {
+      "passed": 75,
+      "failed": 0,
+      "durationSeconds": 3
+    },
+    "requiredDotnet": {
+      "passed": 91,
+      "failed": 0,
+      "skipped": 0,
+      "testDurationSeconds": 327,
+      "commandWallDurationSeconds": 329.6
+    },
+    "godotBuildSolutions": {
+      "passed": true,
+      "cleanRetryDurationSeconds": 6.4
+    },
+    "godotHeadless": {
+      "passed": 16,
+      "failed": 0,
+      "durationSeconds": 403.6,
+      "requiredTest": "Test_MainScene_RuntimeMetricsBatchSmoke"
+    }
+  },
+  "focusedProof": [
+    "A forced path-segment completion produces exactly one runtime invalidation and positive rebuild timing under an incrementing test clock.",
+    "The final cache-size gauge matches the simulation diagnostic after invalidation and subsequent lookups.",
+    "First-tick assignment candidates equal the exact shrinking-list evaluation count.",
+    "The Godot smoke proves live session mapping, zero-tick nullability, and all appended CSV headers."
+  ],
+  "warmCacheDecision": {
+    "implementedInThisUnit": false,
+    "status": "deferred to an equivalence-gated benchmark-only slice",
+    "reason": "Current cell-keyed cache entries embed exact endpoints, so eager insertion order may change route scoring or travel results."
+  },
+  "environmentNote": {
+    "initialGodotBuildAttempt": "timed out without compiler output",
+    "leftoverProcessesFromAttempt": [
+      "Godot console",
+      "dotnet build host"
+    ],
+    "cleanup": "Only the two processes started by the timed-out command were terminated.",
+    "cleanRetry": "passed",
+    "classifiedAsProductDefect": false
+  },
+  "review": {
+    "independentReviewCompleted": true,
+    "remainingMaterialFindings": 0
+  }
+}
