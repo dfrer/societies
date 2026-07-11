@@ -1,0 +1,165 @@
+{
+  "schemaVersion": 1,
+  "capturedUtc": "2026-07-11T04:00:20.5204960Z",
+  "status": "pass",
+  "branch": "feature/v3-runtime-hardening",
+  "sourceCommit": "a791c3c115fbdf6c01f685ba2f968277bd457d08",
+  "gitDirty": false,
+  "unit": "standalone deterministic performance runner and metrics equivalence pair",
+  "configuration": {
+    "scenarioId": "balanced_basin",
+    "simulationSeed": 1337,
+    "citizenCount": 3,
+    "warmupTicks": 0,
+    "measuredTicks": 3,
+    "measurementMode": "one_manual_step_per_external_sample",
+    "warmupMode": "none",
+    "cacheWarmupEnabled": false
+  },
+  "environment": {
+    "godotVersion": "4.6.2-stable (official)",
+    "managedBuildConfiguration": "Debug",
+    "godotDebugBuild": true,
+    "dotnetRuntime": ".NET 10.0.8",
+    "operatingSystem": "Microsoft Windows 10.0.19045",
+    "processArchitecture": "X64",
+    "logicalProcessorCount": 16
+  },
+  "validation": {
+    "statisticsFocused": {
+      "passed": 4,
+      "failed": 0,
+      "durationMilliseconds": 14
+    },
+    "fastDotnet": {
+      "passed": 79,
+      "failed": 0,
+      "durationSeconds": 4
+    },
+    "requiredDotnet": {
+      "passed": 95,
+      "failed": 0,
+      "skipped": 0,
+      "testDurationSeconds": 319,
+      "commandWallDurationSeconds": 321.3
+    },
+    "godotBuildSolutions": {
+      "passed": true,
+      "durationSeconds": 5.9
+    },
+    "godotHeadless": {
+      "passed": 16,
+      "failed": 0,
+      "durationSeconds": 398.9,
+      "expandedTest": "Test_MainScene_RuntimeMetricsBatchSmoke"
+    },
+    "existingOutputCollision": {
+      "passed": true,
+      "runnerExitCode": 1,
+      "priorPerformanceResultHashUnchanged": true,
+      "classification": "targeted pre-commit regression smoke"
+    }
+  },
+  "pair": {
+    "status": "pass",
+    "sourceClean": true,
+    "resultSchemaValid": true,
+    "configurationMatches": true,
+    "commandConfigurationMatches": true,
+    "modeContractValid": true,
+    "gitIdentityMatches": true,
+    "environmentMatches": true,
+    "tickBoundsMatch": true,
+    "hashesValid": true,
+    "snapshotHashMatches": true,
+    "eventLogHashMatches": true,
+    "combinedHashMatches": true,
+    "resultStatusesValid": true,
+    "artifactContractValid": true,
+    "metricsOffRuntimeMetricsAbsent": true,
+    "metricsOnRuntimeMetricsValid": true,
+    "measuredStartSimulationTick": 0,
+    "finalSimulationTick": 3,
+    "snapshotSha256": "b2aa573fb752d4a788ee720fb2307a31ac7ff7b68e1fd4cc8b16bc2645e91d8c",
+    "eventLogSha256": "b5a1194087badb1f3142d58eee13fa153afd013ff9451deb2b07f3038f8c5b34",
+    "deterministicStateAndEventSha256": "d9581664e4bdfa40d55b0b301c271c5106854379d3a7f9e72e7df5ef5bbb5a1e"
+  },
+  "metricsOff": {
+    "status": "characterization_complete",
+    "budgetProfile": "debugCharacterization",
+    "bootstrapMilliseconds": 939.0177,
+    "externalTickStatistics": {
+      "p50Milliseconds": 25.1183,
+      "p95Milliseconds": 6770.0173,
+      "p99Milliseconds": 6770.0173,
+      "maximumMilliseconds": 6770.0173,
+      "totalMilliseconds": 6818.3419
+    },
+    "targetPassed": null,
+    "safetyPassed": null,
+    "runtimeMetricsCsvPresent": false
+  },
+  "metricsOn": {
+    "status": "diagnostic_complete",
+    "budgetProfile": "metricsDiagnostic",
+    "bootstrapMilliseconds": 947.0402,
+    "externalTickStatistics": {
+      "p50Milliseconds": 23.6617,
+      "p95Milliseconds": 6702.6221,
+      "p99Milliseconds": 6702.6221,
+      "maximumMilliseconds": 6702.6221,
+      "totalMilliseconds": 6747.6117
+    },
+    "targetPassed": null,
+    "safetyPassed": null,
+    "runtimeMetricsCsvPresent": true,
+    "runtimeMetricsCsvRowsIncludingHeader": 4,
+    "runtimeMetricsCsvColumns": 28,
+    "batchCount": 3,
+    "droppedBatchCount": 0
+  },
+  "aggregateArtifacts": {
+    "localIgnoredRoot": "artifacts/performance/runner-pair-a791c3c-clean",
+    "committed": false,
+    "matrixDataRows": 2,
+    "matrixColumns": 37,
+    "utf8WithoutBom": true,
+    "assessmentScope": "single_run_indicator_not_median_of_three_gate"
+  },
+  "releaseBoundary": {
+    "releaseBaselineCaptured": false,
+    "releaseEnvironmentValid": false,
+    "trackedExportReleasePresetPresent": false,
+    "exportPresetsIgnored": true,
+    "targetOrSafetyClaimMade": false,
+    "coldWarmComparisonCaptured": false,
+    "forcedInvalidationCaptured": false,
+    "medianOfThreeCaptured": false,
+    "nextRequiredStep": "Establish a tracked and verified Godot Release execution route, then run the complete V3-W1-03 cold, warm, forced-invalidation, and median reference matrix."
+  },
+  "environmentNote": {
+    "initialCleanPairAttempt": "The optional Godot solution-build step stopped producing output and reached the command timeout before any run directory was created.",
+    "leftoverProcessesFromAttempt": [
+      "Godot console",
+      "dotnet build host"
+    ],
+    "cleanup": "Only the two processes started by the timed-out command were terminated.",
+    "cleanRetry": "Passed with -SkipBuild against the already-passed Godot solution build from the same source commit.",
+    "classifiedAsProductDefect": false
+  },
+  "review": {
+    "independentRunnerReviewCompleted": true,
+    "independentPairReviewCompleted": true,
+    "findingsResolvedInThisUnit": [
+      "existing output collisions preserve prior evidence",
+      "hashes must be present and valid SHA-256 values",
+      "result schema, status, mode, Git identity, environment, diagnostics, and artifact contracts are validated",
+      "dirty-source pairs are rejected by default and labeled when explicitly allowed",
+      "fixed Release-reference configurations cannot silently run as Debug baselines",
+      "stress budgets require the fixed benchmark scenario and seed",
+      "default pair identifiers include full configuration and a collision-resistant nonce",
+      "aggregate matrices include work-order counts and artifact paths"
+    ],
+    "remainingMaterialFindingsForV3W102": 0
+  }
+}
