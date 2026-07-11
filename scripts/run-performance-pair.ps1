@@ -7,7 +7,9 @@ param(
     [int]$WarmupTicks = 0,
     [string]$OutputRoot,
     [string]$GodotPath,
+    [string]$ExportPreset = "Windows Performance Release",
     [switch]$SkipBuild,
+    [switch]$ReleaseExport,
     [switch]$AllowPrimarySafetyFailure,
     [switch]$AllowDirtySource,
     [switch]$AllowDebugReference,
@@ -77,6 +79,21 @@ function Test-GitObjectId {
     return (Test-NonEmptyText $Value) -and ([string]$Value -match '^(?:[0-9a-fA-F]{40}|[0-9a-fA-F]{64})$')
 }
 
+function Get-GodotSemanticVersion {
+    param([object]$Value)
+
+    if (-not (Test-NonEmptyText $Value)) {
+        return $null
+    }
+
+    $versionMatch = [regex]::Match([string]$Value, '(?<!\d)(\d+\.\d+\.\d+)(?!\d)')
+    if (-not $versionMatch.Success) {
+        return $null
+    }
+
+    return $versionMatch.Groups[1].Value
+}
+
 function Invoke-PerformanceRun {
     param(
         [Parameter(Mandatory = $true)]
@@ -92,22 +109,33 @@ function Invoke-PerformanceRun {
     $allowSafetyText = $AllowSafetyFailure.ToString().ToLowerInvariant()
     $gitDirtyText = $script:gitDirty.ToString().ToLowerInvariant()
 
-    & $script:godot `
-        --headless `
-        --path "src/societies" `
-        "res://tests/PerfRunner.tscn" `
-        -- `
-        --scenario $Scenario `
-        --seed $Seed `
-        --citizens $Citizens `
-        --ticks $Ticks `
-        --warmup-ticks $WarmupTicks `
-        --metrics $MetricsMode `
-        --output-dir $RunOutputDirectory `
-        --run-id $RunId `
-        --git-sha $script:gitSha `
-        --git-dirty $gitDirtyText `
-        --allow-safety-failure $allowSafetyText
+    $runnerArguments = @("--headless")
+    if ($script:executionRoute -eq "editor_scene") {
+        $runnerArguments += @(
+            "--path",
+            $script:projectPath,
+            "res://tests/PerfRunner.tscn"
+        )
+    }
+    $runnerArguments += @(
+        "--",
+        "--scenario", $Scenario,
+        "--seed", $Seed.ToString([System.Globalization.CultureInfo]::InvariantCulture),
+        "--citizens", $Citizens.ToString([System.Globalization.CultureInfo]::InvariantCulture),
+        "--ticks", $Ticks.ToString([System.Globalization.CultureInfo]::InvariantCulture),
+        "--warmup-ticks", $WarmupTicks.ToString([System.Globalization.CultureInfo]::InvariantCulture),
+        "--metrics", $MetricsMode,
+        "--output-dir", $RunOutputDirectory,
+        "--run-id", $RunId,
+        "--git-sha", $script:gitSha,
+        "--git-dirty", $gitDirtyText,
+        "--execution-route", $script:executionRoute,
+        "--project-path", $script:projectPath,
+        "--runner-executable", $script:runnerExecutable,
+        "--allow-safety-failure", $allowSafetyText
+    )
+
+    & $script:runnerExecutable @runnerArguments
 
     if ($LASTEXITCODE -ne 0) {
         throw "Performance runner '$RunId' exited with code $LASTEXITCODE."
@@ -122,6 +150,15 @@ if ($Ticks -lt 1 -or $Ticks -gt 4096) {
 }
 if ($WarmupTicks -lt 0) {
     throw "WarmupTicks cannot be negative."
+}
+if ($ReleaseExport -and $SkipBuild) {
+    throw "-SkipBuild cannot be combined with -ReleaseExport because the exported runner is created for each new output root."
+}
+if ($ReleaseExport -and $env:OS -ne "Windows_NT") {
+    throw "The tracked Release export route currently supports Windows only."
+}
+if ($ReleaseExport) {
+    $RequireRelease = $true
 }
 
 $gitSha = (git rev-parse HEAD).Trim()
@@ -147,6 +184,17 @@ if ($releaseReferenceRequested -and -not $RequireRelease -and -not $AllowDebugRe
 }
 
 $godot = Resolve-Godot
+$projectPath = Join-Path $repoRoot "src\societies"
+$expectedGodotVersion = "4.6.2"
+$godotVersionLines = @(& $godot --version 2>&1)
+if ($LASTEXITCODE -ne 0) {
+    throw "Could not query the resolved Godot executable version."
+}
+$godotVersionOutput = ($godotVersionLines | ForEach-Object { [string]$_ }) -join [System.Environment]::NewLine
+$resolvedGodotVersion = Get-GodotSemanticVersion $godotVersionOutput
+if ($resolvedGodotVersion -ne $expectedGodotVersion) {
+    throw "Godot $expectedGodotVersion is required, but '$godot' reported '$godotVersionOutput'."
+}
 
 $timestamp = [DateTime]::UtcNow.ToString("yyyyMMdd-HHmmss-fff")
 $safeScenario = $Scenario -replace '[^A-Za-z0-9._-]', '-'
@@ -166,14 +214,41 @@ if (Test-Path -LiteralPath $OutputRoot) {
     throw "Performance pair output already exists: $OutputRoot"
 }
 
-if (-not $SkipBuild) {
-    & $godot --headless --path "src/societies" --build-solutions --quit
+if ($ReleaseExport) {
+    [System.IO.Directory]::CreateDirectory($OutputRoot) | Out-Null
+    $releaseDirectory = Join-Path $OutputRoot "release-runner"
+    [System.IO.Directory]::CreateDirectory($releaseDirectory) | Out-Null
+    $releaseExecutable = Join-Path $releaseDirectory "SocietiesPerformance.exe"
+
+    & $godot `
+        --headless `
+        --path $projectPath `
+        --export-release $ExportPreset `
+        $releaseExecutable
     if ($LASTEXITCODE -ne 0) {
-        throw "Godot solution build exited with code $LASTEXITCODE."
+        throw "Godot Release export exited with code $LASTEXITCODE."
     }
+
+    $consoleWrapper = Join-Path $releaseDirectory "SocietiesPerformance.console.exe"
+    if (-not (Test-Path -LiteralPath $consoleWrapper -PathType Leaf)) {
+        throw "The Windows Release export did not produce the required console wrapper: $consoleWrapper"
+    }
+    $runnerExecutable = $consoleWrapper
+    $executionRoute = "export_release"
+}
+else {
+    if (-not $SkipBuild) {
+        & $godot --headless --path $projectPath --build-solutions --quit
+        if ($LASTEXITCODE -ne 0) {
+            throw "Godot solution build exited with code $LASTEXITCODE."
+        }
+    }
+
+    [System.IO.Directory]::CreateDirectory($OutputRoot) | Out-Null
+    $runnerExecutable = $godot
+    $executionRoute = "editor_scene"
 }
 
-[System.IO.Directory]::CreateDirectory($OutputRoot) | Out-Null
 $offRunId = "$runDescriptor-off"
 $onRunId = "$runDescriptor-on"
 $offDirectory = Join-Path $OutputRoot "metrics-off"
@@ -196,8 +271,8 @@ $offResult = Get-Content -Raw -LiteralPath $offResultPath | ConvertFrom-Json
 $onResult = Get-Content -Raw -LiteralPath $onResultPath | ConvertFrom-Json
 
 $schemaValid =
-    $offResult.schemaVersion -eq 1 -and
-    $onResult.schemaVersion -eq 1
+    $offResult.schemaVersion -eq 2 -and
+    $onResult.schemaVersion -eq 2
 $configurationMatches =
     (Test-NonEmptyText $offResult.configuration.scenarioId) -and
     (Test-NonEmptyText $offResult.configuration.measurementMode) -and
@@ -209,18 +284,27 @@ $configurationMatches =
     $offResult.configuration.measuredTicks -eq $onResult.configuration.measuredTicks -and
     $offResult.configuration.measurementMode -eq $onResult.configuration.measurementMode -and
     $offResult.configuration.warmupMode -eq $onResult.configuration.warmupMode -and
-    $offResult.configuration.cacheWarmupEnabled -eq $onResult.configuration.cacheWarmupEnabled
+    $offResult.configuration.cacheWarmupEnabled -eq $onResult.configuration.cacheWarmupEnabled -and
+    $offResult.configuration.executionRoute -eq $onResult.configuration.executionRoute -and
+    $offResult.configuration.projectPath -eq $onResult.configuration.projectPath -and
+    $offResult.configuration.runnerExecutablePath -eq $onResult.configuration.runnerExecutablePath
 $commandConfigurationMatches =
     $offResult.configuration.scenarioId -eq $Scenario -and
     $offResult.configuration.simulationSeed -eq $Seed -and
     $offResult.configuration.citizenCount -eq $Citizens -and
     $offResult.configuration.warmupTicks -eq $WarmupTicks -and
-    $offResult.configuration.measuredTicks -eq $Ticks
+    $offResult.configuration.measuredTicks -eq $Ticks -and
+    $offResult.configuration.executionRoute -eq $executionRoute -and
+    $offResult.configuration.projectPath -eq $projectPath -and
+    $offResult.configuration.runnerExecutablePath -eq $runnerExecutable
 $modeContractValid =
     $offResult.configuration.metricsEnabled -eq $false -and
     $onResult.configuration.metricsEnabled -eq $true -and
     $offResult.configuration.measurementMode -eq "one_manual_step_per_external_sample" -and
     $offResult.configuration.cacheWarmupEnabled -eq $false
+$executionRouteValid =
+    ($ReleaseExport -and $executionRoute -eq "export_release") -or
+    (-not $ReleaseExport -and $executionRoute -eq "editor_scene")
 $gitIdentityMatches =
     (Test-GitObjectId $offResult.configuration.gitSha) -and
     $offResult.configuration.gitSha -eq $onResult.configuration.gitSha -and
@@ -233,20 +317,48 @@ $environmentMatches =
     (Test-NonEmptyText $offResult.environment.processArchitecture) -and
     (Test-NonEmptyText $offResult.environment.dotnetRuntime) -and
     (Test-NonEmptyText $offResult.environment.godotVersion) -and
+    (Test-NonEmptyText $offResult.environment.processExecutablePath) -and
     (Test-NonEmptyText $offResult.environment.managedBuildConfiguration) -and
+    (Test-NonEmptyText $offResult.environment.managedAssemblyConfiguration) -and
     $offResult.environment.machineName -eq $onResult.environment.machineName -and
     $offResult.environment.logicalProcessorCount -eq $onResult.environment.logicalProcessorCount -and
     $offResult.environment.operatingSystem -eq $onResult.environment.operatingSystem -and
     $offResult.environment.processArchitecture -eq $onResult.environment.processArchitecture -and
     $offResult.environment.dotnetRuntime -eq $onResult.environment.dotnetRuntime -and
     $offResult.environment.godotVersion -eq $onResult.environment.godotVersion -and
+    $offResult.environment.processExecutablePath -eq $onResult.environment.processExecutablePath -and
     $offResult.environment.managedBuildConfiguration -eq $onResult.environment.managedBuildConfiguration -and
-    $offResult.environment.godotDebugBuild -eq $onResult.environment.godotDebugBuild
+    $offResult.environment.managedAssemblyConfiguration -eq $onResult.environment.managedAssemblyConfiguration -and
+    $offResult.environment.godotDebugBuild -eq $onResult.environment.godotDebugBuild -and
+    $offResult.environment.godotReleaseFeature -eq $onResult.environment.godotReleaseFeature -and
+    $offResult.environment.godotTemplateFeature -eq $onResult.environment.godotTemplateFeature -and
+    $offResult.environment.godotEditorFeature -eq $onResult.environment.godotEditorFeature -and
+    $offResult.environment.verifiedReleaseExecution -eq $onResult.environment.verifiedReleaseExecution
+$offRunGodotVersion = Get-GodotSemanticVersion $offResult.environment.godotVersion
+$onRunGodotVersion = Get-GodotSemanticVersion $onResult.environment.godotVersion
+$godotVersionValid =
+    $resolvedGodotVersion -eq $expectedGodotVersion -and
+    $offRunGodotVersion -eq $expectedGodotVersion -and
+    $onRunGodotVersion -eq $expectedGodotVersion
+$processExecutableMatches =
+    (-not $ReleaseExport) -or
+    ($offResult.environment.processExecutablePath -eq $releaseExecutable -and
+        $onResult.environment.processExecutablePath -eq $releaseExecutable)
 $releaseEnvironmentValid =
     $offResult.environment.managedBuildConfiguration -eq "Release" -and
     $onResult.environment.managedBuildConfiguration -eq "Release" -and
+    $offResult.environment.managedAssemblyConfiguration -eq "ExportRelease" -and
+    $onResult.environment.managedAssemblyConfiguration -eq "ExportRelease" -and
     $offResult.environment.godotDebugBuild -eq $false -and
-    $onResult.environment.godotDebugBuild -eq $false
+    $onResult.environment.godotDebugBuild -eq $false -and
+    $offResult.environment.godotReleaseFeature -eq $true -and
+    $onResult.environment.godotReleaseFeature -eq $true -and
+    $offResult.environment.godotTemplateFeature -eq $true -and
+    $onResult.environment.godotTemplateFeature -eq $true -and
+    $offResult.environment.godotEditorFeature -eq $false -and
+    $onResult.environment.godotEditorFeature -eq $false -and
+    $offResult.environment.verifiedReleaseExecution -eq $true -and
+    $onResult.environment.verifiedReleaseExecution -eq $true
 $expectedStartTick = [long]$WarmupTicks
 $expectedFinalTick = [long]$WarmupTicks + [long]$Ticks
 $tickBoundsMatch =
@@ -297,8 +409,11 @@ $equivalent =
     $configurationMatches -and
     $commandConfigurationMatches -and
     $modeContractValid -and
+    $executionRouteValid -and
     $gitIdentityMatches -and
     $environmentMatches -and
+    $godotVersionValid -and
+    $processExecutableMatches -and
     $tickBoundsMatch -and
     $hashesValid -and
     $snapshotHashMatches -and
@@ -309,18 +424,31 @@ $equivalent =
     (-not $RequireRelease -or $releaseEnvironmentValid)
 
 $equivalence = [ordered]@{
-    schemaVersion = 1
+    schemaVersion = 2
     capturedUtc = [DateTime]::UtcNow.ToString("o")
     status = if (-not $equivalent) { "fail" } elseif ($gitDirty) { "pass_dirty_source" } else { "pass" }
     sourceClean = -not $gitDirty
+    expectedGodotVersion = $expectedGodotVersion
+    resolvedEditorVersion = $resolvedGodotVersion
+    resolvedEditorVersionOutput = $godotVersionOutput
     releaseRequired = [bool]$RequireRelease
+    releaseExport = [bool]$ReleaseExport
+    exportPreset = if ($ReleaseExport) { $ExportPreset } else { $null }
+    exportEditorExecutable = if ($ReleaseExport) { $godot } else { $null }
+    exportProjectPath = if ($ReleaseExport) { $projectPath } else { $null }
+    exportOutputExecutable = if ($ReleaseExport) { $releaseExecutable } else { $null }
+    executionRoute = $executionRoute
+    runnerExecutable = $runnerExecutable
     releaseEnvironmentValid = $releaseEnvironmentValid
     resultSchemaValid = $schemaValid
     configurationMatches = $configurationMatches
     commandConfigurationMatches = $commandConfigurationMatches
     modeContractValid = $modeContractValid
+    executionRouteValid = $executionRouteValid
     gitIdentityMatches = $gitIdentityMatches
     environmentMatches = $environmentMatches
+    godotVersionValid = $godotVersionValid
+    processExecutableMatches = $processExecutableMatches
     tickBoundsMatch = $tickBoundsMatch
     hashesValid = $hashesValid
     snapshotHashMatches = $snapshotHashMatches
@@ -350,7 +478,11 @@ $summaryLines = @(
     "Societies metrics equivalence pair",
     "Status: $($equivalence.status)",
     "Scenario: $Scenario; seed: $Seed; citizens: $Citizens; warmup ticks: $WarmupTicks; measured ticks: $Ticks",
+    "Godot: expected $expectedGodotVersion; editor $resolvedGodotVersion; run $offRunGodotVersion",
     "Managed build: $($offResult.environment.managedBuildConfiguration)",
+    "Managed assembly configuration: $($offResult.environment.managedAssemblyConfiguration)",
+    "Process executable: $($offResult.environment.processExecutablePath)",
+    "Execution route: $executionRoute; verified release: $($offResult.environment.verifiedReleaseExecution)",
     "Metrics-off p95: $($offResult.externalTickStatistics.p95Milliseconds) ms",
     "Metrics-on p95: $($onResult.externalTickStatistics.p95Milliseconds) ms",
     "Deterministic state+event hash: $($offResult.hashes.deterministicStateAndEventSha256)",
@@ -359,7 +491,25 @@ $summaryLines = @(
 Write-Utf8NoBom -Path (Join-Path $OutputRoot "pair-summary.txt") -Content ($summaryLines -join [System.Environment]::NewLine)
 
 if (-not $equivalent) {
-    throw "Metrics-off and metrics-on runs did not produce equivalent deterministic state and event ordering."
+    $failedChecks = @()
+    if (-not $schemaValid) { $failedChecks += "result_schema" }
+    if (-not $configurationMatches) { $failedChecks += "configuration_pair" }
+    if (-not $commandConfigurationMatches) { $failedChecks += "command_configuration" }
+    if (-not $modeContractValid) { $failedChecks += "mode_contract" }
+    if (-not $executionRouteValid) { $failedChecks += "execution_route" }
+    if (-not $gitIdentityMatches) { $failedChecks += "git_identity" }
+    if (-not $environmentMatches) { $failedChecks += "environment_pair" }
+    if (-not $godotVersionValid) { $failedChecks += "godot_version" }
+    if (-not $processExecutableMatches) { $failedChecks += "process_executable" }
+    if (-not $tickBoundsMatch) { $failedChecks += "tick_bounds" }
+    if (-not $hashesValid) { $failedChecks += "hash_format" }
+    if (-not $snapshotHashMatches) { $failedChecks += "snapshot_hash" }
+    if (-not $eventLogHashMatches) { $failedChecks += "event_log_hash" }
+    if (-not $combinedHashMatches) { $failedChecks += "combined_hash" }
+    if (-not $resultStatusesValid) { $failedChecks += "result_status" }
+    if (-not $artifactContractValid) { $failedChecks += "artifact_contract" }
+    if ($RequireRelease -and -not $releaseEnvironmentValid) { $failedChecks += "release_environment" }
+    throw "Performance pair contract validation failed: $($failedChecks -join ', ')."
 }
 
 Write-Host "Performance pair completed with status '$($equivalence.status)'."

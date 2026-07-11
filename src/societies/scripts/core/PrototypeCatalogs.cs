@@ -34,12 +34,28 @@ namespace Societies.Core
                 throw new ArgumentException("Catalog directory path is required.", nameof(directoryPath));
             }
 
+            return LoadFromJsonTextProvider(fileName =>
+            {
+                string fullPath = Path.Combine(directoryPath, fileName);
+                if (!File.Exists(fullPath))
+                {
+                    throw new FileNotFoundException($"Missing prototype catalog file '{fileName}'.", fullPath);
+                }
+
+                return File.ReadAllText(fullPath);
+            });
+        }
+
+        public static PrototypeCatalogBundle LoadFromJsonTextProvider(Func<string, string> readCatalogText)
+        {
+            ArgumentNullException.ThrowIfNull(readCatalogText);
+
             PrototypeCatalogBundle bundle = new()
             {
-                Scenarios = LoadFile<PrototypeScenarioCatalog>(directoryPath, "prototype-scenarios.json"),
-                Resources = LoadFile<PrototypeResourceCatalog>(directoryPath, "prototype-resources.json"),
-                Structures = LoadFile<PrototypeStructureCatalog>(directoryPath, "prototype-structures.json"),
-                RoleQuotas = LoadFile<PrototypeRoleQuotaCatalog>(directoryPath, "prototype-role-quotas.json")
+                Scenarios = LoadFile<PrototypeScenarioCatalog>(readCatalogText, "prototype-scenarios.json"),
+                Resources = LoadFile<PrototypeResourceCatalog>(readCatalogText, "prototype-resources.json"),
+                Structures = LoadFile<PrototypeStructureCatalog>(readCatalogText, "prototype-structures.json"),
+                RoleQuotas = LoadFile<PrototypeRoleQuotaCatalog>(readCatalogText, "prototype-role-quotas.json")
             };
 
             bundle.Scenarios.Validate();
@@ -50,16 +66,25 @@ namespace Societies.Core
             return bundle;
         }
 
-        private static T LoadFile<T>(string directoryPath, string fileName) where T : new()
+        private static T LoadFile<T>(Func<string, string> readCatalogText, string fileName) where T : new()
         {
-            string fullPath = Path.Combine(directoryPath, fileName);
-            if (!File.Exists(fullPath))
+            string json = readCatalogText(fileName);
+            if (string.IsNullOrWhiteSpace(json))
             {
-                throw new FileNotFoundException($"Missing prototype catalog file '{fileName}'.", fullPath);
+                throw new InvalidDataException($"Prototype catalog file '{fileName}' is empty.");
             }
 
-            T? value = JsonSerializer.Deserialize<T>(File.ReadAllText(fullPath), JsonOptions);
-            return value ?? new T();
+            try
+            {
+                T? value = JsonSerializer.Deserialize<T>(json, JsonOptions);
+                return value ?? new T();
+            }
+            catch (JsonException exception)
+            {
+                throw new InvalidDataException(
+                    $"Prototype catalog file '{fileName}' contains invalid JSON.",
+                    exception);
+            }
         }
     }
 

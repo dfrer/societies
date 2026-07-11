@@ -1,6 +1,6 @@
 {
-  "schemaVersion": 1,
-  "updatedUtc": "2026-07-11T03:37:20.4724853Z",
+  "schemaVersion": 2,
+  "updatedUtc": "2026-07-11T18:06:54.6741248Z",
   "required": {
     "dotnet": {
       "project": "tests/Societies.Core.Tests/Societies.Core.Tests.csproj",
@@ -28,7 +28,14 @@
       }
     },
     "godot": {
+      "version": "4.6.2",
       "projectPath": "src/societies",
+      "solution": "src/societies/Societies.sln",
+      "solutionConfigurations": [
+        "Debug",
+        "ExportDebug",
+        "ExportRelease"
+      ],
       "scene": "res://tests/HeadlessTestRunner.tscn",
       "command": "godot --headless --path src/societies res://tests/HeadlessTestRunner.tscn",
       "expectedTestCount": 16,
@@ -70,18 +77,43 @@
     "performancePair": {
       "script": "scripts/run-performance-pair.ps1",
       "command": "./scripts/run-performance-pair.ps1 -Scenario balanced_basin -Seed 1337 -Citizens 3 -Ticks 3",
+      "releaseCommand": "./scripts/run-performance-pair.ps1 -ReleaseExport -Scenario balanced_basin -Seed 1337 -Citizens 3 -Ticks 3",
+      "requiredGodotVersion": "4.6.2",
       "requiredForPullRequest": false,
       "runModes": [
         "metrics-off",
         "metrics-on"
       ],
-      "buildConfiguration": "Debug",
-      "classification": "debug_characterization",
+      "executionRoutes": {
+        "editorScene": {
+          "managedAssemblyConfiguration": "Debug",
+          "classification": "debug_characterization"
+        },
+        "windowsReleaseExport": {
+          "exportPreset": "Windows Performance Release",
+          "catalogIncludeFilter": "data/*.json",
+          "catalogRuntimeRoot": "res://data",
+          "requiredManagedAssemblyConfiguration": "ExportRelease",
+          "requiredGodotFeatures": [
+            "release",
+            "template"
+          ],
+          "forbiddenGodotFeatures": [
+            "editor"
+          ],
+          "godotDebugBuild": false,
+          "classification": "release_route_smoke"
+        }
+      },
       "requiresCleanSource": true,
       "artifactRoot": "artifacts/performance/",
       "artifactsIgnoredByGit": true,
-      "releaseEvidence": false,
-      "note": "The current Godot editor/headless route is Debug characterization only. W1-03 Release evidence requires a verified Release route plus the full cold/warm/invalidation matrix and median reference runs."
+      "trackedReleaseRoute": true,
+      "releaseRouteValidationStatus": "passed",
+      "releaseRouteEvidence": true,
+      "releaseBaselineEvidence": false,
+      "evidence": "planning/active/evidence/v3-w1-03a-release-route-validation.json",
+      "note": "The editor route remains Debug characterization. The Windows ExportRelease route is validated from clean commit acf634f; full W1-03 baseline evidence still requires the cold/warm/invalidation matrix and median reference runs."
     }
   },
   "history": {

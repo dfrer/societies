@@ -27,6 +27,12 @@ namespace Societies.Tests
 
         public bool GitDirty { get; set; }
 
+        public string ExecutionRoute { get; set; } = string.Empty;
+
+        public string ProjectPath { get; set; } = string.Empty;
+
+        public string RunnerExecutablePath { get; set; } = string.Empty;
+
         public string WarmupMode { get; set; } = "none";
 
         public bool CacheWarmupEnabled { get; set; }
@@ -50,9 +56,21 @@ namespace Societies.Tests
 
         public string GodotVersion { get; set; } = string.Empty;
 
+        public string ProcessExecutablePath { get; set; } = string.Empty;
+
         public string ManagedBuildConfiguration { get; set; } = string.Empty;
 
+        public string ManagedAssemblyConfiguration { get; set; } = string.Empty;
+
         public bool GodotDebugBuild { get; set; }
+
+        public bool GodotReleaseFeature { get; set; }
+
+        public bool GodotTemplateFeature { get; set; }
+
+        public bool GodotEditorFeature { get; set; }
+
+        public bool VerifiedReleaseExecution { get; set; }
     }
 
     internal sealed class PerformanceRunIntervals
@@ -166,7 +184,7 @@ namespace Societies.Tests
 
     internal sealed class PerformanceRunResult
     {
-        public int SchemaVersion { get; set; } = 1;
+        public int SchemaVersion { get; set; } = 2;
 
         public string CapturedUtc { get; set; } = string.Empty;
 
@@ -203,7 +221,7 @@ namespace Societies.Tests
 
     internal sealed class PerformanceValidationManifest
     {
-        public int SchemaVersion { get; set; } = 1;
+        public int SchemaVersion { get; set; } = 2;
 
         public string CapturedUtc { get; set; } = string.Empty;
 
@@ -232,7 +250,7 @@ namespace Societies.Tests
 
     internal sealed class PerformanceFailureResult
     {
-        public int SchemaVersion { get; set; } = 1;
+        public int SchemaVersion { get; set; } = 2;
 
         public string CapturedUtc { get; set; } = string.Empty;
 

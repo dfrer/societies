@@ -7,6 +7,7 @@ The authoritative executable target is the Godot project under `src/societies/`.
 - Project: `src/societies/project.godot`
 - Main scene: `src/societies/scenes/main.tscn`
 - C# project: `src/societies/Societies.csproj`
+- C# solution: `src/societies/Societies.sln`
 - Current default branch: `master`
 
 Use [CURRENT_BUILD.md](CURRENT_BUILD.md) as the short repo-truth reference.
@@ -38,7 +39,7 @@ Treat planning documents as aspirational unless they are confirmed by the curren
 - `planning/` - long-term design and research material
 - `scripts/` - local workflow scripts
 
-## Optional Performance Characterization
+## Optional Performance Runs
 
 Run a matching metrics-off/metrics-on Debug characterization pair from clean committed source:
 
@@ -46,7 +47,15 @@ Run a matching metrics-off/metrics-on Debug characterization pair from clean com
 ./scripts/run-performance-pair.ps1 -Scenario balanced_basin -Seed 1337 -Citizens 3 -Ticks 3
 ```
 
-This is not part of the pull-request gate. The runner writes ignored artifacts under `artifacts/performance/` and rejects a dirty source tree by default so results identify reproducible code. It discovers Godot from `-GodotPath`, `GODOT_BIN`, `PATH`, or the standard WinGet package location. The current Godot editor/headless route is Debug characterization only; V3-W1-03 Release evidence still requires a verified Release route, the full cold/warm/invalidation matrix, and median reference runs.
+On Windows, run the same short pair through the tracked Godot Release export route after installing the Godot 4.6.2 .NET export templates:
+
+```powershell
+./scripts/run-performance-pair.ps1 -ReleaseExport -Scenario balanced_basin -Seed 1337 -Citizens 3 -Ticks 3
+```
+
+The Release route exports the `Windows Performance Release` preset and hard-fails unless the generated runner reports a managed `ExportRelease` assembly running in a non-debug Godot release template. The tracked solution maps Godot's `Debug`, `ExportDebug`, and `ExportRelease` configurations one-to-one. The base editor project still opens `scenes/main.tscn`; the preset's custom `performance_runner` feature selects `tests/PerfRunner.tscn` only in that export. Catalog JSON is explicitly packed and exported runs read it through `res://data`, so results do not depend on the process working directory.
+
+These runs are not part of the pull-request gate. The runner writes ignored artifacts under `artifacts/performance/` and rejects a dirty source tree by default so results identify reproducible code. It discovers Godot from `-GodotPath`, `GODOT_BIN`, `PATH`, or the standard WinGet package location. The editor/headless route remains Debug characterization. The Release route is validated from clean commit `acf634f`; see `planning/active/evidence/v3-w1-03a-release-route-validation.json`. That short smoke proves only the execution route—V3-W1-03 still requires the full cold/warm/invalidation matrix and median reference runs before any baseline claim.
 
 ## Status
 

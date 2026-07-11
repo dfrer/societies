@@ -6,6 +6,7 @@ using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
@@ -30,10 +31,8 @@ namespace Societies.Tests
         private bool _ownsOutputDirectory;
 
 #if DEBUG
-        private static readonly bool ManagedReleaseBuild = false;
         private const string ManagedBuildConfiguration = "Debug";
 #else
-        private static readonly bool ManagedReleaseBuild = true;
         private const string ManagedBuildConfiguration = "Release";
 #endif
 
@@ -41,11 +40,12 @@ namespace Societies.Tests
         {
             int exitCode = 1;
             PerformanceRunConfiguration? configuration = null;
-            string exactInvocation = BuildExactInvocation();
+            string exactInvocation = BuildRawInvocation();
 
             try
             {
                 configuration = ParseConfiguration(OS.GetCmdlineUserArgs());
+                exactInvocation = BuildExactInvocation(configuration);
                 exitCode = Execute(configuration, exactInvocation);
             }
             catch (Exception exception)
@@ -137,6 +137,7 @@ namespace Societies.Tests
                 }
 
                 PerformanceSampleStatistics externalStatistics = PerformanceRunStatistics.Compute(externalTickSamples);
+                PerformanceRunEnvironment environment = BuildEnvironment();
                 PerformanceBudgetAssessment budget = PerformanceRunBudgets.EvaluateForRun(
                     externalStatistics,
                     bootstrapMilliseconds,
@@ -145,7 +146,7 @@ namespace Societies.Tests
                     configuration.CitizenCount,
                     configuration.MeasuredTicks,
                     configuration.MetricsEnabled,
-                    ManagedReleaseBuild);
+                    environment.VerifiedReleaseExecution);
                 configuration.BudgetProfile = budget.Profile;
 
                 long artifactStart = Stopwatch.GetTimestamp();
@@ -207,7 +208,6 @@ namespace Societies.Tests
                     MeasurementBoundary = "one external Stopwatch sample around each StepSimulationTicks(1) call",
                     ArtifactBoundary = "SaveSnapshotToDisk only; performance report serialization excluded"
                 };
-                PerformanceRunEnvironment environment = BuildEnvironment();
                 var result = new PerformanceRunResult
                 {
                     CapturedUtc = DateTime.UtcNow.ToString("O", CultureInfo.InvariantCulture),
@@ -224,7 +224,7 @@ namespace Societies.Tests
                     FinalSimulationTick = manager.SimulationTick,
                     Hashes = hashes,
                     Artifacts = artifacts,
-                    Notes = BuildNotes(configuration)
+                    Notes = BuildNotes(configuration, environment)
                 };
 
                 WriteResultArtifacts(result);
@@ -266,6 +266,9 @@ namespace Societies.Tests
                 "--run-id",
                 "--git-sha",
                 "--git-dirty",
+                "--execution-route",
+                "--project-path",
+                "--runner-executable",
                 "--allow-safety-failure"
             };
             var values = new Dictionary<string, string>(StringComparer.Ordinal);
@@ -293,6 +296,24 @@ namespace Societies.Tests
             string scenarioId = RequireText(values["--scenario"], "scenario id");
             string runId = RequireSafeRunId(values["--run-id"]);
             string gitSha = RequireText(values["--git-sha"], "git SHA");
+            string executionRoute = values["--execution-route"] switch
+            {
+                "editor_scene" => "editor_scene",
+                "export_release" => "export_release",
+                _ => throw new ArgumentException("Execution route must be 'editor_scene' or 'export_release'.")
+            };
+            string projectPath = Path.GetFullPath(RequireText(values["--project-path"], "project path"));
+            if (!File.Exists(Path.Combine(projectPath, "project.godot")))
+            {
+                throw new DirectoryNotFoundException(
+                    $"The declared project path does not contain project.godot: {projectPath}");
+            }
+            string runnerExecutablePath = Path.GetFullPath(
+                RequireText(values["--runner-executable"], "runner executable path"));
+            if (!File.Exists(runnerExecutablePath))
+            {
+                throw new FileNotFoundException("The declared runner executable does not exist.", runnerExecutablePath);
+            }
             int seed = ParseInt(values["--seed"], "seed");
             int citizens = ParseInt(values["--citizens"], "citizens");
             int ticks = ParseInt(values["--ticks"], "ticks");
@@ -330,6 +351,9 @@ namespace Societies.Tests
                 RunId = runId,
                 GitSha = gitSha,
                 GitDirty = ParseBool(values["--git-dirty"], "git dirty"),
+                ExecutionRoute = executionRoute,
+                ProjectPath = projectPath,
+                RunnerExecutablePath = runnerExecutablePath,
                 WarmupMode = warmupTicks > 0 ? "simulation_ticks" : "none",
                 CacheWarmupEnabled = false,
                 BudgetProfile = PerformanceBudgetProfile.Characterization
@@ -533,6 +557,14 @@ namespace Societies.Tests
             string godotVersion = version.ContainsKey("string")
                 ? version["string"].AsString()
                 : version.ToString();
+            string managedAssemblyConfiguration =
+                Assembly.GetExecutingAssembly()
+                    .GetCustomAttribute<AssemblyConfigurationAttribute>()?
+                    .Configuration ?? string.Empty;
+            bool godotDebugBuild = OS.IsDebugBuild();
+            bool godotReleaseFeature = OS.HasFeature("release");
+            bool godotTemplateFeature = OS.HasFeature("template");
+            bool godotEditorFeature = OS.HasFeature("editor");
             return new PerformanceRunEnvironment
             {
                 MachineName = System.Environment.MachineName,
@@ -541,12 +573,25 @@ namespace Societies.Tests
                 ProcessArchitecture = RuntimeInformation.ProcessArchitecture.ToString(),
                 DotnetRuntime = RuntimeInformation.FrameworkDescription,
                 GodotVersion = godotVersion,
+                ProcessExecutablePath = Path.GetFullPath(OS.GetExecutablePath()),
                 ManagedBuildConfiguration = ManagedBuildConfiguration,
-                GodotDebugBuild = OS.IsDebugBuild()
+                ManagedAssemblyConfiguration = managedAssemblyConfiguration,
+                GodotDebugBuild = godotDebugBuild,
+                GodotReleaseFeature = godotReleaseFeature,
+                GodotTemplateFeature = godotTemplateFeature,
+                GodotEditorFeature = godotEditorFeature,
+                VerifiedReleaseExecution = PerformanceExecutionContract.IsVerifiedReleaseExecution(
+                    managedAssemblyConfiguration,
+                    godotDebugBuild,
+                    godotReleaseFeature,
+                    godotTemplateFeature,
+                    godotEditorFeature)
             };
         }
 
-        private static List<string> BuildNotes(PerformanceRunConfiguration configuration)
+        private static List<string> BuildNotes(
+            PerformanceRunConfiguration configuration,
+            PerformanceRunEnvironment environment)
         {
             var notes = new List<string>
             {
@@ -554,9 +599,13 @@ namespace Societies.Tests
                 "This is a single-run indicator. The release gate requires the median of three comparable metrics-off runs.",
                 "Core artifact serialization and runner report serialization are excluded from measured tick samples."
             };
-            if (!ManagedReleaseBuild)
+            if (!environment.VerifiedReleaseExecution)
             {
-                notes.Add("Managed Debug assembly detected; timing is characterization only and is not a Release baseline.");
+                notes.Add("Verified Godot ExportRelease execution was not detected; timing is characterization only and is not a Release baseline.");
+            }
+            else
+            {
+                notes.Add("Managed ExportRelease assembly and Godot release-template feature contract verified.");
             }
             if (configuration.MetricsEnabled)
             {
@@ -592,7 +641,8 @@ namespace Societies.Tests
         private static string BuildMatrixCsv(PerformanceRunResult result)
         {
             const string header =
-                "run_id,status,scenario,seed,citizens,warmup_ticks,measured_ticks,metrics_enabled,managed_build," +
+                "run_id,status,scenario,seed,citizens,warmup_ticks,measured_ticks,metrics_enabled,execution_route," +
+                "managed_build,managed_assembly_configuration,verified_release_execution," +
                 "budget_profile,bootstrap_ms,warmup_ms,p50_ms,p95_ms,p99_ms,max_ms,mean_ms,total_ms," +
                 "serialization_ms,path_lookups,path_hits,path_misses,cache_size_last,candidates_per_idle," +
                 "invalidations,navigation_rebuild_ms,work_orders_generated,work_orders_generated_uncapped," +
@@ -609,7 +659,10 @@ namespace Societies.Tests
                 result.Configuration.WarmupTicks.ToString(CultureInfo.InvariantCulture),
                 result.Configuration.MeasuredTicks.ToString(CultureInfo.InvariantCulture),
                 result.Configuration.MetricsEnabled ? "true" : "false",
+                Csv(result.Configuration.ExecutionRoute),
                 Csv(result.Environment.ManagedBuildConfiguration),
+                Csv(result.Environment.ManagedAssemblyConfiguration),
+                result.Environment.VerifiedReleaseExecution ? "true" : "false",
                 Csv(result.Budget.Profile.ToString()),
                 Format(result.Intervals.BootstrapMilliseconds),
                 Format(result.Intervals.WarmupMilliseconds),
@@ -648,7 +701,8 @@ namespace Societies.Tests
             builder.AppendLine($"Societies performance run: {result.Configuration.RunId}");
             builder.AppendLine($"Status: {result.Status}");
             builder.AppendLine($"Configuration: {result.Configuration.ScenarioId}, seed {result.Configuration.SimulationSeed}, {result.Configuration.CitizenCount} citizens, {result.Configuration.MeasuredTicks} measured ticks, metrics {(result.Configuration.MetricsEnabled ? "on" : "off")}");
-            builder.AppendLine($"Managed build: {result.Environment.ManagedBuildConfiguration}");
+            builder.AppendLine($"Execution route: {result.Configuration.ExecutionRoute}; runner: {result.Configuration.RunnerExecutablePath}");
+            builder.AppendLine($"Managed build: {result.Environment.ManagedBuildConfiguration}; assembly configuration: {result.Environment.ManagedAssemblyConfiguration}; verified release: {result.Environment.VerifiedReleaseExecution}");
             builder.AppendLine($"Bootstrap: {Format(result.Intervals.BootstrapMilliseconds)} ms");
             builder.AppendLine($"Ticks: p50 {Format(result.ExternalTickStatistics.P50Milliseconds)} ms, p95 {Format(result.ExternalTickStatistics.P95Milliseconds)} ms, p99 {Format(result.ExternalTickStatistics.P99Milliseconds)} ms, max {Format(result.ExternalTickStatistics.MaximumMilliseconds)} ms, total {Format(result.ExternalTickStatistics.TotalMilliseconds)} ms");
             builder.AppendLine($"Budget profile: {result.Budget.Profile}; target {FormatNullableBool(result.Budget.TargetPassed)}; safety {FormatNullableBool(result.Budget.SafetyPassed)}");
@@ -690,10 +744,19 @@ namespace Societies.Tests
             }
         }
 
-        private static string BuildExactInvocation()
+        private static string BuildExactInvocation(PerformanceRunConfiguration configuration)
         {
             string userArguments = string.Join(" ", OS.GetCmdlineUserArgs().Select(QuoteArgument));
-            return $"godot --headless --path src/societies res://tests/PerfRunner.tscn -- {userArguments}";
+            string prefix = configuration.ExecutionRoute == "export_release"
+                ? $"{QuoteArgument(configuration.RunnerExecutablePath)} --headless --"
+                : $"{QuoteArgument(configuration.RunnerExecutablePath)} --headless --path {QuoteArgument(configuration.ProjectPath)} res://tests/PerfRunner.tscn --";
+            return $"{prefix} {userArguments}";
+        }
+
+        private static string BuildRawInvocation()
+        {
+            string userArguments = string.Join(" ", OS.GetCmdlineUserArgs().Select(QuoteArgument));
+            return $"{QuoteArgument(OS.GetExecutablePath())} -- {userArguments}";
         }
 
         private static string QuoteArgument(string value)
