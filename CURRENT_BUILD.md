@@ -72,6 +72,7 @@ godot --headless --path src/societies res://tests/HeadlessTestRunner.tscn
 - The tracked Windows export route uses the `Windows Performance Release` preset and accepts Release evidence only when the exported binary identifies its managed assembly as `ExportRelease`, reports the Godot release/template features, and reports neither a debug build nor the editor feature. It does not silently promote an ordinary managed `Release` build to reference evidence.
 - The tracked solution exposes Godot's three managed configurations (`Debug`, `ExportDebug`, and `ExportRelease`) without mapping an ordinary solution `Release` configuration back to Debug.
 - Raw catalog JSON is explicitly included in the Windows preset. Editor runs use the validated filesystem directory; exported builds always use packed `res://data` resources, avoiding working-directory-dependent inputs.
+- The Release execution route is validated from clean commit `acf634f`; see `planning/active/evidence/v3-w1-03a-release-route-validation.json`. This is route evidence only, not a performance baseline.
 - A short verified Release pair proves the execution route only. A V3-W1-03 reference claim still requires the complete cold/warm/invalidation matrix and median reference runs.
 - The voxel spike is experimental only. The authoritative gameplay runtime remains heightfield-based through M3.
 

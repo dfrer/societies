@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "updatedUtc": "2026-07-11T17:54:27.7992595Z",
+  "updatedUtc": "2026-07-11T18:06:54.6741248Z",
   "required": {
     "dotnet": {
       "project": "tests/Societies.Core.Tests/Societies.Core.Tests.csproj",
@@ -109,9 +109,11 @@
       "artifactRoot": "artifacts/performance/",
       "artifactsIgnoredByGit": true,
       "trackedReleaseRoute": true,
-      "releaseRouteValidationStatus": "pending",
-      "releaseEvidence": false,
-      "note": "The editor route remains Debug characterization. The tracked Windows Release route must pass a clean exported smoke before releaseRouteValidationStatus changes from pending; full W1-03 evidence additionally requires the cold/warm/invalidation matrix and median reference runs."
+      "releaseRouteValidationStatus": "passed",
+      "releaseRouteEvidence": true,
+      "releaseBaselineEvidence": false,
+      "evidence": "planning/active/evidence/v3-w1-03a-release-route-validation.json",
+      "note": "The editor route remains Debug characterization. The Windows ExportRelease route is validated from clean commit acf634f; full W1-03 baseline evidence still requires the cold/warm/invalidation matrix and median reference runs."
     }
   },
   "history": {
