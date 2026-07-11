@@ -24,6 +24,7 @@ This is the authoritative short-horizon execution plan for the next two weeks. `
 - **First runtime hardening unit:** added a 12-tick rendered-frame cap that retains backlog, restores unattempted intervals after a tick failure, and leaves direct test/soak stepping uncapped. Validation passed 85/85 .NET and 14/14 Godot tests; see `planning/active/evidence/v3-w1-02a-catchup-validation.json`.
 - **HUD coalescing unit:** removed redundant inventory/stockpile event-driven HUD rebuilds while retaining rendered-frame and explicit command refreshes. Validation passed 85/85 .NET and 15/15 Godot tests; see `planning/active/evidence/v3-w1-02b-hud-coalescing-validation.json`.
 - **Metrics collector foundation:** added a pure, unused, instance-owned collector with bounded typed batches, reset/abort-safe one-shot phase tokens, separate rendered/manual batch kinds, and invariant CSV output. Validation passed 91/91 .NET tests; runtime wiring remains the next unit. See `planning/active/evidence/v3-w1-02c-runtime-metrics-collector-validation.json`.
+- **Metrics runtime wiring:** gated collection behind `SOCIETIES_PERF_METRICS=1`, preserved metrics-off allocation/clock behavior, separated capped rendered frames from uncapped manual batches, exposed value diagnostics, and timed `BuildWorkOrders` at its actual call site. Validation passed 91/91 .NET and 16/16 Godot tests; see `planning/active/evidence/v3-w1-02d-runtime-metrics-wiring-validation.json`.
 
 ## Decision and Intended Outcome
 

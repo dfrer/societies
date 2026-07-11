@@ -212,7 +212,8 @@ namespace Societies.Simulation
         public PrototypeSettlementTickResult Advance(
             IReadOnlyList<PrototypeResourceSiteState> resources,
             float currentHour,
-            PrototypeWeather weather)
+            PrototypeWeather weather,
+            RuntimeMetricsCollector? runtimeMetrics = null)
         {
             PrototypeSettlementTickResult result = new();
             _totalTicks++;
@@ -241,7 +242,16 @@ namespace Societies.Simulation
                 AdvanceCitizenNeeds(citizen, currentHour, weather, result);
             }
 
-            List<PrototypeWorkOrder> availableOrders = BuildWorkOrders(resources, currentHour, weather);
+            List<PrototypeWorkOrder> availableOrders;
+            RuntimeMetricsPhaseToken buildWorkOrdersPhase = runtimeMetrics?.BeginPhase(RuntimeMetricsPhase.BuildWorkOrders) ?? default;
+            try
+            {
+                availableOrders = BuildWorkOrders(resources, currentHour, weather);
+            }
+            finally
+            {
+                buildWorkOrdersPhase.Complete();
+            }
             _workOrdersGeneratedThisTick = availableOrders.Count;
             UpdateRouteBacklogMetrics(availableOrders);
 

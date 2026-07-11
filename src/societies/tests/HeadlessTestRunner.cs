@@ -52,6 +52,7 @@ namespace Societies.Tests
             await Test_MainScene_BootstrapSmoke();
             await Test_MainScene_FrameCatchUpCapSmoke();
             await Test_MainScene_HudRefreshCoalescingSmoke();
+            await Test_MainScene_RuntimeMetricsBatchSmoke();
             await Test_MainScene_WorkerVisualizationSmoke();
             await Test_MainScene_CraftingAndSnapshotSmoke();
             await Test_MainScene_ResetAndRestoreSmoke();
@@ -272,6 +273,96 @@ namespace Societies.Tests
             }
             finally
             {
+                if (scene != null)
+                {
+                    scene.QueueFree();
+                    await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+                }
+            }
+        }
+
+        private async Task Test_MainScene_RuntimeMetricsBatchSmoke()
+        {
+            const string metricsEnvironmentVariable = "SOCIETIES_PERF_METRICS";
+            string? previousMetricsSetting = System.Environment.GetEnvironmentVariable(metricsEnvironmentVariable);
+            Node? disabledScene = null;
+            Node? scene = null;
+
+            try
+            {
+                PackedScene packedScene = GD.Load<PackedScene>("res://scenes/main.tscn");
+                Assert(packedScene != null, "Main scene failed to load");
+
+                System.Environment.SetEnvironmentVariable(metricsEnvironmentVariable, null);
+                disabledScene = packedScene!.Instantiate();
+                AddChild(disabledScene);
+                await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+                GameManager disabledManager = disabledScene as GameManager ?? throw new Exception("Disabled metrics scene root is not GameManager");
+                disabledManager.SetProcess(false);
+                Assert(disabledManager.RuntimeMetrics == null, "Runtime metrics should remain unallocated when the environment flag is absent");
+                disabledScene.QueueFree();
+                await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+                disabledScene = null;
+
+                System.Environment.SetEnvironmentVariable(metricsEnvironmentVariable, "1");
+                scene = packedScene!.Instantiate();
+                AddChild(scene);
+                await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+
+                GameManager manager = scene as GameManager ?? throw new Exception("Main scene root is not GameManager");
+                manager.SetProcess(false);
+                RuntimeMetricsCollector metrics = manager.RuntimeMetrics ?? throw new Exception("Runtime metrics should be enabled by the environment flag");
+                manager.ResetPrototypeRun();
+                Assert(metrics.Count == 0, "Reset should clear runtime metrics batches");
+
+                manager.StepSimulationTicks(2);
+                RuntimeMetricsBatch[] afterManualStep = metrics.SnapshotBatches();
+                Assert(afterManualStep.Length == 1, "Manual stepping should create one metrics batch");
+                Assert(afterManualStep[0].Kind == RuntimeMetricsBatchKind.ManualStep, "Manual stepping must not be reported as a rendered frame");
+                Assert(afterManualStep[0].CompletedTicks == 2, "Manual metrics batch should contain both completed ticks");
+                Assert(afterManualStep[0].StartSimulationTick == 0 && afterManualStep[0].EndSimulationTick == 2, "Manual metrics tick bounds mismatch");
+                Assert(afterManualStep[0].Phases.SimulationTickMilliseconds > 0.0, "Manual batch should measure simulation tick work");
+                Assert(afterManualStep[0].Phases.SessionAdvanceMilliseconds > 0.0, "Manual batch should measure session advancement");
+                Assert(afterManualStep[0].Phases.BuildWorkOrdersMilliseconds > 0.0, "Manual batch should measure work-order generation at its call site");
+                Assert(afterManualStep[0].Phases.SceneSyncMilliseconds > 0.0, "Manual batch should measure scene synchronization");
+                Assert(afterManualStep[0].Phases.UpdateHudMilliseconds > 0.0, "Manual batch should measure its coalesced HUD refresh");
+                Assert(afterManualStep[0].WorkOrdersGeneratedUncappedTotal >= afterManualStep[0].WorkOrdersGeneratedTotal, "Uncapped work-order diagnostics must be preserved");
+                Assert(afterManualStep[0].WorkOrdersRemainingLast.HasValue, "Completed ticks should publish the last work-order gauge");
+                Assert(afterManualStep[0].PathPlanLookupsTotal >= afterManualStep[0].PathPlanCacheHitsTotal, "Path cache hits cannot exceed lookups");
+                Assert(afterManualStep[0].CitizensEvaluatedTotal > 0, "Session diagnostics should report evaluated citizens");
+
+                manager._Process(0.1);
+                RuntimeMetricsBatch[] afterRenderedFrame = metrics.SnapshotBatches();
+                Assert(afterRenderedFrame.Length == 2, "Rendered processing should append a metrics batch");
+                Assert(afterRenderedFrame[1].Kind == RuntimeMetricsBatchKind.RenderedFrame, "Rendered work must use the rendered-frame batch kind");
+                Assert(afterRenderedFrame[1].CompletedTicks == 2, "Rendered metrics batch should contain the two due ticks");
+                Assert(afterRenderedFrame[1].StartSimulationTick == 2 && afterRenderedFrame[1].EndSimulationTick == 4, "Rendered metrics tick bounds mismatch");
+
+                manager._Process(0.0);
+                RuntimeMetricsBatch[] afterZeroTickFrame = metrics.SnapshotBatches();
+                Assert(afterZeroTickFrame.Length == 3, "A zero-tick rendered frame should still append bounded frame-work telemetry");
+                Assert(afterZeroTickFrame[2].Kind == RuntimeMetricsBatchKind.RenderedFrame, "Zero-tick work should remain a rendered-frame batch");
+                Assert(afterZeroTickFrame[2].CompletedTicks == 0, "Zero-tick frame should not fabricate a completed simulation tick");
+                Assert(!afterZeroTickFrame[2].WorkOrdersRemainingLast.HasValue, "Zero-tick frame should not fabricate a work-order gauge");
+                Assert(afterZeroTickFrame[2].StartSimulationTick == 4 && afterZeroTickFrame[2].EndSimulationTick == 4, "Zero-tick frame bounds should remain unchanged");
+
+                manager.ResetPrototypeRun();
+                Assert(metrics.Count == 0, "Starting a new run should reset runtime metrics");
+
+                Pass(nameof(Test_MainScene_RuntimeMetricsBatchSmoke));
+            }
+            catch (Exception ex)
+            {
+                Fail(nameof(Test_MainScene_RuntimeMetricsBatchSmoke), ex);
+            }
+            finally
+            {
+                System.Environment.SetEnvironmentVariable(metricsEnvironmentVariable, previousMetricsSetting);
+                if (disabledScene != null)
+                {
+                    disabledScene.QueueFree();
+                    await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+                }
                 if (scene != null)
                 {
                     scene.QueueFree();
