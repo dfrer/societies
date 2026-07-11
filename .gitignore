@@ -18,6 +18,7 @@ artifacts/
 .import/
 export.cfg
 export_presets.cfg
+!src/societies/export_presets.cfg
 *.tmp
 
 # C#-specific

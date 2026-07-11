@@ -3,6 +3,28 @@ using System.Collections.Generic;
 
 namespace Societies.Core
 {
+    public static class PerformanceExecutionContract
+    {
+        public const string ExportReleaseAssemblyConfiguration = "ExportRelease";
+
+        public static bool IsVerifiedReleaseExecution(
+            string managedAssemblyConfiguration,
+            bool godotDebugBuild,
+            bool godotReleaseFeature,
+            bool godotTemplateFeature,
+            bool godotEditorFeature)
+        {
+            return string.Equals(
+                    managedAssemblyConfiguration,
+                    ExportReleaseAssemblyConfiguration,
+                    StringComparison.Ordinal) &&
+                !godotDebugBuild &&
+                godotReleaseFeature &&
+                godotTemplateFeature &&
+                !godotEditorFeature;
+        }
+    }
+
     public readonly record struct PerformanceSampleStatistics(
         int Count,
         double MeanMilliseconds,

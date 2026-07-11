@@ -7,6 +7,7 @@ The current authoritative executable build is the Godot 4 + C# project under `sr
 - Project: `src/societies/project.godot`
 - Main scene: `src/societies/scenes/main.tscn`
 - C# project: `src/societies/Societies.csproj`
+- C# solution: `src/societies/Societies.sln`
 - Current default branch in this repository: `master`
 
 This is the only in-repo implementation that currently has:
@@ -27,6 +28,7 @@ Implemented today:
 - first-person movement and harvesting
 - observer camera and runtime overlay cycling
 - seeded scenario world generation
+- editor-filesystem and exported-PCK catalog loading from the same validated JSON data
 - citizen-based settlement simulation with food, fatigue, beds, hearth service, and build queue management
 - terrain-aware route planning, built path corridors, remote depots, and logistics metrics
 - local JSON snapshot + event-log + run-summary output
@@ -48,12 +50,16 @@ Deferred or not implemented as authoritative runtime systems yet:
 
 ```powershell
 dotnet build src/societies/Societies.csproj --configuration Release
+dotnet build src/societies/Societies.sln --configuration ExportRelease
 dotnet test tests/Societies.Core.Tests/Societies.Core.Tests.csproj --configuration Release
 godot --headless --path src/societies res://tests/HeadlessTestRunner.tscn
 ./scripts/run-prototype-validation.ps1
 
 # Optional Debug characterization; runs matching metrics-off and metrics-on cases.
 ./scripts/run-performance-pair.ps1 -Scenario balanced_basin -Seed 1337 -Citizens 3 -Ticks 3
+
+# Optional Windows Release-route smoke; requires Godot 4.6.2 .NET export templates.
+./scripts/run-performance-pair.ps1 -ReleaseExport -Scenario balanced_basin -Seed 1337 -Citizens 3 -Ticks 3
 ```
 
 ## Validation Notes
@@ -62,7 +68,11 @@ godot --headless --path src/societies res://tests/HeadlessTestRunner.tscn
 - The required manifest declares 95 .NET tests: 79 fast, 8 integration, and 8 soak, plus 16 Godot headless tests.
 - The full validation script is authoritative, but it is substantially longer than the individual .NET or headless passes because it rebuilds and reruns both.
 - The optional performance pair is not a pull-request gate. It requires clean committed source by default and writes ignored run artifacts under `artifacts/performance/`.
-- The current Godot editor/headless execution route loads the managed Debug build, so its metrics-off/on pair is Debug characterization, not V3-W1-03 Release evidence. A reference claim still requires a verified Release route, the full cold/warm/invalidation matrix, and median reference runs.
+- The Godot editor/headless execution route loads the managed Debug build, so its metrics-off/on pair remains characterization only.
+- The tracked Windows export route uses the `Windows Performance Release` preset and accepts Release evidence only when the exported binary identifies its managed assembly as `ExportRelease`, reports the Godot release/template features, and reports neither a debug build nor the editor feature. It does not silently promote an ordinary managed `Release` build to reference evidence.
+- The tracked solution exposes Godot's three managed configurations (`Debug`, `ExportDebug`, and `ExportRelease`) without mapping an ordinary solution `Release` configuration back to Debug.
+- Raw catalog JSON is explicitly included in the Windows preset. Editor runs use the validated filesystem directory; exported builds always use packed `res://data` resources, avoiding working-directory-dependent inputs.
+- A short verified Release pair proves the execution route only. A V3-W1-03 reference claim still requires the complete cold/warm/invalidation matrix and median reference runs.
 - The voxel spike is experimental only. The authoritative gameplay runtime remains heightfield-based through M3.
 
 ## CI Scope

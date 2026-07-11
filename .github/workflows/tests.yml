@@ -27,9 +27,9 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-nuget-
 
-      - name: Install Godot .NET 4.6
+      - name: Install Godot .NET 4.6.2
         run: |
-          wget -q -O godot.zip https://github.com/godotengine/godot/releases/download/4.6-stable/Godot_v4.6-stable_mono_linux_x86_64.zip
+          wget -q -O godot.zip https://github.com/godotengine/godot-builds/releases/download/4.6.2-stable/Godot_v4.6.2-stable_mono_linux_x86_64.zip
           unzip -q godot.zip -d godot-bin
           GODOT_BIN=$(find godot-bin -type f -name 'Godot_v*_mono_linux.*' -print -quit)
           if [[ -z "$GODOT_BIN" ]]; then

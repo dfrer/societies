@@ -18,6 +18,7 @@ config/name="Societies"
 config/description="A persistent multiplayer civilization simulation where humans and AI coexist as equal citizens."
 config/version="0.1.0-alpha"
 run/main_scene="res://scenes/main.tscn"
+run/main_scene.performance_runner="res://tests/PerfRunner.tscn"
 config/features=PackedStringArray("4.6", "C#", "Forward Plus")
 config/icon="res://icon.svg"
 

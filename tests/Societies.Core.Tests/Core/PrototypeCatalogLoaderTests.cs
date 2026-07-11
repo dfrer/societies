@@ -8,13 +8,41 @@ namespace Societies.Core.Tests
     public class PrototypeCatalogLoaderTests
     {
         [Fact]
-        public void LoadFromDirectory_LoadsExpectedDefaultScenarioAndCoreCounts()
+        public void Loaders_LoadExpectedCatalogsAndRejectInvalidProviders()
         {
-            PrototypeCatalogBundle bundle = PrototypeCatalogLoader.LoadFromDirectory(GetCatalogDirectoryPath());
+            string catalogDirectory = GetCatalogDirectoryPath();
+            PrototypeCatalogBundle bundle = PrototypeCatalogLoader.LoadFromDirectory(catalogDirectory);
+            PrototypeCatalogBundle providerBundle = PrototypeCatalogLoader.LoadFromJsonTextProvider(fileName =>
+                File.ReadAllText(Path.Combine(catalogDirectory, fileName)));
 
             PrototypeScenarioDefinition scenario = bundle.Scenarios.ResolveDefault();
+            PrototypeScenarioDefinition providerScenario = providerBundle.Scenarios.ResolveDefault();
 
             Assert.Equal("balanced_basin", scenario.Id);
+            Assert.Equal(scenario.Id, providerScenario.Id);
+            Assert.Equal(bundle.Scenarios.Scenarios.Count, providerBundle.Scenarios.Scenarios.Count);
+            Assert.Equal(bundle.Resources.Resources.Count, providerBundle.Resources.Resources.Count);
+            Assert.Equal(bundle.Structures.Structures.Count, providerBundle.Structures.Structures.Count);
+            Assert.Equal(bundle.RoleQuotas.Roles.Count, providerBundle.RoleQuotas.Roles.Count);
+            Assert.Equal(
+                bundle.Scenarios.Scenarios.Select(item => item.Id),
+                providerBundle.Scenarios.Scenarios.Select(item => item.Id));
+            Assert.Equal(
+                bundle.Resources.Resources.Select(item => item.Id),
+                providerBundle.Resources.Resources.Select(item => item.Id));
+            Assert.Equal(
+                bundle.Structures.Structures.Select(item => item.Id),
+                providerBundle.Structures.Structures.Select(item => item.Id));
+            Assert.Equal(
+                bundle.RoleQuotas.Roles.Select(item => item.RoleId),
+                providerBundle.RoleQuotas.Roles.Select(item => item.RoleId));
+            Assert.Throws<ArgumentNullException>(() =>
+                PrototypeCatalogLoader.LoadFromJsonTextProvider(null!));
+            Assert.Throws<InvalidDataException>(() =>
+                PrototypeCatalogLoader.LoadFromJsonTextProvider(_ => string.Empty));
+            InvalidDataException malformed = Assert.Throws<InvalidDataException>(() =>
+                PrototypeCatalogLoader.LoadFromJsonTextProvider(_ => "{"));
+            Assert.Contains("prototype-scenarios.json", malformed.Message);
             Assert.Equal(1337, scenario.SimulationSeed);
             Assert.Equal(36, scenario.InitialTrees);
             Assert.Equal(24, scenario.InitialRocks);

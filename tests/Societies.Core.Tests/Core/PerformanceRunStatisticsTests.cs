@@ -46,7 +46,7 @@ namespace Societies.Core.Tests
         }
 
         [Fact]
-        public void Evaluate_DistinguishesTargetFromSafetyAndAppliesReferenceTotalConditionally()
+        public void Evaluate_DistinguishesTargetFromSafetyAndRequiresVerifiedReleaseExecution()
         {
             PerformanceSampleStatistics safetyOnlyStatistics = PerformanceRunStatistics.Compute(
                 new[] { 20.0, 20.0, 30.0, 30.0, 30.0 });
@@ -172,6 +172,49 @@ namespace Societies.Core.Tests
                     requestedTicks: 300,
                     metricsEnabled: false,
                     releaseBuild: true));
+
+            Assert.True(
+                PerformanceExecutionContract.IsVerifiedReleaseExecution(
+                    "ExportRelease",
+                    godotDebugBuild: false,
+                    godotReleaseFeature: true,
+                    godotTemplateFeature: true,
+                    godotEditorFeature: false));
+            Assert.False(
+                PerformanceExecutionContract.IsVerifiedReleaseExecution(
+                    "Release",
+                    godotDebugBuild: false,
+                    godotReleaseFeature: true,
+                    godotTemplateFeature: true,
+                    godotEditorFeature: false));
+            Assert.False(
+                PerformanceExecutionContract.IsVerifiedReleaseExecution(
+                    "ExportRelease",
+                    godotDebugBuild: true,
+                    godotReleaseFeature: true,
+                    godotTemplateFeature: true,
+                    godotEditorFeature: false));
+            Assert.False(
+                PerformanceExecutionContract.IsVerifiedReleaseExecution(
+                    "ExportRelease",
+                    godotDebugBuild: false,
+                    godotReleaseFeature: false,
+                    godotTemplateFeature: true,
+                    godotEditorFeature: false));
+            Assert.False(
+                PerformanceExecutionContract.IsVerifiedReleaseExecution(
+                    "ExportRelease",
+                    godotDebugBuild: false,
+                    godotReleaseFeature: true,
+                    godotTemplateFeature: false,
+                    godotEditorFeature: false));
+            Assert.False(
+                PerformanceExecutionContract.IsVerifiedReleaseExecution(
+                    "ExportRelease",
+                    godotDebugBuild: false,
+                    godotReleaseFeature: true,
+                    godotTemplateFeature: true,
+                    godotEditorFeature: true));
         }
     }
 }

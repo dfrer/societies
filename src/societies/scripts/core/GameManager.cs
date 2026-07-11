@@ -430,22 +430,33 @@ namespace Societies.Core
 
         private void LoadCatalogs()
         {
+            const string resourceDirectory = "res://data";
             string dataDirectory = ProjectSettings.GlobalizePath("res://data");
+            string catalogLocation = dataDirectory;
 
             try
             {
-                _catalogs = PrototypeCatalogLoader.LoadFromDirectory(dataDirectory);
+                if (OS.HasFeature("editor") && Directory.Exists(dataDirectory))
+                {
+                    _catalogs = PrototypeCatalogLoader.LoadFromDirectory(dataDirectory);
+                }
+                else
+                {
+                    catalogLocation = resourceDirectory;
+                    _catalogs = PrototypeCatalogLoader.LoadFromJsonTextProvider(fileName =>
+                        ReadProjectResourceText($"{resourceDirectory}/{fileName}"));
+                }
             }
             catch (Exception ex)
             {
                 if (_hasPerformanceStartupOverride)
                 {
                     throw new InvalidOperationException(
-                        $"Performance startup requires the validated catalog at '{dataDirectory}'.",
+                        $"Performance startup requires the validated catalog at '{catalogLocation}'.",
                         ex);
                 }
 
-                GD.PushWarning($"Failed to load prototype catalogs from {dataDirectory}: {ex.Message}. Falling back to built-in legacy defaults.");
+                GD.PushWarning($"Failed to load prototype catalogs from {catalogLocation}: {ex.Message}. Falling back to built-in legacy defaults.");
                 _catalogs = CreateFallbackCatalogBundle();
             }
 
@@ -465,6 +476,20 @@ namespace Societies.Core
 
             _scenario = configuredScenario;
             ApplyScenarioDefaults(configuredScenario);
+        }
+
+        private static string ReadProjectResourceText(string resourcePath)
+        {
+            using Godot.FileAccess? file = Godot.FileAccess.Open(resourcePath, Godot.FileAccess.ModeFlags.Read);
+            if (file == null)
+            {
+                Error openError = Godot.FileAccess.GetOpenError();
+                throw new FileNotFoundException(
+                    $"Missing prototype catalog resource '{resourcePath}' (Godot error {openError}).",
+                    resourcePath);
+            }
+
+            return file.GetAsText();
         }
 
         private void ConfigureLocalSession()
