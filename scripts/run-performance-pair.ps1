@@ -5,6 +5,10 @@ param(
     [int]$Citizens = 16,
     [int]$Ticks = 300,
     [int]$WarmupTicks = 0,
+    [ValidateSet("cold", "natural_warm", "forced_invalidation")]
+    [string]$CacheMode = "cold",
+    [string]$ComparisonGroup,
+    [int]$TrialIndex = 1,
     [string]$OutputRoot,
     [string]$GodotPath,
     [string]$ExportPreset = "Windows Performance Release",
@@ -17,6 +21,7 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
+$CacheMode = $CacheMode.ToLowerInvariant()
 
 $repoRoot = Split-Path -Parent $PSScriptRoot
 Set-Location $repoRoot
@@ -79,6 +84,131 @@ function Test-GitObjectId {
     return (Test-NonEmptyText $Value) -and ([string]$Value -match '^(?:[0-9a-fA-F]{40}|[0-9a-fA-F]{64})$')
 }
 
+function Test-ForcedProbeStructuralMatch {
+    param(
+        [object]$Left,
+        [object]$Right
+    )
+
+    if ($null -eq $Left -or $null -eq $Right) {
+        return $null -eq $Left -and $null -eq $Right
+    }
+
+    return (
+        $Left.prepared -eq $Right.prepared -and
+        $Left.committed -eq $Right.committed -and
+        $Left.pathSegmentStructureId -eq $Right.pathSegmentStructureId -and
+        $Left.pathSegmentWasBuiltBefore -eq $Right.pathSegmentWasBuiltBefore -and
+        $Left.pathSegmentIsBuiltAfter -eq $Right.pathSegmentIsBuiltAfter -and
+        $Left.changedCellGridX -eq $Right.changedCellGridX -and
+        $Left.changedCellGridY -eq $Right.changedCellGridY -and
+        $Left.completionTick -eq $Right.completionTick -and
+        $Left.versionBeforeCommit -eq $Right.versionBeforeCommit -and
+        $Left.versionAfterCommit -eq $Right.versionAfterCommit -and
+        $Left.totalInvalidationsBeforeCommit -eq $Right.totalInvalidationsBeforeCommit -and
+        $Left.totalInvalidationsAfterCommit -eq $Right.totalInvalidationsAfterCommit -and
+        $Left.cacheEntriesBeforeRebuild -eq $Right.cacheEntriesBeforeRebuild -and
+        $Left.cacheEntriesImmediatelyAfterRebuild -eq $Right.cacheEntriesImmediatelyAfterRebuild -and
+        $Left.firstPostChangeLookupObserved -eq $Right.firstPostChangeLookupObserved -and
+        $Left.firstPostChangeLookupWasCacheMiss -eq $Right.firstPostChangeLookupWasCacheMiss -and
+        $Left.firstPostChangeLookupUsedNewVersion -eq $Right.firstPostChangeLookupUsedNewVersion -and
+        $Left.probeStartGridX -eq $Right.probeStartGridX -and
+        $Left.probeStartGridY -eq $Right.probeStartGridY -and
+        $Left.probeEndGridX -eq $Right.probeEndGridX -and
+        $Left.probeEndGridY -eq $Right.probeEndGridY -and
+        $Left.preChangeQueryVersion -eq $Right.preChangeQueryVersion -and
+        $Left.preChangePlanVersion -eq $Right.preChangePlanVersion -and
+        $Left.postChangeQueryVersion -eq $Right.postChangeQueryVersion -and
+        $Left.postChangePlanVersion -eq $Right.postChangePlanVersion -and
+        $Left.exactEndpointsMatch -eq $Right.exactEndpointsMatch -and
+        $Left.changedCellIncludedInPostChangePlan -eq $Right.changedCellIncludedInPostChangePlan -and
+        $Left.preChangePlanCost -eq $Right.preChangePlanCost -and
+        $Left.postChangePlanCost -eq $Right.postChangePlanCost
+    )
+}
+
+function Test-ProbeSnapshotStructuralMatch {
+    param(
+        [object]$Left,
+        [object]$Right
+    )
+
+    if ($null -eq $Left -or $null -eq $Right) {
+        return $false
+    }
+
+    return (
+        $Left.pathCacheEntryCount -eq $Right.pathCacheEntryCount -and
+        $Left.simulationTick -eq $Right.simulationTick -and
+        $Left.navigationRulesVersion -eq $Right.navigationRulesVersion -and
+        $Left.allPathCacheKeysMatchNavigationRulesVersion -eq
+            $Right.allPathCacheKeysMatchNavigationRulesVersion -and
+        $Left.totalNavigationInvalidations -eq $Right.totalNavigationInvalidations -and
+        $Left.lastPathPlanRulesVersion -eq $Right.lastPathPlanRulesVersion -and
+        (Test-ForcedProbeStructuralMatch $Left.forcedInvalidation $Right.forcedInvalidation)
+    )
+}
+
+function Test-CacheEvidenceStructuralMatch {
+    param(
+        [object]$Left,
+        [object]$Right
+    )
+
+    if ($null -eq $Left -or $null -eq $Right) {
+        return $false
+    }
+
+    $forcedWrapperMatches = if ($null -eq $Left.forcedInvalidation -or $null -eq $Right.forcedInvalidation) {
+        $null -eq $Left.forcedInvalidation -and $null -eq $Right.forcedInvalidation
+    }
+    else {
+        $Left.forcedInvalidation.navigationInvalidationCount -eq
+            $Right.forcedInvalidation.navigationInvalidationCount -and
+        (Test-ForcedProbeStructuralMatch $Left.forcedInvalidation.probe $Right.forcedInvalidation.probe)
+    }
+
+    return (
+        $Left.cacheMode -eq $Right.cacheMode -and
+        $Left.preparationStrategy -eq $Right.preparationStrategy -and
+        $Left.clearedEntryCount -eq $Right.clearedEntryCount -and
+        (Test-ProbeSnapshotStructuralMatch $Left.afterBootstrap $Right.afterBootstrap) -and
+        (Test-ProbeSnapshotStructuralMatch $Left.afterNaturalWarmup $Right.afterNaturalWarmup) -and
+        (Test-ProbeSnapshotStructuralMatch $Left.beforeMeasurement $Right.beforeMeasurement) -and
+        (Test-ProbeSnapshotStructuralMatch $Left.afterMeasurement $Right.afterMeasurement) -and
+        $forcedWrapperMatches
+    )
+}
+
+function Test-ForcedEvidenceInternalConsistency {
+    param([object]$CacheEvidence)
+
+    if ($null -eq $CacheEvidence -or $null -eq $CacheEvidence.forcedInvalidation) {
+        return $false
+    }
+
+    $wrapper = $CacheEvidence.forcedInvalidation
+    $snapshot = $CacheEvidence.afterMeasurement
+    $probe = $wrapper.probe
+    $snapshotProbe = $snapshot.forcedInvalidation
+    return (
+        (Test-ForcedProbeStructuralMatch $probe $snapshotProbe) -and
+        $probe.commitToFirstLookupMilliseconds -eq $snapshotProbe.commitToFirstLookupMilliseconds -and
+        $null -ne $probe.commitToFirstLookupMilliseconds -and
+        -not [double]::IsNaN([double]$probe.commitToFirstLookupMilliseconds) -and
+        -not [double]::IsInfinity([double]$probe.commitToFirstLookupMilliseconds) -and
+        $probe.commitToFirstLookupMilliseconds -ge 0 -and
+        $wrapper.navigationInvalidationCount -eq
+            ($snapshot.totalNavigationInvalidations - $CacheEvidence.beforeMeasurement.totalNavigationInvalidations) -and
+        $snapshot.navigationRulesVersion -eq $probe.versionAfterCommit -and
+        $snapshot.lastPathPlanRulesVersion -eq $probe.versionAfterCommit -and
+        $probe.versionBeforeCommit -eq $CacheEvidence.beforeMeasurement.navigationRulesVersion -and
+        $probe.totalInvalidationsBeforeCommit -eq
+            $CacheEvidence.beforeMeasurement.totalNavigationInvalidations -and
+        $probe.totalInvalidationsAfterCommit -eq $snapshot.totalNavigationInvalidations
+    )
+}
+
 function Get-GodotSemanticVersion {
     param([object]$Value)
 
@@ -124,6 +254,9 @@ function Invoke-PerformanceRun {
         "--citizens", $Citizens.ToString([System.Globalization.CultureInfo]::InvariantCulture),
         "--ticks", $Ticks.ToString([System.Globalization.CultureInfo]::InvariantCulture),
         "--warmup-ticks", $WarmupTicks.ToString([System.Globalization.CultureInfo]::InvariantCulture),
+        "--cache-mode", $CacheMode,
+        "--comparison-group", $script:comparisonGroup,
+        "--trial-index", $TrialIndex.ToString([System.Globalization.CultureInfo]::InvariantCulture),
         "--metrics", $MetricsMode,
         "--output-dir", $RunOutputDirectory,
         "--run-id", $RunId,
@@ -150,6 +283,15 @@ if ($Ticks -lt 1 -or $Ticks -gt 4096) {
 }
 if ($WarmupTicks -lt 0) {
     throw "WarmupTicks cannot be negative."
+}
+if ($CacheMode -in @("natural_warm", "forced_invalidation") -and $WarmupTicks -le 0) {
+    throw "CacheMode '$CacheMode' requires WarmupTicks greater than zero so the cache is naturally preconditioned."
+}
+if ($CacheMode -eq "forced_invalidation" -and $Ticks -ne 1) {
+    throw "CacheMode 'forced_invalidation' requires exactly one measured tick."
+}
+if ($TrialIndex -lt 1 -or $TrialIndex -gt 100) {
+    throw "TrialIndex must be between 1 and 100."
 }
 if ($ReleaseExport -and $SkipBuild) {
     throw "-SkipBuild cannot be combined with -ReleaseExport because the exported runner is created for each new output root."
@@ -204,8 +346,19 @@ if ([string]::IsNullOrWhiteSpace($safeScenario)) {
 if ($safeScenario.Length -gt 32) {
     $safeScenario = $safeScenario.Substring(0, 32)
 }
+$comparisonGroup = if ([string]::IsNullOrWhiteSpace($ComparisonGroup)) {
+    "$safeScenario-seed$Seed-c$Citizens-t$Ticks-w$WarmupTicks"
+}
+else {
+    $ComparisonGroup
+}
+if ($comparisonGroup.Length -gt 96 -or
+    $comparisonGroup.Contains("..") -or
+    $comparisonGroup -notmatch '^[A-Za-z0-9._-]+$') {
+    throw "ComparisonGroup may contain only letters, digits, '.', '_' and '-' and may not contain '..' or exceed 96 characters."
+}
 $nonce = [Guid]::NewGuid().ToString("N").Substring(0, 8)
-$runDescriptor = "$timestamp-$safeScenario-seed$Seed-c$Citizens-t$Ticks-w$WarmupTicks-$nonce"
+$runDescriptor = "$timestamp-$safeScenario-seed$Seed-c$Citizens-t$Ticks-w$WarmupTicks-m$CacheMode-r$TrialIndex-$nonce"
 if (-not $OutputRoot) {
     $OutputRoot = Join-Path $repoRoot "artifacts\performance\$runDescriptor"
 }
@@ -271,8 +424,8 @@ $offResult = Get-Content -Raw -LiteralPath $offResultPath | ConvertFrom-Json
 $onResult = Get-Content -Raw -LiteralPath $onResultPath | ConvertFrom-Json
 
 $schemaValid =
-    $offResult.schemaVersion -eq 2 -and
-    $onResult.schemaVersion -eq 2
+    $offResult.schemaVersion -eq 3 -and
+    $onResult.schemaVersion -eq 3
 $configurationMatches =
     (Test-NonEmptyText $offResult.configuration.scenarioId) -and
     (Test-NonEmptyText $offResult.configuration.measurementMode) -and
@@ -285,6 +438,9 @@ $configurationMatches =
     $offResult.configuration.measurementMode -eq $onResult.configuration.measurementMode -and
     $offResult.configuration.warmupMode -eq $onResult.configuration.warmupMode -and
     $offResult.configuration.cacheWarmupEnabled -eq $onResult.configuration.cacheWarmupEnabled -and
+    $offResult.configuration.cacheMode -eq $onResult.configuration.cacheMode -and
+    $offResult.configuration.comparisonGroup -eq $onResult.configuration.comparisonGroup -and
+    $offResult.configuration.trialIndex -eq $onResult.configuration.trialIndex -and
     $offResult.configuration.executionRoute -eq $onResult.configuration.executionRoute -and
     $offResult.configuration.projectPath -eq $onResult.configuration.projectPath -and
     $offResult.configuration.runnerExecutablePath -eq $onResult.configuration.runnerExecutablePath
@@ -294,6 +450,9 @@ $commandConfigurationMatches =
     $offResult.configuration.citizenCount -eq $Citizens -and
     $offResult.configuration.warmupTicks -eq $WarmupTicks -and
     $offResult.configuration.measuredTicks -eq $Ticks -and
+    $offResult.configuration.cacheMode -eq $CacheMode -and
+    $offResult.configuration.comparisonGroup -eq $comparisonGroup -and
+    $offResult.configuration.trialIndex -eq $TrialIndex -and
     $offResult.configuration.executionRoute -eq $executionRoute -and
     $offResult.configuration.projectPath -eq $projectPath -and
     $offResult.configuration.runnerExecutablePath -eq $runnerExecutable
@@ -301,7 +460,106 @@ $modeContractValid =
     $offResult.configuration.metricsEnabled -eq $false -and
     $onResult.configuration.metricsEnabled -eq $true -and
     $offResult.configuration.measurementMode -eq "one_manual_step_per_external_sample" -and
-    $offResult.configuration.cacheWarmupEnabled -eq $false
+    $offResult.configuration.cacheWarmupEnabled -eq $false -and
+    $onResult.configuration.cacheWarmupEnabled -eq $false
+$cacheEvidencePairValid = Test-CacheEvidenceStructuralMatch `
+    $offResult.cacheEvidence `
+    $onResult.cacheEvidence
+$cacheEvidenceCommonValid =
+    $cacheEvidencePairValid -and
+    $offResult.cacheEvidence.cacheMode -eq $CacheMode -and
+    (Test-NonEmptyText $offResult.cacheEvidence.preparationStrategy) -and
+    $offResult.cacheEvidence.afterBootstrap.pathCacheEntryCount -eq 0 -and
+    $offResult.cacheEvidence.afterBootstrap.simulationTick -eq 0 -and
+    $offResult.cacheEvidence.afterNaturalWarmup.simulationTick -eq $WarmupTicks -and
+    $offResult.cacheEvidence.beforeMeasurement.simulationTick -eq $WarmupTicks -and
+    $offResult.cacheEvidence.afterMeasurement.simulationTick -eq ($WarmupTicks + $Ticks) -and
+    $offResult.cacheEvidence.afterBootstrap.allPathCacheKeysMatchNavigationRulesVersion -eq $true -and
+    $offResult.cacheEvidence.afterNaturalWarmup.allPathCacheKeysMatchNavigationRulesVersion -eq $true -and
+    $offResult.cacheEvidence.beforeMeasurement.allPathCacheKeysMatchNavigationRulesVersion -eq $true -and
+    $offResult.cacheEvidence.afterMeasurement.allPathCacheKeysMatchNavigationRulesVersion -eq $true
+$cacheTransitionContractValid = $false
+if ($CacheMode -eq "cold") {
+    $cacheTransitionContractValid =
+        $null -eq $offResult.cacheEvidence.forcedInvalidation -and
+        $offResult.cacheEvidence.clearedEntryCount -eq
+            $offResult.cacheEvidence.afterNaturalWarmup.pathCacheEntryCount -and
+        $offResult.cacheEvidence.beforeMeasurement.pathCacheEntryCount -eq 0 -and
+        $offResult.cacheEvidence.beforeMeasurement.navigationRulesVersion -eq
+            $offResult.cacheEvidence.afterNaturalWarmup.navigationRulesVersion -and
+        $offResult.cacheEvidence.beforeMeasurement.totalNavigationInvalidations -eq
+            $offResult.cacheEvidence.afterNaturalWarmup.totalNavigationInvalidations -and
+        $offResult.cacheEvidence.beforeMeasurement.lastPathPlanRulesVersion -eq
+            $offResult.cacheEvidence.afterNaturalWarmup.lastPathPlanRulesVersion -and
+        ($WarmupTicks -eq 0 -or $offResult.cacheEvidence.afterNaturalWarmup.pathCacheEntryCount -gt 0)
+}
+elseif ($CacheMode -eq "natural_warm") {
+    $cacheTransitionContractValid =
+        $null -eq $offResult.cacheEvidence.forcedInvalidation -and
+        $offResult.cacheEvidence.clearedEntryCount -eq 0 -and
+        $offResult.cacheEvidence.afterNaturalWarmup.pathCacheEntryCount -gt 0 -and
+        $offResult.cacheEvidence.beforeMeasurement.pathCacheEntryCount -eq
+            $offResult.cacheEvidence.afterNaturalWarmup.pathCacheEntryCount -and
+        $offResult.cacheEvidence.beforeMeasurement.navigationRulesVersion -eq
+            $offResult.cacheEvidence.afterNaturalWarmup.navigationRulesVersion -and
+        $offResult.cacheEvidence.beforeMeasurement.totalNavigationInvalidations -eq
+            $offResult.cacheEvidence.afterNaturalWarmup.totalNavigationInvalidations -and
+        $offResult.cacheEvidence.beforeMeasurement.lastPathPlanRulesVersion -eq
+            $offResult.cacheEvidence.afterNaturalWarmup.lastPathPlanRulesVersion
+}
+elseif ($CacheMode -eq "forced_invalidation") {
+    $forcedProbe = $offResult.cacheEvidence.forcedInvalidation.probe
+    $forcedPreparedProbe = $offResult.cacheEvidence.beforeMeasurement.forcedInvalidation
+    $cacheTransitionContractValid =
+        $null -ne $offResult.cacheEvidence.forcedInvalidation -and
+        $offResult.cacheEvidence.clearedEntryCount -eq 0 -and
+        $offResult.cacheEvidence.afterNaturalWarmup.pathCacheEntryCount -gt 0 -and
+        $offResult.cacheEvidence.beforeMeasurement.pathCacheEntryCount -gt 0 -and
+        $offResult.cacheEvidence.beforeMeasurement.navigationRulesVersion -eq
+            $offResult.cacheEvidence.afterNaturalWarmup.navigationRulesVersion -and
+        $offResult.cacheEvidence.beforeMeasurement.totalNavigationInvalidations -eq
+            $offResult.cacheEvidence.afterNaturalWarmup.totalNavigationInvalidations -and
+        $offResult.cacheEvidence.beforeMeasurement.lastPathPlanRulesVersion -eq
+            $offResult.cacheEvidence.beforeMeasurement.navigationRulesVersion -and
+        $offResult.cacheEvidence.forcedInvalidation.navigationInvalidationCount -eq 1 -and
+        $forcedProbe.prepared -eq $true -and
+        $forcedProbe.committed -eq $true -and
+        $forcedProbe.pathSegmentWasBuiltBefore -eq $false -and
+        $forcedProbe.pathSegmentIsBuiltAfter -eq $true -and
+        $forcedProbe.completionTick -eq ($WarmupTicks + 1) -and
+        $forcedProbe.versionAfterCommit -eq ($forcedProbe.versionBeforeCommit + 1) -and
+        $forcedProbe.totalInvalidationsAfterCommit -eq ($forcedProbe.totalInvalidationsBeforeCommit + 1) -and
+        $forcedProbe.cacheEntriesBeforeRebuild -gt 0 -and
+        $forcedProbe.cacheEntriesImmediatelyAfterRebuild -eq 0 -and
+        $forcedProbe.firstPostChangeLookupObserved -eq $true -and
+        $forcedProbe.firstPostChangeLookupWasCacheMiss -eq $true -and
+        $forcedProbe.firstPostChangeLookupUsedNewVersion -eq $true -and
+        $forcedProbe.preChangeQueryVersion -eq $forcedProbe.versionBeforeCommit -and
+        $forcedProbe.preChangePlanVersion -eq $forcedProbe.versionBeforeCommit -and
+        $forcedProbe.postChangeQueryVersion -eq $forcedProbe.versionAfterCommit -and
+        $forcedProbe.postChangePlanVersion -eq $forcedProbe.versionAfterCommit -and
+        $forcedProbe.exactEndpointsMatch -eq $true -and
+        $forcedProbe.changedCellIncludedInPostChangePlan -eq $true -and
+        $null -ne $forcedProbe.preChangePlanCost -and
+        $null -ne $forcedProbe.postChangePlanCost -and
+        $forcedProbe.postChangePlanCost -lt $forcedProbe.preChangePlanCost -and
+        $null -ne $forcedProbe.commitToFirstLookupMilliseconds -and
+        $forcedProbe.commitToFirstLookupMilliseconds -ge 0
+    $cacheTransitionContractValid =
+        $cacheTransitionContractValid -and
+        $forcedPreparedProbe.pathSegmentStructureId -eq $forcedProbe.pathSegmentStructureId -and
+        $forcedPreparedProbe.changedCellGridX -eq $forcedProbe.changedCellGridX -and
+        $forcedPreparedProbe.changedCellGridY -eq $forcedProbe.changedCellGridY -and
+        $forcedPreparedProbe.probeStartGridX -eq $forcedProbe.probeStartGridX -and
+        $forcedPreparedProbe.probeStartGridY -eq $forcedProbe.probeStartGridY -and
+        $forcedPreparedProbe.probeEndGridX -eq $forcedProbe.probeEndGridX -and
+        $forcedPreparedProbe.probeEndGridY -eq $forcedProbe.probeEndGridY -and
+        $forcedPreparedProbe.preChangeQueryVersion -eq $forcedProbe.preChangeQueryVersion -and
+        $forcedPreparedProbe.preChangePlanVersion -eq $forcedProbe.preChangePlanVersion -and
+        $forcedPreparedProbe.preChangePlanCost -eq $forcedProbe.preChangePlanCost -and
+        (Test-ForcedEvidenceInternalConsistency $offResult.cacheEvidence) -and
+        (Test-ForcedEvidenceInternalConsistency $onResult.cacheEvidence)
+}
 $executionRouteValid =
     ($ReleaseExport -and $executionRoute -eq "export_release") -or
     (-not $ReleaseExport -and $executionRoute -eq "editor_scene")
@@ -393,6 +651,25 @@ $onRuntimeMetricsValid =
         ($onResult.diagnostics.pathPlanCacheHits + $onResult.diagnostics.pathPlanCacheMisses) -and
     (Test-NonEmptyText $onResult.artifacts.runtimeMetricsCsv) -and
     (Test-Path -LiteralPath ([string]$onResult.artifacts.runtimeMetricsCsv) -PathType Leaf)
+$cacheDiagnosticsContractValid = if ($CacheMode -eq "cold") {
+    $onRuntimeMetricsValid -and
+    $onResult.diagnostics.firstMeasuredBatchPathPlanCacheMisses -gt 0 -and
+    $onResult.diagnostics.firstMeasuredBatchNavigationInvalidations -eq 0 -and
+    $onResult.diagnostics.navigationInvalidations -eq 0
+}
+elseif ($CacheMode -eq "natural_warm") {
+    $onRuntimeMetricsValid -and
+    $onResult.diagnostics.firstMeasuredBatchPathPlanCacheHits -gt 0 -and
+    $onResult.diagnostics.firstMeasuredBatchNavigationInvalidations -eq 0 -and
+    $onResult.diagnostics.navigationInvalidations -eq 0
+}
+else {
+    $onRuntimeMetricsValid -and
+    $onResult.diagnostics.batchCount -eq 1 -and
+    $onResult.diagnostics.firstMeasuredBatchNavigationInvalidations -eq 1 -and
+    $onResult.diagnostics.navigationInvalidations -eq 1 -and
+    $onResult.diagnostics.phases.navigationRebuildMilliseconds -gt 0
+}
 $artifactContractValid =
     $offRuntimeMetricsAbsent -and
     $onRuntimeMetricsValid -and
@@ -404,11 +681,32 @@ $artifactContractValid =
     (Test-Path -LiteralPath ([string]$onResult.artifacts.snapshot) -PathType Leaf) -and
     (Test-Path -LiteralPath ([string]$offResult.artifacts.eventLog) -PathType Leaf) -and
     (Test-Path -LiteralPath ([string]$onResult.artifacts.eventLog) -PathType Leaf)
+$offMatrixPath = Join-Path $offDirectory "perf-matrix.csv"
+$onMatrixPath = Join-Path $onDirectory "perf-matrix.csv"
+$offMatrix = if (Test-Path -LiteralPath $offMatrixPath -PathType Leaf) {
+    @(Get-Content -LiteralPath $offMatrixPath)
+}
+else {
+    @()
+}
+$onMatrix = if (Test-Path -LiteralPath $onMatrixPath -PathType Leaf) {
+    @(Get-Content -LiteralPath $onMatrixPath)
+}
+else {
+    @()
+}
+$matrixSchemaValid =
+    $offMatrix.Count -eq 2 -and
+    $onMatrix.Count -eq 2 -and
+    $offMatrix[0] -eq $onMatrix[0]
 $equivalent =
     $schemaValid -and
     $configurationMatches -and
     $commandConfigurationMatches -and
     $modeContractValid -and
+    $cacheEvidenceCommonValid -and
+    $cacheTransitionContractValid -and
+    $cacheDiagnosticsContractValid -and
     $executionRouteValid -and
     $gitIdentityMatches -and
     $environmentMatches -and
@@ -421,12 +719,26 @@ $equivalent =
     $combinedHashMatches -and
     $resultStatusesValid -and
     $artifactContractValid -and
+    $matrixSchemaValid -and
     (-not $RequireRelease -or $releaseEnvironmentValid)
 
 $equivalence = [ordered]@{
-    schemaVersion = 2
+    schemaVersion = 3
     capturedUtc = [DateTime]::UtcNow.ToString("o")
     status = if (-not $equivalent) { "fail" } elseif ($gitDirty) { "pass_dirty_source" } else { "pass" }
+    contractStatus = if (-not $equivalent) { "fail" } elseif ($gitDirty) { "pass_dirty_source" } else { "pass" }
+    budgetStatus = if ($offResult.budget.safetyPassed -eq $false) {
+        "safety_failure"
+    }
+    elseif ($offResult.budget.targetPassed -eq $false) {
+        "target_missed"
+    }
+    elseif ($offResult.budget.targetPassed -eq $true) {
+        "target_passed_single_run"
+    }
+    else {
+        "characterization_only"
+    }
     sourceClean = -not $gitDirty
     expectedGodotVersion = $expectedGodotVersion
     resolvedEditorVersion = $resolvedGodotVersion
@@ -444,6 +756,20 @@ $equivalence = [ordered]@{
     configurationMatches = $configurationMatches
     commandConfigurationMatches = $commandConfigurationMatches
     modeContractValid = $modeContractValid
+    cacheEvidencePairValid = $cacheEvidencePairValid
+    cacheEvidenceCommonValid = $cacheEvidenceCommonValid
+    cacheTransitionContractValid = $cacheTransitionContractValid
+    cacheDiagnosticsContractValid = $cacheDiagnosticsContractValid
+    singleModeTransitionEvidence =
+        $cacheEvidenceCommonValid -and
+        $cacheTransitionContractValid -and
+        $cacheDiagnosticsContractValid
+    cacheModeEvidence = $false
+    crossModeEquivalenceCaptured = $false
+    releaseBaselineEvidence = $false
+    fullMatrixCaptured = $false
+    medianOfThreeCaptured = $false
+    targetOrSafetyClaimMade = $false
     executionRouteValid = $executionRouteValid
     gitIdentityMatches = $gitIdentityMatches
     environmentMatches = $environmentMatches
@@ -456,8 +782,14 @@ $equivalence = [ordered]@{
     combinedHashMatches = $combinedHashMatches
     resultStatusesValid = $resultStatusesValid
     artifactContractValid = $artifactContractValid
+    matrixSchemaValid = $matrixSchemaValid
     metricsOffRuntimeMetricsAbsent = $offRuntimeMetricsAbsent
     metricsOnRuntimeMetricsValid = $onRuntimeMetricsValid
+    cacheMode = $CacheMode
+    comparisonGroup = $comparisonGroup
+    trialIndex = $TrialIndex
+    metricsOffCacheEvidence = $offResult.cacheEvidence
+    metricsOnCacheEvidence = $onResult.cacheEvidence
     metricsOffHash = $offResult.hashes.deterministicStateAndEventSha256
     metricsOnHash = $onResult.hashes.deterministicStateAndEventSha256
     metricsOffResult = $offResultPath
@@ -466,18 +798,17 @@ $equivalence = [ordered]@{
 $equivalencePath = Join-Path $OutputRoot "equivalence-results.json"
 Write-Utf8NoBom -Path $equivalencePath -Content ($equivalence | ConvertTo-Json -Depth 8)
 
-$offMatrix = Get-Content -LiteralPath (Join-Path $offDirectory "perf-matrix.csv")
-$onMatrix = Get-Content -LiteralPath (Join-Path $onDirectory "perf-matrix.csv")
-if ($offMatrix.Count -ne 2 -or $onMatrix.Count -ne 2 -or $offMatrix[0] -ne $onMatrix[0]) {
-    throw "Per-run performance matrix artifacts do not share the expected one-row schema."
+if ($matrixSchemaValid) {
+    $aggregateMatrixPath = Join-Path $OutputRoot "perf-matrix.csv"
+    Write-Utf8NoBom -Path $aggregateMatrixPath -Content (($offMatrix[0], $offMatrix[1], $onMatrix[1]) -join [System.Environment]::NewLine)
 }
-$aggregateMatrixPath = Join-Path $OutputRoot "perf-matrix.csv"
-Write-Utf8NoBom -Path $aggregateMatrixPath -Content (($offMatrix[0], $offMatrix[1], $onMatrix[1]) -join [System.Environment]::NewLine)
 
 $summaryLines = @(
     "Societies metrics equivalence pair",
     "Status: $($equivalence.status)",
     "Scenario: $Scenario; seed: $Seed; citizens: $Citizens; warmup ticks: $WarmupTicks; measured ticks: $Ticks",
+    "Cache mode: $CacheMode; comparison group: $comparisonGroup; trial: $TrialIndex",
+    "Cache transition contract: $cacheTransitionContractValid; cache diagnostics contract: $cacheDiagnosticsContractValid",
     "Godot: expected $expectedGodotVersion; editor $resolvedGodotVersion; run $offRunGodotVersion",
     "Managed build: $($offResult.environment.managedBuildConfiguration)",
     "Managed assembly configuration: $($offResult.environment.managedAssemblyConfiguration)",
@@ -496,6 +827,10 @@ if (-not $equivalent) {
     if (-not $configurationMatches) { $failedChecks += "configuration_pair" }
     if (-not $commandConfigurationMatches) { $failedChecks += "command_configuration" }
     if (-not $modeContractValid) { $failedChecks += "mode_contract" }
+    if (-not $cacheEvidencePairValid) { $failedChecks += "cache_evidence_pair" }
+    if (-not $cacheEvidenceCommonValid) { $failedChecks += "cache_evidence_common" }
+    if (-not $cacheTransitionContractValid) { $failedChecks += "cache_transition" }
+    if (-not $cacheDiagnosticsContractValid) { $failedChecks += "cache_diagnostics" }
     if (-not $executionRouteValid) { $failedChecks += "execution_route" }
     if (-not $gitIdentityMatches) { $failedChecks += "git_identity" }
     if (-not $environmentMatches) { $failedChecks += "environment_pair" }
@@ -508,6 +843,7 @@ if (-not $equivalent) {
     if (-not $combinedHashMatches) { $failedChecks += "combined_hash" }
     if (-not $resultStatusesValid) { $failedChecks += "result_status" }
     if (-not $artifactContractValid) { $failedChecks += "artifact_contract" }
+    if (-not $matrixSchemaValid) { $failedChecks += "matrix_schema" }
     if ($RequireRelease -and -not $releaseEnvironmentValid) { $failedChecks += "release_environment" }
     throw "Performance pair contract validation failed: $($failedChecks -join ', ')."
 }

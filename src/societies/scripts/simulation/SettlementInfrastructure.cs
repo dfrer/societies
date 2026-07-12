@@ -2,6 +2,7 @@ using Godot;
 using Societies.Core;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Globalization;
 using System.Linq;
 
@@ -183,6 +184,168 @@ namespace Societies.Simulation
             EnsureRemoteDepotPlans();
             EnsurePriorityPathPlans();
         }
+
+        public PrototypePerformanceProbeSnapshot CapturePerformanceProbeState()
+        {
+            PrototypePathQuery? preChangeQuery = _forcedPreChangeQuery;
+            PrototypePathQuery? postChangeQuery = _forcedPostChangeQuery;
+            Vector2I? changedCell = _forcedChangedCell;
+            bool pathSegmentIsBuilt = _pathSegments.Any(candidate =>
+                string.Equals(candidate.StructureId, _forcedPathSegmentStructureId, StringComparison.Ordinal) &&
+                candidate.IsBuilt);
+            return new PrototypePerformanceProbeSnapshot(
+                _pathCache.Count,
+                _totalTicks,
+                _navigationRulesVersion,
+                _pathCache.Keys.All(key => key.RulesVersion == _navigationRulesVersion),
+                _totalNavigationInvalidations,
+                _lastPathPlanRulesVersion,
+                new PrototypeForcedInvalidationProbeSnapshot(
+                    _forcedInvalidationPrepared,
+                    _forcedInvalidationCommitted,
+                    _forcedPathSegmentStructureId,
+                    _forcedPathSegmentWasBuiltBefore,
+                    pathSegmentIsBuilt,
+                    changedCell?.X,
+                    changedCell?.Y,
+                    _forcedInvalidationCompletionTick,
+                    _forcedInvalidationVersionBeforeCommit,
+                    _forcedInvalidationVersionAfterCommit,
+                    _forcedInvalidationsBeforeCommit,
+                    _forcedInvalidationsAfterCommit,
+                    _forcedCacheEntriesBeforeRebuild,
+                    _forcedCacheEntriesImmediatelyAfterRebuild,
+                    _forcedFirstLookupObserved,
+                    _forcedFirstLookupWasCacheMiss,
+                    _forcedFirstLookupUsedNewVersion,
+                    preChangeQuery?.StartGridX,
+                    preChangeQuery?.StartGridY,
+                    preChangeQuery?.EndGridX,
+                    preChangeQuery?.EndGridY,
+                    preChangeQuery?.RulesVersion,
+                    _forcedPreChangePlanVersion,
+                    postChangeQuery?.RulesVersion,
+                    _forcedPostChangePlanVersion,
+                    _forcedExactEndpointsMatch,
+                    _forcedChangedCellIncluded,
+                    _forcedPreChangePlanCost,
+                    _forcedPostChangePlanCost,
+                    _forcedCommitToFirstLookupMilliseconds));
+        }
+
+        public int ClearDerivedPathCacheForPerformance()
+        {
+            int clearedEntryCount = _pathCache.Count;
+            _pathCache.Clear();
+            return clearedEntryCount;
+        }
+
+        public bool TryPrepareForcedPathCompletionForPerformance(out string structureId)
+        {
+            structureId = string.Empty;
+            if (!string.IsNullOrEmpty(_preparedForcedPathSegmentStructureId))
+            {
+                return false;
+            }
+
+            PrototypePathSegmentState? segment = _pathSegments
+                .Where(candidate => !candidate.IsBuilt)
+                .OrderBy(candidate => candidate.StructureId, StringComparer.Ordinal)
+                .FirstOrDefault(candidate => GetStructure(candidate.StructureId)?.IsBuilt == false);
+            if (segment == null)
+            {
+                return false;
+            }
+
+            _forcedPathSegmentStructureId = segment.StructureId;
+            _preparedForcedPathSegmentStructureId = segment.StructureId;
+            _forcedPathSegmentWasBuiltBefore = segment.IsBuilt;
+            _forcedInvalidationPrepared = true;
+            _forcedChangedCell = new Vector2I(segment.GridX, segment.GridY);
+            _forcedProbeStartPosition = _world.SettlementSpawn.AnchorPosition;
+            _forcedProbeDestinationPosition = segment.Position;
+
+            TerrainCell probeStartCell = _world.WorldMap.GetNearestCell(_forcedProbeStartPosition);
+            TerrainCell probeDestinationCell = _world.WorldMap.GetNearestCell(_forcedProbeDestinationPosition);
+            _pathCache.Remove(new PrototypePathCacheKey(
+                probeStartCell.GridX,
+                probeStartCell.GridY,
+                probeDestinationCell.GridX,
+                probeDestinationCell.GridY,
+                _navigationRulesVersion));
+
+            PrototypePathPlan preChangePlan = FindPathPlan(
+                _forcedProbeStartPosition,
+                _forcedProbeDestinationPosition);
+            _forcedPreChangeQuery = preChangePlan.Query;
+            _forcedPreChangePlanVersion = preChangePlan.Query.RulesVersion;
+            _forcedPreChangeExactEndpointsMatch =
+                preChangePlan.Waypoints.Count > 0 &&
+                preChangePlan.Waypoints[0].IsEqualApprox(_forcedProbeStartPosition) &&
+                preChangePlan.Waypoints[^1].IsEqualApprox(_forcedProbeDestinationPosition);
+            _forcedPreChangePlanCost = preChangePlan.TotalCost;
+            ResetForcedInvalidationCommitEvidence();
+
+            structureId = segment.StructureId;
+            return true;
+        }
+
+        private void ResetForcedInvalidationCommitEvidence()
+        {
+            _forcedInvalidationCommitted = false;
+            _forcedInvalidationVersionBeforeCommit = null;
+            _forcedInvalidationVersionAfterCommit = null;
+            _forcedInvalidationsBeforeCommit = null;
+            _forcedInvalidationsAfterCommit = null;
+            _forcedCacheEntriesBeforeRebuild = null;
+            _forcedCacheEntriesImmediatelyAfterRebuild = null;
+            _forcedInvalidationCompletionTick = null;
+            _forcedInvalidationStartTimestamp = 0;
+            _forcedFirstLookupObserved = false;
+            _forcedFirstLookupWasCacheMiss = false;
+            _forcedFirstLookupUsedNewVersion = false;
+            _forcedPostChangeQuery = null;
+            _forcedPostChangePlanVersion = null;
+            _forcedExactEndpointsMatch = false;
+            _forcedChangedCellIncluded = false;
+            _forcedPostChangePlanCost = null;
+            _forcedCommitToFirstLookupMilliseconds = null;
+        }
+
+        private void CommitPreparedForcedPathCompletion(
+            PrototypeSettlementTickResult result,
+            RuntimeMetricsCollector? runtimeMetrics)
+        {
+            if (string.IsNullOrEmpty(_preparedForcedPathSegmentStructureId))
+            {
+                return;
+            }
+
+            PrototypeWorkerState actor = _citizens
+                .OrderBy(candidate => candidate.WorkerId, StringComparer.Ordinal)
+                .FirstOrDefault()
+                ?? throw new InvalidOperationException("A forced path completion requires at least one citizen.");
+            string preparedStructureId = _preparedForcedPathSegmentStructureId;
+            string originalTargetStructureId = actor.TargetStructureId;
+            _forcedInvalidationCompletionTick = _totalTicks;
+            _forcedInvalidationCommitInProgress = true;
+            actor.TargetStructureId = preparedStructureId;
+            try
+            {
+                if (!CompleteBuild(actor, result, runtimeMetrics))
+                {
+                    throw new InvalidOperationException(
+                        $"The prepared path segment '{preparedStructureId}' did not complete.");
+                }
+            }
+            finally
+            {
+                actor.TargetStructureId = originalTargetStructureId;
+                _forcedInvalidationCommitInProgress = false;
+                _preparedForcedPathSegmentStructureId = string.Empty;
+            }
+        }
+
         private void RebuildNavigation()
         {
             _pathCache.Clear();
@@ -194,17 +357,75 @@ namespace Societies.Simulation
         }
         private void InvalidateNavigation(RuntimeMetricsCollector? runtimeMetrics)
         {
+            bool captureForcedLookup = _forcedInvalidationCommitInProgress;
             RuntimeMetricsPhaseToken navigationRebuildPhase = runtimeMetrics?.BeginPhase(RuntimeMetricsPhase.NavigationRebuild) ?? default;
             try
             {
+                if (captureForcedLookup)
+                {
+                    _forcedInvalidationVersionBeforeCommit = _navigationRulesVersion;
+                    _forcedInvalidationsBeforeCommit = _totalNavigationInvalidations;
+                    _forcedCacheEntriesBeforeRebuild = _pathCache.Count;
+                    _forcedInvalidationStartTimestamp = Stopwatch.GetTimestamp();
+                }
+
                 _navigationInvalidationsThisTick++;
+                _totalNavigationInvalidations++;
                 _navigationRulesVersion++;
                 RebuildNavigation();
+
+                if (captureForcedLookup)
+                {
+                    _forcedInvalidationVersionAfterCommit = _navigationRulesVersion;
+                    _forcedInvalidationsAfterCommit = _totalNavigationInvalidations;
+                    _forcedCacheEntriesImmediatelyAfterRebuild = _pathCache.Count;
+                }
             }
             finally
             {
                 navigationRebuildPhase.Complete();
             }
+
+            if (captureForcedLookup)
+            {
+                CaptureFirstPostInvalidationLookup();
+            }
+        }
+
+        private void CaptureFirstPostInvalidationLookup()
+        {
+            PrototypePathPlan postChangePlan = FindPathPlan(
+                _forcedProbeStartPosition,
+                _forcedProbeDestinationPosition);
+            _forcedPostChangeQuery = postChangePlan.Query;
+            _forcedPostChangePlanVersion = postChangePlan.Query.RulesVersion;
+            _forcedPostChangePlanCost = postChangePlan.TotalCost;
+            _forcedFirstLookupObserved = true;
+            _forcedFirstLookupWasCacheMiss = !_lastPathPlanLookupWasCacheHit;
+            _forcedFirstLookupUsedNewVersion =
+                postChangePlan.Query.RulesVersion == _navigationRulesVersion &&
+                _forcedInvalidationVersionAfterCommit == _navigationRulesVersion;
+            _forcedInvalidationCommitted = true;
+            _forcedCommitToFirstLookupMilliseconds = Stopwatch
+                .GetElapsedTime(_forcedInvalidationStartTimestamp)
+                .TotalMilliseconds;
+
+            PrototypePathQuery? preChangeQuery = _forcedPreChangeQuery;
+            bool queryCellsMatch = preChangeQuery.HasValue &&
+                preChangeQuery.Value.StartGridX == postChangePlan.Query.StartGridX &&
+                preChangeQuery.Value.StartGridY == postChangePlan.Query.StartGridY &&
+                preChangeQuery.Value.EndGridX == postChangePlan.Query.EndGridX &&
+                preChangeQuery.Value.EndGridY == postChangePlan.Query.EndGridY;
+            bool postChangeEndpointsMatch =
+                postChangePlan.Waypoints.Count > 0 &&
+                postChangePlan.Waypoints[0].IsEqualApprox(_forcedProbeStartPosition) &&
+                postChangePlan.Waypoints[^1].IsEqualApprox(_forcedProbeDestinationPosition);
+            _forcedExactEndpointsMatch =
+                queryCellsMatch &&
+                _forcedPreChangeExactEndpointsMatch &&
+                postChangeEndpointsMatch;
+            _forcedChangedCellIncluded = _forcedChangedCell is Vector2I changedCell &&
+                postChangePlan.Cells.Contains(changedCell);
         }
         private PrototypePathPlan FindPathPlan(Vector3 startPosition, Vector3 destinationPosition)
         {
@@ -217,12 +438,16 @@ namespace Societies.Simulation
             if (_pathCache.TryGetValue(cacheKey, out PrototypePathPlan? cachedPlan))
             {
                 _pathPlanCacheHitsThisTick++;
+                _lastPathPlanLookupWasCacheHit = true;
+                _lastPathPlanRulesVersion = cachedPlan.Query.RulesVersion;
                 return cachedPlan;
             }
 
             _pathPlanCacheMissesThisTick++;
             PrototypePathPlan plan = _navigationGrid.FindPath(startPosition, destinationPosition);
             _pathCache[cacheKey] = plan;
+            _lastPathPlanLookupWasCacheHit = false;
+            _lastPathPlanRulesVersion = plan.Query.RulesVersion;
             return plan;
         }
         private void RegisterPathUsage(PrototypePathPlan plan)

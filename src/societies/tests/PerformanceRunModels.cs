@@ -33,6 +33,12 @@ namespace Societies.Tests
 
         public string RunnerExecutablePath { get; set; } = string.Empty;
 
+        public string CacheMode { get; set; } = string.Empty;
+
+        public string ComparisonGroup { get; set; } = string.Empty;
+
+        public int TrialIndex { get; set; }
+
         public string WarmupMode { get; set; } = "none";
 
         public bool CacheWarmupEnabled { get; set; }
@@ -81,6 +87,8 @@ namespace Societies.Tests
 
         public double WarmupMilliseconds { get; set; }
 
+        public double CachePreparationMilliseconds { get; set; }
+
         public double MeasuredTicksMilliseconds { get; set; }
 
         public double CoreArtifactSerializationMilliseconds { get; set; }
@@ -90,6 +98,8 @@ namespace Societies.Tests
         public string BootstrapBoundary { get; set; } = string.Empty;
 
         public string WarmupBoundary { get; set; } = string.Empty;
+
+        public string CachePreparationBoundary { get; set; } = string.Empty;
 
         public string MeasurementBoundary { get; set; } = string.Empty;
 
@@ -118,6 +128,14 @@ namespace Societies.Tests
         public int BatchCount { get; set; }
 
         public long DroppedBatchCount { get; set; }
+
+        public long FirstMeasuredBatchPathPlanLookups { get; set; }
+
+        public long FirstMeasuredBatchPathPlanCacheHits { get; set; }
+
+        public long FirstMeasuredBatchPathPlanCacheMisses { get; set; }
+
+        public long FirstMeasuredBatchNavigationInvalidations { get; set; }
 
         public long PathPlanLookups { get; set; }
 
@@ -182,9 +200,37 @@ namespace Societies.Tests
         public string ValidationManifest { get; set; } = string.Empty;
     }
 
+    internal sealed class PerformanceCacheEvidence
+    {
+        public string CacheMode { get; set; } = string.Empty;
+
+        public string PreparationStrategy { get; set; } = string.Empty;
+
+        public int ClearedEntryCount { get; set; }
+
+        public string PreparedForcedPathSegmentStructureId { get; set; } = string.Empty;
+
+        public PrototypePerformanceProbeSnapshot AfterBootstrap { get; set; }
+
+        public PrototypePerformanceProbeSnapshot AfterNaturalWarmup { get; set; }
+
+        public PrototypePerformanceProbeSnapshot BeforeMeasurement { get; set; }
+
+        public PrototypePerformanceProbeSnapshot AfterMeasurement { get; set; }
+
+        public PerformanceForcedInvalidationEvidence? ForcedInvalidation { get; set; }
+    }
+
+    internal sealed class PerformanceForcedInvalidationEvidence
+    {
+        public long NavigationInvalidationCount { get; set; }
+
+        public PrototypeForcedInvalidationProbeSnapshot Probe { get; set; }
+    }
+
     internal sealed class PerformanceRunResult
     {
-        public int SchemaVersion { get; set; } = 2;
+        public int SchemaVersion { get; set; } = 3;
 
         public string CapturedUtc { get; set; } = string.Empty;
 
@@ -199,6 +245,8 @@ namespace Societies.Tests
         public PerformanceRunEnvironment Environment { get; set; } = new();
 
         public PerformanceRunIntervals Intervals { get; set; } = new();
+
+        public PerformanceCacheEvidence CacheEvidence { get; set; } = new();
 
         public PerformanceSampleStatistics ExternalTickStatistics { get; set; }
 
@@ -221,7 +269,7 @@ namespace Societies.Tests
 
     internal sealed class PerformanceValidationManifest
     {
-        public int SchemaVersion { get; set; } = 2;
+        public int SchemaVersion { get; set; } = 3;
 
         public string CapturedUtc { get; set; } = string.Empty;
 
@@ -241,6 +289,8 @@ namespace Societies.Tests
 
         public PerformanceRunIntervals Intervals { get; set; } = new();
 
+        public PerformanceCacheEvidence CacheEvidence { get; set; } = new();
+
         public PerformanceRunHashes Hashes { get; set; } = new();
 
         public PerformanceBudgetAssessment Budget { get; set; }
@@ -250,7 +300,7 @@ namespace Societies.Tests
 
     internal sealed class PerformanceFailureResult
     {
-        public int SchemaVersion { get; set; } = 2;
+        public int SchemaVersion { get; set; } = 3;
 
         public string CapturedUtc { get; set; } = string.Empty;
 
@@ -263,5 +313,7 @@ namespace Societies.Tests
         public string ExactInvocation { get; set; } = string.Empty;
 
         public PerformanceRunConfiguration? Configuration { get; set; }
+
+        public PerformanceCacheEvidence? CacheEvidence { get; set; }
     }
 }

@@ -11,6 +11,39 @@ namespace Societies.Core.Tests
     public class PrototypeRuntimeSessionTests
     {
         [Fact]
+        public void PerformanceProbe_RuntimeSessionForwardsCacheAndForcedInvalidationControls()
+        {
+            PrototypeCatalogBundle bundle = LoadCatalogs();
+            PrototypeScenarioDefinition scenario = bundle.Scenarios.Resolve("balanced_basin");
+            PrototypeRuntimeSession session = new(scenario, bundle.RoleQuotas.Roles);
+            session.Initialize(8.0f);
+            List<PrototypeResourceSiteState> resources = BuildResourceSites(session.World!);
+
+            PrototypePerformanceProbeSnapshot startup = session.CapturePerformanceProbeState();
+            Assert.Equal(0, startup.SimulationTick);
+            Assert.Equal(0, startup.PathCacheEntryCount);
+
+            _ = session.Advance(1.0f / 20.0f, 600.0f, resources);
+            PrototypePerformanceProbeSnapshot naturallyWarm = session.CapturePerformanceProbeState();
+            Assert.Equal(1, naturallyWarm.SimulationTick);
+            Assert.True(naturallyWarm.PathCacheEntryCount > 0);
+
+            Assert.Equal(naturallyWarm.PathCacheEntryCount, session.ClearDerivedPathCacheForPerformance());
+            Assert.Equal(0, session.CapturePerformanceProbeState().PathCacheEntryCount);
+            Assert.True(session.TryPrepareForcedPathCompletionForPerformance(out string structureId));
+
+            PrototypeRuntimeTickResult result = session.Advance(1.0f / 20.0f, 600.0f, resources);
+            PrototypePerformanceProbeSnapshot completed = session.CapturePerformanceProbeState();
+            Assert.Equal(2, completed.SimulationTick);
+            Assert.True(completed.ForcedInvalidation.Prepared);
+            Assert.True(completed.ForcedInvalidation.Committed);
+            Assert.Equal(structureId, completed.ForcedInvalidation.PathSegmentStructureId);
+            Assert.True(completed.ForcedInvalidation.PathSegmentIsBuiltAfter);
+            Assert.True(completed.ForcedInvalidation.FirstPostChangeLookupUsedNewVersion);
+            Assert.Contains(result.SettlementResult.Events, entry => entry.EventType == PrototypeEventTypes.SettlementPathBuilt);
+        }
+
+        [Fact]
         public void BalancedBasin_ReachesEconomyStateWithMealsFuelAndBeds()
         {
             PrototypeCatalogBundle bundle = LoadCatalogs();
@@ -76,6 +109,20 @@ namespace Societies.Core.Tests
             Assert.True(snapshot.Settlement!.Citizens.Count == session.Workers.Count);
             Assert.True(snapshot.Settlement.PathSegments.Count > 0);
             Assert.True(snapshot.Settlement.LogisticsMetrics.TotalCompletedRouteDistanceMeters >= 0.0f);
+        }
+
+        private static List<PrototypeResourceSiteState> BuildResourceSites(WorldGenerationResult world)
+        {
+            return world.ResourceSpawns
+                .GroupBy(spawn => spawn.ResourceId)
+                .OrderBy(group => group.Key)
+                .SelectMany(group => group.Select((spawn, index) => new PrototypeResourceSiteState(
+                    $"{spawn.ResourceId}_{index + 1}",
+                    spawn.ResourceId,
+                    spawn.Position,
+                    spawn.UnitsRemaining,
+                    spawn.ClusterId)))
+                .ToList();
         }
 
         private static PrototypeCatalogBundle LoadCatalogs()

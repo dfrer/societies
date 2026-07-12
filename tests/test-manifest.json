@@ -1,25 +1,25 @@
 {
-  "schemaVersion": 2,
-  "updatedUtc": "2026-07-11T18:06:54.6741248Z",
+  "schemaVersion": 3,
+  "updatedUtc": "2026-07-12T00:43:23.9775321Z",
   "required": {
     "dotnet": {
       "project": "tests/Societies.Core.Tests/Societies.Core.Tests.csproj",
       "command": "dotnet test tests/Societies.Core.Tests/Societies.Core.Tests.csproj --configuration Release",
-      "expectedTestCount": 95,
+      "expectedTestCount": 98,
       "tiers": {
         "fast": {
           "expectedTestCount": 79,
           "filter": "FullyQualifiedName!~PrototypeRuntimeSessionTests&FullyQualifiedName!~PrototypeSettlementSimulationTests&FullyQualifiedName!~SettlementDiagnosticsTests&FullyQualifiedName!~WorkOrderGenerationDiagnosticsTests"
         },
         "integration": {
-          "expectedTestCount": 8,
+          "expectedTestCount": 10,
           "classes": [
             "Societies.Core.Tests.SettlementDiagnosticsTests",
             "Societies.Core.Tests.WorkOrderGenerationDiagnosticsTests"
           ]
         },
         "soak": {
-          "expectedTestCount": 8,
+          "expectedTestCount": 9,
           "classes": [
             "Societies.Core.Tests.PrototypeRuntimeSessionTests",
             "Societies.Core.Tests.PrototypeSettlementSimulationTests"
@@ -76,13 +76,20 @@
   "optional": {
     "performancePair": {
       "script": "scripts/run-performance-pair.ps1",
-      "command": "./scripts/run-performance-pair.ps1 -Scenario balanced_basin -Seed 1337 -Citizens 3 -Ticks 3",
-      "releaseCommand": "./scripts/run-performance-pair.ps1 -ReleaseExport -Scenario balanced_basin -Seed 1337 -Citizens 3 -Ticks 3",
+      "command": "./scripts/run-performance-pair.ps1 -Scenario balanced_basin -Seed 1337 -Citizens 3 -Ticks 3 -CacheMode cold",
+      "releaseCommand": "./scripts/run-performance-pair.ps1 -ReleaseExport -Scenario balanced_basin -Seed 1337 -Citizens 3 -Ticks 3 -CacheMode cold",
+      "cacheModeComparisonScript": "scripts/run-performance-cache-modes.ps1",
+      "resultSchemaVersion": 3,
       "requiredGodotVersion": "4.6.2",
       "requiredForPullRequest": false,
       "runModes": [
         "metrics-off",
         "metrics-on"
+      ],
+      "cacheModes": [
+        "cold",
+        "natural_warm",
+        "forced_invalidation"
       ],
       "executionRoutes": {
         "editorScene": {
@@ -111,14 +118,19 @@
       "trackedReleaseRoute": true,
       "releaseRouteValidationStatus": "passed",
       "releaseRouteEvidence": true,
+      "singleModeTransitionEvidenceAvailable": true,
+      "cacheModeComparisonStatus": "passed",
+      "cacheModeEvidence": true,
       "releaseBaselineEvidence": false,
       "evidence": "planning/active/evidence/v3-w1-03a-release-route-validation.json",
-      "note": "The editor route remains Debug characterization. The Windows ExportRelease route is validated from clean commit acf634f; full W1-03 baseline evidence still requires the cold/warm/invalidation matrix and median reference runs."
+      "cacheModeEvidenceFile": "planning/active/evidence/v3-w1-03b-cache-mode-validation.json",
+      "cacheModeImplementationCommit": "5444cc3a39fd9a58f87a7f999b67c9458dfe30c7",
+      "note": "The editor route remains Debug characterization. The Windows ExportRelease route is validated from clean commit acf634f. The clean schema-v3 cache-mode comparison from implementation commit 5444cc3 proves cold/warm deterministic equivalence and forced invalidation for a short three-citizen smoke. Full W1-03 baseline evidence still requires the complete matrix, soak, stress, and median reference runs."
     }
   },
   "history": {
     "preSyncCommit": "c58e3de",
     "preSyncDotnetTestCount": 64,
-    "note": "The synchronized master adds 12 PrototypeMetricsTracker tests and 3 WorkOrderGenerationDiagnostics tests for a historical 79-test floor. The current V3 hardening manifest declares 95 required .NET tests."
+    "note": "The synchronized master adds 12 PrototypeMetricsTracker tests and 3 WorkOrderGenerationDiagnostics tests for a historical 79-test floor. W1-03b adds three cache-probe contract tests; the current manifest declares 98 required .NET tests."
   }
 }

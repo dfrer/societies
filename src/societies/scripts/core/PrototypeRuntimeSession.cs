@@ -137,6 +137,27 @@ namespace Societies.Core
 
         public Vector3 SettlementAnchorPosition => _world?.SettlementSpawn.AnchorPosition ?? Vector3.Zero;
 
+        public PrototypePerformanceProbeSnapshot CapturePerformanceProbeState()
+        {
+            return _settlementSimulation?.CapturePerformanceProbeState() ?? default;
+        }
+
+        public int ClearDerivedPathCacheForPerformance()
+        {
+            return _settlementSimulation?.ClearDerivedPathCacheForPerformance() ?? 0;
+        }
+
+        public bool TryPrepareForcedPathCompletionForPerformance(out string structureId)
+        {
+            if (_settlementSimulation == null)
+            {
+                structureId = string.Empty;
+                return false;
+            }
+
+            return _settlementSimulation.TryPrepareForcedPathCompletionForPerformance(out structureId);
+        }
+
         public void Initialize(float startHour)
         {
             SimulationTick = 0;
