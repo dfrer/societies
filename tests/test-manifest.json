@@ -1,6 +1,6 @@
 {
   "schemaVersion": 3,
-  "updatedUtc": "2026-07-11T19:36:25.6886439Z",
+  "updatedUtc": "2026-07-12T00:43:23.9775321Z",
   "required": {
     "dotnet": {
       "project": "tests/Societies.Core.Tests/Societies.Core.Tests.csproj",
@@ -119,11 +119,13 @@
       "releaseRouteValidationStatus": "passed",
       "releaseRouteEvidence": true,
       "singleModeTransitionEvidenceAvailable": true,
-      "cacheModeComparisonStatus": "implementation_pending_clean_release_validation",
-      "cacheModeEvidence": false,
+      "cacheModeComparisonStatus": "passed",
+      "cacheModeEvidence": true,
       "releaseBaselineEvidence": false,
       "evidence": "planning/active/evidence/v3-w1-03a-release-route-validation.json",
-      "note": "The editor route remains Debug characterization. The Windows ExportRelease route is validated from clean commit acf634f. Schema v3 adds single-mode cold, natural-warm, and forced-invalidation transition proof; cache-mode evidence remains false until the clean cross-mode Release comparison passes. Full W1-03 baseline evidence still requires the complete matrix and median reference runs."
+      "cacheModeEvidenceFile": "planning/active/evidence/v3-w1-03b-cache-mode-validation.json",
+      "cacheModeImplementationCommit": "5444cc3a39fd9a58f87a7f999b67c9458dfe30c7",
+      "note": "The editor route remains Debug characterization. The Windows ExportRelease route is validated from clean commit acf634f. The clean schema-v3 cache-mode comparison from implementation commit 5444cc3 proves cold/warm deterministic equivalence and forced invalidation for a short three-citizen smoke. Full W1-03 baseline evidence still requires the complete matrix, soak, stress, and median reference runs."
     }
   },
   "history": {

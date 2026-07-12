@@ -78,7 +78,7 @@ godot --headless --path src/societies res://tests/HeadlessTestRunner.tscn
 - The tracked solution exposes Godot's three managed configurations (`Debug`, `ExportDebug`, and `ExportRelease`) without mapping an ordinary solution `Release` configuration back to Debug.
 - Raw catalog JSON is explicitly included in the Windows preset. Editor runs use the validated filesystem directory; exported builds always use packed `res://data` resources, avoiding working-directory-dependent inputs.
 - The Release execution route is validated from clean commit `acf634f`; see `planning/active/evidence/v3-w1-03a-release-route-validation.json`. This is route evidence only, not a performance baseline.
-- A short verified Release pair proves the execution route only. Cache-mode evidence additionally requires a clean schema-v3 cross-mode Release comparison. A V3-W1-03 baseline claim still requires the complete reference matrix and median runs.
+- The clean schema-v3 ExportRelease cache-mode comparison passed from implementation commit `5444cc3`; see `planning/active/evidence/v3-w1-03b-cache-mode-validation.json`. It proves cold/warm deterministic equivalence and the forced-invalidation transition for a short three-citizen smoke only. A V3-W1-03 baseline claim still requires the complete reference matrix, soak, stress, and median runs.
 - The voxel spike is experimental only. The authoritative gameplay runtime remains heightfield-based through M3.
 
 ## CI Scope

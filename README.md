@@ -68,6 +68,8 @@ These runs are not part of the pull-request gate. The runner writes ignored arti
 
 Schema v3 separates deterministic simulation preconditioning from cache treatment: `cold` clears only the derived route cache, `natural_warm` retains the naturally populated cache, and `forced_invalidation` commits one prepared path segment and proves the first exact post-change lookup uses the new navigation version. Eager/all-pairs prewarming remains disabled because the current cell-keyed cache stores exact endpoints. Only `run-performance-cache-modes.ps1` can set `cacheModeEvidence`: it also requires cold/warm configuration and hash identity and explicitly leaves baseline, full-matrix, median, and target/safety claims false.
 
+The clean verified ExportRelease cache-mode comparison passed from implementation commit `5444cc3`; see `planning/active/evidence/v3-w1-03b-cache-mode-validation.json`. It proves the three mode contracts and cold/warm deterministic equivalence for a short three-citizen smoke. It is not the V3-W1-03 performance baseline; the complete citizen-count matrix, soak, stress, and median reference runs remain W1-03c.
+
 ## Status
 
 This tranche is about stabilizing the Godot validation base so the next prototype step can build from a truthful, deterministic, testable foundation.
