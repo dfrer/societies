@@ -208,6 +208,29 @@ namespace Societies.Core
             RunTickBatch(Math.Max(0, tickCount), RuntimeMetricsBatchKind.ManualStep, ref ticksAttempted);
         }
 
+        internal PrototypePerformanceProbeSnapshot CapturePerformanceProbeState()
+        {
+            return _runtimeSession?.CapturePerformanceProbeState()
+                ?? throw new InvalidOperationException("The runtime session is unavailable.");
+        }
+
+        internal int ClearDerivedPathCacheForPerformance()
+        {
+            return _runtimeSession?.ClearDerivedPathCacheForPerformance()
+                ?? throw new InvalidOperationException("The runtime session is unavailable.");
+        }
+
+        internal bool TryPrepareForcedPathCompletionForPerformance(out string structureId)
+        {
+            if (_runtimeSession == null)
+            {
+                structureId = string.Empty;
+                return false;
+            }
+
+            return _runtimeSession.TryPrepareForcedPathCompletionForPerformance(out structureId);
+        }
+
         internal void ConfigurePerformanceStartup(string scenarioId, int simulationSeed, int citizenCount)
         {
             if (_readyStarted || IsInsideTree())

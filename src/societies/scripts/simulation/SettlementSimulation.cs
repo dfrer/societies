@@ -69,6 +69,39 @@ namespace Societies.Simulation
         private readonly PrototypeResourceStoreState _centralDepot;
         private PrototypeNavigationGrid? _navigationGrid;
         private int _navigationRulesVersion = 1;
+        private long _totalNavigationInvalidations;
+        private int? _lastPathPlanRulesVersion;
+        private bool _lastPathPlanLookupWasCacheHit;
+        private string _preparedForcedPathSegmentStructureId = string.Empty;
+        private string _forcedPathSegmentStructureId = string.Empty;
+        private bool _forcedPathSegmentWasBuiltBefore;
+        private bool _forcedInvalidationPrepared;
+        private bool _forcedInvalidationCommitInProgress;
+        private bool _forcedInvalidationCommitted;
+        private int? _forcedInvalidationVersionBeforeCommit;
+        private int? _forcedInvalidationVersionAfterCommit;
+        private long? _forcedInvalidationsBeforeCommit;
+        private long? _forcedInvalidationsAfterCommit;
+        private int? _forcedCacheEntriesBeforeRebuild;
+        private int? _forcedCacheEntriesImmediatelyAfterRebuild;
+        private long? _forcedInvalidationCompletionTick;
+        private long _forcedInvalidationStartTimestamp;
+        private bool _forcedFirstLookupObserved;
+        private bool _forcedFirstLookupWasCacheMiss;
+        private bool _forcedFirstLookupUsedNewVersion;
+        private PrototypePathQuery? _forcedPreChangeQuery;
+        private int? _forcedPreChangePlanVersion;
+        private bool _forcedPreChangeExactEndpointsMatch;
+        private PrototypePathQuery? _forcedPostChangeQuery;
+        private int? _forcedPostChangePlanVersion;
+        private bool _forcedExactEndpointsMatch;
+        private bool _forcedChangedCellIncluded;
+        private double? _forcedPreChangePlanCost;
+        private double? _forcedPostChangePlanCost;
+        private double? _forcedCommitToFirstLookupMilliseconds;
+        private Vector3 _forcedProbeStartPosition;
+        private Vector3 _forcedProbeDestinationPosition;
+        private Vector2I? _forcedChangedCell;
         private int _completedRouteCount;
         private float _completedRouteDistanceMeters;
         private int _completedRouteTravelTicks;
@@ -238,6 +271,8 @@ namespace Societies.Simulation
             _idleCitizensConsideringWorkOrdersThisTick = 0;
             _candidateOrdersEvaluatedThisTick = 0;
             _citizensEvaluatedThisTick = 0;
+
+            CommitPreparedForcedPathCompletion(result, runtimeMetrics);
 
             foreach (PrototypeResourceSiteState resource in resources)
             {

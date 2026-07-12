@@ -19,6 +19,9 @@ namespace Societies.Tests
     {
         private const string MetricsEnvironmentVariable = "SOCIETIES_PERF_METRICS";
         private const string OutputEnvironmentVariable = "SOCIETIES_RUN_OUTPUT_DIR";
+        private const string ColdCacheMode = "cold";
+        private const string NaturalWarmCacheMode = "natural_warm";
+        private const string ForcedInvalidationCacheMode = "forced_invalidation";
         private const int MaximumMeasuredTicks = 4096;
         private static readonly UTF8Encoding Utf8NoBom = new(encoderShouldEmitUTF8Identifier: false);
         private static readonly JsonSerializerOptions JsonOptions = new()
@@ -29,6 +32,7 @@ namespace Societies.Tests
         };
 
         private bool _ownsOutputDirectory;
+        private PerformanceCacheEvidence? _latestCacheEvidence;
 
 #if DEBUG
         private const string ManagedBuildConfiguration = "Debug";
@@ -53,7 +57,7 @@ namespace Societies.Tests
                 GD.PushError($"Performance runner failed: {exception}");
                 if (_ownsOutputDirectory)
                 {
-                    TryWriteFailureResult(configuration, exactInvocation, exception);
+                    TryWriteFailureResult(configuration, exactInvocation, exception, _latestCacheEvidence);
                 }
             }
 
@@ -99,6 +103,14 @@ namespace Societies.Tests
 
                 ValidateRuntimeIdentity(manager, configuration);
 
+                var cacheEvidence = new PerformanceCacheEvidence
+                {
+                    CacheMode = configuration.CacheMode,
+                    PreparationStrategy = GetCachePreparationStrategy(configuration),
+                    AfterBootstrap = manager.CapturePerformanceProbeState()
+                };
+                _latestCacheEvidence = cacheEvidence;
+
                 RuntimeMetricsCollector? runtimeMetrics = manager.RuntimeMetrics;
                 if (configuration.MetricsEnabled != (runtimeMetrics != null))
                 {
@@ -112,6 +124,31 @@ namespace Societies.Tests
                     manager.StepSimulationTicks(configuration.WarmupTicks);
                     warmupMilliseconds = Stopwatch.GetElapsedTime(warmupStart).TotalMilliseconds;
                 }
+                cacheEvidence.AfterNaturalWarmup = manager.CapturePerformanceProbeState();
+
+                long cachePreparationStart = Stopwatch.GetTimestamp();
+                switch (configuration.CacheMode)
+                {
+                    case ColdCacheMode:
+                        cacheEvidence.ClearedEntryCount = manager.ClearDerivedPathCacheForPerformance();
+                        break;
+                    case NaturalWarmCacheMode:
+                        break;
+                    case ForcedInvalidationCacheMode:
+                        if (!manager.TryPrepareForcedPathCompletionForPerformance(out string forcedStructureId) ||
+                            string.IsNullOrWhiteSpace(forcedStructureId))
+                        {
+                            throw new InvalidOperationException(
+                                "Forced-invalidation mode could not prepare a deterministic path-segment completion.");
+                        }
+                        cacheEvidence.PreparedForcedPathSegmentStructureId = forcedStructureId;
+                        break;
+                    default:
+                        throw new InvalidOperationException($"Unsupported cache mode '{configuration.CacheMode}'.");
+                }
+                double cachePreparationMilliseconds = Stopwatch.GetElapsedTime(cachePreparationStart).TotalMilliseconds;
+                cacheEvidence.BeforeMeasurement = manager.CapturePerformanceProbeState();
+                ValidatePreparedCacheEvidence(configuration, cacheEvidence);
                 runtimeMetrics?.Reset();
 
                 long measuredStartSimulationTick = manager.SimulationTick;
@@ -124,6 +161,18 @@ namespace Societies.Tests
                     externalTickSamples[index] = Stopwatch.GetElapsedTime(tickStart).TotalMilliseconds;
                 }
                 double measuredIntervalMilliseconds = Stopwatch.GetElapsedTime(measuredIntervalStart).TotalMilliseconds;
+                cacheEvidence.AfterMeasurement = manager.CapturePerformanceProbeState();
+                if (configuration.CacheMode == ForcedInvalidationCacheMode)
+                {
+                    cacheEvidence.ForcedInvalidation = new PerformanceForcedInvalidationEvidence
+                    {
+                        NavigationInvalidationCount =
+                            cacheEvidence.AfterMeasurement.TotalNavigationInvalidations -
+                            cacheEvidence.BeforeMeasurement.TotalNavigationInvalidations,
+                        Probe = cacheEvidence.AfterMeasurement.ForcedInvalidation
+                    };
+                }
+                ValidateCompletedCacheEvidence(configuration, cacheEvidence);
 
                 long expectedFinalTick = measuredStartSimulationTick + configuration.MeasuredTicks;
                 if (manager.SimulationTick != expectedFinalTick)
@@ -198,6 +247,7 @@ namespace Societies.Tests
                     SceneSetupMilliseconds = sceneSetupMilliseconds,
                     BootstrapMilliseconds = bootstrapMilliseconds,
                     WarmupMilliseconds = warmupMilliseconds,
+                    CachePreparationMilliseconds = cachePreparationMilliseconds,
                     MeasuredTicksMilliseconds = measuredIntervalMilliseconds,
                     CoreArtifactSerializationMilliseconds = artifactSerializationMilliseconds,
                     SceneSetupBoundary = "GameManager AddChild entry through completed _Ready",
@@ -205,6 +255,7 @@ namespace Societies.Tests
                     WarmupBoundary = configuration.WarmupTicks > 0
                         ? "unmeasured deterministic simulation ticks; collector reset afterward"
                         : "none",
+                    CachePreparationBoundary = GetCachePreparationBoundary(configuration),
                     MeasurementBoundary = "one external Stopwatch sample around each StepSimulationTicks(1) call",
                     ArtifactBoundary = "SaveSnapshotToDisk only; performance report serialization excluded"
                 };
@@ -216,6 +267,7 @@ namespace Societies.Tests
                     Configuration = configuration,
                     Environment = environment,
                     Intervals = intervals,
+                    CacheEvidence = cacheEvidence,
                     ExternalTickStatistics = externalStatistics,
                     InternalTickStatistics = internalStatistics,
                     Diagnostics = diagnostics,
@@ -269,6 +321,9 @@ namespace Societies.Tests
                 "--execution-route",
                 "--project-path",
                 "--runner-executable",
+                "--cache-mode",
+                "--comparison-group",
+                "--trial-index",
                 "--allow-safety-failure"
             };
             var values = new Dictionary<string, string>(StringComparer.Ordinal);
@@ -295,6 +350,7 @@ namespace Societies.Tests
 
             string scenarioId = RequireText(values["--scenario"], "scenario id");
             string runId = RequireSafeRunId(values["--run-id"]);
+            string comparisonGroup = RequireSafeIdentifier(values["--comparison-group"], "comparison group", 96);
             string gitSha = RequireText(values["--git-sha"], "git SHA");
             string executionRoute = values["--execution-route"] switch
             {
@@ -318,6 +374,7 @@ namespace Societies.Tests
             int citizens = ParseInt(values["--citizens"], "citizens");
             int ticks = ParseInt(values["--ticks"], "ticks");
             int warmupTicks = ParseInt(values["--warmup-ticks"], "warmup ticks");
+            int trialIndex = ParseInt(values["--trial-index"], "trial index");
             if (citizens is < 1 or > 256)
             {
                 throw new ArgumentOutOfRangeException("citizens", "Citizen count must be between 1 and 256.");
@@ -329,6 +386,27 @@ namespace Societies.Tests
             if (warmupTicks is < 0 or > 100000)
             {
                 throw new ArgumentOutOfRangeException("warmup-ticks", "Warmup ticks must be between 0 and 100000.");
+            }
+            if (trialIndex is < 1 or > 100)
+            {
+                throw new ArgumentOutOfRangeException("trial-index", "Trial index must be between 1 and 100.");
+            }
+
+            string cacheMode = values["--cache-mode"] switch
+            {
+                ColdCacheMode => ColdCacheMode,
+                NaturalWarmCacheMode => NaturalWarmCacheMode,
+                ForcedInvalidationCacheMode => ForcedInvalidationCacheMode,
+                _ => throw new ArgumentException(
+                    "Cache mode must be 'cold', 'natural_warm', or 'forced_invalidation'.")
+            };
+            if ((cacheMode is NaturalWarmCacheMode or ForcedInvalidationCacheMode) && warmupTicks == 0)
+            {
+                throw new ArgumentException($"Cache mode '{cacheMode}' requires at least one natural warmup tick.");
+            }
+            if (cacheMode == ForcedInvalidationCacheMode && ticks != 1)
+            {
+                throw new ArgumentException("Forced-invalidation mode requires exactly one measured tick.");
             }
 
             bool metricsEnabled = values["--metrics"] switch
@@ -354,6 +432,9 @@ namespace Societies.Tests
                 ExecutionRoute = executionRoute,
                 ProjectPath = projectPath,
                 RunnerExecutablePath = runnerExecutablePath,
+                CacheMode = cacheMode,
+                ComparisonGroup = comparisonGroup,
+                TrialIndex = trialIndex,
                 WarmupMode = warmupTicks > 0 ? "simulation_ticks" : "none",
                 CacheWarmupEnabled = false,
                 BudgetProfile = PerformanceBudgetProfile.Characterization
@@ -381,6 +462,252 @@ namespace Societies.Tests
             {
                 throw new InvalidOperationException($"Performance run must start at tick 0, not {manager.SimulationTick}.");
             }
+        }
+
+        private static void ValidatePreparedCacheEvidence(
+            PerformanceRunConfiguration configuration,
+            PerformanceCacheEvidence evidence)
+        {
+            if (configuration.CacheWarmupEnabled)
+            {
+                throw new InvalidOperationException("Eager/all-pairs cache warmup must remain disabled.");
+            }
+            if (!string.Equals(evidence.CacheMode, configuration.CacheMode, StringComparison.Ordinal))
+            {
+                throw new InvalidOperationException("Cache evidence mode does not match the requested configuration.");
+            }
+            if (evidence.AfterBootstrap.PathCacheEntryCount != 0)
+            {
+                throw new InvalidOperationException(
+                    $"Fresh bootstrap retained {evidence.AfterBootstrap.PathCacheEntryCount} derived path-cache entries; expected zero.");
+            }
+            if (evidence.AfterBootstrap.SimulationTick != 0 ||
+                evidence.AfterNaturalWarmup.SimulationTick != configuration.WarmupTicks ||
+                evidence.BeforeMeasurement.SimulationTick != configuration.WarmupTicks)
+            {
+                throw new InvalidOperationException("Cache evidence snapshots do not match the configured warmup tick boundary.");
+            }
+            if (!evidence.AfterBootstrap.AllPathCacheKeysMatchNavigationRulesVersion ||
+                !evidence.AfterNaturalWarmup.AllPathCacheKeysMatchNavigationRulesVersion ||
+                !evidence.BeforeMeasurement.AllPathCacheKeysMatchNavigationRulesVersion)
+            {
+                throw new InvalidOperationException(
+                    "A pre-measurement cache snapshot contains an entry from a stale navigation-rules version.");
+            }
+
+            switch (configuration.CacheMode)
+            {
+                case ColdCacheMode:
+                    if (evidence.ClearedEntryCount != evidence.AfterNaturalWarmup.PathCacheEntryCount ||
+                        evidence.BeforeMeasurement.PathCacheEntryCount != 0)
+                    {
+                        throw new InvalidOperationException(
+                            "Cold mode must clear every derived path-cache entry before measurement.");
+                    }
+                    if (configuration.WarmupTicks > 0 &&
+                        evidence.AfterNaturalWarmup.PathCacheEntryCount <= 0)
+                    {
+                        throw new InvalidOperationException(
+                            "Cold control requires natural warmup to populate the cache before it is cleared.");
+                    }
+                    if (evidence.BeforeMeasurement.NavigationRulesVersion !=
+                            evidence.AfterNaturalWarmup.NavigationRulesVersion ||
+                        evidence.BeforeMeasurement.TotalNavigationInvalidations !=
+                            evidence.AfterNaturalWarmup.TotalNavigationInvalidations ||
+                        evidence.BeforeMeasurement.LastPathPlanRulesVersion !=
+                            evidence.AfterNaturalWarmup.LastPathPlanRulesVersion)
+                    {
+                        throw new InvalidOperationException(
+                            "Clearing the derived path cache must not change navigation or last-plan state.");
+                    }
+                    break;
+                case NaturalWarmCacheMode:
+                    if (evidence.ClearedEntryCount != 0 ||
+                        evidence.AfterNaturalWarmup.PathCacheEntryCount <= 0 ||
+                        evidence.BeforeMeasurement.PathCacheEntryCount !=
+                        evidence.AfterNaturalWarmup.PathCacheEntryCount ||
+                        evidence.BeforeMeasurement.NavigationRulesVersion !=
+                            evidence.AfterNaturalWarmup.NavigationRulesVersion ||
+                        evidence.BeforeMeasurement.TotalNavigationInvalidations !=
+                            evidence.AfterNaturalWarmup.TotalNavigationInvalidations ||
+                        evidence.BeforeMeasurement.LastPathPlanRulesVersion !=
+                            evidence.AfterNaturalWarmup.LastPathPlanRulesVersion)
+                    {
+                        throw new InvalidOperationException(
+                            "Natural-warm mode must retain the positive cache produced by deterministic warmup ticks.");
+                    }
+                    break;
+                case ForcedInvalidationCacheMode:
+                    PrototypeForcedInvalidationProbeSnapshot prepared = evidence.BeforeMeasurement.ForcedInvalidation;
+                    if (evidence.ClearedEntryCount != 0 ||
+                        evidence.AfterNaturalWarmup.PathCacheEntryCount <= 0 ||
+                        evidence.BeforeMeasurement.PathCacheEntryCount <= 0 ||
+                        !prepared.Prepared ||
+                        prepared.Committed ||
+                        prepared.PathSegmentWasBuiltBefore ||
+                        prepared.PathSegmentIsBuiltAfter ||
+                        string.IsNullOrWhiteSpace(prepared.PathSegmentStructureId) ||
+                        !string.Equals(
+                            prepared.PathSegmentStructureId,
+                            evidence.PreparedForcedPathSegmentStructureId,
+                            StringComparison.Ordinal) ||
+                        evidence.BeforeMeasurement.NavigationRulesVersion !=
+                            evidence.AfterNaturalWarmup.NavigationRulesVersion ||
+                        evidence.BeforeMeasurement.TotalNavigationInvalidations !=
+                            evidence.AfterNaturalWarmup.TotalNavigationInvalidations ||
+                        evidence.BeforeMeasurement.LastPathPlanRulesVersion !=
+                            evidence.BeforeMeasurement.NavigationRulesVersion)
+                    {
+                        throw new InvalidOperationException(
+                            "Forced-invalidation mode must retain a positive cache and prepare one uncommitted path completion.");
+                    }
+                    break;
+                default:
+                    throw new InvalidOperationException($"Unsupported cache mode '{configuration.CacheMode}'.");
+            }
+        }
+
+        private static void ValidateCompletedCacheEvidence(
+            PerformanceRunConfiguration configuration,
+            PerformanceCacheEvidence evidence)
+        {
+            if (evidence.AfterMeasurement.NavigationRulesVersion < evidence.BeforeMeasurement.NavigationRulesVersion)
+            {
+                throw new InvalidOperationException("Navigation-rules version moved backward during measurement.");
+            }
+            if (evidence.AfterMeasurement.SimulationTick !=
+                (long)configuration.WarmupTicks + configuration.MeasuredTicks)
+            {
+                throw new InvalidOperationException("Post-measurement cache evidence has the wrong simulation tick.");
+            }
+            if (!evidence.AfterMeasurement.AllPathCacheKeysMatchNavigationRulesVersion)
+            {
+                throw new InvalidOperationException(
+                    "Post-measurement cache evidence contains an entry from a stale navigation-rules version.");
+            }
+            if (configuration.CacheMode != ForcedInvalidationCacheMode)
+            {
+                if (evidence.ForcedInvalidation != null)
+                {
+                    throw new InvalidOperationException("A non-forced cache mode emitted forced-invalidation evidence.");
+                }
+                if (evidence.AfterMeasurement.NavigationRulesVersion !=
+                        evidence.BeforeMeasurement.NavigationRulesVersion ||
+                    evidence.AfterMeasurement.TotalNavigationInvalidations !=
+                        evidence.BeforeMeasurement.TotalNavigationInvalidations)
+                {
+                    throw new InvalidOperationException(
+                        "Cold and natural-warm measurements must not include a navigation invalidation.");
+                }
+                return;
+            }
+
+            PerformanceForcedInvalidationEvidence forced = evidence.ForcedInvalidation
+                ?? throw new InvalidOperationException("Forced-invalidation evidence is missing.");
+            PrototypeForcedInvalidationProbeSnapshot prepared = evidence.BeforeMeasurement.ForcedInvalidation;
+            PrototypeForcedInvalidationProbeSnapshot probe = forced.Probe;
+            if (!probe.Prepared || !probe.Committed ||
+                string.IsNullOrWhiteSpace(probe.PathSegmentStructureId) ||
+                probe.PathSegmentWasBuiltBefore ||
+                !probe.PathSegmentIsBuiltAfter ||
+                !probe.VersionBeforeCommit.HasValue ||
+                !probe.VersionAfterCommit.HasValue ||
+                probe.VersionAfterCommit.Value != probe.VersionBeforeCommit.Value + 1 ||
+                !probe.CompletionTick.HasValue ||
+                probe.CompletionTick.Value != (long)configuration.WarmupTicks + 1L ||
+                forced.NavigationInvalidationCount != 1 ||
+                !probe.TotalInvalidationsBeforeCommit.HasValue ||
+                !probe.TotalInvalidationsAfterCommit.HasValue ||
+                probe.TotalInvalidationsAfterCommit != probe.TotalInvalidationsBeforeCommit + 1 ||
+                !probe.CacheEntriesBeforeRebuild.HasValue ||
+                probe.CacheEntriesBeforeRebuild.Value <= 0 ||
+                !probe.CacheEntriesImmediatelyAfterRebuild.HasValue ||
+                probe.CacheEntriesImmediatelyAfterRebuild.Value != 0 ||
+                !probe.FirstPostChangeLookupObserved ||
+                !probe.FirstPostChangeLookupWasCacheMiss ||
+                !probe.FirstPostChangeLookupUsedNewVersion ||
+                !probe.ChangedCellGridX.HasValue ||
+                !probe.ChangedCellGridY.HasValue ||
+                !probe.ProbeStartGridX.HasValue ||
+                !probe.ProbeStartGridY.HasValue ||
+                !probe.ProbeEndGridX.HasValue ||
+                !probe.ProbeEndGridY.HasValue ||
+                probe.PreChangeQueryVersion != probe.VersionBeforeCommit.Value ||
+                probe.PreChangePlanVersion != probe.VersionBeforeCommit.Value ||
+                probe.PostChangeQueryVersion != probe.VersionAfterCommit.Value ||
+                probe.PostChangePlanVersion != probe.VersionAfterCommit.Value ||
+                !probe.ExactEndpointsMatch ||
+                !probe.ChangedCellIncludedInPostChangePlan ||
+                !probe.PreChangePlanCost.HasValue ||
+                !probe.PostChangePlanCost.HasValue ||
+                !double.IsFinite(probe.PreChangePlanCost.Value) ||
+                !double.IsFinite(probe.PostChangePlanCost.Value) ||
+                probe.PreChangePlanCost.Value < 0.0 ||
+                probe.PostChangePlanCost.Value < 0.0 ||
+                probe.PostChangePlanCost.Value >= probe.PreChangePlanCost.Value ||
+                !probe.CommitToFirstLookupMilliseconds.HasValue ||
+                !double.IsFinite(probe.CommitToFirstLookupMilliseconds.Value) ||
+                probe.CommitToFirstLookupMilliseconds.Value < 0.0)
+            {
+                throw new InvalidOperationException(
+                    "Forced-invalidation probe did not prove an exact post-change cache miss and correct rebuilt route.");
+            }
+            if (!string.Equals(
+                    evidence.PreparedForcedPathSegmentStructureId,
+                    probe.PathSegmentStructureId,
+                    StringComparison.Ordinal) ||
+                !string.Equals(prepared.PathSegmentStructureId, probe.PathSegmentStructureId, StringComparison.Ordinal) ||
+                prepared.ChangedCellGridX != probe.ChangedCellGridX ||
+                prepared.ChangedCellGridY != probe.ChangedCellGridY ||
+                prepared.ProbeStartGridX != probe.ProbeStartGridX ||
+                prepared.ProbeStartGridY != probe.ProbeStartGridY ||
+                prepared.ProbeEndGridX != probe.ProbeEndGridX ||
+                prepared.ProbeEndGridY != probe.ProbeEndGridY ||
+                prepared.PreChangeQueryVersion != probe.PreChangeQueryVersion ||
+                prepared.PreChangePlanVersion != probe.PreChangePlanVersion ||
+                prepared.PreChangePlanCost != probe.PreChangePlanCost ||
+                probe.VersionBeforeCommit != evidence.BeforeMeasurement.NavigationRulesVersion ||
+                probe.TotalInvalidationsBeforeCommit != evidence.BeforeMeasurement.TotalNavigationInvalidations ||
+                probe.VersionAfterCommit != evidence.AfterMeasurement.NavigationRulesVersion ||
+                probe.TotalInvalidationsAfterCommit != evidence.AfterMeasurement.TotalNavigationInvalidations)
+            {
+                throw new InvalidOperationException(
+                    "Forced-invalidation preparation and completion evidence do not describe one continuous probe.");
+            }
+            if (evidence.AfterMeasurement.NavigationRulesVersion != probe.VersionAfterCommit.Value ||
+                evidence.AfterMeasurement.LastPathPlanRulesVersion != probe.VersionAfterCommit.Value)
+            {
+                throw new InvalidOperationException(
+                    "Post-measurement navigation state does not match the forced probe's committed version.");
+            }
+        }
+
+        private static string GetCachePreparationStrategy(PerformanceRunConfiguration configuration)
+        {
+            return configuration.CacheMode switch
+            {
+                ColdCacheMode when configuration.WarmupTicks == 0 =>
+                    "fresh_session_then_confirm_empty_derived_path_cache",
+                ColdCacheMode => "natural_warmup_then_clear_derived_path_cache",
+                NaturalWarmCacheMode => "natural_warmup_then_retain_derived_path_cache",
+                ForcedInvalidationCacheMode =>
+                    "natural_warmup_then_seed_exact_probe_and_prepare_path_completion",
+                _ => throw new InvalidOperationException($"Unsupported cache mode '{configuration.CacheMode}'.")
+            };
+        }
+
+        private static string GetCachePreparationBoundary(PerformanceRunConfiguration configuration)
+        {
+            return configuration.CacheMode switch
+            {
+                ColdCacheMode when configuration.WarmupTicks == 0 =>
+                    "confirm and clear the fresh session's empty derived path cache before measured ticks",
+                ColdCacheMode => "clear derived path cache after natural warmup and before measured ticks",
+                NaturalWarmCacheMode => "retain naturally populated path cache without eager/all-pairs prefill",
+                ForcedInvalidationCacheMode =>
+                    "seed one exact anchor-to-path-cell probe and prepare its path-segment completion before the measured tick",
+                _ => throw new InvalidOperationException($"Unsupported cache mode '{configuration.CacheMode}'.")
+            };
         }
 
         private static PerformanceRunArtifacts BuildArtifactPaths(PerformanceRunConfiguration configuration)
@@ -478,6 +805,22 @@ namespace Societies.Tests
             {
                 throw new InvalidOperationException("Runtime metrics contain no non-zero tick measurement.");
             }
+            RuntimeMetricsBatch firstBatch = batches[0];
+            if (configuration.CacheMode == ColdCacheMode && firstBatch.PathPlanCacheMissesTotal <= 0)
+            {
+                throw new InvalidOperationException("Cold mode's first measured batch produced no cache miss.");
+            }
+            if (configuration.CacheMode == NaturalWarmCacheMode && firstBatch.PathPlanCacheHitsTotal <= 0)
+            {
+                throw new InvalidOperationException("Natural-warm mode's first measured batch produced no cache hit.");
+            }
+            if (configuration.CacheMode == ForcedInvalidationCacheMode &&
+                (firstBatch.NavigationInvalidationsTotal != 1 ||
+                    firstBatch.Phases.NavigationRebuildMilliseconds <= 0.0))
+            {
+                throw new InvalidOperationException(
+                    "Forced-invalidation mode's measured batch did not contain exactly one timed rebuild.");
+            }
             ValidateRuntimeMetricsCsv(runtimeMetricsPath, configuration.MeasuredTicks);
 
             long pathLookups = batches.Sum(batch => batch.PathPlanLookupsTotal);
@@ -489,6 +832,10 @@ namespace Societies.Tests
             {
                 BatchCount = batches.Length,
                 DroppedBatchCount = metrics.DroppedBatchCount,
+                FirstMeasuredBatchPathPlanLookups = batches[0].PathPlanLookupsTotal,
+                FirstMeasuredBatchPathPlanCacheHits = batches[0].PathPlanCacheHitsTotal,
+                FirstMeasuredBatchPathPlanCacheMisses = batches[0].PathPlanCacheMissesTotal,
+                FirstMeasuredBatchNavigationInvalidations = batches[0].NavigationInvalidationsTotal,
                 PathPlanLookups = pathLookups,
                 PathPlanCacheHits = pathHits,
                 PathPlanCacheMisses = pathMisses,
@@ -595,10 +942,24 @@ namespace Societies.Tests
         {
             var notes = new List<string>
             {
-                "Warmup ticks advance deterministic simulation state; eager route-cache warmup is disabled.",
+                $"Cache mode '{configuration.CacheMode}' uses preparation strategy '{GetCachePreparationStrategy(configuration)}'.",
+                "Warmup ticks advance deterministic simulation state; eager/all-pairs route-cache warmup is disabled.",
+                $"Comparison group '{configuration.ComparisonGroup}', trial {configuration.TrialIndex}.",
                 "This is a single-run indicator. The release gate requires the median of three comparable metrics-off runs.",
                 "Core artifact serialization and runner report serialization are excluded from measured tick samples."
             };
+            switch (configuration.CacheMode)
+            {
+                case ColdCacheMode:
+                    notes.Add("Cold mode clears every derived path-cache entry before measurement without changing deterministic simulation state.");
+                    break;
+                case NaturalWarmCacheMode:
+                    notes.Add("Natural-warm mode retains only routes populated by deterministic simulation ticks; no eager cache prefill occurs.");
+                    break;
+                case ForcedInvalidationCacheMode:
+                    notes.Add("Forced-invalidation mode measures one tick that commits a prepared path segment and proves an exact post-change cache miss and rebuilt route.");
+                    break;
+            }
             if (!environment.VerifiedReleaseExecution)
             {
                 notes.Add("Verified Godot ExportRelease execution was not detected; timing is characterization only and is not a Release baseline.");
@@ -631,6 +992,7 @@ namespace Societies.Tests
                 Configuration = result.Configuration,
                 Environment = result.Environment,
                 Intervals = result.Intervals,
+                CacheEvidence = result.CacheEvidence,
                 Hashes = result.Hashes,
                 Budget = result.Budget,
                 Artifacts = result.Artifacts
@@ -647,8 +1009,21 @@ namespace Societies.Tests
                 "serialization_ms,path_lookups,path_hits,path_misses,cache_size_last,candidates_per_idle," +
                 "invalidations,navigation_rebuild_ms,work_orders_generated,work_orders_generated_uncapped," +
                 "work_orders_claimed,work_orders_remaining_last,state_event_sha256,target_passed,safety_passed," +
-                "snapshot_path,event_log_path,runtime_metrics_csv,perf_results_path";
+                "snapshot_path,event_log_path,runtime_metrics_csv,perf_results_path," +
+                "cache_mode,comparison_group,trial_index,cache_preparation_strategy,cache_preparation_ms,cleared_cache_entries," +
+                "cache_entries_after_bootstrap,cache_entries_after_natural_warmup,cache_entries_before_measurement," +
+                "cache_entries_after_measurement,navigation_version_before_measurement,navigation_version_after_measurement," +
+                "forced_segment_id,forced_invalidation_count,forced_version_before,forced_version_after," +
+                "forced_first_lookup_observed,forced_first_lookup_miss,forced_exact_endpoints_match," +
+                "forced_changed_cell_in_post_plan,forced_commit_to_first_lookup_ms," +
+                "first_batch_path_lookups,first_batch_path_hits,first_batch_path_misses,first_batch_invalidations," +
+                "forced_segment_was_built_before,forced_segment_is_built_after,forced_completion_tick," +
+                "forced_cache_entries_after_rebuild,forced_first_lookup_used_new_version," +
+                "forced_pre_query_version,forced_pre_plan_version,forced_post_query_version,forced_post_plan_version," +
+                "forced_pre_plan_cost,forced_post_plan_cost";
             PerformanceDiagnosticsSummary? diagnostics = result.Diagnostics;
+            PerformanceForcedInvalidationEvidence? forced = result.CacheEvidence.ForcedInvalidation;
+            PrototypeForcedInvalidationProbeSnapshot? forcedProbe = forced?.Probe;
             string row = string.Join(',', new[]
             {
                 Csv(result.Configuration.RunId),
@@ -690,7 +1065,45 @@ namespace Societies.Tests
                 Csv(result.Artifacts.Snapshot),
                 Csv(result.Artifacts.EventLog),
                 Csv(result.Artifacts.RuntimeMetricsCsv ?? string.Empty),
-                Csv(result.Artifacts.PerformanceResults)
+                Csv(result.Artifacts.PerformanceResults),
+                Csv(result.Configuration.CacheMode),
+                Csv(result.Configuration.ComparisonGroup),
+                result.Configuration.TrialIndex.ToString(CultureInfo.InvariantCulture),
+                Csv(result.CacheEvidence.PreparationStrategy),
+                Format(result.Intervals.CachePreparationMilliseconds),
+                result.CacheEvidence.ClearedEntryCount.ToString(CultureInfo.InvariantCulture),
+                result.CacheEvidence.AfterBootstrap.PathCacheEntryCount.ToString(CultureInfo.InvariantCulture),
+                result.CacheEvidence.AfterNaturalWarmup.PathCacheEntryCount.ToString(CultureInfo.InvariantCulture),
+                result.CacheEvidence.BeforeMeasurement.PathCacheEntryCount.ToString(CultureInfo.InvariantCulture),
+                result.CacheEvidence.AfterMeasurement.PathCacheEntryCount.ToString(CultureInfo.InvariantCulture),
+                result.CacheEvidence.BeforeMeasurement.NavigationRulesVersion.ToString(CultureInfo.InvariantCulture),
+                result.CacheEvidence.AfterMeasurement.NavigationRulesVersion.ToString(CultureInfo.InvariantCulture),
+                Csv(forcedProbe?.PathSegmentStructureId ?? string.Empty),
+                forced?.NavigationInvalidationCount.ToString(CultureInfo.InvariantCulture) ?? string.Empty,
+                forcedProbe?.VersionBeforeCommit?.ToString(CultureInfo.InvariantCulture) ?? string.Empty,
+                forcedProbe?.VersionAfterCommit?.ToString(CultureInfo.InvariantCulture) ?? string.Empty,
+                forcedProbe.HasValue ? (forcedProbe.Value.FirstPostChangeLookupObserved ? "true" : "false") : string.Empty,
+                forcedProbe.HasValue ? (forcedProbe.Value.FirstPostChangeLookupWasCacheMiss ? "true" : "false") : string.Empty,
+                forcedProbe.HasValue ? (forcedProbe.Value.ExactEndpointsMatch ? "true" : "false") : string.Empty,
+                forcedProbe.HasValue ? (forcedProbe.Value.ChangedCellIncludedInPostChangePlan ? "true" : "false") : string.Empty,
+                forcedProbe?.CommitToFirstLookupMilliseconds is double recoveryMilliseconds
+                    ? Format(recoveryMilliseconds)
+                    : string.Empty,
+                diagnostics?.FirstMeasuredBatchPathPlanLookups.ToString(CultureInfo.InvariantCulture) ?? string.Empty,
+                diagnostics?.FirstMeasuredBatchPathPlanCacheHits.ToString(CultureInfo.InvariantCulture) ?? string.Empty,
+                diagnostics?.FirstMeasuredBatchPathPlanCacheMisses.ToString(CultureInfo.InvariantCulture) ?? string.Empty,
+                diagnostics?.FirstMeasuredBatchNavigationInvalidations.ToString(CultureInfo.InvariantCulture) ?? string.Empty,
+                forcedProbe.HasValue ? (forcedProbe.Value.PathSegmentWasBuiltBefore ? "true" : "false") : string.Empty,
+                forcedProbe.HasValue ? (forcedProbe.Value.PathSegmentIsBuiltAfter ? "true" : "false") : string.Empty,
+                forcedProbe?.CompletionTick?.ToString(CultureInfo.InvariantCulture) ?? string.Empty,
+                forcedProbe?.CacheEntriesImmediatelyAfterRebuild?.ToString(CultureInfo.InvariantCulture) ?? string.Empty,
+                forcedProbe.HasValue ? (forcedProbe.Value.FirstPostChangeLookupUsedNewVersion ? "true" : "false") : string.Empty,
+                forcedProbe?.PreChangeQueryVersion?.ToString(CultureInfo.InvariantCulture) ?? string.Empty,
+                forcedProbe?.PreChangePlanVersion?.ToString(CultureInfo.InvariantCulture) ?? string.Empty,
+                forcedProbe?.PostChangeQueryVersion?.ToString(CultureInfo.InvariantCulture) ?? string.Empty,
+                forcedProbe?.PostChangePlanVersion?.ToString(CultureInfo.InvariantCulture) ?? string.Empty,
+                forcedProbe?.PreChangePlanCost is double preChangeCost ? Format(preChangeCost) : string.Empty,
+                forcedProbe?.PostChangePlanCost is double postChangeCost ? Format(postChangeCost) : string.Empty
             });
             return $"{header}{System.Environment.NewLine}{row}{System.Environment.NewLine}";
         }
@@ -701,10 +1114,27 @@ namespace Societies.Tests
             builder.AppendLine($"Societies performance run: {result.Configuration.RunId}");
             builder.AppendLine($"Status: {result.Status}");
             builder.AppendLine($"Configuration: {result.Configuration.ScenarioId}, seed {result.Configuration.SimulationSeed}, {result.Configuration.CitizenCount} citizens, {result.Configuration.MeasuredTicks} measured ticks, metrics {(result.Configuration.MetricsEnabled ? "on" : "off")}");
+            builder.AppendLine($"Comparison: {result.Configuration.ComparisonGroup}, trial {result.Configuration.TrialIndex}; cache mode {result.Configuration.CacheMode}");
             builder.AppendLine($"Execution route: {result.Configuration.ExecutionRoute}; runner: {result.Configuration.RunnerExecutablePath}");
             builder.AppendLine($"Managed build: {result.Environment.ManagedBuildConfiguration}; assembly configuration: {result.Environment.ManagedAssemblyConfiguration}; verified release: {result.Environment.VerifiedReleaseExecution}");
             builder.AppendLine($"Bootstrap: {Format(result.Intervals.BootstrapMilliseconds)} ms");
+            builder.AppendLine($"Warmup: {Format(result.Intervals.WarmupMilliseconds)} ms; cache preparation: {Format(result.Intervals.CachePreparationMilliseconds)} ms ({result.CacheEvidence.PreparationStrategy})");
+            builder.AppendLine(
+                $"Cache entries: bootstrap {result.CacheEvidence.AfterBootstrap.PathCacheEntryCount}, " +
+                $"after warmup {result.CacheEvidence.AfterNaturalWarmup.PathCacheEntryCount}, " +
+                $"before measurement {result.CacheEvidence.BeforeMeasurement.PathCacheEntryCount}, " +
+                $"after measurement {result.CacheEvidence.AfterMeasurement.PathCacheEntryCount}; " +
+                $"cleared {result.CacheEvidence.ClearedEntryCount}");
             builder.AppendLine($"Ticks: p50 {Format(result.ExternalTickStatistics.P50Milliseconds)} ms, p95 {Format(result.ExternalTickStatistics.P95Milliseconds)} ms, p99 {Format(result.ExternalTickStatistics.P99Milliseconds)} ms, max {Format(result.ExternalTickStatistics.MaximumMilliseconds)} ms, total {Format(result.ExternalTickStatistics.TotalMilliseconds)} ms");
+            if (result.CacheEvidence.ForcedInvalidation is PerformanceForcedInvalidationEvidence forced)
+            {
+                builder.AppendLine(
+                    $"Forced invalidation: segment {forced.Probe.PathSegmentStructureId}; " +
+                    $"version {forced.Probe.VersionBeforeCommit}->{forced.Probe.VersionAfterCommit}; " +
+                    $"invalidations {forced.NavigationInvalidationCount}; exact endpoints {forced.Probe.ExactEndpointsMatch}; " +
+                    $"changed cell included {forced.Probe.ChangedCellIncludedInPostChangePlan}; " +
+                    $"commit-to-first-lookup {Format(forced.Probe.CommitToFirstLookupMilliseconds ?? 0.0)} ms");
+            }
             builder.AppendLine($"Budget profile: {result.Budget.Profile}; target {FormatNullableBool(result.Budget.TargetPassed)}; safety {FormatNullableBool(result.Budget.SafetyPassed)}");
             builder.AppendLine($"Deterministic state+event hash: {result.Hashes.DeterministicStateAndEventSha256}");
             builder.AppendLine($"Output: {result.Configuration.OutputDirectory}");
@@ -719,7 +1149,8 @@ namespace Societies.Tests
         private static void TryWriteFailureResult(
             PerformanceRunConfiguration? configuration,
             string exactInvocation,
-            Exception exception)
+            Exception exception,
+            PerformanceCacheEvidence? cacheEvidence)
         {
             if (configuration == null || !Directory.Exists(configuration.OutputDirectory))
             {
@@ -734,7 +1165,8 @@ namespace Societies.Tests
                     ErrorType = exception.GetType().FullName ?? exception.GetType().Name,
                     ErrorMessage = exception.Message,
                     ExactInvocation = exactInvocation,
-                    Configuration = configuration
+                    Configuration = configuration,
+                    CacheEvidence = cacheEvidence
                 };
                 WriteJson(Path.Combine(configuration.OutputDirectory, "perf-results.json"), failure);
             }
@@ -777,14 +1209,20 @@ namespace Societies.Tests
 
         private static string RequireSafeRunId(string value)
         {
-            string runId = RequireText(value, "run id");
-            if (runId.Length > 96 ||
-                runId.Contains("..", StringComparison.Ordinal) ||
-                runId.Any(character => !char.IsLetterOrDigit(character) && character is not '-' and not '_' and not '.'))
+            return RequireSafeIdentifier(value, "run id", 96);
+        }
+
+        private static string RequireSafeIdentifier(string value, string label, int maximumLength)
+        {
+            string identifier = RequireText(value, label);
+            if (identifier.Length > maximumLength ||
+                identifier.Contains("..", StringComparison.Ordinal) ||
+                identifier.Any(character => !char.IsLetterOrDigit(character) && character is not '-' and not '_' and not '.'))
             {
-                throw new ArgumentException("Run id may contain only letters, digits, '.', '_' and '-' and may not contain '..'.");
+                throw new ArgumentException(
+                    $"{label} may contain only letters, digits, '.', '_' and '-' and may not contain '..'.");
             }
-            return runId;
+            return identifier;
         }
 
         private static int ParseInt(string value, string label)

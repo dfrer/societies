@@ -124,6 +124,102 @@ namespace Societies.Core.Tests
         }
 
         [Fact]
+        public void PerformanceProbe_ClearsOnlyDerivedPathCacheAfterNaturalActivity()
+        {
+            PrototypeCatalogBundle bundle = LoadCatalogs();
+            PrototypeScenarioDefinition scenario = bundle.Scenarios.Resolve("balanced_basin");
+            WorldGenerationResult world = PrototypeWorldGenerator.Generate(scenario);
+            PrototypeSettlementSimulation simulation = New(scenario, bundle.RoleQuotas.Roles, world);
+            List<PrototypeResourceSiteState> resources = BuildResourceSites(world);
+
+            PrototypePerformanceProbeSnapshot startup = simulation.CapturePerformanceProbeState();
+            Assert.Equal(0, startup.PathCacheEntryCount);
+            Assert.Equal(0, startup.SimulationTick);
+            Assert.True(startup.AllPathCacheKeysMatchNavigationRulesVersion);
+            Assert.Equal(0, startup.TotalNavigationInvalidations);
+
+            _ = simulation.Advance(resources, 8.0f, PrototypeWeather.Clear);
+            PrototypePerformanceProbeSnapshot naturallyWarm = simulation.CapturePerformanceProbeState();
+            Assert.True(naturallyWarm.PathCacheEntryCount > 0);
+            Assert.Equal(1, naturallyWarm.SimulationTick);
+            Assert.True(naturallyWarm.AllPathCacheKeysMatchNavigationRulesVersion);
+            Assert.Equal(naturallyWarm.NavigationRulesVersion, naturallyWarm.LastPathPlanRulesVersion);
+
+            int clearedEntryCount = simulation.ClearDerivedPathCacheForPerformance();
+            PrototypePerformanceProbeSnapshot cleared = simulation.CapturePerformanceProbeState();
+
+            Assert.Equal(naturallyWarm.PathCacheEntryCount, clearedEntryCount);
+            Assert.Equal(0, cleared.PathCacheEntryCount);
+            Assert.True(cleared.AllPathCacheKeysMatchNavigationRulesVersion);
+            Assert.Equal(naturallyWarm.NavigationRulesVersion, cleared.NavigationRulesVersion);
+            Assert.Equal(naturallyWarm.TotalNavigationInvalidations, cleared.TotalNavigationInvalidations);
+            Assert.Equal(naturallyWarm.LastPathPlanRulesVersion, cleared.LastPathPlanRulesVersion);
+        }
+
+        [Fact]
+        public void PerformanceProbe_ForcedCompletionMeasuresExactPostChangeLookup()
+        {
+            PrototypeCatalogBundle bundle = LoadCatalogs();
+            PrototypeScenarioDefinition scenario = bundle.Scenarios.Resolve("balanced_basin");
+            WorldGenerationResult world = PrototypeWorldGenerator.Generate(scenario);
+            PrototypeSettlementSimulation simulation = New(scenario, bundle.RoleQuotas.Roles, world);
+            List<PrototypeResourceSiteState> resources = BuildResourceSites(world);
+
+            _ = simulation.Advance(resources, 8.0f, PrototypeWeather.Clear);
+            PrototypePerformanceProbeSnapshot naturallyWarm = simulation.CapturePerformanceProbeState();
+            Assert.True(naturallyWarm.PathCacheEntryCount > 0);
+
+            Assert.True(simulation.TryPrepareForcedPathCompletionForPerformance(out string structureId));
+            PrototypePerformanceProbeSnapshot prepared = simulation.CapturePerformanceProbeState();
+            PrototypeForcedInvalidationProbeSnapshot preparedForced = prepared.ForcedInvalidation;
+            Assert.True(preparedForced.Prepared);
+            Assert.False(preparedForced.Committed);
+            Assert.Equal(structureId, preparedForced.PathSegmentStructureId);
+            Assert.False(preparedForced.PathSegmentWasBuiltBefore);
+            Assert.False(preparedForced.PathSegmentIsBuiltAfter);
+            Assert.Equal(prepared.NavigationRulesVersion, preparedForced.PreChangeQueryVersion);
+            Assert.Equal(prepared.NavigationRulesVersion, preparedForced.PreChangePlanVersion);
+            Assert.NotNull(preparedForced.PreChangePlanCost);
+            Assert.True(prepared.PathCacheEntryCount > 0, "Preparation should retain the exact pre-change query in the cache");
+
+            PrototypeSettlementTickResult result = simulation.Advance(resources, 8.0f, PrototypeWeather.Clear);
+            PrototypePerformanceProbeSnapshot completed = simulation.CapturePerformanceProbeState();
+            PrototypeForcedInvalidationProbeSnapshot forced = completed.ForcedInvalidation;
+
+            Assert.True(forced.Prepared);
+            Assert.True(forced.Committed);
+            Assert.Equal(structureId, forced.PathSegmentStructureId);
+            Assert.False(forced.PathSegmentWasBuiltBefore);
+            Assert.True(forced.PathSegmentIsBuiltAfter);
+            Assert.Equal(naturallyWarm.NavigationRulesVersion, forced.VersionBeforeCommit);
+            Assert.Equal(naturallyWarm.NavigationRulesVersion + 1, forced.VersionAfterCommit);
+            Assert.Equal(naturallyWarm.TotalNavigationInvalidations, forced.TotalInvalidationsBeforeCommit);
+            Assert.Equal(naturallyWarm.TotalNavigationInvalidations + 1, forced.TotalInvalidationsAfterCommit);
+            Assert.Equal(naturallyWarm.TotalNavigationInvalidations + 1, completed.TotalNavigationInvalidations);
+            Assert.Equal(forced.VersionAfterCommit, completed.NavigationRulesVersion);
+            Assert.Equal(forced.VersionAfterCommit, completed.LastPathPlanRulesVersion);
+            Assert.True(completed.AllPathCacheKeysMatchNavigationRulesVersion);
+            Assert.True(forced.CacheEntriesBeforeRebuild > 0);
+            Assert.Equal(0, forced.CacheEntriesImmediatelyAfterRebuild);
+            Assert.Equal(simulation.TotalTicks, forced.CompletionTick);
+            Assert.True(forced.FirstPostChangeLookupObserved);
+            Assert.True(forced.FirstPostChangeLookupWasCacheMiss);
+            Assert.True(forced.FirstPostChangeLookupUsedNewVersion);
+            Assert.Equal(forced.VersionAfterCommit, forced.PostChangeQueryVersion);
+            Assert.Equal(forced.VersionAfterCommit, forced.PostChangePlanVersion);
+            Assert.True(forced.ExactEndpointsMatch);
+            Assert.True(forced.ChangedCellIncludedInPostChangePlan);
+            Assert.NotNull(forced.PreChangePlanCost);
+            Assert.NotNull(forced.PostChangePlanCost);
+            Assert.True(forced.PostChangePlanCost!.Value < forced.PreChangePlanCost!.Value);
+            Assert.True(forced.CommitToFirstLookupMilliseconds >= 0.0);
+
+            Assert.True(simulation.PathSegments.Single(segment => segment.StructureId == structureId).IsBuilt);
+            Assert.Contains(result.Events, entry => entry.EventType == PrototypeEventTypes.SettlementBuildCompleted);
+            Assert.Contains(result.Events, entry => entry.EventType == PrototypeEventTypes.SettlementPathBuilt);
+        }
+
+        [Fact]
         public void Diagnostics_PeakOrdersTracksMaximumAcrossSession()
         {
             PrototypeCatalogBundle bundle = LoadCatalogs();
