@@ -1,0 +1,290 @@
+{
+  "schemaVersion": 1,
+  "capturedUtc": "2026-07-13T22:48:57.6824155Z",
+  "workItem": "V3-W1-05f",
+  "status": "bounded_work_order_frontier_validated_performance_safety_gate_passed",
+  "branch": "feature/v3-bounded-work-order-frontier",
+  "baseCommit": "ea02f1500b1f9f8b200d8f144a3e3ba5a322e6e3",
+  "implementationCommit": "745607281bcdfa874bbf61587d421711c341498f",
+  "preImplementationCharacterization": {
+    "sourceMatrix": "artifacts/performance/w105e-baseline-9d5ca14",
+    "runCount": 14,
+    "measuredTickCount": 5301,
+    "generalFrontier": {
+      "positiveCacheHits": 323893,
+      "exactMisses": 4176,
+      "ticksWithAnyMiss": 373,
+      "majorMissBurstMaximum": 39,
+      "missesImmediatelyAfterInvalidation": 3043,
+      "immediatelyAfterInvalidationPercent": 72.869
+    },
+    "selectorFrontier": {
+      "positiveCacheHits": 15010,
+      "exactMisses": 1262
+    },
+    "workOrderFanout": {
+      "generatedUncapped": 4743965,
+      "retainedAfterCap": 369430,
+      "discardedPercent": 92.213,
+      "reference16CitizenUncappedRange": [982, 1137],
+      "reference16CitizenRetained": 80,
+      "stress24CitizenUncappedRange": [81, 1012],
+      "stress24CitizenRetained": 120
+    },
+    "sharedQueryShape": [
+      "Extraction planning is the only BuildWorkOrders caller that ranks routes and repeatedly fans out from the settlement anchor or central depot.",
+      "The anchor and central depot currently share the same position, while extraction destinations are bounded by at most 96 resource sites.",
+      "Citizen selection shares work-order destinations but retains exact citizen origins, so route reuse is safe only for exact versioned endpoint keys.",
+      "The final frontier discards more than ninety-two percent of generated work orders, making exact pre-route dominance the smallest safe reduction surface."
+    ]
+  },
+  "architectureInput": {
+    "runtimeProfileSelectionAvailable": false,
+    "agent": "generic_native_child_with_ultra_architect_behavioral_contract",
+    "selectedSmallestSlice": "Omit a whole extraction resource class before route ranking only when the existing unclaimed frontier already contains K orders whose priorities are strictly greater than the class maximum priority.",
+    "proofBoundary": "Because final ordering is priority descending then ordinal ID, K strictly higher-priority existing orders exclude every omitted class member from the retained K regardless of route distance, reachability, or later equal-priority ties.",
+    "requiredSafeguards": [
+      "Remove active claimed orders before evaluating frontier occupancy.",
+      "Fall back if any active claimed ID collides with an eligible extraction ID, regardless of recorded order kind.",
+      "Use a strict greater-than cutoff; equality must materialize normally.",
+      "Preserve the virtual uncapped count and invoke final sorting/capping whenever the virtual count exceeds K.",
+      "Share the built-corridor priority bonus between the upper bound and exact order priority.",
+      "Restrict omission to capped exact_bounded mode; exhaustive_reference and uncapped modes remain independent references."
+    ],
+    "rejectedHigherRiskAlternatives": [
+      "multi-target search that could change authoritative A-star tie paths",
+      "suffix or reverse-route reuse without a proven asymmetric-cost contract",
+      "cross-navigation-version positive cache migration",
+      "using lower-bound fields as exact routes or scores"
+    ]
+  },
+  "acceptanceCriteria": {
+    "differentialCorrectness": [
+      "Strict, equality, underfilled, corridor, claimed-ID, duplicate-ID, virtual-count, ordering, unreachable, and negative-cache boundaries must preserve the exhaustive result.",
+      "All four shipped scenarios must match assignments, worker state, events, harvest application, resources, produced and consumed totals, depot state, and snapshots for 300 ticks.",
+      "Routes, float results, deterministic ties, exact endpoints, unreachable behavior, and navigation-version invalidation remain authoritative and unchanged."
+    ],
+    "cleanExportRelease": [
+      "Implementation must be committed and source clean before collection.",
+      "Standalone forced invalidation, all 14 canonical pairs, and a separate three-reference confirmation must pass their contracts.",
+      "All canonical manifest artifact hashes must verify."
+    ],
+    "performanceGate": [
+      "Every 16-citizen reference trial p95 must be at or below 50 milliseconds and every maximum at or below 250 milliseconds.",
+      "Both 1000-tick soak p95 values must be at or below 50 milliseconds and maxima at or below 250 milliseconds.",
+      "Forced commit-to-first-correct-lookup must be at or below 250 milliseconds.",
+      "W1-06 remains blocked if any hard safety limit fails; Week 2 additionally remains blocked until W1-06 is complete."
+    ]
+  },
+  "implementation": {
+    "defaultMode": "exact_bounded",
+    "referenceMode": "exhaustive_reference",
+    "frontierBudget": "max(50, citizenCount * 5)",
+    "priorityUpperBound": "base priority plus the existing 40-point built-corridor bonus",
+    "omissionRule": "At least K active unclaimed existing priorities are strictly greater than the resource-class upper bound, no active claimed ID collides, and the class has desired units plus eligible sites.",
+    "virtualCount": "Omitted count is min(desiredUnits, eligibleSiteCount) and remains included in WorkOrdersGeneratedUncapped.",
+    "unchangedPaths": [
+      "exhaustive_reference extraction planning",
+      "uncapped work-order generation",
+      "all non-dominated extraction classes",
+      "claimed-ID collision fallback including legacy kind mismatches",
+      "authoritative versioned A-star, positive and negative cache semantics, exact endpoints, unreachable behavior, and deterministic ordering"
+    ],
+    "observability": {
+      "performanceResultSchemaVersion": 6,
+      "equivalenceResultSchemaVersion": 6,
+      "runtimeMetricsCsvSchemaVersion": 4,
+      "newPersistentRuntimeField": false,
+      "diagnostic": "ExtractionOrdersOmitted is a derived per-tick simulation diagnostic only."
+    }
+  },
+  "differentialValidation": {
+    "focusedExtractionTestsPassed": 27,
+    "newManifestTests": 11,
+    "scenarioCount": 4,
+    "ticksPerScenario": 300,
+    "strictAndEqualityCoverage": true,
+    "claimedAndDuplicateIdFallbackCoverage": true,
+    "virtualCountAndFinalOrderingCoverage": true,
+    "corridorPriorityCoverage": true,
+    "unreachableAndNegativeCacheCoverage": true,
+    "perTickWorkerStateCompared": true,
+    "assignmentsCompared": true,
+    "eventsCompared": true,
+    "harvestAndResourcesCompared": true,
+    "producedConsumedAndDepotCompared": true,
+    "finalSnapshotsCompared": true,
+    "naturalInvalidationObserved": true,
+    "actualOmissionObserved": true
+  },
+  "fullValidation": {
+    "command": "./scripts/run-prototype-validation.ps1",
+    "sourceCommit": "745607281bcdfa874bbf61587d421711c341498f",
+    "passed": true,
+    "requiredDotnetPassed": 185,
+    "requiredDotnetFailed": 0,
+    "dotnetTiers": {
+      "fast": 106,
+      "integration": 11,
+      "soak": 68
+    },
+    "godotHeadlessPassed": 16,
+    "godotHeadlessFailed": 0,
+    "debugBuildWarnings": 0,
+    "debugBuildErrors": 0,
+    "exportDebugBuildWarnings": 0,
+    "exportDebugBuildErrors": 0,
+    "exportReleaseBuildWarnings": 0,
+    "exportReleaseBuildErrors": 0,
+    "expectedRuntimeWarningsObserved": [
+      "frame catch-up backlog diagnostic",
+      "optional runtime-metrics I/O isolation diagnostic"
+    ]
+  },
+  "forcedInvalidation": {
+    "standaloneCommand": "./scripts/run-performance-pair.ps1 -ReleaseExport -RequireRelease -Scenario balanced_basin -Seed 1337 -Citizens 16 -Ticks 1 -WarmupTicks 2 -CacheMode forced_invalidation -OutputRoot artifacts/performance/w105f-forced-7456072 -AllowPrimarySafetyFailure",
+    "standaloneTransitionCorrect": true,
+    "standaloneMetricsOffFullTickMilliseconds": 91.3858,
+    "standaloneMetricsOnFullTickMilliseconds": 89.0932,
+    "standaloneMetricsOffCommitToFirstCorrectLookupMilliseconds": 12.7239,
+    "standaloneMetricsOnCommitToFirstCorrectLookupMilliseconds": 11.7589,
+    "standaloneMeasuredCachedDistanceFastPathHitsPerSide": 11,
+    "matrixTransitionCorrect": true,
+    "matrixCommitToFirstCorrectLookupMilliseconds": 12.1761,
+    "targetLimitMilliseconds": 150,
+    "safetyLimitMilliseconds": 250,
+    "targetPassed": true,
+    "safetyPassed": true
+  },
+  "canonicalReleaseMatrix": {
+    "command": "./scripts/run-performance-baseline-matrix.ps1 -OutputRoot artifacts/performance/w105f-baseline-clean-7456072",
+    "sourceCommit": "745607281bcdfa874bbf61587d421711c341498f",
+    "sourceClean": true,
+    "contractStatus": "pass",
+    "budgetStatus": "target_missed",
+    "performanceSafetyPassed": true,
+    "pairCount": 14,
+    "metricsRowCount": 28,
+    "manifestArtifactHashesMatched": 354,
+    "pathPlanLookups": 274932,
+    "previousPathPlanLookups": 344341,
+    "pathPlanLookupReductionPercent": 20.157,
+    "pathPlanCacheMisses": 5483,
+    "previousPathPlanCacheMisses": 5438,
+    "measuredCachedDistanceFastPathHits": 247080,
+    "workOrdersGenerated": 369430,
+    "workOrdersGeneratedUncapped": 4743965,
+    "reference16Citizens": {
+      "trialCount": 3,
+      "trialP95Milliseconds": [47.2589, 46.2352, 45.8724],
+      "trialMaximumMilliseconds": [203.0221, 147.9514, 157.6555],
+      "medianP95Milliseconds": 46.2352,
+      "medianP99Milliseconds": 129.7232,
+      "medianMaximumMilliseconds": 157.6555,
+      "medianTotalMilliseconds": 7393.4499,
+      "safetyP95LimitMilliseconds": 50,
+      "safetyMaximumLimitMilliseconds": 250,
+      "allTrialsSafetyPassed": true
+    },
+    "soak16Citizens": {
+      "deterministicRepeat": true,
+      "p95Milliseconds": [39.1057, 36.1851],
+      "maximumMilliseconds": [193.5462, 175.0816],
+      "safetyPassed": true
+    },
+    "stress24Citizens": {
+      "p95Milliseconds": 129.2682,
+      "maximumMilliseconds": 190.9645,
+      "classification": "characterization",
+      "targetPassed": false,
+      "safetyGateApplied": false
+    }
+  },
+  "confirmatoryReferenceMatrix": {
+    "command": "./scripts/run-performance-baseline-matrix.ps1 -CaseId matrix-c16-cold-t1,reference-c16-cold-t2,reference-c16-cold-t3 -OutputRoot artifacts/performance/w105f-reference-confirm-7456072",
+    "sourceCommit": "745607281bcdfa874bbf61587d421711c341498f",
+    "sourceClean": true,
+    "contractStatus": "pass",
+    "pairCount": 3,
+    "trialP95Milliseconds": [48.5605, 48.1055, 48.6139],
+    "trialMaximumMilliseconds": [165.4585, 206.0087, 147.7332],
+    "trialBootstrapMilliseconds": [662.6778, 658.1529, 634.202],
+    "deterministicHash": "96a0175d0a805818cbe2a0d5477258882c91f880eca5bd3b9c93fdc8f0b3e4c4",
+    "allIndependentSafetyChecksPassed": true
+  },
+  "residualCharacterization": {
+    "command": "./scripts/analyze-performance-spikes.ps1 -InputPath artifacts/performance/w105f-baseline-clean-7456072 -OutputPath artifacts/performance/w105f-baseline-clean-7456072/spike-analysis.json",
+    "runCount": 14,
+    "measuredTickCount": 5301,
+    "runtimeMetricsSchemaVersion": 4,
+    "generalExactMisses": 4221,
+    "selectorExactMisses": 1262,
+    "wallTimeCorrelations": {
+      "buildWorkOrdersMilliseconds": 0.954965,
+      "allPathCacheMisses": 0.887451,
+      "generalPathCacheMisses": 0.866741,
+      "selectorPathCacheMisses": 0.41531,
+      "routeSelectionMilliseconds": 0.444719,
+      "navigationRebuildMilliseconds": 0.075609
+    },
+    "interpretation": "The slice cuts total route lookups by 20.157 percent and the 16-citizen reference lookup count by 8.902 percent while preserving the virtual uncapped frontier. Aggregate exact misses remain effectively flat because omitted work is predominantly repeated positive-cache traffic and natural-warm cache population shifts some later misses. The optimization therefore earns the safety decision from exact frontier omission and measured Release timings, not from a claim that every matrix miss count fell."
+  },
+  "review": {
+    "reviewer": "generic_native_child_with_deep_reviewer_behavioral_contract",
+    "resolvedFindings": [
+      "Restored legacy route, cache, append, and final-removal behavior for claimed extraction candidates on the fallback path.",
+      "Added controlled call-site coverage rather than relying only on detached planning helpers.",
+      "Corrected the differential assertion to count general misses as total misses minus selector misses."
+    ],
+    "finalP0Findings": 0,
+    "finalP1Findings": 0,
+    "finalP2Findings": 0
+  },
+  "sourceArtifacts": [
+    {
+      "path": "artifacts/performance/w105f-baseline-clean-7456072/perf-results.json",
+      "sizeBytes": 210161,
+      "sha256": "3e4d89a43ef9533cd24bc2a080f5d8470919a4e20049bdc30f057271284d6653"
+    },
+    {
+      "path": "artifacts/performance/w105f-baseline-clean-7456072/validation-manifest.json",
+      "sizeBytes": 161888,
+      "sha256": "52bc14d86151afb75e85f7522e0e56fd12df39704cd27ec4a63c971e5474f3ef"
+    },
+    {
+      "path": "artifacts/performance/w105f-baseline-clean-7456072/perf-matrix.csv",
+      "sizeBytes": 40029,
+      "sha256": "32b459add7f711104b438c8d286e32ddb96bd41d91a0f81d0e1a20304267588f"
+    },
+    {
+      "path": "artifacts/performance/w105f-baseline-clean-7456072/spike-analysis.json",
+      "sizeBytes": 904602,
+      "sha256": "c09bbd4bb6dad3a4549cfb64ff4e45b0e939069074f792c5e51e7b97aa6f486b"
+    },
+    {
+      "path": "artifacts/performance/w105f-forced-7456072/equivalence-results.json",
+      "sizeBytes": 47584,
+      "sha256": "faf648b134502d075158e96244f61329e71f9e017e6e7f9782be90c5604edb1e"
+    },
+    {
+      "path": "artifacts/performance/w105f-reference-confirm-7456072/perf-results.json",
+      "sizeBytes": 47961,
+      "sha256": "8406b82ebef1183e6ce577dece255258b83c49c0a4b05ed795675a193850cf40"
+    },
+    {
+      "path": "artifacts/performance/w105f-reference-confirm-7456072/validation-manifest.json",
+      "sizeBytes": 38222,
+      "sha256": "b9c046b7e60cda414575cd0ef0346855c069749c15b0c55a3fac53e2fb662fbd"
+    }
+  ],
+  "decision": {
+    "boundedFrontierOptimizationValidated": true,
+    "performanceSafetyGatePassed": true,
+    "aspirationalPerformanceTargetPassed": false,
+    "w106Allowed": true,
+    "week2FeatureExpansionAllowed": false,
+    "remainingWeek2Blocker": "W1-06 resource authority and snapshot/schema work has not yet been implemented or validated.",
+    "stressCharacterization": "The non-gating 24-citizen case remains above its 50 millisecond p95 target at 129.2682 milliseconds.",
+    "next": "Merge W1-05f, then begin W1-06 as the next unblocked Week 1 work item. Keep Week 2 feature expansion blocked until W1-06 and its hard correctness, persistence, and validation gates pass."
+  }
+}

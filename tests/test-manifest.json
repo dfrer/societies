@@ -1,6 +1,6 @@
 {
   "schemaVersion": 3,
-  "updatedUtc": "2026-07-13T22:26:55.8262613Z",
+  "updatedUtc": "2026-07-13T22:48:57.6824155Z",
   "required": {
     "dotnet": {
       "project": "tests/Societies.Core.Tests/Societies.Core.Tests.csproj",
@@ -89,7 +89,7 @@
       "baselineMatrixCommand": "./scripts/run-performance-baseline-matrix.ps1",
       "baselineMatrixResultSchemaVersion": 1,
       "baselineMatrixCanonicalPairCount": 14,
-      "baselineMatrixStatus": "passed_contract_safety_failed",
+      "baselineMatrixStatus": "passed_contract_safety_passed_target_missed",
       "resultSchemaVersion": 6,
       "requiredGodotVersion": "4.6.2",
       "requiredForPullRequest": false,
@@ -154,11 +154,13 @@
       "sharedFrontierEvidence": true,
       "cachedDistanceOptimizationStatus": "passed_contract_safety_failed",
       "cachedDistanceEvidence": true,
+      "boundedWorkOrderFrontierOptimizationStatus": "passed_contract_safety_passed_target_missed",
+      "boundedWorkOrderFrontierEvidence": true,
       "releaseBaselineEvidence": true,
       "fullMatrixCaptured": true,
       "medianOfThreeCaptured": true,
       "targetOrSafetyClaimMade": true,
-      "baselineBudgetStatus": "safety_failure",
+      "baselineBudgetStatus": "target_missed",
       "evidence": "planning/active/evidence/v3-w1-03a-release-route-validation.json",
       "cacheModeEvidenceFile": "planning/active/evidence/v3-w1-03b-cache-mode-validation.json",
       "cacheModeImplementationCommit": "5444cc3a39fd9a58f87a7f999b67c9458dfe30c7",
@@ -180,7 +182,11 @@
       "cachedDistanceEvidenceFile": "planning/active/evidence/v3-w1-05e-cached-distance-validation.json",
       "cachedDistanceImplementationCommit": "9d5ca142ae185378553174f6363cf375383e5ffe",
       "postW105eBaselineBudgetStatus": "safety_failure",
-      "note": "The editor route remains Debug characterization. The Windows ExportRelease route is validated from clean commit acf634f. Cache-mode evidence from 5444cc3 proves the short mode contracts. W1-05 clean Release evidence from 227a758 proves exact selector equivalence and an 85.414 percent query reduction. W1-05b characterizes the remaining failure as cache-miss-driven exact A-star fanout. W1-05c adds exact bounded extraction planning and a byte-equivalent indexed A-star representation. W1-05d adds exact topology-only shared-frontier bounds. W1-05e adds bit-exact cached-distance replay for positive general-cache hits and schema-v6 paired evidence while leaving runtime CSV v4. The clean matrix from 9d5ca14 exercises 316534 fast hits and keeps all maximum, soak, and forced-invalidation safety limits green, but one reference trial records 51.2372 ms p95 against the 50 ms hard limit. The remaining 4176 general and 1262 selector exact misses are unchanged. W1-06 and Week 2 remain blocked pending an exact distinct-search reduction and another clean matrix."
+      "boundedWorkOrderFrontierEvidenceFile": "planning/active/evidence/v3-w1-05f-bounded-work-order-frontier-validation.json",
+      "boundedWorkOrderFrontierImplementationCommit": "745607281bcdfa874bbf61587d421711c341498f",
+      "postW105fBaselineBudgetStatus": "target_missed",
+      "postW105fPerformanceSafetyPassed": true,
+      "note": "The editor route remains Debug characterization. The Windows ExportRelease route is validated from clean commit acf634f. Cache-mode evidence from 5444cc3 proves the short mode contracts. W1-05 clean Release evidence from 227a758 proves exact selector equivalence and an 85.414 percent query reduction. W1-05b characterizes the remaining failure as cache-miss-driven exact A-star fanout. W1-05c adds exact bounded extraction planning and a byte-equivalent indexed A-star representation. W1-05d adds exact topology-only shared-frontier bounds. W1-05e adds bit-exact cached-distance replay for positive general-cache hits and schema-v6 paired evidence while leaving runtime CSV v4. W1-05f adds strict whole-resource-class omission with virtual-count preservation. The clean matrix from 7456072 passes 14 of 14 contracts and 354 of 354 hashes; every reference, soak, maximum, and forced-invalidation hard safety limit passes, and a separate three-reference confirmation is also individually green. The formal budget remains target_missed and 24-citizen stress remains characterization-red. W1-06 is unblocked; Week 2 remains blocked until W1-06 resource authority and snapshot/schema validation are complete."
     }
   },
   "history": {
