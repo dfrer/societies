@@ -45,6 +45,305 @@ namespace Societies.Core.Tests
         }
 
         [Fact]
+        public void WholeResourceClassOmission_RequiresFrontierStrictlyAbovePriorityUpperBound()
+        {
+            int[] strictlyHigher = Enumerable.Repeat(941, 50).ToArray();
+            int[] equalAtCutoff = strictlyHigher.Take(49).Append(940).ToArray();
+
+            bool omitted = PrototypeExtractionPlanningMath.TryComputeWholeResourceClassOmission(
+                strictlyHigher,
+                frontierBudget: 50,
+                priorityUpperBound: 940,
+                new[] { "extract.berries_1", "extract.berries_2" },
+                new HashSet<string>(StringComparer.Ordinal),
+                desiredUnits: 2,
+                out int omittedCount);
+            bool equalOmitted = PrototypeExtractionPlanningMath.TryComputeWholeResourceClassOmission(
+                equalAtCutoff,
+                frontierBudget: 50,
+                priorityUpperBound: 940,
+                new[] { "extract.berries_1" },
+                new HashSet<string>(StringComparer.Ordinal),
+                desiredUnits: 1,
+                out _);
+
+            Assert.True(omitted);
+            Assert.Equal(2, omittedCount);
+            Assert.False(equalOmitted);
+        }
+
+        [Fact]
+        public void WholeResourceClassOmission_RejectsUnderfilledExistingFrontier()
+        {
+            bool omitted = PrototypeExtractionPlanningMath.TryComputeWholeResourceClassOmission(
+                Enumerable.Repeat(1200, 49).ToArray(),
+                frontierBudget: 50,
+                priorityUpperBound: 640,
+                new[] { "extract.logs_1" },
+                new HashSet<string>(StringComparer.Ordinal),
+                desiredUnits: 1,
+                out _);
+
+            Assert.False(omitted);
+        }
+
+        [Fact]
+        public void ExtractionPriorityUpperBound_IncludesBuiltCorridorBonus()
+        {
+            Assert.Equal(640, PrototypeExtractionPlanningMath.ComputePriorityUpperBound(640, hasBuiltCorridor: false));
+            Assert.Equal(680, PrototypeExtractionPlanningMath.ComputePriorityUpperBound(640, hasBuiltCorridor: true));
+
+            bool omitted = PrototypeExtractionPlanningMath.TryComputeWholeResourceClassOmission(
+                Enumerable.Repeat(680, 50).ToArray(),
+                frontierBudget: 50,
+                priorityUpperBound: PrototypeExtractionPlanningMath.ComputePriorityUpperBound(640, hasBuiltCorridor: true),
+                new[] { "extract.logs_1" },
+                new HashSet<string>(StringComparer.Ordinal),
+                desiredUnits: 1,
+                out _);
+
+            Assert.False(omitted);
+        }
+
+        [Fact]
+        public void WholeResourceClassOmission_FallsBackForAnyExactClaimedIdCollision()
+        {
+            bool omitted = PrototypeExtractionPlanningMath.TryComputeWholeResourceClassOmission(
+                Enumerable.Repeat(1200, 50).ToArray(),
+                frontierBudget: 50,
+                priorityUpperBound: 640,
+                new[] { "extract.logs_1", "extract.logs_2" },
+                new HashSet<string>(new[] { "extract.logs_2" }, StringComparer.Ordinal),
+                desiredUnits: 1,
+                out _);
+
+            Assert.False(omitted);
+        }
+
+        [Fact]
+        public void WholeResourceClassOmission_CountsEligibleDuplicatesAndCapsAtDesiredUnits()
+        {
+            string[] eligibleOrderIds = { "extract.same", "extract.same", "extract.other" };
+            bool omitted = PrototypeExtractionPlanningMath.TryComputeWholeResourceClassOmission(
+                Enumerable.Repeat(1200, 50).ToArray(),
+                frontierBudget: 50,
+                priorityUpperBound: 640,
+                eligibleOrderIds,
+                new HashSet<string>(StringComparer.Ordinal),
+                desiredUnits: 2,
+                out int omittedCount);
+            bool allOmitted = PrototypeExtractionPlanningMath.TryComputeWholeResourceClassOmission(
+                Enumerable.Repeat(1200, 50).ToArray(),
+                frontierBudget: 50,
+                priorityUpperBound: 640,
+                eligibleOrderIds,
+                new HashSet<string>(StringComparer.Ordinal),
+                desiredUnits: 5,
+                out int allOmittedCount);
+
+            Assert.True(omitted);
+            Assert.Equal(2, omittedCount);
+            Assert.True(allOmitted);
+            Assert.Equal(3, allOmittedCount);
+        }
+
+        [Fact]
+        public void FrontierLimit_SortsWhenVirtualCountExceedsBudgetEvenIfActualCountEqualsBudget()
+        {
+            List<PrototypeWorkOrder> orders = Enumerable.Range(0, 50)
+                .Select(index => new PrototypeWorkOrder
+                {
+                    OrderId = $"order.{49 - index:D2}",
+                    Priority = index % 2
+                })
+                .ToList();
+
+            List<PrototypeWorkOrder> limited = PrototypeExtractionPlanningMath.ApplyFrontierLimit(
+                orders,
+                frontierBudget: 50,
+                virtualUncappedCount: 51);
+
+            Assert.Equal(
+                orders.OrderByDescending(order => order.Priority).ThenBy(order => order.OrderId, StringComparer.Ordinal).Select(order => order.OrderId),
+                limited.Select(order => order.OrderId));
+            Assert.NotSame(orders, limited);
+        }
+
+        [Fact]
+        public void ControlledFrontier_OmitsStrictClassButFallsBackAtEqualityAndProcessesLaterClass()
+        {
+            (PrototypeSettlementSimulation simulation, WorldGenerationResult world) = NewControlledSimulation();
+            List<PrototypeResourceSiteState> resources = BuildResourceSites(world);
+            PrototypeResourceSiteState logSite = resources.First(site => site.ResourceId == "logs");
+            PrototypeResourceSiteState berrySite = resources.First(site => site.ResourceId == "berries");
+            List<PrototypeWorkOrder> fixedOrders = FixedOrders(priority: 641);
+
+            ControlledExtractionFrontierProbe probe = PlanExtractionFrontier(
+                simulation,
+                fixedOrders,
+                new[] { logSite, berrySite },
+                new[]
+                {
+                    (ResourceId: "logs", DesiredUnits: 1, BasePriority: 640),
+                    (ResourceId: "berries", DesiredUnits: 1, BasePriority: 641)
+                });
+
+            Assert.Equal(1, probe.OmittedCount);
+            Assert.Equal(52, probe.VirtualUncappedCount);
+            Assert.Equal(50, probe.Orders.Count);
+            Assert.Contains(probe.Orders, order => order.OrderId == $"extract.{berrySite.NodeName}");
+            Assert.DoesNotContain(probe.Orders, order => order.OrderId == $"extract.{logSite.NodeName}");
+            Assert.Equal(
+                probe.Orders.OrderByDescending(order => order.Priority).ThenBy(order => order.OrderId, StringComparer.Ordinal).Select(order => order.OrderId),
+                probe.Orders.Select(order => order.OrderId));
+            Assert.True(probe.PathPlanLookups > 0, "The equal-priority later class must execute the legacy route/penalty path.");
+        }
+
+        [Fact]
+        public void ControlledFrontier_CorridorBonusPreventsUnsafeStrictOmission()
+        {
+            (PrototypeSettlementSimulation noCorridor, WorldGenerationResult noCorridorWorld) = NewControlledSimulation();
+            (PrototypeSettlementSimulation corridor, WorldGenerationResult corridorWorld) = NewControlledSimulation();
+            PrototypePathSegmentState corridorSegment = corridor.PathSegments.First(segment => segment.CorridorId == "corridor.logs");
+            corridorSegment.IsBuilt = true;
+            PrototypeResourceSiteState noCorridorSite = BuildResourceSites(noCorridorWorld).First(site => site.ResourceId == "logs");
+            PrototypeResourceSiteState corridorSite = BuildResourceSites(corridorWorld).First(site => site.ResourceId == "logs");
+            List<PrototypeWorkOrder> fixedOrders = FixedOrders(priority: 680);
+            (string ResourceId, int DesiredUnits, int BasePriority)[] extractionClass =
+            {
+                ("logs", DesiredUnits: 1, BasePriority: 640)
+            };
+
+            ControlledExtractionFrontierProbe omitted = PlanExtractionFrontier(
+                noCorridor,
+                fixedOrders,
+                new[] { noCorridorSite },
+                extractionClass);
+            ControlledExtractionFrontierProbe retained = PlanExtractionFrontier(
+                corridor,
+                fixedOrders,
+                new[] { corridorSite },
+                extractionClass);
+
+            Assert.Equal(1, omitted.OmittedCount);
+            Assert.Equal(0, omitted.PathPlanLookups);
+            Assert.Equal(0, retained.OmittedCount);
+            Assert.True(retained.PathPlanLookups > 0);
+        }
+
+        [Fact]
+        public void ControlledFrontier_ClaimedCollisionExecutesIdenticalLegacyCacheTraceBeforeFinalRemoval()
+        {
+            (PrototypeSettlementSimulation unclaimed, WorldGenerationResult unclaimedWorld) = NewControlledSimulation();
+            (PrototypeSettlementSimulation claimed, WorldGenerationResult claimedWorld) = NewControlledSimulation();
+            PrototypeResourceSiteState unclaimedSite = BuildResourceSites(unclaimedWorld).First(site => site.ResourceId == "logs");
+            PrototypeResourceSiteState claimedSite = BuildResourceSites(claimedWorld).First(site => site.ResourceId == "logs");
+            claimed.Citizens[0].CurrentOrderId = $"extract.{claimedSite.NodeName}";
+            claimed.Citizens[0].Phase = PrototypeWorkerPhase.MovingToResource;
+            List<PrototypeWorkOrder> fixedOrders = FixedOrders(priority: 640);
+            (string ResourceId, int DesiredUnits, int BasePriority)[] extractionClass =
+            {
+                ("logs", DesiredUnits: 1, BasePriority: 640)
+            };
+
+            ControlledExtractionFrontierProbe unclaimedCold = PlanExtractionFrontier(
+                unclaimed,
+                fixedOrders,
+                new[] { unclaimedSite },
+                extractionClass);
+            ControlledExtractionFrontierProbe claimedCold = PlanExtractionFrontier(
+                claimed,
+                fixedOrders,
+                new[] { claimedSite },
+                extractionClass);
+            ControlledExtractionFrontierProbe unclaimedWarm = PlanExtractionFrontier(
+                unclaimed,
+                fixedOrders,
+                new[] { unclaimedSite },
+                extractionClass);
+            ControlledExtractionFrontierProbe claimedWarm = PlanExtractionFrontier(
+                claimed,
+                fixedOrders,
+                new[] { claimedSite },
+                extractionClass);
+
+            Assert.Equal(0, claimedCold.OmittedCount);
+            Assert.Equal(unclaimedCold.PathPlanLookups, claimedCold.PathPlanLookups);
+            Assert.Equal(unclaimedCold.PathPlanCacheHits, claimedCold.PathPlanCacheHits);
+            Assert.Equal(unclaimedCold.PathPlanCacheMisses, claimedCold.PathPlanCacheMisses);
+            Assert.Equal(unclaimedCold.CachedRouteDistanceFastPathHits, claimedCold.CachedRouteDistanceFastPathHits);
+            Assert.Equal(unclaimedCold.PerformanceProbe.PathCacheEntryCount, claimedCold.PerformanceProbe.PathCacheEntryCount);
+            Assert.Equal(unclaimedWarm.PathPlanLookups, claimedWarm.PathPlanLookups);
+            Assert.Equal(unclaimedWarm.PathPlanCacheHits, claimedWarm.PathPlanCacheHits);
+            Assert.Equal(unclaimedWarm.PathPlanCacheMisses, claimedWarm.PathPlanCacheMisses);
+            Assert.Equal(unclaimedWarm.CachedRouteDistanceFastPathHits, claimedWarm.CachedRouteDistanceFastPathHits);
+            Assert.DoesNotContain(claimedCold.Orders, order => order.OrderId == claimed.Citizens[0].CurrentOrderId);
+        }
+
+        [Fact]
+        public void ControlledFrontier_DuplicateCandidatesUseVirtualCountAndDeterministicFallback()
+        {
+            (PrototypeSettlementSimulation simulation, WorldGenerationResult world) = NewControlledSimulation();
+            PrototypeResourceSiteState site = BuildResourceSites(world).First(candidate => candidate.ResourceId == "logs");
+            PrototypeResourceSiteState duplicate = site with { Position = site.Position + new Vector3(0.25f, 0.0f, 0.25f) };
+
+            ControlledExtractionFrontierProbe omitted = PlanExtractionFrontier(
+                simulation,
+                FixedOrders(priority: 641),
+                new[] { site, duplicate },
+                new[] { (ResourceId: "logs", DesiredUnits: 3, BasePriority: 640) });
+            ControlledExtractionFrontierProbe fallback = PlanExtractionFrontier(
+                simulation,
+                FixedOrders(priority: 640),
+                new[] { site, duplicate },
+                new[] { (ResourceId: "logs", DesiredUnits: 3, BasePriority: 640) });
+
+            Assert.Equal(2, omitted.OmittedCount);
+            Assert.Equal(52, omitted.VirtualUncappedCount);
+            Assert.Equal(0, omitted.PathPlanLookups);
+            Assert.Equal(0, fallback.OmittedCount);
+            Assert.Equal(52, fallback.VirtualUncappedCount);
+            Assert.True(fallback.PathPlanLookups >= 2);
+            Assert.Equal(2, fallback.Orders.Count(order => order.OrderId == $"extract.{site.NodeName}"));
+        }
+
+        [Fact]
+        public void ControlledFrontier_UnreachableCandidatePreservesNegativeCacheFallbackTrace()
+        {
+            (PrototypeSettlementSimulation simulation, WorldGenerationResult world) = NewDisconnectedSimulation();
+            TerrainCell unreachableCell = world.WorldMap.GetCell(2, 0);
+            PrototypeResourceSiteState unreachable = new(
+                "unreachable.logs",
+                "logs",
+                unreachableCell.WorldPosition,
+                UnitsRemaining: 1,
+                "unreachable.cluster");
+            (string ResourceId, int DesiredUnits, int BasePriority)[] extractionClass =
+            {
+                ("logs", DesiredUnits: 1, BasePriority: 640)
+            };
+
+            ControlledExtractionFrontierProbe cold = PlanExtractionFrontier(
+                simulation,
+                FixedOrders(priority: 640),
+                new[] { unreachable },
+                extractionClass);
+            ControlledExtractionFrontierProbe warm = PlanExtractionFrontier(
+                simulation,
+                FixedOrders(priority: 640),
+                new[] { unreachable },
+                extractionClass);
+
+            Assert.Equal(0, cold.OmittedCount);
+            Assert.True(cold.PathPlanCacheMisses > 0);
+            Assert.Equal(0, warm.PathPlanCacheMisses);
+            Assert.True(warm.PathPlanCacheHits > 0);
+            Assert.Equal(51, cold.VirtualUncappedCount);
+            Assert.DoesNotContain(cold.Orders, order => order.OrderId == "extract.unreachable.logs");
+            Assert.True(warm.PerformanceProbe.AllPathCacheKeysMatchNavigationRulesVersion);
+        }
+
+        [Fact]
         public void ExactTopK_AllSelectedUniqueNamesUsesOrdinalOrderWithoutExactQueries()
         {
             PrototypeExtractionCandidate[] candidates =
@@ -256,6 +555,9 @@ namespace Societies.Core.Tests
             List<PrototypeResourceSiteState> exhaustiveResources = BuildResourceSites(exhaustiveWorld);
             long optimizedQueries = 0;
             long exhaustiveQueries = 0;
+            long optimizedGeneralMisses = 0;
+            long exhaustiveGeneralMisses = 0;
+            long optimizedOmittedOrders = 0;
             float currentHour = 8.0f;
 
             for (int tick = 1; tick <= 300; tick++)
@@ -271,15 +573,45 @@ namespace Societies.Core.Tests
 
                 optimizedQueries += optimized.Diagnostics.PathPlanLookups;
                 exhaustiveQueries += exhaustive.Diagnostics.PathPlanLookups;
+                int optimizedGeneralMissesThisTick = optimized.Diagnostics.PathPlanCacheMisses - optimized.Diagnostics.SelectorPathCacheMisses;
+                int exhaustiveGeneralMissesThisTick = exhaustive.Diagnostics.PathPlanCacheMisses - exhaustive.Diagnostics.SelectorPathCacheMisses;
+                Assert.True(optimizedGeneralMissesThisTick >= 0);
+                Assert.True(exhaustiveGeneralMissesThisTick >= 0);
+                optimizedGeneralMisses += optimizedGeneralMissesThisTick;
+                exhaustiveGeneralMisses += exhaustiveGeneralMissesThisTick;
+                optimizedOmittedOrders += optimized.Diagnostics.ExtractionOrdersOmitted;
+                Assert.Equal(0, exhaustive.Diagnostics.ExtractionOrdersOmitted);
+                Assert.Equal(exhaustive.Diagnostics.WorkOrdersGenerated, optimized.Diagnostics.WorkOrdersGenerated);
+                Assert.Equal(exhaustive.Diagnostics.WorkOrdersGeneratedUncapped, optimized.Diagnostics.WorkOrdersGeneratedUncapped);
+                Assert.Equal(exhaustive.Diagnostics.WorkOrdersClaimed, optimized.Diagnostics.WorkOrdersClaimed);
+                Assert.Equal(exhaustive.Diagnostics.WorkOrdersRemaining, optimized.Diagnostics.WorkOrdersRemaining);
                 Assert.Equal(
                     exhaustive.Workers.OrderBy(worker => worker.WorkerId, StringComparer.Ordinal).Select(worker => (worker.WorkerId, worker.CurrentOrderId)),
                     optimized.Workers.OrderBy(worker => worker.WorkerId, StringComparer.Ordinal).Select(worker => (worker.WorkerId, worker.CurrentOrderId)));
+                Assert.Equal(
+                    JsonSerializer.Serialize(exhaustive.Workers.OrderBy(worker => worker.WorkerId, StringComparer.Ordinal)),
+                    JsonSerializer.Serialize(optimized.Workers.OrderBy(worker => worker.WorkerId, StringComparer.Ordinal)));
                 Assert.Equal(exhaustiveResult.Events, optimizedResult.Events);
                 Assert.Equal(exhaustiveResult.HarvestRequests, optimizedResult.HarvestRequests);
 
                 ApplyHarvestRequests(exhaustive, exhaustiveResources, exhaustiveResult.HarvestRequests);
                 ApplyHarvestRequests(optimized, optimizedResources, optimizedResult.HarvestRequests);
                 Assert.Equal(exhaustiveResources, optimizedResources);
+                Assert.Equal(
+                    JsonSerializer.Serialize(exhaustive.ProducedResources.OrderBy(pair => pair.Key, StringComparer.Ordinal)),
+                    JsonSerializer.Serialize(optimized.ProducedResources.OrderBy(pair => pair.Key, StringComparer.Ordinal)));
+                Assert.Equal(
+                    JsonSerializer.Serialize(exhaustive.ConsumedResources.OrderBy(pair => pair.Key, StringComparer.Ordinal)),
+                    JsonSerializer.Serialize(optimized.ConsumedResources.OrderBy(pair => pair.Key, StringComparer.Ordinal)));
+                Assert.Equal(
+                    JsonSerializer.Serialize(exhaustive.CentralDepot),
+                    JsonSerializer.Serialize(optimized.CentralDepot));
+                PrototypePerformanceProbeSnapshot optimizedProbe = optimized.CapturePerformanceProbeState();
+                PrototypePerformanceProbeSnapshot exhaustiveProbe = exhaustive.CapturePerformanceProbeState();
+                Assert.True(optimizedProbe.AllPathCacheKeysMatchNavigationRulesVersion);
+                Assert.True(exhaustiveProbe.AllPathCacheKeysMatchNavigationRulesVersion);
+                Assert.Equal(exhaustiveProbe.NavigationRulesVersion, optimizedProbe.NavigationRulesVersion);
+                Assert.Equal(exhaustiveProbe.TotalNavigationInvalidations, optimizedProbe.TotalNavigationInvalidations);
                 currentHour = AdvanceHour(currentHour);
             }
 
@@ -289,15 +621,137 @@ namespace Societies.Core.Tests
             Assert.True(
                 optimizedQueries < exhaustiveQueries,
                 $"Expected extraction planning to reduce queries; optimized={optimizedQueries}, exhaustive={exhaustiveQueries}.");
+            Assert.True(
+                optimizedGeneralMisses < exhaustiveGeneralMisses,
+                $"Expected whole-class omission to reduce general path-cache misses; optimized={optimizedGeneralMisses}, exhaustive={exhaustiveGeneralMisses}.");
+            if (scenarioId == "balanced_basin")
+            {
+                Assert.True(optimizedOmittedOrders > 0, "The actual BuildWorkOrders path must exercise whole-class omission.");
+                Assert.True(
+                    optimized.CapturePerformanceProbeState().TotalNavigationInvalidations > 0,
+                    "The differential must retain exact cache/version behavior across a natural navigation invalidation.");
+            }
             _output.WriteLine(
                 $"{scenarioId}: optimized queries={optimizedQueries}, exhaustive queries={exhaustiveQueries}, " +
-                $"reduction={(1.0 - optimizedQueries / (double)exhaustiveQueries):P2}");
+                $"reduction={(1.0 - optimizedQueries / (double)exhaustiveQueries):P2}; " +
+                $"general misses optimized={optimizedGeneralMisses}, exhaustive={exhaustiveGeneralMisses}");
         }
 
         private static PrototypeExtractionCandidate Candidate(string nodeName, float lowerBound, int originalIndex)
         {
             PrototypeResourceSiteState site = new(nodeName, "logs", Vector3.Zero, 1, "cluster");
             return new PrototypeExtractionCandidate(site, Vector3.Zero, lowerBound, originalIndex);
+        }
+
+        private static ControlledExtractionFrontierProbe PlanExtractionFrontier(
+            PrototypeSettlementSimulation simulation,
+            IReadOnlyList<PrototypeWorkOrder> existingOrders,
+            IReadOnlyList<PrototypeResourceSiteState> resources,
+            IReadOnlyList<(string ResourceId, int DesiredUnits, int BasePriority)> extractionClasses)
+        {
+            System.Reflection.MethodInfo method = typeof(PrototypeSettlementSimulation).GetMethod(
+                "PlanExtractionFrontierForTesting",
+                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!;
+            object boxedProbe = method.Invoke(
+                simulation,
+                new object[] { existingOrders, resources, extractionClasses })!;
+            Type probeType = boxedProbe.GetType();
+
+            T Read<T>(string propertyName)
+            {
+                return (T)probeType.GetProperty(propertyName)!.GetValue(boxedProbe)!;
+            }
+
+            return new ControlledExtractionFrontierProbe(
+                Read<IReadOnlyList<PrototypeWorkOrder>>("Orders"),
+                Read<int>("VirtualUncappedCount"),
+                Read<int>("OmittedCount"),
+                Read<int>("PathPlanLookups"),
+                Read<int>("PathPlanCacheHits"),
+                Read<int>("PathPlanCacheMisses"),
+                Read<long>("CachedRouteDistanceFastPathHits"),
+                Read<PrototypePerformanceProbeSnapshot>("PerformanceProbe"));
+        }
+
+        private readonly record struct ControlledExtractionFrontierProbe(
+            IReadOnlyList<PrototypeWorkOrder> Orders,
+            int VirtualUncappedCount,
+            int OmittedCount,
+            int PathPlanLookups,
+            int PathPlanCacheHits,
+            int PathPlanCacheMisses,
+            long CachedRouteDistanceFastPathHits,
+            PrototypePerformanceProbeSnapshot PerformanceProbe);
+
+        private static (PrototypeSettlementSimulation Simulation, WorldGenerationResult World) NewControlledSimulation()
+        {
+            PrototypeCatalogBundle bundle = LoadCatalogs();
+            PrototypeScenarioDefinition scenario = bundle.Scenarios.Resolve("balanced_basin");
+            scenario.InitialCitizens = 1;
+            scenario.RemoteDepotPolicy.ActivationDistanceMeters = 100_000.0f;
+            WorldGenerationResult world = PrototypeWorldGenerator.Generate(scenario);
+            return (
+                new PrototypeSettlementSimulation(
+                    scenario,
+                    bundle.RoleQuotas.Roles,
+                    world,
+                    orderSelectionMode: PrototypeOrderSelectionMode.ExactBranchAndBound,
+                    extractionPlanningMode: PrototypeExtractionPlanningMode.ExactBounded),
+                world);
+        }
+
+        private static (PrototypeSettlementSimulation Simulation, WorldGenerationResult World) NewDisconnectedSimulation()
+        {
+            PrototypeCatalogBundle bundle = LoadCatalogs();
+            PrototypeScenarioDefinition scenario = bundle.Scenarios.Resolve("balanced_basin");
+            scenario.InitialCitizens = 1;
+            scenario.StartingStructures.Clear();
+            scenario.StartingBuildQueue.Clear();
+            scenario.RemoteDepotPolicy.ActivationDistanceMeters = 100_000.0f;
+            TerrainCell[] cells = Enumerable.Range(0, 3)
+                .Select(index => new TerrainCell
+                {
+                    GridX = index,
+                    GridY = 0,
+                    WorldPosition = new Vector3(-2.0f + (index * 2.0f), 0.0f, 0.0f),
+                    ElevationMeters = 0.0f,
+                    SlopeDegrees = 0.0f,
+                    MovementCost = 1.0f,
+                    IsBuildable = index != 1,
+                    Biome = index == 1 ? BiomeType.Wetland : BiomeType.Meadow
+                })
+                .ToArray();
+            WorldMapState worldMap = new(3, 1, cellSizeMeters: 2.0f, worldSize: 6.0f, cells);
+            WorldGenerationResult world = new()
+            {
+                WorldSeed = scenario.SimulationSeed,
+                WorldMap = worldMap,
+                SettlementSpawn = new SettlementSpawnState
+                {
+                    AnchorPosition = cells[0].WorldPosition,
+                    GridX = 0,
+                    GridY = 0
+                }
+            };
+            return (
+                new PrototypeSettlementSimulation(
+                    scenario,
+                    bundle.RoleQuotas.Roles,
+                    world,
+                    orderSelectionMode: PrototypeOrderSelectionMode.ExactBranchAndBound,
+                    extractionPlanningMode: PrototypeExtractionPlanningMode.ExactBounded),
+                world);
+        }
+
+        private static List<PrototypeWorkOrder> FixedOrders(int priority)
+        {
+            return Enumerable.Range(0, 50)
+                .Select(index => new PrototypeWorkOrder
+                {
+                    OrderId = $"zz.fixed.{index:D2}",
+                    Priority = priority
+                })
+                .ToList();
         }
 
         private static void ApplyHarvestRequests(

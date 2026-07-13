@@ -102,6 +102,67 @@ namespace Societies.Simulation
 
     public static class PrototypeExtractionPlanningMath
     {
+        public const int BuiltCorridorPriorityBonus = 40;
+
+        public static int ComputePriorityUpperBound(int basePriority, bool hasBuiltCorridor)
+        {
+            return basePriority + (hasBuiltCorridor ? BuiltCorridorPriorityBonus : 0);
+        }
+
+        public static bool TryComputeWholeResourceClassOmission(
+            IReadOnlyList<int> existingUnclaimedPriorities,
+            int frontierBudget,
+            int priorityUpperBound,
+            IReadOnlyList<string> eligibleOrderIds,
+            IReadOnlySet<string> activeClaimedOrderIds,
+            int desiredUnits,
+            out int omittedCount)
+        {
+            omittedCount = 0;
+            if (desiredUnits <= 0 ||
+                eligibleOrderIds.Count == 0 ||
+                existingUnclaimedPriorities.Count < frontierBudget ||
+                eligibleOrderIds.Any(activeClaimedOrderIds.Contains))
+            {
+                return false;
+            }
+
+            int strictlyHigherCount = 0;
+            foreach (int existingPriority in existingUnclaimedPriorities)
+            {
+                if (existingPriority <= priorityUpperBound)
+                {
+                    continue;
+                }
+
+                strictlyHigherCount++;
+                if (strictlyHigherCount == frontierBudget)
+                {
+                    omittedCount = System.Math.Min(desiredUnits, eligibleOrderIds.Count);
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        public static List<PrototypeWorkOrder> ApplyFrontierLimit(
+            List<PrototypeWorkOrder> orders,
+            int frontierBudget,
+            int virtualUncappedCount)
+        {
+            if (virtualUncappedCount <= frontierBudget)
+            {
+                return orders;
+            }
+
+            return orders
+                .OrderByDescending(order => order.Priority)
+                .ThenBy(order => order.OrderId, System.StringComparer.Ordinal)
+                .Take(frontierBudget)
+                .ToList();
+        }
+
         public static IReadOnlyList<PrototypeExtractionCandidate> SelectExactTopK(
             IReadOnlyList<PrototypeExtractionCandidate> candidates,
             int desiredUnits,
@@ -546,6 +607,16 @@ namespace Societies.Simulation
 
         public int Amount { get; set; } = 1;
     }
+
+    internal readonly record struct PrototypeExtractionFrontierProbe(
+        IReadOnlyList<PrototypeWorkOrder> Orders,
+        int VirtualUncappedCount,
+        int OmittedCount,
+        int PathPlanLookups,
+        int PathPlanCacheHits,
+        int PathPlanCacheMisses,
+        long CachedRouteDistanceFastPathHits,
+        PrototypePerformanceProbeSnapshot PerformanceProbe);
 
     public sealed class PrototypeWorkerState
     {

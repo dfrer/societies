@@ -73,34 +73,82 @@ namespace Societies.Simulation
                 .GroupBy(citizen => citizen.CarryItemId)
                 .ToDictionary(group => group.Key, group => group.Sum(citizen => citizen.CarryAmount), StringComparer.Ordinal);
 
+            HashSet<string> activeClaimedOrderIds = BuildActiveClaimedOrderIds();
             List<PrototypeWorkOrder> orders = new();
             AddRefuelOrders(orders);
             AddHaulOrdersFromStores(orders);
             AddProductionOrders(orders);
             AddBuildOrders(orders);
-            AddReserveExtractionOrders(orders, resources, committedCarries, currentHour, weather);
-            orders = RemoveClaimedOrders(orders);
-            _workOrdersGeneratedUncappedThisTick = orders.Count;
-            orders = ApplyWorkOrderFrontierLimit(orders);
+            orders = RemoveClaimedOrders(orders, activeClaimedOrderIds);
+
+            int omittedExtractionOrderCount = 0;
+            AddReserveExtractionOrders(
+                orders,
+                resources,
+                committedCarries,
+                currentHour,
+                weather,
+                activeClaimedOrderIds,
+                ref omittedExtractionOrderCount);
+            orders = RemoveClaimedOrders(orders, activeClaimedOrderIds);
+            _workOrdersGeneratedUncappedThisTick = orders.Count + omittedExtractionOrderCount;
+            _extractionOrdersOmittedThisTick = omittedExtractionOrderCount;
+            orders = ApplyWorkOrderFrontierLimit(orders, _workOrdersGeneratedUncappedThisTick);
             return orders;
         }
-        private List<PrototypeWorkOrder> ApplyWorkOrderFrontierLimit(List<PrototypeWorkOrder> orders)
+
+        internal PrototypeExtractionFrontierProbe PlanExtractionFrontierForTesting(
+            IReadOnlyList<PrototypeWorkOrder> existingOrders,
+            IReadOnlyList<PrototypeResourceSiteState> resources,
+            IReadOnlyList<(string ResourceId, int DesiredUnits, int BasePriority)> extractionClasses)
+        {
+            HashSet<string> activeClaimedOrderIds = BuildActiveClaimedOrderIds();
+            List<PrototypeWorkOrder> orders = RemoveClaimedOrders(existingOrders.ToList(), activeClaimedOrderIds);
+            int lookupsBefore = _pathPlanLookupsThisTick;
+            int hitsBefore = _pathPlanCacheHitsThisTick;
+            int missesBefore = _pathPlanCacheMissesThisTick;
+            long fastPathHitsBefore = _cachedRouteDistanceFastPathHits;
+            int omittedCount = 0;
+
+            foreach ((string resourceId, int desiredUnits, int basePriority) in extractionClasses)
+            {
+                AddExtractionOrders(
+                    orders,
+                    resources,
+                    resourceId,
+                    desiredUnits,
+                    basePriority,
+                    activeClaimedOrderIds,
+                    ref omittedCount);
+            }
+
+            orders = RemoveClaimedOrders(orders, activeClaimedOrderIds);
+            int virtualUncappedCount = orders.Count + omittedCount;
+            orders = ApplyWorkOrderFrontierLimit(orders, virtualUncappedCount);
+            return new PrototypeExtractionFrontierProbe(
+                orders.ToArray(),
+                virtualUncappedCount,
+                omittedCount,
+                _pathPlanLookupsThisTick - lookupsBefore,
+                _pathPlanCacheHitsThisTick - hitsBefore,
+                _pathPlanCacheMissesThisTick - missesBefore,
+                _cachedRouteDistanceFastPathHits - fastPathHitsBefore,
+                CapturePerformanceProbeState());
+        }
+
+        private List<PrototypeWorkOrder> ApplyWorkOrderFrontierLimit(
+            List<PrototypeWorkOrder> orders,
+            int virtualUncappedCount)
         {
             if (_uncappedOrders)
             {
                 return orders;
             }
             int frontierBudget = Math.Max(50, _citizens.Count * 5);
-            if (orders.Count <= frontierBudget)
-            {
-                return orders;
-            }
-
-            return orders
-                .OrderByDescending(order => order.Priority)
-                .ThenBy(order => order.OrderId, StringComparer.Ordinal)
-                .Take(frontierBudget)
-                .ToList();
+            return PrototypeExtractionPlanningMath.ApplyFrontierLimit(
+                orders,
+                frontierBudget,
+                virtualUncappedCount);
         }
         private void AddRefuelOrders(List<PrototypeWorkOrder> orders)
         {
@@ -420,28 +468,56 @@ namespace Societies.Simulation
             IReadOnlyList<PrototypeResourceSiteState> resources,
             IReadOnlyDictionary<string, int> committedCarries,
             float currentHour,
-            PrototypeWeather weather)
+            PrototypeWeather weather,
+            IReadOnlySet<string> activeClaimedOrderIds,
+            ref int omittedExtractionOrderCount)
         {
-            AddExtractionOrders(orders, resources, "logs", Math.Max(0, GetLogTarget() - GetAccessibleResourceCount("logs", committedCarries)), 640);
-            AddExtractionOrders(orders, resources, "berries", Math.Max(0, GetBerryTarget() - GetAccessibleResourceCount("berries", committedCarries)), 900);
-            AddExtractionOrders(orders, resources, "reeds", Math.Max(0, GetPendingConstructionRequirement("thatch") - GetAccessibleResourceCount("reeds", committedCarries)), 700);
-            AddExtractionOrders(orders, resources, "stone", Math.Max(0, GetPendingConstructionRequirement("stone") - GetAccessibleResourceCount("stone", committedCarries)), 620);
-            AddExtractionOrders(orders, resources, "clay", Math.Max(0, GetPendingConstructionRequirement("clay") - GetAccessibleResourceCount("clay", committedCarries)), 620);
+            AddExtractionOrders(orders, resources, "logs", Math.Max(0, GetLogTarget() - GetAccessibleResourceCount("logs", committedCarries)), 640, activeClaimedOrderIds, ref omittedExtractionOrderCount);
+            AddExtractionOrders(orders, resources, "berries", Math.Max(0, GetBerryTarget() - GetAccessibleResourceCount("berries", committedCarries)), 900, activeClaimedOrderIds, ref omittedExtractionOrderCount);
+            AddExtractionOrders(orders, resources, "reeds", Math.Max(0, GetPendingConstructionRequirement("thatch") - GetAccessibleResourceCount("reeds", committedCarries)), 700, activeClaimedOrderIds, ref omittedExtractionOrderCount);
+            AddExtractionOrders(orders, resources, "stone", Math.Max(0, GetPendingConstructionRequirement("stone") - GetAccessibleResourceCount("stone", committedCarries)), 620, activeClaimedOrderIds, ref omittedExtractionOrderCount);
+            AddExtractionOrders(orders, resources, "clay", Math.Max(0, GetPendingConstructionRequirement("clay") - GetAccessibleResourceCount("clay", committedCarries)), 620, activeClaimedOrderIds, ref omittedExtractionOrderCount);
         }
         private void AddExtractionOrders(
             List<PrototypeWorkOrder> orders,
             IReadOnlyList<PrototypeResourceSiteState> resources,
             string resourceId,
             int desiredUnits,
-            int priority)
+            int priority,
+            IReadOnlySet<string> activeClaimedOrderIds,
+            ref int omittedExtractionOrderCount)
         {
             if (desiredUnits <= 0)
             {
                 return;
             }
 
-            List<PrototypeExtractionCandidate> candidates = resources
+            List<PrototypeResourceSiteState> eligibleSites = resources
                 .Where(site => site.ResourceId == resourceId && site.UnitsRemaining > 0)
+                .ToList();
+            bool hasBuiltCorridor = _pathSegments.Any(segment =>
+                segment.IsBuilt &&
+                string.Equals(segment.CorridorId, $"corridor.{resourceId}", StringComparison.Ordinal));
+            int priorityUpperBound = PrototypeExtractionPlanningMath.ComputePriorityUpperBound(
+                priority,
+                hasBuiltCorridor);
+            int frontierBudget = Math.Max(50, _citizens.Count * 5);
+            if (_extractionPlanningMode == PrototypeExtractionPlanningMode.ExactBounded &&
+                !_uncappedOrders &&
+                PrototypeExtractionPlanningMath.TryComputeWholeResourceClassOmission(
+                    orders.Select(order => order.Priority).ToArray(),
+                    frontierBudget,
+                    priorityUpperBound,
+                    eligibleSites.Select(site => $"extract.{site.NodeName}").ToArray(),
+                    activeClaimedOrderIds,
+                    desiredUnits,
+                    out int omittedCount))
+            {
+                omittedExtractionOrderCount += omittedCount;
+                return;
+            }
+
+            List<PrototypeExtractionCandidate> candidates = eligibleSites
                 .Select((site, originalIndex) =>
                 {
                     Vector3 interactionPosition = TryResolveWalkableInteractionPosition(site.Position, out Vector3 resolvedPosition)
@@ -489,10 +565,10 @@ namespace Societies.Simulation
             foreach (PrototypeExtractionCandidate candidate in sites)
             {
                 PrototypeResourceSiteState site = candidate.Site;
+                string orderId = $"extract.{site.NodeName}";
                 Vector3 interactionPosition = candidate.InteractionPosition;
                 bool hasRemoteDepot = GetRemoteDepot(site.ClusterId, requireBuilt: true) != null;
-                bool hasBuiltCorridor = _pathSegments.Any(segment => segment.IsBuilt && string.Equals(segment.CorridorId, $"corridor.{resourceId}", StringComparison.Ordinal));
-                int adjustedPriority = priority;
+                int adjustedPriority = priorityUpperBound;
                 float activationDistance = GetRemoteDepotActivationDistance();
                 float depotDistanceLowerBound = useDepotTopologyBounds
                     ? ComputeRouteDistanceLowerBound(_centralDepot.Position, interactionPosition)
@@ -512,14 +588,9 @@ namespace Societies.Simulation
                     adjustedPriority -= 140;
                 }
 
-                if (hasBuiltCorridor)
-                {
-                    adjustedPriority += 40;
-                }
-
                 orders.Add(new PrototypeWorkOrder
                 {
-                    OrderId = $"extract.{site.NodeName}",
+                    OrderId = orderId,
                     Kind = PrototypeWorkOrderKind.Extract,
                     Priority = adjustedPriority,
                     ResourceId = resourceId,
@@ -591,13 +662,18 @@ namespace Societies.Simulation
                 });
             }
         }
-        private List<PrototypeWorkOrder> RemoveClaimedOrders(List<PrototypeWorkOrder> orders)
+        private HashSet<string> BuildActiveClaimedOrderIds()
         {
-            HashSet<string> claimedOrderIds = _citizens
+            return _citizens
                 .Where(citizen => !string.IsNullOrWhiteSpace(citizen.CurrentOrderId) && citizen.Phase != PrototypeWorkerPhase.Idle && citizen.Phase != PrototypeWorkerPhase.Incapacitated)
                 .Select(citizen => citizen.CurrentOrderId)
                 .ToHashSet(StringComparer.Ordinal);
+        }
 
+        private static List<PrototypeWorkOrder> RemoveClaimedOrders(
+            List<PrototypeWorkOrder> orders,
+            IReadOnlySet<string> claimedOrderIds)
+        {
             return orders
                 .Where(order => !claimedOrderIds.Contains(order.OrderId))
                 .ToList();
