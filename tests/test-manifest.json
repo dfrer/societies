@@ -1,15 +1,15 @@
 {
   "schemaVersion": 3,
-  "updatedUtc": "2026-07-13T02:42:44.0798468Z",
+  "updatedUtc": "2026-07-13T03:52:51.5362235Z",
   "required": {
     "dotnet": {
       "project": "tests/Societies.Core.Tests/Societies.Core.Tests.csproj",
       "command": "dotnet test tests/Societies.Core.Tests/Societies.Core.Tests.csproj --configuration Release",
-      "expectedTestCount": 110,
+      "expectedTestCount": 119,
       "tiers": {
         "fast": {
           "expectedTestCount": 89,
-          "filter": "FullyQualifiedName!~PrototypeRuntimeSessionTests&FullyQualifiedName!~PrototypeSettlementSimulationTests&FullyQualifiedName!~SettlementDiagnosticsTests&FullyQualifiedName!~WorkOrderGenerationDiagnosticsTests"
+          "filter": "FullyQualifiedName!~PrototypeRuntimeSessionTests&FullyQualifiedName!~PrototypeSettlementSimulationTests&FullyQualifiedName!~SettlementDiagnosticsTests&FullyQualifiedName!~WorkOrderGenerationDiagnosticsTests&FullyQualifiedName!~OrderSelectionTests"
         },
         "integration": {
           "expectedTestCount": 11,
@@ -19,10 +19,11 @@
           ]
         },
         "soak": {
-          "expectedTestCount": 10,
+          "expectedTestCount": 19,
           "classes": [
             "Societies.Core.Tests.PrototypeRuntimeSessionTests",
-            "Societies.Core.Tests.PrototypeSettlementSimulationTests"
+            "Societies.Core.Tests.PrototypeSettlementSimulationTests",
+            "Societies.Core.Tests.OrderSelectionTests"
           ]
         }
       }
@@ -79,12 +80,14 @@
       "command": "./scripts/run-performance-pair.ps1 -Scenario balanced_basin -Seed 1337 -Citizens 3 -Ticks 3 -CacheMode cold",
       "releaseCommand": "./scripts/run-performance-pair.ps1 -ReleaseExport -Scenario balanced_basin -Seed 1337 -Citizens 3 -Ticks 3 -CacheMode cold",
       "cacheModeComparisonScript": "scripts/run-performance-cache-modes.ps1",
+      "jobSelectionComparisonScript": "scripts/run-job-selection-comparison.ps1",
+      "jobSelectionComparisonCommand": "./scripts/run-job-selection-comparison.ps1 -ReleaseExport -Scenario balanced_basin -Seed 1337 -Citizens 16 -Ticks 300 -Trials 3",
       "baselineMatrixScript": "scripts/run-performance-baseline-matrix.ps1",
       "baselineMatrixCommand": "./scripts/run-performance-baseline-matrix.ps1",
       "baselineMatrixResultSchemaVersion": 1,
       "baselineMatrixCanonicalPairCount": 14,
       "baselineMatrixStatus": "passed_contract_safety_failed",
-      "resultSchemaVersion": 3,
+      "resultSchemaVersion": 4,
       "requiredGodotVersion": "4.6.2",
       "requiredForPullRequest": false,
       "runModes": [
@@ -95,6 +98,10 @@
         "cold",
         "natural_warm",
         "forced_invalidation"
+      ],
+      "selectorModes": [
+        "exact_branch_and_bound",
+        "exhaustive_reference"
       ],
       "executionRoutes": {
         "editorScene": {
@@ -142,6 +149,6 @@
   "history": {
     "preSyncCommit": "c58e3de",
     "preSyncDotnetTestCount": 64,
-    "note": "The synchronized master adds 12 PrototypeMetricsTracker tests and 3 WorkOrderGenerationDiagnostics tests for a historical 79-test floor. W1-03b adds three cache-probe contract tests, W1-03c adds five natural-invalidation progression cases, and W1-04 adds seven navigation, unreachable-assignment, and legacy-resume correctness cases. The current manifest declares 110 required .NET tests."
+    "note": "The synchronized master adds 12 PrototypeMetricsTracker tests and 3 WorkOrderGenerationDiagnostics tests for a historical 79-test floor. W1-03b adds three cache-probe contract tests, W1-03c adds five natural-invalidation progression cases, W1-04 adds seven navigation, unreachable-assignment, and legacy-resume correctness cases, and W1-05 adds nine exact-selector contract and 300-tick differential cases. The current manifest declares 119 required .NET tests."
   }
 }

@@ -16,8 +16,12 @@ namespace Societies.Core
         private PrototypeSettlementSimulation? _settlementSimulation;
         private WorldGenerationResult? _world;
         private int _simulationSeed;
+        private readonly PrototypeOrderSelectionMode _orderSelectionMode;
 
-        public PrototypeRuntimeSession(PrototypeScenarioDefinition scenario, IReadOnlyList<PrototypeRoleQuotaDefinition>? roleQuotas = null)
+        public PrototypeRuntimeSession(
+            PrototypeScenarioDefinition scenario,
+            IReadOnlyList<PrototypeRoleQuotaDefinition>? roleQuotas = null,
+            PrototypeOrderSelectionMode orderSelectionMode = PrototypeOrderSelectionMode.ExactBranchAndBound)
         {
             Scenario = scenario;
             Inventory = new InventoryComponent();
@@ -26,6 +30,7 @@ namespace Societies.Core
             MetricsTracker = new PrototypeMetricsTracker();
             _simulationSeed = scenario.SimulationSeed;
             _roleQuotas = roleQuotas?.ToList() ?? new List<PrototypeRoleQuotaDefinition>();
+            _orderSelectionMode = orderSelectionMode;
         }
 
         public PrototypeScenarioDefinition Scenario { get; }
@@ -45,6 +50,8 @@ namespace Societies.Core
         public float RunStartHour { get; private set; }
 
         public int SimulationSeed => _simulationSeed;
+
+        public PrototypeOrderSelectionMode OrderSelectionMode => _orderSelectionMode;
 
         public PrototypeWeather CurrentWeather => _weatherSimulation?.CurrentWeather ?? PrototypeWeather.Clear;
 
@@ -105,7 +112,14 @@ namespace Societies.Core
                         NavigationInvalidations = diagnostics.NavigationInvalidations,
                         WorkerCount = diagnostics.WorkerCount,
                         IdleCitizensConsideringWorkOrders = diagnostics.IdleCitizensConsideringWorkOrders,
-                        CandidateOrdersEvaluated = diagnostics.CandidateOrdersEvaluated
+                        CandidateOrdersEvaluated = diagnostics.CandidateOrdersEvaluated,
+                        SelectorCandidatesBounded = diagnostics.SelectorCandidatesBounded,
+                        SelectorCandidatesExactScored = diagnostics.SelectorCandidatesExactScored,
+                        SelectorCandidatesPruned = diagnostics.SelectorCandidatesPruned,
+                        SelectorExactPathQueries = diagnostics.SelectorExactPathQueries,
+                        SelectorPathCacheHits = diagnostics.SelectorPathCacheHits,
+                        SelectorPathCacheMisses = diagnostics.SelectorPathCacheMisses,
+                        SelectorSelectedRouteReuses = diagnostics.SelectorSelectedRouteReuses
                     };
             }
         }
@@ -171,7 +185,11 @@ namespace Societies.Core
             Stockpile.ReplaceContents(new Dictionary<string, int>());
             _world = PrototypeWorldGenerator.Generate(Scenario);
             _weatherSimulation = new PrototypeWeatherSimulation(_simulationSeed);
-            _settlementSimulation = new PrototypeSettlementSimulation(Scenario, _roleQuotas, _world);
+            _settlementSimulation = new PrototypeSettlementSimulation(
+                Scenario,
+                _roleQuotas,
+                _world,
+                orderSelectionMode: _orderSelectionMode);
             SyncSettlementViews();
         }
 
@@ -378,7 +396,11 @@ namespace Societies.Core
             _weatherSimulation = new PrototypeWeatherSimulation(_simulationSeed, ParseWeather(snapshot.CurrentWeather));
             _weatherSimulation.SetState(ParseWeather(snapshot.CurrentWeather), snapshot.TimeUntilNextWeatherShift, snapshot.WeatherRandomState);
 
-            _settlementSimulation = new PrototypeSettlementSimulation(Scenario, _roleQuotas, _world);
+            _settlementSimulation = new PrototypeSettlementSimulation(
+                Scenario,
+                _roleQuotas,
+                _world,
+                orderSelectionMode: _orderSelectionMode);
             _settlementSimulation.LoadState(snapshot.Settlement ?? new PrototypeSettlementSnapshot());
             SyncSettlementViews();
             MetricsTracker.Clear();

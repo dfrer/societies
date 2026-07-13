@@ -20,6 +20,8 @@ namespace Societies.Core
         private const double BacklogWarningCooldownSeconds = 5.0;
         private const string RuntimeMetricsEnvironmentVariable = "SOCIETIES_PERF_METRICS";
         private const string DefaultScenarioId = "balanced_basin";
+        private const string ExactBranchAndBoundSelectorMode = "exact_branch_and_bound";
+        private const string ExhaustiveReferenceSelectorMode = "exhaustive_reference";
 
         public static GameManager? Instance { get; private set; }
 
@@ -62,6 +64,7 @@ namespace Societies.Core
         private string? _performanceScenarioIdOverride;
         private int _performanceSimulationSeedOverride;
         private int _performanceCitizenCountOverride;
+        private PrototypeOrderSelectionMode _performanceOrderSelectionModeOverride = PrototypeOrderSelectionMode.ExactBranchAndBound;
         private bool _readyStarted;
 
         public bool IsGameRunning { get; private set; }
@@ -71,6 +74,9 @@ namespace Societies.Core
         public long SimulationTick => _runtimeSession?.SimulationTick ?? 0;
 
         public int CitizenCount => _runtimeSession?.Workers.Count ?? _initialWorkers;
+
+        public PrototypeOrderSelectionMode CurrentOrderSelectionMode =>
+            _runtimeSession?.OrderSelectionMode ?? PrototypeOrderSelectionMode.ExactBranchAndBound;
 
         public double? PerformanceBootstrapMilliseconds { get; private set; }
 
@@ -231,7 +237,11 @@ namespace Societies.Core
             return _runtimeSession.TryPrepareForcedPathCompletionForPerformance(out structureId);
         }
 
-        internal void ConfigurePerformanceStartup(string scenarioId, int simulationSeed, int citizenCount)
+        internal void ConfigurePerformanceStartup(
+            string scenarioId,
+            int simulationSeed,
+            int citizenCount,
+            string selectorMode = ExactBranchAndBoundSelectorMode)
         {
             if (_readyStarted || IsInsideTree())
             {
@@ -248,10 +258,20 @@ namespace Societies.Core
                 throw new ArgumentOutOfRangeException(nameof(citizenCount), citizenCount, "Citizen count must be between 1 and 256.");
             }
 
+            PrototypeOrderSelectionMode orderSelectionMode = selectorMode switch
+            {
+                ExactBranchAndBoundSelectorMode => PrototypeOrderSelectionMode.ExactBranchAndBound,
+                ExhaustiveReferenceSelectorMode => PrototypeOrderSelectionMode.ExhaustiveReference,
+                _ => throw new ArgumentException(
+                    "Selector mode must be 'exact_branch_and_bound' or 'exhaustive_reference'.",
+                    nameof(selectorMode))
+            };
+
             _hasPerformanceStartupOverride = true;
             _performanceScenarioIdOverride = scenarioId;
             _performanceSimulationSeedOverride = simulationSeed;
             _performanceCitizenCountOverride = citizenCount;
+            _performanceOrderSelectionModeOverride = orderSelectionMode;
         }
 
         public bool TryCraftRecipe(string recipeId)
@@ -654,7 +674,13 @@ namespace Societies.Core
                 _scenePresenter?.UpdateTerrain(_terrain);
             }
 
-            _runtimeSession = new PrototypeRuntimeSession(scenario, _catalogs?.RoleQuotas.Roles);
+            PrototypeOrderSelectionMode orderSelectionMode = _hasPerformanceStartupOverride
+                ? _performanceOrderSelectionModeOverride
+                : PrototypeOrderSelectionMode.ExactBranchAndBound;
+            _runtimeSession = new PrototypeRuntimeSession(
+                scenario,
+                _catalogs?.RoleQuotas.Roles,
+                orderSelectionMode);
             BindPlayerToRuntime();
         }
 

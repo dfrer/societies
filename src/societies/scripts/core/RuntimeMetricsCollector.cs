@@ -16,6 +16,7 @@ namespace Societies.Core
         SimulationTick,
         SessionAdvance,
         BuildWorkOrders,
+        RouteSelection,
         HarvestApply,
         SceneSync,
         UpdateHud,
@@ -42,6 +43,20 @@ namespace Societies.Core
         public int IdleCitizensConsideringWorkOrders { get; init; } = 0;
 
         public int CandidateOrdersEvaluated { get; init; } = 0;
+
+        public int SelectorCandidatesBounded { get; init; } = 0;
+
+        public int SelectorCandidatesExactScored { get; init; } = 0;
+
+        public int SelectorCandidatesPruned { get; init; } = 0;
+
+        public int SelectorExactPathQueries { get; init; } = 0;
+
+        public int SelectorPathCacheHits { get; init; } = 0;
+
+        public int SelectorPathCacheMisses { get; init; } = 0;
+
+        public int SelectorSelectedRouteReuses { get; init; } = 0;
     }
 
     public readonly record struct RuntimePhaseTotals(
@@ -53,6 +68,8 @@ namespace Societies.Core
         double UpdateHudMilliseconds)
     {
         public double NavigationRebuildMilliseconds { get; init; } = 0.0;
+
+        public double RouteSelectionMilliseconds { get; init; } = 0.0;
     }
 
     public readonly record struct RuntimeMetricsBatch(
@@ -84,6 +101,20 @@ namespace Societies.Core
 
         public long CandidateOrdersEvaluatedTotal { get; init; } = 0;
 
+        public long SelectorCandidatesBoundedTotal { get; init; } = 0;
+
+        public long SelectorCandidatesExactScoredTotal { get; init; } = 0;
+
+        public long SelectorCandidatesPrunedTotal { get; init; } = 0;
+
+        public long SelectorExactPathQueriesTotal { get; init; } = 0;
+
+        public long SelectorPathCacheHitsTotal { get; init; } = 0;
+
+        public long SelectorPathCacheMissesTotal { get; init; } = 0;
+
+        public long SelectorSelectedRouteReusesTotal { get; init; } = 0;
+
         public double? CandidateOrdersPerIdleCitizen => IdleCitizensConsideringWorkOrdersTotal > 0
             ? (double)CandidateOrdersEvaluatedTotal / IdleCitizensConsideringWorkOrdersTotal
             : null;
@@ -102,7 +133,10 @@ namespace Societies.Core
             "work_orders_remaining_last,path_plan_lookups_total,path_plan_cache_hits_total,citizens_evaluated_total," +
             "path_plan_cache_misses_total,path_plan_cache_size_last,navigation_invalidations_total,worker_count_last," +
             "idle_citizens_considering_work_orders_total,candidate_orders_evaluated_total," +
-            "candidate_orders_per_idle_citizen,navigation_rebuild_ms";
+            "candidate_orders_per_idle_citizen,navigation_rebuild_ms," +
+            "route_selection_ms,selector_candidates_bounded_total,selector_candidates_exact_scored_total," +
+            "selector_candidates_pruned_total,selector_exact_path_queries_total,selector_path_cache_hits_total," +
+            "selector_path_cache_misses_total,selector_selected_route_reuses_total";
 
         private readonly RuntimeMetricsBatch[] _batches;
         private readonly TimeProvider _clock;
@@ -130,6 +164,7 @@ namespace Societies.Core
         private double _sceneSyncMilliseconds;
         private double _updateHudMilliseconds;
         private double _navigationRebuildMilliseconds;
+        private double _routeSelectionMilliseconds;
         private long _workOrdersGeneratedTotal;
         private long _workOrdersGeneratedUncappedTotal;
         private long _workOrdersClaimedTotal;
@@ -143,6 +178,13 @@ namespace Societies.Core
         private int? _workerCountLast;
         private long _idleCitizensConsideringWorkOrdersTotal;
         private long _candidateOrdersEvaluatedTotal;
+        private long _selectorCandidatesBoundedTotal;
+        private long _selectorCandidatesExactScoredTotal;
+        private long _selectorCandidatesPrunedTotal;
+        private long _selectorExactPathQueriesTotal;
+        private long _selectorPathCacheHitsTotal;
+        private long _selectorPathCacheMissesTotal;
+        private long _selectorSelectedRouteReusesTotal;
 
         public RuntimeMetricsCollector(int capacity = 4096, TimeProvider? clock = null)
         {
@@ -249,6 +291,13 @@ namespace Societies.Core
             _workerCountLast = diagnostics.WorkerCount;
             _idleCitizensConsideringWorkOrdersTotal += diagnostics.IdleCitizensConsideringWorkOrders;
             _candidateOrdersEvaluatedTotal += diagnostics.CandidateOrdersEvaluated;
+            _selectorCandidatesBoundedTotal += diagnostics.SelectorCandidatesBounded;
+            _selectorCandidatesExactScoredTotal += diagnostics.SelectorCandidatesExactScored;
+            _selectorCandidatesPrunedTotal += diagnostics.SelectorCandidatesPruned;
+            _selectorExactPathQueriesTotal += diagnostics.SelectorExactPathQueries;
+            _selectorPathCacheHitsTotal += diagnostics.SelectorPathCacheHits;
+            _selectorPathCacheMissesTotal += diagnostics.SelectorPathCacheMisses;
+            _selectorSelectedRouteReusesTotal += diagnostics.SelectorSelectedRouteReuses;
         }
 
         public void EndBatch(long endSimulationTick)
@@ -292,7 +341,8 @@ namespace Societies.Core
                     _sceneSyncMilliseconds,
                     _updateHudMilliseconds)
                 {
-                    NavigationRebuildMilliseconds = _navigationRebuildMilliseconds
+                    NavigationRebuildMilliseconds = _navigationRebuildMilliseconds,
+                    RouteSelectionMilliseconds = _routeSelectionMilliseconds
                 },
                 _workOrdersGeneratedTotal,
                 _workOrdersGeneratedUncappedTotal,
@@ -307,7 +357,14 @@ namespace Societies.Core
                 NavigationInvalidationsTotal = _navigationInvalidationsTotal,
                 WorkerCountLast = _workerCountLast,
                 IdleCitizensConsideringWorkOrdersTotal = _idleCitizensConsideringWorkOrdersTotal,
-                CandidateOrdersEvaluatedTotal = _candidateOrdersEvaluatedTotal
+                CandidateOrdersEvaluatedTotal = _candidateOrdersEvaluatedTotal,
+                SelectorCandidatesBoundedTotal = _selectorCandidatesBoundedTotal,
+                SelectorCandidatesExactScoredTotal = _selectorCandidatesExactScoredTotal,
+                SelectorCandidatesPrunedTotal = _selectorCandidatesPrunedTotal,
+                SelectorExactPathQueriesTotal = _selectorExactPathQueriesTotal,
+                SelectorPathCacheHitsTotal = _selectorPathCacheHitsTotal,
+                SelectorPathCacheMissesTotal = _selectorPathCacheMissesTotal,
+                SelectorSelectedRouteReusesTotal = _selectorSelectedRouteReusesTotal
             };
 
             Store(batch);
@@ -405,6 +462,9 @@ namespace Societies.Core
                 case RuntimeMetricsPhase.BuildWorkOrders:
                     _buildWorkOrdersMilliseconds += elapsedMilliseconds;
                     break;
+                case RuntimeMetricsPhase.RouteSelection:
+                    _routeSelectionMilliseconds += elapsedMilliseconds;
+                    break;
                 case RuntimeMetricsPhase.HarvestApply:
                     _harvestApplyMilliseconds += elapsedMilliseconds;
                     break;
@@ -468,6 +528,7 @@ namespace Societies.Core
             _sceneSyncMilliseconds = 0.0;
             _updateHudMilliseconds = 0.0;
             _navigationRebuildMilliseconds = 0.0;
+            _routeSelectionMilliseconds = 0.0;
             _workOrdersGeneratedTotal = 0;
             _workOrdersGeneratedUncappedTotal = 0;
             _workOrdersClaimedTotal = 0;
@@ -481,6 +542,13 @@ namespace Societies.Core
             _workerCountLast = null;
             _idleCitizensConsideringWorkOrdersTotal = 0;
             _candidateOrdersEvaluatedTotal = 0;
+            _selectorCandidatesBoundedTotal = 0;
+            _selectorCandidatesExactScoredTotal = 0;
+            _selectorCandidatesPrunedTotal = 0;
+            _selectorExactPathQueriesTotal = 0;
+            _selectorPathCacheHitsTotal = 0;
+            _selectorPathCacheMissesTotal = 0;
+            _selectorSelectedRouteReusesTotal = 0;
             Array.Clear(_activePhaseTokenIds);
         }
 
@@ -517,7 +585,15 @@ namespace Societies.Core
                 batch.CandidateOrdersPerIdleCitizen.HasValue
                     ? FormatDouble(batch.CandidateOrdersPerIdleCitizen.Value)
                     : string.Empty,
-                FormatDouble(batch.Phases.NavigationRebuildMilliseconds)
+                FormatDouble(batch.Phases.NavigationRebuildMilliseconds),
+                FormatDouble(batch.Phases.RouteSelectionMilliseconds),
+                batch.SelectorCandidatesBoundedTotal.ToString(CultureInfo.InvariantCulture),
+                batch.SelectorCandidatesExactScoredTotal.ToString(CultureInfo.InvariantCulture),
+                batch.SelectorCandidatesPrunedTotal.ToString(CultureInfo.InvariantCulture),
+                batch.SelectorExactPathQueriesTotal.ToString(CultureInfo.InvariantCulture),
+                batch.SelectorPathCacheHitsTotal.ToString(CultureInfo.InvariantCulture),
+                batch.SelectorPathCacheMissesTotal.ToString(CultureInfo.InvariantCulture),
+                batch.SelectorSelectedRouteReusesTotal.ToString(CultureInfo.InvariantCulture)
             };
 
             writer.WriteLine(string.Join(',', values));

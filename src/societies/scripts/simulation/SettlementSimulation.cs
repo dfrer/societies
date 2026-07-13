@@ -112,15 +112,18 @@ namespace Societies.Simulation
         private int _hearthLitTicks;
         private int _totalTicks;
         private readonly bool _uncappedOrders;
+        private readonly PrototypeOrderSelectionMode _orderSelectionMode;
         public PrototypeSettlementSimulation(
             PrototypeScenarioDefinition scenario,
             IReadOnlyList<PrototypeRoleQuotaDefinition> roleQuotas,
             WorldGenerationResult world,
-            bool uncappedOrders = false)
+            bool uncappedOrders = false,
+            PrototypeOrderSelectionMode orderSelectionMode = PrototypeOrderSelectionMode.ExactBranchAndBound)
         {
             _scenario = scenario;
             _world = world;
             _uncappedOrders = uncappedOrders;
+            _orderSelectionMode = orderSelectionMode;
             _centralDepot = CreateStore("central_depot", "Central Depot", 120, GetStructurePosition("central_depot", 0));
             SeedStartingStock();
             InitializeSiteCaches();
@@ -132,6 +135,8 @@ namespace Societies.Simulation
             UpdateClassification();
         }
         public IReadOnlyList<PrototypeWorkerState> Workers => _citizens;
+
+        public PrototypeOrderSelectionMode OrderSelectionMode => _orderSelectionMode;
 
         public IReadOnlyList<PrototypeWorkerState> Citizens => _citizens;
 
@@ -175,6 +180,13 @@ namespace Societies.Simulation
             public int IdleCitizensConsideringWorkOrders;
             public int CandidateOrdersEvaluated;
             public int UnreachableWorkOrderCandidatesSkipped;
+            public int SelectorCandidatesBounded;
+            public int SelectorCandidatesExactScored;
+            public int SelectorCandidatesPruned;
+            public int SelectorExactPathQueries;
+            public int SelectorPathCacheHits;
+            public int SelectorPathCacheMisses;
+            public int SelectorSelectedRouteReuses;
             public int CitizensEvaluated;
             public int PeakOrdersThisSession;
         }
@@ -190,6 +202,13 @@ namespace Societies.Simulation
         private int _idleCitizensConsideringWorkOrdersThisTick;
         private int _candidateOrdersEvaluatedThisTick;
         private int _unreachableWorkOrderCandidatesSkippedThisTick;
+        private int _selectorCandidatesBoundedThisTick;
+        private int _selectorCandidatesExactScoredThisTick;
+        private int _selectorCandidatesPrunedThisTick;
+        private int _selectorExactPathQueriesThisTick;
+        private int _selectorPathCacheHitsThisTick;
+        private int _selectorPathCacheMissesThisTick;
+        private int _selectorSelectedRouteReusesThisTick;
         private int _citizensEvaluatedThisTick;
 
         public PrototypeSettlementDiagnosticsState Diagnostics => _diagnostics;
@@ -274,6 +293,13 @@ namespace Societies.Simulation
             _idleCitizensConsideringWorkOrdersThisTick = 0;
             _candidateOrdersEvaluatedThisTick = 0;
             _unreachableWorkOrderCandidatesSkippedThisTick = 0;
+            _selectorCandidatesBoundedThisTick = 0;
+            _selectorCandidatesExactScoredThisTick = 0;
+            _selectorCandidatesPrunedThisTick = 0;
+            _selectorExactPathQueriesThisTick = 0;
+            _selectorPathCacheHitsThisTick = 0;
+            _selectorPathCacheMissesThisTick = 0;
+            _selectorSelectedRouteReusesThisTick = 0;
             _citizensEvaluatedThisTick = 0;
 
             CommitPreparedForcedPathCompletion(result, runtimeMetrics);
@@ -328,6 +354,13 @@ namespace Societies.Simulation
             _diagnostics.IdleCitizensConsideringWorkOrders = _idleCitizensConsideringWorkOrdersThisTick;
             _diagnostics.CandidateOrdersEvaluated = _candidateOrdersEvaluatedThisTick;
             _diagnostics.UnreachableWorkOrderCandidatesSkipped = _unreachableWorkOrderCandidatesSkippedThisTick;
+            _diagnostics.SelectorCandidatesBounded = _selectorCandidatesBoundedThisTick;
+            _diagnostics.SelectorCandidatesExactScored = _selectorCandidatesExactScoredThisTick;
+            _diagnostics.SelectorCandidatesPruned = _selectorCandidatesPrunedThisTick;
+            _diagnostics.SelectorExactPathQueries = _selectorExactPathQueriesThisTick;
+            _diagnostics.SelectorPathCacheHits = _selectorPathCacheHitsThisTick;
+            _diagnostics.SelectorPathCacheMisses = _selectorPathCacheMissesThisTick;
+            _diagnostics.SelectorSelectedRouteReuses = _selectorSelectedRouteReusesThisTick;
             _diagnostics.CitizensEvaluated = _citizensEvaluatedThisTick;
             if (_workOrdersGeneratedThisTick > _diagnostics.PeakOrdersThisSession)
             {

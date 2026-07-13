@@ -22,6 +22,8 @@ namespace Societies.Tests
         private const string ColdCacheMode = "cold";
         private const string NaturalWarmCacheMode = "natural_warm";
         private const string ForcedInvalidationCacheMode = "forced_invalidation";
+        private const string OptimizedSelectorMode = "exact_branch_and_bound";
+        private const string ExhaustiveSelectorMode = "exhaustive_reference";
         private const int MaximumMeasuredTicks = 4096;
         private static readonly UTF8Encoding Utf8NoBom = new(encoderShouldEmitUTF8Identifier: false);
         private static readonly JsonSerializerOptions JsonOptions = new()
@@ -92,7 +94,8 @@ namespace Societies.Tests
                 manager.ConfigurePerformanceStartup(
                     configuration.ScenarioId,
                     configuration.SimulationSeed,
-                    configuration.CitizenCount);
+                    configuration.CitizenCount,
+                    configuration.SelectorMode);
                 manager.SetProcess(false);
 
                 long sceneSetupStart = Stopwatch.GetTimestamp();
@@ -322,6 +325,7 @@ namespace Societies.Tests
                 "--project-path",
                 "--runner-executable",
                 "--cache-mode",
+                "--selector-mode",
                 "--comparison-group",
                 "--trial-index",
                 "--allow-safety-failure"
@@ -416,6 +420,14 @@ namespace Societies.Tests
                 _ => throw new ArgumentException("Metrics mode must be 'on' or 'off'.")
             };
 
+            string selectorMode = values["--selector-mode"] switch
+            {
+                OptimizedSelectorMode => OptimizedSelectorMode,
+                ExhaustiveSelectorMode => ExhaustiveSelectorMode,
+                _ => throw new ArgumentException(
+                    "Selector mode must be 'exact_branch_and_bound' or 'exhaustive_reference'.")
+            };
+
             return new PerformanceRunConfiguration
             {
                 ScenarioId = scenarioId,
@@ -433,6 +445,7 @@ namespace Societies.Tests
                 ProjectPath = projectPath,
                 RunnerExecutablePath = runnerExecutablePath,
                 CacheMode = cacheMode,
+                SelectorMode = selectorMode,
                 ComparisonGroup = comparisonGroup,
                 TrialIndex = trialIndex,
                 WarmupMode = warmupTicks > 0 ? "simulation_ticks" : "none",
@@ -721,7 +734,7 @@ namespace Societies.Tests
                 RunSummary = Path.Combine(root, "run-summary-v2.json"),
                 WorldSummary = Path.Combine(root, "world-summary-v2.json"),
                 DeterministicMetricsCsv = Path.Combine(root, "metrics-timeseries-v2.csv"),
-                RuntimeMetricsCsv = Path.Combine(root, "runtime-batch-metrics-v3.csv"),
+                RuntimeMetricsCsv = Path.Combine(root, "runtime-batch-metrics-v4.csv"),
                 PerformanceResults = Path.Combine(root, "perf-results.json"),
                 PerformanceMatrix = Path.Combine(root, "perf-matrix.csv"),
                 PerformanceSummary = Path.Combine(root, "perf-summary.txt"),
@@ -796,6 +809,11 @@ namespace Societies.Tests
                 {
                     throw new InvalidOperationException($"Runtime metrics batch {index} violates path lookup accounting.");
                 }
+                if (batch.SelectorPathCacheHitsTotal + batch.SelectorPathCacheMissesTotal != batch.SelectorExactPathQueriesTotal)
+                {
+                    throw new InvalidOperationException(
+                        $"Runtime metrics batch {index} does not account for every selector exact-path query.");
+                }
                 if (batch.WorkerCountLast != configuration.CitizenCount)
                 {
                     throw new InvalidOperationException($"Runtime metrics batch {index} has the wrong worker count.");
@@ -829,6 +847,9 @@ namespace Societies.Tests
             long pathMisses = batches.Sum(batch => batch.PathPlanCacheMissesTotal);
             long idleCitizens = batches.Sum(batch => batch.IdleCitizensConsideringWorkOrdersTotal);
             long candidateOrders = batches.Sum(batch => batch.CandidateOrdersEvaluatedTotal);
+            long selectorQueries = batches.Sum(batch => batch.SelectorExactPathQueriesTotal);
+            long selectorHits = batches.Sum(batch => batch.SelectorPathCacheHitsTotal);
+            long selectorMisses = batches.Sum(batch => batch.SelectorPathCacheMissesTotal);
             var diagnostics = new PerformanceDiagnosticsSummary
             {
                 BatchCount = batches.Length,
@@ -846,6 +867,14 @@ namespace Societies.Tests
                 IdleCitizensConsideringWorkOrders = idleCitizens,
                 CandidateOrdersEvaluated = candidateOrders,
                 CandidateOrdersPerIdleCitizen = idleCitizens > 0 ? (double)candidateOrders / idleCitizens : null,
+                SelectorCandidatesBounded = batches.Sum(batch => batch.SelectorCandidatesBoundedTotal),
+                SelectorCandidatesExactScored = batches.Sum(batch => batch.SelectorCandidatesExactScoredTotal),
+                SelectorCandidatesPruned = batches.Sum(batch => batch.SelectorCandidatesPrunedTotal),
+                SelectorExactPathQueries = selectorQueries,
+                SelectorPathCacheHits = selectorHits,
+                SelectorPathCacheMisses = selectorMisses,
+                SelectorPathCacheHitRate = selectorQueries > 0 ? (double)selectorHits / selectorQueries : null,
+                SelectorSelectedRouteReuses = batches.Sum(batch => batch.SelectorSelectedRouteReusesTotal),
                 NavigationInvalidations = batches.Sum(batch => batch.NavigationInvalidationsTotal),
                 WorkOrdersGenerated = batches.Sum(batch => batch.WorkOrdersGeneratedTotal),
                 WorkOrdersGeneratedUncapped = batches.Sum(batch => batch.WorkOrdersGeneratedUncappedTotal),
@@ -859,7 +888,8 @@ namespace Societies.Tests
                     HarvestApplyMilliseconds = batches.Sum(batch => batch.Phases.HarvestApplyMilliseconds),
                     SceneSyncMilliseconds = batches.Sum(batch => batch.Phases.SceneSyncMilliseconds),
                     UpdateHudMilliseconds = batches.Sum(batch => batch.Phases.UpdateHudMilliseconds),
-                    NavigationRebuildMilliseconds = batches.Sum(batch => batch.Phases.NavigationRebuildMilliseconds)
+                    NavigationRebuildMilliseconds = batches.Sum(batch => batch.Phases.NavigationRebuildMilliseconds),
+                    RouteSelectionMilliseconds = batches.Sum(batch => batch.Phases.RouteSelectionMilliseconds)
                 }
             };
             PerformanceSampleStatistics internalStatistics = PerformanceRunStatistics.Compute(
@@ -871,7 +901,7 @@ namespace Societies.Tests
         {
             if (!File.Exists(path))
             {
-                throw new InvalidOperationException("Metrics-enabled run did not export runtime-batch-metrics-v3.csv.");
+                throw new InvalidOperationException("Metrics-enabled run did not export runtime-batch-metrics-v4.csv.");
             }
 
             string[] lines = File.ReadAllLines(path);
@@ -882,15 +912,27 @@ namespace Societies.Tests
             }
 
             string[] header = lines[0].Split(',');
-            if (header.Length != 28 || !header.Contains("navigation_rebuild_ms", StringComparer.Ordinal))
+            string[] requiredHeaders =
             {
-                throw new InvalidOperationException("Runtime metrics CSV schema is not the expected 28-column V3 schema.");
+                "navigation_rebuild_ms",
+                "route_selection_ms",
+                "selector_candidates_bounded_total",
+                "selector_candidates_exact_scored_total",
+                "selector_candidates_pruned_total",
+                "selector_exact_path_queries_total",
+                "selector_path_cache_hits_total",
+                "selector_path_cache_misses_total",
+                "selector_selected_route_reuses_total"
+            };
+            if (header.Length != 36 || requiredHeaders.Any(required => !header.Contains(required, StringComparer.Ordinal)))
+            {
+                throw new InvalidOperationException("Runtime metrics CSV schema is not the expected 36-column V4 schema.");
             }
 
             for (int index = 1; index < lines.Length; index++)
             {
                 string[] columns = lines[index].Split(',');
-                if (columns.Length != 28 ||
+                if (columns.Length != 36 ||
                     !string.Equals(columns[1], "manual_step", StringComparison.Ordinal) ||
                     !string.Equals(columns[4], "1", StringComparison.Ordinal))
                 {
@@ -1008,7 +1050,10 @@ namespace Societies.Tests
                 "managed_build,managed_assembly_configuration,verified_release_execution," +
                 "budget_profile,bootstrap_ms,warmup_ms,p50_ms,p95_ms,p99_ms,max_ms,mean_ms,total_ms," +
                 "serialization_ms,path_lookups,path_hits,path_misses,cache_size_last,candidates_per_idle," +
-                "invalidations,navigation_rebuild_ms,work_orders_generated,work_orders_generated_uncapped," +
+                "invalidations,navigation_rebuild_ms,route_selection_ms,selector_mode,selector_candidates_bounded," +
+                "selector_candidates_exact_scored,selector_candidates_pruned,selector_exact_path_queries," +
+                "selector_path_hits,selector_path_misses,selector_path_hit_rate,selector_selected_route_reuses," +
+                "work_orders_generated,work_orders_generated_uncapped," +
                 "work_orders_claimed,work_orders_remaining_last,state_event_sha256,target_passed,safety_passed," +
                 "snapshot_path,event_log_path,runtime_metrics_csv,perf_results_path," +
                 "cache_mode,comparison_group,trial_index,cache_preparation_strategy,cache_preparation_ms,cleared_cache_entries," +
@@ -1056,6 +1101,16 @@ namespace Societies.Tests
                 diagnostics?.CandidateOrdersPerIdleCitizen is double candidateRatio ? Format(candidateRatio) : string.Empty,
                 diagnostics?.NavigationInvalidations.ToString(CultureInfo.InvariantCulture) ?? string.Empty,
                 diagnostics != null ? Format(diagnostics.Phases.NavigationRebuildMilliseconds) : string.Empty,
+                diagnostics != null ? Format(diagnostics.Phases.RouteSelectionMilliseconds) : string.Empty,
+                Csv(result.Configuration.SelectorMode),
+                diagnostics?.SelectorCandidatesBounded.ToString(CultureInfo.InvariantCulture) ?? string.Empty,
+                diagnostics?.SelectorCandidatesExactScored.ToString(CultureInfo.InvariantCulture) ?? string.Empty,
+                diagnostics?.SelectorCandidatesPruned.ToString(CultureInfo.InvariantCulture) ?? string.Empty,
+                diagnostics?.SelectorExactPathQueries.ToString(CultureInfo.InvariantCulture) ?? string.Empty,
+                diagnostics?.SelectorPathCacheHits.ToString(CultureInfo.InvariantCulture) ?? string.Empty,
+                diagnostics?.SelectorPathCacheMisses.ToString(CultureInfo.InvariantCulture) ?? string.Empty,
+                diagnostics?.SelectorPathCacheHitRate is double selectorHitRate ? Format(selectorHitRate) : string.Empty,
+                diagnostics?.SelectorSelectedRouteReuses.ToString(CultureInfo.InvariantCulture) ?? string.Empty,
                 diagnostics?.WorkOrdersGenerated.ToString(CultureInfo.InvariantCulture) ?? string.Empty,
                 diagnostics?.WorkOrdersGeneratedUncapped.ToString(CultureInfo.InvariantCulture) ?? string.Empty,
                 diagnostics?.WorkOrdersClaimed.ToString(CultureInfo.InvariantCulture) ?? string.Empty,
@@ -1115,7 +1170,7 @@ namespace Societies.Tests
             builder.AppendLine($"Societies performance run: {result.Configuration.RunId}");
             builder.AppendLine($"Status: {result.Status}");
             builder.AppendLine($"Configuration: {result.Configuration.ScenarioId}, seed {result.Configuration.SimulationSeed}, {result.Configuration.CitizenCount} citizens, {result.Configuration.MeasuredTicks} measured ticks, metrics {(result.Configuration.MetricsEnabled ? "on" : "off")}");
-            builder.AppendLine($"Comparison: {result.Configuration.ComparisonGroup}, trial {result.Configuration.TrialIndex}; cache mode {result.Configuration.CacheMode}");
+            builder.AppendLine($"Comparison: {result.Configuration.ComparisonGroup}, trial {result.Configuration.TrialIndex}; cache mode {result.Configuration.CacheMode}; selector {result.Configuration.SelectorMode}");
             builder.AppendLine($"Execution route: {result.Configuration.ExecutionRoute}; runner: {result.Configuration.RunnerExecutablePath}");
             builder.AppendLine($"Managed build: {result.Environment.ManagedBuildConfiguration}; assembly configuration: {result.Environment.ManagedAssemblyConfiguration}; verified release: {result.Environment.VerifiedReleaseExecution}");
             builder.AppendLine($"Bootstrap: {Format(result.Intervals.BootstrapMilliseconds)} ms");

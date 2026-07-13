@@ -288,7 +288,7 @@ namespace Societies.Tests
             string? previousMetricsSetting = System.Environment.GetEnvironmentVariable(metricsEnvironmentVariable);
             string? previousOutputDirectory = System.Environment.GetEnvironmentVariable(outputEnvironmentVariable);
             string outputDirectory = CreateRunOutputDirectory(nameof(Test_MainScene_RuntimeMetricsBatchSmoke));
-            string runtimeMetricsPath = Path.Combine(outputDirectory, "runtime-batch-metrics-v3.csv");
+            string runtimeMetricsPath = Path.Combine(outputDirectory, "runtime-batch-metrics-v4.csv");
             Node? disabledScene = null;
             Node? scene = null;
 
@@ -301,7 +301,11 @@ namespace Societies.Tests
                 System.Environment.SetEnvironmentVariable(metricsEnvironmentVariable, null);
                 disabledScene = packedScene!.Instantiate();
                 GameManager disabledManager = disabledScene as GameManager ?? throw new Exception("Disabled metrics scene root is not GameManager");
-                disabledManager.ConfigurePerformanceStartup("balanced_basin", simulationSeed: 4242, citizenCount: 3);
+                disabledManager.ConfigurePerformanceStartup(
+                    "balanced_basin",
+                    simulationSeed: 4242,
+                    citizenCount: 3,
+                    selectorMode: "exhaustive_reference");
                 disabledManager.SetProcess(false);
                 AddChild(disabledScene);
                 await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
@@ -309,6 +313,9 @@ namespace Societies.Tests
                 Assert(disabledManager.CurrentScenarioId == "balanced_basin", "Performance startup should preserve the requested scenario");
                 Assert(disabledManager.SimulationSeed == 4242, "Performance startup should apply the requested simulation seed");
                 Assert(disabledManager.CitizenCount == 3, "Performance startup should apply the requested citizen count");
+                Assert(
+                    disabledManager.CurrentOrderSelectionMode == PrototypeOrderSelectionMode.ExhaustiveReference,
+                    "Performance startup should apply the requested selector mode");
                 Assert(disabledManager.PerformanceBootstrapMilliseconds is > 0.0, "Performance startup should capture the internal bootstrap interval");
                 bool reconfigurationRejected = false;
                 try
@@ -366,6 +373,15 @@ namespace Societies.Tests
                 Assert(afterManualStep[0].IdleCitizensConsideringWorkOrdersTotal > 0, "Assignment diagnostics should report idle citizens considering work orders");
                 Assert(afterManualStep[0].CandidateOrdersEvaluatedTotal > 0, "Assignment diagnostics should report evaluated candidate orders");
                 Assert(afterManualStep[0].CandidateOrdersPerIdleCitizen is > 0.0, "Completed ticks should publish a positive candidate-orders-per-idle-citizen ratio");
+                Assert(afterManualStep[0].Phases.RouteSelectionMilliseconds > 0.0, "Manual batch should measure generic route selection work");
+                Assert(afterManualStep[0].SelectorCandidatesBoundedTotal > 0, "Selector diagnostics should report bounded candidates");
+                Assert(afterManualStep[0].SelectorCandidatesExactScoredTotal > 0, "Selector diagnostics should report exact-scored candidates");
+                Assert(afterManualStep[0].SelectorCandidatesPrunedTotal > 0, "The optimized selector should prune candidates in the runtime smoke");
+                Assert(
+                    afterManualStep[0].SelectorPathCacheHitsTotal + afterManualStep[0].SelectorPathCacheMissesTotal ==
+                    afterManualStep[0].SelectorExactPathQueriesTotal,
+                    "Selector cache hits and misses should account for every exact-path query");
+                Assert(afterManualStep[0].SelectorSelectedRouteReusesTotal > 0, "The optimized selector should reuse selected routes");
                 Assert(afterManualStep[0].CitizensEvaluatedTotal > 0, "Session diagnostics should report evaluated citizens");
 
                 manager._Process(0.1);
@@ -400,7 +416,15 @@ namespace Societies.Tests
                     "worker_count_last",
                     "idle_citizens_considering_work_orders_total",
                     "candidate_orders_evaluated_total",
-                    "candidate_orders_per_idle_citizen"
+                    "candidate_orders_per_idle_citizen",
+                    "route_selection_ms",
+                    "selector_candidates_bounded_total",
+                    "selector_candidates_exact_scored_total",
+                    "selector_candidates_pruned_total",
+                    "selector_exact_path_queries_total",
+                    "selector_path_cache_hits_total",
+                    "selector_path_cache_misses_total",
+                    "selector_selected_route_reuses_total"
                 };
                 string[] missingDiagnosticHeaders = requiredDiagnosticHeaders
                     .Where(header => !runtimeMetricsHeader.Contains(header, StringComparer.Ordinal))

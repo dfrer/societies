@@ -9,6 +9,22 @@ namespace Societies.Simulation
 {
     public sealed partial class PrototypeSettlementSimulation
     {
+        private enum PathPlanLookupPurpose
+        {
+            General,
+            GenericOrderSelection
+        }
+
+        private sealed record OrderSelectionCandidate(
+            PrototypeWorkOrder Order,
+            int OriginalIndex,
+            float ScoreUpperBound);
+
+        private sealed record ExactOrderSelection(
+            PrototypeWorkOrder Order,
+            int OriginalIndex,
+            float Score,
+            PrototypePathPlan FirstPathPlan);
 
         private void InitializeCitizens(IReadOnlyList<PrototypeRoleQuotaDefinition> roleQuotas)
         {
@@ -131,23 +147,17 @@ namespace Societies.Simulation
 
             _idleCitizensConsideringWorkOrdersThisTick++;
             _candidateOrdersEvaluatedThisTick += availableOrders.Count;
-            List<(PrototypeWorkOrder Order, float Score)> reachableCandidates = new();
-            foreach (PrototypeWorkOrder candidate in availableOrders)
+            ExactOrderSelection? selection;
+            RuntimeMetricsPhaseToken routeSelectionPhase = runtimeMetrics?.BeginPhase(RuntimeMetricsPhase.RouteSelection) ?? default;
+            try
             {
-                if (!TryScoreOrder(citizen, candidate, out float score))
-                {
-                    _unreachableWorkOrderCandidatesSkippedThisTick++;
-                    continue;
-                }
-
-                reachableCandidates.Add((candidate, score));
+                selection = SelectGenericOrder(citizen, availableOrders);
             }
-
-            PrototypeWorkOrder? order = reachableCandidates
-                .OrderByDescending(candidate => candidate.Score)
-                .ThenBy(candidate => candidate.Order.OrderId, StringComparer.Ordinal)
-                .Select(candidate => candidate.Order)
-                .FirstOrDefault();
+            finally
+            {
+                routeSelectionPhase.Complete();
+            }
+            PrototypeWorkOrder? order = selection?.Order;
 
             if (order == null)
             {
@@ -160,10 +170,85 @@ namespace Societies.Simulation
                 return;
             }
 
-            if (BeginOrder(citizen, order, result))
+            if (BeginOrder(citizen, order, result, selection!.FirstPathPlan))
             {
                 availableOrders.Remove(order);
             }
+        }
+
+        private ExactOrderSelection? SelectGenericOrder(
+            PrototypeWorkerState citizen,
+            IReadOnlyList<PrototypeWorkOrder> availableOrders)
+        {
+            List<OrderSelectionCandidate> candidates = availableOrders
+                .Select((order, index) => new OrderSelectionCandidate(
+                    order,
+                    index,
+                    PrototypeOrderSelectionMath.ComputeScoreUpperBound(
+                        order.Priority,
+                        GetRoleBonus(citizen.Role, order),
+                        citizen.Position,
+                        GetFirstTravelDestination(order),
+                        _world.WorldMap.Cells.Count)))
+                .ToList();
+            _selectorCandidatesBoundedThisTick += candidates.Count;
+
+            IEnumerable<OrderSelectionCandidate> evaluationOrder = _orderSelectionMode == PrototypeOrderSelectionMode.ExactBranchAndBound
+                ? candidates
+                    .OrderByDescending(candidate => candidate.ScoreUpperBound)
+                    .ThenBy(candidate => candidate.Order.OrderId, StringComparer.Ordinal)
+                    .ThenBy(candidate => candidate.OriginalIndex)
+                : candidates.OrderBy(candidate => candidate.OriginalIndex);
+
+            List<OrderSelectionCandidate> orderedCandidates = evaluationOrder.ToList();
+            ExactOrderSelection? best = null;
+
+            for (int candidateIndex = 0; candidateIndex < orderedCandidates.Count; candidateIndex++)
+            {
+                OrderSelectionCandidate candidate = orderedCandidates[candidateIndex];
+                if (_orderSelectionMode == PrototypeOrderSelectionMode.ExactBranchAndBound &&
+                    best != null &&
+                    candidate.ScoreUpperBound < best.Score)
+                {
+                    _selectorCandidatesPrunedThisTick += orderedCandidates.Count - candidateIndex;
+                    break;
+                }
+
+                if (!TryScoreOrder(
+                    citizen,
+                    candidate.Order,
+                    PathPlanLookupPurpose.GenericOrderSelection,
+                    out float exactScore,
+                    out PrototypePathPlan? firstPathPlan))
+                {
+                    _unreachableWorkOrderCandidatesSkippedThisTick++;
+                    continue;
+                }
+
+                _selectorCandidatesExactScoredThisTick++;
+                ExactOrderSelection exact = new(
+                    candidate.Order,
+                    candidate.OriginalIndex,
+                    exactScore,
+                    firstPathPlan!);
+                if (best == null || IsPreferredExactSelection(exact, best))
+                {
+                    best = exact;
+                }
+            }
+
+            return best;
+        }
+
+        private static bool IsPreferredExactSelection(ExactOrderSelection candidate, ExactOrderSelection currentBest)
+        {
+            return PrototypeOrderSelectionMath.IsExactCandidatePreferred(
+                candidate.Score,
+                candidate.Order.OrderId,
+                candidate.OriginalIndex,
+                currentBest.Score,
+                currentBest.Order.OrderId,
+                currentBest.OriginalIndex);
         }
         private void ResolveMovementArrival(PrototypeWorkerState citizen, PrototypeSettlementTickResult result)
         {
@@ -628,7 +713,11 @@ namespace Societies.Simulation
 
             return false;
         }
-        private bool BeginOrder(PrototypeWorkerState citizen, PrototypeWorkOrder order, PrototypeSettlementTickResult result)
+        private bool BeginOrder(
+            PrototypeWorkerState citizen,
+            PrototypeWorkOrder order,
+            PrototypeSettlementTickResult result,
+            PrototypePathPlan? selectedFirstPathPlan = null)
         {
             citizen.CurrentOrderId = order.OrderId;
             citizen.CurrentOrderKind = order.Kind;
@@ -645,13 +734,13 @@ namespace Societies.Simulation
             switch (order.Kind)
             {
                 case PrototypeWorkOrderKind.Extract:
-                    travelStarted = BeginTravel(citizen, PrototypeWorkerPhase.MovingToResource, order.TargetPosition, order.Label, $"Heading to {order.Label}");
+                    travelStarted = BeginTravel(citizen, PrototypeWorkerPhase.MovingToResource, order.TargetPosition, order.Label, $"Heading to {order.Label}", selectedFirstPathPlan);
                     break;
                 case PrototypeWorkOrderKind.HaulToDepot:
                 case PrototypeWorkOrderKind.HaulFromRemoteDepot:
                 case PrototypeWorkOrderKind.HaulToRemoteDepot:
                 case PrototypeWorkOrderKind.HaulToStructure:
-                    travelStarted = BeginTravel(citizen, GetSourceTravelPhase(order.SourceStoreId), GetStorePosition(order.SourceStoreId), GetStoreLabel(order.SourceStoreId), $"Collecting {InventoryComponent.FormatItemName(order.ResourceId)}");
+                    travelStarted = BeginTravel(citizen, GetSourceTravelPhase(order.SourceStoreId), GetStorePosition(order.SourceStoreId), GetStoreLabel(order.SourceStoreId), $"Collecting {InventoryComponent.FormatItemName(order.ResourceId)}", selectedFirstPathPlan);
                     break;
                 case PrototypeWorkOrderKind.Process:
                 case PrototypeWorkOrderKind.Build:
@@ -659,13 +748,13 @@ namespace Societies.Simulation
                 case PrototypeWorkOrderKind.EstablishRemoteDepot:
                 case PrototypeWorkOrderKind.Eat:
                 case PrototypeWorkOrderKind.Sleep:
-                    travelStarted = BeginTravel(citizen, PrototypeWorkerPhase.MovingToStructure, order.TargetPosition, order.Label, $"Heading to {order.Label}");
+                    travelStarted = BeginTravel(citizen, PrototypeWorkerPhase.MovingToStructure, order.TargetPosition, order.Label, $"Heading to {order.Label}", selectedFirstPathPlan);
                     break;
                 case PrototypeWorkOrderKind.RefuelHearth:
-                    travelStarted = BeginTravel(citizen, PrototypeWorkerPhase.MovingToDepot, GetStorePosition(order.SourceStoreId), GetStoreLabel(order.SourceStoreId), "Collecting firewood");
+                    travelStarted = BeginTravel(citizen, PrototypeWorkerPhase.MovingToDepot, GetStorePosition(order.SourceStoreId), GetStoreLabel(order.SourceStoreId), "Collecting firewood", selectedFirstPathPlan);
                     break;
                 case PrototypeWorkOrderKind.Repath:
-                    travelStarted = BeginTravel(citizen, PrototypeWorkerPhase.MovingToStructure, order.TargetPosition, order.Label, "Repathing");
+                    travelStarted = BeginTravel(citizen, PrototypeWorkerPhase.MovingToStructure, order.TargetPosition, order.Label, "Repathing", selectedFirstPathPlan);
                     break;
                 default:
                     travelStarted = false;
@@ -970,9 +1059,20 @@ namespace Societies.Simulation
             citizen.Navigation = new PrototypeCitizenNavigationState();
             BeginStationaryPhase(citizen, PrototypeWorkerPhase.Idle, 6, citizen.HomePosition, "Settlement", activityText);
         }
-        private bool BeginTravel(PrototypeWorkerState citizen, PrototypeWorkerPhase phase, Vector3 targetPosition, string targetLabel, string activityText)
+        private bool BeginTravel(
+            PrototypeWorkerState citizen,
+            PrototypeWorkerPhase phase,
+            Vector3 targetPosition,
+            string targetLabel,
+            string activityText,
+            PrototypePathPlan? selectedPathPlan = null)
         {
-            if (!TryFindPathPlan(citizen.Position, targetPosition, out PrototypePathPlan? plan))
+            PrototypePathPlan? plan = selectedPathPlan;
+            if (plan != null && IsReusableSelectedPathPlan(plan, citizen.Position, targetPosition))
+            {
+                _selectorSelectedRouteReusesThisTick++;
+            }
+            else if (!TryFindPathPlan(citizen.Position, targetPosition, out plan))
             {
                 BeginIdle(citizen, "No reachable route");
                 citizen.LastFailureReason = "navigation.unreachable";
@@ -1005,6 +1105,26 @@ namespace Societies.Simulation
             citizen.TicksRemaining = citizen.PhaseDurationTicks;
             RegisterPathUsage(reachablePlan);
             return true;
+        }
+
+        private bool IsReusableSelectedPathPlan(
+            PrototypePathPlan plan,
+            Vector3 startPosition,
+            Vector3 destinationPosition)
+        {
+            if (plan.Query.RulesVersion != _navigationRulesVersion || plan.Waypoints.Count < 2)
+            {
+                return false;
+            }
+
+            TerrainCell startCell = _world.WorldMap.GetNearestCell(startPosition);
+            TerrainCell destinationCell = _world.WorldMap.GetNearestCell(destinationPosition);
+            return plan.Query.StartGridX == startCell.GridX &&
+                plan.Query.StartGridY == startCell.GridY &&
+                plan.Query.EndGridX == destinationCell.GridX &&
+                plan.Query.EndGridY == destinationCell.GridY &&
+                plan.Waypoints[0].IsEqualApprox(startPosition) &&
+                plan.Waypoints[^1].IsEqualApprox(destinationPosition);
         }
         private void BeginStationaryPhase(PrototypeWorkerState citizen, PrototypeWorkerPhase phase, int durationTicks, Vector3 position, string targetLabel, string activityText)
         {
@@ -1109,13 +1229,28 @@ namespace Societies.Simulation
         private static bool IsNight(float currentHour) => currentHour >= 20.0f || currentHour < 6.0f;
         private bool TryScoreOrder(PrototypeWorkerState citizen, PrototypeWorkOrder order, out float score)
         {
-            if (!TryComputeOrderRouteDistance(citizen, order, out float routeDistance))
+            return TryScoreOrder(
+                citizen,
+                order,
+                PathPlanLookupPurpose.General,
+                out score,
+                out _);
+        }
+
+        private bool TryScoreOrder(
+            PrototypeWorkerState citizen,
+            PrototypeWorkOrder order,
+            PathPlanLookupPurpose purpose,
+            out float score,
+            out PrototypePathPlan? firstPathPlan)
+        {
+            if (!TryComputeOrderRouteDistance(citizen, order, purpose, out float routeDistance, out firstPathPlan))
             {
                 score = 0.0f;
                 return false;
             }
 
-            float distancePenalty = routeDistance * 0.75f;
+            float distancePenalty = routeDistance * PrototypeOrderSelectionMath.ExactDistancePenalty;
             float roleBonus = GetRoleBonus(citizen.Role, order);
             score = order.Priority + roleBonus - distancePenalty;
             return true;
@@ -1123,12 +1258,18 @@ namespace Societies.Simulation
         private bool TryComputeOrderRouteDistance(
             PrototypeWorkerState citizen,
             PrototypeWorkOrder order,
-            out float routeDistance)
+            PathPlanLookupPurpose purpose,
+            out float routeDistance,
+            out PrototypePathPlan? firstPathPlan)
         {
-            if (!TryComputeRouteDistance(citizen.Position, order.TargetPosition, out routeDistance))
+            Vector3 firstDestination = GetFirstTravelDestination(order);
+            if (!TryFindPathPlan(citizen.Position, firstDestination, out firstPathPlan, purpose))
             {
+                routeDistance = 0.0f;
                 return false;
             }
+
+            routeDistance = firstPathPlan!.TotalDistanceMeters;
 
             bool isReachable;
             switch (order.Kind)
@@ -1136,15 +1277,14 @@ namespace Societies.Simulation
                 case PrototypeWorkOrderKind.Extract:
                     PrototypeResourceStoreState? cache = GetStore($"cache.{order.ClusterId}");
                     isReachable = cache != null &&
-                        TryComputeRouteDistance(order.TargetPosition, cache.Position, out _);
+                        TryComputeRouteDistance(order.TargetPosition, cache.Position, out _, purpose);
                     break;
 
                 case PrototypeWorkOrderKind.HaulToDepot:
                 case PrototypeWorkOrderKind.HaulFromRemoteDepot:
                     PrototypeResourceStoreState? depotSource = GetStore(order.SourceStoreId);
                     isReachable = depotSource != null &&
-                        TryComputeRouteDistance(citizen.Position, depotSource.Position, out _) &&
-                        TryComputeRouteDistance(depotSource.Position, _centralDepot.Position, out _);
+                        TryComputeRouteDistance(depotSource.Position, _centralDepot.Position, out _, purpose);
                     break;
 
                 case PrototypeWorkOrderKind.HaulToRemoteDepot:
@@ -1152,16 +1292,14 @@ namespace Societies.Simulation
                     PrototypeResourceStoreState? source = GetStore(order.SourceStoreId);
                     PrototypeResourceStoreState? destination = GetStore(order.DestinationStoreId);
                     isReachable = source != null && destination != null &&
-                        TryComputeRouteDistance(citizen.Position, source.Position, out _) &&
-                        TryComputeRouteDistance(source.Position, destination.Position, out _);
+                        TryComputeRouteDistance(source.Position, destination.Position, out _, purpose);
                     break;
 
                 case PrototypeWorkOrderKind.RefuelHearth:
                     PrototypeResourceStoreState? fuelSource = GetStore(order.SourceStoreId);
                     PrototypeStructureState? hearth = GetStructure(order.StructureId);
                     isReachable = fuelSource != null && hearth != null &&
-                        TryComputeRouteDistance(citizen.Position, fuelSource.Position, out _) &&
-                        TryComputeRouteDistance(fuelSource.Position, hearth.Position, out _);
+                        TryComputeRouteDistance(fuelSource.Position, hearth.Position, out _, purpose);
                     break;
 
                 default:
@@ -1175,6 +1313,19 @@ namespace Societies.Simulation
             }
 
             return isReachable;
+        }
+
+        private Vector3 GetFirstTravelDestination(PrototypeWorkOrder order)
+        {
+            return order.Kind switch
+            {
+                PrototypeWorkOrderKind.HaulToDepot or
+                PrototypeWorkOrderKind.HaulFromRemoteDepot or
+                PrototypeWorkOrderKind.HaulToRemoteDepot or
+                PrototypeWorkOrderKind.HaulToStructure or
+                PrototypeWorkOrderKind.RefuelHearth => GetStorePosition(order.SourceStoreId),
+                _ => order.TargetPosition
+            };
         }
         private static float GetRoleBonus(PrototypeCitizenRole role, PrototypeWorkOrder order)
         {

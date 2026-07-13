@@ -7,11 +7,14 @@ param(
     [int]$WarmupTicks = 0,
     [ValidateSet("cold", "natural_warm", "forced_invalidation")]
     [string]$CacheMode = "cold",
+    [ValidateSet("exact_branch_and_bound", "exhaustive_reference")]
+    [string]$SelectorMode = "exact_branch_and_bound",
     [string]$ComparisonGroup,
     [int]$TrialIndex = 1,
     [string]$OutputRoot,
     [string]$GodotPath,
     [string]$ExportPreset = "Windows Performance Release",
+    [string]$ExistingReleaseRunner,
     [switch]$SkipBuild,
     [switch]$ReleaseExport,
     [switch]$AllowPrimarySafetyFailure,
@@ -22,6 +25,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 $CacheMode = $CacheMode.ToLowerInvariant()
+$SelectorMode = $SelectorMode.ToLowerInvariant()
 
 $repoRoot = Split-Path -Parent $PSScriptRoot
 Set-Location $repoRoot
@@ -278,6 +282,7 @@ function Invoke-PerformanceRun {
         "--ticks", $Ticks.ToString([System.Globalization.CultureInfo]::InvariantCulture),
         "--warmup-ticks", $WarmupTicks.ToString([System.Globalization.CultureInfo]::InvariantCulture),
         "--cache-mode", $CacheMode,
+        "--selector-mode", $SelectorMode,
         "--comparison-group", $script:comparisonGroup,
         "--trial-index", $TrialIndex.ToString([System.Globalization.CultureInfo]::InvariantCulture),
         "--metrics", $MetricsMode,
@@ -316,13 +321,17 @@ if ($CacheMode -eq "forced_invalidation" -and $Ticks -ne 1) {
 if ($TrialIndex -lt 1 -or $TrialIndex -gt 100) {
     throw "TrialIndex must be between 1 and 100."
 }
-if ($ReleaseExport -and $SkipBuild) {
-    throw "-SkipBuild cannot be combined with -ReleaseExport because the exported runner is created for each new output root."
+if ($ReleaseExport -and -not [string]::IsNullOrWhiteSpace($ExistingReleaseRunner)) {
+    throw "-ReleaseExport and -ExistingReleaseRunner are mutually exclusive."
 }
-if ($ReleaseExport -and $env:OS -ne "Windows_NT") {
+if (($ReleaseExport -or -not [string]::IsNullOrWhiteSpace($ExistingReleaseRunner)) -and $SkipBuild) {
+    throw "-SkipBuild cannot be combined with a Release runner."
+}
+$releaseRouteRequested = $ReleaseExport -or -not [string]::IsNullOrWhiteSpace($ExistingReleaseRunner)
+if ($releaseRouteRequested -and $env:OS -ne "Windows_NT") {
     throw "The tracked Release export route currently supports Windows only."
 }
-if ($ReleaseExport) {
+if ($releaseRouteRequested) {
     $RequireRelease = $true
 }
 
@@ -366,7 +375,7 @@ if ($safeScenario.Length -gt 32) {
     $safeScenario = $safeScenario.Substring(0, 32)
 }
 $comparisonGroup = if ([string]::IsNullOrWhiteSpace($ComparisonGroup)) {
-    "$safeScenario-seed$Seed-c$Citizens-t$Ticks-w$WarmupTicks"
+    "$safeScenario-seed$Seed-c$Citizens-t$Ticks-w$WarmupTicks-s$SelectorMode"
 }
 else {
     $ComparisonGroup
@@ -408,6 +417,22 @@ if ($ReleaseExport) {
     $runnerExecutable = $consoleWrapper
     $executionRoute = "export_release"
 }
+elseif (-not [string]::IsNullOrWhiteSpace($ExistingReleaseRunner)) {
+    [System.IO.Directory]::CreateDirectory($OutputRoot) | Out-Null
+    $runnerExecutable = (Resolve-Path -LiteralPath $ExistingReleaseRunner).Path
+    if (-not $runnerExecutable.EndsWith(".console.exe", [System.StringComparison]::OrdinalIgnoreCase)) {
+        throw "ExistingReleaseRunner must point to the exported .console.exe wrapper."
+    }
+
+    $releaseExecutable = $runnerExecutable.Substring(
+        0,
+        $runnerExecutable.Length - ".console.exe".Length) + ".exe"
+    if (-not (Test-Path -LiteralPath $releaseExecutable -PathType Leaf)) {
+        throw "The existing Release runner is missing its paired executable: $releaseExecutable"
+    }
+
+    $executionRoute = "export_release"
+}
 else {
     if (-not $SkipBuild) {
         & $godot --headless --path $projectPath --build-solutions --quit
@@ -443,8 +468,8 @@ $offResult = Get-Content -Raw -LiteralPath $offResultPath | ConvertFrom-Json
 $onResult = Get-Content -Raw -LiteralPath $onResultPath | ConvertFrom-Json
 
 $schemaValid =
-    $offResult.schemaVersion -eq 3 -and
-    $onResult.schemaVersion -eq 3
+    $offResult.schemaVersion -eq 4 -and
+    $onResult.schemaVersion -eq 4
 $configurationMatches =
     (Test-NonEmptyText $offResult.configuration.scenarioId) -and
     (Test-NonEmptyText $offResult.configuration.measurementMode) -and
@@ -458,6 +483,7 @@ $configurationMatches =
     $offResult.configuration.warmupMode -eq $onResult.configuration.warmupMode -and
     $offResult.configuration.cacheWarmupEnabled -eq $onResult.configuration.cacheWarmupEnabled -and
     $offResult.configuration.cacheMode -eq $onResult.configuration.cacheMode -and
+    $offResult.configuration.selectorMode -eq $onResult.configuration.selectorMode -and
     $offResult.configuration.comparisonGroup -eq $onResult.configuration.comparisonGroup -and
     $offResult.configuration.trialIndex -eq $onResult.configuration.trialIndex -and
     $offResult.configuration.executionRoute -eq $onResult.configuration.executionRoute -and
@@ -470,6 +496,7 @@ $commandConfigurationMatches =
     $offResult.configuration.warmupTicks -eq $WarmupTicks -and
     $offResult.configuration.measuredTicks -eq $Ticks -and
     $offResult.configuration.cacheMode -eq $CacheMode -and
+    $offResult.configuration.selectorMode -eq $SelectorMode -and
     $offResult.configuration.comparisonGroup -eq $comparisonGroup -and
     $offResult.configuration.trialIndex -eq $TrialIndex -and
     $offResult.configuration.executionRoute -eq $executionRoute -and
@@ -592,8 +619,8 @@ elseif ($CacheMode -eq "forced_invalidation") {
         (Test-ForcedEvidenceInternalConsistency $onResult.cacheEvidence)
 }
 $executionRouteValid =
-    ($ReleaseExport -and $executionRoute -eq "export_release") -or
-    (-not $ReleaseExport -and $executionRoute -eq "editor_scene")
+    ($releaseRouteRequested -and $executionRoute -eq "export_release") -or
+    (-not $releaseRouteRequested -and $executionRoute -eq "editor_scene")
 $gitIdentityMatches =
     (Test-GitObjectId $offResult.configuration.gitSha) -and
     $offResult.configuration.gitSha -eq $onResult.configuration.gitSha -and
@@ -630,7 +657,7 @@ $godotVersionValid =
     $offRunGodotVersion -eq $expectedGodotVersion -and
     $onRunGodotVersion -eq $expectedGodotVersion
 $processExecutableMatches =
-    (-not $ReleaseExport) -or
+    (-not $releaseRouteRequested) -or
     ($offResult.environment.processExecutablePath -eq $releaseExecutable -and
         $onResult.environment.processExecutablePath -eq $releaseExecutable)
 $releaseEnvironmentValid =
@@ -752,7 +779,7 @@ $equivalent =
     (-not $RequireRelease -or $releaseEnvironmentValid)
 
 $equivalence = [ordered]@{
-    schemaVersion = 3
+    schemaVersion = 4
     capturedUtc = [DateTime]::UtcNow.ToString("o")
     status = if (-not $equivalent) { "fail" } elseif ($gitDirty) { "pass_dirty_source" } else { "pass" }
     contractStatus = if (-not $equivalent) { "fail" } elseif ($gitDirty) { "pass_dirty_source" } else { "pass" }
@@ -774,10 +801,11 @@ $equivalence = [ordered]@{
     resolvedEditorVersionOutput = $godotVersionOutput
     releaseRequired = [bool]$RequireRelease
     releaseExport = [bool]$ReleaseExport
+    reusedReleaseRunner = -not [string]::IsNullOrWhiteSpace($ExistingReleaseRunner)
     exportPreset = if ($ReleaseExport) { $ExportPreset } else { $null }
     exportEditorExecutable = if ($ReleaseExport) { $godot } else { $null }
     exportProjectPath = if ($ReleaseExport) { $projectPath } else { $null }
-    exportOutputExecutable = if ($ReleaseExport) { $releaseExecutable } else { $null }
+    exportOutputExecutable = if ($releaseRouteRequested) { $releaseExecutable } else { $null }
     executionRoute = $executionRoute
     runnerExecutable = $runnerExecutable
     releaseEnvironmentValid = $releaseEnvironmentValid
@@ -815,6 +843,7 @@ $equivalence = [ordered]@{
     metricsOffRuntimeMetricsAbsent = $offRuntimeMetricsAbsent
     metricsOnRuntimeMetricsValid = $onRuntimeMetricsValid
     cacheMode = $CacheMode
+    selectorMode = $SelectorMode
     comparisonGroup = $comparisonGroup
     trialIndex = $TrialIndex
     metricsOffCacheEvidence = $offResult.cacheEvidence
@@ -836,7 +865,7 @@ $summaryLines = @(
     "Societies metrics equivalence pair",
     "Status: $($equivalence.status)",
     "Scenario: $Scenario; seed: $Seed; citizens: $Citizens; warmup ticks: $WarmupTicks; measured ticks: $Ticks",
-    "Cache mode: $CacheMode; comparison group: $comparisonGroup; trial: $TrialIndex",
+    "Cache mode: $CacheMode; selector mode: $SelectorMode; comparison group: $comparisonGroup; trial: $TrialIndex",
     "Cache transition contract: $cacheTransitionContractValid; cache diagnostics contract: $cacheDiagnosticsContractValid",
     "Godot: expected $expectedGodotVersion; editor $resolvedGodotVersion; run $offRunGodotVersion",
     "Managed build: $($offResult.environment.managedBuildConfiguration)",

@@ -48,7 +48,14 @@ namespace Societies.Core.Tests
                     NavigationInvalidations = 3,
                     WorkerCount = 4,
                     IdleCitizensConsideringWorkOrders = 2,
-                    CandidateOrdersEvaluated = 12
+                    CandidateOrdersEvaluated = 12,
+                    SelectorCandidatesBounded = 12,
+                    SelectorCandidatesExactScored = 4,
+                    SelectorCandidatesPruned = 8,
+                    SelectorExactPathQueries = 6,
+                    SelectorPathCacheHits = 4,
+                    SelectorPathCacheMisses = 2,
+                    SelectorSelectedRouteReuses = 1
                 });
             RuntimeMetricsPhaseToken staleToken = collector.BeginPhase(RuntimeMetricsPhase.SessionAdvance);
             clock.AdvanceMilliseconds(5);
@@ -65,6 +72,7 @@ namespace Societies.Core.Tests
             Assert.Equal(0, collector.DroppedBatchCount);
             Assert.Equal(0.0, batch.Phases.SessionAdvanceMilliseconds);
             Assert.Equal(0.0, batch.Phases.NavigationRebuildMilliseconds);
+            Assert.Equal(0.0, batch.Phases.RouteSelectionMilliseconds);
             Assert.Equal(0, batch.PathPlanCacheMissesTotal);
             Assert.Null(batch.PathPlanCacheSizeLast);
             Assert.Equal(0, batch.NavigationInvalidationsTotal);
@@ -72,6 +80,8 @@ namespace Societies.Core.Tests
             Assert.Equal(0, batch.IdleCitizensConsideringWorkOrdersTotal);
             Assert.Equal(0, batch.CandidateOrdersEvaluatedTotal);
             Assert.Null(batch.CandidateOrdersPerIdleCitizen);
+            Assert.Equal(0, batch.SelectorExactPathQueriesTotal);
+            Assert.Equal(0, batch.SelectorSelectedRouteReusesTotal);
         }
 
         [Fact]
@@ -86,8 +96,10 @@ namespace Societies.Core.Tests
             RuntimeMetricsPhaseToken inner = collector.BeginPhase(RuntimeMetricsPhase.SessionAdvance);
             RuntimeMetricsPhaseToken copiedInner = inner;
             RuntimeMetricsPhaseToken navigation = collector.BeginPhase(RuntimeMetricsPhase.NavigationRebuild);
+            RuntimeMetricsPhaseToken selection = collector.BeginPhase(RuntimeMetricsPhase.RouteSelection);
             clock.AdvanceMilliseconds(2);
             Assert.Equal(2.0, navigation.Complete());
+            Assert.Equal(2.0, selection.Complete());
             Assert.Equal(2.0, inner.Complete());
             Assert.Equal(0.0, copiedInner.Complete());
             clock.AdvanceMilliseconds(1);
@@ -100,6 +112,7 @@ namespace Societies.Core.Tests
             Assert.Equal(4.0, batch.Phases.SimulationTickMilliseconds);
             Assert.Equal(2.0, batch.Phases.SessionAdvanceMilliseconds);
             Assert.Equal(2.0, batch.Phases.NavigationRebuildMilliseconds);
+            Assert.Equal(2.0, batch.Phases.RouteSelectionMilliseconds);
         }
 
         [Fact]
@@ -120,7 +133,14 @@ namespace Societies.Core.Tests
                     NavigationInvalidations = 2,
                     WorkerCount = 3,
                     IdleCitizensConsideringWorkOrders = 4,
-                    CandidateOrdersEvaluated = 40
+                    CandidateOrdersEvaluated = 40,
+                    SelectorCandidatesBounded = 40,
+                    SelectorCandidatesExactScored = 10,
+                    SelectorCandidatesPruned = 30,
+                    SelectorExactPathQueries = 30,
+                    SelectorPathCacheHits = 20,
+                    SelectorPathCacheMisses = 10,
+                    SelectorSelectedRouteReuses = 2
                 });
             RuntimeMetricsPhaseToken secondTickPhase = collector.BeginPhase(RuntimeMetricsPhase.SimulationTick);
             clock.AdvanceMilliseconds(2);
@@ -133,7 +153,14 @@ namespace Societies.Core.Tests
                     NavigationInvalidations = 1,
                     WorkerCount = 5,
                     IdleCitizensConsideringWorkOrders = 6,
-                    CandidateOrdersEvaluated = 90
+                    CandidateOrdersEvaluated = 90,
+                    SelectorCandidatesBounded = 90,
+                    SelectorCandidatesExactScored = 20,
+                    SelectorCandidatesPruned = 70,
+                    SelectorExactPathQueries = 50,
+                    SelectorPathCacheHits = 35,
+                    SelectorPathCacheMisses = 15,
+                    SelectorSelectedRouteReuses = 3
                 });
             collector.EndBatch(22);
 
@@ -156,6 +183,13 @@ namespace Societies.Core.Tests
             Assert.Equal(10, batch.IdleCitizensConsideringWorkOrdersTotal);
             Assert.Equal(130, batch.CandidateOrdersEvaluatedTotal);
             Assert.Equal(13.0, batch.CandidateOrdersPerIdleCitizen);
+            Assert.Equal(130, batch.SelectorCandidatesBoundedTotal);
+            Assert.Equal(30, batch.SelectorCandidatesExactScoredTotal);
+            Assert.Equal(100, batch.SelectorCandidatesPrunedTotal);
+            Assert.Equal(80, batch.SelectorExactPathQueriesTotal);
+            Assert.Equal(55, batch.SelectorPathCacheHitsTotal);
+            Assert.Equal(25, batch.SelectorPathCacheMissesTotal);
+            Assert.Equal(5, batch.SelectorSelectedRouteReusesTotal);
         }
 
         [Fact]
@@ -211,7 +245,14 @@ namespace Societies.Core.Tests
                         NavigationInvalidations = 1,
                         WorkerCount = 4,
                         IdleCitizensConsideringWorkOrders = 2,
-                        CandidateOrdersEvaluated = 3
+                        CandidateOrdersEvaluated = 3,
+                        SelectorCandidatesBounded = 3,
+                        SelectorCandidatesExactScored = 2,
+                        SelectorCandidatesPruned = 1,
+                        SelectorExactPathQueries = 4,
+                        SelectorPathCacheHits = 3,
+                        SelectorPathCacheMisses = 1,
+                        SelectorSelectedRouteReuses = 1
                     });
                 collector.EndBatch(1);
 
@@ -221,17 +262,22 @@ namespace Societies.Core.Tests
                     .Split('\n', StringSplitOptions.RemoveEmptyEntries);
 
                 Assert.Equal(3, lines.Length);
-                Assert.Equal(28, lines[0].Split(',').Length);
-                Assert.Equal(28, lines[1].Split(',').Length);
+                Assert.Equal(36, lines[0].Split(',').Length);
+                Assert.Equal(36, lines[1].Split(',').Length);
                 Assert.Equal(string.Empty, lines[1].Split(',')[16]);
                 Assert.Equal(string.Empty, lines[1].Split(',')[21]);
                 Assert.Equal(string.Empty, lines[1].Split(',')[23]);
                 Assert.Equal(string.Empty, lines[1].Split(',')[26]);
-                Assert.Equal(28, lines[2].Split(',').Length);
+                Assert.Equal(36, lines[2].Split(',').Length);
                 Assert.Equal("path_plan_cache_misses_total", lines[0].Split(',')[20]);
                 Assert.Equal("navigation_rebuild_ms", lines[0].Split(',')[27]);
+                Assert.Equal("route_selection_ms", lines[0].Split(',')[28]);
+                Assert.Equal("selector_exact_path_queries_total", lines[0].Split(',')[32]);
+                Assert.Equal("selector_selected_route_reuses_total", lines[0].Split(',')[35]);
                 Assert.Equal("1.5", lines[2].Split(',')[26]);
                 Assert.Equal("0.25", lines[2].Split(',')[27]);
+                Assert.Equal("4", lines[2].Split(',')[32]);
+                Assert.Equal("1", lines[2].Split(',')[35]);
                 Assert.Contains("rendered_frame", lines[2]);
                 Assert.Contains("1.5", lines[2]);
                 Assert.DoesNotContain("1,5", lines[2]);
