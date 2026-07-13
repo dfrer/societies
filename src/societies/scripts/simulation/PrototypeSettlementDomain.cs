@@ -211,6 +211,15 @@ namespace Societies.Simulation
         int EndGridY,
         int RulesVersion);
 
+    public sealed class PrototypePathCacheEntry
+    {
+        public PrototypePathQuery Query { get; init; }
+
+        public bool IsReachable { get; init; }
+
+        public IReadOnlyList<Vector2I> Cells { get; init; } = new List<Vector2I>();
+    }
+
     public sealed class PrototypePathPlan
     {
         public PrototypePathQuery Query { get; init; }

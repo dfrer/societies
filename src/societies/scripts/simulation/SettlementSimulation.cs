@@ -62,7 +62,8 @@ namespace Societies.Simulation
         private readonly Dictionary<string, int> _blockedReasonCounts = new(StringComparer.Ordinal);
         private readonly Dictionary<string, long> _structureCompletionTicks = new(StringComparer.Ordinal);
         private readonly Dictionary<string, string> _resourceNodeClusterMap = new(StringComparer.Ordinal);
-        private readonly Dictionary<PrototypePathCacheKey, PrototypePathPlan> _pathCache = new();
+        private readonly Dictionary<PrototypePathCacheKey, PrototypePathCacheEntry> _pathCache = new();
+        private readonly Dictionary<Vector2I, Vector3?> _walkableInteractionPositions = new();
         private readonly Dictionary<string, int> _routeBacklogTicksByKind = new(StringComparer.Ordinal);
         private readonly Dictionary<string, int> _depotThroughputByDepot = new(StringComparer.Ordinal);
         private readonly Dictionary<Vector2I, int> _pathHeatByCell = new();
@@ -173,6 +174,7 @@ namespace Societies.Simulation
             public int WorkerCount;
             public int IdleCitizensConsideringWorkOrders;
             public int CandidateOrdersEvaluated;
+            public int UnreachableWorkOrderCandidatesSkipped;
             public int CitizensEvaluated;
             public int PeakOrdersThisSession;
         }
@@ -187,6 +189,7 @@ namespace Societies.Simulation
         private int _navigationInvalidationsThisTick;
         private int _idleCitizensConsideringWorkOrdersThisTick;
         private int _candidateOrdersEvaluatedThisTick;
+        private int _unreachableWorkOrderCandidatesSkippedThisTick;
         private int _citizensEvaluatedThisTick;
 
         public PrototypeSettlementDiagnosticsState Diagnostics => _diagnostics;
@@ -270,6 +273,7 @@ namespace Societies.Simulation
             _navigationInvalidationsThisTick = 0;
             _idleCitizensConsideringWorkOrdersThisTick = 0;
             _candidateOrdersEvaluatedThisTick = 0;
+            _unreachableWorkOrderCandidatesSkippedThisTick = 0;
             _citizensEvaluatedThisTick = 0;
 
             CommitPreparedForcedPathCompletion(result, runtimeMetrics);
@@ -323,6 +327,7 @@ namespace Societies.Simulation
             _diagnostics.WorkerCount = _citizens.Count;
             _diagnostics.IdleCitizensConsideringWorkOrders = _idleCitizensConsideringWorkOrdersThisTick;
             _diagnostics.CandidateOrdersEvaluated = _candidateOrdersEvaluatedThisTick;
+            _diagnostics.UnreachableWorkOrderCandidatesSkipped = _unreachableWorkOrderCandidatesSkippedThisTick;
             _diagnostics.CitizensEvaluated = _citizensEvaluatedThisTick;
             if (_workOrdersGeneratedThisTick > _diagnostics.PeakOrdersThisSession)
             {
@@ -442,11 +447,20 @@ namespace Societies.Simulation
         public void LoadState(PrototypeSettlementSnapshot snapshot)
         {
             RestoreStore(_centralDepot, snapshot.CentralDepot);
+            if (TryResolveWalkableInteractionPosition(_centralDepot.Position, out Vector3 centralDepotPosition))
+            {
+                _centralDepot.Position = centralDepotPosition;
+            }
 
             _siteCaches.Clear();
             foreach (PrototypeResourceStoreSnapshot storeSnapshot in snapshot.SiteCaches)
             {
                 PrototypeResourceStoreState store = RestoreStoreSnapshot(storeSnapshot);
+                if (TryResolveWalkableInteractionPosition(store.Position, out Vector3 interactionPosition))
+                {
+                    store.Position = interactionPosition;
+                }
+
                 _siteCaches[store.StoreId] = store;
             }
 
@@ -455,14 +469,25 @@ namespace Societies.Simulation
             _remoteDepots.Clear();
             foreach (PrototypeStructureSnapshot structureSnapshot in snapshot.Structures)
             {
+                Vector3 structurePosition = structureSnapshot.Position.ToVector3();
+                if (TryResolveWalkableInteractionPosition(structurePosition, out Vector3 walkableStructurePosition))
+                {
+                    structurePosition = walkableStructurePosition;
+                }
+
+                PrototypeResourceStoreState inputStore = RestoreStoreSnapshot(structureSnapshot.InputStore);
+                PrototypeResourceStoreState outputStore = RestoreStoreSnapshot(structureSnapshot.OutputStore);
+                inputStore.Position = structurePosition;
+                outputStore.Position = structurePosition;
+                TerrainCell structureCell = _world.WorldMap.GetNearestCell(structurePosition);
                 _structures.Add(new PrototypeStructureState
                 {
                     StructureId = structureSnapshot.StructureId,
                     StructureKindId = structureSnapshot.StructureKindId,
                     DisplayName = structureSnapshot.DisplayName,
-                    Position = structureSnapshot.Position.ToVector3(),
-                    GridX = structureSnapshot.GridX,
-                    GridY = structureSnapshot.GridY,
+                    Position = structurePosition,
+                    GridX = structureCell.GridX,
+                    GridY = structureCell.GridY,
                     CorridorId = structureSnapshot.CorridorId,
                     LinkedClusterId = structureSnapshot.LinkedClusterId,
                     IsBuilt = structureSnapshot.IsBuilt,
@@ -473,8 +498,8 @@ namespace Societies.Simulation
                     Progress = structureSnapshot.Progress,
                     ActiveTicks = structureSnapshot.ActiveTicks,
                     BlockedTicks = structureSnapshot.BlockedTicks,
-                    InputStore = RestoreStoreSnapshot(structureSnapshot.InputStore),
-                    OutputStore = RestoreStoreSnapshot(structureSnapshot.OutputStore),
+                    InputStore = inputStore,
+                    OutputStore = outputStore,
                     HearthFuel = structureSnapshot.HearthFuel
                 });
             }
@@ -495,14 +520,21 @@ namespace Societies.Simulation
 
             foreach (PrototypeRemoteDepotSnapshot depotSnapshot in snapshot.RemoteDepots)
             {
+                Vector3 depotPosition = depotSnapshot.Position.ToVector3();
+                if (TryResolveWalkableInteractionPosition(depotPosition, out Vector3 walkableDepotPosition))
+                {
+                    depotPosition = walkableDepotPosition;
+                }
+
+                TerrainCell depotCell = _world.WorldMap.GetNearestCell(depotPosition);
                 _remoteDepots.Add(new PrototypeRemoteDepotState
                 {
                     StructureId = depotSnapshot.StructureId,
                     ClusterId = depotSnapshot.ClusterId,
                     ResourceId = depotSnapshot.ResourceId,
-                    Position = depotSnapshot.Position.ToVector3(),
-                    GridX = depotSnapshot.GridX,
-                    GridY = depotSnapshot.GridY,
+                    Position = depotPosition,
+                    GridX = depotCell.GridX,
+                    GridY = depotCell.GridY,
                     IsBuilt = depotSnapshot.IsBuilt,
                     DistanceToCentralDepot = depotSnapshot.DistanceToCentralDepot,
                     ThroughputCount = depotSnapshot.ThroughputCount
@@ -533,7 +565,19 @@ namespace Societies.Simulation
             _citizens.Clear();
             foreach (PrototypeWorkerSnapshot citizenSnapshot in snapshot.Citizens)
             {
-                _citizens.Add(RestoreCitizen(citizenSnapshot));
+                PrototypeWorkerState citizen = RestoreCitizen(citizenSnapshot);
+                if (TryResolveWalkableInteractionPosition(citizen.HomePosition, out Vector3 walkableHomePosition))
+                {
+                    citizen.HomePosition = walkableHomePosition;
+                    if (citizen.Phase == PrototypeWorkerPhase.Idle &&
+                        !IsWalkableTerrainCell(_world.WorldMap.GetNearestCell(citizen.Position)))
+                    {
+                        citizen.Position = walkableHomePosition;
+                        citizen.TargetPosition = walkableHomePosition;
+                    }
+                }
+
+                _citizens.Add(citizen);
             }
 
             ReplaceCounts(_producedResources, snapshot.ProducedResources);

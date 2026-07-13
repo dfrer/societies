@@ -198,7 +198,10 @@ namespace Societies.Simulation
                 _ => Vector3.Zero
             };
 
-            return ProjectToSurface(anchor + offset);
+            Vector3 projectedPosition = ProjectToSurface(anchor + offset);
+            return TryResolveWalkableInteractionPosition(projectedPosition, out Vector3 walkablePosition)
+                ? walkablePosition
+                : projectedPosition;
         }
         private static Vector3 GetHutOffset(int structureIndex)
         {

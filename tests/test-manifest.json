@@ -1,25 +1,25 @@
 {
   "schemaVersion": 3,
-  "updatedUtc": "2026-07-13T00:51:21.7232756Z",
+  "updatedUtc": "2026-07-13T02:42:44.0798468Z",
   "required": {
     "dotnet": {
       "project": "tests/Societies.Core.Tests/Societies.Core.Tests.csproj",
       "command": "dotnet test tests/Societies.Core.Tests/Societies.Core.Tests.csproj --configuration Release",
-      "expectedTestCount": 103,
+      "expectedTestCount": 110,
       "tiers": {
         "fast": {
-          "expectedTestCount": 84,
+          "expectedTestCount": 89,
           "filter": "FullyQualifiedName!~PrototypeRuntimeSessionTests&FullyQualifiedName!~PrototypeSettlementSimulationTests&FullyQualifiedName!~SettlementDiagnosticsTests&FullyQualifiedName!~WorkOrderGenerationDiagnosticsTests"
         },
         "integration": {
-          "expectedTestCount": 10,
+          "expectedTestCount": 11,
           "classes": [
             "Societies.Core.Tests.SettlementDiagnosticsTests",
             "Societies.Core.Tests.WorkOrderGenerationDiagnosticsTests"
           ]
         },
         "soak": {
-          "expectedTestCount": 9,
+          "expectedTestCount": 10,
           "classes": [
             "Societies.Core.Tests.PrototypeRuntimeSessionTests",
             "Societies.Core.Tests.PrototypeSettlementSimulationTests"
@@ -142,6 +142,6 @@
   "history": {
     "preSyncCommit": "c58e3de",
     "preSyncDotnetTestCount": 64,
-    "note": "The synchronized master adds 12 PrototypeMetricsTracker tests and 3 WorkOrderGenerationDiagnostics tests for a historical 79-test floor. W1-03b adds three cache-probe contract tests. W1-03c adds five natural-invalidation progression cases; the current manifest declares 103 required .NET tests."
+    "note": "The synchronized master adds 12 PrototypeMetricsTracker tests and 3 WorkOrderGenerationDiagnostics tests for a historical 79-test floor. W1-03b adds three cache-probe contract tests, W1-03c adds five natural-invalidation progression cases, and W1-04 adds seven navigation, unreachable-assignment, and legacy-resume correctness cases. The current manifest declares 110 required .NET tests."
   }
 }

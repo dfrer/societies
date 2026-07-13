@@ -71,7 +71,7 @@ godot --headless --path src/societies res://tests/HeadlessTestRunner.tscn
 ## Validation Notes
 
 - The current test suite includes pure simulation tests, persistence tests, HUD tests, voxel-spike tests, and Godot headless smoke coverage.
-- The required manifest declares 103 .NET tests: 84 fast, 10 integration, and 9 soak, plus 16 Godot headless tests.
+- The required manifest declares 110 .NET tests: 89 fast, 11 integration, and 10 soak, plus 16 Godot headless tests.
 - The full validation script is authoritative, but it is substantially longer than the individual .NET or headless passes because it rebuilds and reruns both.
 - The optional performance pair is not a pull-request gate. It requires clean committed source by default and writes ignored run artifacts under `artifacts/performance/`.
 - Schema v3 records cold, natural-warm, and forced-invalidation cache transitions in metrics-off and metrics-on results. Natural warmup advances deterministic simulation state; eager/all-pairs cache prefill remains disabled.
@@ -83,6 +83,7 @@ godot --headless --path src/societies res://tests/HeadlessTestRunner.tscn
 - The Release execution route is validated from clean commit `acf634f`; see `planning/active/evidence/v3-w1-03a-release-route-validation.json`. This is route evidence only, not a performance baseline.
 - The clean schema-v3 ExportRelease cache-mode comparison passed from implementation commit `5444cc3`; see `planning/active/evidence/v3-w1-03b-cache-mode-validation.json`. It proves cold/warm deterministic equivalence and the forced-invalidation transition for a short three-citizen smoke only.
 - The canonical W1-03c ExportRelease matrix passed its evidence contract from clean commit `a636967`: 14/14 pairs, 28 metrics rows, 354/354 manifest artifact hashes, cold/warm equality at 3/6/12/16 citizens, three comparable 16-citizen reference trials, two deterministic 1,000-tick soaks, the 24-citizen stress case, and the forced transition. The budget result is `safety_failure`, not a green performance gate: reference median p95 is 570.6155 ms versus 50 ms safety and median max is 3694.2534 ms versus 250 ms safety. Forced invalidation itself passes at 8.4171 ms. See `planning/active/evidence/v3-w1-03c-performance-baseline-validation.json`. Week 2 feature expansion remains blocked while W1-04/W1-05 correctness and path-selection work continues.
+- W1-04 navigation correctness is implemented at `7918d49`: unreachable routes are explicit, blocked endpoints and diagonal corner cutting are rejected, the discounted A* heuristic is admissible, equal-priority ordering is deterministic, cached cell routes rematerialize exact endpoints, and unreachable work is skipped with diagnostics. Existing wetland resources remain usable through deterministic walkable interaction positions, while fresh and restored settlement placements are normalized to walkable cells. Validation passed 110/110 .NET tests, 16/16 Godot headless tests, zero-warning Debug/ExportDebug/ExportRelease builds, and independent review with no P0/P1 findings. See `planning/active/evidence/v3-w1-04-navigation-validation.json`. W1-05 remains next, and the W1-03c performance safety failure remains authoritative until the post-W1-05 matrix is rerun.
 - The voxel spike is experimental only. The authoritative gameplay runtime remains heightfield-based through M3.
 
 ## CI Scope

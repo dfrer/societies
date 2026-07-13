@@ -24,11 +24,14 @@ namespace Societies.Simulation
         {
             foreach (ResourceClusterState cluster in _world.ResourceClusters)
             {
+                Vector3 cachePosition = TryResolveWalkableInteractionPosition(cluster.CenterPosition, out Vector3 resolvedCachePosition)
+                    ? resolvedCachePosition
+                    : cluster.CenterPosition;
                 PrototypeResourceStoreState cache = CreateStore(
                     $"cache.{cluster.ClusterId}",
                     $"{InventoryComponent.FormatItemName(cluster.ResourceId)} Cache",
                     18,
-                    cluster.CenterPosition,
+                    cachePosition,
                     cluster.ResourceId);
                 cache.LinkedClusterId = cluster.ClusterId;
                 _siteCaches[cache.StoreId] = cache;
@@ -437,20 +440,25 @@ namespace Societies.Simulation
                 return;
             }
 
-            IEnumerable<PrototypeResourceSiteState> sites = resources
+            IEnumerable<(PrototypeResourceSiteState Site, Vector3 InteractionPosition)> sites = resources
                 .Where(site => site.ResourceId == resourceId && site.UnitsRemaining > 0)
-                .OrderBy(site => ComputeRouteDistance(_world.SettlementSpawn.AnchorPosition, site.Position))
-                .ThenBy(site => site.NodeName, StringComparer.Ordinal);
+                .Select(site => (
+                    Site: site,
+                    InteractionPosition: TryResolveWalkableInteractionPosition(site.Position, out Vector3 interactionPosition)
+                        ? interactionPosition
+                        : site.Position))
+                .OrderBy(candidate => ComputeRouteDistance(_world.SettlementSpawn.AnchorPosition, candidate.InteractionPosition))
+                .ThenBy(candidate => candidate.Site.NodeName, StringComparer.Ordinal);
 
             int created = 0;
-            foreach (PrototypeResourceSiteState site in sites)
+            foreach ((PrototypeResourceSiteState site, Vector3 interactionPosition) in sites)
             {
                 if (created >= desiredUnits)
                 {
                     break;
                 }
 
-                float routeDistance = ComputeRouteDistance(_centralDepot.Position, site.Position);
+                float routeDistance = ComputeRouteDistance(_centralDepot.Position, interactionPosition);
                 bool hasRemoteDepot = GetRemoteDepot(site.ClusterId, requireBuilt: true) != null;
                 bool hasBuiltCorridor = _pathSegments.Any(segment => segment.IsBuilt && string.Equals(segment.CorridorId, $"corridor.{resourceId}", StringComparison.Ordinal));
                 int adjustedPriority = priority;
@@ -474,11 +482,46 @@ namespace Societies.Simulation
                     ClusterId = site.ClusterId,
                     Label = PrototypeSettlementLayout.GetResourceTargetLabel(resourceId),
                     Reason = $"reserve target for {InventoryComponent.FormatItemName(resourceId)}",
-                    TargetPosition = site.Position,
+                    TargetPosition = interactionPosition,
                     Amount = 1
                 });
                 created++;
             }
+        }
+        private bool TryResolveWalkableInteractionPosition(Vector3 resourcePosition, out Vector3 interactionPosition)
+        {
+            TerrainCell resourceCell = _world.WorldMap.GetNearestCell(resourcePosition);
+            if (IsWalkableTerrainCell(resourceCell))
+            {
+                interactionPosition = resourcePosition;
+                return true;
+            }
+
+            Vector2I cacheKey = new(resourceCell.GridX, resourceCell.GridY);
+            if (!_walkableInteractionPositions.TryGetValue(cacheKey, out Vector3? cachedPosition))
+            {
+                TerrainCell? interactionCell = _world.WorldMap.Cells
+                    .Where(IsWalkableTerrainCell)
+                    .OrderBy(candidate => GetHorizontalDistance(candidate.WorldPosition, resourcePosition))
+                    .ThenBy(candidate => candidate.GridY)
+                    .ThenBy(candidate => candidate.GridX)
+                    .FirstOrDefault();
+                cachedPosition = interactionCell?.WorldPosition;
+                _walkableInteractionPositions[cacheKey] = cachedPosition;
+            }
+
+            if (cachedPosition.HasValue)
+            {
+                interactionPosition = cachedPosition.Value;
+                return true;
+            }
+
+            interactionPosition = resourcePosition;
+            return false;
+        }
+        private static bool IsWalkableTerrainCell(TerrainCell? cell)
+        {
+            return cell != null && cell.Biome != BiomeType.Wetland && cell.SlopeDegrees <= 18.0f;
         }
         private void AddStoreSupplyOrders(List<PrototypeWorkOrder> orders, PrototypeStructureState structure, string resourceId, int desiredAmount)
         {

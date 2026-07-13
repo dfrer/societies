@@ -98,6 +98,61 @@ namespace Societies.Core.Tests
         }
 
         [Fact]
+        public void LoadState_LegacyWetlandCacheDoesNotLoseHarvestedResource()
+        {
+            PrototypeCatalogBundle bundle = LoadCatalogs();
+            PrototypeScenarioDefinition scenario = bundle.Scenarios.Resolve("balanced_basin");
+            WorldGenerationResult world = PrototypeWorldGenerator.Generate(scenario);
+            PrototypeSettlementSimulation simulation = new(scenario, bundle.RoleQuotas.Roles, world);
+            List<PrototypeResourceSiteState> resources = BuildResourceSites(world);
+            PrototypeResourceSiteState wetlandSite = resources.First(site =>
+                world.WorldMap.GetNearestCell(site.Position).Biome == BiomeType.Wetland);
+            PrototypeSettlementSnapshot snapshot = simulation.CaptureSnapshot(0);
+
+            PrototypeResourceStoreSnapshot cacheSnapshot = snapshot.SiteCaches.Single(cache =>
+                string.Equals(cache.LinkedClusterId, wetlandSite.ClusterId, StringComparison.Ordinal));
+            cacheSnapshot.Position = PrototypeSerializableVector3.FromVector3(wetlandSite.Position);
+
+            foreach (PrototypeWorkerSnapshot citizenSnapshot in snapshot.Citizens)
+            {
+                citizenSnapshot.Phase = PrototypeWorkerPhase.Incapacitated.ToString();
+            }
+
+            PrototypeWorkerSnapshot legacyHarvester = snapshot.Citizens
+                .OrderBy(citizen => citizen.WorkerId, StringComparer.Ordinal)
+                .First();
+            legacyHarvester.Phase = PrototypeWorkerPhase.Harvesting.ToString();
+            legacyHarvester.Position = PrototypeSerializableVector3.FromVector3(wetlandSite.Position);
+            legacyHarvester.TargetPosition = PrototypeSerializableVector3.FromVector3(wetlandSite.Position);
+            legacyHarvester.TargetResourceNodeName = wetlandSite.NodeName;
+            legacyHarvester.CurrentOrderId = $"extract.{wetlandSite.NodeName}";
+            legacyHarvester.CurrentOrderKind = PrototypeWorkOrderKind.Extract.ToString();
+            legacyHarvester.CarryItemId = string.Empty;
+            legacyHarvester.CarryAmount = 0;
+            legacyHarvester.TicksRemaining = 1;
+            legacyHarvester.PhaseDurationTicks = 1;
+            legacyHarvester.Nutrition = 100.0f;
+            legacyHarvester.Fatigue = 0.0f;
+
+            PrototypeSettlementSimulation restored = new(scenario, bundle.RoleQuotas.Roles, world);
+            restored.LoadState(snapshot);
+            PrototypeResourceStoreState restoredCache = restored.SiteCaches.Single(cache =>
+                string.Equals(cache.LinkedClusterId, wetlandSite.ClusterId, StringComparison.Ordinal));
+            TerrainCell restoredCacheCell = world.WorldMap.GetNearestCell(restoredCache.Position);
+            Assert.NotEqual(BiomeType.Wetland, restoredCacheCell.Biome);
+            Assert.True(restoredCacheCell.SlopeDegrees <= 18.0f);
+
+            PrototypeSettlementTickResult result = restored.Advance(resources, 8.0f, PrototypeWeather.Clear);
+            PrototypeWorkerState restoredHarvester = restored.Citizens.Single(citizen =>
+                string.Equals(citizen.WorkerId, legacyHarvester.WorkerId, StringComparison.Ordinal));
+
+            Assert.Empty(result.HarvestRequests);
+            Assert.Equal(0, restoredHarvester.CarryAmount);
+            Assert.Equal(PrototypeWorkerPhase.Idle, restoredHarvester.Phase);
+            Assert.Equal("navigation.unreachable", restoredHarvester.LastFailureReason);
+        }
+
+        [Fact]
         public void LongHaulQuarry_PlansAndBuildsRemoteLogisticsInfrastructure()
         {
             PrototypeCatalogBundle bundle = LoadCatalogs();
