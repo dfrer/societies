@@ -1,14 +1,14 @@
 {
   "schemaVersion": 3,
-  "updatedUtc": "2026-07-12T00:43:23.9775321Z",
+  "updatedUtc": "2026-07-13T00:23:30.8780097Z",
   "required": {
     "dotnet": {
       "project": "tests/Societies.Core.Tests/Societies.Core.Tests.csproj",
       "command": "dotnet test tests/Societies.Core.Tests/Societies.Core.Tests.csproj --configuration Release",
-      "expectedTestCount": 98,
+      "expectedTestCount": 103,
       "tiers": {
         "fast": {
-          "expectedTestCount": 79,
+          "expectedTestCount": 84,
           "filter": "FullyQualifiedName!~PrototypeRuntimeSessionTests&FullyQualifiedName!~PrototypeSettlementSimulationTests&FullyQualifiedName!~SettlementDiagnosticsTests&FullyQualifiedName!~WorkOrderGenerationDiagnosticsTests"
         },
         "integration": {
@@ -79,6 +79,11 @@
       "command": "./scripts/run-performance-pair.ps1 -Scenario balanced_basin -Seed 1337 -Citizens 3 -Ticks 3 -CacheMode cold",
       "releaseCommand": "./scripts/run-performance-pair.ps1 -ReleaseExport -Scenario balanced_basin -Seed 1337 -Citizens 3 -Ticks 3 -CacheMode cold",
       "cacheModeComparisonScript": "scripts/run-performance-cache-modes.ps1",
+      "baselineMatrixScript": "scripts/run-performance-baseline-matrix.ps1",
+      "baselineMatrixCommand": "./scripts/run-performance-baseline-matrix.ps1",
+      "baselineMatrixResultSchemaVersion": 1,
+      "baselineMatrixCanonicalPairCount": 14,
+      "baselineMatrixStatus": "pending_clean_release_evidence",
       "resultSchemaVersion": 3,
       "requiredGodotVersion": "4.6.2",
       "requiredForPullRequest": false,
@@ -131,6 +136,6 @@
   "history": {
     "preSyncCommit": "c58e3de",
     "preSyncDotnetTestCount": 64,
-    "note": "The synchronized master adds 12 PrototypeMetricsTracker tests and 3 WorkOrderGenerationDiagnostics tests for a historical 79-test floor. W1-03b adds three cache-probe contract tests; the current manifest declares 98 required .NET tests."
+    "note": "The synchronized master adds 12 PrototypeMetricsTracker tests and 3 WorkOrderGenerationDiagnostics tests for a historical 79-test floor. W1-03b adds three cache-probe contract tests. W1-03c adds five natural-invalidation progression cases; the current manifest declares 103 required .NET tests."
   }
 }

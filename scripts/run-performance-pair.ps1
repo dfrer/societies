@@ -478,9 +478,20 @@ $cacheEvidenceCommonValid =
     $offResult.cacheEvidence.afterNaturalWarmup.allPathCacheKeysMatchNavigationRulesVersion -eq $true -and
     $offResult.cacheEvidence.beforeMeasurement.allPathCacheKeysMatchNavigationRulesVersion -eq $true -and
     $offResult.cacheEvidence.afterMeasurement.allPathCacheKeysMatchNavigationRulesVersion -eq $true
+$naturalNavigationVersionDelta =
+    [decimal]$offResult.cacheEvidence.afterMeasurement.navigationRulesVersion -
+    [decimal]$offResult.cacheEvidence.beforeMeasurement.navigationRulesVersion
+$naturalInvalidationDelta =
+    [decimal]$offResult.cacheEvidence.afterMeasurement.totalNavigationInvalidations -
+    [decimal]$offResult.cacheEvidence.beforeMeasurement.totalNavigationInvalidations
+$naturalInvalidationContractValid =
+    $naturalNavigationVersionDelta -ge 0 -and
+    $naturalInvalidationDelta -ge 0 -and
+    $naturalNavigationVersionDelta -eq $naturalInvalidationDelta
 $cacheTransitionContractValid = $false
 if ($CacheMode -eq "cold") {
     $cacheTransitionContractValid =
+        $naturalInvalidationContractValid -and
         $null -eq $offResult.cacheEvidence.forcedInvalidation -and
         $offResult.cacheEvidence.clearedEntryCount -eq
             $offResult.cacheEvidence.afterNaturalWarmup.pathCacheEntryCount -and
@@ -495,6 +506,7 @@ if ($CacheMode -eq "cold") {
 }
 elseif ($CacheMode -eq "natural_warm") {
     $cacheTransitionContractValid =
+        $naturalInvalidationContractValid -and
         $null -eq $offResult.cacheEvidence.forcedInvalidation -and
         $offResult.cacheEvidence.clearedEntryCount -eq 0 -and
         $offResult.cacheEvidence.afterNaturalWarmup.pathCacheEntryCount -gt 0 -and
@@ -654,14 +666,12 @@ $onRuntimeMetricsValid =
 $cacheDiagnosticsContractValid = if ($CacheMode -eq "cold") {
     $onRuntimeMetricsValid -and
     $onResult.diagnostics.firstMeasuredBatchPathPlanCacheMisses -gt 0 -and
-    $onResult.diagnostics.firstMeasuredBatchNavigationInvalidations -eq 0 -and
-    $onResult.diagnostics.navigationInvalidations -eq 0
+    $onResult.diagnostics.navigationInvalidations -eq $naturalInvalidationDelta
 }
 elseif ($CacheMode -eq "natural_warm") {
     $onRuntimeMetricsValid -and
     $onResult.diagnostics.firstMeasuredBatchPathPlanCacheHits -gt 0 -and
-    $onResult.diagnostics.firstMeasuredBatchNavigationInvalidations -eq 0 -and
-    $onResult.diagnostics.navigationInvalidations -eq 0
+    $onResult.diagnostics.navigationInvalidations -eq $naturalInvalidationDelta
 }
 else {
     $onRuntimeMetricsValid -and
