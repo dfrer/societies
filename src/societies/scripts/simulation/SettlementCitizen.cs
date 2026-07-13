@@ -16,7 +16,10 @@ namespace Societies.Simulation
 
             for (int index = 0; index < _scenario.InitialCitizens; index++)
             {
-                Vector3 homePosition = ProjectToSurface(GetCitizenHomePosition(index, _scenario.InitialCitizens));
+                Vector3 projectedHomePosition = ProjectToSurface(GetCitizenHomePosition(index, _scenario.InitialCitizens));
+                Vector3 homePosition = TryResolveWalkableInteractionPosition(projectedHomePosition, out Vector3 walkableHomePosition)
+                    ? walkableHomePosition
+                    : projectedHomePosition;
                 PrototypeCitizenRole role = index < seededRoles.Count ? seededRoles[index] : PrototypeCitizenRole.Generalist;
                 _citizens.Add(new PrototypeWorkerState
                 {
@@ -128,19 +131,39 @@ namespace Societies.Simulation
 
             _idleCitizensConsideringWorkOrdersThisTick++;
             _candidateOrdersEvaluatedThisTick += availableOrders.Count;
-            PrototypeWorkOrder? order = availableOrders
-                .OrderByDescending(candidate => ScoreOrder(citizen, candidate))
-                .ThenBy(candidate => candidate.OrderId, StringComparer.Ordinal)
+            List<(PrototypeWorkOrder Order, float Score)> reachableCandidates = new();
+            foreach (PrototypeWorkOrder candidate in availableOrders)
+            {
+                if (!TryScoreOrder(citizen, candidate, out float score))
+                {
+                    _unreachableWorkOrderCandidatesSkippedThisTick++;
+                    continue;
+                }
+
+                reachableCandidates.Add((candidate, score));
+            }
+
+            PrototypeWorkOrder? order = reachableCandidates
+                .OrderByDescending(candidate => candidate.Score)
+                .ThenBy(candidate => candidate.Order.OrderId, StringComparer.Ordinal)
+                .Select(candidate => candidate.Order)
                 .FirstOrDefault();
 
             if (order == null)
             {
-                BeginIdle(citizen, "Waiting for work");
+                bool hadUnreachableWork = availableOrders.Count > 0;
+                BeginIdle(citizen, hadUnreachableWork ? "No reachable work" : "Waiting for work");
+                if (hadUnreachableWork)
+                {
+                    citizen.LastFailureReason = "navigation.unreachable";
+                }
                 return;
             }
 
-            availableOrders.Remove(order);
-            BeginOrder(citizen, order, result);
+            if (BeginOrder(citizen, order, result))
+            {
+                availableOrders.Remove(order);
+            }
         }
         private void ResolveMovementArrival(PrototypeWorkerState citizen, PrototypeSettlementTickResult result)
         {
@@ -167,18 +190,30 @@ namespace Societies.Simulation
                 case PrototypeWorkOrderKind.HaulFromRemoteDepot:
                     if (citizen.CarryAmount == 0)
                     {
+                        string sourceStoreId = citizen.SourceStoreId;
+                        if (!TryComputeRouteDistance(citizen.Position, _centralDepot.Position, out _))
+                        {
+                            FailNavigationTransition(citizen, result, $"{citizen.DisplayName} could not reach the central depot");
+                            return;
+                        }
+
                         if (!TryPickupFromStore(citizen, citizen.SourceStoreId))
                         {
                             FailCitizenOrder(citizen, "haul.source.empty", result, $"{citizen.DisplayName} could not pick up goods for depot hauling");
                             return;
                         }
 
-                        BeginTravel(
+                        if (!BeginTravel(
                             citizen,
                             PrototypeWorkerPhase.MovingToDepot,
                             _centralDepot.Position,
                             "Central Depot",
-                            $"Delivering {InventoryComponent.FormatItemName(citizen.CarryItemId)}");
+                            $"Delivering {InventoryComponent.FormatItemName(citizen.CarryItemId)}"))
+                        {
+                            RestorePickedUpResource(citizen, sourceStoreId);
+                            FailNavigationTransition(citizen, result, $"{citizen.DisplayName} could not reach the central depot");
+                        }
+
                         return;
                     }
 
@@ -194,19 +229,31 @@ namespace Societies.Simulation
                 case PrototypeWorkOrderKind.HaulToRemoteDepot:
                     if (citizen.CarryAmount == 0)
                     {
+                        string sourceStoreId = citizen.SourceStoreId;
+                        Vector3 destinationPosition = GetStorePosition(citizen.DestinationStoreId);
+                        if (!TryComputeRouteDistance(citizen.Position, destinationPosition, out _))
+                        {
+                            FailNavigationTransition(citizen, result, $"{citizen.DisplayName} could not reach {citizen.TargetLabel}");
+                            return;
+                        }
+
                         if (!TryPickupFromStore(citizen, citizen.SourceStoreId))
                         {
                             FailCitizenOrder(citizen, "haul.source.empty", result, $"{citizen.DisplayName} could not pick up goods for remote hauling");
                             return;
                         }
 
-                        Vector3 destinationPosition = GetStorePosition(citizen.DestinationStoreId);
-                        BeginTravel(
+                        if (!BeginTravel(
                             citizen,
                             PrototypeWorkerPhase.MovingToStructure,
                             destinationPosition,
                             citizen.TargetLabel,
-                            $"Consolidating {InventoryComponent.FormatItemName(citizen.CarryItemId)}");
+                            $"Consolidating {InventoryComponent.FormatItemName(citizen.CarryItemId)}"))
+                        {
+                            RestorePickedUpResource(citizen, sourceStoreId);
+                            FailNavigationTransition(citizen, result, $"{citizen.DisplayName} could not reach the remote depot");
+                        }
+
                         return;
                     }
 
@@ -222,12 +269,7 @@ namespace Societies.Simulation
                 case PrototypeWorkOrderKind.HaulToStructure:
                     if (citizen.CarryAmount == 0)
                     {
-                        if (!TryPickupFromStore(citizen, citizen.SourceStoreId))
-                        {
-                            FailCitizenOrder(citizen, "haul.source.empty", result, $"{citizen.DisplayName} could not pick up goods for structure hauling");
-                            return;
-                        }
-
+                        string sourceStoreId = citizen.SourceStoreId;
                         PrototypeStructureState? destinationStructure = GetStructure(citizen.TargetStructureId);
                         if (destinationStructure == null)
                         {
@@ -235,12 +277,29 @@ namespace Societies.Simulation
                             return;
                         }
 
-                        BeginTravel(
+                        if (!TryComputeRouteDistance(citizen.Position, destinationStructure.Position, out _))
+                        {
+                            FailNavigationTransition(citizen, result, $"{citizen.DisplayName} could not reach {destinationStructure.DisplayName}");
+                            return;
+                        }
+
+                        if (!TryPickupFromStore(citizen, citizen.SourceStoreId))
+                        {
+                            FailCitizenOrder(citizen, "haul.source.empty", result, $"{citizen.DisplayName} could not pick up goods for structure hauling");
+                            return;
+                        }
+
+                        if (!BeginTravel(
                             citizen,
                             PrototypeWorkerPhase.MovingToStructure,
                             destinationStructure.Position,
                             destinationStructure.DisplayName,
-                            $"Carrying {InventoryComponent.FormatItemName(citizen.CarryItemId)}");
+                            $"Carrying {InventoryComponent.FormatItemName(citizen.CarryItemId)}"))
+                        {
+                            RestorePickedUpResource(citizen, sourceStoreId);
+                            FailNavigationTransition(citizen, result, $"{citizen.DisplayName} could not reach {destinationStructure.DisplayName}");
+                        }
+
                         return;
                     }
 
@@ -278,12 +337,7 @@ namespace Societies.Simulation
                 case PrototypeWorkOrderKind.RefuelHearth:
                     if (citizen.CarryAmount == 0)
                     {
-                        if (!TryPickupFromStore(citizen, citizen.SourceStoreId))
-                        {
-                            FailCitizenOrder(citizen, "fuel.source.empty", result, $"{citizen.DisplayName} could not collect firewood for the hearth");
-                            return;
-                        }
-
+                        string sourceStoreId = citizen.SourceStoreId;
                         PrototypeStructureState? hearth = GetStructure(citizen.TargetStructureId);
                         if (hearth == null)
                         {
@@ -291,12 +345,29 @@ namespace Societies.Simulation
                             return;
                         }
 
-                        BeginTravel(
+                        if (!TryComputeRouteDistance(citizen.Position, hearth.Position, out _))
+                        {
+                            FailNavigationTransition(citizen, result, $"{citizen.DisplayName} could not reach the hearth");
+                            return;
+                        }
+
+                        if (!TryPickupFromStore(citizen, citizen.SourceStoreId))
+                        {
+                            FailCitizenOrder(citizen, "fuel.source.empty", result, $"{citizen.DisplayName} could not collect firewood for the hearth");
+                            return;
+                        }
+
+                        if (!BeginTravel(
                             citizen,
                             PrototypeWorkerPhase.MovingToStructure,
                             hearth.Position,
                             hearth.DisplayName,
-                            "Refueling the hearth");
+                            "Refueling the hearth"))
+                        {
+                            RestorePickedUpResource(citizen, sourceStoreId);
+                            FailNavigationTransition(citizen, result, $"{citizen.DisplayName} could not reach the hearth");
+                        }
+
                         return;
                     }
 
@@ -338,17 +409,6 @@ namespace Societies.Simulation
             switch (citizen.CurrentOrderKind)
             {
                 case PrototypeWorkOrderKind.Extract when citizen.Phase == PrototypeWorkerPhase.Harvesting:
-                    citizen.CarryItemId = InferHarvestItemFromNode(citizen.TargetResourceNodeName);
-                    citizen.CarryAmount = 1;
-                    result.HarvestRequests.Add(new PrototypeHarvestRequest(
-                        citizen.WorkerId,
-                        citizen.DisplayName,
-                        citizen.TargetResourceNodeName,
-                        citizen.CarryItemId,
-                        1,
-                        ExtractClusterId(citizen.TargetResourceNodeName)));
-                    AddRecentEvent(citizen, $"Harvested {citizen.CarryItemId}");
-
                     PrototypeResourceStoreState? cache = ResolveCacheForCitizen(citizen);
                     if (cache == null)
                     {
@@ -356,13 +416,29 @@ namespace Societies.Simulation
                         return;
                     }
 
-                    BeginTravel(
+                    string targetResourceNodeName = citizen.TargetResourceNodeName;
+                    string harvestedItemId = InferHarvestItemFromNode(targetResourceNodeName);
+                    if (!BeginTravel(
                         citizen,
                         PrototypeWorkerPhase.MovingToCache,
                         cache.Position,
                         cache.DisplayName,
-                        $"Carrying {InventoryComponent.FormatItemName(citizen.CarryItemId)}");
-                    citizen.Phase = PrototypeWorkerPhase.MovingToCache;
+                        $"Carrying {InventoryComponent.FormatItemName(harvestedItemId)}"))
+                    {
+                        FailNavigationTransition(citizen, result, $"{citizen.DisplayName} could not reach the site cache");
+                        return;
+                    }
+
+                    citizen.CarryItemId = harvestedItemId;
+                    citizen.CarryAmount = 1;
+                    result.HarvestRequests.Add(new PrototypeHarvestRequest(
+                        citizen.WorkerId,
+                        citizen.DisplayName,
+                        targetResourceNodeName,
+                        harvestedItemId,
+                        1,
+                        ExtractClusterId(targetResourceNodeName)));
+                    AddRecentEvent(citizen, $"Harvested {harvestedItemId}");
                     return;
 
                 case PrototypeWorkOrderKind.Extract:
@@ -502,7 +578,7 @@ namespace Societies.Simulation
                     : _centralDepot.GetCount("berries") > 0 ? "berries" : null;
                 if (foodId != null)
                 {
-                    BeginOrder(citizen, new PrototypeWorkOrder
+                    PrototypeWorkOrder eatOrder = new()
                     {
                         OrderId = $"eat.{citizen.WorkerId}.{_totalTicks}",
                         Kind = PrototypeWorkOrderKind.Eat,
@@ -512,8 +588,16 @@ namespace Societies.Simulation
                         Reason = citizen.Needs.IsNutritionCritical ? "critical nutrition" : "food need",
                         TargetPosition = GetStructure("central_hearth_1")?.Position ?? _world.SettlementSpawn.AnchorPosition,
                         Amount = 1
-                    }, result);
-                    return true;
+                    };
+                    if (!TryScoreOrder(citizen, eatOrder, out _))
+                    {
+                        _unreachableWorkOrderCandidatesSkippedThisTick++;
+                        citizen.LastFailureReason = "navigation.unreachable";
+                    }
+                    else if (BeginOrder(citizen, eatOrder, result))
+                    {
+                        return true;
+                    }
                 }
             }
 
@@ -521,7 +605,7 @@ namespace Societies.Simulation
             {
                 Vector3 sleepTarget = GetSleepPosition(citizen);
                 string label = citizen.HomeBedCapacity > 0 ? "Hut" : "Hearthside Bedroll";
-                BeginOrder(citizen, new PrototypeWorkOrder
+                PrototypeWorkOrder sleepOrder = new()
                 {
                     OrderId = $"sleep.{citizen.WorkerId}.{_totalTicks}",
                     Kind = PrototypeWorkOrderKind.Sleep,
@@ -530,13 +614,21 @@ namespace Societies.Simulation
                     Reason = citizen.Needs.IsExhausted ? "critical fatigue" : "rest cycle",
                     TargetPosition = sleepTarget,
                     Amount = 1
-                }, result);
-                return true;
+                };
+                if (!TryScoreOrder(citizen, sleepOrder, out _))
+                {
+                    _unreachableWorkOrderCandidatesSkippedThisTick++;
+                    citizen.LastFailureReason = "navigation.unreachable";
+                }
+                else if (BeginOrder(citizen, sleepOrder, result))
+                {
+                    return true;
+                }
             }
 
             return false;
         }
-        private void BeginOrder(PrototypeWorkerState citizen, PrototypeWorkOrder order, PrototypeSettlementTickResult result)
+        private bool BeginOrder(PrototypeWorkerState citizen, PrototypeWorkOrder order, PrototypeSettlementTickResult result)
         {
             citizen.CurrentOrderId = order.OrderId;
             citizen.CurrentOrderKind = order.Kind;
@@ -548,17 +640,18 @@ namespace Societies.Simulation
             citizen.TargetLabel = order.Label;
             citizen.TargetPosition = order.TargetPosition;
             citizen.CarryItemId = citizen.CarryAmount > 0 ? citizen.CarryItemId : order.ResourceId;
+            bool travelStarted;
 
             switch (order.Kind)
             {
                 case PrototypeWorkOrderKind.Extract:
-                    BeginTravel(citizen, PrototypeWorkerPhase.MovingToResource, order.TargetPosition, order.Label, $"Heading to {order.Label}");
+                    travelStarted = BeginTravel(citizen, PrototypeWorkerPhase.MovingToResource, order.TargetPosition, order.Label, $"Heading to {order.Label}");
                     break;
                 case PrototypeWorkOrderKind.HaulToDepot:
                 case PrototypeWorkOrderKind.HaulFromRemoteDepot:
                 case PrototypeWorkOrderKind.HaulToRemoteDepot:
                 case PrototypeWorkOrderKind.HaulToStructure:
-                    BeginTravel(citizen, GetSourceTravelPhase(order.SourceStoreId), GetStorePosition(order.SourceStoreId), GetStoreLabel(order.SourceStoreId), $"Collecting {InventoryComponent.FormatItemName(order.ResourceId)}");
+                    travelStarted = BeginTravel(citizen, GetSourceTravelPhase(order.SourceStoreId), GetStorePosition(order.SourceStoreId), GetStoreLabel(order.SourceStoreId), $"Collecting {InventoryComponent.FormatItemName(order.ResourceId)}");
                     break;
                 case PrototypeWorkOrderKind.Process:
                 case PrototypeWorkOrderKind.Build:
@@ -566,19 +659,28 @@ namespace Societies.Simulation
                 case PrototypeWorkOrderKind.EstablishRemoteDepot:
                 case PrototypeWorkOrderKind.Eat:
                 case PrototypeWorkOrderKind.Sleep:
-                    BeginTravel(citizen, PrototypeWorkerPhase.MovingToStructure, order.TargetPosition, order.Label, $"Heading to {order.Label}");
+                    travelStarted = BeginTravel(citizen, PrototypeWorkerPhase.MovingToStructure, order.TargetPosition, order.Label, $"Heading to {order.Label}");
                     break;
                 case PrototypeWorkOrderKind.RefuelHearth:
-                    BeginTravel(citizen, PrototypeWorkerPhase.MovingToDepot, GetStorePosition(order.SourceStoreId), GetStoreLabel(order.SourceStoreId), "Collecting firewood");
+                    travelStarted = BeginTravel(citizen, PrototypeWorkerPhase.MovingToDepot, GetStorePosition(order.SourceStoreId), GetStoreLabel(order.SourceStoreId), "Collecting firewood");
                     break;
                 case PrototypeWorkOrderKind.Repath:
-                    BeginTravel(citizen, PrototypeWorkerPhase.MovingToStructure, order.TargetPosition, order.Label, "Repathing");
+                    travelStarted = BeginTravel(citizen, PrototypeWorkerPhase.MovingToStructure, order.TargetPosition, order.Label, "Repathing");
                     break;
+                default:
+                    travelStarted = false;
+                    break;
+            }
+
+            if (!travelStarted)
+            {
+                return false;
             }
 
             result.Events.Add(new PrototypeSettlementEvent(
                 PrototypeEventTypes.SettlementWorkAssigned,
                 $"{citizen.DisplayName} accepted {order.Kind} for {order.Reason}"));
+            return true;
         }
         private bool CompleteProcessing(PrototypeWorkerState citizen, PrototypeSettlementTickResult result)
         {
@@ -868,9 +970,16 @@ namespace Societies.Simulation
             citizen.Navigation = new PrototypeCitizenNavigationState();
             BeginStationaryPhase(citizen, PrototypeWorkerPhase.Idle, 6, citizen.HomePosition, "Settlement", activityText);
         }
-        private void BeginTravel(PrototypeWorkerState citizen, PrototypeWorkerPhase phase, Vector3 targetPosition, string targetLabel, string activityText)
+        private bool BeginTravel(PrototypeWorkerState citizen, PrototypeWorkerPhase phase, Vector3 targetPosition, string targetLabel, string activityText)
         {
-            PrototypePathPlan plan = FindPathPlan(citizen.Position, targetPosition);
+            if (!TryFindPathPlan(citizen.Position, targetPosition, out PrototypePathPlan? plan))
+            {
+                BeginIdle(citizen, "No reachable route");
+                citizen.LastFailureReason = "navigation.unreachable";
+                return false;
+            }
+
+            PrototypePathPlan reachablePlan = plan!;
             citizen.Phase = phase;
             citizen.TargetPosition = targetPosition;
             citizen.TargetLabel = targetLabel;
@@ -879,22 +988,23 @@ namespace Societies.Simulation
             TerrainCell destinationCell = _world.WorldMap.GetNearestCell(targetPosition);
             citizen.Navigation = new PrototypeCitizenNavigationState
             {
-                CurrentWaypointIndex = plan.Waypoints.Count > 1 ? 1 : 0,
-                CurrentRouteLengthMeters = plan.TotalDistanceMeters,
-                CurrentRouteCost = plan.TotalCost,
-                CurrentRouteTravelTicks = plan.EstimatedTravelTicks,
+                CurrentWaypointIndex = reachablePlan.Waypoints.Count > 1 ? 1 : 0,
+                CurrentRouteLengthMeters = reachablePlan.TotalDistanceMeters,
+                CurrentRouteCost = reachablePlan.TotalCost,
+                CurrentRouteTravelTicks = reachablePlan.EstimatedTravelTicks,
                 CachedRouteVersion = _navigationRulesVersion,
                 SourceGridX = sourceCell.GridX,
                 SourceGridY = sourceCell.GridY,
                 DestinationGridX = destinationCell.GridX,
                 DestinationGridY = destinationCell.GridY,
-                RouteWaypoints = plan.Waypoints
+                RouteWaypoints = reachablePlan.Waypoints
                     .Select(PrototypeSerializableVector3.FromVector3)
                     .ToList()
             };
-            citizen.PhaseDurationTicks = CalculateTravelTicks(plan);
+            citizen.PhaseDurationTicks = CalculateTravelTicks(reachablePlan);
             citizen.TicksRemaining = citizen.PhaseDurationTicks;
-            RegisterPathUsage(plan);
+            RegisterPathUsage(reachablePlan);
+            return true;
         }
         private void BeginStationaryPhase(PrototypeWorkerState citizen, PrototypeWorkerPhase phase, int durationTicks, Vector3 position, string targetLabel, string activityText)
         {
@@ -997,11 +1107,74 @@ namespace Societies.Simulation
             return 0.12f;
         }
         private static bool IsNight(float currentHour) => currentHour >= 20.0f || currentHour < 6.0f;
-        private float ScoreOrder(PrototypeWorkerState citizen, PrototypeWorkOrder order)
+        private bool TryScoreOrder(PrototypeWorkerState citizen, PrototypeWorkOrder order, out float score)
         {
-            float distancePenalty = ComputeRouteDistance(citizen.Position, order.TargetPosition) * 0.75f;
+            if (!TryComputeOrderRouteDistance(citizen, order, out float routeDistance))
+            {
+                score = 0.0f;
+                return false;
+            }
+
+            float distancePenalty = routeDistance * 0.75f;
             float roleBonus = GetRoleBonus(citizen.Role, order);
-            return order.Priority + roleBonus - distancePenalty;
+            score = order.Priority + roleBonus - distancePenalty;
+            return true;
+        }
+        private bool TryComputeOrderRouteDistance(
+            PrototypeWorkerState citizen,
+            PrototypeWorkOrder order,
+            out float routeDistance)
+        {
+            if (!TryComputeRouteDistance(citizen.Position, order.TargetPosition, out routeDistance))
+            {
+                return false;
+            }
+
+            bool isReachable;
+            switch (order.Kind)
+            {
+                case PrototypeWorkOrderKind.Extract:
+                    PrototypeResourceStoreState? cache = GetStore($"cache.{order.ClusterId}");
+                    isReachable = cache != null &&
+                        TryComputeRouteDistance(order.TargetPosition, cache.Position, out _);
+                    break;
+
+                case PrototypeWorkOrderKind.HaulToDepot:
+                case PrototypeWorkOrderKind.HaulFromRemoteDepot:
+                    PrototypeResourceStoreState? depotSource = GetStore(order.SourceStoreId);
+                    isReachable = depotSource != null &&
+                        TryComputeRouteDistance(citizen.Position, depotSource.Position, out _) &&
+                        TryComputeRouteDistance(depotSource.Position, _centralDepot.Position, out _);
+                    break;
+
+                case PrototypeWorkOrderKind.HaulToRemoteDepot:
+                case PrototypeWorkOrderKind.HaulToStructure:
+                    PrototypeResourceStoreState? source = GetStore(order.SourceStoreId);
+                    PrototypeResourceStoreState? destination = GetStore(order.DestinationStoreId);
+                    isReachable = source != null && destination != null &&
+                        TryComputeRouteDistance(citizen.Position, source.Position, out _) &&
+                        TryComputeRouteDistance(source.Position, destination.Position, out _);
+                    break;
+
+                case PrototypeWorkOrderKind.RefuelHearth:
+                    PrototypeResourceStoreState? fuelSource = GetStore(order.SourceStoreId);
+                    PrototypeStructureState? hearth = GetStructure(order.StructureId);
+                    isReachable = fuelSource != null && hearth != null &&
+                        TryComputeRouteDistance(citizen.Position, fuelSource.Position, out _) &&
+                        TryComputeRouteDistance(fuelSource.Position, hearth.Position, out _);
+                    break;
+
+                default:
+                    isReachable = true;
+                    break;
+            }
+
+            if (!isReachable)
+            {
+                routeDistance = 0.0f;
+            }
+
+            return isReachable;
         }
         private static float GetRoleBonus(PrototypeCitizenRole role, PrototypeWorkOrder order)
         {
@@ -1053,6 +1226,32 @@ namespace Societies.Simulation
             citizen.CarryItemId = string.Empty;
             citizen.CarryAmount = 0;
         }
+        private void RestorePickedUpResource(PrototypeWorkerState citizen, string sourceStoreId)
+        {
+            PrototypeResourceStoreState? source = GetStore(sourceStoreId);
+            if (source == null ||
+                citizen.CarryAmount <= 0 ||
+                string.IsNullOrWhiteSpace(citizen.CarryItemId) ||
+                !source.Add(citizen.CarryItemId, citizen.CarryAmount))
+            {
+                throw new InvalidOperationException(
+                    $"Could not restore {citizen.CarryItemId} x{citizen.CarryAmount} to '{sourceStoreId}' after a failed route transition.");
+            }
+
+            ClearCitizenCarry(citizen);
+        }
+        private void FailNavigationTransition(
+            PrototypeWorkerState citizen,
+            PrototypeSettlementTickResult result,
+            string message)
+        {
+            citizen.LastFailureReason = "navigation.unreachable";
+            AddRecentEvent(citizen, citizen.LastFailureReason);
+            IncrementCount(_blockedReasonCounts, citizen.LastFailureReason, 1);
+            result.Events.Add(new PrototypeSettlementEvent(PrototypeEventTypes.SettlementBlocked, message));
+            ClearCitizenCarry(citizen);
+            BeginIdle(citizen, "No reachable route");
+        }
         private PrototypeWorkerPhase GetSourceTravelPhase(string sourceStoreId) =>
             string.Equals(sourceStoreId, _centralDepot.StoreId, StringComparison.Ordinal)
                 ? PrototypeWorkerPhase.MovingToDepot
@@ -1083,10 +1282,19 @@ namespace Societies.Simulation
                 citizen.RecentEvents.RemoveAt(0);
             }
         }
-        private Vector3 GetSleepPosition(PrototypeWorkerState citizen) =>
-            citizen.HomeBedCapacity > 0
-                ? citizen.HomePosition
-                : ProjectToSurface(_world.SettlementSpawn.AnchorPosition + new Vector3(0.0f, 0.0f, 2.6f));
+        private Vector3 GetSleepPosition(PrototypeWorkerState citizen)
+        {
+            if (citizen.HomeBedCapacity > 0)
+            {
+                return citizen.HomePosition;
+            }
+
+            Vector3 projectedPosition = ProjectToSurface(
+                _world.SettlementSpawn.AnchorPosition + new Vector3(0.0f, 0.0f, 2.6f));
+            return TryResolveWalkableInteractionPosition(projectedPosition, out Vector3 walkablePosition)
+                ? walkablePosition
+                : projectedPosition;
+        }
         private Vector3 GetCitizenHomePosition(int citizenIndex, int citizenCount)
         {
             float angle = (Mathf.Tau * citizenIndex / Math.Max(citizenCount, 1)) - (Mathf.Pi * 0.5f);

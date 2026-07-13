@@ -124,11 +124,15 @@ namespace Societies.Simulation
                 return;
             }
 
-            PrototypePathPlan corridorPlan = FindPathPlan(_world.SettlementSpawn.AnchorPosition, destination);
+            if (!TryFindPathPlan(_world.SettlementSpawn.AnchorPosition, destination, out PrototypePathPlan? corridorPlan))
+            {
+                return;
+            }
+
             int basePriority = _buildQueue.Count + priorityOffset + 10;
             int structureIndex = _pathSegments.Count;
 
-            foreach (Vector2I cell in corridorPlan.Cells.Skip(1).SkipLast(1))
+            foreach (Vector2I cell in corridorPlan!.Cells.Skip(1).SkipLast(1))
             {
                 TerrainCell terrainCell = _world.WorldMap.GetCell(cell.X, cell.Y);
                 string structureId = $"path_segment_{structureIndex + 1}";
@@ -274,16 +278,23 @@ namespace Societies.Simulation
                 probeDestinationCell.GridY,
                 _navigationRulesVersion));
 
-            PrototypePathPlan preChangePlan = FindPathPlan(
+            if (!TryFindPathPlan(
                 _forcedProbeStartPosition,
-                _forcedProbeDestinationPosition);
-            _forcedPreChangeQuery = preChangePlan.Query;
-            _forcedPreChangePlanVersion = preChangePlan.Query.RulesVersion;
+                _forcedProbeDestinationPosition,
+                out PrototypePathPlan? preChangePlan))
+            {
+                _forcedInvalidationPrepared = false;
+                return false;
+            }
+
+            PrototypePathPlan resolvedPreChangePlan = preChangePlan!;
+            _forcedPreChangeQuery = resolvedPreChangePlan.Query;
+            _forcedPreChangePlanVersion = resolvedPreChangePlan.Query.RulesVersion;
             _forcedPreChangeExactEndpointsMatch =
-                preChangePlan.Waypoints.Count > 0 &&
-                preChangePlan.Waypoints[0].IsEqualApprox(_forcedProbeStartPosition) &&
-                preChangePlan.Waypoints[^1].IsEqualApprox(_forcedProbeDestinationPosition);
-            _forcedPreChangePlanCost = preChangePlan.TotalCost;
+                resolvedPreChangePlan.Waypoints.Count > 0 &&
+                resolvedPreChangePlan.Waypoints[0].IsEqualApprox(_forcedProbeStartPosition) &&
+                resolvedPreChangePlan.Waypoints[^1].IsEqualApprox(_forcedProbeDestinationPosition);
+            _forcedPreChangePlanCost = resolvedPreChangePlan.TotalCost;
             ResetForcedInvalidationCommitEvidence();
 
             structureId = segment.StructureId;
@@ -394,16 +405,22 @@ namespace Societies.Simulation
 
         private void CaptureFirstPostInvalidationLookup()
         {
-            PrototypePathPlan postChangePlan = FindPathPlan(
+            if (!TryFindPathPlan(
                 _forcedProbeStartPosition,
-                _forcedProbeDestinationPosition);
-            _forcedPostChangeQuery = postChangePlan.Query;
-            _forcedPostChangePlanVersion = postChangePlan.Query.RulesVersion;
-            _forcedPostChangePlanCost = postChangePlan.TotalCost;
+                _forcedProbeDestinationPosition,
+                out PrototypePathPlan? postChangePlan))
+            {
+                throw new InvalidOperationException("The prepared forced-invalidation probe became unreachable after a path-cost-only rebuild.");
+            }
+
+            PrototypePathPlan resolvedPostChangePlan = postChangePlan!;
+            _forcedPostChangeQuery = resolvedPostChangePlan.Query;
+            _forcedPostChangePlanVersion = resolvedPostChangePlan.Query.RulesVersion;
+            _forcedPostChangePlanCost = resolvedPostChangePlan.TotalCost;
             _forcedFirstLookupObserved = true;
             _forcedFirstLookupWasCacheMiss = !_lastPathPlanLookupWasCacheHit;
             _forcedFirstLookupUsedNewVersion =
-                postChangePlan.Query.RulesVersion == _navigationRulesVersion &&
+                resolvedPostChangePlan.Query.RulesVersion == _navigationRulesVersion &&
                 _forcedInvalidationVersionAfterCommit == _navigationRulesVersion;
             _forcedInvalidationCommitted = true;
             _forcedCommitToFirstLookupMilliseconds = Stopwatch
@@ -412,22 +429,25 @@ namespace Societies.Simulation
 
             PrototypePathQuery? preChangeQuery = _forcedPreChangeQuery;
             bool queryCellsMatch = preChangeQuery.HasValue &&
-                preChangeQuery.Value.StartGridX == postChangePlan.Query.StartGridX &&
-                preChangeQuery.Value.StartGridY == postChangePlan.Query.StartGridY &&
-                preChangeQuery.Value.EndGridX == postChangePlan.Query.EndGridX &&
-                preChangeQuery.Value.EndGridY == postChangePlan.Query.EndGridY;
+                preChangeQuery.Value.StartGridX == resolvedPostChangePlan.Query.StartGridX &&
+                preChangeQuery.Value.StartGridY == resolvedPostChangePlan.Query.StartGridY &&
+                preChangeQuery.Value.EndGridX == resolvedPostChangePlan.Query.EndGridX &&
+                preChangeQuery.Value.EndGridY == resolvedPostChangePlan.Query.EndGridY;
             bool postChangeEndpointsMatch =
-                postChangePlan.Waypoints.Count > 0 &&
-                postChangePlan.Waypoints[0].IsEqualApprox(_forcedProbeStartPosition) &&
-                postChangePlan.Waypoints[^1].IsEqualApprox(_forcedProbeDestinationPosition);
+                resolvedPostChangePlan.Waypoints.Count > 0 &&
+                resolvedPostChangePlan.Waypoints[0].IsEqualApprox(_forcedProbeStartPosition) &&
+                resolvedPostChangePlan.Waypoints[^1].IsEqualApprox(_forcedProbeDestinationPosition);
             _forcedExactEndpointsMatch =
                 queryCellsMatch &&
                 _forcedPreChangeExactEndpointsMatch &&
                 postChangeEndpointsMatch;
             _forcedChangedCellIncluded = _forcedChangedCell is Vector2I changedCell &&
-                postChangePlan.Cells.Contains(changedCell);
+                resolvedPostChangePlan.Cells.Contains(changedCell);
         }
-        private PrototypePathPlan FindPathPlan(Vector3 startPosition, Vector3 destinationPosition)
+        private bool TryFindPathPlan(
+            Vector3 startPosition,
+            Vector3 destinationPosition,
+            out PrototypePathPlan? plan)
         {
             _pathPlanLookupsThisTick++;
             _navigationGrid ??= new PrototypeNavigationGrid(_world.WorldMap, new HashSet<Vector2I>(), _navigationRulesVersion);
@@ -435,20 +455,41 @@ namespace Societies.Simulation
             TerrainCell startCell = _world.WorldMap.GetNearestCell(startPosition);
             TerrainCell destinationCell = _world.WorldMap.GetNearestCell(destinationPosition);
             PrototypePathCacheKey cacheKey = new(startCell.GridX, startCell.GridY, destinationCell.GridX, destinationCell.GridY, _navigationRulesVersion);
-            if (_pathCache.TryGetValue(cacheKey, out PrototypePathPlan? cachedPlan))
+            if (_pathCache.TryGetValue(cacheKey, out PrototypePathCacheEntry? cachedEntry))
             {
                 _pathPlanCacheHitsThisTick++;
                 _lastPathPlanLookupWasCacheHit = true;
-                _lastPathPlanRulesVersion = cachedPlan.Query.RulesVersion;
-                return cachedPlan;
+                _lastPathPlanRulesVersion = cachedEntry.Query.RulesVersion;
+                if (!cachedEntry.IsReachable)
+                {
+                    plan = null;
+                    return false;
+                }
+
+                return _navigationGrid.TryMaterializePath(
+                    startPosition,
+                    destinationPosition,
+                    cachedEntry.Cells,
+                    out plan);
             }
 
             _pathPlanCacheMissesThisTick++;
-            PrototypePathPlan plan = _navigationGrid.FindPath(startPosition, destinationPosition);
-            _pathCache[cacheKey] = plan;
+            bool isReachable = _navigationGrid.TryFindPath(startPosition, destinationPosition, out plan);
+            PrototypePathQuery query = new(
+                startCell.GridX,
+                startCell.GridY,
+                destinationCell.GridX,
+                destinationCell.GridY,
+                _navigationRulesVersion);
+            _pathCache[cacheKey] = new PrototypePathCacheEntry
+            {
+                Query = query,
+                IsReachable = isReachable,
+                Cells = plan?.Cells.ToList() ?? new List<Vector2I>()
+            };
             _lastPathPlanLookupWasCacheHit = false;
-            _lastPathPlanRulesVersion = plan.Query.RulesVersion;
-            return plan;
+            _lastPathPlanRulesVersion = query.RulesVersion;
+            return isReachable;
         }
         private void RegisterPathUsage(PrototypePathPlan plan)
         {
@@ -465,9 +506,25 @@ namespace Societies.Simulation
                 }
             }
         }
+        private bool TryComputeRouteDistance(
+            Vector3 startPosition,
+            Vector3 destinationPosition,
+            out float distanceMeters)
+        {
+            if (TryFindPathPlan(startPosition, destinationPosition, out PrototypePathPlan? plan))
+            {
+                distanceMeters = plan!.TotalDistanceMeters;
+                return true;
+            }
+
+            distanceMeters = 0.0f;
+            return false;
+        }
         private float ComputeRouteDistance(Vector3 startPosition, Vector3 destinationPosition)
         {
-            return FindPathPlan(startPosition, destinationPosition).TotalDistanceMeters;
+            return TryComputeRouteDistance(startPosition, destinationPosition, out float distanceMeters)
+                ? distanceMeters
+                : float.PositiveInfinity;
         }
         private PrototypeRemoteDepotState? GetRemoteDepot(string clusterId, bool requireBuilt = false)
         {

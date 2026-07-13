@@ -16,6 +16,7 @@ namespace Societies.Simulation
         private readonly WorldMapState _worldMap;
         private readonly Dictionary<Vector2I, PrototypeNavigationGridCell> _cells;
         private readonly HashSet<Vector2I> _builtPathCells;
+        private readonly float _minimumTraversalMultiplier;
 
         public PrototypeNavigationGrid(WorldMapState worldMap, IReadOnlyCollection<Vector2I> builtPathCells, int rulesVersion)
         {
@@ -23,6 +24,13 @@ namespace Societies.Simulation
             RulesVersion = rulesVersion;
             _builtPathCells = new HashSet<Vector2I>(builtPathCells);
             _cells = BuildCells(worldMap, _builtPathCells);
+            _minimumTraversalMultiplier = _cells.Values
+                .Where(cell => cell.IsWalkable)
+                .Select(cell => cell.HasBuiltPath
+                    ? cell.MovementCost * BuiltPathCostMultiplier
+                    : cell.MovementCost)
+                .DefaultIfEmpty(1.0f)
+                .Min();
         }
 
         public int RulesVersion { get; }
@@ -31,16 +39,26 @@ namespace Societies.Simulation
 
         public TerrainCell GetTerrainCell(Vector3 worldPosition) => _worldMap.GetNearestCell(worldPosition);
 
-        public PrototypePathPlan FindPath(Vector3 startPosition, Vector3 destinationPosition)
+        public bool TryFindPath(
+            Vector3 startPosition,
+            Vector3 destinationPosition,
+            out PrototypePathPlan? plan)
         {
             TerrainCell startCell = _worldMap.GetNearestCell(startPosition);
             TerrainCell destinationCell = _worldMap.GetNearestCell(destinationPosition);
             PrototypePathQuery query = new(startCell.GridX, startCell.GridY, destinationCell.GridX, destinationCell.GridY, RulesVersion);
 
+            if (!IsWalkable(startCell.GridX, startCell.GridY) ||
+                !IsWalkable(destinationCell.GridX, destinationCell.GridY))
+            {
+                plan = null;
+                return false;
+            }
+
             if (startCell.GridX == destinationCell.GridX && startCell.GridY == destinationCell.GridY)
             {
                 float directDistance = HorizontalDistance(startPosition, destinationPosition);
-                return new PrototypePathPlan
+                plan = new PrototypePathPlan
                 {
                     Query = query,
                     Cells = new List<Vector2I> { new(startCell.GridX, startCell.GridY) },
@@ -49,9 +67,98 @@ namespace Societies.Simulation
                     TotalCost = directDistance * GetTraversalMultiplier(startCell.GridX, startCell.GridY),
                     EstimatedTravelTicks = Math.Max(4, Mathf.CeilToInt((directDistance * GetTraversalMultiplier(startCell.GridX, startCell.GridY)) / 0.78f))
                 };
+                return true;
             }
 
-            List<Vector2I> cellPath = RunAStar(startCell, destinationCell);
+            if (!TryRunAStar(startCell, destinationCell, out List<Vector2I>? cellPath))
+            {
+                plan = null;
+                return false;
+            }
+
+            plan = MaterializePath(startPosition, destinationPosition, query, cellPath!);
+            return true;
+        }
+
+        public bool TryMaterializePath(
+            Vector3 startPosition,
+            Vector3 destinationPosition,
+            IReadOnlyList<Vector2I> cellPath,
+            out PrototypePathPlan? plan)
+        {
+            TerrainCell startCell = _worldMap.GetNearestCell(startPosition);
+            TerrainCell destinationCell = _worldMap.GetNearestCell(destinationPosition);
+            PrototypePathQuery query = new(startCell.GridX, startCell.GridY, destinationCell.GridX, destinationCell.GridY, RulesVersion);
+            Vector2I startKey = new(startCell.GridX, startCell.GridY);
+            Vector2I destinationKey = new(destinationCell.GridX, destinationCell.GridY);
+
+            if (!IsWalkable(startCell.GridX, startCell.GridY) ||
+                !IsWalkable(destinationCell.GridX, destinationCell.GridY) ||
+                cellPath.Count == 0 ||
+                cellPath[0] != startKey ||
+                cellPath[^1] != destinationKey)
+            {
+                plan = null;
+                return false;
+            }
+
+            plan = MaterializePath(startPosition, destinationPosition, query, cellPath);
+            return true;
+        }
+
+        public PrototypePathPlan FindPath(Vector3 startPosition, Vector3 destinationPosition)
+        {
+            if (TryFindPath(startPosition, destinationPosition, out PrototypePathPlan? plan))
+            {
+                return plan!;
+            }
+
+            TerrainCell startCell = _worldMap.GetNearestCell(startPosition);
+            TerrainCell destinationCell = _worldMap.GetNearestCell(destinationPosition);
+            throw new InvalidOperationException(
+                $"No walkable path exists from ({startCell.GridX},{startCell.GridY}) to ({destinationCell.GridX},{destinationCell.GridY}).");
+        }
+
+        public bool TryEstimatePathDistance(
+            Vector3 startPosition,
+            Vector3 destinationPosition,
+            out float distanceMeters)
+        {
+            if (TryFindPath(startPosition, destinationPosition, out PrototypePathPlan? plan))
+            {
+                distanceMeters = plan!.TotalDistanceMeters;
+                return true;
+            }
+
+            distanceMeters = 0.0f;
+            return false;
+        }
+
+        public float EstimatePathDistance(Vector3 startPosition, Vector3 destinationPosition)
+        {
+            return FindPath(startPosition, destinationPosition).TotalDistanceMeters;
+        }
+
+        private PrototypePathPlan MaterializePath(
+            Vector3 startPosition,
+            Vector3 destinationPosition,
+            PrototypePathQuery query,
+            IReadOnlyList<Vector2I> cellPath)
+        {
+            if (cellPath.Count == 1)
+            {
+                float directDistance = HorizontalDistance(startPosition, destinationPosition);
+                return new PrototypePathPlan
+                {
+                    Query = query,
+                    Cells = cellPath.ToList(),
+                    Waypoints = new List<Vector3> { startPosition, destinationPosition },
+                    TotalDistanceMeters = directDistance,
+                    TotalCost = directDistance * GetTraversalMultiplier(query.StartGridX, query.StartGridY),
+                    EstimatedTravelTicks = Math.Max(4, Mathf.CeilToInt((directDistance * GetTraversalMultiplier(query.StartGridX, query.StartGridY)) / 0.78f))
+                };
+            }
+
             List<Vector3> waypoints = new(cellPath.Count + 2) { startPosition };
             float totalDistance = 0.0f;
             float totalCost = 0.0f;
@@ -69,23 +176,18 @@ namespace Societies.Simulation
 
             float finalDistance = HorizontalDistance(previous, destinationPosition);
             totalDistance += finalDistance;
-            totalCost += finalDistance * GetTraversalMultiplier(destinationCell.GridX, destinationCell.GridY);
+            totalCost += finalDistance * GetTraversalMultiplier(query.EndGridX, query.EndGridY);
             waypoints.Add(destinationPosition);
 
             return new PrototypePathPlan
             {
                 Query = query,
-                Cells = cellPath,
+                Cells = cellPath.ToList(),
                 Waypoints = CompressWaypoints(waypoints),
                 TotalDistanceMeters = totalDistance,
                 TotalCost = totalCost,
                 EstimatedTravelTicks = Math.Max(4, Mathf.CeilToInt(totalCost / 0.78f))
             };
-        }
-
-        public float EstimatePathDistance(Vector3 startPosition, Vector3 destinationPosition)
-        {
-            return FindPath(startPosition, destinationPosition).TotalDistanceMeters;
         }
 
         public float GetTraversalMultiplier(int gridX, int gridY)
@@ -97,18 +199,19 @@ namespace Societies.Simulation
                 : cell.MovementCost;
         }
 
-        private List<Vector2I> RunAStar(TerrainCell start, TerrainCell destination)
+        private bool TryRunAStar(TerrainCell start, TerrainCell destination, out List<Vector2I>? path)
         {
             Vector2I startKey = new(start.GridX, start.GridY);
             Vector2I destinationKey = new(destination.GridX, destination.GridY);
-            PriorityQueue<Vector2I, float> frontier = new();
+            PriorityQueue<Vector2I, (float EstimatedTotal, float Heuristic, int GridY, int GridX, long Sequence)> frontier = new();
             Dictionary<Vector2I, Vector2I> cameFrom = new();
             Dictionary<Vector2I, float> costSoFar = new()
             {
                 [startKey] = 0.0f
             };
+            long sequence = 0;
 
-            frontier.Enqueue(startKey, 0.0f);
+            frontier.Enqueue(startKey, (0.0f, 0.0f, startKey.Y, startKey.X, sequence++));
 
             while (frontier.Count > 0)
             {
@@ -125,6 +228,11 @@ namespace Societies.Simulation
                         continue;
                     }
 
+                    if (IsDiagonal(current, next) && !CanTraverseDiagonal(current, next))
+                    {
+                        continue;
+                    }
+
                     float newCost = costSoFar[current] + (stepDistance * GetTraversalMultiplier(next.X, next.Y));
                     if (costSoFar.TryGetValue(next, out float existingCost) && existingCost <= newCost)
                     {
@@ -132,18 +240,20 @@ namespace Societies.Simulation
                     }
 
                     costSoFar[next] = newCost;
-                    float priority = newCost + EstimateHeuristic(next, destinationKey);
-                    frontier.Enqueue(next, priority);
+                    float heuristic = EstimateHeuristic(next, destinationKey);
+                    float priority = newCost + heuristic;
+                    frontier.Enqueue(next, (priority, heuristic, next.Y, next.X, sequence++));
                     cameFrom[next] = current;
                 }
             }
 
-            if (!cameFrom.ContainsKey(destinationKey))
+            if (!costSoFar.ContainsKey(destinationKey))
             {
-                return new List<Vector2I> { startKey, destinationKey };
+                path = null;
+                return false;
             }
 
-            List<Vector2I> path = new();
+            path = new List<Vector2I>();
             Vector2I cursor = destinationKey;
             path.Add(cursor);
             while (cursor != startKey)
@@ -153,7 +263,7 @@ namespace Societies.Simulation
             }
 
             path.Reverse();
-            return path;
+            return true;
         }
 
         private static Dictionary<Vector2I, PrototypeNavigationGridCell> BuildCells(WorldMapState worldMap, IReadOnlyCollection<Vector2I> builtPathCells)
@@ -194,9 +304,29 @@ namespace Societies.Simulation
             }
         }
 
-        private static float EstimateHeuristic(Vector2I current, Vector2I destination)
+        private float EstimateHeuristic(Vector2I current, Vector2I destination)
         {
-            return new Vector2(current.X, current.Y).DistanceTo(new Vector2(destination.X, destination.Y));
+            int deltaX = Math.Abs(current.X - destination.X);
+            int deltaY = Math.Abs(current.Y - destination.Y);
+            int diagonalSteps = Math.Min(deltaX, deltaY);
+            int straightSteps = Math.Max(deltaX, deltaY) - diagonalSteps;
+            return ((diagonalSteps * 1.4142135f) + straightSteps) * _minimumTraversalMultiplier;
+        }
+
+        private bool IsWalkable(int gridX, int gridY)
+        {
+            return _cells.TryGetValue(new Vector2I(gridX, gridY), out PrototypeNavigationGridCell? cell) &&
+                cell.IsWalkable;
+        }
+
+        private static bool IsDiagonal(Vector2I current, Vector2I next)
+        {
+            return current.X != next.X && current.Y != next.Y;
+        }
+
+        private bool CanTraverseDiagonal(Vector2I current, Vector2I next)
+        {
+            return IsWalkable(next.X, current.Y) && IsWalkable(current.X, next.Y);
         }
 
         private static float HorizontalDistance(Vector3 a, Vector3 b)

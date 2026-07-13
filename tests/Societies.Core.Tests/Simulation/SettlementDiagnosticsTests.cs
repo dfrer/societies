@@ -269,7 +269,45 @@ namespace Societies.Core.Tests
                 simulation.Diagnostics.WorkOrdersClaimed *
                 ((2 * simulation.Diagnostics.WorkOrdersGenerated) - simulation.Diagnostics.WorkOrdersClaimed + 1) /
                 2;
-            Assert.Equal(expectedCandidateOrdersEvaluated, simulation.Diagnostics.CandidateOrdersEvaluated);
+            Assert.True(
+                simulation.Diagnostics.CandidateOrdersEvaluated >= expectedCandidateOrdersEvaluated,
+                "Reachability filtering may leave the same candidate available for later citizens, but every claimed-order scan must still be counted.");
+            Assert.InRange(
+                simulation.Diagnostics.UnreachableWorkOrderCandidatesSkipped,
+                0,
+                simulation.Diagnostics.CandidateOrdersEvaluated);
+        }
+
+        [Fact]
+        public void UnreachableOnlyCitizen_RemainsIdleWithStableNavigationDiagnostic()
+        {
+            PrototypeCatalogBundle bundle = LoadCatalogs();
+            PrototypeScenarioDefinition scenario = bundle.Scenarios.Resolve("balanced_basin");
+            WorldGenerationResult world = PrototypeWorldGenerator.Generate(scenario);
+            PrototypeSettlementSimulation simulation = New(scenario, bundle.RoleQuotas.Roles, world);
+            List<PrototypeResourceSiteState> resources = BuildResourceSites(world);
+            TerrainCell blockedCell = world.WorldMap.Cells.First(cell => cell.Biome == BiomeType.Wetland);
+
+            foreach (PrototypeWorkerState worker in simulation.Workers)
+            {
+                worker.Phase = PrototypeWorkerPhase.Incapacitated;
+            }
+
+            PrototypeWorkerState isolatedCitizen = simulation.Workers
+                .OrderBy(worker => worker.WorkerId, StringComparer.Ordinal)
+                .First();
+            isolatedCitizen.Phase = PrototypeWorkerPhase.Idle;
+            isolatedCitizen.Position = blockedCell.WorldPosition;
+            isolatedCitizen.HomePosition = blockedCell.WorldPosition;
+            isolatedCitizen.Needs.Nutrition = 100.0f;
+            isolatedCitizen.Needs.Fatigue = 0.0f;
+
+            simulation.Advance(resources, 8.0f, PrototypeWeather.Clear);
+
+            Assert.Equal(PrototypeWorkerPhase.Idle, isolatedCitizen.Phase);
+            Assert.Equal("navigation.unreachable", isolatedCitizen.LastFailureReason);
+            Assert.Equal("No reachable work", isolatedCitizen.ActivityText);
+            Assert.True(simulation.Diagnostics.UnreachableWorkOrderCandidatesSkipped > 0);
         }
 
         private static PrototypeSettlementSimulation New(
