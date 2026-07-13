@@ -200,6 +200,9 @@ namespace Societies.Core.Tests
                         .OrderBy(worker => worker.WorkerId, StringComparer.Ordinal)
                         .Select(worker => (worker.WorkerId, worker.CurrentOrderId))
                         .ToArray());
+                Assert.Equal(
+                    JsonSerializer.Serialize(exhaustive.Workers.OrderBy(worker => worker.WorkerId, StringComparer.Ordinal)),
+                    JsonSerializer.Serialize(optimized.Workers.OrderBy(worker => worker.WorkerId, StringComparer.Ordinal)));
                 Assert.Equal(exhaustiveResult.Events.ToArray(), optimizedResult.Events.ToArray());
                 Assert.Equal(exhaustiveResult.HarvestRequests.ToArray(), optimizedResult.HarvestRequests.ToArray());
 
@@ -219,6 +222,9 @@ namespace Societies.Core.Tests
                 Assert.True(
                     optimizedQueries * 100 <= exhaustiveQueries * 40,
                     $"Expected at least 60% fewer exact queries; optimized={optimizedQueries}, exhaustive={exhaustiveQueries}.");
+                Assert.True(
+                    optimizedQueries < 2544,
+                    $"Expected topology bounds to beat the W1-05c 2,544-query baseline; optimized={optimizedQueries}.");
             }
 
             _output.WriteLine(

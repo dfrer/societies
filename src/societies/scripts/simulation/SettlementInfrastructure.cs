@@ -360,6 +360,7 @@ namespace Societies.Simulation
         private void RebuildNavigation()
         {
             _pathCache.Clear();
+            _geometricDistanceFieldsThisTick.Clear();
             HashSet<Vector2I> builtPathCells = _pathSegments
                 .Where(segment => segment.IsBuilt)
                 .Select(segment => new Vector2I(segment.GridX, segment.GridY))
@@ -369,6 +370,57 @@ namespace Societies.Simulation
                 builtPathCells,
                 _navigationRulesVersion,
                 priorGrid: _navigationGrid);
+        }
+
+        private float ComputeRouteDistanceLowerBound(Vector3 startPosition, Vector3 destinationPosition)
+        {
+            float straightLineLowerBound = PrototypeOrderSelectionMath.ComputeStraightLineDistanceLowerBound(
+                startPosition,
+                destinationPosition,
+                _world.WorldMap.Cells.Count);
+            _navigationGrid ??= new PrototypeNavigationGrid(
+                _world.WorldMap,
+                new HashSet<Vector2I>(),
+                _navigationRulesVersion);
+
+            if (!_geometricDistanceFieldsThisTick.TryGetValue(startPosition, out PrototypeNavigationGrid.GeometricDistanceField? field))
+            {
+                field = _navigationGrid.BuildGeometricDistanceField(startPosition);
+                _geometricDistanceFieldsThisTick[startPosition] = field;
+            }
+
+            return field.TryGetExactEndpointDistanceLowerBound(
+                    startPosition,
+                    destinationPosition,
+                    out float topologyLowerBound)
+                ? Math.Max(straightLineLowerBound, topologyLowerBound)
+                : straightLineLowerBound;
+        }
+
+        private bool ShouldBuildGeometricDistanceField(
+            Vector3 startPosition,
+            IEnumerable<Vector3> destinationPositions)
+        {
+            TerrainCell startCell = _world.WorldMap.GetNearestCell(startPosition);
+            HashSet<PrototypePathCacheKey> missingKeys = new();
+            foreach (Vector3 destinationPosition in destinationPositions)
+            {
+                TerrainCell destinationCell = _world.WorldMap.GetNearestCell(destinationPosition);
+                PrototypePathCacheKey key = new(
+                    startCell.GridX,
+                    startCell.GridY,
+                    destinationCell.GridX,
+                    destinationCell.GridY,
+                    _navigationRulesVersion);
+                if (!_pathCache.ContainsKey(key) &&
+                    missingKeys.Add(key) &&
+                    missingKeys.Count >= MinimumMissingPathsForGeometricDistanceField)
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
         private void InvalidateNavigation(RuntimeMetricsCollector? runtimeMetrics)
         {

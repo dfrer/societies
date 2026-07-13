@@ -18,6 +18,7 @@ namespace Societies.Simulation
         private const int SleepTicks = 28;
         private const int HearthBurnIntervalTicks = 80;
         private const int PathBuildTicks = 6;
+        private const int MinimumMissingPathsForGeometricDistanceField = 8;
 
         private static readonly IReadOnlyDictionary<string, int> HutCost = new Dictionary<string, int>
         {
@@ -63,6 +64,7 @@ namespace Societies.Simulation
         private readonly Dictionary<string, long> _structureCompletionTicks = new(StringComparer.Ordinal);
         private readonly Dictionary<string, string> _resourceNodeClusterMap = new(StringComparer.Ordinal);
         private readonly Dictionary<PrototypePathCacheKey, PrototypePathCacheEntry> _pathCache = new();
+        private readonly Dictionary<Vector3, PrototypeNavigationGrid.GeometricDistanceField> _geometricDistanceFieldsThisTick = new();
         private readonly Dictionary<Vector2I, Vector3?> _walkableInteractionPositions = new();
         private readonly Dictionary<string, int> _routeBacklogTicksByKind = new(StringComparer.Ordinal);
         private readonly Dictionary<string, int> _depotThroughputByDepot = new(StringComparer.Ordinal);
@@ -306,6 +308,7 @@ namespace Societies.Simulation
             _selectorPathCacheMissesThisTick = 0;
             _selectorSelectedRouteReusesThisTick = 0;
             _citizensEvaluatedThisTick = 0;
+            _geometricDistanceFieldsThisTick.Clear();
 
             CommitPreparedForcedPathCompletion(result, runtimeMetrics);
 
