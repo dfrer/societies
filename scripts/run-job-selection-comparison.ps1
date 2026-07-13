@@ -72,13 +72,18 @@ function Get-Median {
 function Get-BundleIdentity {
     param([Parameter(Mandatory = $true)][string]$Root)
 
+    $rootPath = [System.IO.Path]::GetFullPath($Root).TrimEnd('\') + '\'
     $files = @(Get-ChildItem -LiteralPath $Root -File -Recurse | Sort-Object FullName)
     if ($files.Count -lt 3) {
         throw "The Release bundle is incomplete: $Root"
     }
 
     $entries = @($files | ForEach-Object {
-        $relativePath = [System.IO.Path]::GetRelativePath($Root, $_.FullName).Replace('\', '/')
+        $fullPath = [System.IO.Path]::GetFullPath($_.FullName)
+        if (-not $fullPath.StartsWith($rootPath, [System.StringComparison]::OrdinalIgnoreCase)) {
+            throw "Release bundle file escaped its root: $fullPath"
+        }
+        $relativePath = $fullPath.Substring($rootPath.Length).Replace('\', '/')
         [ordered]@{
             path = $relativePath
             sizeBytes = $_.Length
