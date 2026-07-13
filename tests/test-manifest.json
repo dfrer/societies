@@ -1,15 +1,15 @@
 {
   "schemaVersion": 3,
-  "updatedUtc": "2026-07-13T19:22:38.8602126Z",
+  "updatedUtc": "2026-07-13T21:10:49.9254070Z",
   "required": {
     "dotnet": {
       "project": "tests/Societies.Core.Tests/Societies.Core.Tests.csproj",
       "command": "dotnet test tests/Societies.Core.Tests/Societies.Core.Tests.csproj --configuration Release",
-      "expectedTestCount": 159,
+      "expectedTestCount": 174,
       "tiers": {
         "fast": {
-          "expectedTestCount": 97,
-          "filter": "FullyQualifiedName!~PrototypeRuntimeSessionTests&FullyQualifiedName!~PrototypeSettlementSimulationTests&FullyQualifiedName!~SettlementDiagnosticsTests&FullyQualifiedName!~WorkOrderGenerationDiagnosticsTests&FullyQualifiedName!~OrderSelectionTests&FullyQualifiedName!~ExtractionPlanningTests&FullyQualifiedName!~NavigationRepresentationTests"
+          "expectedTestCount": 106,
+          "filter": "FullyQualifiedName!~PrototypeRuntimeSessionTests&FullyQualifiedName!~PrototypeSettlementSimulationTests&FullyQualifiedName!~SettlementDiagnosticsTests&FullyQualifiedName!~WorkOrderGenerationDiagnosticsTests&FullyQualifiedName!~OrderSelectionTests&FullyQualifiedName!~ExtractionPlanningTests&FullyQualifiedName!~NavigationRepresentationTests&FullyQualifiedName!~RouteDistanceModeDifferentialTests"
         },
         "integration": {
           "expectedTestCount": 11,
@@ -19,13 +19,14 @@
           ]
         },
         "soak": {
-          "expectedTestCount": 51,
+          "expectedTestCount": 57,
           "classes": [
             "Societies.Core.Tests.PrototypeRuntimeSessionTests",
             "Societies.Core.Tests.PrototypeSettlementSimulationTests",
             "Societies.Core.Tests.OrderSelectionTests",
             "Societies.Core.Tests.ExtractionPlanningTests",
-            "Societies.Core.Tests.NavigationRepresentationTests"
+            "Societies.Core.Tests.NavigationRepresentationTests",
+            "Societies.Core.Tests.RouteDistanceModeDifferentialTests"
           ]
         }
       }
@@ -89,7 +90,7 @@
       "baselineMatrixResultSchemaVersion": 1,
       "baselineMatrixCanonicalPairCount": 14,
       "baselineMatrixStatus": "passed_contract_safety_failed",
-      "resultSchemaVersion": 5,
+      "resultSchemaVersion": 6,
       "requiredGodotVersion": "4.6.2",
       "requiredForPullRequest": false,
       "runModes": [
@@ -108,6 +109,10 @@
       "extractionPlanningModes": [
         "exact_bounded",
         "exhaustive_reference"
+      ],
+      "routeDistanceModes": [
+        "cached_distance_only",
+        "full_materialization_reference"
       ],
       "executionRoutes": {
         "editorScene": {
@@ -147,6 +152,8 @@
       "cacheRepopulationEvidence": true,
       "sharedFrontierOptimizationStatus": "passed_contract_safety_failed",
       "sharedFrontierEvidence": true,
+      "cachedDistanceOptimizationStatus": "passed_contract_safety_failed",
+      "cachedDistanceEvidence": true,
       "releaseBaselineEvidence": true,
       "fullMatrixCaptured": true,
       "medianOfThreeCaptured": true,
@@ -170,12 +177,15 @@
       "sharedFrontierEvidenceFile": "planning/active/evidence/v3-w1-05d-shared-frontier-validation.json",
       "sharedFrontierImplementationCommit": "8688c27140af537c92c1f681c569ac16e275b881",
       "postW105dBaselineBudgetStatus": "safety_failure",
-      "note": "The editor route remains Debug characterization. The Windows ExportRelease route is validated from clean commit acf634f. Cache-mode evidence from 5444cc3 proves the short mode contracts. W1-05 clean Release evidence from 227a758 proves exact selector equivalence and an 85.414 percent query reduction. W1-05b characterizes the remaining failure as cache-miss-driven exact A-star fanout. W1-05c adds exact bounded extraction planning and a byte-equivalent indexed A-star representation. W1-05d adds exact topology-only shared-frontier bounds; the clean matrix from 8688c27 makes every maximum safety limit green and reduces the former worst stress tick to 34 general plus 2 selector misses, but one reference trial records 50.9476 ms p95 against the 50 ms hard limit. W1-06 and Week 2 remain blocked pending residual general work-order construction or variance reduction and another clean matrix."
+      "cachedDistanceEvidenceFile": "planning/active/evidence/v3-w1-05e-cached-distance-validation.json",
+      "cachedDistanceImplementationCommit": "9d5ca142ae185378553174f6363cf375383e5ffe",
+      "postW105eBaselineBudgetStatus": "safety_failure",
+      "note": "The editor route remains Debug characterization. The Windows ExportRelease route is validated from clean commit acf634f. Cache-mode evidence from 5444cc3 proves the short mode contracts. W1-05 clean Release evidence from 227a758 proves exact selector equivalence and an 85.414 percent query reduction. W1-05b characterizes the remaining failure as cache-miss-driven exact A-star fanout. W1-05c adds exact bounded extraction planning and a byte-equivalent indexed A-star representation. W1-05d adds exact topology-only shared-frontier bounds. W1-05e adds bit-exact cached-distance replay for positive general-cache hits and schema-v6 paired evidence while leaving runtime CSV v4. The clean matrix from 9d5ca14 exercises 316534 fast hits and keeps all maximum, soak, and forced-invalidation safety limits green, but one reference trial records 51.2372 ms p95 against the 50 ms hard limit. The remaining 4176 general and 1262 selector exact misses are unchanged. W1-06 and Week 2 remain blocked pending an exact distinct-search reduction and another clean matrix."
     }
   },
   "history": {
     "preSyncCommit": "c58e3de",
     "preSyncDotnetTestCount": 64,
-      "note": "The synchronized master adds 12 PrototypeMetricsTracker tests and 3 WorkOrderGenerationDiagnostics tests for a historical 79-test floor. W1-03b adds three cache-probe contract tests, W1-03c adds five natural-invalidation progression cases, W1-04 adds seven navigation, unreachable-assignment, and legacy-resume correctness cases, W1-05 adds nine exact-selector contract and 300-tick differential cases, the extraction-planning slice adds 16 exact-bound, integration, and 300-tick differential cases, and the indexed A-star slices add 16 exact-representation, reuse, wrap, concurrency, bounds, topology, and multiplier-version cases. The shared-frontier slice adds eight geometric lower-bound cases across shipped scenarios, exact endpoints, blocked/disconnected topology, built-path versions, non-binary cell sizes, and origin identity. The current manifest declares 159 required .NET tests."
+      "note": "The synchronized master adds 12 PrototypeMetricsTracker tests and 3 WorkOrderGenerationDiagnostics tests for a historical 79-test floor. W1-03b adds three cache-probe contract tests, W1-03c adds five natural-invalidation progression cases, W1-04 adds seven navigation, unreachable-assignment, and legacy-resume correctness cases, W1-05 adds nine exact-selector contract and 300-tick differential cases, the extraction-planning slice adds 16 exact-bound, integration, and 300-tick differential cases, and the indexed A-star slices add 16 exact-representation, reuse, wrap, concurrency, bounds, topology, and multiplier-version cases. The shared-frontier slice adds eight geometric lower-bound cases across shipped scenarios, exact endpoints, blocked/disconnected topology, built-path versions, non-binary cell sizes, and origin identity. The cached-distance slice adds nine bit-exact replay cases, four 300-tick mode differentials, and two runtime forwarding cases. The current manifest declares 174 required .NET tests."
   }
 }

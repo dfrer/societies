@@ -11,6 +11,8 @@ param(
     [string]$SelectorMode = "exact_branch_and_bound",
     [ValidateSet("exact_bounded", "exhaustive_reference")]
     [string]$ExtractionPlanningMode = "exact_bounded",
+    [ValidateSet("cached_distance_only", "full_materialization_reference")]
+    [string]$RouteDistanceMode = "cached_distance_only",
     [string]$ComparisonGroup,
     [int]$TrialIndex = 1,
     [string]$OutputRoot,
@@ -29,6 +31,7 @@ $ErrorActionPreference = "Stop"
 $CacheMode = $CacheMode.ToLowerInvariant()
 $SelectorMode = $SelectorMode.ToLowerInvariant()
 $ExtractionPlanningMode = $ExtractionPlanningMode.ToLowerInvariant()
+$RouteDistanceMode = $RouteDistanceMode.ToLowerInvariant()
 
 $repoRoot = Split-Path -Parent $PSScriptRoot
 Set-Location $repoRoot
@@ -287,6 +290,7 @@ function Invoke-PerformanceRun {
         "--cache-mode", $CacheMode,
         "--selector-mode", $SelectorMode,
         "--extraction-planning-mode", $ExtractionPlanningMode,
+        "--route-distance-mode", $RouteDistanceMode,
         "--comparison-group", $script:comparisonGroup,
         "--trial-index", $TrialIndex.ToString([System.Globalization.CultureInfo]::InvariantCulture),
         "--metrics", $MetricsMode,
@@ -378,8 +382,9 @@ if ([string]::IsNullOrWhiteSpace($safeScenario)) {
 if ($safeScenario.Length -gt 32) {
     $safeScenario = $safeScenario.Substring(0, 32)
 }
+$routeDistanceToken = if ($RouteDistanceMode -eq "cached_distance_only") { "cached" } else { "materialized" }
 $comparisonGroup = if ([string]::IsNullOrWhiteSpace($ComparisonGroup)) {
-    "$safeScenario-seed$Seed-c$Citizens-t$Ticks-w$WarmupTicks-s$SelectorMode-e$ExtractionPlanningMode"
+    "$safeScenario-seed$Seed-c$Citizens-t$Ticks-w$WarmupTicks-s$SelectorMode-e$ExtractionPlanningMode-r$routeDistanceToken"
 }
 else {
     $ComparisonGroup
@@ -470,10 +475,12 @@ $offResultPath = Join-Path $offDirectory "perf-results.json"
 $onResultPath = Join-Path $onDirectory "perf-results.json"
 $offResult = Get-Content -Raw -LiteralPath $offResultPath | ConvertFrom-Json
 $onResult = Get-Content -Raw -LiteralPath $onResultPath | ConvertFrom-Json
+$offManifest = Get-Content -Raw -LiteralPath (Join-Path $offDirectory "validation-manifest.json") | ConvertFrom-Json
+$onManifest = Get-Content -Raw -LiteralPath (Join-Path $onDirectory "validation-manifest.json") | ConvertFrom-Json
 
 $schemaValid =
-    $offResult.schemaVersion -eq 5 -and
-    $onResult.schemaVersion -eq 5
+    $offResult.schemaVersion -eq 6 -and
+    $onResult.schemaVersion -eq 6
 $configurationMatches =
     (Test-NonEmptyText $offResult.configuration.scenarioId) -and
     (Test-NonEmptyText $offResult.configuration.measurementMode) -and
@@ -489,6 +496,7 @@ $configurationMatches =
     $offResult.configuration.cacheMode -eq $onResult.configuration.cacheMode -and
     $offResult.configuration.selectorMode -eq $onResult.configuration.selectorMode -and
     $offResult.configuration.extractionPlanningMode -eq $onResult.configuration.extractionPlanningMode -and
+    $offResult.configuration.routeDistanceMode -eq $onResult.configuration.routeDistanceMode -and
     $offResult.configuration.comparisonGroup -eq $onResult.configuration.comparisonGroup -and
     $offResult.configuration.trialIndex -eq $onResult.configuration.trialIndex -and
     $offResult.configuration.executionRoute -eq $onResult.configuration.executionRoute -and
@@ -503,6 +511,7 @@ $commandConfigurationMatches =
     $offResult.configuration.cacheMode -eq $CacheMode -and
     $offResult.configuration.selectorMode -eq $SelectorMode -and
     $offResult.configuration.extractionPlanningMode -eq $ExtractionPlanningMode -and
+    $offResult.configuration.routeDistanceMode -eq $RouteDistanceMode -and
     $offResult.configuration.comparisonGroup -eq $comparisonGroup -and
     $offResult.configuration.trialIndex -eq $TrialIndex -and
     $offResult.configuration.executionRoute -eq $executionRoute -and
@@ -514,6 +523,15 @@ $modeContractValid =
     $offResult.configuration.measurementMode -eq "one_manual_step_per_external_sample" -and
     $offResult.configuration.cacheWarmupEnabled -eq $false -and
     $onResult.configuration.cacheWarmupEnabled -eq $false
+$routeDistanceEvidenceValid =
+    $offResult.measuredCachedRouteDistanceFastPathHits -eq $onResult.measuredCachedRouteDistanceFastPathHits -and
+    (($RouteDistanceMode -eq "cached_distance_only" -and
+        $offResult.measuredCachedRouteDistanceFastPathHits -gt 0) -or
+     ($RouteDistanceMode -eq "full_materialization_reference" -and
+        $offResult.measuredCachedRouteDistanceFastPathHits -eq 0))
+$routeDistanceManifestValid =
+    $offManifest.measuredCachedRouteDistanceFastPathHits -eq $offResult.measuredCachedRouteDistanceFastPathHits -and
+    $onManifest.measuredCachedRouteDistanceFastPathHits -eq $onResult.measuredCachedRouteDistanceFastPathHits
 $cacheEvidencePairValid = Test-CacheEvidenceStructuralMatch `
     $offResult.cacheEvidence `
     $onResult.cacheEvidence
@@ -766,6 +784,8 @@ $equivalent =
     $configurationMatches -and
     $commandConfigurationMatches -and
     $modeContractValid -and
+    $routeDistanceEvidenceValid -and
+    $routeDistanceManifestValid -and
     $cacheEvidenceCommonValid -and
     $cacheTransitionContractValid -and
     $cacheDiagnosticsContractValid -and
@@ -785,7 +805,7 @@ $equivalent =
     (-not $RequireRelease -or $releaseEnvironmentValid)
 
 $equivalence = [ordered]@{
-    schemaVersion = 5
+    schemaVersion = 6
     capturedUtc = [DateTime]::UtcNow.ToString("o")
     status = if (-not $equivalent) { "fail" } elseif ($gitDirty) { "pass_dirty_source" } else { "pass" }
     contractStatus = if (-not $equivalent) { "fail" } elseif ($gitDirty) { "pass_dirty_source" } else { "pass" }
@@ -819,6 +839,10 @@ $equivalence = [ordered]@{
     configurationMatches = $configurationMatches
     commandConfigurationMatches = $commandConfigurationMatches
     modeContractValid = $modeContractValid
+    routeDistanceEvidenceValid = $routeDistanceEvidenceValid
+    routeDistanceManifestValid = $routeDistanceManifestValid
+    metricsOffMeasuredCachedRouteDistanceFastPathHits = $offResult.measuredCachedRouteDistanceFastPathHits
+    metricsOnMeasuredCachedRouteDistanceFastPathHits = $onResult.measuredCachedRouteDistanceFastPathHits
     cacheEvidencePairValid = $cacheEvidencePairValid
     cacheEvidenceCommonValid = $cacheEvidenceCommonValid
     cacheTransitionContractValid = $cacheTransitionContractValid
@@ -851,6 +875,7 @@ $equivalence = [ordered]@{
     cacheMode = $CacheMode
     selectorMode = $SelectorMode
     extractionPlanningMode = $ExtractionPlanningMode
+    routeDistanceMode = $RouteDistanceMode
     comparisonGroup = $comparisonGroup
     trialIndex = $TrialIndex
     metricsOffCacheEvidence = $offResult.cacheEvidence
@@ -872,7 +897,7 @@ $summaryLines = @(
     "Societies metrics equivalence pair",
     "Status: $($equivalence.status)",
     "Scenario: $Scenario; seed: $Seed; citizens: $Citizens; warmup ticks: $WarmupTicks; measured ticks: $Ticks",
-    "Cache mode: $CacheMode; selector mode: $SelectorMode; extraction planning mode: $ExtractionPlanningMode; comparison group: $comparisonGroup; trial: $TrialIndex",
+    "Cache mode: $CacheMode; selector mode: $SelectorMode; extraction planning mode: $ExtractionPlanningMode; route-distance mode: $RouteDistanceMode; comparison group: $comparisonGroup; trial: $TrialIndex",
     "Cache transition contract: $cacheTransitionContractValid; cache diagnostics contract: $cacheDiagnosticsContractValid",
     "Godot: expected $expectedGodotVersion; editor $resolvedGodotVersion; run $offRunGodotVersion",
     "Managed build: $($offResult.environment.managedBuildConfiguration)",
@@ -890,6 +915,8 @@ if (-not $equivalent) {
     $failedChecks = @()
     if (-not $schemaValid) { $failedChecks += "result_schema" }
     if (-not $configurationMatches) { $failedChecks += "configuration_pair" }
+    if (-not $routeDistanceEvidenceValid) { $failedChecks += "route_distance_evidence" }
+    if (-not $routeDistanceManifestValid) { $failedChecks += "route_distance_manifest" }
     if (-not $commandConfigurationMatches) { $failedChecks += "command_configuration" }
     if (-not $modeContractValid) { $failedChecks += "mode_contract" }
     if (-not $cacheEvidencePairValid) { $failedChecks += "cache_evidence_pair" }

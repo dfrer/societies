@@ -18,12 +18,14 @@ namespace Societies.Core
         private int _simulationSeed;
         private readonly PrototypeOrderSelectionMode _orderSelectionMode;
         private readonly PrototypeExtractionPlanningMode _extractionPlanningMode;
+        private readonly PrototypeRouteDistanceMode _routeDistanceMode;
 
         public PrototypeRuntimeSession(
             PrototypeScenarioDefinition scenario,
             IReadOnlyList<PrototypeRoleQuotaDefinition>? roleQuotas = null,
             PrototypeOrderSelectionMode orderSelectionMode = PrototypeOrderSelectionMode.ExactBranchAndBound,
-            PrototypeExtractionPlanningMode extractionPlanningMode = PrototypeExtractionPlanningMode.ExactBounded)
+            PrototypeExtractionPlanningMode extractionPlanningMode = PrototypeExtractionPlanningMode.ExactBounded,
+            PrototypeRouteDistanceMode routeDistanceMode = PrototypeRouteDistanceMode.CachedDistanceOnly)
         {
             Scenario = scenario;
             Inventory = new InventoryComponent();
@@ -34,6 +36,7 @@ namespace Societies.Core
             _roleQuotas = roleQuotas?.ToList() ?? new List<PrototypeRoleQuotaDefinition>();
             _orderSelectionMode = orderSelectionMode;
             _extractionPlanningMode = extractionPlanningMode;
+            _routeDistanceMode = routeDistanceMode;
         }
 
         public PrototypeScenarioDefinition Scenario { get; }
@@ -57,6 +60,11 @@ namespace Societies.Core
         public PrototypeOrderSelectionMode OrderSelectionMode => _orderSelectionMode;
 
         public PrototypeExtractionPlanningMode ExtractionPlanningMode => _extractionPlanningMode;
+
+        public PrototypeRouteDistanceMode RouteDistanceMode => _routeDistanceMode;
+
+        public long CachedRouteDistanceFastPathHits =>
+            _settlementSimulation?.CachedRouteDistanceFastPathHits ?? 0;
 
         public PrototypeWeather CurrentWeather => _weatherSimulation?.CurrentWeather ?? PrototypeWeather.Clear;
 
@@ -195,7 +203,8 @@ namespace Societies.Core
                 _roleQuotas,
                 _world,
                 orderSelectionMode: _orderSelectionMode,
-                extractionPlanningMode: _extractionPlanningMode);
+                extractionPlanningMode: _extractionPlanningMode,
+                routeDistanceMode: _routeDistanceMode);
             SyncSettlementViews();
         }
 
@@ -407,7 +416,8 @@ namespace Societies.Core
                 _roleQuotas,
                 _world,
                 orderSelectionMode: _orderSelectionMode,
-                extractionPlanningMode: _extractionPlanningMode);
+                extractionPlanningMode: _extractionPlanningMode,
+                routeDistanceMode: _routeDistanceMode);
             _settlementSimulation.LoadState(snapshot.Settlement ?? new PrototypeSettlementSnapshot());
             SyncSettlementViews();
             MetricsTracker.Clear();

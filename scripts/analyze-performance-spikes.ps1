@@ -237,11 +237,13 @@ foreach ($runtimePath in $runtimePaths) {
     $equivalencePath = Join-Path $caseDirectory "equivalence-results.json"
     $result = Read-Json $resultPath "Performance result"
     $equivalence = Read-Json $equivalencePath "Equivalence result"
-    if ([int](Require-Property $result "schemaVersion" $resultPath) -ne 5) {
-        throw "Performance result must use schemaVersion 5: $resultPath"
+    $resultSchemaVersion = [int](Require-Property $result "schemaVersion" $resultPath)
+    if ($resultSchemaVersion -notin @(5, 6)) {
+        throw "Performance result must use schemaVersion 5 or 6: $resultPath"
     }
-    if ([int](Require-Property $equivalence "schemaVersion" $equivalencePath) -ne 5) {
-        throw "Equivalence result must use schemaVersion 5: $equivalencePath"
+    $equivalenceSchemaVersion = [int](Require-Property $equivalence "schemaVersion" $equivalencePath)
+    if ($equivalenceSchemaVersion -notin @(5, 6)) {
+        throw "Equivalence result must use schemaVersion 5 or 6: $equivalencePath"
     }
     foreach ($contractProperty in @(
         "sourceClean", "releaseRequired", "releaseEnvironmentValid", "resultSchemaValid",
