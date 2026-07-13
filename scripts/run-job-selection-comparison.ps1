@@ -92,8 +92,15 @@ function Get-BundleIdentity {
     })
     $descriptor = ($entries | ForEach-Object { "$($_.path)|$($_.sizeBytes)|$($_.sha256)" }) -join "`n"
     $descriptorBytes = [System.Text.Encoding]::UTF8.GetBytes($descriptor)
-    $aggregateHash = [Convert]::ToHexString(
-        [System.Security.Cryptography.SHA256]::HashData($descriptorBytes)).ToLowerInvariant()
+    $sha256 = [System.Security.Cryptography.SHA256]::Create()
+    try {
+        $aggregateHash = -join ($sha256.ComputeHash($descriptorBytes) | ForEach-Object {
+            $_.ToString("x2", [System.Globalization.CultureInfo]::InvariantCulture)
+        })
+    }
+    finally {
+        $sha256.Dispose()
+    }
 
     return [ordered]@{
         root = [System.IO.Path]::GetFullPath($Root)
