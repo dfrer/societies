@@ -318,7 +318,9 @@ for ($trial = 1; $trial -le $Trials; $trial++) {
     })
 }
 
-$records = @($trialRecords)
+$records = $trialRecords.ToArray()
+$bundleReuseCheckArray = $bundleReuseChecks.ToArray()
+$leafArtifactArray = $leafArtifacts.ToArray()
 $finalBundleIdentity = Get-BundleIdentity $releaseDirectory
 $sourceShas = @($records | ForEach-Object {
     (Read-JsonArtifact $_.exhaustive.metricsOffResult "exhaustive source result").configuration.gitSha
@@ -344,7 +346,7 @@ $contracts = [ordered]@{
     singleReleaseBundle =
         $processPaths.Count -eq 1 -and
         $initialBundleIdentity.aggregateSha256 -eq $finalBundleIdentity.aggregateSha256 -and
-        @($bundleReuseChecks | Where-Object { -not $_.identityPreserved }).Count -eq 0
+        @($bundleReuseCheckArray | Where-Object { -not $_.identityPreserved }).Count -eq 0
     deterministicHashesMatch = @($records | Where-Object { -not $_.deterministicHashesMatch }).Count -eq 0
     selectorQueryAccountingValid = @($records | Where-Object { -not $_.selectorQueryAccountingValid }).Count -eq 0
     exactQueryReductionAtLeast60Percent = @($records | Where-Object { -not $_.exactQueryReductionPassed }).Count -eq 0
@@ -384,7 +386,7 @@ $result = [ordered]@{
     releaseBundle = [ordered]@{
         initial = $initialBundleIdentity
         final = $finalBundleIdentity
-        reuseChecks = @($bundleReuseChecks)
+        reuseChecks = $bundleReuseCheckArray
     }
     contracts = $contracts
     performance = [ordered]@{
@@ -420,7 +422,7 @@ $summaryLines = @(
 $summaryPath = Join-Path $OutputRoot "job-selection-comparison-summary.txt"
 Write-Utf8NoBom $summaryPath ($summaryLines -join [System.Environment]::NewLine)
 
-$manifestArtifacts = @($leafArtifacts) + @($resultPath, $summaryPath)
+$manifestArtifacts = $leafArtifactArray + @($resultPath, $summaryPath)
 $manifest = [ordered]@{
     schemaVersion = 1
     sourceResultSchemaVersion = 4
