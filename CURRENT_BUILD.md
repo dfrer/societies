@@ -63,12 +63,15 @@ godot --headless --path src/societies res://tests/HeadlessTestRunner.tscn
 
 # Optional three-mode contract; validates cold/warm equivalence plus forced invalidation.
 ./scripts/run-performance-cache-modes.ps1 -Scenario balanced_basin -Seed 1337 -Citizens 3 -PreconditioningTicks 2 -Ticks 2
+
+# Canonical W1-03c Windows Release matrix; 14 pairs and 28 metrics rows.
+./scripts/run-performance-baseline-matrix.ps1
 ```
 
 ## Validation Notes
 
 - The current test suite includes pure simulation tests, persistence tests, HUD tests, voxel-spike tests, and Godot headless smoke coverage.
-- The required manifest declares 98 .NET tests: 79 fast, 10 integration, and 9 soak, plus 16 Godot headless tests.
+- The required manifest declares 103 .NET tests: 84 fast, 10 integration, and 9 soak, plus 16 Godot headless tests.
 - The full validation script is authoritative, but it is substantially longer than the individual .NET or headless passes because it rebuilds and reruns both.
 - The optional performance pair is not a pull-request gate. It requires clean committed source by default and writes ignored run artifacts under `artifacts/performance/`.
 - Schema v3 records cold, natural-warm, and forced-invalidation cache transitions in metrics-off and metrics-on results. Natural warmup advances deterministic simulation state; eager/all-pairs cache prefill remains disabled.
@@ -78,7 +81,8 @@ godot --headless --path src/societies res://tests/HeadlessTestRunner.tscn
 - The tracked solution exposes Godot's three managed configurations (`Debug`, `ExportDebug`, and `ExportRelease`) without mapping an ordinary solution `Release` configuration back to Debug.
 - Raw catalog JSON is explicitly included in the Windows preset. Editor runs use the validated filesystem directory; exported builds always use packed `res://data` resources, avoiding working-directory-dependent inputs.
 - The Release execution route is validated from clean commit `acf634f`; see `planning/active/evidence/v3-w1-03a-release-route-validation.json`. This is route evidence only, not a performance baseline.
-- The clean schema-v3 ExportRelease cache-mode comparison passed from implementation commit `5444cc3`; see `planning/active/evidence/v3-w1-03b-cache-mode-validation.json`. It proves cold/warm deterministic equivalence and the forced-invalidation transition for a short three-citizen smoke only. A V3-W1-03 baseline claim still requires the complete reference matrix, soak, stress, and median runs.
+- The clean schema-v3 ExportRelease cache-mode comparison passed from implementation commit `5444cc3`; see `planning/active/evidence/v3-w1-03b-cache-mode-validation.json`. It proves cold/warm deterministic equivalence and the forced-invalidation transition for a short three-citizen smoke only.
+- The canonical W1-03c ExportRelease matrix passed its evidence contract from clean commit `a636967`: 14/14 pairs, 28 metrics rows, 354/354 manifest artifact hashes, cold/warm equality at 3/6/12/16 citizens, three comparable 16-citizen reference trials, two deterministic 1,000-tick soaks, the 24-citizen stress case, and the forced transition. The budget result is `safety_failure`, not a green performance gate: reference median p95 is 570.6155 ms versus 50 ms safety and median max is 3694.2534 ms versus 250 ms safety. Forced invalidation itself passes at 8.4171 ms. See `planning/active/evidence/v3-w1-03c-performance-baseline-validation.json`. Week 2 feature expansion remains blocked while W1-04/W1-05 correctness and path-selection work continues.
 - The voxel spike is experimental only. The authoritative gameplay runtime remains heightfield-based through M3.
 
 ## CI Scope
