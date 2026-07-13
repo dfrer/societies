@@ -119,6 +119,29 @@ function Test-GitSha {
     return $null -ne $Value -and [string]$Value -match '^[0-9a-fA-F]{40}$'
 }
 
+function Get-GitDirtyState {
+    & git diff --quiet --ignore-submodules --
+    $unstagedExitCode = $LASTEXITCODE
+    if ($unstagedExitCode -gt 1) {
+        throw "Could not inspect unstaged source changes."
+    }
+
+    & git diff --cached --quiet --ignore-submodules --
+    $stagedExitCode = $LASTEXITCODE
+    if ($stagedExitCode -gt 1) {
+        throw "Could not inspect staged source changes."
+    }
+
+    $untrackedPaths = @(& git ls-files --others --exclude-standard)
+    if ($LASTEXITCODE -ne 0) {
+        throw "Could not inspect untracked source files."
+    }
+
+    return $unstagedExitCode -eq 1 -or
+        $stagedExitCode -eq 1 -or
+        $untrackedPaths.Count -gt 0
+}
+
 function Test-FiniteNumber {
     param([object]$Value)
 
@@ -646,9 +669,7 @@ $failedPhase = "initialization"
 try {
     $gitSha = (git rev-parse HEAD).Trim()
     Assert-Contract ($LASTEXITCODE -eq 0 -and (Test-GitSha $gitSha)) "Could not resolve a full current git SHA."
-    $dirtyLines = @(git status --porcelain)
-    Assert-Contract ($LASTEXITCODE -eq 0) "Could not inspect the working tree."
-    $gitDirty = $dirtyLines.Count -gt 0
+    $gitDirty = Get-GitDirtyState
     if ($gitDirty -and -not $AllowDirtySource) {
         throw "W1-03c requires a clean committed source tree. Pass -AllowDirtySource only for non-baseline characterization."
     }
