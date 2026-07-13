@@ -120,6 +120,121 @@ namespace Societies.Core.Tests
             Assert.Throws<KeyNotFoundException>(() => grid.GetTraversalMultiplier(gridX, gridY));
         }
 
+        [Fact]
+        public void PackedNeighborTopology_PreservesOldOffsetOrderAndDiagonalEligibilityAtEdges()
+        {
+            WorldMapState openMap = BuildMap("...", "...", "...");
+            PrototypeNavigationGrid openGrid = new(openMap, Array.Empty<Vector2I>(), rulesVersion: 1);
+
+            Assert.Equal(
+                new[]
+                {
+                    (0, 0, BitConverter.SingleToInt32Bits(1.4142135f)),
+                    (1, 0, BitConverter.SingleToInt32Bits(1.0f)),
+                    (2, 0, BitConverter.SingleToInt32Bits(1.4142135f)),
+                    (0, 1, BitConverter.SingleToInt32Bits(1.0f)),
+                    (2, 1, BitConverter.SingleToInt32Bits(1.0f)),
+                    (0, 2, BitConverter.SingleToInt32Bits(1.4142135f)),
+                    (1, 2, BitConverter.SingleToInt32Bits(1.0f)),
+                    (2, 2, BitConverter.SingleToInt32Bits(1.4142135f))
+                },
+                GetPackedNeighbors(openGrid, cellIndex: 4));
+            Assert.Equal(
+                new[]
+                {
+                    (1, 0, BitConverter.SingleToInt32Bits(1.0f)),
+                    (0, 1, BitConverter.SingleToInt32Bits(1.0f)),
+                    (1, 1, BitConverter.SingleToInt32Bits(1.4142135f))
+                },
+                GetPackedNeighbors(openGrid, cellIndex: 0));
+
+            WorldMapState blockedCornerMap = BuildMap(".#", "#.");
+            PrototypeNavigationGrid blockedCornerGrid = new(blockedCornerMap, Array.Empty<Vector2I>(), rulesVersion: 1);
+            Assert.Empty(GetPackedNeighbors(blockedCornerGrid, cellIndex: 0));
+        }
+
+        [Fact]
+        public void CachedTraversalMultipliers_PreserveExactBitsForBuiltAndUnbuiltCells()
+        {
+            WorldMapState map = BuildMap("....", "....");
+            HashSet<Vector2I> builtPathCells = new() { new(1, 0), new(2, 1) };
+            PrototypeNavigationGrid grid = new(map, builtPathCells, rulesVersion: 2);
+
+            foreach (TerrainCell cell in map.Cells)
+            {
+                float expected = builtPathCells.Contains(new Vector2I(cell.GridX, cell.GridY))
+                    ? cell.MovementCost * 0.55f
+                    : cell.MovementCost;
+                Assert.Equal(
+                    BitConverter.SingleToInt32Bits(expected),
+                    BitConverter.SingleToInt32Bits(grid.GetTraversalMultiplier(cell.GridX, cell.GridY)));
+            }
+        }
+
+        [Fact]
+        public void SuccessiveCostVersions_ShareTopologyButRebuildExactMultipliersAndRoutes()
+        {
+            WorldMapState map = BuildMap(".....", ".#...", ".....", "...#.", ".....");
+            HashSet<Vector2I> firstBuiltPaths = new() { new(1, 0), new(2, 0) };
+            HashSet<Vector2I> secondBuiltPaths = new() { new(2, 2), new(3, 2), new(4, 2) };
+            PrototypeNavigationGrid initial = new(map, Array.Empty<Vector2I>(), rulesVersion: 1);
+            PrototypeNavigationGrid first = new(map, firstBuiltPaths, rulesVersion: 2, priorGrid: initial);
+            PrototypeNavigationGrid second = new(map, secondBuiltPaths, rulesVersion: 3, priorGrid: first);
+
+            Assert.Same(GetPrivateField(initial, "_neighborTopology"), GetPrivateField(first, "_neighborTopology"));
+            Assert.Same(GetPrivateField(first, "_neighborTopology"), GetPrivateField(second, "_neighborTopology"));
+            Assert.NotSame(GetPrivateField(initial, "_traversalMultipliers"), GetPrivateField(first, "_traversalMultipliers"));
+            Assert.NotSame(GetPrivateField(first, "_traversalMultipliers"), GetPrivateField(second, "_traversalMultipliers"));
+
+            Vector3 start = map.GetCell(0, 0).WorldPosition;
+            Vector3 destination = map.GetCell(4, 4).WorldPosition;
+            AssertEquivalent(new DictionaryNavigationOracle(map, Array.Empty<Vector2I>(), 1), initial, start, destination);
+            AssertEquivalent(new DictionaryNavigationOracle(map, firstBuiltPaths, 2), first, start, destination);
+            AssertEquivalent(new DictionaryNavigationOracle(map, secondBuiltPaths, 3), second, start, destination);
+            Assert.Equal(
+                BitConverter.SingleToInt32Bits(map.GetCell(1, 0).MovementCost * 0.55f),
+                BitConverter.SingleToInt32Bits(first.GetTraversalMultiplier(1, 0)));
+            Assert.Equal(
+                BitConverter.SingleToInt32Bits(map.GetCell(1, 0).MovementCost),
+                BitConverter.SingleToInt32Bits(second.GetTraversalMultiplier(1, 0)));
+        }
+
+        [Fact]
+        public void SameWorldWalkabilityMutation_RejectsTopologySharingAndMatchesOracle()
+        {
+            WorldMapState map = BuildMap("....", "....", "....", "....");
+            PrototypeNavigationGrid initial = new(map, Array.Empty<Vector2I>(), rulesVersion: 1);
+            map.GetCell(1, 1).Biome = BiomeType.Wetland;
+            PrototypeNavigationGrid changed = new(map, Array.Empty<Vector2I>(), rulesVersion: 2, priorGrid: initial);
+
+            Assert.NotSame(GetPrivateField(initial, "_neighborTopology"), GetPrivateField(changed, "_neighborTopology"));
+            AssertEquivalent(
+                new DictionaryNavigationOracle(map, Array.Empty<Vector2I>(), rulesVersion: 2),
+                changed,
+                map.GetCell(0, 0).WorldPosition,
+                map.GetCell(3, 3).WorldPosition);
+        }
+
+        [Fact]
+        public void SameWorldMovementCostMutation_SharesTopologyButRefreshesMultiplierAndMatchesOracle()
+        {
+            WorldMapState map = BuildMap("....", "....", "....", "....");
+            PrototypeNavigationGrid initial = new(map, Array.Empty<Vector2I>(), rulesVersion: 1);
+            map.GetCell(1, 0).MovementCost = 4.25f;
+            PrototypeNavigationGrid changed = new(map, Array.Empty<Vector2I>(), rulesVersion: 2, priorGrid: initial);
+
+            Assert.Same(GetPrivateField(initial, "_neighborTopology"), GetPrivateField(changed, "_neighborTopology"));
+            Assert.NotSame(GetPrivateField(initial, "_traversalMultipliers"), GetPrivateField(changed, "_traversalMultipliers"));
+            Assert.Equal(
+                BitConverter.SingleToInt32Bits(4.25f),
+                BitConverter.SingleToInt32Bits(changed.GetTraversalMultiplier(1, 0)));
+            AssertEquivalent(
+                new DictionaryNavigationOracle(map, Array.Empty<Vector2I>(), rulesVersion: 2),
+                changed,
+                map.GetCell(0, 0).WorldPosition,
+                map.GetCell(3, 3).WorldPosition);
+        }
+
         private static void CompareQueries(
             WorldMapState map,
             IReadOnlyCollection<Vector2I> builtPathCells,
@@ -228,6 +343,34 @@ namespace Societies.Core.Tests
             FieldInfo generationField = workspace.GetType().GetField("_generation", BindingFlags.Instance | BindingFlags.NonPublic)!;
             generationField.SetValue(workspace, generation);
             pool.GetType().GetMethod("Add")!.Invoke(pool, new[] { workspace });
+        }
+
+        private static object GetPrivateField(PrototypeNavigationGrid grid, string fieldName)
+        {
+            return typeof(PrototypeNavigationGrid)
+                .GetField(fieldName, BindingFlags.Instance | BindingFlags.NonPublic)!
+                .GetValue(grid)!;
+        }
+
+        private static IReadOnlyList<(int GridX, int GridY, int StepDistanceBits)> GetPackedNeighbors(
+            PrototypeNavigationGrid grid,
+            int cellIndex)
+        {
+            object topology = GetPrivateField(grid, "_neighborTopology");
+            int[] offsets = (int[])topology.GetType().GetProperty("Offsets")!.GetValue(topology)!;
+            Array neighbors = (Array)topology.GetType().GetProperty("Neighbors")!.GetValue(topology)!;
+            List<(int GridX, int GridY, int StepDistanceBits)> result = new();
+            for (int index = offsets[cellIndex]; index < offsets[cellIndex + 1]; index++)
+            {
+                object neighbor = neighbors.GetValue(index)!;
+                Type neighborType = neighbor.GetType();
+                int gridX = (int)neighborType.GetProperty("GridX")!.GetValue(neighbor)!;
+                int gridY = (int)neighborType.GetProperty("GridY")!.GetValue(neighbor)!;
+                float stepDistance = (float)neighborType.GetProperty("StepDistance")!.GetValue(neighbor)!;
+                result.Add((gridX, gridY, BitConverter.SingleToInt32Bits(stepDistance)));
+            }
+
+            return result;
         }
 
         private static WorldMapState BuildMap(bool uniformCost = false, params string[] rows) =>

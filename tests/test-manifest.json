@@ -1,11 +1,11 @@
 {
   "schemaVersion": 3,
-  "updatedUtc": "2026-07-13T15:33:41.5249786Z",
+  "updatedUtc": "2026-07-13T15:47:12.6335330Z",
   "required": {
     "dotnet": {
       "project": "tests/Societies.Core.Tests/Societies.Core.Tests.csproj",
       "command": "dotnet test tests/Societies.Core.Tests/Societies.Core.Tests.csproj --configuration Release",
-      "expectedTestCount": 146,
+      "expectedTestCount": 151,
       "tiers": {
         "fast": {
           "expectedTestCount": 89,
@@ -19,7 +19,7 @@
           ]
         },
         "soak": {
-          "expectedTestCount": 46,
+          "expectedTestCount": 51,
           "classes": [
             "Societies.Core.Tests.PrototypeRuntimeSessionTests",
             "Societies.Core.Tests.PrototypeSettlementSimulationTests",
@@ -166,6 +166,6 @@
   "history": {
     "preSyncCommit": "c58e3de",
     "preSyncDotnetTestCount": 64,
-    "note": "The synchronized master adds 12 PrototypeMetricsTracker tests and 3 WorkOrderGenerationDiagnostics tests for a historical 79-test floor. W1-03b adds three cache-probe contract tests, W1-03c adds five natural-invalidation progression cases, W1-04 adds seven navigation, unreachable-assignment, and legacy-resume correctness cases, W1-05 adds nine exact-selector contract and 300-tick differential cases, the extraction-planning slice adds 16 exact-bound, integration, and 300-tick differential cases, and the indexed A-star slice adds 11 exact-representation, reuse, wrap, concurrency, and bounds cases. The current manifest declares 146 required .NET tests."
+    "note": "The synchronized master adds 12 PrototypeMetricsTracker tests and 3 WorkOrderGenerationDiagnostics tests for a historical 79-test floor. W1-03b adds three cache-probe contract tests, W1-03c adds five natural-invalidation progression cases, W1-04 adds seven navigation, unreachable-assignment, and legacy-resume correctness cases, W1-05 adds nine exact-selector contract and 300-tick differential cases, the extraction-planning slice adds 16 exact-bound, integration, and 300-tick differential cases, and the indexed A-star slices add 16 exact-representation, reuse, wrap, concurrency, bounds, topology, and multiplier-version cases. The current manifest declares 151 required .NET tests."
   }
 }
