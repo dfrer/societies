@@ -116,19 +116,23 @@ namespace Societies.Simulation
         private readonly bool _uncappedOrders;
         private readonly PrototypeOrderSelectionMode _orderSelectionMode;
         private readonly PrototypeExtractionPlanningMode _extractionPlanningMode;
+        private readonly PrototypeRouteDistanceMode _routeDistanceMode;
+        private long _cachedRouteDistanceFastPathHits;
         public PrototypeSettlementSimulation(
             PrototypeScenarioDefinition scenario,
             IReadOnlyList<PrototypeRoleQuotaDefinition> roleQuotas,
             WorldGenerationResult world,
             bool uncappedOrders = false,
             PrototypeOrderSelectionMode orderSelectionMode = PrototypeOrderSelectionMode.ExactBranchAndBound,
-            PrototypeExtractionPlanningMode extractionPlanningMode = PrototypeExtractionPlanningMode.ExactBounded)
+            PrototypeExtractionPlanningMode extractionPlanningMode = PrototypeExtractionPlanningMode.ExactBounded,
+            PrototypeRouteDistanceMode routeDistanceMode = PrototypeRouteDistanceMode.CachedDistanceOnly)
         {
             _scenario = scenario;
             _world = world;
             _uncappedOrders = uncappedOrders;
             _orderSelectionMode = orderSelectionMode;
             _extractionPlanningMode = extractionPlanningMode;
+            _routeDistanceMode = routeDistanceMode;
             _centralDepot = CreateStore("central_depot", "Central Depot", 120, GetStructurePosition("central_depot", 0));
             SeedStartingStock();
             InitializeSiteCaches();
@@ -144,6 +148,10 @@ namespace Societies.Simulation
         public PrototypeOrderSelectionMode OrderSelectionMode => _orderSelectionMode;
 
         public PrototypeExtractionPlanningMode ExtractionPlanningMode => _extractionPlanningMode;
+
+        public PrototypeRouteDistanceMode RouteDistanceMode => _routeDistanceMode;
+
+        public long CachedRouteDistanceFastPathHits => _cachedRouteDistanceFastPathHits;
 
         public IReadOnlyList<PrototypeWorkerState> Citizens => _citizens;
 

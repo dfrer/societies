@@ -1,15 +1,15 @@
 {
   "schemaVersion": 3,
-  "updatedUtc": "2026-07-13T19:22:38.8602126Z",
+  "updatedUtc": "2026-07-13T20:27:33.3838870Z",
   "required": {
     "dotnet": {
       "project": "tests/Societies.Core.Tests/Societies.Core.Tests.csproj",
       "command": "dotnet test tests/Societies.Core.Tests/Societies.Core.Tests.csproj --configuration Release",
-      "expectedTestCount": 159,
+      "expectedTestCount": 174,
       "tiers": {
         "fast": {
-          "expectedTestCount": 97,
-          "filter": "FullyQualifiedName!~PrototypeRuntimeSessionTests&FullyQualifiedName!~PrototypeSettlementSimulationTests&FullyQualifiedName!~SettlementDiagnosticsTests&FullyQualifiedName!~WorkOrderGenerationDiagnosticsTests&FullyQualifiedName!~OrderSelectionTests&FullyQualifiedName!~ExtractionPlanningTests&FullyQualifiedName!~NavigationRepresentationTests"
+          "expectedTestCount": 106,
+          "filter": "FullyQualifiedName!~PrototypeRuntimeSessionTests&FullyQualifiedName!~PrototypeSettlementSimulationTests&FullyQualifiedName!~SettlementDiagnosticsTests&FullyQualifiedName!~WorkOrderGenerationDiagnosticsTests&FullyQualifiedName!~OrderSelectionTests&FullyQualifiedName!~ExtractionPlanningTests&FullyQualifiedName!~NavigationRepresentationTests&FullyQualifiedName!~RouteDistanceModeDifferentialTests"
         },
         "integration": {
           "expectedTestCount": 11,
@@ -19,13 +19,14 @@
           ]
         },
         "soak": {
-          "expectedTestCount": 51,
+          "expectedTestCount": 57,
           "classes": [
             "Societies.Core.Tests.PrototypeRuntimeSessionTests",
             "Societies.Core.Tests.PrototypeSettlementSimulationTests",
             "Societies.Core.Tests.OrderSelectionTests",
             "Societies.Core.Tests.ExtractionPlanningTests",
-            "Societies.Core.Tests.NavigationRepresentationTests"
+            "Societies.Core.Tests.NavigationRepresentationTests",
+            "Societies.Core.Tests.RouteDistanceModeDifferentialTests"
           ]
         }
       }
@@ -89,7 +90,7 @@
       "baselineMatrixResultSchemaVersion": 1,
       "baselineMatrixCanonicalPairCount": 14,
       "baselineMatrixStatus": "passed_contract_safety_failed",
-      "resultSchemaVersion": 5,
+      "resultSchemaVersion": 6,
       "requiredGodotVersion": "4.6.2",
       "requiredForPullRequest": false,
       "runModes": [
@@ -108,6 +109,10 @@
       "extractionPlanningModes": [
         "exact_bounded",
         "exhaustive_reference"
+      ],
+      "routeDistanceModes": [
+        "cached_distance_only",
+        "full_materialization_reference"
       ],
       "executionRoutes": {
         "editorScene": {
@@ -176,6 +181,6 @@
   "history": {
     "preSyncCommit": "c58e3de",
     "preSyncDotnetTestCount": 64,
-      "note": "The synchronized master adds 12 PrototypeMetricsTracker tests and 3 WorkOrderGenerationDiagnostics tests for a historical 79-test floor. W1-03b adds three cache-probe contract tests, W1-03c adds five natural-invalidation progression cases, W1-04 adds seven navigation, unreachable-assignment, and legacy-resume correctness cases, W1-05 adds nine exact-selector contract and 300-tick differential cases, the extraction-planning slice adds 16 exact-bound, integration, and 300-tick differential cases, and the indexed A-star slices add 16 exact-representation, reuse, wrap, concurrency, bounds, topology, and multiplier-version cases. The shared-frontier slice adds eight geometric lower-bound cases across shipped scenarios, exact endpoints, blocked/disconnected topology, built-path versions, non-binary cell sizes, and origin identity. The current manifest declares 159 required .NET tests."
+      "note": "The synchronized master adds 12 PrototypeMetricsTracker tests and 3 WorkOrderGenerationDiagnostics tests for a historical 79-test floor. W1-03b adds three cache-probe contract tests, W1-03c adds five natural-invalidation progression cases, W1-04 adds seven navigation, unreachable-assignment, and legacy-resume correctness cases, W1-05 adds nine exact-selector contract and 300-tick differential cases, the extraction-planning slice adds 16 exact-bound, integration, and 300-tick differential cases, and the indexed A-star slices add 16 exact-representation, reuse, wrap, concurrency, bounds, topology, and multiplier-version cases. The shared-frontier slice adds eight geometric lower-bound cases across shipped scenarios, exact endpoints, blocked/disconnected topology, built-path versions, non-binary cell sizes, and origin identity. The cached-distance slice adds nine bit-exact replay cases, four 300-tick mode differentials, and two runtime forwarding cases. The current manifest declares 174 required .NET tests."
   }
 }

@@ -11,6 +11,72 @@ namespace Societies.Core.Tests
     public class PrototypeRuntimeSessionTests
     {
         [Fact]
+        public void RouteDistanceMode_FreshRuntimeExecutesConfiguredImplementation()
+        {
+            PrototypeCatalogBundle optimizedBundle = LoadCatalogs();
+            PrototypeCatalogBundle referenceBundle = LoadCatalogs();
+            PrototypeScenarioDefinition optimizedScenario = optimizedBundle.Scenarios.Resolve("balanced_basin");
+            PrototypeScenarioDefinition referenceScenario = referenceBundle.Scenarios.Resolve("balanced_basin");
+            PrototypeRuntimeSession optimized = new(
+                optimizedScenario,
+                optimizedBundle.RoleQuotas.Roles,
+                routeDistanceMode: PrototypeRouteDistanceMode.CachedDistanceOnly);
+            PrototypeRuntimeSession reference = new(
+                referenceScenario,
+                referenceBundle.RoleQuotas.Roles,
+                routeDistanceMode: PrototypeRouteDistanceMode.FullMaterializationReference);
+            optimized.Initialize(8.0f);
+            reference.Initialize(8.0f);
+
+            AdvanceTwice(optimized, BuildResourceSites(optimized.World!));
+            AdvanceTwice(reference, BuildResourceSites(reference.World!));
+
+            Assert.Equal(PrototypeRouteDistanceMode.CachedDistanceOnly, optimized.RouteDistanceMode);
+            Assert.Equal(PrototypeRouteDistanceMode.FullMaterializationReference, reference.RouteDistanceMode);
+            Assert.True(optimized.CachedRouteDistanceFastPathHits > 0);
+            Assert.Equal(0, reference.CachedRouteDistanceFastPathHits);
+        }
+
+        [Fact]
+        public void RouteDistanceMode_SnapshotRestoreExecutesConfiguredImplementation()
+        {
+            PrototypeCatalogBundle sourceBundle = LoadCatalogs();
+            PrototypeScenarioDefinition sourceScenario = sourceBundle.Scenarios.Resolve("balanced_basin");
+            PrototypeRuntimeSession source = new(sourceScenario, sourceBundle.RoleQuotas.Roles);
+            source.Initialize(8.0f);
+            List<PrototypeResourceSiteState> sourceResources = BuildResourceSites(source.World!);
+            AdvanceTwice(source, sourceResources);
+            PrototypeRuntimeSnapshot snapshot = source.CaptureSnapshot(
+                Vector3.Zero,
+                sourceResources.Select(resource => new PrototypeResourceSnapshot
+                {
+                    ResourceId = resource.ResourceId,
+                    UnitsRemaining = resource.UnitsRemaining,
+                    Position = PrototypeSerializableVector3.FromVector3(resource.Position),
+                    ClusterId = resource.ClusterId
+                }).ToList());
+
+            PrototypeCatalogBundle optimizedBundle = LoadCatalogs();
+            PrototypeCatalogBundle referenceBundle = LoadCatalogs();
+            PrototypeRuntimeSession optimized = new(
+                optimizedBundle.Scenarios.Resolve("balanced_basin"),
+                optimizedBundle.RoleQuotas.Roles,
+                routeDistanceMode: PrototypeRouteDistanceMode.CachedDistanceOnly);
+            PrototypeRuntimeSession reference = new(
+                referenceBundle.Scenarios.Resolve("balanced_basin"),
+                referenceBundle.RoleQuotas.Roles,
+                routeDistanceMode: PrototypeRouteDistanceMode.FullMaterializationReference);
+            optimized.ApplySnapshot(snapshot);
+            reference.ApplySnapshot(snapshot);
+
+            AdvanceTwice(optimized, BuildResourceSites(optimized.World!));
+            AdvanceTwice(reference, BuildResourceSites(reference.World!));
+
+            Assert.True(optimized.CachedRouteDistanceFastPathHits > 0);
+            Assert.Equal(0, reference.CachedRouteDistanceFastPathHits);
+        }
+
+        [Fact]
         public void PerformanceProbe_RuntimeSessionForwardsCacheAndForcedInvalidationControls()
         {
             PrototypeCatalogBundle bundle = LoadCatalogs();
@@ -123,6 +189,14 @@ namespace Societies.Core.Tests
                     spawn.UnitsRemaining,
                     spawn.ClusterId)))
                 .ToList();
+        }
+
+        private static void AdvanceTwice(
+            PrototypeRuntimeSession session,
+            IReadOnlyList<PrototypeResourceSiteState> resources)
+        {
+            _ = session.Advance(1.0f / 20.0f, 600.0f, resources);
+            _ = session.Advance(1.0f / 20.0f, 600.0f, resources);
         }
 
         private static PrototypeCatalogBundle LoadCatalogs()

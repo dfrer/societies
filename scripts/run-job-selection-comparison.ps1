@@ -5,6 +5,8 @@ param(
     [int]$Citizens = 16,
     [int]$Ticks = 300,
     [int]$Trials = 3,
+    [ValidateSet("cached_distance_only", "full_materialization_reference")]
+    [string]$RouteDistanceMode = "cached_distance_only",
     [string]$ComparisonGroup,
     [string]$OutputRoot,
     [string]$GodotPath,
@@ -15,6 +17,10 @@ param(
 
 $ErrorActionPreference = "Stop"
 $ExtractionPlanningMode = "exact_bounded"
+$RouteDistanceMode = $RouteDistanceMode.ToLowerInvariant()
+if ($RouteDistanceMode -ne "cached_distance_only") {
+    throw "The canonical job-selection comparison requires RouteDistanceMode 'cached_distance_only'."
+}
 
 $repoRoot = Split-Path -Parent $PSScriptRoot
 $pairScript = Join-Path $PSScriptRoot "run-performance-pair.ps1"
@@ -179,6 +185,7 @@ for ($trial = 1; $trial -le $Trials; $trial++) {
             CacheMode = "cold"
             SelectorMode = $selector
             ExtractionPlanningMode = $ExtractionPlanningMode
+            RouteDistanceMode = $RouteDistanceMode
             ComparisonGroup = $resolvedComparisonGroup
             TrialIndex = $trial
             OutputRoot = $modeRoot
@@ -239,20 +246,24 @@ for ($trial = 1; $trial -le $Trials; $trial++) {
         }
 
         $expectedPairStatus = if ($AllowDirtySource) { @("pass", "pass_dirty_source") } else { @("pass") }
-        if ($equivalence.schemaVersion -ne 5 -or
+        if ($equivalence.schemaVersion -ne 6 -or
             $expectedPairStatus -notcontains $equivalence.status -or
             $equivalence.releaseEnvironmentValid -ne $true -or
+            $equivalence.routeDistanceEvidenceValid -ne $true -or
             $equivalence.selectorMode -ne $selector -or
             $equivalence.extractionPlanningMode -ne $ExtractionPlanningMode -or
-            $offResult.schemaVersion -ne 5 -or
-            $onResult.schemaVersion -ne 5 -or
+            $equivalence.routeDistanceMode -ne $RouteDistanceMode -or
+            $offResult.schemaVersion -ne 6 -or
+            $onResult.schemaVersion -ne 6 -or
             $offResult.configuration.selectorMode -ne $selector -or
             $onResult.configuration.selectorMode -ne $selector -or
             $offResult.configuration.extractionPlanningMode -ne $ExtractionPlanningMode -or
             $onResult.configuration.extractionPlanningMode -ne $ExtractionPlanningMode -or
+            $offResult.configuration.routeDistanceMode -ne $RouteDistanceMode -or
+            $onResult.configuration.routeDistanceMode -ne $RouteDistanceMode -or
             $offResult.environment.verifiedReleaseExecution -ne $true -or
             $onResult.environment.verifiedReleaseExecution -ne $true) {
-            throw "$selector trial $trial did not satisfy the schema-v5 Release pair contract."
+            throw "$selector trial $trial did not satisfy the schema-v6 Release pair contract."
         }
 
         $leafArtifacts.Add($equivalencePath)
@@ -344,7 +355,7 @@ $exhaustiveMedianP95 = Get-Median ([double[]]@($records | ForEach-Object { $_.ex
 $optimizedMedianP95 = Get-Median ([double[]]@($records | ForEach-Object { $_.optimized.tickP95Milliseconds }))
 $p95Limit = $exhaustiveMedianP95 * 1.10
 $contracts = [ordered]@{
-    resultSchemaV5 = $true
+    resultSchemaV6 = $true
     verifiedReleaseExecution = $true
     singleSourceIdentity = $sourceShas.Count -eq 1
     cleanSource = $sourceDirtyValues.Count -eq 1 -and $sourceDirtyValues[0] -eq $false
@@ -369,7 +380,7 @@ $status = if (-not $contractPassed) { "fail" } elseif ($contracts.cleanSource) {
 
 $result = [ordered]@{
     schemaVersion = 1
-    sourceResultSchemaVersion = 5
+    sourceResultSchemaVersion = 6
     capturedUtc = [DateTime]::UtcNow.ToString("o")
     status = $status
     contractStatus = $status
@@ -381,6 +392,7 @@ $result = [ordered]@{
         trialsPerSelector = $Trials
         cacheMode = "cold"
         extractionPlanningMode = $ExtractionPlanningMode
+        routeDistanceMode = $RouteDistanceMode
         comparisonGroup = $resolvedComparisonGroup
         executionRoute = "export_release"
         exportPreset = $ExportPreset
@@ -423,6 +435,7 @@ $summaryLines = @(
     "Optimized median p95: $optimizedMedianP95 ms; limit: $p95Limit ms",
     "Exact-query reductions: $((@($records | ForEach-Object { [Math]::Round($_.exactQueryReduction * 100.0, 3) })) -join ', ') percent",
     "Hash equivalence: $($contracts.deterministicHashesMatch); query accounting: $($contracts.selectorQueryAccountingValid)",
+    "Route-distance mode: $RouteDistanceMode",
     "Output: $OutputRoot"
 )
 $summaryPath = Join-Path $OutputRoot "job-selection-comparison-summary.txt"
@@ -431,7 +444,7 @@ Write-Utf8NoBom $summaryPath ($summaryLines -join [System.Environment]::NewLine)
 $manifestArtifacts = $leafArtifactArray + @($resultPath, $summaryPath)
 $manifest = [ordered]@{
     schemaVersion = 1
-    sourceResultSchemaVersion = 5
+    sourceResultSchemaVersion = 6
     capturedUtc = [DateTime]::UtcNow.ToString("o")
     status = $status
     result = $resultPath

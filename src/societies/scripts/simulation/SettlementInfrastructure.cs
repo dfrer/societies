@@ -582,6 +582,44 @@ namespace Societies.Simulation
             out float distanceMeters,
             PathPlanLookupPurpose purpose = PathPlanLookupPurpose.General)
         {
+            if (purpose == PathPlanLookupPurpose.General &&
+                _routeDistanceMode == PrototypeRouteDistanceMode.CachedDistanceOnly)
+            {
+                _navigationGrid ??= new PrototypeNavigationGrid(_world.WorldMap, new HashSet<Vector2I>(), _navigationRulesVersion);
+                TerrainCell startCell = _world.WorldMap.GetNearestCell(startPosition);
+                TerrainCell destinationCell = _world.WorldMap.GetNearestCell(destinationPosition);
+                PrototypePathCacheKey cacheKey = new(
+                    startCell.GridX,
+                    startCell.GridY,
+                    destinationCell.GridX,
+                    destinationCell.GridY,
+                    _navigationRulesVersion);
+                if (_pathCache.TryGetValue(cacheKey, out PrototypePathCacheEntry? cachedEntry))
+                {
+                    _pathPlanLookupsThisTick++;
+                    _pathPlanCacheHitsThisTick++;
+                    _lastPathPlanLookupWasCacheHit = true;
+                    _lastPathPlanRulesVersion = cachedEntry.Query.RulesVersion;
+                    if (!cachedEntry.IsReachable)
+                    {
+                        distanceMeters = 0.0f;
+                        return false;
+                    }
+
+                    bool replayed = _navigationGrid.TryComputeMaterializedPathDistance(
+                        startPosition,
+                        destinationPosition,
+                        cachedEntry.Cells,
+                        out distanceMeters);
+                    if (replayed)
+                    {
+                        _cachedRouteDistanceFastPathHits++;
+                    }
+
+                    return replayed;
+                }
+            }
+
             if (TryFindPathPlan(startPosition, destinationPosition, out PrototypePathPlan? plan, purpose))
             {
                 distanceMeters = plan!.TotalDistanceMeters;

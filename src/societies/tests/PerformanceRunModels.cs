@@ -39,6 +39,8 @@ namespace Societies.Tests
 
         public string ExtractionPlanningMode { get; set; } = string.Empty;
 
+        public string RouteDistanceMode { get; set; } = string.Empty;
+
         public string ComparisonGroup { get; set; } = string.Empty;
 
         public int TrialIndex { get; set; }
@@ -252,7 +254,7 @@ namespace Societies.Tests
 
     internal sealed class PerformanceRunResult
     {
-        public int SchemaVersion { get; set; } = 5;
+        public int SchemaVersion { get; set; } = 6;
 
         public string CapturedUtc { get; set; } = string.Empty;
 
@@ -276,6 +278,8 @@ namespace Societies.Tests
 
         public PerformanceDiagnosticsSummary? Diagnostics { get; set; }
 
+        public long MeasuredCachedRouteDistanceFastPathHits { get; set; }
+
         public PerformanceBudgetAssessment Budget { get; set; }
 
         public long MeasuredStartSimulationTick { get; set; }
@@ -291,7 +295,7 @@ namespace Societies.Tests
 
     internal sealed class PerformanceValidationManifest
     {
-        public int SchemaVersion { get; set; } = 5;
+        public int SchemaVersion { get; set; } = 6;
 
         public string CapturedUtc { get; set; } = string.Empty;
 
@@ -313,6 +317,8 @@ namespace Societies.Tests
 
         public PerformanceCacheEvidence CacheEvidence { get; set; } = new();
 
+        public long MeasuredCachedRouteDistanceFastPathHits { get; set; }
+
         public PerformanceRunHashes Hashes { get; set; } = new();
 
         public PerformanceBudgetAssessment Budget { get; set; }
@@ -322,7 +328,7 @@ namespace Societies.Tests
 
     internal sealed class PerformanceFailureResult
     {
-        public int SchemaVersion { get; set; } = 5;
+        public int SchemaVersion { get; set; } = 6;
 
         public string CapturedUtc { get; set; } = string.Empty;
 

@@ -84,6 +84,16 @@ namespace Societies.Simulation
         ExhaustiveReference
     }
 
+    /// <summary>
+    /// Non-persistent runtime choice used to compare cached distance-only replay
+    /// with full path-plan rematerialization.
+    /// </summary>
+    public enum PrototypeRouteDistanceMode
+    {
+        CachedDistanceOnly,
+        FullMaterializationReference
+    }
+
     public readonly record struct PrototypeExtractionCandidate(
         PrototypeResourceSiteState Site,
         Vector3 InteractionPosition,

@@ -24,6 +24,8 @@ namespace Societies.Core
         private const string ExhaustiveReferenceSelectorMode = "exhaustive_reference";
         private const string ExactBoundedExtractionMode = "exact_bounded";
         private const string ExhaustiveReferenceExtractionMode = "exhaustive_reference";
+        private const string CachedDistanceOnlyRouteDistanceMode = "cached_distance_only";
+        private const string FullMaterializationReferenceRouteDistanceMode = "full_materialization_reference";
 
         public static GameManager? Instance { get; private set; }
 
@@ -68,6 +70,7 @@ namespace Societies.Core
         private int _performanceCitizenCountOverride;
         private PrototypeOrderSelectionMode _performanceOrderSelectionModeOverride = PrototypeOrderSelectionMode.ExactBranchAndBound;
         private PrototypeExtractionPlanningMode _performanceExtractionPlanningModeOverride = PrototypeExtractionPlanningMode.ExactBounded;
+        private PrototypeRouteDistanceMode _performanceRouteDistanceModeOverride = PrototypeRouteDistanceMode.CachedDistanceOnly;
         private bool _readyStarted;
 
         public bool IsGameRunning { get; private set; }
@@ -83,6 +86,12 @@ namespace Societies.Core
 
         public PrototypeExtractionPlanningMode CurrentExtractionPlanningMode =>
             _runtimeSession?.ExtractionPlanningMode ?? PrototypeExtractionPlanningMode.ExactBounded;
+
+        public PrototypeRouteDistanceMode CurrentRouteDistanceMode =>
+            _runtimeSession?.RouteDistanceMode ?? PrototypeRouteDistanceMode.CachedDistanceOnly;
+
+        public long CachedRouteDistanceFastPathHits =>
+            _runtimeSession?.CachedRouteDistanceFastPathHits ?? 0;
 
         public double? PerformanceBootstrapMilliseconds { get; private set; }
 
@@ -248,7 +257,8 @@ namespace Societies.Core
             int simulationSeed,
             int citizenCount,
             string selectorMode = ExactBranchAndBoundSelectorMode,
-            string extractionPlanningMode = ExactBoundedExtractionMode)
+            string extractionPlanningMode = ExactBoundedExtractionMode,
+            string routeDistanceMode = CachedDistanceOnlyRouteDistanceMode)
         {
             if (_readyStarted || IsInsideTree())
             {
@@ -281,6 +291,14 @@ namespace Societies.Core
                     "Extraction planning mode must be 'exact_bounded' or 'exhaustive_reference'.",
                     nameof(extractionPlanningMode))
             };
+            PrototypeRouteDistanceMode resolvedRouteDistanceMode = routeDistanceMode switch
+            {
+                CachedDistanceOnlyRouteDistanceMode => PrototypeRouteDistanceMode.CachedDistanceOnly,
+                FullMaterializationReferenceRouteDistanceMode => PrototypeRouteDistanceMode.FullMaterializationReference,
+                _ => throw new ArgumentException(
+                    "Route-distance mode must be 'cached_distance_only' or 'full_materialization_reference'.",
+                    nameof(routeDistanceMode))
+            };
 
             _hasPerformanceStartupOverride = true;
             _performanceScenarioIdOverride = scenarioId;
@@ -288,6 +306,7 @@ namespace Societies.Core
             _performanceCitizenCountOverride = citizenCount;
             _performanceOrderSelectionModeOverride = orderSelectionMode;
             _performanceExtractionPlanningModeOverride = resolvedExtractionPlanningMode;
+            _performanceRouteDistanceModeOverride = resolvedRouteDistanceMode;
         }
 
         public bool TryCraftRecipe(string recipeId)
@@ -696,11 +715,15 @@ namespace Societies.Core
             PrototypeExtractionPlanningMode extractionPlanningMode = _hasPerformanceStartupOverride
                 ? _performanceExtractionPlanningModeOverride
                 : PrototypeExtractionPlanningMode.ExactBounded;
+            PrototypeRouteDistanceMode routeDistanceMode = _hasPerformanceStartupOverride
+                ? _performanceRouteDistanceModeOverride
+                : PrototypeRouteDistanceMode.CachedDistanceOnly;
             _runtimeSession = new PrototypeRuntimeSession(
                 scenario,
                 _catalogs?.RoleQuotas.Roles,
                 orderSelectionMode,
-                extractionPlanningMode);
+                extractionPlanningMode,
+                routeDistanceMode);
             BindPlayerToRuntime();
         }
 

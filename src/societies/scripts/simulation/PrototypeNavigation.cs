@@ -120,6 +120,50 @@ namespace Societies.Simulation
             return true;
         }
 
+        public bool TryComputeMaterializedPathDistance(
+            Vector3 startPosition,
+            Vector3 destinationPosition,
+            IReadOnlyList<Vector2I> cellPath,
+            out float distanceMeters)
+        {
+            TerrainCell startCell = _worldMap.GetNearestCell(startPosition);
+            TerrainCell destinationCell = _worldMap.GetNearestCell(destinationPosition);
+            Vector2I startKey = new(startCell.GridX, startCell.GridY);
+            Vector2I destinationKey = new(destinationCell.GridX, destinationCell.GridY);
+
+            if (!IsWalkable(startCell.GridX, startCell.GridY) ||
+                !IsWalkable(destinationCell.GridX, destinationCell.GridY) ||
+                cellPath.Count == 0 ||
+                cellPath[0] != startKey ||
+                cellPath[^1] != destinationKey)
+            {
+                distanceMeters = 0.0f;
+                return false;
+            }
+
+            if (cellPath.Count == 1)
+            {
+                distanceMeters = HorizontalDistance(startPosition, destinationPosition);
+                return true;
+            }
+
+            float totalDistance = 0.0f;
+            Vector3 previous = startPosition;
+            for (int index = 1; index < cellPath.Count; index++)
+            {
+                Vector2I cellCoord = cellPath[index];
+                Vector3 worldPoint = _worldMap.GetCell(cellCoord.X, cellCoord.Y).WorldPosition;
+                float segmentDistance = HorizontalDistance(previous, worldPoint);
+                totalDistance += segmentDistance;
+                previous = worldPoint;
+            }
+
+            float finalDistance = HorizontalDistance(previous, destinationPosition);
+            totalDistance += finalDistance;
+            distanceMeters = totalDistance;
+            return true;
+        }
+
         public PrototypePathPlan FindPath(Vector3 startPosition, Vector3 destinationPosition)
         {
             if (TryFindPath(startPosition, destinationPosition, out PrototypePathPlan? plan))

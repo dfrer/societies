@@ -27,6 +27,8 @@ namespace Societies.Tests
         private const string ExhaustiveSelectorMode = "exhaustive_reference";
         private const string ExactBoundedExtractionMode = "exact_bounded";
         private const string ExhaustiveExtractionMode = "exhaustive_reference";
+        private const string CachedDistanceOnlyRouteDistanceMode = "cached_distance_only";
+        private const string FullMaterializationReferenceRouteDistanceMode = "full_materialization_reference";
         private const int MaximumMeasuredTicks = 4096;
         private static readonly UTF8Encoding Utf8NoBom = new(encoderShouldEmitUTF8Identifier: false);
         private static readonly JsonSerializerOptions JsonOptions = new()
@@ -99,7 +101,8 @@ namespace Societies.Tests
                     configuration.SimulationSeed,
                     configuration.CitizenCount,
                     configuration.SelectorMode,
-                    configuration.ExtractionPlanningMode);
+                    configuration.ExtractionPlanningMode,
+                    configuration.RouteDistanceMode);
                 manager.SetProcess(false);
 
                 long sceneSetupStart = Stopwatch.GetTimestamp();
@@ -157,6 +160,8 @@ namespace Societies.Tests
                 cacheEvidence.BeforeMeasurement = manager.CapturePerformanceProbeState();
                 ValidatePreparedCacheEvidence(configuration, cacheEvidence);
                 runtimeMetrics?.Reset();
+                long cachedRouteDistanceFastPathHitsBeforeMeasurement =
+                    manager.CachedRouteDistanceFastPathHits;
 
                 long measuredStartSimulationTick = manager.SimulationTick;
                 var externalTickSamples = new double[configuration.MeasuredTicks];
@@ -168,6 +173,12 @@ namespace Societies.Tests
                     externalTickSamples[index] = Stopwatch.GetElapsedTime(tickStart).TotalMilliseconds;
                 }
                 double measuredIntervalMilliseconds = Stopwatch.GetElapsedTime(measuredIntervalStart).TotalMilliseconds;
+                long measuredCachedRouteDistanceFastPathHits =
+                    manager.CachedRouteDistanceFastPathHits - cachedRouteDistanceFastPathHitsBeforeMeasurement;
+                if (measuredCachedRouteDistanceFastPathHits < 0)
+                {
+                    throw new InvalidOperationException("Cached route-distance fast-path counter moved backwards during measurement.");
+                }
                 cacheEvidence.AfterMeasurement = manager.CapturePerformanceProbeState();
                 if (configuration.CacheMode == ForcedInvalidationCacheMode)
                 {
@@ -278,6 +289,7 @@ namespace Societies.Tests
                     ExternalTickStatistics = externalStatistics,
                     InternalTickStatistics = internalStatistics,
                     Diagnostics = diagnostics,
+                    MeasuredCachedRouteDistanceFastPathHits = measuredCachedRouteDistanceFastPathHits,
                     Budget = budget,
                     MeasuredStartSimulationTick = measuredStartSimulationTick,
                     FinalSimulationTick = manager.SimulationTick,
@@ -331,6 +343,7 @@ namespace Societies.Tests
                 "--cache-mode",
                 "--selector-mode",
                 "--extraction-planning-mode",
+                "--route-distance-mode",
                 "--comparison-group",
                 "--trial-index",
                 "--allow-safety-failure"
@@ -439,6 +452,13 @@ namespace Societies.Tests
                 _ => throw new ArgumentException(
                     "Extraction planning mode must be 'exact_bounded' or 'exhaustive_reference'.")
             };
+            string routeDistanceMode = values["--route-distance-mode"] switch
+            {
+                CachedDistanceOnlyRouteDistanceMode => CachedDistanceOnlyRouteDistanceMode,
+                FullMaterializationReferenceRouteDistanceMode => FullMaterializationReferenceRouteDistanceMode,
+                _ => throw new ArgumentException(
+                    "Route-distance mode must be 'cached_distance_only' or 'full_materialization_reference'.")
+            };
 
             return new PerformanceRunConfiguration
             {
@@ -459,6 +479,7 @@ namespace Societies.Tests
                 CacheMode = cacheMode,
                 SelectorMode = selectorMode,
                 ExtractionPlanningMode = extractionPlanningMode,
+                RouteDistanceMode = routeDistanceMode,
                 ComparisonGroup = comparisonGroup,
                 TrialIndex = trialIndex,
                 WarmupMode = warmupTicks > 0 ? "simulation_ticks" : "none",
@@ -498,6 +519,17 @@ namespace Societies.Tests
             {
                 throw new InvalidOperationException(
                     $"Runtime extraction mode '{manager.CurrentExtractionPlanningMode}' does not match requested '{expectedExtractionMode}'.");
+            }
+            PrototypeRouteDistanceMode expectedRouteDistanceMode = configuration.RouteDistanceMode switch
+            {
+                CachedDistanceOnlyRouteDistanceMode => PrototypeRouteDistanceMode.CachedDistanceOnly,
+                FullMaterializationReferenceRouteDistanceMode => PrototypeRouteDistanceMode.FullMaterializationReference,
+                _ => throw new InvalidOperationException("Unsupported route-distance mode.")
+            };
+            if (manager.CurrentRouteDistanceMode != expectedRouteDistanceMode)
+            {
+                throw new InvalidOperationException(
+                    $"Runtime route-distance mode '{manager.CurrentRouteDistanceMode}' does not match requested '{expectedRouteDistanceMode}'.");
             }
         }
 
@@ -1060,6 +1092,7 @@ namespace Societies.Tests
                 Environment = result.Environment,
                 Intervals = result.Intervals,
                 CacheEvidence = result.CacheEvidence,
+                MeasuredCachedRouteDistanceFastPathHits = result.MeasuredCachedRouteDistanceFastPathHits,
                 Hashes = result.Hashes,
                 Budget = result.Budget,
                 Artifacts = result.Artifacts
@@ -1074,7 +1107,7 @@ namespace Societies.Tests
                 "managed_build,managed_assembly_configuration,verified_release_execution," +
                 "budget_profile,bootstrap_ms,warmup_ms,p50_ms,p95_ms,p99_ms,max_ms,mean_ms,total_ms," +
                 "serialization_ms,path_lookups,path_hits,path_misses,cache_size_last,candidates_per_idle," +
-                "invalidations,navigation_rebuild_ms,route_selection_ms,selector_mode,selector_candidates_bounded," +
+                "invalidations,navigation_rebuild_ms,route_selection_ms,selector_mode,extraction_planning_mode,route_distance_mode,measured_cached_route_distance_fast_path_hits,selector_candidates_bounded," +
                 "selector_candidates_exact_scored,selector_candidates_pruned,selector_exact_path_queries," +
                 "selector_path_hits,selector_path_misses,selector_path_hit_rate,selector_selected_route_reuses," +
                 "work_orders_generated,work_orders_generated_uncapped," +
@@ -1127,6 +1160,9 @@ namespace Societies.Tests
                 diagnostics != null ? Format(diagnostics.Phases.NavigationRebuildMilliseconds) : string.Empty,
                 diagnostics != null ? Format(diagnostics.Phases.RouteSelectionMilliseconds) : string.Empty,
                 Csv(result.Configuration.SelectorMode),
+                Csv(result.Configuration.ExtractionPlanningMode),
+                Csv(result.Configuration.RouteDistanceMode),
+                result.MeasuredCachedRouteDistanceFastPathHits.ToString(CultureInfo.InvariantCulture),
                 diagnostics?.SelectorCandidatesBounded.ToString(CultureInfo.InvariantCulture) ?? string.Empty,
                 diagnostics?.SelectorCandidatesExactScored.ToString(CultureInfo.InvariantCulture) ?? string.Empty,
                 diagnostics?.SelectorCandidatesPruned.ToString(CultureInfo.InvariantCulture) ?? string.Empty,
@@ -1194,7 +1230,8 @@ namespace Societies.Tests
             builder.AppendLine($"Societies performance run: {result.Configuration.RunId}");
             builder.AppendLine($"Status: {result.Status}");
             builder.AppendLine($"Configuration: {result.Configuration.ScenarioId}, seed {result.Configuration.SimulationSeed}, {result.Configuration.CitizenCount} citizens, {result.Configuration.MeasuredTicks} measured ticks, metrics {(result.Configuration.MetricsEnabled ? "on" : "off")}");
-            builder.AppendLine($"Comparison: {result.Configuration.ComparisonGroup}, trial {result.Configuration.TrialIndex}; cache mode {result.Configuration.CacheMode}; selector {result.Configuration.SelectorMode}; extraction {result.Configuration.ExtractionPlanningMode}");
+            builder.AppendLine($"Comparison: {result.Configuration.ComparisonGroup}, trial {result.Configuration.TrialIndex}; cache mode {result.Configuration.CacheMode}; selector {result.Configuration.SelectorMode}; extraction {result.Configuration.ExtractionPlanningMode}; route distance {result.Configuration.RouteDistanceMode}");
+            builder.AppendLine($"Measured cached route-distance fast-path hits: {result.MeasuredCachedRouteDistanceFastPathHits}");
             builder.AppendLine($"Execution route: {result.Configuration.ExecutionRoute}; runner: {result.Configuration.RunnerExecutablePath}");
             builder.AppendLine($"Managed build: {result.Environment.ManagedBuildConfiguration}; assembly configuration: {result.Environment.ManagedAssemblyConfiguration}; verified release: {result.Environment.VerifiedReleaseExecution}");
             builder.AppendLine($"Bootstrap: {Format(result.Intervals.BootstrapMilliseconds)} ms");
