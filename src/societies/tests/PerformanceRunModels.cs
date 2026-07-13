@@ -35,6 +35,8 @@ namespace Societies.Tests
 
         public string CacheMode { get; set; } = string.Empty;
 
+        public string SelectorMode { get; set; } = string.Empty;
+
         public string ComparisonGroup { get; set; } = string.Empty;
 
         public int TrialIndex { get; set; }
@@ -121,6 +123,8 @@ namespace Societies.Tests
         public double UpdateHudMilliseconds { get; set; }
 
         public double NavigationRebuildMilliseconds { get; set; }
+
+        public double RouteSelectionMilliseconds { get; set; }
     }
 
     internal sealed class PerformanceDiagnosticsSummary
@@ -154,6 +158,22 @@ namespace Societies.Tests
         public long CandidateOrdersEvaluated { get; set; }
 
         public double? CandidateOrdersPerIdleCitizen { get; set; }
+
+        public long SelectorCandidatesBounded { get; set; }
+
+        public long SelectorCandidatesExactScored { get; set; }
+
+        public long SelectorCandidatesPruned { get; set; }
+
+        public long SelectorExactPathQueries { get; set; }
+
+        public long SelectorPathCacheHits { get; set; }
+
+        public long SelectorPathCacheMisses { get; set; }
+
+        public double? SelectorPathCacheHitRate { get; set; }
+
+        public long SelectorSelectedRouteReuses { get; set; }
 
         public long NavigationInvalidations { get; set; }
 
@@ -230,7 +250,7 @@ namespace Societies.Tests
 
     internal sealed class PerformanceRunResult
     {
-        public int SchemaVersion { get; set; } = 3;
+        public int SchemaVersion { get; set; } = 4;
 
         public string CapturedUtc { get; set; } = string.Empty;
 
@@ -269,7 +289,7 @@ namespace Societies.Tests
 
     internal sealed class PerformanceValidationManifest
     {
-        public int SchemaVersion { get; set; } = 3;
+        public int SchemaVersion { get; set; } = 4;
 
         public string CapturedUtc { get; set; } = string.Empty;
 
@@ -300,7 +320,7 @@ namespace Societies.Tests
 
     internal sealed class PerformanceFailureResult
     {
-        public int SchemaVersion { get; set; } = 3;
+        public int SchemaVersion { get; set; } = 4;
 
         public string CapturedUtc { get; set; } = string.Empty;
 

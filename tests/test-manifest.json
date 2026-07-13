@@ -1,15 +1,15 @@
 {
   "schemaVersion": 3,
-  "updatedUtc": "2026-07-13T02:42:44.0798468Z",
+  "updatedUtc": "2026-07-13T04:34:41.7680421Z",
   "required": {
     "dotnet": {
       "project": "tests/Societies.Core.Tests/Societies.Core.Tests.csproj",
       "command": "dotnet test tests/Societies.Core.Tests/Societies.Core.Tests.csproj --configuration Release",
-      "expectedTestCount": 110,
+      "expectedTestCount": 119,
       "tiers": {
         "fast": {
           "expectedTestCount": 89,
-          "filter": "FullyQualifiedName!~PrototypeRuntimeSessionTests&FullyQualifiedName!~PrototypeSettlementSimulationTests&FullyQualifiedName!~SettlementDiagnosticsTests&FullyQualifiedName!~WorkOrderGenerationDiagnosticsTests"
+          "filter": "FullyQualifiedName!~PrototypeRuntimeSessionTests&FullyQualifiedName!~PrototypeSettlementSimulationTests&FullyQualifiedName!~SettlementDiagnosticsTests&FullyQualifiedName!~WorkOrderGenerationDiagnosticsTests&FullyQualifiedName!~OrderSelectionTests"
         },
         "integration": {
           "expectedTestCount": 11,
@@ -19,10 +19,11 @@
           ]
         },
         "soak": {
-          "expectedTestCount": 10,
+          "expectedTestCount": 19,
           "classes": [
             "Societies.Core.Tests.PrototypeRuntimeSessionTests",
-            "Societies.Core.Tests.PrototypeSettlementSimulationTests"
+            "Societies.Core.Tests.PrototypeSettlementSimulationTests",
+            "Societies.Core.Tests.OrderSelectionTests"
           ]
         }
       }
@@ -79,12 +80,14 @@
       "command": "./scripts/run-performance-pair.ps1 -Scenario balanced_basin -Seed 1337 -Citizens 3 -Ticks 3 -CacheMode cold",
       "releaseCommand": "./scripts/run-performance-pair.ps1 -ReleaseExport -Scenario balanced_basin -Seed 1337 -Citizens 3 -Ticks 3 -CacheMode cold",
       "cacheModeComparisonScript": "scripts/run-performance-cache-modes.ps1",
+      "jobSelectionComparisonScript": "scripts/run-job-selection-comparison.ps1",
+      "jobSelectionComparisonCommand": "./scripts/run-job-selection-comparison.ps1 -ReleaseExport -Scenario balanced_basin -Seed 1337 -Citizens 16 -Ticks 300 -Trials 3",
       "baselineMatrixScript": "scripts/run-performance-baseline-matrix.ps1",
       "baselineMatrixCommand": "./scripts/run-performance-baseline-matrix.ps1",
       "baselineMatrixResultSchemaVersion": 1,
       "baselineMatrixCanonicalPairCount": 14,
       "baselineMatrixStatus": "passed_contract_safety_failed",
-      "resultSchemaVersion": 3,
+      "resultSchemaVersion": 4,
       "requiredGodotVersion": "4.6.2",
       "requiredForPullRequest": false,
       "runModes": [
@@ -95,6 +98,10 @@
         "cold",
         "natural_warm",
         "forced_invalidation"
+      ],
+      "selectorModes": [
+        "exact_branch_and_bound",
+        "exhaustive_reference"
       ],
       "executionRoutes": {
         "editorScene": {
@@ -126,6 +133,8 @@
       "singleModeTransitionEvidenceAvailable": true,
       "cacheModeComparisonStatus": "passed",
       "cacheModeEvidence": true,
+      "jobSelectionComparisonStatus": "passed",
+      "jobSelectionEvidence": true,
       "releaseBaselineEvidence": true,
       "fullMatrixCaptured": true,
       "medianOfThreeCaptured": true,
@@ -136,12 +145,16 @@
       "cacheModeImplementationCommit": "5444cc3a39fd9a58f87a7f999b67c9458dfe30c7",
       "baselineEvidenceFile": "planning/active/evidence/v3-w1-03c-performance-baseline-validation.json",
       "baselineImplementationCommit": "a636967c8ea4197393cde1f78d817e364301426a",
-      "note": "The editor route remains Debug characterization. The Windows ExportRelease route is validated from clean commit acf634f. Cache-mode evidence from 5444cc3 proves the short mode contracts. The canonical W1-03c matrix from a636967 passed every evidence contract but measured a safety failure; Week 2 feature expansion remains blocked pending correctness and path-selection optimization."
+      "jobSelectionEvidenceFile": "planning/active/evidence/v3-w1-05-job-selection-validation.json",
+      "jobSelectionImplementationCommit": "b1fddaf",
+      "postW105ReleaseEvidenceCommit": "227a7585d921255942c5d81e3e82bc3f91d01102",
+      "postW105BaselineBudgetStatus": "safety_failure",
+      "note": "The editor route remains Debug characterization. The Windows ExportRelease route is validated from clean commit acf634f. Cache-mode evidence from 5444cc3 proves the short mode contracts. W1-05 clean Release evidence from 227a758 proves exact selector equivalence and an 85.414 percent query reduction, while its post-optimization canonical matrix still measures a safety failure; Week 2 feature expansion remains blocked pending characterization of the remaining spikes."
     }
   },
   "history": {
     "preSyncCommit": "c58e3de",
     "preSyncDotnetTestCount": 64,
-    "note": "The synchronized master adds 12 PrototypeMetricsTracker tests and 3 WorkOrderGenerationDiagnostics tests for a historical 79-test floor. W1-03b adds three cache-probe contract tests, W1-03c adds five natural-invalidation progression cases, and W1-04 adds seven navigation, unreachable-assignment, and legacy-resume correctness cases. The current manifest declares 110 required .NET tests."
+    "note": "The synchronized master adds 12 PrototypeMetricsTracker tests and 3 WorkOrderGenerationDiagnostics tests for a historical 79-test floor. W1-03b adds three cache-probe contract tests, W1-03c adds five natural-invalidation progression cases, W1-04 adds seven navigation, unreachable-assignment, and legacy-resume correctness cases, and W1-05 adds nine exact-selector contract and 300-tick differential cases. The current manifest declares 119 required .NET tests."
   }
 }

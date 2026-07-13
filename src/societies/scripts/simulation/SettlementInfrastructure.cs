@@ -447,9 +447,15 @@ namespace Societies.Simulation
         private bool TryFindPathPlan(
             Vector3 startPosition,
             Vector3 destinationPosition,
-            out PrototypePathPlan? plan)
+            out PrototypePathPlan? plan,
+            PathPlanLookupPurpose purpose = PathPlanLookupPurpose.General)
         {
             _pathPlanLookupsThisTick++;
+            bool isSelectorLookup = purpose == PathPlanLookupPurpose.GenericOrderSelection;
+            if (isSelectorLookup)
+            {
+                _selectorExactPathQueriesThisTick++;
+            }
             _navigationGrid ??= new PrototypeNavigationGrid(_world.WorldMap, new HashSet<Vector2I>(), _navigationRulesVersion);
 
             TerrainCell startCell = _world.WorldMap.GetNearestCell(startPosition);
@@ -458,6 +464,10 @@ namespace Societies.Simulation
             if (_pathCache.TryGetValue(cacheKey, out PrototypePathCacheEntry? cachedEntry))
             {
                 _pathPlanCacheHitsThisTick++;
+                if (isSelectorLookup)
+                {
+                    _selectorPathCacheHitsThisTick++;
+                }
                 _lastPathPlanLookupWasCacheHit = true;
                 _lastPathPlanRulesVersion = cachedEntry.Query.RulesVersion;
                 if (!cachedEntry.IsReachable)
@@ -474,6 +484,10 @@ namespace Societies.Simulation
             }
 
             _pathPlanCacheMissesThisTick++;
+            if (isSelectorLookup)
+            {
+                _selectorPathCacheMissesThisTick++;
+            }
             bool isReachable = _navigationGrid.TryFindPath(startPosition, destinationPosition, out plan);
             PrototypePathQuery query = new(
                 startCell.GridX,
@@ -509,9 +523,10 @@ namespace Societies.Simulation
         private bool TryComputeRouteDistance(
             Vector3 startPosition,
             Vector3 destinationPosition,
-            out float distanceMeters)
+            out float distanceMeters,
+            PathPlanLookupPurpose purpose = PathPlanLookupPurpose.General)
         {
-            if (TryFindPathPlan(startPosition, destinationPosition, out PrototypePathPlan? plan))
+            if (TryFindPathPlan(startPosition, destinationPosition, out PrototypePathPlan? plan, purpose))
             {
                 distanceMeters = plan!.TotalDistanceMeters;
                 return true;

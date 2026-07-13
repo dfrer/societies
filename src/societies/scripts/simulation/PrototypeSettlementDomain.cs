@@ -64,6 +64,69 @@ namespace Societies.Simulation
         Collapsed
     }
 
+    /// <summary>
+    /// Non-persistent runtime choice used to prove the optimized selector against
+    /// the exhaustive reference without changing the settlement snapshot schema.
+    /// </summary>
+    public enum PrototypeOrderSelectionMode
+    {
+        ExactBranchAndBound,
+        ExhaustiveReference
+    }
+
+    public static class PrototypeOrderSelectionMath
+    {
+        public const float ExactDistancePenalty = 0.75f;
+
+        // A simple route visits no more cells than the world contains. Reserving one
+        // millimetre of float error per possible segment (plus both exact endpoint
+        // segments) keeps this straight-line value a conservative distance lower bound.
+        public static float ComputeStraightLineDistanceLowerBound(
+            Vector3 startPosition,
+            Vector3 destinationPosition,
+            int worldCellCount)
+        {
+            int maximumPathSegmentCount = System.Math.Max(1, worldCellCount + 2);
+            float floatGuardMeters = maximumPathSegmentCount * 0.001f;
+            float straightLineDistance = new Vector2(
+                destinationPosition.X - startPosition.X,
+                destinationPosition.Z - startPosition.Z).Length();
+            return System.Math.Max(0.0f, straightLineDistance - floatGuardMeters);
+        }
+
+        public static float ComputeScoreUpperBound(
+            int priority,
+            float roleBonus,
+            Vector3 startPosition,
+            Vector3 destinationPosition,
+            int worldCellCount)
+        {
+            float distanceLowerBound = ComputeStraightLineDistanceLowerBound(
+                startPosition,
+                destinationPosition,
+                worldCellCount);
+            return priority + roleBonus - (ExactDistancePenalty * distanceLowerBound);
+        }
+
+        public static bool IsExactCandidatePreferred(
+            float candidateScore,
+            string candidateOrderId,
+            int candidateOriginalIndex,
+            float currentBestScore,
+            string currentBestOrderId,
+            int currentBestOriginalIndex)
+        {
+            if (candidateScore != currentBestScore)
+            {
+                return candidateScore > currentBestScore;
+            }
+
+            int orderIdComparison = System.StringComparer.Ordinal.Compare(candidateOrderId, currentBestOrderId);
+            return orderIdComparison < 0 ||
+                (orderIdComparison == 0 && candidateOriginalIndex < currentBestOriginalIndex);
+        }
+    }
+
     public sealed class PrototypeNeedState
     {
         public float Nutrition { get; set; } = 100.0f;

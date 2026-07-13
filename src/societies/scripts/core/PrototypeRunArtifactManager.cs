@@ -141,7 +141,7 @@ namespace Societies.Core
     {
         public string RuntimeMetricsCsvPath => Path.Combine(
             Path.GetDirectoryName(LegacySnapshotPath) ?? string.Empty,
-            "runtime-batch-metrics-v3.csv");
+            "runtime-batch-metrics-v4.csv");
     }
 
     public readonly record struct PrototypeLoadedArtifacts(
