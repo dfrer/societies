@@ -1,6 +1,6 @@
 {
   "schemaVersion": 3,
-  "updatedUtc": "2026-07-13T20:27:33.3838870Z",
+  "updatedUtc": "2026-07-13T21:10:49.9254070Z",
   "required": {
     "dotnet": {
       "project": "tests/Societies.Core.Tests/Societies.Core.Tests.csproj",
@@ -152,6 +152,8 @@
       "cacheRepopulationEvidence": true,
       "sharedFrontierOptimizationStatus": "passed_contract_safety_failed",
       "sharedFrontierEvidence": true,
+      "cachedDistanceOptimizationStatus": "passed_contract_safety_failed",
+      "cachedDistanceEvidence": true,
       "releaseBaselineEvidence": true,
       "fullMatrixCaptured": true,
       "medianOfThreeCaptured": true,
@@ -175,7 +177,10 @@
       "sharedFrontierEvidenceFile": "planning/active/evidence/v3-w1-05d-shared-frontier-validation.json",
       "sharedFrontierImplementationCommit": "8688c27140af537c92c1f681c569ac16e275b881",
       "postW105dBaselineBudgetStatus": "safety_failure",
-      "note": "The editor route remains Debug characterization. The Windows ExportRelease route is validated from clean commit acf634f. Cache-mode evidence from 5444cc3 proves the short mode contracts. W1-05 clean Release evidence from 227a758 proves exact selector equivalence and an 85.414 percent query reduction. W1-05b characterizes the remaining failure as cache-miss-driven exact A-star fanout. W1-05c adds exact bounded extraction planning and a byte-equivalent indexed A-star representation. W1-05d adds exact topology-only shared-frontier bounds; the clean matrix from 8688c27 makes every maximum safety limit green and reduces the former worst stress tick to 34 general plus 2 selector misses, but one reference trial records 50.9476 ms p95 against the 50 ms hard limit. W1-06 and Week 2 remain blocked pending residual general work-order construction or variance reduction and another clean matrix."
+      "cachedDistanceEvidenceFile": "planning/active/evidence/v3-w1-05e-cached-distance-validation.json",
+      "cachedDistanceImplementationCommit": "9d5ca142ae185378553174f6363cf375383e5ffe",
+      "postW105eBaselineBudgetStatus": "safety_failure",
+      "note": "The editor route remains Debug characterization. The Windows ExportRelease route is validated from clean commit acf634f. Cache-mode evidence from 5444cc3 proves the short mode contracts. W1-05 clean Release evidence from 227a758 proves exact selector equivalence and an 85.414 percent query reduction. W1-05b characterizes the remaining failure as cache-miss-driven exact A-star fanout. W1-05c adds exact bounded extraction planning and a byte-equivalent indexed A-star representation. W1-05d adds exact topology-only shared-frontier bounds. W1-05e adds bit-exact cached-distance replay for positive general-cache hits and schema-v6 paired evidence while leaving runtime CSV v4. The clean matrix from 9d5ca14 exercises 316534 fast hits and keeps all maximum, soak, and forced-invalidation safety limits green, but one reference trial records 51.2372 ms p95 against the 50 ms hard limit. The remaining 4176 general and 1262 selector exact misses are unchanged. W1-06 and Week 2 remain blocked pending an exact distinct-search reduction and another clean matrix."
     }
   },
   "history": {
