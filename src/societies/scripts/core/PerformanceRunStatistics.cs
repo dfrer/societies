@@ -7,6 +7,22 @@ namespace Societies.Core
     {
         public const string ExportReleaseAssemblyConfiguration = "ExportRelease";
 
+        public static bool HasConsistentNaturalNavigationInvalidations(
+            long navigationVersionBefore,
+            long navigationVersionAfter,
+            long totalInvalidationsBefore,
+            long totalInvalidationsAfter)
+        {
+            decimal navigationVersionDelta =
+                (decimal)navigationVersionAfter - navigationVersionBefore;
+            decimal totalInvalidationDelta =
+                (decimal)totalInvalidationsAfter - totalInvalidationsBefore;
+
+            return navigationVersionDelta >= 0m &&
+                totalInvalidationDelta >= 0m &&
+                navigationVersionDelta == totalInvalidationDelta;
+        }
+
         public static bool IsVerifiedReleaseExecution(
             string managedAssemblyConfiguration,
             bool godotDebugBuild,

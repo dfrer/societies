@@ -216,5 +216,27 @@ namespace Societies.Core.Tests
                     godotTemplateFeature: true,
                     godotEditorFeature: true));
         }
+
+        [Theory]
+        [InlineData(4L, 4L, 7L, 7L, true)]
+        [InlineData(4L, 9L, 7L, 12L, true)]
+        [InlineData(9L, 4L, 12L, 7L, false)]
+        [InlineData(4L, 9L, 12L, 16L, false)]
+        [InlineData(4L, 8L, 12L, 17L, false)]
+        public void NaturalNavigationInvalidations_RequireEqualNonnegativeDeltas(
+            long navigationVersionBefore,
+            long navigationVersionAfter,
+            long totalInvalidationsBefore,
+            long totalInvalidationsAfter,
+            bool expected)
+        {
+            Assert.Equal(
+                expected,
+                PerformanceExecutionContract.HasConsistentNaturalNavigationInvalidations(
+                    navigationVersionBefore,
+                    navigationVersionAfter,
+                    totalInvalidationsBefore,
+                    totalInvalidationsAfter));
+        }
     }
 }

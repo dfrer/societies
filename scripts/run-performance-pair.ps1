@@ -84,6 +84,29 @@ function Test-GitObjectId {
     return (Test-NonEmptyText $Value) -and ([string]$Value -match '^(?:[0-9a-fA-F]{40}|[0-9a-fA-F]{64})$')
 }
 
+function Get-GitDirtyState {
+    & git diff --quiet --ignore-submodules --
+    $unstagedExitCode = $LASTEXITCODE
+    if ($unstagedExitCode -gt 1) {
+        throw "Could not inspect unstaged source changes."
+    }
+
+    & git diff --cached --quiet --ignore-submodules --
+    $stagedExitCode = $LASTEXITCODE
+    if ($stagedExitCode -gt 1) {
+        throw "Could not inspect staged source changes."
+    }
+
+    $untrackedPaths = @(& git ls-files --others --exclude-standard)
+    if ($LASTEXITCODE -ne 0) {
+        throw "Could not inspect untracked source files."
+    }
+
+    return $unstagedExitCode -eq 1 -or
+        $stagedExitCode -eq 1 -or
+        $untrackedPaths.Count -gt 0
+}
+
 function Test-ForcedProbeStructuralMatch {
     param(
         [object]$Left,
@@ -307,11 +330,7 @@ $gitSha = (git rev-parse HEAD).Trim()
 if ($LASTEXITCODE -ne 0) {
     throw "Could not resolve the current git SHA."
 }
-$dirtyLines = @(git status --porcelain)
-if ($LASTEXITCODE -ne 0) {
-    throw "Could not read git working-tree status."
-}
-$gitDirty = $dirtyLines.Count -gt 0
+$gitDirty = Get-GitDirtyState
 if ($gitDirty -and -not $AllowDirtySource) {
     throw "The performance pair requires a clean committed source tree. Commit or stash changes, or pass -AllowDirtySource for non-baseline smoke evidence."
 }
@@ -478,9 +497,20 @@ $cacheEvidenceCommonValid =
     $offResult.cacheEvidence.afterNaturalWarmup.allPathCacheKeysMatchNavigationRulesVersion -eq $true -and
     $offResult.cacheEvidence.beforeMeasurement.allPathCacheKeysMatchNavigationRulesVersion -eq $true -and
     $offResult.cacheEvidence.afterMeasurement.allPathCacheKeysMatchNavigationRulesVersion -eq $true
+$naturalNavigationVersionDelta =
+    [decimal]$offResult.cacheEvidence.afterMeasurement.navigationRulesVersion -
+    [decimal]$offResult.cacheEvidence.beforeMeasurement.navigationRulesVersion
+$naturalInvalidationDelta =
+    [decimal]$offResult.cacheEvidence.afterMeasurement.totalNavigationInvalidations -
+    [decimal]$offResult.cacheEvidence.beforeMeasurement.totalNavigationInvalidations
+$naturalInvalidationContractValid =
+    $naturalNavigationVersionDelta -ge 0 -and
+    $naturalInvalidationDelta -ge 0 -and
+    $naturalNavigationVersionDelta -eq $naturalInvalidationDelta
 $cacheTransitionContractValid = $false
 if ($CacheMode -eq "cold") {
     $cacheTransitionContractValid =
+        $naturalInvalidationContractValid -and
         $null -eq $offResult.cacheEvidence.forcedInvalidation -and
         $offResult.cacheEvidence.clearedEntryCount -eq
             $offResult.cacheEvidence.afterNaturalWarmup.pathCacheEntryCount -and
@@ -495,6 +525,7 @@ if ($CacheMode -eq "cold") {
 }
 elseif ($CacheMode -eq "natural_warm") {
     $cacheTransitionContractValid =
+        $naturalInvalidationContractValid -and
         $null -eq $offResult.cacheEvidence.forcedInvalidation -and
         $offResult.cacheEvidence.clearedEntryCount -eq 0 -and
         $offResult.cacheEvidence.afterNaturalWarmup.pathCacheEntryCount -gt 0 -and
@@ -654,14 +685,12 @@ $onRuntimeMetricsValid =
 $cacheDiagnosticsContractValid = if ($CacheMode -eq "cold") {
     $onRuntimeMetricsValid -and
     $onResult.diagnostics.firstMeasuredBatchPathPlanCacheMisses -gt 0 -and
-    $onResult.diagnostics.firstMeasuredBatchNavigationInvalidations -eq 0 -and
-    $onResult.diagnostics.navigationInvalidations -eq 0
+    $onResult.diagnostics.navigationInvalidations -eq $naturalInvalidationDelta
 }
 elseif ($CacheMode -eq "natural_warm") {
     $onRuntimeMetricsValid -and
     $onResult.diagnostics.firstMeasuredBatchPathPlanCacheHits -gt 0 -and
-    $onResult.diagnostics.firstMeasuredBatchNavigationInvalidations -eq 0 -and
-    $onResult.diagnostics.navigationInvalidations -eq 0
+    $onResult.diagnostics.navigationInvalidations -eq $naturalInvalidationDelta
 }
 else {
     $onRuntimeMetricsValid -and

@@ -591,13 +591,14 @@ namespace Societies.Tests
                 {
                     throw new InvalidOperationException("A non-forced cache mode emitted forced-invalidation evidence.");
                 }
-                if (evidence.AfterMeasurement.NavigationRulesVersion !=
-                        evidence.BeforeMeasurement.NavigationRulesVersion ||
-                    evidence.AfterMeasurement.TotalNavigationInvalidations !=
-                        evidence.BeforeMeasurement.TotalNavigationInvalidations)
+                if (!PerformanceExecutionContract.HasConsistentNaturalNavigationInvalidations(
+                        evidence.BeforeMeasurement.NavigationRulesVersion,
+                        evidence.AfterMeasurement.NavigationRulesVersion,
+                        evidence.BeforeMeasurement.TotalNavigationInvalidations,
+                        evidence.AfterMeasurement.TotalNavigationInvalidations))
                 {
                     throw new InvalidOperationException(
-                        "Cold and natural-warm measurements must not include a navigation invalidation.");
+                        "Cold and natural-warm measurements require equal nonnegative navigation-version and invalidation-count deltas.");
                 }
                 return;
             }

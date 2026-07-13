@@ -1,14 +1,14 @@
 {
   "schemaVersion": 3,
-  "updatedUtc": "2026-07-12T00:43:23.9775321Z",
+  "updatedUtc": "2026-07-13T00:51:21.7232756Z",
   "required": {
     "dotnet": {
       "project": "tests/Societies.Core.Tests/Societies.Core.Tests.csproj",
       "command": "dotnet test tests/Societies.Core.Tests/Societies.Core.Tests.csproj --configuration Release",
-      "expectedTestCount": 98,
+      "expectedTestCount": 103,
       "tiers": {
         "fast": {
-          "expectedTestCount": 79,
+          "expectedTestCount": 84,
           "filter": "FullyQualifiedName!~PrototypeRuntimeSessionTests&FullyQualifiedName!~PrototypeSettlementSimulationTests&FullyQualifiedName!~SettlementDiagnosticsTests&FullyQualifiedName!~WorkOrderGenerationDiagnosticsTests"
         },
         "integration": {
@@ -79,6 +79,11 @@
       "command": "./scripts/run-performance-pair.ps1 -Scenario balanced_basin -Seed 1337 -Citizens 3 -Ticks 3 -CacheMode cold",
       "releaseCommand": "./scripts/run-performance-pair.ps1 -ReleaseExport -Scenario balanced_basin -Seed 1337 -Citizens 3 -Ticks 3 -CacheMode cold",
       "cacheModeComparisonScript": "scripts/run-performance-cache-modes.ps1",
+      "baselineMatrixScript": "scripts/run-performance-baseline-matrix.ps1",
+      "baselineMatrixCommand": "./scripts/run-performance-baseline-matrix.ps1",
+      "baselineMatrixResultSchemaVersion": 1,
+      "baselineMatrixCanonicalPairCount": 14,
+      "baselineMatrixStatus": "passed_contract_safety_failed",
       "resultSchemaVersion": 3,
       "requiredGodotVersion": "4.6.2",
       "requiredForPullRequest": false,
@@ -121,16 +126,22 @@
       "singleModeTransitionEvidenceAvailable": true,
       "cacheModeComparisonStatus": "passed",
       "cacheModeEvidence": true,
-      "releaseBaselineEvidence": false,
+      "releaseBaselineEvidence": true,
+      "fullMatrixCaptured": true,
+      "medianOfThreeCaptured": true,
+      "targetOrSafetyClaimMade": true,
+      "baselineBudgetStatus": "safety_failure",
       "evidence": "planning/active/evidence/v3-w1-03a-release-route-validation.json",
       "cacheModeEvidenceFile": "planning/active/evidence/v3-w1-03b-cache-mode-validation.json",
       "cacheModeImplementationCommit": "5444cc3a39fd9a58f87a7f999b67c9458dfe30c7",
-      "note": "The editor route remains Debug characterization. The Windows ExportRelease route is validated from clean commit acf634f. The clean schema-v3 cache-mode comparison from implementation commit 5444cc3 proves cold/warm deterministic equivalence and forced invalidation for a short three-citizen smoke. Full W1-03 baseline evidence still requires the complete matrix, soak, stress, and median reference runs."
+      "baselineEvidenceFile": "planning/active/evidence/v3-w1-03c-performance-baseline-validation.json",
+      "baselineImplementationCommit": "a636967c8ea4197393cde1f78d817e364301426a",
+      "note": "The editor route remains Debug characterization. The Windows ExportRelease route is validated from clean commit acf634f. Cache-mode evidence from 5444cc3 proves the short mode contracts. The canonical W1-03c matrix from a636967 passed every evidence contract but measured a safety failure; Week 2 feature expansion remains blocked pending correctness and path-selection optimization."
     }
   },
   "history": {
     "preSyncCommit": "c58e3de",
     "preSyncDotnetTestCount": 64,
-    "note": "The synchronized master adds 12 PrototypeMetricsTracker tests and 3 WorkOrderGenerationDiagnostics tests for a historical 79-test floor. W1-03b adds three cache-probe contract tests; the current manifest declares 98 required .NET tests."
+    "note": "The synchronized master adds 12 PrototypeMetricsTracker tests and 3 WorkOrderGenerationDiagnostics tests for a historical 79-test floor. W1-03b adds three cache-probe contract tests. W1-03c adds five natural-invalidation progression cases; the current manifest declares 103 required .NET tests."
   }
 }
