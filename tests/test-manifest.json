@@ -1,6 +1,6 @@
 {
   "schemaVersion": 3,
-  "updatedUtc": "2026-07-13T03:52:51.5362235Z",
+  "updatedUtc": "2026-07-13T04:34:41.7680421Z",
   "required": {
     "dotnet": {
       "project": "tests/Societies.Core.Tests/Societies.Core.Tests.csproj",
@@ -133,6 +133,8 @@
       "singleModeTransitionEvidenceAvailable": true,
       "cacheModeComparisonStatus": "passed",
       "cacheModeEvidence": true,
+      "jobSelectionComparisonStatus": "passed",
+      "jobSelectionEvidence": true,
       "releaseBaselineEvidence": true,
       "fullMatrixCaptured": true,
       "medianOfThreeCaptured": true,
@@ -143,7 +145,11 @@
       "cacheModeImplementationCommit": "5444cc3a39fd9a58f87a7f999b67c9458dfe30c7",
       "baselineEvidenceFile": "planning/active/evidence/v3-w1-03c-performance-baseline-validation.json",
       "baselineImplementationCommit": "a636967c8ea4197393cde1f78d817e364301426a",
-      "note": "The editor route remains Debug characterization. The Windows ExportRelease route is validated from clean commit acf634f. Cache-mode evidence from 5444cc3 proves the short mode contracts. The canonical W1-03c matrix from a636967 passed every evidence contract but measured a safety failure; Week 2 feature expansion remains blocked pending correctness and path-selection optimization."
+      "jobSelectionEvidenceFile": "planning/active/evidence/v3-w1-05-job-selection-validation.json",
+      "jobSelectionImplementationCommit": "b1fddaf",
+      "postW105ReleaseEvidenceCommit": "227a7585d921255942c5d81e3e82bc3f91d01102",
+      "postW105BaselineBudgetStatus": "safety_failure",
+      "note": "The editor route remains Debug characterization. The Windows ExportRelease route is validated from clean commit acf634f. Cache-mode evidence from 5444cc3 proves the short mode contracts. W1-05 clean Release evidence from 227a758 proves exact selector equivalence and an 85.414 percent query reduction, while its post-optimization canonical matrix still measures a safety failure; Week 2 feature expansion remains blocked pending characterization of the remaining spikes."
     }
   },
   "history": {
