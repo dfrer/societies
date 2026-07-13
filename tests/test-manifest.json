@@ -1,15 +1,15 @@
 {
   "schemaVersion": 3,
-  "updatedUtc": "2026-07-13T14:03:38.3322127Z",
+  "updatedUtc": "2026-07-13T15:04:03.7254128Z",
   "required": {
     "dotnet": {
       "project": "tests/Societies.Core.Tests/Societies.Core.Tests.csproj",
       "command": "dotnet test tests/Societies.Core.Tests/Societies.Core.Tests.csproj --configuration Release",
-      "expectedTestCount": 119,
+      "expectedTestCount": 135,
       "tiers": {
         "fast": {
           "expectedTestCount": 89,
-          "filter": "FullyQualifiedName!~PrototypeRuntimeSessionTests&FullyQualifiedName!~PrototypeSettlementSimulationTests&FullyQualifiedName!~SettlementDiagnosticsTests&FullyQualifiedName!~WorkOrderGenerationDiagnosticsTests&FullyQualifiedName!~OrderSelectionTests"
+          "filter": "FullyQualifiedName!~PrototypeRuntimeSessionTests&FullyQualifiedName!~PrototypeSettlementSimulationTests&FullyQualifiedName!~SettlementDiagnosticsTests&FullyQualifiedName!~WorkOrderGenerationDiagnosticsTests&FullyQualifiedName!~OrderSelectionTests&FullyQualifiedName!~ExtractionPlanningTests"
         },
         "integration": {
           "expectedTestCount": 11,
@@ -19,11 +19,12 @@
           ]
         },
         "soak": {
-          "expectedTestCount": 19,
+          "expectedTestCount": 35,
           "classes": [
             "Societies.Core.Tests.PrototypeRuntimeSessionTests",
             "Societies.Core.Tests.PrototypeSettlementSimulationTests",
-            "Societies.Core.Tests.OrderSelectionTests"
+            "Societies.Core.Tests.OrderSelectionTests",
+            "Societies.Core.Tests.ExtractionPlanningTests"
           ]
         }
       }
@@ -87,7 +88,7 @@
       "baselineMatrixResultSchemaVersion": 1,
       "baselineMatrixCanonicalPairCount": 14,
       "baselineMatrixStatus": "passed_contract_safety_failed",
-      "resultSchemaVersion": 4,
+      "resultSchemaVersion": 5,
       "requiredGodotVersion": "4.6.2",
       "requiredForPullRequest": false,
       "runModes": [
@@ -101,6 +102,10 @@
       ],
       "selectorModes": [
         "exact_branch_and_bound",
+        "exhaustive_reference"
+      ],
+      "extractionPlanningModes": [
+        "exact_bounded",
         "exhaustive_reference"
       ],
       "executionRoutes": {
@@ -154,12 +159,12 @@
       "spikeCharacterizationEvidenceFile": "planning/active/evidence/v3-w1-05b-spike-characterization.json",
       "spikeCharacterizationScript": "scripts/analyze-performance-spikes.ps1",
       "spikeCharacterizationSourceCommit": "227a7585d921255942c5d81e3e82bc3f91d01102",
-      "note": "The editor route remains Debug characterization. The Windows ExportRelease route is validated from clean commit acf634f. Cache-mode evidence from 5444cc3 proves the short mode contracts. W1-05 clean Release evidence from 227a758 proves exact selector equivalence and an 85.414 percent query reduction. W1-05b characterizes the remaining safety failure as deterministic cache-miss-driven exact A-star fanout after full-cache invalidation; W1-06 and Week 2 remain blocked pending an exact cache-repopulation optimization and a fresh canonical matrix."
+      "note": "The editor route remains Debug characterization. The Windows ExportRelease route is validated from clean commit acf634f. Cache-mode evidence from 5444cc3 proves the short mode contracts. W1-05 clean Release evidence from 227a758 proves exact selector equivalence and an 85.414 percent query reduction. W1-05b characterizes the remaining safety failure as deterministic cache-miss-driven exact A-star fanout after full-cache invalidation. The current extraction-planning slice adds an independently selectable exhaustive reference mode; W1-06 and Week 2 remain blocked pending clean Release comparison and a fresh canonical matrix."
     }
   },
   "history": {
     "preSyncCommit": "c58e3de",
     "preSyncDotnetTestCount": 64,
-    "note": "The synchronized master adds 12 PrototypeMetricsTracker tests and 3 WorkOrderGenerationDiagnostics tests for a historical 79-test floor. W1-03b adds three cache-probe contract tests, W1-03c adds five natural-invalidation progression cases, W1-04 adds seven navigation, unreachable-assignment, and legacy-resume correctness cases, and W1-05 adds nine exact-selector contract and 300-tick differential cases. The current manifest declares 119 required .NET tests."
+    "note": "The synchronized master adds 12 PrototypeMetricsTracker tests and 3 WorkOrderGenerationDiagnostics tests for a historical 79-test floor. W1-03b adds three cache-probe contract tests, W1-03c adds five natural-invalidation progression cases, W1-04 adds seven navigation, unreachable-assignment, and legacy-resume correctness cases, W1-05 adds nine exact-selector contract and 300-tick differential cases, and the extraction-planning slice adds 16 exact-bound, integration, and 300-tick differential cases. The current manifest declares 135 required .NET tests."
   }
 }

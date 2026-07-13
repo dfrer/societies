@@ -22,6 +22,8 @@ namespace Societies.Core
         private const string DefaultScenarioId = "balanced_basin";
         private const string ExactBranchAndBoundSelectorMode = "exact_branch_and_bound";
         private const string ExhaustiveReferenceSelectorMode = "exhaustive_reference";
+        private const string ExactBoundedExtractionMode = "exact_bounded";
+        private const string ExhaustiveReferenceExtractionMode = "exhaustive_reference";
 
         public static GameManager? Instance { get; private set; }
 
@@ -65,6 +67,7 @@ namespace Societies.Core
         private int _performanceSimulationSeedOverride;
         private int _performanceCitizenCountOverride;
         private PrototypeOrderSelectionMode _performanceOrderSelectionModeOverride = PrototypeOrderSelectionMode.ExactBranchAndBound;
+        private PrototypeExtractionPlanningMode _performanceExtractionPlanningModeOverride = PrototypeExtractionPlanningMode.ExactBounded;
         private bool _readyStarted;
 
         public bool IsGameRunning { get; private set; }
@@ -77,6 +80,9 @@ namespace Societies.Core
 
         public PrototypeOrderSelectionMode CurrentOrderSelectionMode =>
             _runtimeSession?.OrderSelectionMode ?? PrototypeOrderSelectionMode.ExactBranchAndBound;
+
+        public PrototypeExtractionPlanningMode CurrentExtractionPlanningMode =>
+            _runtimeSession?.ExtractionPlanningMode ?? PrototypeExtractionPlanningMode.ExactBounded;
 
         public double? PerformanceBootstrapMilliseconds { get; private set; }
 
@@ -241,7 +247,8 @@ namespace Societies.Core
             string scenarioId,
             int simulationSeed,
             int citizenCount,
-            string selectorMode = ExactBranchAndBoundSelectorMode)
+            string selectorMode = ExactBranchAndBoundSelectorMode,
+            string extractionPlanningMode = ExactBoundedExtractionMode)
         {
             if (_readyStarted || IsInsideTree())
             {
@@ -266,12 +273,21 @@ namespace Societies.Core
                     "Selector mode must be 'exact_branch_and_bound' or 'exhaustive_reference'.",
                     nameof(selectorMode))
             };
+            PrototypeExtractionPlanningMode resolvedExtractionPlanningMode = extractionPlanningMode switch
+            {
+                ExactBoundedExtractionMode => PrototypeExtractionPlanningMode.ExactBounded,
+                ExhaustiveReferenceExtractionMode => PrototypeExtractionPlanningMode.ExhaustiveReference,
+                _ => throw new ArgumentException(
+                    "Extraction planning mode must be 'exact_bounded' or 'exhaustive_reference'.",
+                    nameof(extractionPlanningMode))
+            };
 
             _hasPerformanceStartupOverride = true;
             _performanceScenarioIdOverride = scenarioId;
             _performanceSimulationSeedOverride = simulationSeed;
             _performanceCitizenCountOverride = citizenCount;
             _performanceOrderSelectionModeOverride = orderSelectionMode;
+            _performanceExtractionPlanningModeOverride = resolvedExtractionPlanningMode;
         }
 
         public bool TryCraftRecipe(string recipeId)
@@ -677,10 +693,14 @@ namespace Societies.Core
             PrototypeOrderSelectionMode orderSelectionMode = _hasPerformanceStartupOverride
                 ? _performanceOrderSelectionModeOverride
                 : PrototypeOrderSelectionMode.ExactBranchAndBound;
+            PrototypeExtractionPlanningMode extractionPlanningMode = _hasPerformanceStartupOverride
+                ? _performanceExtractionPlanningModeOverride
+                : PrototypeExtractionPlanningMode.ExactBounded;
             _runtimeSession = new PrototypeRuntimeSession(
                 scenario,
                 _catalogs?.RoleQuotas.Roles,
-                orderSelectionMode);
+                orderSelectionMode,
+                extractionPlanningMode);
             BindPlayerToRuntime();
         }
 

@@ -21,6 +21,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 $SelectorMode = $SelectorMode.ToLowerInvariant()
+$ExtractionPlanningMode = "exact_bounded"
 if ($SelectorMode -ne "exact_branch_and_bound") {
     throw "The canonical cache-mode workflow requires SelectorMode 'exact_branch_and_bound'."
 }
@@ -111,7 +112,7 @@ function Test-ManifestMatchesResult {
         [object]$Result
     )
 
-    if ($Manifest.schemaVersion -ne 4 -or
+    if ($Manifest.schemaVersion -ne 5 -or
         $Manifest.status -ne $Result.status -or
         $Manifest.exactInvocation -ne $Result.exactInvocation -or
         $Manifest.gitSha -ne $Result.configuration.gitSha -or
@@ -155,6 +156,7 @@ function Invoke-ModePair {
         WarmupTicks = $PreconditioningTicks
         CacheMode = $Mode
         SelectorMode = $SelectorMode
+        ExtractionPlanningMode = $ExtractionPlanningMode
         ComparisonGroup = $script:resolvedComparisonGroup
         TrialIndex = $TrialIndex
         OutputRoot = $ModeOutputRoot
@@ -208,7 +210,7 @@ function Read-And-ValidatePair {
     $onManifest = Read-JsonArtifact -Path $onManifestPath -Label "$Mode metrics-on validation manifest"
 
     $expectedStatus = if ($equivalence.sourceClean -eq $true) { "pass" } else { "pass_dirty_source" }
-    if ($equivalence.schemaVersion -ne 4 -or
+    if ($equivalence.schemaVersion -ne 5 -or
         $equivalence.status -ne $expectedStatus -or
         $equivalence.contractStatus -ne $expectedStatus -or
         $equivalence.singleModeTransitionEvidence -ne $true -or
@@ -220,9 +222,10 @@ function Read-And-ValidatePair {
         $equivalence.targetOrSafetyClaimMade -ne $false -or
         $equivalence.cacheMode -ne $Mode -or
         $equivalence.selectorMode -ne $SelectorMode -or
+        $equivalence.extractionPlanningMode -ne $ExtractionPlanningMode -or
         $equivalence.comparisonGroup -ne $script:resolvedComparisonGroup -or
         $equivalence.trialIndex -ne $TrialIndex) {
-        throw "$Mode equivalence artifact did not satisfy the single-mode v4 contract."
+        throw "$Mode equivalence artifact did not satisfy the single-mode v5 contract."
     }
     if ($equivalence.sourceClean -ne $true -and -not $AllowDirtySource) {
         throw "$Mode pair reported dirty source without -AllowDirtySource."
@@ -232,9 +235,10 @@ function Read-And-ValidatePair {
     }
 
     foreach ($result in @($offResult, $onResult)) {
-        if ($result.schemaVersion -ne 4 -or
+        if ($result.schemaVersion -ne 5 -or
             $result.configuration.cacheMode -ne $Mode -or
             $result.configuration.selectorMode -ne $SelectorMode -or
+            $result.configuration.extractionPlanningMode -ne $ExtractionPlanningMode -or
             $result.configuration.comparisonGroup -ne $script:resolvedComparisonGroup -or
             $result.configuration.trialIndex -ne $TrialIndex -or
             $result.configuration.scenarioId -ne $Scenario -or
@@ -253,7 +257,7 @@ function Read-And-ValidatePair {
     }
     if (-not (Test-ManifestMatchesResult -Manifest $offManifest -Result $offResult) -or
         -not (Test-ManifestMatchesResult -Manifest $onManifest -Result $onResult)) {
-        throw "$Mode validation manifest does not match its v4 performance result."
+        throw "$Mode validation manifest does not match its v5 performance result."
     }
     if ($equivalence.metricsOffHash -ne $offResult.hashes.deterministicStateAndEventSha256 -or
         $equivalence.metricsOnHash -ne $onResult.hashes.deterministicStateAndEventSha256 -or
@@ -554,7 +558,7 @@ try {
         "Status: $overallStatus",
         "Scenario: $Scenario; seed: $Seed; citizens: $Citizens; preconditioning ticks: $PreconditioningTicks",
         "Cold/warm measured ticks: $Ticks; forced-invalidation measured ticks: 1",
-        "Selector mode: $SelectorMode; comparison group: $script:resolvedComparisonGroup; trial: $TrialIndex",
+        "Selector mode: $SelectorMode; extraction planning mode: $ExtractionPlanningMode; comparison group: $script:resolvedComparisonGroup; trial: $TrialIndex",
         "Execution route: $($cold.Equivalence.executionRoute); verified release: $($cold.Equivalence.releaseEnvironmentValid)",
         "Cold/warm snapshot hash match: $($contracts.coldWarmSnapshotHashMatch)",
         "Cold/warm event-log hash match: $($contracts.coldWarmEventLogHashMatch)",
@@ -569,7 +573,7 @@ try {
 
     $comparison = [ordered]@{
         schemaVersion = 1
-        sourceResultSchemaVersion = 4
+        sourceResultSchemaVersion = 5
         capturedUtc = [DateTime]::UtcNow.ToString("o")
         status = $overallStatus
         contractStatus = $overallStatus
@@ -593,6 +597,7 @@ try {
             coldWarmMeasuredTicks = $Ticks
             forcedInvalidationMeasuredTicks = 1
             selectorMode = $SelectorMode
+            extractionPlanningMode = $ExtractionPlanningMode
             comparisonGroup = $script:resolvedComparisonGroup
             trialIndex = $TrialIndex
         }
@@ -629,7 +634,7 @@ catch {
 
         $failure = [ordered]@{
             schemaVersion = 1
-            sourceResultSchemaVersion = 4
+            sourceResultSchemaVersion = 5
             capturedUtc = [DateTime]::UtcNow.ToString("o")
             status = "fail"
             contractStatus = "fail"
@@ -650,6 +655,7 @@ catch {
                 coldWarmMeasuredTicks = $Ticks
                 forcedInvalidationMeasuredTicks = 1
                 selectorMode = $SelectorMode
+                extractionPlanningMode = $ExtractionPlanningMode
                 comparisonGroup = $script:resolvedComparisonGroup
                 trialIndex = $TrialIndex
             }

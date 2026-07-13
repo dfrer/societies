@@ -17,11 +17,13 @@ namespace Societies.Core
         private WorldGenerationResult? _world;
         private int _simulationSeed;
         private readonly PrototypeOrderSelectionMode _orderSelectionMode;
+        private readonly PrototypeExtractionPlanningMode _extractionPlanningMode;
 
         public PrototypeRuntimeSession(
             PrototypeScenarioDefinition scenario,
             IReadOnlyList<PrototypeRoleQuotaDefinition>? roleQuotas = null,
-            PrototypeOrderSelectionMode orderSelectionMode = PrototypeOrderSelectionMode.ExactBranchAndBound)
+            PrototypeOrderSelectionMode orderSelectionMode = PrototypeOrderSelectionMode.ExactBranchAndBound,
+            PrototypeExtractionPlanningMode extractionPlanningMode = PrototypeExtractionPlanningMode.ExactBounded)
         {
             Scenario = scenario;
             Inventory = new InventoryComponent();
@@ -31,6 +33,7 @@ namespace Societies.Core
             _simulationSeed = scenario.SimulationSeed;
             _roleQuotas = roleQuotas?.ToList() ?? new List<PrototypeRoleQuotaDefinition>();
             _orderSelectionMode = orderSelectionMode;
+            _extractionPlanningMode = extractionPlanningMode;
         }
 
         public PrototypeScenarioDefinition Scenario { get; }
@@ -52,6 +55,8 @@ namespace Societies.Core
         public int SimulationSeed => _simulationSeed;
 
         public PrototypeOrderSelectionMode OrderSelectionMode => _orderSelectionMode;
+
+        public PrototypeExtractionPlanningMode ExtractionPlanningMode => _extractionPlanningMode;
 
         public PrototypeWeather CurrentWeather => _weatherSimulation?.CurrentWeather ?? PrototypeWeather.Clear;
 
@@ -189,7 +194,8 @@ namespace Societies.Core
                 Scenario,
                 _roleQuotas,
                 _world,
-                orderSelectionMode: _orderSelectionMode);
+                orderSelectionMode: _orderSelectionMode,
+                extractionPlanningMode: _extractionPlanningMode);
             SyncSettlementViews();
         }
 
@@ -400,7 +406,8 @@ namespace Societies.Core
                 Scenario,
                 _roleQuotas,
                 _world,
-                orderSelectionMode: _orderSelectionMode);
+                orderSelectionMode: _orderSelectionMode,
+                extractionPlanningMode: _extractionPlanningMode);
             _settlementSimulation.LoadState(snapshot.Settlement ?? new PrototypeSettlementSnapshot());
             SyncSettlementViews();
             MetricsTracker.Clear();

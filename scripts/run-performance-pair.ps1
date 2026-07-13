@@ -9,6 +9,8 @@ param(
     [string]$CacheMode = "cold",
     [ValidateSet("exact_branch_and_bound", "exhaustive_reference")]
     [string]$SelectorMode = "exact_branch_and_bound",
+    [ValidateSet("exact_bounded", "exhaustive_reference")]
+    [string]$ExtractionPlanningMode = "exact_bounded",
     [string]$ComparisonGroup,
     [int]$TrialIndex = 1,
     [string]$OutputRoot,
@@ -26,6 +28,7 @@ param(
 $ErrorActionPreference = "Stop"
 $CacheMode = $CacheMode.ToLowerInvariant()
 $SelectorMode = $SelectorMode.ToLowerInvariant()
+$ExtractionPlanningMode = $ExtractionPlanningMode.ToLowerInvariant()
 
 $repoRoot = Split-Path -Parent $PSScriptRoot
 Set-Location $repoRoot
@@ -283,6 +286,7 @@ function Invoke-PerformanceRun {
         "--warmup-ticks", $WarmupTicks.ToString([System.Globalization.CultureInfo]::InvariantCulture),
         "--cache-mode", $CacheMode,
         "--selector-mode", $SelectorMode,
+        "--extraction-planning-mode", $ExtractionPlanningMode,
         "--comparison-group", $script:comparisonGroup,
         "--trial-index", $TrialIndex.ToString([System.Globalization.CultureInfo]::InvariantCulture),
         "--metrics", $MetricsMode,
@@ -375,7 +379,7 @@ if ($safeScenario.Length -gt 32) {
     $safeScenario = $safeScenario.Substring(0, 32)
 }
 $comparisonGroup = if ([string]::IsNullOrWhiteSpace($ComparisonGroup)) {
-    "$safeScenario-seed$Seed-c$Citizens-t$Ticks-w$WarmupTicks-s$SelectorMode"
+    "$safeScenario-seed$Seed-c$Citizens-t$Ticks-w$WarmupTicks-s$SelectorMode-e$ExtractionPlanningMode"
 }
 else {
     $ComparisonGroup
@@ -468,8 +472,8 @@ $offResult = Get-Content -Raw -LiteralPath $offResultPath | ConvertFrom-Json
 $onResult = Get-Content -Raw -LiteralPath $onResultPath | ConvertFrom-Json
 
 $schemaValid =
-    $offResult.schemaVersion -eq 4 -and
-    $onResult.schemaVersion -eq 4
+    $offResult.schemaVersion -eq 5 -and
+    $onResult.schemaVersion -eq 5
 $configurationMatches =
     (Test-NonEmptyText $offResult.configuration.scenarioId) -and
     (Test-NonEmptyText $offResult.configuration.measurementMode) -and
@@ -484,6 +488,7 @@ $configurationMatches =
     $offResult.configuration.cacheWarmupEnabled -eq $onResult.configuration.cacheWarmupEnabled -and
     $offResult.configuration.cacheMode -eq $onResult.configuration.cacheMode -and
     $offResult.configuration.selectorMode -eq $onResult.configuration.selectorMode -and
+    $offResult.configuration.extractionPlanningMode -eq $onResult.configuration.extractionPlanningMode -and
     $offResult.configuration.comparisonGroup -eq $onResult.configuration.comparisonGroup -and
     $offResult.configuration.trialIndex -eq $onResult.configuration.trialIndex -and
     $offResult.configuration.executionRoute -eq $onResult.configuration.executionRoute -and
@@ -497,6 +502,7 @@ $commandConfigurationMatches =
     $offResult.configuration.measuredTicks -eq $Ticks -and
     $offResult.configuration.cacheMode -eq $CacheMode -and
     $offResult.configuration.selectorMode -eq $SelectorMode -and
+    $offResult.configuration.extractionPlanningMode -eq $ExtractionPlanningMode -and
     $offResult.configuration.comparisonGroup -eq $comparisonGroup -and
     $offResult.configuration.trialIndex -eq $TrialIndex -and
     $offResult.configuration.executionRoute -eq $executionRoute -and
@@ -779,7 +785,7 @@ $equivalent =
     (-not $RequireRelease -or $releaseEnvironmentValid)
 
 $equivalence = [ordered]@{
-    schemaVersion = 4
+    schemaVersion = 5
     capturedUtc = [DateTime]::UtcNow.ToString("o")
     status = if (-not $equivalent) { "fail" } elseif ($gitDirty) { "pass_dirty_source" } else { "pass" }
     contractStatus = if (-not $equivalent) { "fail" } elseif ($gitDirty) { "pass_dirty_source" } else { "pass" }
@@ -844,6 +850,7 @@ $equivalence = [ordered]@{
     metricsOnRuntimeMetricsValid = $onRuntimeMetricsValid
     cacheMode = $CacheMode
     selectorMode = $SelectorMode
+    extractionPlanningMode = $ExtractionPlanningMode
     comparisonGroup = $comparisonGroup
     trialIndex = $TrialIndex
     metricsOffCacheEvidence = $offResult.cacheEvidence
@@ -865,7 +872,7 @@ $summaryLines = @(
     "Societies metrics equivalence pair",
     "Status: $($equivalence.status)",
     "Scenario: $Scenario; seed: $Seed; citizens: $Citizens; warmup ticks: $WarmupTicks; measured ticks: $Ticks",
-    "Cache mode: $CacheMode; selector mode: $SelectorMode; comparison group: $comparisonGroup; trial: $TrialIndex",
+    "Cache mode: $CacheMode; selector mode: $SelectorMode; extraction planning mode: $ExtractionPlanningMode; comparison group: $comparisonGroup; trial: $TrialIndex",
     "Cache transition contract: $cacheTransitionContractValid; cache diagnostics contract: $cacheDiagnosticsContractValid",
     "Godot: expected $expectedGodotVersion; editor $resolvedGodotVersion; run $offRunGodotVersion",
     "Managed build: $($offResult.environment.managedBuildConfiguration)",

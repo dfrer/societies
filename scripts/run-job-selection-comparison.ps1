@@ -14,6 +14,7 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
+$ExtractionPlanningMode = "exact_bounded"
 
 $repoRoot = Split-Path -Parent $PSScriptRoot
 $pairScript = Join-Path $PSScriptRoot "run-performance-pair.ps1"
@@ -177,6 +178,7 @@ for ($trial = 1; $trial -le $Trials; $trial++) {
             WarmupTicks = 0
             CacheMode = "cold"
             SelectorMode = $selector
+            ExtractionPlanningMode = $ExtractionPlanningMode
             ComparisonGroup = $resolvedComparisonGroup
             TrialIndex = $trial
             OutputRoot = $modeRoot
@@ -237,17 +239,20 @@ for ($trial = 1; $trial -le $Trials; $trial++) {
         }
 
         $expectedPairStatus = if ($AllowDirtySource) { @("pass", "pass_dirty_source") } else { @("pass") }
-        if ($equivalence.schemaVersion -ne 4 -or
+        if ($equivalence.schemaVersion -ne 5 -or
             $expectedPairStatus -notcontains $equivalence.status -or
             $equivalence.releaseEnvironmentValid -ne $true -or
             $equivalence.selectorMode -ne $selector -or
-            $offResult.schemaVersion -ne 4 -or
-            $onResult.schemaVersion -ne 4 -or
+            $equivalence.extractionPlanningMode -ne $ExtractionPlanningMode -or
+            $offResult.schemaVersion -ne 5 -or
+            $onResult.schemaVersion -ne 5 -or
             $offResult.configuration.selectorMode -ne $selector -or
             $onResult.configuration.selectorMode -ne $selector -or
+            $offResult.configuration.extractionPlanningMode -ne $ExtractionPlanningMode -or
+            $onResult.configuration.extractionPlanningMode -ne $ExtractionPlanningMode -or
             $offResult.environment.verifiedReleaseExecution -ne $true -or
             $onResult.environment.verifiedReleaseExecution -ne $true) {
-            throw "$selector trial $trial did not satisfy the schema-v4 Release pair contract."
+            throw "$selector trial $trial did not satisfy the schema-v5 Release pair contract."
         }
 
         $leafArtifacts.Add($equivalencePath)
@@ -339,7 +344,7 @@ $exhaustiveMedianP95 = Get-Median ([double[]]@($records | ForEach-Object { $_.ex
 $optimizedMedianP95 = Get-Median ([double[]]@($records | ForEach-Object { $_.optimized.tickP95Milliseconds }))
 $p95Limit = $exhaustiveMedianP95 * 1.10
 $contracts = [ordered]@{
-    resultSchemaV4 = $true
+    resultSchemaV5 = $true
     verifiedReleaseExecution = $true
     singleSourceIdentity = $sourceShas.Count -eq 1
     cleanSource = $sourceDirtyValues.Count -eq 1 -and $sourceDirtyValues[0] -eq $false
@@ -364,7 +369,7 @@ $status = if (-not $contractPassed) { "fail" } elseif ($contracts.cleanSource) {
 
 $result = [ordered]@{
     schemaVersion = 1
-    sourceResultSchemaVersion = 4
+    sourceResultSchemaVersion = 5
     capturedUtc = [DateTime]::UtcNow.ToString("o")
     status = $status
     contractStatus = $status
@@ -375,6 +380,7 @@ $result = [ordered]@{
         measuredTicks = $Ticks
         trialsPerSelector = $Trials
         cacheMode = "cold"
+        extractionPlanningMode = $ExtractionPlanningMode
         comparisonGroup = $resolvedComparisonGroup
         executionRoute = "export_release"
         exportPreset = $ExportPreset
@@ -425,7 +431,7 @@ Write-Utf8NoBom $summaryPath ($summaryLines -join [System.Environment]::NewLine)
 $manifestArtifacts = $leafArtifactArray + @($resultPath, $summaryPath)
 $manifest = [ordered]@{
     schemaVersion = 1
-    sourceResultSchemaVersion = 4
+    sourceResultSchemaVersion = 5
     capturedUtc = [DateTime]::UtcNow.ToString("o")
     status = $status
     result = $resultPath

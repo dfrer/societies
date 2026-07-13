@@ -74,6 +74,108 @@ namespace Societies.Simulation
         ExhaustiveReference
     }
 
+    /// <summary>
+    /// Non-persistent runtime choice used to compare bounded extraction planning
+    /// with the original exhaustive route ordering.
+    /// </summary>
+    public enum PrototypeExtractionPlanningMode
+    {
+        ExactBounded,
+        ExhaustiveReference
+    }
+
+    public readonly record struct PrototypeExtractionCandidate(
+        PrototypeResourceSiteState Site,
+        Vector3 InteractionPosition,
+        float DistanceLowerBound,
+        int OriginalIndex);
+
+    public static class PrototypeExtractionPlanningMath
+    {
+        public static IReadOnlyList<PrototypeExtractionCandidate> SelectExactTopK(
+            IReadOnlyList<PrototypeExtractionCandidate> candidates,
+            int desiredUnits,
+            System.Func<PrototypeExtractionCandidate, float> computeExactDistance)
+        {
+            if (desiredUnits <= 0 || candidates.Count == 0)
+            {
+                return System.Array.Empty<PrototypeExtractionCandidate>();
+            }
+
+            int selectedCount = System.Math.Min(desiredUnits, candidates.Count);
+            if (selectedCount == candidates.Count &&
+                candidates.Select(candidate => candidate.Site.NodeName).Distinct(System.StringComparer.Ordinal).Count() == candidates.Count)
+            {
+                // When every candidate is emitted, route order is not observable: extraction
+                // order IDs are unique and every downstream tie/frontier is ordered by ID.
+                // Duplicate IDs fall through to the exhaustive ordering path below.
+                return candidates
+                    .OrderBy(candidate => candidate.Site.NodeName, System.StringComparer.Ordinal)
+                    .ThenBy(candidate => candidate.OriginalIndex)
+                    .ToArray();
+            }
+
+            List<(PrototypeExtractionCandidate Candidate, float ExactDistance)> exactCandidates = new(selectedCount);
+            foreach (PrototypeExtractionCandidate candidate in candidates
+                .OrderBy(candidate => candidate.DistanceLowerBound)
+                .ThenBy(candidate => candidate.Site.NodeName, System.StringComparer.Ordinal)
+                .ThenBy(candidate => candidate.OriginalIndex))
+            {
+                if (exactCandidates.Count == selectedCount &&
+                    candidate.DistanceLowerBound > exactCandidates[^1].ExactDistance)
+                {
+                    break;
+                }
+
+                float exactDistance = computeExactDistance(candidate);
+                exactCandidates.Add((candidate, exactDistance));
+                exactCandidates.Sort((left, right) =>
+                {
+                    int distanceComparison = left.ExactDistance.CompareTo(right.ExactDistance);
+                    if (distanceComparison != 0)
+                    {
+                        return distanceComparison;
+                    }
+
+                    int nameComparison = System.StringComparer.Ordinal.Compare(
+                        left.Candidate.Site.NodeName,
+                        right.Candidate.Site.NodeName);
+                    return nameComparison != 0
+                        ? nameComparison
+                        : left.Candidate.OriginalIndex.CompareTo(right.Candidate.OriginalIndex);
+                });
+
+                if (exactCandidates.Count > selectedCount)
+                {
+                    exactCandidates.RemoveAt(exactCandidates.Count - 1);
+                }
+            }
+
+            return exactCandidates
+                .Select(candidate => candidate.Candidate)
+                .ToArray();
+        }
+
+        public static bool ShouldApplyRemoteDepotPenalty(
+            bool hasBuiltRemoteDepot,
+            float distanceLowerBound,
+            float activationDistance,
+            System.Func<float> computeExactDistance)
+        {
+            if (hasBuiltRemoteDepot)
+            {
+                return false;
+            }
+
+            if (distanceLowerBound > activationDistance)
+            {
+                return true;
+            }
+
+            return computeExactDistance() > activationDistance;
+        }
+    }
+
     public static class PrototypeOrderSelectionMath
     {
         public const float ExactDistancePenalty = 0.75f;

@@ -1,5 +1,6 @@
 using Godot;
 using Societies.Core;
+using Societies.Simulation;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -24,6 +25,8 @@ namespace Societies.Tests
         private const string ForcedInvalidationCacheMode = "forced_invalidation";
         private const string OptimizedSelectorMode = "exact_branch_and_bound";
         private const string ExhaustiveSelectorMode = "exhaustive_reference";
+        private const string ExactBoundedExtractionMode = "exact_bounded";
+        private const string ExhaustiveExtractionMode = "exhaustive_reference";
         private const int MaximumMeasuredTicks = 4096;
         private static readonly UTF8Encoding Utf8NoBom = new(encoderShouldEmitUTF8Identifier: false);
         private static readonly JsonSerializerOptions JsonOptions = new()
@@ -95,7 +98,8 @@ namespace Societies.Tests
                     configuration.ScenarioId,
                     configuration.SimulationSeed,
                     configuration.CitizenCount,
-                    configuration.SelectorMode);
+                    configuration.SelectorMode,
+                    configuration.ExtractionPlanningMode);
                 manager.SetProcess(false);
 
                 long sceneSetupStart = Stopwatch.GetTimestamp();
@@ -326,6 +330,7 @@ namespace Societies.Tests
                 "--runner-executable",
                 "--cache-mode",
                 "--selector-mode",
+                "--extraction-planning-mode",
                 "--comparison-group",
                 "--trial-index",
                 "--allow-safety-failure"
@@ -427,6 +432,13 @@ namespace Societies.Tests
                 _ => throw new ArgumentException(
                     "Selector mode must be 'exact_branch_and_bound' or 'exhaustive_reference'.")
             };
+            string extractionPlanningMode = values["--extraction-planning-mode"] switch
+            {
+                ExactBoundedExtractionMode => ExactBoundedExtractionMode,
+                ExhaustiveExtractionMode => ExhaustiveExtractionMode,
+                _ => throw new ArgumentException(
+                    "Extraction planning mode must be 'exact_bounded' or 'exhaustive_reference'.")
+            };
 
             return new PerformanceRunConfiguration
             {
@@ -446,6 +458,7 @@ namespace Societies.Tests
                 RunnerExecutablePath = runnerExecutablePath,
                 CacheMode = cacheMode,
                 SelectorMode = selectorMode,
+                ExtractionPlanningMode = extractionPlanningMode,
                 ComparisonGroup = comparisonGroup,
                 TrialIndex = trialIndex,
                 WarmupMode = warmupTicks > 0 ? "simulation_ticks" : "none",
@@ -474,6 +487,17 @@ namespace Societies.Tests
             if (manager.SimulationTick != 0)
             {
                 throw new InvalidOperationException($"Performance run must start at tick 0, not {manager.SimulationTick}.");
+            }
+            PrototypeExtractionPlanningMode expectedExtractionMode = configuration.ExtractionPlanningMode switch
+            {
+                ExactBoundedExtractionMode => PrototypeExtractionPlanningMode.ExactBounded,
+                ExhaustiveExtractionMode => PrototypeExtractionPlanningMode.ExhaustiveReference,
+                _ => throw new InvalidOperationException("Unsupported extraction planning mode.")
+            };
+            if (manager.CurrentExtractionPlanningMode != expectedExtractionMode)
+            {
+                throw new InvalidOperationException(
+                    $"Runtime extraction mode '{manager.CurrentExtractionPlanningMode}' does not match requested '{expectedExtractionMode}'.");
             }
         }
 
@@ -1170,7 +1194,7 @@ namespace Societies.Tests
             builder.AppendLine($"Societies performance run: {result.Configuration.RunId}");
             builder.AppendLine($"Status: {result.Status}");
             builder.AppendLine($"Configuration: {result.Configuration.ScenarioId}, seed {result.Configuration.SimulationSeed}, {result.Configuration.CitizenCount} citizens, {result.Configuration.MeasuredTicks} measured ticks, metrics {(result.Configuration.MetricsEnabled ? "on" : "off")}");
-            builder.AppendLine($"Comparison: {result.Configuration.ComparisonGroup}, trial {result.Configuration.TrialIndex}; cache mode {result.Configuration.CacheMode}; selector {result.Configuration.SelectorMode}");
+            builder.AppendLine($"Comparison: {result.Configuration.ComparisonGroup}, trial {result.Configuration.TrialIndex}; cache mode {result.Configuration.CacheMode}; selector {result.Configuration.SelectorMode}; extraction {result.Configuration.ExtractionPlanningMode}");
             builder.AppendLine($"Execution route: {result.Configuration.ExecutionRoute}; runner: {result.Configuration.RunnerExecutablePath}");
             builder.AppendLine($"Managed build: {result.Environment.ManagedBuildConfiguration}; assembly configuration: {result.Environment.ManagedAssemblyConfiguration}; verified release: {result.Environment.VerifiedReleaseExecution}");
             builder.AppendLine($"Bootstrap: {Format(result.Intervals.BootstrapMilliseconds)} ms");

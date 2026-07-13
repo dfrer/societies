@@ -440,29 +440,53 @@ namespace Societies.Simulation
                 return;
             }
 
-            IEnumerable<(PrototypeResourceSiteState Site, Vector3 InteractionPosition)> sites = resources
+            List<PrototypeExtractionCandidate> candidates = resources
                 .Where(site => site.ResourceId == resourceId && site.UnitsRemaining > 0)
-                .Select(site => (
-                    Site: site,
-                    InteractionPosition: TryResolveWalkableInteractionPosition(site.Position, out Vector3 interactionPosition)
-                        ? interactionPosition
-                        : site.Position))
-                .OrderBy(candidate => ComputeRouteDistance(_world.SettlementSpawn.AnchorPosition, candidate.InteractionPosition))
-                .ThenBy(candidate => candidate.Site.NodeName, StringComparer.Ordinal);
-
-            int created = 0;
-            foreach ((PrototypeResourceSiteState site, Vector3 interactionPosition) in sites)
-            {
-                if (created >= desiredUnits)
+                .Select((site, originalIndex) =>
                 {
-                    break;
-                }
+                    Vector3 interactionPosition = TryResolveWalkableInteractionPosition(site.Position, out Vector3 resolvedPosition)
+                        ? resolvedPosition
+                        : site.Position;
+                    float distanceLowerBound = PrototypeOrderSelectionMath.ComputeStraightLineDistanceLowerBound(
+                        _world.SettlementSpawn.AnchorPosition,
+                        interactionPosition,
+                        _world.WorldMap.Cells.Count);
+                    return new PrototypeExtractionCandidate(site, interactionPosition, distanceLowerBound, originalIndex);
+                })
+                .ToList();
 
-                float routeDistance = ComputeRouteDistance(_centralDepot.Position, interactionPosition);
+            IReadOnlyList<PrototypeExtractionCandidate> sites = _extractionPlanningMode == PrototypeExtractionPlanningMode.ExhaustiveReference
+                ? candidates
+                    .OrderBy(candidate => ComputeRouteDistance(_world.SettlementSpawn.AnchorPosition, candidate.InteractionPosition))
+                    .ThenBy(candidate => candidate.Site.NodeName, StringComparer.Ordinal)
+                    .ThenBy(candidate => candidate.OriginalIndex)
+                    .Take(desiredUnits)
+                    .ToArray()
+                : PrototypeExtractionPlanningMath.SelectExactTopK(
+                    candidates,
+                    desiredUnits,
+                    candidate => ComputeRouteDistance(_world.SettlementSpawn.AnchorPosition, candidate.InteractionPosition));
+
+            foreach (PrototypeExtractionCandidate candidate in sites)
+            {
+                PrototypeResourceSiteState site = candidate.Site;
+                Vector3 interactionPosition = candidate.InteractionPosition;
                 bool hasRemoteDepot = GetRemoteDepot(site.ClusterId, requireBuilt: true) != null;
                 bool hasBuiltCorridor = _pathSegments.Any(segment => segment.IsBuilt && string.Equals(segment.CorridorId, $"corridor.{resourceId}", StringComparison.Ordinal));
                 int adjustedPriority = priority;
-                if (routeDistance > GetRemoteDepotActivationDistance() && !hasRemoteDepot)
+                float activationDistance = GetRemoteDepotActivationDistance();
+                float depotDistanceLowerBound = PrototypeOrderSelectionMath.ComputeStraightLineDistanceLowerBound(
+                    _centralDepot.Position,
+                    interactionPosition,
+                    _world.WorldMap.Cells.Count);
+                bool applyRemoteDepotPenalty = _extractionPlanningMode == PrototypeExtractionPlanningMode.ExhaustiveReference
+                    ? ComputeRouteDistance(_centralDepot.Position, interactionPosition) > activationDistance && !hasRemoteDepot
+                    : PrototypeExtractionPlanningMath.ShouldApplyRemoteDepotPenalty(
+                        hasRemoteDepot,
+                        depotDistanceLowerBound,
+                        activationDistance,
+                        () => ComputeRouteDistance(_centralDepot.Position, interactionPosition));
+                if (applyRemoteDepotPenalty)
                 {
                     adjustedPriority -= 140;
                 }
@@ -485,7 +509,6 @@ namespace Societies.Simulation
                     TargetPosition = interactionPosition,
                     Amount = 1
                 });
-                created++;
             }
         }
         private bool TryResolveWalkableInteractionPosition(Vector3 resourcePosition, out Vector3 interactionPosition)
