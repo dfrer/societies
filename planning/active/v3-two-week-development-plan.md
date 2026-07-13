@@ -91,6 +91,7 @@ The V3 slice will reuse those systems. It will not add markets, broad governance
 - Let the player choose between two visible settlement directives.
 - Show how a directive affected a citizen's assignment reason.
 - Resolve the crisis with deterministic, visible rules.
+- Establish a reproducible visual and representational baseline before observed playtests.
 - Capture enough telemetry and playtest evidence to decide what to build next.
 
 ### Explicit non-goals
@@ -354,9 +355,10 @@ The contracted Week 2 scope is allowed only when every hard safety item—includ
 | V3-W2-02 | Atomic contribution to the shared economy | 3.5 h | W1-06, W2-01 |
 | V3-W2-03 | Two directives and citizen causal explanation | 4.5 h | W2-01 |
 | V3-W2-04 | Deterministic outcome and minimal crisis HUD | 3.5 h | W2-02, W2-03 |
+| V3-W2-VIS | Visual and representational baseline | 3 h | W2-04 |
 | V3-W2-05 | Schema v7, telemetry, and automated slice tests | 3 h | W2-02–04 |
-| V3-W2-06 | Release validation, observed playtests, and decision report | 4 h | W2-05 |
-|  | **Week 2 total** | **21 h** |  |
+| V3-W2-06 | Release validation, observed playtests, and decision report | 4 h | W2-05, W2-VIS |
+|  | **Week 2 total** | **24 h** |  |
 
 #### V3-W2-01 — Freeze the crisis contract
 
@@ -450,6 +452,32 @@ Acceptance:
 - The no-input reference collapses and scripted reference stabilizes.
 - A contribution is reflected on the next presentation update.
 
+#### V3-W2-VIS — Visual and representational baseline
+
+Create a reproducible visual target for the playable slice before outside testers see it. This is a placeholder-quality representation baseline, not a production-art pass and not a dependency on custom models, animation, music, or audio.
+
+Deliverables:
+
+- one canonical `empty_stores` scene using a fixed seed, time of day, lighting setup, simulation tick, and camera transforms;
+- a five-image reference set covering first-person arrival, observer settlement overview, contribution point, citizen inspection, and terminal crisis state;
+- a representation matrix for citizens, huts, depot/stockpile, resources, built paths, queued construction, interactable objects, and crisis states;
+- documented scale, silhouette, material, lighting, color, icon, and state-cue conventions that can be implemented with placeholders and existing assets;
+- stable HUD layouts at 1920x1080 and 1280x720, including crisis timer, directive, contributions, conditions, inspected-citizen reason, and terminal summary;
+- a replacement map distinguishing temporary placeholders from elements intended to survive into the next milestone;
+- a short capture note recording build SHA, scenario, seed, camera, resolution, graphics settings, and screenshot paths.
+
+Acceptance:
+
+- citizens, huts, depot, loose resources, paths, construction state, and the contribution point are distinguishable without enabling debug overlays;
+- Neutral, Food & Fuel, Shelter, Stable, Collapsed, blocked interaction, and successful contribution each have an unambiguous visible cue;
+- the player can identify the active crisis, remaining time, current directive, contribution result, and settlement outcome from the normal play view;
+- HUD content remains readable and non-overlapping at both baseline resolutions;
+- the reference screenshots can be reproduced from a clean build using the recorded configuration;
+- representative-scene performance remains inside the applicable W1-03 safety limits;
+- the baseline is reviewed before observed playtests, and visual confusion is recorded separately from rules or pacing confusion.
+
+The baseline may improve composition, lighting, materials, placeholder readability, and existing UI presentation. Production asset creation and broad visual polish remain deferred until the playtests justify them.
+
 #### V3-W2-05 — Schema v7, telemetry, and automated slice tests
 
 Freeze the directive/crisis persistence contract, bump runtime snapshots from v6 to v7, and add an explicit v6-to-v7 migration with Neutral/no-crisis defaults. A v5 save must migrate through v6 to v7. Extend events, summaries, and metrics with:
@@ -519,8 +547,8 @@ Deliver `V3_SPRINT_VALIDATION_REPORT.md` with baseline-versus-RC results, defect
 | Day 5 | Fri Jul 17 | W1-06 resource authority/schema; Week 1 gate | One writer, v5 migration/v6 round-trip, full green gate |
 | Day 6 | Mon Jul 20 | W2-01 and W2-02 | Crisis setup and atomic shared-economy contribution |
 | Day 7 | Tue Jul 21 | W2-03 | Directives visible in assignment reasons |
-| Day 8 | Wed Jul 22 | W2-04; first author smoke | End-to-end loop plus first confusion/defect notes |
-| Day 9 | Thu Jul 23 | W2-05, 2–3 observed sessions, code freeze at midday | Repeat/resume green, artifacts, first tester evidence |
+| Day 8 | Wed Jul 22 | W2-04, W2-VIS; first author smoke | End-to-end loop, reproducible screenshot baseline, first confusion/defect notes |
+| Day 9 | Thu Jul 23 | W2-05, 2–3 observed sessions, code freeze at midday | Repeat/resume green, visual baseline approved, artifacts, first tester evidence |
 | Day 10 | Fri Jul 24 | Clean RC, remaining observed sessions, report | Final validation and evidence-backed decision |
 
 ## Validation Strategy
@@ -556,6 +584,7 @@ If `godot` is not on `PATH`, Day 0 must resolve and record the absolute Godot 4.
 - bounded per-tick diagnostics for performance runs
 - canonical state hashes for repeat/resume
 - representative snapshot, event log, run summary, world summary, and metrics CSV
+- `representational-baseline.md`, representation matrix, and the five-image reproducible screenshot set
 - final `V3_SPRINT_VALIDATION_REPORT.md`
 
 Retain review artifacts for at least seven days, nightly/extended artifacts for 30 days, and the final bundle for 90 days or with the milestone tag.
