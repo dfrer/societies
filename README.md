@@ -74,10 +74,10 @@ Compare the exhaustive selector against exact branch-and-bound using one hash-pi
 ./scripts/run-job-selection-comparison.ps1 -ReleaseExport -Scenario balanced_basin -Seed 1337 -Citizens 16 -Ticks 300 -Trials 3
 ```
 
-Reproduce the W1-05b diagnostic attribution from the ignored W1-05 matrix artifacts:
+Reproduce the current residual spike attribution from the ignored W1-05c matrix artifacts:
 
 ```powershell
-./scripts/analyze-performance-spikes.ps1 -InputPath artifacts/performance/w105-baseline-227a758 -OutputPath artifacts/performance/w105-baseline-227a758/spike-analysis.json
+./scripts/analyze-performance-spikes.ps1 -InputPath artifacts/performance/w105c-baseline-a772d15 -OutputPath artifacts/performance/w105c-baseline-a772d15/spike-analysis.json
 ```
 
 The matrix authority runs 14 metrics-off/on pairs: cold and natural-warm 300-tick cases for 3, 6, 12, and 16 citizens; three comparable cold 16-citizen reference trials; two 1,000-tick deterministic soaks; a 24-citizen stress case; and one forced invalidation case. `-PlanOnly` validates the inventory without making evidence claims, and `-CaseId` produces non-baseline partial characterization.
@@ -86,7 +86,7 @@ The Release route exports the `Windows Performance Release` preset and hard-fail
 
 These runs are not part of the pull-request gate. The runner writes ignored artifacts under `artifacts/performance/` and rejects content-dirty source by default so results identify reproducible code; stat-only touches whose Git blobs still match are not misclassified. It discovers Godot from `-GodotPath`, `GODOT_BIN`, `PATH`, or the standard WinGet package location. The editor/headless route remains Debug characterization. The Release execution route was first validated from clean commit `acf634f`; see `planning/active/evidence/v3-w1-03a-release-route-validation.json`.
 
-Schema v4 separates deterministic simulation preconditioning from cache treatment and records the non-persistent selector mode plus selector-specific query, pruning, reuse, and timing diagnostics. `cold` clears only the derived route cache, `natural_warm` retains the naturally populated cache, and `forced_invalidation` commits one prepared path segment and proves the first exact post-change lookup uses the new navigation version. Eager/all-pairs prewarming remains disabled. W1-04 caches reachability and cell routes while rematerializing exact endpoints; W1-05 uses a safe exact branch-and-bound selector and retains exhaustive mode only as a benchmark reference. Only `run-performance-cache-modes.ps1` can set `cacheModeEvidence`: it also requires cold/warm configuration and hash identity and explicitly leaves baseline, full-matrix, median, and target/safety claims false.
+Performance result schema v5 separates deterministic simulation preconditioning from cache treatment and records independent non-persistent selector and extraction-planning modes; runtime metrics CSV remains schema v4. `cold` clears only the derived route cache, `natural_warm` retains the naturally populated cache, and `forced_invalidation` commits one prepared path segment and proves the first exact post-change lookup uses the new navigation version. Eager/all-pairs prewarming remains disabled. W1-04 caches reachability and cell routes while rematerializing exact endpoints; W1-05 uses safe exact branch-and-bound selection; W1-05c adds exact bounded extraction planning and a byte-equivalent indexed A-star representation. Exhaustive modes remain benchmark references only. Only `run-performance-cache-modes.ps1` can set `cacheModeEvidence`: it also requires cold/warm configuration and hash identity and explicitly leaves baseline, full-matrix, median, and target/safety claims false.
 
 The clean verified ExportRelease cache-mode comparison passed from implementation commit `5444cc3`; see `planning/active/evidence/v3-w1-03b-cache-mode-validation.json`. It proves the three mode contracts and cold/warm deterministic equivalence for a short three-citizen smoke.
 

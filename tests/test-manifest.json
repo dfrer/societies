@@ -1,6 +1,6 @@
 {
   "schemaVersion": 3,
-  "updatedUtc": "2026-07-13T15:47:12.6335330Z",
+  "updatedUtc": "2026-07-13T16:03:33.6770639Z",
   "required": {
     "dotnet": {
       "project": "tests/Societies.Core.Tests/Societies.Core.Tests.csproj",
@@ -143,6 +143,8 @@
       "jobSelectionEvidence": true,
       "spikeCharacterizationStatus": "passed_safety_gate_still_failed",
       "spikeCharacterizationEvidence": true,
+      "cacheRepopulationOptimizationStatus": "passed_contract_safety_failed",
+      "cacheRepopulationEvidence": true,
       "releaseBaselineEvidence": true,
       "fullMatrixCaptured": true,
       "medianOfThreeCaptured": true,
@@ -160,7 +162,10 @@
       "spikeCharacterizationEvidenceFile": "planning/active/evidence/v3-w1-05b-spike-characterization.json",
       "spikeCharacterizationScript": "scripts/analyze-performance-spikes.ps1",
       "spikeCharacterizationSourceCommit": "227a7585d921255942c5d81e3e82bc3f91d01102",
-      "note": "The editor route remains Debug characterization. The Windows ExportRelease route is validated from clean commit acf634f. Cache-mode evidence from 5444cc3 proves the short mode contracts. W1-05 clean Release evidence from 227a758 proves exact selector equivalence and an 85.414 percent query reduction. W1-05b characterizes the remaining safety failure as deterministic cache-miss-driven exact A-star fanout after full-cache invalidation. The current extraction-planning slice adds an independently selectable exhaustive reference mode; W1-06 and Week 2 remain blocked pending clean Release comparison and a fresh canonical matrix."
+      "cacheRepopulationEvidenceFile": "planning/active/evidence/v3-w1-05c-cache-repopulation-validation.json",
+      "cacheRepopulationImplementationCommit": "a772d15ffc791da25e52afc9a04cb1a0ae655370",
+      "postW105cBaselineBudgetStatus": "safety_failure",
+      "note": "The editor route remains Debug characterization. The Windows ExportRelease route is validated from clean commit acf634f. Cache-mode evidence from 5444cc3 proves the short mode contracts. W1-05 clean Release evidence from 227a758 proves exact selector equivalence and an 85.414 percent query reduction. W1-05b characterizes the remaining failure as cache-miss-driven exact A-star fanout. W1-05c adds exact bounded extraction planning and a byte-equivalent indexed A-star representation; the clean matrix from a772d15 brings reference p95 inside safety but leaves reference/soak/stress maximum limits red. W1-06 and Week 2 remain blocked pending a reduction in distinct exact searches and another canonical matrix."
     }
   },
   "history": {
