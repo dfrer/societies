@@ -74,6 +74,12 @@ Compare the exhaustive selector against exact branch-and-bound using one hash-pi
 ./scripts/run-job-selection-comparison.ps1 -ReleaseExport -Scenario balanced_basin -Seed 1337 -Citizens 16 -Ticks 300 -Trials 3
 ```
 
+Reproduce the W1-05b diagnostic attribution from the ignored W1-05 matrix artifacts:
+
+```powershell
+./scripts/analyze-performance-spikes.ps1 -InputPath artifacts/performance/w105-baseline-227a758 -OutputPath artifacts/performance/w105-baseline-227a758/spike-analysis.json
+```
+
 The matrix authority runs 14 metrics-off/on pairs: cold and natural-warm 300-tick cases for 3, 6, 12, and 16 citizens; three comparable cold 16-citizen reference trials; two 1,000-tick deterministic soaks; a 24-citizen stress case; and one forced invalidation case. `-PlanOnly` validates the inventory without making evidence claims, and `-CaseId` produces non-baseline partial characterization.
 
 The Release route exports the `Windows Performance Release` preset and hard-fails unless the generated runner reports a managed `ExportRelease` assembly running in a non-debug Godot release template. The tracked solution maps Godot's `Debug`, `ExportDebug`, and `ExportRelease` configurations one-to-one. The base editor project still opens `scenes/main.tscn`; the preset's custom `performance_runner` feature selects `tests/PerfRunner.tscn` only in that export. Catalog JSON is explicitly packed and exported runs read it through `res://data`, so results do not depend on the process working directory.
@@ -89,6 +95,8 @@ The canonical W1-03c matrix completed from clean commit `a636967`. All 14 pairs,
 W1-04 corrects the navigation contract at implementation commit `7918d49`: blocked or disconnected endpoints no longer receive fabricated routes, diagonals cannot cut blocked corners, discounted paths retain an admissible deterministic A* search, and unreachable work is skipped with a stable diagnostic. Wetland reeds and clay use deterministic walkable interaction positions, including legacy snapshot normalization, without weakening blocked-terrain semantics. Local validation passed 110/110 .NET tests, 16/16 Godot headless tests, and all tracked managed configurations with zero warnings. See `planning/active/evidence/v3-w1-04-navigation-validation.json`.
 
 W1-05 exact branch-and-bound selection is complete with clean Release evidence at `227a758`. Four shipped scenarios match the exhaustive reference for 300 ticks, and the 16-citizen selector drops exact path queries from 17,441 to 2,544 (85.414%) with identical deterministic hashes. Its three-trial Release median p95 is 78.0301 ms versus 656.3981 ms exhaustive. The full post-W1-05 matrix also improved the optimized 16-citizen reference median p95 from 570.6155 ms to 81.4823 ms, but its 1,552.5664 ms median maximum means the overall safety gate remains red. Do not begin Week 2 feature expansion yet; use the new route-selection diagnostics to isolate the remaining spikes. See `planning/active/evidence/v3-w1-05-job-selection-validation.json`.
+
+W1-05b now isolates the remaining spikes from all 14 clean schema-v4 Release pairs and 5,301 diagnostic ticks. Cache misses correlate with wall time at `r=0.982573`, compared with `r=0.233264` for total lookup volume and `r=0.076652` for navigation rebuild time. Completing path segments clears the derived route cache; the following work-order ranking and idle-citizen selection repopulate it with exact A* searches. In the 16-citizen reference, all seven ticks over 250 ms are initial-cold or immediately post-invalidation, and all six ticks over one second follow invalidation. The metrics-on analysis is diagnostic rather than a new timing gate; the canonical safety failure remains authoritative. W1-06 and Week 2 remain blocked until exact cache-repopulation work is validated by a fresh matrix. See `planning/active/evidence/v3-w1-05b-spike-characterization.json`.
 
 ## Status
 
