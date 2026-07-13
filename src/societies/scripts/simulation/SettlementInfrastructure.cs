@@ -364,7 +364,11 @@ namespace Societies.Simulation
                 .Where(segment => segment.IsBuilt)
                 .Select(segment => new Vector2I(segment.GridX, segment.GridY))
                 .ToHashSet();
-            _navigationGrid = new PrototypeNavigationGrid(_world.WorldMap, builtPathCells, _navigationRulesVersion);
+            _navigationGrid = new PrototypeNavigationGrid(
+                _world.WorldMap,
+                builtPathCells,
+                _navigationRulesVersion,
+                priorGrid: _navigationGrid);
         }
         private void InvalidateNavigation(RuntimeMetricsCollector? runtimeMetrics)
         {

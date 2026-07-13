@@ -16,6 +16,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 $SelectorMode = $SelectorMode.ToLowerInvariant()
+$ExtractionPlanningMode = "exact_bounded"
 if ($SelectorMode -ne "exact_branch_and_bound") {
     throw "The canonical baseline workflow requires SelectorMode 'exact_branch_and_bound'."
 }
@@ -362,11 +363,12 @@ function Get-CaseResult {
     Assert-Contract (Test-Path -LiteralPath $matrixPath -PathType Leaf) "$($Case.id) pair matrix is missing."
     Assert-Contract (Test-Path -LiteralPath $summaryPath -PathType Leaf) "$($Case.id) pair summary is missing."
 
-    Assert-Contract ($equivalence.schemaVersion -eq 4) "$($Case.id) equivalence schema is not v4."
+    Assert-Contract ($equivalence.schemaVersion -eq 5) "$($Case.id) equivalence schema is not v5."
     Assert-Contract (@("pass", "pass_dirty_source") -contains $equivalence.status) "$($Case.id) equivalence status is '$($equivalence.status)'."
     Assert-Contract ($equivalence.contractStatus -eq $equivalence.status) "$($Case.id) equivalence contract status does not match its status."
     Assert-Contract ($equivalence.singleModeTransitionEvidence -eq $true) "$($Case.id) did not prove its single-mode transition."
     Assert-Contract ($equivalence.selectorMode -eq $SelectorMode) "$($Case.id) equivalence selector mode does not match the optimized baseline contract."
+    Assert-Contract ($equivalence.extractionPlanningMode -eq $ExtractionPlanningMode) "$($Case.id) equivalence extraction mode does not match the optimized baseline contract."
     Assert-Contract ($equivalence.cacheModeEvidence -eq $false) "$($Case.id) leaf pair made a cross-mode evidence claim."
     Assert-Contract ($equivalence.releaseBaselineEvidence -eq $false) "$($Case.id) leaf pair made a baseline claim."
     Assert-Contract ($equivalence.fullMatrixCaptured -eq $false) "$($Case.id) leaf pair made a full-matrix claim."
@@ -374,7 +376,7 @@ function Get-CaseResult {
     Assert-Contract ($equivalence.targetOrSafetyClaimMade -eq $false) "$($Case.id) leaf pair made an aggregate budget claim."
 
     foreach ($result in @($offResult, $onResult)) {
-        Assert-Contract ($result.schemaVersion -eq 4) "$($Case.id) leaf result schema is not v4."
+        Assert-Contract ($result.schemaVersion -eq 5) "$($Case.id) leaf result schema is not v5."
         Assert-Contract ($result.assessmentScope -eq "single_run_indicator_not_median_of_three_gate") "$($Case.id) leaf assessment scope is not single-run-only."
         Assert-Contract ($result.configuration.scenarioId -eq $Case.scenarioId) "$($Case.id) scenario does not match the plan."
         Assert-Contract ($result.configuration.simulationSeed -eq $Case.simulationSeed) "$($Case.id) seed does not match the plan."
@@ -383,6 +385,7 @@ function Get-CaseResult {
         Assert-Contract ($result.configuration.measuredTicks -eq $Case.measuredTicks) "$($Case.id) measured ticks do not match the plan."
         Assert-Contract ($result.configuration.cacheMode -eq $Case.cacheMode) "$($Case.id) cache mode does not match the plan."
         Assert-Contract ($result.configuration.selectorMode -eq $SelectorMode) "$($Case.id) selector mode does not match the optimized baseline contract."
+        Assert-Contract ($result.configuration.extractionPlanningMode -eq $ExtractionPlanningMode) "$($Case.id) extraction mode does not match the optimized baseline contract."
         Assert-Contract ($result.configuration.trialIndex -eq $Case.trialIndex) "$($Case.id) trial index does not match the plan."
         Assert-Contract ($result.configuration.comparisonGroup -eq $Case.comparisonGroup) "$($Case.id) comparison group does not match the plan."
         Assert-Contract ($result.configuration.gitSha -eq $ExpectedGitSha) "$($Case.id) source commit does not match the matrix commit."
@@ -474,8 +477,9 @@ function Get-CaseResult {
     Assert-Contract ($offResult.hashes.snapshotSha256 -eq $onResult.hashes.snapshotSha256) "$($Case.id) metrics modes changed the snapshot hash."
     Assert-Contract ($offResult.hashes.eventLogSha256 -eq $onResult.hashes.eventLogSha256) "$($Case.id) metrics modes changed the event-log hash."
     Assert-Contract ($offResult.hashes.deterministicStateAndEventSha256 -eq $onResult.hashes.deterministicStateAndEventSha256) "$($Case.id) metrics modes changed the combined hash."
-    Assert-Contract ($offManifest.schemaVersion -eq 4 -and $onManifest.schemaVersion -eq 4) "$($Case.id) manifest schema is not v4."
+    Assert-Contract ($offManifest.schemaVersion -eq 5 -and $onManifest.schemaVersion -eq 5) "$($Case.id) manifest schema is not v5."
     Assert-Contract ($offManifest.configuration.selectorMode -eq $SelectorMode -and $onManifest.configuration.selectorMode -eq $SelectorMode) "$($Case.id) manifest selector mode does not match the optimized baseline contract."
+    Assert-Contract ($offManifest.configuration.extractionPlanningMode -eq $ExtractionPlanningMode -and $onManifest.configuration.extractionPlanningMode -eq $ExtractionPlanningMode) "$($Case.id) manifest extraction mode does not match the optimized baseline contract."
     Assert-Contract ($offManifest.gitSha -eq $ExpectedGitSha -and $onManifest.gitSha -eq $ExpectedGitSha) "$($Case.id) manifest source commit does not match."
     Assert-Contract ($offManifest.gitDirty -eq $ExpectedGitDirty -and $onManifest.gitDirty -eq $ExpectedGitDirty) "$($Case.id) manifest dirty-source identity does not match."
     Assert-Contract (
@@ -698,6 +702,7 @@ try {
             simulationSeed = $Seed
             preconditioningTicks = $PreconditioningTicks
             selectorMode = $SelectorMode
+            extractionPlanningMode = $ExtractionPlanningMode
             releaseExport = $releaseExport
             exportPreset = if ($releaseExport) { $ExportPreset } else { $null }
             planOnly = [bool]$PlanOnly
@@ -717,6 +722,7 @@ try {
             soakRepeatTrials = 2
             consistentMachineAndBuild = $true
             optimizedSelectorMode = $true
+            optimizedExtractionPlanningMode = $true
         }
         claims = [ordered]@{
             releaseBaselineEvidence = $false
@@ -734,6 +740,7 @@ try {
             "Canonical request: $canonicalRequest",
             "Selected pairs: $($selectedCases.Count) of 14",
             "Selector mode: $SelectorMode",
+            "Extraction planning mode: $ExtractionPlanningMode",
             "Release route: $releaseExport",
             "Baseline/full-matrix/median/target-safety claims: false",
             "Output: $OutputRoot"
@@ -768,6 +775,7 @@ try {
             WarmupTicks = $case.preconditioningTicks
             CacheMode = $case.cacheMode
             SelectorMode = $SelectorMode
+            ExtractionPlanningMode = $ExtractionPlanningMode
             ComparisonGroup = $case.comparisonGroup
             TrialIndex = $case.trialIndex
             OutputRoot = $caseRoot
@@ -1150,7 +1158,7 @@ try {
 
     $aggregate = [ordered]@{
         schemaVersion = 1
-        sourceResultSchemaVersion = 4
+        sourceResultSchemaVersion = 5
         capturedUtc = [DateTime]::UtcNow.ToString("o")
         status = "pass"
         contractStatus = "pass"
@@ -1210,6 +1218,7 @@ try {
         "Contract: pass; budget: $budgetStatus",
         "Source: $gitSha; clean: $sourceClean",
         "Selector mode: $SelectorMode",
+        "Extraction planning mode: $ExtractionPlanningMode",
         "Pairs: $($resultArray.Count) of 14; verified Release: $verifiedRelease",
         "Full matrix: $fullMatrixCaptured; median of three: $medianOfThreeCaptured; release baseline evidence: $releaseBaselineEvidence",
         "Cold/warm deterministic equivalence: $coldWarmEquivalent",
@@ -1240,7 +1249,7 @@ try {
 
     $manifest = [ordered]@{
         schemaVersion = 1
-        sourceResultSchemaVersion = 4
+        sourceResultSchemaVersion = 5
         capturedUtc = [DateTime]::UtcNow.ToString("o")
         status = "pass"
         contractStatus = "pass"
@@ -1291,7 +1300,7 @@ catch {
         Write-Utf8NoBom $summaryPath ($failureSummary -join [System.Environment]::NewLine)
         $failure = [ordered]@{
             schemaVersion = 1
-            sourceResultSchemaVersion = 4
+            sourceResultSchemaVersion = 5
             capturedUtc = [DateTime]::UtcNow.ToString("o")
             status = "fail"
             contractStatus = "fail"

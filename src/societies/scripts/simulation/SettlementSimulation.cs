@@ -113,17 +113,20 @@ namespace Societies.Simulation
         private int _totalTicks;
         private readonly bool _uncappedOrders;
         private readonly PrototypeOrderSelectionMode _orderSelectionMode;
+        private readonly PrototypeExtractionPlanningMode _extractionPlanningMode;
         public PrototypeSettlementSimulation(
             PrototypeScenarioDefinition scenario,
             IReadOnlyList<PrototypeRoleQuotaDefinition> roleQuotas,
             WorldGenerationResult world,
             bool uncappedOrders = false,
-            PrototypeOrderSelectionMode orderSelectionMode = PrototypeOrderSelectionMode.ExactBranchAndBound)
+            PrototypeOrderSelectionMode orderSelectionMode = PrototypeOrderSelectionMode.ExactBranchAndBound,
+            PrototypeExtractionPlanningMode extractionPlanningMode = PrototypeExtractionPlanningMode.ExactBounded)
         {
             _scenario = scenario;
             _world = world;
             _uncappedOrders = uncappedOrders;
             _orderSelectionMode = orderSelectionMode;
+            _extractionPlanningMode = extractionPlanningMode;
             _centralDepot = CreateStore("central_depot", "Central Depot", 120, GetStructurePosition("central_depot", 0));
             SeedStartingStock();
             InitializeSiteCaches();
@@ -137,6 +140,8 @@ namespace Societies.Simulation
         public IReadOnlyList<PrototypeWorkerState> Workers => _citizens;
 
         public PrototypeOrderSelectionMode OrderSelectionMode => _orderSelectionMode;
+
+        public PrototypeExtractionPlanningMode ExtractionPlanningMode => _extractionPlanningMode;
 
         public IReadOnlyList<PrototypeWorkerState> Citizens => _citizens;
 

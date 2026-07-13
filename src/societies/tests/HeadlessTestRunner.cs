@@ -305,7 +305,8 @@ namespace Societies.Tests
                     "balanced_basin",
                     simulationSeed: 4242,
                     citizenCount: 3,
-                    selectorMode: "exhaustive_reference");
+                    selectorMode: "exhaustive_reference",
+                    extractionPlanningMode: "exhaustive_reference");
                 disabledManager.SetProcess(false);
                 AddChild(disabledScene);
                 await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
@@ -316,6 +317,9 @@ namespace Societies.Tests
                 Assert(
                     disabledManager.CurrentOrderSelectionMode == PrototypeOrderSelectionMode.ExhaustiveReference,
                     "Performance startup should apply the requested selector mode");
+                Assert(
+                    disabledManager.CurrentExtractionPlanningMode == PrototypeExtractionPlanningMode.ExhaustiveReference,
+                    "Performance startup should apply the requested extraction planning mode");
                 Assert(disabledManager.PerformanceBootstrapMilliseconds is > 0.0, "Performance startup should capture the internal bootstrap interval");
                 bool reconfigurationRejected = false;
                 try

@@ -2,6 +2,7 @@ using Godot;
 using Societies.Core;
 using System;
 using System.Collections.Generic;
+using System.Collections.Concurrent;
 using System.Linq;
 
 namespace Societies.Simulation
@@ -14,28 +15,41 @@ namespace Societies.Simulation
         private const float BuiltPathCostMultiplier = 0.55f;
 
         private readonly WorldMapState _worldMap;
-        private readonly Dictionary<Vector2I, PrototypeNavigationGridCell> _cells;
-        private readonly HashSet<Vector2I> _builtPathCells;
+        private readonly PrototypeNavigationGridCell[] _cells;
+        private readonly int _gridWidth;
+        private readonly int _gridHeight;
+        private readonly NeighborTopology _neighborTopology;
+        private readonly float[] _traversalMultipliers;
         private readonly float _minimumTraversalMultiplier;
+        private readonly ConcurrentBag<AStarWorkspace> _workspacePool = new();
 
-        public PrototypeNavigationGrid(WorldMapState worldMap, IReadOnlyCollection<Vector2I> builtPathCells, int rulesVersion)
+        public PrototypeNavigationGrid(
+            WorldMapState worldMap,
+            IReadOnlyCollection<Vector2I> builtPathCells,
+            int rulesVersion,
+            PrototypeNavigationGrid? priorGrid = null)
         {
             _worldMap = worldMap;
             RulesVersion = rulesVersion;
-            _builtPathCells = new HashSet<Vector2I>(builtPathCells);
-            _cells = BuildCells(worldMap, _builtPathCells);
-            _minimumTraversalMultiplier = _cells.Values
-                .Where(cell => cell.IsWalkable)
-                .Select(cell => cell.HasBuiltPath
-                    ? cell.MovementCost * BuiltPathCostMultiplier
-                    : cell.MovementCost)
+            _gridWidth = worldMap.GridWidth;
+            _gridHeight = worldMap.GridHeight;
+            HashSet<Vector2I> builtPathCellSet = new(builtPathCells);
+            _cells = BuildCells(worldMap, builtPathCellSet);
+            _neighborTopology = CanReuseNeighborTopology(priorGrid, worldMap, _cells)
+                    ? priorGrid!._neighborTopology
+                    : BuildNeighborTopology(_cells, _gridWidth, _gridHeight);
+            _traversalMultipliers = BuildTraversalMultipliers(_cells);
+            _minimumTraversalMultiplier = _cells
+                .Select((cell, index) => (cell, index))
+                .Where(entry => entry.cell.IsWalkable)
+                .Select(entry => _traversalMultipliers[entry.index])
                 .DefaultIfEmpty(1.0f)
                 .Min();
         }
 
         public int RulesVersion { get; }
 
-        public PrototypeNavigationGridCell GetCell(int x, int y) => _cells[new Vector2I(x, y)];
+        public PrototypeNavigationGridCell GetCell(int x, int y) => _cells[ToCheckedIndex(x, y)];
 
         public TerrainCell GetTerrainCell(Vector3 worldPosition) => _worldMap.GetNearestCell(worldPosition);
 
@@ -192,88 +206,87 @@ namespace Societies.Simulation
 
         public float GetTraversalMultiplier(int gridX, int gridY)
         {
-            Vector2I key = new(gridX, gridY);
-            PrototypeNavigationGridCell cell = _cells[key];
-            return cell.HasBuiltPath
-                ? cell.MovementCost * BuiltPathCostMultiplier
-                : cell.MovementCost;
+            return _traversalMultipliers[ToCheckedIndex(gridX, gridY)];
         }
 
         private bool TryRunAStar(TerrainCell start, TerrainCell destination, out List<Vector2I>? path)
         {
-            Vector2I startKey = new(start.GridX, start.GridY);
-            Vector2I destinationKey = new(destination.GridX, destination.GridY);
-            PriorityQueue<Vector2I, (float EstimatedTotal, float Heuristic, int GridY, int GridX, long Sequence)> frontier = new();
-            Dictionary<Vector2I, Vector2I> cameFrom = new();
-            Dictionary<Vector2I, float> costSoFar = new()
+            int startIndex = ToUncheckedIndex(start.GridX, start.GridY);
+            int destinationIndex = ToUncheckedIndex(destination.GridX, destination.GridY);
+            AStarWorkspace workspace = RentWorkspace();
+            try
             {
-                [startKey] = 0.0f
-            };
-            long sequence = 0;
+                int generation = workspace.BeginSearch();
+                long sequence = 0;
+                workspace.SetCost(startIndex, 0.0f, generation);
+                workspace.Frontier.Enqueue(
+                    startIndex,
+                    (0.0f, 0.0f, start.GridY, start.GridX, sequence++));
 
-            frontier.Enqueue(startKey, (0.0f, 0.0f, startKey.Y, startKey.X, sequence++));
-
-            while (frontier.Count > 0)
-            {
-                Vector2I current = frontier.Dequeue();
-                if (current == destinationKey)
+                while (workspace.Frontier.Count > 0)
                 {
-                    break;
+                    int currentIndex = workspace.Frontier.Dequeue();
+                    if (currentIndex == destinationIndex)
+                    {
+                        break;
+                    }
+
+                    int neighborEnd = _neighborTopology.Offsets[currentIndex + 1];
+                    for (int neighborIndex = _neighborTopology.Offsets[currentIndex]; neighborIndex < neighborEnd; neighborIndex++)
+                    {
+                        NeighborSlot next = _neighborTopology.Neighbors[neighborIndex];
+                        float newCost = workspace.GetCost(currentIndex) + (next.StepDistance * _traversalMultipliers[next.CellIndex]);
+                        if (workspace.TryGetCost(next.CellIndex, generation, out float existingCost) && existingCost <= newCost)
+                        {
+                            continue;
+                        }
+
+                        workspace.SetCost(next.CellIndex, newCost, generation);
+                        float heuristic = EstimateHeuristic(next.GridX, next.GridY, destination.GridX, destination.GridY);
+                        float priority = newCost + heuristic;
+                        workspace.Frontier.Enqueue(next.CellIndex, (priority, heuristic, next.GridY, next.GridX, sequence++));
+                        workspace.SetParent(next.CellIndex, currentIndex);
+                    }
                 }
 
-                foreach ((Vector2I next, float stepDistance) in EnumerateNeighbors(current))
+                if (!workspace.HasCost(destinationIndex, generation))
                 {
-                    if (!_cells.TryGetValue(next, out PrototypeNavigationGridCell? nextCell) || !nextCell.IsWalkable)
-                    {
-                        continue;
-                    }
-
-                    if (IsDiagonal(current, next) && !CanTraverseDiagonal(current, next))
-                    {
-                        continue;
-                    }
-
-                    float newCost = costSoFar[current] + (stepDistance * GetTraversalMultiplier(next.X, next.Y));
-                    if (costSoFar.TryGetValue(next, out float existingCost) && existingCost <= newCost)
-                    {
-                        continue;
-                    }
-
-                    costSoFar[next] = newCost;
-                    float heuristic = EstimateHeuristic(next, destinationKey);
-                    float priority = newCost + heuristic;
-                    frontier.Enqueue(next, (priority, heuristic, next.Y, next.X, sequence++));
-                    cameFrom[next] = current;
+                    path = null;
+                    return false;
                 }
-            }
 
-            if (!costSoFar.ContainsKey(destinationKey))
+                path = new List<Vector2I>();
+                int cursor = destinationIndex;
+                while (true)
+                {
+                    int cursorY = cursor / _gridWidth;
+                    int cursorX = cursor - (cursorY * _gridWidth);
+                    path.Add(new Vector2I(cursorX, cursorY));
+                    if (cursor == startIndex)
+                    {
+                        break;
+                    }
+
+                    cursor = workspace.GetParent(cursor);
+                }
+
+                path.Reverse();
+                return true;
+            }
+            finally
             {
-                path = null;
-                return false;
+                _workspacePool.Add(workspace);
             }
-
-            path = new List<Vector2I>();
-            Vector2I cursor = destinationKey;
-            path.Add(cursor);
-            while (cursor != startKey)
-            {
-                cursor = cameFrom[cursor];
-                path.Add(cursor);
-            }
-
-            path.Reverse();
-            return true;
         }
 
-        private static Dictionary<Vector2I, PrototypeNavigationGridCell> BuildCells(WorldMapState worldMap, IReadOnlyCollection<Vector2I> builtPathCells)
+        private static PrototypeNavigationGridCell[] BuildCells(WorldMapState worldMap, IReadOnlyCollection<Vector2I> builtPathCells)
         {
-            Dictionary<Vector2I, PrototypeNavigationGridCell> cells = new();
+            PrototypeNavigationGridCell[] cells = new PrototypeNavigationGridCell[worldMap.GridWidth * worldMap.GridHeight];
             foreach (TerrainCell cell in worldMap.Cells)
             {
                 Vector2I key = new(cell.GridX, cell.GridY);
                 bool walkable = cell.Biome != BiomeType.Wetland && cell.SlopeDegrees <= 18.0f;
-                cells[key] = new PrototypeNavigationGridCell
+                cells[(cell.GridY * worldMap.GridWidth) + cell.GridX] = new PrototypeNavigationGridCell
                 {
                     GridX = cell.GridX,
                     GridY = cell.GridY,
@@ -287,27 +300,101 @@ namespace Societies.Simulation
             return cells;
         }
 
-        private static IEnumerable<(Vector2I next, float stepDistance)> EnumerateNeighbors(Vector2I current)
+        private static float[] BuildTraversalMultipliers(IReadOnlyList<PrototypeNavigationGridCell> cells)
         {
-            for (int offsetY = -1; offsetY <= 1; offsetY++)
+            float[] traversalMultipliers = new float[cells.Count];
+            for (int index = 0; index < cells.Count; index++)
             {
-                for (int offsetX = -1; offsetX <= 1; offsetX++)
-                {
-                    if (offsetX == 0 && offsetY == 0)
-                    {
-                        continue;
-                    }
-
-                    float stepDistance = (offsetX != 0 && offsetY != 0) ? 1.4142135f : 1.0f;
-                    yield return (new Vector2I(current.X + offsetX, current.Y + offsetY), stepDistance);
-                }
+                PrototypeNavigationGridCell cell = cells[index];
+                traversalMultipliers[index] = cell.HasBuiltPath
+                    ? cell.MovementCost * BuiltPathCostMultiplier
+                    : cell.MovementCost;
             }
+
+            return traversalMultipliers;
         }
 
-        private float EstimateHeuristic(Vector2I current, Vector2I destination)
+        private static NeighborTopology BuildNeighborTopology(
+            IReadOnlyList<PrototypeNavigationGridCell> cells,
+            int gridWidth,
+            int gridHeight)
         {
-            int deltaX = Math.Abs(current.X - destination.X);
-            int deltaY = Math.Abs(current.Y - destination.Y);
+            int[] offsets = new int[cells.Count + 1];
+            List<NeighborSlot> neighbors = new(checked(cells.Count * 8));
+            for (int currentIndex = 0; currentIndex < cells.Count; currentIndex++)
+            {
+                offsets[currentIndex] = neighbors.Count;
+                int currentY = currentIndex / gridWidth;
+                int currentX = currentIndex - (currentY * gridWidth);
+                for (int offsetY = -1; offsetY <= 1; offsetY++)
+                {
+                    for (int offsetX = -1; offsetX <= 1; offsetX++)
+                    {
+                        if (offsetX == 0 && offsetY == 0)
+                        {
+                            continue;
+                        }
+
+                        int nextX = currentX + offsetX;
+                        int nextY = currentY + offsetY;
+                        if (nextX < 0 || nextY < 0 || nextX >= gridWidth || nextY >= gridHeight)
+                        {
+                            continue;
+                        }
+
+                        int nextIndex = (nextY * gridWidth) + nextX;
+                        if (!cells[nextIndex].IsWalkable)
+                        {
+                            continue;
+                        }
+
+                        bool isDiagonal = offsetX != 0 && offsetY != 0;
+                        if (isDiagonal &&
+                            (!cells[(currentY * gridWidth) + nextX].IsWalkable ||
+                             !cells[(nextY * gridWidth) + currentX].IsWalkable))
+                        {
+                            continue;
+                        }
+
+                        float stepDistance = isDiagonal ? 1.4142135f : 1.0f;
+                        neighbors.Add(new NeighborSlot(nextIndex, nextX, nextY, stepDistance));
+                    }
+                }
+            }
+
+            offsets[cells.Count] = neighbors.Count;
+            return new NeighborTopology(offsets, neighbors.ToArray());
+        }
+
+        private static bool CanReuseNeighborTopology(
+            PrototypeNavigationGrid? priorGrid,
+            WorldMapState worldMap,
+            IReadOnlyList<PrototypeNavigationGridCell> cells)
+        {
+            if (priorGrid == null ||
+                !ReferenceEquals(priorGrid._worldMap, worldMap) ||
+                priorGrid._gridWidth != worldMap.GridWidth ||
+                priorGrid._gridHeight != worldMap.GridHeight ||
+                priorGrid._cells.Length != cells.Count)
+            {
+                return false;
+            }
+
+            for (int index = 0; index < cells.Count; index++)
+            {
+                if (priorGrid._cells[index].IsWalkable != cells[index].IsWalkable)
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        private float EstimateHeuristic(int currentX, int currentY, int destinationX, int destinationY)
+        {
+            int deltaX = Math.Abs(currentX - destinationX);
+            int deltaY = Math.Abs(currentY - destinationY);
             int diagonalSteps = Math.Min(deltaX, deltaY);
             int straightSteps = Math.Max(deltaX, deltaY) - diagonalSteps;
             return ((diagonalSteps * 1.4142135f) + straightSteps) * _minimumTraversalMultiplier;
@@ -315,19 +402,110 @@ namespace Societies.Simulation
 
         private bool IsWalkable(int gridX, int gridY)
         {
-            return _cells.TryGetValue(new Vector2I(gridX, gridY), out PrototypeNavigationGridCell? cell) &&
-                cell.IsWalkable;
+            return IsInBounds(gridX, gridY) && _cells[ToUncheckedIndex(gridX, gridY)].IsWalkable;
         }
 
-        private static bool IsDiagonal(Vector2I current, Vector2I next)
+        private bool IsInBounds(int gridX, int gridY)
         {
-            return current.X != next.X && current.Y != next.Y;
+            return gridX >= 0 && gridY >= 0 && gridX < _gridWidth && gridY < _gridHeight;
         }
 
-        private bool CanTraverseDiagonal(Vector2I current, Vector2I next)
+        private int ToCheckedIndex(int gridX, int gridY)
         {
-            return IsWalkable(next.X, current.Y) && IsWalkable(current.X, next.Y);
+            if (!IsInBounds(gridX, gridY))
+            {
+                throw new KeyNotFoundException($"No navigation cell exists at ({gridX},{gridY}).");
+            }
+
+            return ToUncheckedIndex(gridX, gridY);
         }
+
+        private int ToUncheckedIndex(int gridX, int gridY) => (gridY * _gridWidth) + gridX;
+
+        private AStarWorkspace RentWorkspace()
+        {
+            return _workspacePool.TryTake(out AStarWorkspace? workspace)
+                ? workspace
+                : new AStarWorkspace(_cells.Length);
+        }
+
+        private sealed class AStarWorkspace
+        {
+            private readonly float[] _costs;
+            private readonly int[] _costGenerations;
+            private readonly int[] _parents;
+            private int _generation;
+
+            public AStarWorkspace(int cellCount)
+            {
+                _costs = new float[cellCount];
+                _costGenerations = new int[cellCount];
+                _parents = new int[cellCount];
+            }
+
+            public PriorityQueue<int, (float EstimatedTotal, float Heuristic, int GridY, int GridX, long Sequence)> Frontier { get; } = new();
+
+            public int BeginSearch()
+            {
+                Frontier.Clear();
+                if (_generation == int.MaxValue)
+                {
+                    Array.Clear(_costGenerations);
+                    _generation = 1;
+                }
+                else
+                {
+                    _generation++;
+                }
+
+                return _generation;
+            }
+
+            public bool HasCost(int index, int generation) => _costGenerations[index] == generation;
+
+            public bool TryGetCost(int index, int generation, out float cost)
+            {
+                if (_costGenerations[index] == generation)
+                {
+                    cost = _costs[index];
+                    return true;
+                }
+
+                cost = 0.0f;
+                return false;
+            }
+
+            public float GetCost(int index) => _costs[index];
+
+            public void SetCost(int index, float cost, int generation)
+            {
+                _costs[index] = cost;
+                _costGenerations[index] = generation;
+            }
+
+            public int GetParent(int index) => _parents[index];
+
+            public void SetParent(int index, int parentIndex) => _parents[index] = parentIndex;
+        }
+
+        private sealed class NeighborTopology
+        {
+            public NeighborTopology(int[] offsets, NeighborSlot[] neighbors)
+            {
+                Offsets = offsets;
+                Neighbors = neighbors;
+            }
+
+            public int[] Offsets { get; }
+
+            public NeighborSlot[] Neighbors { get; }
+        }
+
+        private readonly record struct NeighborSlot(
+            int CellIndex,
+            int GridX,
+            int GridY,
+            float StepDistance);
 
         private static float HorizontalDistance(Vector3 a, Vector3 b)
         {

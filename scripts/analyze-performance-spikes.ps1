@@ -237,14 +237,14 @@ foreach ($runtimePath in $runtimePaths) {
     $equivalencePath = Join-Path $caseDirectory "equivalence-results.json"
     $result = Read-Json $resultPath "Performance result"
     $equivalence = Read-Json $equivalencePath "Equivalence result"
-    if ([int](Require-Property $result "schemaVersion" $resultPath) -ne 4) {
-        throw "Performance result must use schemaVersion 4: $resultPath"
+    if ([int](Require-Property $result "schemaVersion" $resultPath) -ne 5) {
+        throw "Performance result must use schemaVersion 5: $resultPath"
     }
-    if ([int](Require-Property $equivalence "schemaVersion" $equivalencePath) -ne 4) {
-        throw "Equivalence result must use schemaVersion 4: $equivalencePath"
+    if ([int](Require-Property $equivalence "schemaVersion" $equivalencePath) -ne 5) {
+        throw "Equivalence result must use schemaVersion 5: $equivalencePath"
     }
     foreach ($contractProperty in @(
-        "sourceClean", "releaseRequired", "releaseExport", "releaseEnvironmentValid", "resultSchemaValid",
+        "sourceClean", "releaseRequired", "releaseEnvironmentValid", "resultSchemaValid",
         "configurationMatches", "commandConfigurationMatches", "modeContractValid", "executionRouteValid",
         "gitIdentityMatches", "environmentMatches", "godotVersionValid", "hashesValid", "snapshotHashMatches",
         "eventLogHashMatches", "combinedHashMatches", "resultStatusesValid", "artifactContractValid",
@@ -254,6 +254,9 @@ foreach ($runtimePath in $runtimePaths) {
         if ((Require-Property $equivalence $contractProperty $equivalencePath) -ne $true) {
             throw "Equivalence contract '$contractProperty' is not satisfied: $equivalencePath"
         }
+    }
+    if ($equivalence.releaseExport -ne $true -and $equivalence.reusedReleaseRunner -ne $true) {
+        throw "Equivalence must use a new or reused verified Release runner: $equivalencePath"
     }
     if ([string](Require-Property $equivalence "status" $equivalencePath) -ne "pass" -or
         [string](Require-Property $equivalence "contractStatus" $equivalencePath) -ne "pass") {
@@ -394,6 +397,7 @@ foreach ($runtimePath in $runtimePaths) {
 
     $cacheMode = [string](Require-Property $configuration "cacheMode" $resultPath)
     $selectorMode = [string](Require-Property $configuration "selectorMode" $resultPath)
+    $extractionPlanningMode = [string](Require-Property $configuration "extractionPlanningMode" $resultPath)
     $runId = Get-DisplayPath $runDirectory
     $bucketRecords = New-Object System.Collections.Generic.List[object]
     for ($bucketIndex = 0; $bucketIndex -le $ThresholdMilliseconds.Count; $bucketIndex++) {
@@ -537,6 +541,7 @@ foreach ($runtimePath in $runtimePaths) {
             measuredTicks = $measuredTicks
             cacheMode = $cacheMode
             selectorMode = $selectorMode
+            extractionPlanningMode = $extractionPlanningMode
             trialIndex = [int](Require-Property $configuration "trialIndex" $resultPath)
         }
         thresholdBuckets = $bucketRecords.ToArray()
@@ -563,7 +568,8 @@ foreach ($runtimePath in $runtimePaths) {
         $runRecord.configuration.warmupTicks,
         $runRecord.configuration.measuredTicks,
         $runRecord.configuration.cacheMode,
-        $runRecord.configuration.selectorMode
+        $runRecord.configuration.selectorMode,
+        $runRecord.configuration.extractionPlanningMode
     ) -join '|'
     $internalRuns.Add([pscustomobject]@{
         run = $runId

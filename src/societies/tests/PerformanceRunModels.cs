@@ -37,6 +37,8 @@ namespace Societies.Tests
 
         public string SelectorMode { get; set; } = string.Empty;
 
+        public string ExtractionPlanningMode { get; set; } = string.Empty;
+
         public string ComparisonGroup { get; set; } = string.Empty;
 
         public int TrialIndex { get; set; }
@@ -250,7 +252,7 @@ namespace Societies.Tests
 
     internal sealed class PerformanceRunResult
     {
-        public int SchemaVersion { get; set; } = 4;
+        public int SchemaVersion { get; set; } = 5;
 
         public string CapturedUtc { get; set; } = string.Empty;
 
@@ -289,7 +291,7 @@ namespace Societies.Tests
 
     internal sealed class PerformanceValidationManifest
     {
-        public int SchemaVersion { get; set; } = 4;
+        public int SchemaVersion { get; set; } = 5;
 
         public string CapturedUtc { get; set; } = string.Empty;
 
@@ -320,7 +322,7 @@ namespace Societies.Tests
 
     internal sealed class PerformanceFailureResult
     {
-        public int SchemaVersion { get; set; } = 4;
+        public int SchemaVersion { get; set; } = 5;
 
         public string CapturedUtc { get; set; } = string.Empty;
 
