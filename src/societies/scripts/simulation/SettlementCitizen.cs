@@ -180,16 +180,25 @@ namespace Societies.Simulation
             PrototypeWorkerState citizen,
             IReadOnlyList<PrototypeWorkOrder> availableOrders)
         {
+            bool useTopologyBounds = _orderSelectionMode == PrototypeOrderSelectionMode.ExactBranchAndBound &&
+                ShouldBuildGeometricDistanceField(
+                    citizen.Position,
+                    availableOrders.Select(GetFirstTravelDestination));
             List<OrderSelectionCandidate> candidates = availableOrders
                 .Select((order, index) => new OrderSelectionCandidate(
                     order,
                     index,
-                    PrototypeOrderSelectionMath.ComputeScoreUpperBound(
-                        order.Priority,
-                        GetRoleBonus(citizen.Role, order),
-                        citizen.Position,
-                        GetFirstTravelDestination(order),
-                        _world.WorldMap.Cells.Count)))
+                    useTopologyBounds
+                        ? order.Priority + GetRoleBonus(citizen.Role, order) -
+                            (PrototypeOrderSelectionMath.ExactDistancePenalty * ComputeRouteDistanceLowerBound(
+                                citizen.Position,
+                                GetFirstTravelDestination(order)))
+                        : PrototypeOrderSelectionMath.ComputeScoreUpperBound(
+                            order.Priority,
+                            GetRoleBonus(citizen.Role, order),
+                            citizen.Position,
+                            GetFirstTravelDestination(order),
+                            _world.WorldMap.Cells.Count)))
                 .ToList();
             _selectorCandidatesBoundedThisTick += candidates.Count;
 

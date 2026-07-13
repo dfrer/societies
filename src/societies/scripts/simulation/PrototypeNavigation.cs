@@ -153,6 +153,68 @@ namespace Societies.Simulation
             return FindPath(startPosition, destinationPosition).TotalDistanceMeters;
         }
 
+        public GeometricDistanceField BuildGeometricDistanceField(Vector3 originPosition)
+        {
+            TerrainCell originCell = _worldMap.GetNearestCell(originPosition);
+            int originIndex = ToUncheckedIndex(originCell.GridX, originCell.GridY);
+            float[] distances = new float[_cells.Length];
+            Array.Fill(distances, float.PositiveInfinity);
+
+            if (!IsWalkable(originCell.GridX, originCell.GridY))
+            {
+                return new GeometricDistanceField(this, originPosition, originIndex, distances);
+            }
+
+            PriorityQueue<int, (float Distance, int GridY, int GridX, long Sequence)> frontier = new();
+            long sequence = 0;
+            distances[originIndex] = 0.0f;
+            int originNeighborEnd = _neighborTopology.Offsets[originIndex + 1];
+            for (int neighborIndex = _neighborTopology.Offsets[originIndex]; neighborIndex < originNeighborEnd; neighborIndex++)
+            {
+                NeighborSlot next = _neighborTopology.Neighbors[neighborIndex];
+                float initialDistance = HorizontalDistance(originPosition, _cells[next.CellIndex].WorldPosition);
+                if (initialDistance >= distances[next.CellIndex])
+                {
+                    continue;
+                }
+
+                distances[next.CellIndex] = initialDistance;
+                frontier.Enqueue(
+                    next.CellIndex,
+                    (initialDistance, next.GridY, next.GridX, sequence++));
+            }
+
+            while (frontier.Count > 0)
+            {
+                frontier.TryDequeue(
+                    out int currentIndex,
+                    out (float Distance, int GridY, int GridX, long Sequence) currentPriority);
+                if (currentPriority.Distance != distances[currentIndex])
+                {
+                    continue;
+                }
+
+                float currentDistance = distances[currentIndex];
+                int neighborEnd = _neighborTopology.Offsets[currentIndex + 1];
+                for (int neighborIndex = _neighborTopology.Offsets[currentIndex]; neighborIndex < neighborEnd; neighborIndex++)
+                {
+                    NeighborSlot next = _neighborTopology.Neighbors[neighborIndex];
+                    float candidateDistance = currentDistance + next.GeometricDistanceMeters;
+                    if (candidateDistance >= distances[next.CellIndex])
+                    {
+                        continue;
+                    }
+
+                    distances[next.CellIndex] = candidateDistance;
+                    frontier.Enqueue(
+                        next.CellIndex,
+                        (candidateDistance, next.GridY, next.GridX, sequence++));
+                }
+            }
+
+            return new GeometricDistanceField(this, originPosition, originIndex, distances);
+        }
+
         private PrototypePathPlan MaterializePath(
             Vector3 startPosition,
             Vector3 destinationPosition,
@@ -357,7 +419,15 @@ namespace Societies.Simulation
                         }
 
                         float stepDistance = isDiagonal ? 1.4142135f : 1.0f;
-                        neighbors.Add(new NeighborSlot(nextIndex, nextX, nextY, stepDistance));
+                        float geometricDistanceMeters = HorizontalDistance(
+                            cells[currentIndex].WorldPosition,
+                            cells[nextIndex].WorldPosition);
+                        neighbors.Add(new NeighborSlot(
+                            nextIndex,
+                            nextX,
+                            nextY,
+                            stepDistance,
+                            geometricDistanceMeters));
                     }
                 }
             }
@@ -505,7 +575,59 @@ namespace Societies.Simulation
             int CellIndex,
             int GridX,
             int GridY,
-            float StepDistance);
+            float StepDistance,
+            float GeometricDistanceMeters);
+
+        public sealed class GeometricDistanceField
+        {
+            private readonly PrototypeNavigationGrid _grid;
+            private readonly Vector3 _originPosition;
+            private readonly int _originIndex;
+            private readonly float[] _distances;
+
+            internal GeometricDistanceField(
+                PrototypeNavigationGrid grid,
+                Vector3 originPosition,
+                int originIndex,
+                float[] distances)
+            {
+                _grid = grid;
+                _originPosition = originPosition;
+                _originIndex = originIndex;
+                _distances = distances;
+            }
+
+            public bool TryGetExactEndpointDistanceLowerBound(
+                Vector3 originPosition,
+                Vector3 destinationPosition,
+                out float distanceMeters)
+            {
+                TerrainCell originCell = _grid._worldMap.GetNearestCell(originPosition);
+                TerrainCell destinationCell = _grid._worldMap.GetNearestCell(destinationPosition);
+                int originIndex = _grid.ToUncheckedIndex(originCell.GridX, originCell.GridY);
+                int destinationIndex = _grid.ToUncheckedIndex(destinationCell.GridX, destinationCell.GridY);
+
+                if (originPosition != _originPosition ||
+                    originIndex != _originIndex ||
+                    !_grid.IsWalkable(originCell.GridX, originCell.GridY) ||
+                    !_grid.IsWalkable(destinationCell.GridX, destinationCell.GridY) ||
+                    !float.IsFinite(_distances[destinationIndex]))
+                {
+                    distanceMeters = 0.0f;
+                    return false;
+                }
+
+                if (destinationIndex == _originIndex)
+                {
+                    distanceMeters = HorizontalDistance(originPosition, destinationPosition);
+                    return true;
+                }
+
+                distanceMeters = _distances[destinationIndex] +
+                    HorizontalDistance(destinationCell.WorldPosition, destinationPosition);
+                return true;
+            }
+        }
 
         private static float HorizontalDistance(Vector3 a, Vector3 b)
         {
