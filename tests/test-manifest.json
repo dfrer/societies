@@ -1,15 +1,15 @@
 {
   "schemaVersion": 3,
-  "updatedUtc": "2026-07-14T03:21:44.9698482Z",
+  "updatedUtc": "2026-07-14T21:47:09.2531417Z",
   "required": {
     "dotnet": {
       "project": "tests/Societies.Core.Tests/Societies.Core.Tests.csproj",
       "command": "dotnet test tests/Societies.Core.Tests/Societies.Core.Tests.csproj --configuration Release",
-      "expectedTestCount": 198,
+      "expectedTestCount": 211,
       "tiers": {
         "fast": {
-          "expectedTestCount": 106,
-          "filter": "FullyQualifiedName!~PrototypeRuntimeSessionTests&FullyQualifiedName!~PrototypeSettlementSimulationTests&FullyQualifiedName!~SettlementDiagnosticsTests&FullyQualifiedName!~WorkOrderGenerationDiagnosticsTests&FullyQualifiedName!~OrderSelectionTests&FullyQualifiedName!~ExtractionPlanningTests&FullyQualifiedName!~NavigationRepresentationTests&FullyQualifiedName!~RouteDistanceModeDifferentialTests"
+          "expectedTestCount": 118,
+          "filter": "FullyQualifiedName!~PrototypeRuntimeSessionTests&FullyQualifiedName!~PrototypeSettlementSimulationTests&FullyQualifiedName!~SettlementDiagnosticsTests&FullyQualifiedName!~WorkOrderGenerationDiagnosticsTests&FullyQualifiedName!~OrderSelectionTests&FullyQualifiedName!~ExtractionPlanningTests&FullyQualifiedName!~NavigationRepresentationTests&FullyQualifiedName!~RouteDistanceModeDifferentialTests&FullyQualifiedName!~PrototypeCrisisReferenceTraceTests"
         },
         "integration": {
           "expectedTestCount": 11,
@@ -19,14 +19,15 @@
           ]
         },
         "soak": {
-          "expectedTestCount": 81,
+          "expectedTestCount": 82,
           "classes": [
             "Societies.Core.Tests.PrototypeRuntimeSessionTests",
             "Societies.Core.Tests.PrototypeSettlementSimulationTests",
             "Societies.Core.Tests.OrderSelectionTests",
             "Societies.Core.Tests.ExtractionPlanningTests",
             "Societies.Core.Tests.NavigationRepresentationTests",
-            "Societies.Core.Tests.RouteDistanceModeDifferentialTests"
+            "Societies.Core.Tests.RouteDistanceModeDifferentialTests",
+            "Societies.Core.Tests.PrototypeCrisisReferenceTraceTests"
           ]
         }
       }
@@ -193,12 +194,14 @@
       "postW106PerformanceSafetyPassed": true,
       "week1HardGatePassed": true,
       "contractedWeek2ScopeAllowed": true,
-      "note": "The editor route remains Debug characterization. The Windows ExportRelease route is validated from clean commit acf634f. Cache-mode evidence from 5444cc3 proves the short mode contracts. W1-05 clean Release evidence from 227a758 proves exact selector equivalence and an 85.414 percent query reduction. W1-05b characterizes the remaining failure as cache-miss-driven exact A-star fanout. W1-05c adds exact bounded extraction planning and a byte-equivalent indexed A-star representation. W1-05d adds exact topology-only shared-frontier bounds. W1-05e adds bit-exact cached-distance replay for positive general-cache hits and schema-v6 paired evidence while leaving runtime CSV v4. W1-05f adds strict whole-resource-class omission with virtual-count preservation. W1-06 adds the session-owned stable-ID resource ledger, command-result harvesting, strict v5 migration/v6 restore, and exact checkpoint/resume. Full validation passes 198 required .NET tests and 16 Godot tests. The clean matrix from 8300574 passes 14 of 14 contracts and 354 of 354 hashes; every reference, soak, maximum, bootstrap, and forced-invalidation hard safety limit passes. The formal budget remains target_missed and 24-citizen stress remains characterization-red. The Week 1 hard gate is green and only the contracted Week 2 scope is allowed."
+      "emptyStoresContractEvidenceFile": "planning/active/evidence/v3-w2-01-empty-stores-contract-validation.json",
+      "emptyStoresContractStatus": "validated",
+      "note": "The editor route remains Debug characterization. The Windows ExportRelease route is validated from clean commit acf634f. Cache-mode evidence from 5444cc3 proves the short mode contracts. W1-05 clean Release evidence from 227a758 proves exact selector equivalence and an 85.414 percent query reduction. W1-05b characterizes the remaining failure as cache-miss-driven exact A-star fanout. W1-05c adds exact bounded extraction planning and a byte-equivalent indexed A-star representation. W1-05d adds exact topology-only shared-frontier bounds. W1-05e adds bit-exact cached-distance replay for positive general-cache hits and schema-v6 paired evidence while leaving runtime CSV v4. W1-05f adds strict whole-resource-class omission with virtual-count preservation. W1-06 adds the session-owned stable-ID resource ledger, command-result harvesting, strict v5 migration/v6 restore, and exact checkpoint/resume. W2-01 adds the catalog-owned empty_stores contract and session-owned pure crisis evaluator without changing schema v6 or adding UI, contributions, directives, or terminal events. Full validation passes 211 required .NET tests and 16 Godot tests. The clean matrix from 8300574 remains the latest performance authority: all 14 contracts and 354 hashes pass, the formal budget remains target_missed, and 24-citizen stress remains characterization-red. The Week 1 hard gate is green and only the contracted Week 2 scope is allowed."
     }
   },
   "history": {
     "preSyncCommit": "c58e3de",
     "preSyncDotnetTestCount": 64,
-      "note": "The synchronized master adds 12 PrototypeMetricsTracker tests and 3 WorkOrderGenerationDiagnostics tests for a historical 79-test floor. W1-03b adds three cache-probe contract tests, W1-03c adds five natural-invalidation progression cases, W1-04 adds seven navigation, unreachable-assignment, and legacy-resume correctness cases, W1-05 adds nine exact-selector contract and 300-tick differential cases, the extraction-planning slice adds 16 exact-bound, integration, and 300-tick differential cases, and the indexed A-star slices add 16 exact-representation, reuse, wrap, concurrency, bounds, topology, and multiplier-version cases. The shared-frontier slice adds eight geometric lower-bound cases across shipped scenarios, exact endpoints, blocked/disconnected topology, built-path versions, non-binary cell sizes, and origin identity. The cached-distance slice adds nine bit-exact replay cases, four 300-tick mode differentials, and two runtime forwarding cases. The bounded work-order frontier slice adds eleven strict-cutoff, call-site fallback/cache, virtual-count, unreachable, and differential assertions. W1-06 adds thirteen stable-ID ledger, command-result, migration, malformed-state, exact checkpoint/resume, authority, summary, navigation-version, and cached-projection assertions. The current manifest declares 198 required .NET tests."
+      "note": "The synchronized master adds 12 PrototypeMetricsTracker tests and 3 WorkOrderGenerationDiagnostics tests for a historical 79-test floor. W1-03b adds three cache-probe contract tests, W1-03c adds five natural-invalidation progression cases, W1-04 adds seven navigation, unreachable-assignment, and legacy-resume correctness cases, W1-05 adds nine exact-selector contract and 300-tick differential cases, the extraction-planning slice adds 16 exact-bound, integration, and 300-tick differential cases, and the indexed A-star slices add 16 exact-representation, reuse, wrap, concurrency, bounds, topology, and multiplier-version cases. The shared-frontier slice adds eight geometric lower-bound cases across shipped scenarios, exact endpoints, blocked/disconnected topology, built-path versions, non-binary cell sizes, and origin identity. The cached-distance slice adds nine bit-exact replay cases, four 300-tick mode differentials, and two runtime forwarding cases. The bounded work-order frontier slice adds eleven strict-cutoff, call-site fallback/cache, virtual-count, unreachable, and differential assertions. W1-06 adds thirteen stable-ID ledger, command-result, migration, malformed-state, exact checkpoint/resume, authority, summary, navigation-version, and cached-projection assertions. W2-01 adds twelve fast crisis-contract cases plus one soak reference trace for catalog validation, deterministic initialization, holds, deadline, pause/cadence, checkpoint/resume, real-session no-input repeatability, a candidate-success contract envelope, and legacy defaults. The current manifest declares 211 required .NET tests."
   }
 }

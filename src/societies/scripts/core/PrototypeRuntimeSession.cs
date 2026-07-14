@@ -19,6 +19,7 @@ namespace Societies.Core
         private PrototypeSettlementSimulation? _settlementSimulation;
         private WorldGenerationResult? _world;
         private PrototypeResourceLedger? _resourceLedger;
+        private PrototypeCrisisState? _crisisState;
         private int _simulationSeed;
         private readonly PrototypeOrderSelectionMode _orderSelectionMode;
         private readonly PrototypeExtractionPlanningMode _extractionPlanningMode;
@@ -52,6 +53,10 @@ namespace Societies.Core
         public PrototypeEventLog EventLog { get; }
 
         public PrototypeMetricsTracker MetricsTracker { get; }
+
+        public PrototypeCrisisState? Crisis => _crisisState;
+
+        public bool SupportsRuntimeSnapshotPersistence => Scenario.Crisis == null;
 
         public long SimulationTick { get; private set; }
 
@@ -218,6 +223,7 @@ namespace Societies.Core
                 orderSelectionMode: _orderSelectionMode,
                 extractionPlanningMode: _extractionPlanningMode,
                 routeDistanceMode: _routeDistanceMode);
+            _crisisState = Scenario.Crisis == null ? null : new PrototypeCrisisState(Scenario.Crisis);
             SyncSettlementViews();
         }
 
@@ -248,8 +254,17 @@ namespace Societies.Core
         public PrototypeRuntimeTickResult Advance(
             float tickIntervalSeconds,
             float dayLengthSeconds,
-            RuntimeMetricsCollector? runtimeMetrics = null)
+            RuntimeMetricsCollector? runtimeMetrics = null,
+            bool simulationPaused = false)
         {
+            if (simulationPaused)
+            {
+                return new PrototypeRuntimeTickResult(
+                    new PrototypeSettlementTickResult(),
+                    System.Array.Empty<PrototypeHarvestResult>(),
+                    false);
+            }
+
             SimulationTick++;
             CurrentHour = AdvanceHour(CurrentHour, tickIntervalSeconds, dayLengthSeconds);
 
@@ -264,6 +279,16 @@ namespace Societies.Core
 
             RecordSettlementEvents(settlementResult.Events);
             SyncSettlementViews();
+            if (_crisisState != null && _settlementSimulation != null)
+            {
+                _crisisState.Advance(new PrototypeCrisisObservation(
+                    _settlementSimulation.Workers.Count,
+                    _settlementSimulation.CapableCitizenCount,
+                    _settlementSimulation.MealCount,
+                    _settlementSimulation.HearthFuel,
+                    _settlementSimulation.BedCoveragePercent));
+            }
+
             return new PrototypeRuntimeTickResult(
                 settlementResult,
                 harvestResults,
@@ -422,6 +447,12 @@ namespace Societies.Core
 
         public PrototypeRuntimeSnapshot CaptureSnapshot(Vector3 playerPosition)
         {
+            if (!SupportsRuntimeSnapshotPersistence)
+            {
+                throw new InvalidOperationException(
+                    "Runtime snapshot persistence for crisis scenarios is deferred until schema v7.");
+            }
+
             List<PrototypeWorkerSnapshot> workers = Workers
                 .OrderBy(worker => worker.WorkerId)
                 .Select(worker => new PrototypeWorkerSnapshot
@@ -492,6 +523,12 @@ namespace Societies.Core
 
         public void ApplySnapshot(PrototypeRuntimeSnapshot snapshot)
         {
+            if (!SupportsRuntimeSnapshotPersistence)
+            {
+                throw new InvalidDataException(
+                    "Runtime snapshot persistence for crisis scenarios is deferred until schema v7.");
+            }
+
             ValidateSnapshot(snapshot);
             if (!string.Equals(snapshot.ScenarioId, Scenario.Id, System.StringComparison.Ordinal) ||
                 snapshot.SimulationTick < 0 || !float.IsFinite(snapshot.CurrentHour) || !float.IsFinite(snapshot.TimeUntilNextWeatherShift))

@@ -65,15 +65,19 @@ namespace Societies.Simulation
             PrototypeWeather weather,
             PrototypeSettlementTickResult result)
         {
+            float needRateMultiplier = _scenario.Crisis?.CitizenNeedRateMultiplier ?? 1.0f;
             if (citizen.Phase == PrototypeWorkerPhase.Incapacitated)
             {
-                citizen.Needs.Nutrition = Mathf.Max(0.0f, citizen.Needs.Nutrition - 0.06f);
-                citizen.Needs.Fatigue = Mathf.Min(100.0f, citizen.Needs.Fatigue + 0.02f);
+                citizen.Needs.Nutrition = Mathf.Max(0.0f, citizen.Needs.Nutrition - (0.06f * needRateMultiplier));
+                citizen.Needs.Fatigue = Mathf.Min(100.0f, citizen.Needs.Fatigue + (0.02f * needRateMultiplier));
                 return;
             }
 
-            citizen.Needs.Nutrition = Mathf.Max(0.0f, citizen.Needs.Nutrition - GetNutritionDecay(citizen.Phase));
-            citizen.Needs.Fatigue = Mathf.Clamp(citizen.Needs.Fatigue + GetFatigueDelta(citizen.Phase, currentHour, weather), 0.0f, 100.0f);
+            citizen.Needs.Nutrition = Mathf.Max(0.0f, citizen.Needs.Nutrition - (GetNutritionDecay(citizen.Phase) * needRateMultiplier));
+            citizen.Needs.Fatigue = Mathf.Clamp(
+                citizen.Needs.Fatigue + (GetFatigueDelta(citizen.Phase, currentHour, weather) * needRateMultiplier),
+                0.0f,
+                100.0f);
 
             if (citizen.Needs.IsNutritionCritical && _centralDepot.GetCount("meals") == 0 && _centralDepot.GetCount("berries") == 0)
             {

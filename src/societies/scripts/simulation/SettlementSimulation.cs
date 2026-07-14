@@ -267,6 +267,10 @@ namespace Societies.Simulation
 
         public int HearthFuel => GetStructure("central_hearth_1")?.HearthFuel ?? 0;
 
+        public int MealCount => _centralDepot.GetCount("meals");
+
+        public int CapableCitizenCount => _citizens.Count(citizen => citizen.Phase != PrototypeWorkerPhase.Incapacitated);
+
         public float AverageRouteLengthMeters => _completedRouteCount <= 0
             ? 0.0f
             : _completedRouteDistanceMeters / _completedRouteCount;

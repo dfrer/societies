@@ -180,6 +180,82 @@
       ]
     },
     {
+      "id": "empty_stores",
+      "displayName": "Empty Stores",
+      "expectedOutcome": "collapsed",
+      "simulationSeed": 1701,
+      "initialTrees": 36,
+      "initialRocks": 20,
+      "initialBerryBushes": 18,
+      "initialClayDeposits": 8,
+      "initialReedBeds": 14,
+      "initialCitizens": 12,
+      "stressPopulationOverride": 0,
+      "worldSize": 500.0,
+      "worldGen": {
+        "cellSizeMeters": 2.0,
+        "heightAmplitude": 9.0,
+        "ridgeStrength": 0.18,
+        "wetnessBias": -0.08,
+        "forestCoverage": 0.30,
+        "rockyCoverage": 0.12,
+        "maxSettlementPlacementAttempts": 12
+      },
+      "resourceClusters": {
+        "woodClusters": 7,
+        "stoneClusters": 4,
+        "berryClusters": 6,
+        "clayClusters": 3,
+        "reedClusters": 5
+      },
+      "pathBuildPolicy": {
+        "corridorBudget": 3,
+        "pauseDuringCriticalShortage": true
+      },
+      "remoteDepotPolicy": {
+        "activationDistanceMeters": 55.0,
+        "placementRadiusMeters": 12.0
+      },
+      "startingStock": {
+        "logs": 8,
+        "stone": 6,
+        "berries": 2,
+        "firewood": 2,
+        "meals": 2,
+        "timber": 2,
+        "thatch": 4
+      },
+      "initialHearthFuel": 1,
+      "startingStructures": [
+        "central_hearth",
+        "central_depot",
+        "cookfire",
+        "wood_yard",
+        "hut",
+        "hut"
+      ],
+      "startingBuildQueue": [
+        "hut",
+        "drying_rack",
+        "storehouse",
+        "kiln"
+      ],
+      "crisis": {
+        "id": "empty_stores",
+        "displayName": "Empty Stores",
+        "ticksPerSecond": 20,
+        "deadlineTicks": 21600,
+        "requiredCapableCitizens": 9,
+        "requiredMeals": 6,
+        "requiredHearthFuel": 4,
+        "requiredBedCoveragePercent": 50,
+        "stableHoldTicks": 900,
+        "collapseIncapacitatedCitizens": 6,
+        "collapseHoldTicks": 200,
+        "citizenNeedRateMultiplier": 0.0875
+      }
+    },
+    {
       "id": "wetland_builder",
       "displayName": "Wetland Builder",
       "expectedOutcome": "strained",
