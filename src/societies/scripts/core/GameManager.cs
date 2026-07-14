@@ -15,7 +15,7 @@ namespace Societies.Core
     /// </summary>
     public partial class GameManager : Node
     {
-        private const double TickIntervalSeconds = 1.0 / 20.0;
+        private const double TickIntervalSeconds = PrototypeSimulationTime.TickIntervalSeconds;
         private const int MaxTicksPerFrame = 12;
         private const double BacklogWarningCooldownSeconds = 5.0;
         private const string RuntimeMetricsEnvironmentVariable = "SOCIETIES_PERF_METRICS";
@@ -423,6 +423,13 @@ namespace Societies.Core
         {
             if (_runtimeSession == null || _artifactManager == null || _scenePresenter == null)
             {
+                return string.Empty;
+            }
+
+            if (!_runtimeSession.SupportsRuntimeSnapshotPersistence)
+            {
+                const string statusText = "Crisis snapshot persistence is deferred until schema v7";
+                _hud?.SetStatusText(statusText);
                 return string.Empty;
             }
 

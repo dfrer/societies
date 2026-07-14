@@ -2,6 +2,13 @@ using System;
 
 namespace Societies.Core
 {
+    public static class PrototypeSimulationTime
+    {
+        public const int TicksPerSecond = 20;
+
+        public const double TickIntervalSeconds = 1.0 / TicksPerSecond;
+    }
+
     /// <summary>
     /// Converts elapsed frame time into a bounded number of fixed simulation steps while
     /// retaining any unprocessed backlog for later frames.

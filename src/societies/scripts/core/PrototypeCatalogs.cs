@@ -221,6 +221,11 @@ namespace Societies.Core
                     throw new InvalidOperationException($"Scenario '{scenario.Id}' contains invalid starting stock values.");
                 }
 
+                if (scenario.InitialHearthFuel < 0)
+                {
+                    throw new InvalidOperationException($"Scenario '{scenario.Id}' contains invalid starting hearth fuel.");
+                }
+
                 if (scenario.PathBuildPolicy.CorridorBudget <= 0)
                 {
                     throw new InvalidOperationException($"Scenario '{scenario.Id}' must define a positive corridor budget.");
@@ -231,6 +236,53 @@ namespace Societies.Core
                 {
                     throw new InvalidOperationException($"Scenario '{scenario.Id}' must define positive remote depot policy distances.");
                 }
+
+                ValidateCrisis(scenario);
+            }
+        }
+
+        private static void ValidateCrisis(PrototypeScenarioDefinition scenario)
+        {
+            PrototypeCrisisDefinition? crisis = scenario.Crisis;
+            if (crisis == null)
+            {
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(crisis.Id) || string.IsNullOrWhiteSpace(crisis.DisplayName))
+            {
+                throw new InvalidOperationException($"Scenario '{scenario.Id}' crisis must define an id and display name.");
+            }
+
+            if (crisis.TicksPerSecond != PrototypeSimulationTime.TicksPerSecond)
+            {
+                throw new InvalidOperationException(
+                    $"Scenario '{scenario.Id}' crisis tick rate must match the {PrototypeSimulationTime.TicksPerSecond} Hz simulation clock.");
+            }
+
+            if (crisis.DeadlineTicks <= 0 ||
+                crisis.StableHoldTicks <= 0 || crisis.CollapseHoldTicks <= 0)
+            {
+                throw new InvalidOperationException($"Scenario '{scenario.Id}' crisis must define positive tick durations.");
+            }
+
+            if (crisis.StableHoldTicks >= crisis.DeadlineTicks || crisis.CollapseHoldTicks >= crisis.DeadlineTicks)
+            {
+                throw new InvalidOperationException($"Scenario '{scenario.Id}' crisis hold durations must be shorter than its deadline.");
+            }
+
+            if (crisis.RequiredCapableCitizens <= 0 || crisis.RequiredCapableCitizens > scenario.InitialCitizens ||
+                crisis.CollapseIncapacitatedCitizens <= 0 || crisis.CollapseIncapacitatedCitizens > scenario.InitialCitizens)
+            {
+                throw new InvalidOperationException($"Scenario '{scenario.Id}' crisis citizen thresholds are outside its population.");
+            }
+
+            if (crisis.RequiredMeals < 0 || crisis.RequiredHearthFuel < 0 ||
+                crisis.RequiredBedCoveragePercent < 0 || crisis.RequiredBedCoveragePercent > 100 ||
+                !float.IsFinite(crisis.CitizenNeedRateMultiplier) || crisis.CitizenNeedRateMultiplier <= 0.0f ||
+                crisis.CitizenNeedRateMultiplier > 1.0f)
+            {
+                throw new InvalidOperationException($"Scenario '{scenario.Id}' crisis stability thresholds are invalid.");
             }
         }
     }
@@ -275,11 +327,42 @@ namespace Societies.Core
 
         public Dictionary<string, int> StartingStock { get; set; } = new();
 
+        public int InitialHearthFuel { get; set; } = 2;
+
         public List<string> StartingStructures { get; set; } = new();
 
         public List<string> StartingBuildQueue { get; set; } = new();
 
         public int StressPopulationOverride { get; set; }
+
+        public PrototypeCrisisDefinition? Crisis { get; set; }
+    }
+
+    public sealed class PrototypeCrisisDefinition
+    {
+        public string Id { get; set; } = string.Empty;
+
+        public string DisplayName { get; set; } = string.Empty;
+
+        public int TicksPerSecond { get; set; } = PrototypeSimulationTime.TicksPerSecond;
+
+        public int DeadlineTicks { get; set; }
+
+        public int RequiredCapableCitizens { get; set; }
+
+        public int RequiredMeals { get; set; }
+
+        public int RequiredHearthFuel { get; set; }
+
+        public int RequiredBedCoveragePercent { get; set; }
+
+        public int StableHoldTicks { get; set; }
+
+        public int CollapseIncapacitatedCitizens { get; set; }
+
+        public int CollapseHoldTicks { get; set; }
+
+        public float CitizenNeedRateMultiplier { get; set; } = 1.0f;
     }
 
     public sealed class PathBuildPolicyDefinition

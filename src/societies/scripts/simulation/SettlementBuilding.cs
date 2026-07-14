@@ -157,7 +157,7 @@ namespace Societies.Simulation
 
             if (structureKindId == "central_hearth")
             {
-                structure.HearthFuel = 2;
+                structure.HearthFuel = _scenario.InitialHearthFuel;
             }
 
             return structure;
