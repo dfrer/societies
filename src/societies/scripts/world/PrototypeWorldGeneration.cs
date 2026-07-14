@@ -753,11 +753,22 @@ namespace Societies.Core
             AppendResourceSpawns("clay", scenario.InitialClayDeposits, clusters.Where(cluster => cluster.ResourceId == "clay").ToList(), worldMap, worldSeed, occupiedCells, spawns);
             AppendResourceSpawns("reeds", scenario.InitialReedBeds, clusters.Where(cluster => cluster.ResourceId == "reeds").ToList(), worldMap, worldSeed, occupiedCells, spawns);
 
-            return spawns
+            List<PrototypeResourceSpawn> sorted = spawns
                 .OrderBy(spawn => spawn.ResourceId, StringComparer.Ordinal)
                 .ThenBy(spawn => spawn.Position.X)
                 .ThenBy(spawn => spawn.Position.Z)
                 .ToList();
+
+            Dictionary<string, int> ordinals = new(StringComparer.Ordinal);
+            for (int i = 0; i < sorted.Count; i++)
+            {
+                PrototypeResourceSpawn spawn = sorted[i];
+                int ordinal = ordinals.TryGetValue(spawn.ResourceId, out int current) ? current + 1 : 1;
+                ordinals[spawn.ResourceId] = ordinal;
+                sorted[i] = spawn with { SiteId = $"{spawn.ResourceId}_{ordinal}" };
+            }
+
+            return sorted;
         }
 
         private static void AppendResourceSpawns(

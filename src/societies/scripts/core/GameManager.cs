@@ -62,6 +62,7 @@ namespace Societies.Core
         private CameraMode _cameraMode = CameraMode.Player;
         private TerrainOverlayMode _overlayMode = TerrainOverlayMode.None;
         private PrototypeWorldSummary? _lastWorldSummary;
+        private long _lastPresentedResourceRevision = -1;
         private int _selectedCitizenInspectionIndex;
         private int _selectedStructureInspectionIndex;
         private bool _hasPerformanceStartupOverride;
@@ -415,9 +416,7 @@ namespace Societies.Core
                 return new PrototypeRuntimeSnapshot();
             }
 
-            return _runtimeSession.CaptureSnapshot(
-                _player?.Position ?? Vector3.Zero,
-                _scenePresenter.CaptureResourceSnapshots());
+            return _runtimeSession.CaptureSnapshot(_player?.Position ?? Vector3.Zero);
         }
 
         public string SaveSnapshotToDisk()
@@ -432,7 +431,7 @@ namespace Societies.Core
 
             PrototypeRuntimeSnapshot snapshot = CaptureSnapshot();
             CaptureMetricsSnapshot();
-            PrototypeWorldSummary worldSummary = PrototypeWorldSummaryBuilder.Build(_runtimeSession, _terrain, snapshot.Resources);
+            PrototypeWorldSummary worldSummary = PrototypeWorldSummaryBuilder.Build(_runtimeSession, _terrain, _runtimeSession.ActiveResourceSnapshots);
             _lastWorldSummary = worldSummary;
 
             string snapshotPath = _artifactManager.SaveArtifacts(_runtimeSession, snapshot, worldSummary, _runtimeMetrics);
@@ -454,15 +453,16 @@ namespace Societies.Core
 
             PrototypeLoadedArtifacts artifacts = loadedArtifacts.Value;
             PrototypeScenarioDefinition scenario = ResolveScenarioDefinition(artifacts.Snapshot.ScenarioId);
-            CreateRuntimeSession(scenario);
-
+            PrototypeRuntimeSession candidateSession = BuildRuntimeSession(scenario);
+            candidateSession.ApplySnapshot(artifacts.Snapshot);
+            candidateSession.RestoreArtifacts(artifacts.EventLog, artifacts.RunSummary);
+            _scenario = scenario;
+            ApplyScenarioDefaults(scenario);
+            _runtimeSession = candidateSession;
             ResetFrameScheduler();
-            _runtimeSession!.ApplySnapshot(artifacts.Snapshot);
-            _runtimeSession.RestoreArtifacts(artifacts.EventLog, artifacts.RunSummary);
 
             _scenePresenter?.ResetDynamicNodes();
             ApplyWorldToScene();
-            _scenePresenter?.ReplaceResourceNodes(artifacts.Snapshot.Resources);
             ApplyRuntimeStateToScene();
             _scenePresenter?.SyncWorkers(_runtimeSession.Workers);
             UpdateSettlementPresentationFromSession();
@@ -475,7 +475,7 @@ namespace Societies.Core
 
             BindPlayerToRuntime();
             CaptureMetricsSnapshot();
-            _lastWorldSummary = PrototypeWorldSummaryBuilder.Build(_runtimeSession, _terrain, artifacts.Snapshot.Resources);
+            _lastWorldSummary = PrototypeWorldSummaryBuilder.Build(_runtimeSession, _terrain, _runtimeSession.ActiveResourceSnapshots);
             RecordEvent(PrototypeEventTypes.SnapshotLoaded, $"Loaded snapshot from {Path.GetFileName(_artifactManager.GetArtifactPaths().LegacySnapshotPath)}");
             NotifyStatus($"Loaded snapshot from {Path.GetFileName(_artifactManager.GetArtifactPaths().LegacySnapshotPath)}");
             return true;
@@ -627,8 +627,8 @@ namespace Societies.Core
                 _player.Position = _terrain.GetPlayerSpawnPoint();
             }
 
-            _player.Harvested -= OnPlayerHarvested;
-            _player.Harvested += OnPlayerHarvested;
+            _player.HarvestRequested -= OnPlayerHarvestRequested;
+            _player.HarvestRequested += OnPlayerHarvestRequested;
             _player.Terrain = _terrain;
             _player.SetControlEnabled(_cameraMode == CameraMode.Player);
 
@@ -668,7 +668,7 @@ namespace Societies.Core
 
             _scenePresenter.ResetDynamicNodes();
             ApplyWorldToScene();
-            _lastWorldSummary = PrototypeWorldSummaryBuilder.Build(_runtimeSession, _terrain, _scenePresenter.CaptureResourceSnapshots());
+            _lastWorldSummary = PrototypeWorldSummaryBuilder.Build(_runtimeSession, _terrain, _runtimeSession.ActiveResourceSnapshots);
 
             RecordEvent(PrototypeEventTypes.WorldSeeded, $"Spawned world for scenario {_runtimeSession.Scenario.Id} using world seed {_runtimeSession.WorldSeed}");
 
@@ -709,6 +709,12 @@ namespace Societies.Core
                 _scenePresenter?.UpdateTerrain(_terrain);
             }
 
+            _runtimeSession = BuildRuntimeSession(scenario);
+            BindPlayerToRuntime();
+        }
+
+        private PrototypeRuntimeSession BuildRuntimeSession(PrototypeScenarioDefinition scenario)
+        {
             PrototypeOrderSelectionMode orderSelectionMode = _hasPerformanceStartupOverride
                 ? _performanceOrderSelectionModeOverride
                 : PrototypeOrderSelectionMode.ExactBranchAndBound;
@@ -718,20 +724,18 @@ namespace Societies.Core
             PrototypeRouteDistanceMode routeDistanceMode = _hasPerformanceStartupOverride
                 ? _performanceRouteDistanceModeOverride
                 : PrototypeRouteDistanceMode.CachedDistanceOnly;
-            _runtimeSession = new PrototypeRuntimeSession(
+            return new PrototypeRuntimeSession(
                 scenario,
                 _catalogs?.RoleQuotas.Roles,
                 orderSelectionMode,
                 extractionPlanningMode,
                 routeDistanceMode);
-            BindPlayerToRuntime();
         }
 
         private void BindPlayerToRuntime()
         {
             if (_player != null)
             {
-                _player.Inventory = _runtimeSession?.Inventory ?? _fallbackInventory;
                 _player.Terrain = _terrain;
                 _player.SetControlEnabled(_cameraMode == CameraMode.Player);
             }
@@ -803,13 +807,11 @@ namespace Societies.Core
             }
 
             PrototypeRuntimeTickResult tickResult;
-            IReadOnlyList<PrototypeResourceSiteState> resourceSites = _scenePresenter.CaptureResourceSites();
             if (metrics == null)
             {
                 tickResult = _runtimeSession.Advance(
                     (float)TickIntervalSeconds,
-                    _environmentController.DayLengthSeconds,
-                    resourceSites);
+                    _environmentController.DayLengthSeconds);
             }
             else
             {
@@ -819,7 +821,6 @@ namespace Societies.Core
                     tickResult = _runtimeSession.Advance(
                         (float)TickIntervalSeconds,
                         _environmentController.DayLengthSeconds,
-                        resourceSites,
                         metrics);
                 }
                 finally
@@ -828,33 +829,11 @@ namespace Societies.Core
                 }
             }
 
-            RuntimeMetricsPhaseToken harvestPhase = metrics?.BeginPhase(RuntimeMetricsPhase.HarvestApply) ?? default;
-            try
-            {
-                foreach (PrototypeHarvestRequest request in tickResult.SettlementResult.HarvestRequests)
-                {
-                    if (_scenePresenter.ApplyHarvestRequest(request, out string itemId, out int harvestedAmount))
-                    {
-                        _runtimeSession.RecordAiHarvestSucceeded(request.WorkerDisplayName, itemId, harvestedAmount);
-                    }
-                    else
-                    {
-                        _runtimeSession.OnHarvestFailed(request.WorkerId, request.WorkerDisplayName, request.ResourceId);
-                    }
-                }
-
-            }
-            finally
-            {
-                harvestPhase.Complete();
-            }
-
-            _runtimeSession.RecordSettlementEvents(tickResult.SettlementResult.Events);
-
             RuntimeMetricsPhaseToken scenePhase = metrics?.BeginPhase(RuntimeMetricsPhase.SceneSync) ?? default;
             try
             {
                 ApplyRuntimeStateToScene();
+                SyncResourcePresentationIfChanged();
                 _scenePresenter.SyncWorkers(_runtimeSession.Workers);
                 UpdateSettlementPresentationFromSession();
             }
@@ -934,12 +913,12 @@ namespace Societies.Core
 
         private void CaptureMetricsSnapshot()
         {
-            if (_runtimeSession == null || _scenePresenter == null)
+            if (_runtimeSession == null)
             {
                 return;
             }
 
-            _runtimeSession.CaptureMetrics(_scenePresenter.CaptureResourceSnapshots());
+            _runtimeSession.CaptureMetrics();
         }
 
         private void UpdateHud()
@@ -1006,6 +985,7 @@ namespace Societies.Core
             _terrain.ApplyWorld(_runtimeSession.World.WorldMap, _overlayMode);
             _scenePresenter.UpdateTerrain(_terrain);
             _scenePresenter.ApplyWorld(_runtimeSession.World);
+            SyncResourcePresentationIfChanged(force: true);
 
             if (_observerRig != null)
             {
@@ -1103,12 +1083,34 @@ namespace Societies.Core
             return _catalogs.Scenarios.ResolveDefault();
         }
 
-        private void OnPlayerHarvested(string itemId, int amount)
+        private void OnPlayerHarvestRequested(string siteId, int amount)
         {
-            string message = $"Harvested {InventoryComponent.FormatItemName(itemId)} x{amount}";
-            _hud?.SetStatusText(message);
-            _runtimeSession?.RecordPlayerHarvest(itemId, amount);
+            if (_runtimeSession == null || !_runtimeSession.TryHarvestForPlayer(siteId, amount, out string itemId, out int harvestedAmount))
+            {
+                _hud?.SetStatusText("Resource unavailable");
+                return;
+            }
+
+            SyncResourcePresentationIfChanged();
+            _hud?.SetStatusText($"Harvested {InventoryComponent.FormatItemName(itemId)} x{harvestedAmount}");
             UpdateHud();
+        }
+
+        private void SyncResourcePresentationIfChanged(bool force = false)
+        {
+            if (_runtimeSession == null || _scenePresenter == null)
+            {
+                return;
+            }
+
+            long revision = _runtimeSession.ResourceRevision;
+            if (!force && revision == _lastPresentedResourceRevision)
+            {
+                return;
+            }
+
+            _scenePresenter.SyncResources(_runtimeSession.ResourceSnapshots);
+            _lastPresentedResourceRevision = revision;
         }
 
         private static T GetOrCreateChild<T>(Node parent, string name) where T : Node, new()
@@ -1256,7 +1258,7 @@ namespace Societies.Core
 
             if (_player != null)
             {
-                _player.Harvested -= OnPlayerHarvested;
+                _player.HarvestRequested -= OnPlayerHarvestRequested;
             }
 
             Instance = null;

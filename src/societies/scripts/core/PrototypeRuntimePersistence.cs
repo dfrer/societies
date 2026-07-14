@@ -12,7 +12,7 @@ namespace Societies.Core
     /// </summary>
     public sealed class PrototypeRuntimeSnapshot
     {
-        public int SchemaVersion { get; set; } = 5;
+        public int SchemaVersion { get; set; } = 6;
 
         public string ScenarioId { get; set; } = string.Empty;
 
@@ -51,6 +51,8 @@ namespace Societies.Core
 
     public sealed class PrototypeResourceSnapshot
     {
+        public string SiteId { get; set; } = string.Empty;
+
         public string ResourceId { get; set; } = string.Empty;
 
         public int UnitsRemaining { get; set; }
@@ -178,7 +180,7 @@ namespace Societies.Core
 
     public sealed class PrototypeRunSummary
     {
-        public int SchemaVersion { get; set; } = 5;
+        public int SchemaVersion { get; set; } = 6;
 
         public string ScenarioId { get; set; } = string.Empty;
 
@@ -289,8 +291,20 @@ namespace Societies.Core
 
         public static PrototypeRuntimeSnapshot DeserializeSnapshot(string json)
         {
+            using JsonDocument document = JsonDocument.Parse(json);
+            if (!document.RootElement.TryGetProperty(nameof(PrototypeRuntimeSnapshot.SchemaVersion), out JsonElement schema) ||
+                schema.ValueKind != JsonValueKind.Number || !schema.TryGetInt32(out int schemaVersion))
+            {
+                throw new InvalidDataException("Runtime snapshot is missing an integral SchemaVersion.");
+            }
+
+            if (schemaVersion is not (5 or 6))
+            {
+                throw new InvalidDataException($"Unsupported runtime snapshot schema {schemaVersion}; expected 5 or 6.");
+            }
+
             PrototypeRuntimeSnapshot? snapshot = JsonSerializer.Deserialize<PrototypeRuntimeSnapshot>(json, JsonOptions);
-            return snapshot ?? new PrototypeRuntimeSnapshot();
+            return snapshot ?? throw new InvalidDataException("Runtime snapshot payload is null.");
         }
 
         public static string SerializeEventLog(PrototypeEventLog eventLog)

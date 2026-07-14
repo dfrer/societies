@@ -710,6 +710,21 @@ namespace Societies.Simulation
         int Amount,
         string ClusterId);
 
+    public readonly record struct PrototypeHarvestCommand(
+        string ActorId,
+        string SiteId,
+        string ResourceId,
+        int RequestedQuantity);
+
+    public readonly record struct PrototypeHarvestResult(
+        string ActorId,
+        string SiteId,
+        string ResourceId,
+        int RequestedQuantity,
+        int AppliedQuantity,
+        bool Succeeded,
+        string FailureReason);
+
     public readonly record struct PrototypeSettlementEvent(
         string EventType,
         string Message);
@@ -874,6 +889,8 @@ namespace Societies.Simulation
         public int HearthLitTicks { get; set; }
 
         public int TotalTicks { get; set; }
+
+        public int NavigationRulesVersion { get; set; } = 1;
 
         public string Classification { get; set; } = string.Empty;
 

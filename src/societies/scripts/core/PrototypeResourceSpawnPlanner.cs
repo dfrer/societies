@@ -75,5 +75,6 @@ namespace Societies.Core
         string ResourceId,
         Vector3 Position,
         int UnitsRemaining,
-        string ClusterId);
+        string ClusterId,
+        string SiteId = "");
 }

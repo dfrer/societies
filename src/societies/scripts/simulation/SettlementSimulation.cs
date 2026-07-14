@@ -483,6 +483,7 @@ namespace Societies.Simulation
                 SelectedBuildQueueIndex = _selectedBuildQueueIndex,
                 HearthLitTicks = _hearthLitTicks,
                 TotalTicks = _totalTicks,
+                NavigationRulesVersion = _navigationRulesVersion,
                 Classification = Classification.ToString().ToLowerInvariant(),
                 LogisticsMetrics = new PrototypeLogisticsMetricsState
                 {
@@ -497,7 +498,7 @@ namespace Societies.Simulation
                 }
             };
         }
-        public void LoadState(PrototypeSettlementSnapshot snapshot)
+        public void LoadState(PrototypeSettlementSnapshot snapshot, int? navigationRulesVersionOverride = null)
         {
             RestoreStore(_centralDepot, snapshot.CentralDepot);
             if (TryResolveWalkableInteractionPosition(_centralDepot.Position, out Vector3 centralDepotPosition))
@@ -645,6 +646,7 @@ namespace Societies.Simulation
             _selectedBuildQueueIndex = Mathf.Clamp(snapshot.SelectedBuildQueueIndex, 0, Math.Max(_buildQueue.Count - 1, 0));
             _hearthLitTicks = snapshot.HearthLitTicks;
             _totalTicks = snapshot.TotalTicks;
+            _navigationRulesVersion = navigationRulesVersionOverride ?? Math.Max(1, snapshot.NavigationRulesVersion);
             _completedRouteCount = snapshot.LogisticsMetrics.CompletedRouteCount;
             _completedRouteDistanceMeters = snapshot.LogisticsMetrics.TotalCompletedRouteDistanceMeters;
             _completedRouteTravelTicks = snapshot.LogisticsMetrics.TotalCompletedRouteTicks;
