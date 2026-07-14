@@ -1,0 +1,152 @@
+{
+  "schemaVersion": 1,
+  "capturedUtc": "2026-07-14T03:21:44.9698482Z",
+  "workItem": "V3-W1-06",
+  "status": "session_resource_ledger_validated_week1_hard_gate_passed",
+  "branch": "feature/v3-session-resource-ledger",
+  "baseCommit": "32104ef329ee9f03bde239ed71bbf3e0b5e23ddc",
+  "implementationCommit": "419ba69c2b0127ece83ed640f720338c0183362b",
+  "performanceCommit": "830057480e25be9a3fad83f1d2502046486ec9cc",
+  "architecture": {
+    "customNativeProfileSelectionAvailable": false,
+    "architectureReviewer": "generic_native_child_with_ultra_architect_behavioral_contract",
+    "implementationWorker": "generic_native_child_with_ultra_implementation_worker_behavioral_contract",
+    "finalReviewer": "generic_native_child_with_deep_reviewer_behavioral_contract",
+    "singleWriter": true,
+    "atomicBoundary": "resource identity, quantity authority, transactions, presentation, migration, validation, and schema separation land together"
+  },
+  "implementation": {
+    "resourceAuthority": "PrototypeRuntimeSession-owned pure C# PrototypeResourceLedger",
+    "stableSiteIds": "legacy-compatible per-resource ordinals generated from canonical world order",
+    "transactionOrdering": "each AI request applies and emits success or performs rollback before the next request",
+    "playerTransaction": "synchronous site-ID command validates amount, availability, and inventory overflow before one ledger and inventory mutation",
+    "presentation": "ResourceNode is a non-authoritative projection keyed by SiteId and synchronized only when ledger revision changes",
+    "snapshotSchemaVersion": 6,
+    "runSummarySchemaVersion": 6,
+    "performanceResultSchemaVersion": 6,
+    "runtimeMetricsCsvSchemaVersion": 4,
+    "worldSummarySchemaVersion": 3,
+    "v5Migration": "regenerate the complete world, initialize all sites depleted, then uniquely overlay legacy rows by resource, cluster, and exact position independent of serialized order",
+    "v6Restore": "requires the complete generated ledger and exact immutable metadata",
+    "prepareBeforeCommit": true,
+    "navigationVersionMigration": "v5 derives one plus built path segments; v6 must persist the same exact value",
+    "projectionOptimization": "canonical sites are sorted once and the immutable active-site projection is cached by successful-mutation revision"
+  },
+  "differentialValidation": {
+    "headlessTicksWithoutPresenterInput": 300,
+    "continuousTicks": 1000,
+    "checkpointTick": 500,
+    "finalSnapshotExact": true,
+    "eventLogExact": true,
+    "stableLegacyIdsCovered": ["logs_1", "logs_10", "logs_2"],
+    "omittedV5SiteRestoredAsDepleted": true,
+    "inFlightWorkerTargetPreserved": true,
+    "orderedContentionCovered": true,
+    "playerExactlyOnceCovered": true,
+    "failedCommandsDoNotMutate": true,
+    "failedRestoreDoesNotMutateLiveSession": true,
+    "malformedNullDuplicateNegativeNonFiniteUnknownAndFutureRejectionCovered": true,
+    "sceneAuthorityCallsRemoved": ["CaptureResourceSites", "ApplyHarvestRequest", "ResourceNode.TryHarvest"]
+  },
+  "fullValidation": {
+    "command": "./scripts/run-prototype-validation.ps1",
+    "sourceCommit": "830057480e25be9a3fad83f1d2502046486ec9cc",
+    "passed": true,
+    "requiredDotnetPassed": 198,
+    "requiredDotnetFailed": 0,
+    "dotnetTiers": {"fast": 106, "integration": 11, "soak": 81},
+    "godotHeadlessPassed": 16,
+    "godotHeadlessFailed": 0,
+    "buildWarnings": 0,
+    "buildErrors": 0,
+    "expectedRuntimeWarningsObserved": [
+      "frame catch-up backlog diagnostic",
+      "optional runtime-metrics I/O isolation diagnostic"
+    ]
+  },
+  "initialCleanPerformanceAttempt": {
+    "sourceCommit": "419ba69c2b0127ece83ed640f720338c0183362b",
+    "canonicalMatrixContractStatus": "pass",
+    "canonicalMatrixBudgetStatus": "safety_failure",
+    "failingReferenceTrialP95Milliseconds": 51.5125,
+    "confirmationFirstTrialP95Milliseconds": 51.3349,
+    "decision": "retain the hard 50 ms limit and add the smallest exact ledger projection-overhead correction"
+  },
+  "standaloneForcedInvalidation": {
+    "command": "./scripts/run-performance-pair.ps1 -ReleaseExport -RequireRelease -Scenario balanced_basin -Seed 1337 -Citizens 16 -Ticks 1 -WarmupTicks 2 -CacheMode forced_invalidation -OutputRoot artifacts/performance/w106-forced-8300574 -AllowPrimarySafetyFailure",
+    "sourceCommit": "830057480e25be9a3fad83f1d2502046486ec9cc",
+    "sourceClean": true,
+    "status": "pass",
+    "transitionCorrect": true,
+    "deterministicHash": "42aa4e116fc4e60a69604a372bf998b950a8b6ff3fc39e0317e1c6f6183952f3",
+    "metricsOffFullTickMilliseconds": 92.3039,
+    "metricsOnFullTickMilliseconds": 101.1423,
+    "metricsOffCommitToFirstCorrectLookupMilliseconds": 11.2478,
+    "metricsOnCommitToFirstCorrectLookupMilliseconds": 12.1273,
+    "safetyLimitMilliseconds": 250,
+    "safetyPassed": true
+  },
+  "canonicalReleaseMatrix": {
+    "command": "./scripts/run-performance-baseline-matrix.ps1 -OutputRoot artifacts/performance/w106-baseline-8300574-final",
+    "sourceCommit": "830057480e25be9a3fad83f1d2502046486ec9cc",
+    "sourceClean": true,
+    "contractStatus": "pass",
+    "budgetStatus": "target_missed",
+    "pairCount": 14,
+    "metricsRowCount": 28,
+    "manifestArtifactHashesMatched": 354,
+    "manifestArtifactHashesExpected": 354,
+    "reference16Citizens": {
+      "trialP95Milliseconds": [46.5016, 45.749, 46.1949],
+      "trialMaximumMilliseconds": [157.341, 151.2696, 146.6519],
+      "trialBootstrapMilliseconds": [632.5537, 669.5962, 644.1265],
+      "medianP95Milliseconds": 46.1949,
+      "medianMaximumMilliseconds": 151.2696,
+      "safetyP95LimitMilliseconds": 50,
+      "safetyMaximumLimitMilliseconds": 250,
+      "allTrialsSafetyPassed": true
+    },
+    "soak16Citizens": {
+      "deterministicRepeat": true,
+      "p95Milliseconds": [38.037, 37.0458],
+      "maximumMilliseconds": [165.1034, 164.5518],
+      "safetyPassed": true
+    },
+    "forcedInvalidation": {
+      "transitionCorrect": true,
+      "commitToFirstCorrectLookupMilliseconds": 12.0662,
+      "safetyLimitMilliseconds": 250,
+      "safetyPassed": true
+    },
+    "stress24Citizens": {
+      "p95Milliseconds": 133.8055,
+      "maximumMilliseconds": 188.5319,
+      "classification": "non_gating_characterization",
+      "targetPassed": false
+    }
+  },
+  "review": {
+    "finalP0Findings": 0,
+    "finalP1Findings": 0,
+    "finalP2Findings": 0,
+    "projectionOptimizationReviewed": true
+  },
+  "sourceArtifacts": [
+    {"path": "artifacts/performance/w106-baseline-8300574-final/perf-results.json", "sizeBytes": 220521, "sha256": "ee7a3e36c6fe9c09e96f051b26bee92befbe78e1787e16029a1083128cf08413"},
+    {"path": "artifacts/performance/w106-baseline-8300574-final/validation-manifest.json", "sizeBytes": 171815, "sha256": "9cc33d1a14f7c1eb3d01de87df385294bae688014b493234c91ae24d1d699c3b"},
+    {"path": "artifacts/performance/w106-baseline-8300574-final/perf-matrix.csv", "sizeBytes": 42636, "sha256": "512fcd52476f846d0aca2c6419d8151d50275b9c0930e5d996c3cbd498d953e0"},
+    {"path": "artifacts/performance/w106-forced-8300574/equivalence-results.json", "sizeBytes": 47605, "sha256": "afb7606ebb083134697d53646cd6f45554711228b52ec2a34499cf2febb3ebac"},
+    {"path": "artifacts/performance/w106-baseline-419ba69/perf-results.json", "sizeBytes": 206420, "sha256": "d52a73e1621afec9959c87eb279d88c4bc184c0c73793348a3ad488e1fd7ce00"},
+    {"path": "artifacts/performance/w106-reference-confirm-419ba69/perf-results.json", "sizeBytes": 47614, "sha256": "a1211f1b9b9887e707230877eeb707ce4643ae36e1176c57b3d98bd4ee61871e"}
+  ],
+  "decision": {
+    "resourceAuthorityGatePassed": true,
+    "performanceSafetyGatePassed": true,
+    "week1HardGatePassed": true,
+    "aspirationalTargetPassed": false,
+    "stressTargetPassed": false,
+    "w106Complete": true,
+    "contractedWeek2ScopeAllowed": true,
+    "scopeConstraint": "begin only the contracted Week 2 crisis slice while target and stress characterization remain red"
+  }
+}
