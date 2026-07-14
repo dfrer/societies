@@ -1,8 +1,7 @@
-name: Extended Tests
+name: Weekly Full Validation
 
-# Extended characterization/comparison tests.
-# NOT part of the default PR gate.
-# Triggered manually or on a weekly schedule.
+# Full core, Godot, coverage, and extended characterization tests.
+# NOT part of the default PR gate. Triggered manually or at the end of the week.
 on:
   workflow_dispatch:
     inputs:
@@ -12,10 +11,81 @@ on:
         type: string
         default: ''
   schedule:
-    # Every Saturday at 02:00 UTC
+    # Friday evening in Vancouver (Saturday at 02:00 UTC).
     - cron: '0 2 * * 6'
 
 jobs:
+  run-core-validation:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-full-${{ hashFiles('**/*.csproj') }}
+          restore-keys: |
+            ${{ runner.os }}-nuget-
+
+      - name: Install Godot .NET 4.6.2
+        run: |
+          wget -q -O godot.zip https://github.com/godotengine/godot-builds/releases/download/4.6.2-stable/Godot_v4.6.2-stable_mono_linux_x86_64.zip
+          unzip -q godot.zip -d godot-bin
+          GODOT_BIN=$(find godot-bin -type f -name 'Godot_v*_mono_linux.*' -print -quit)
+          if [[ -z "$GODOT_BIN" ]]; then
+            echo "::error::Godot Mono Linux executable was not found in the release archive."
+            exit 1
+          fi
+          file "$GODOT_BIN"
+          chmod +x "$GODOT_BIN"
+          sudo ln -sf "$PWD/$GODOT_BIN" /usr/local/bin/godot
+          godot --version
+
+      - name: Restore dependencies
+        run: dotnet restore tests/Societies.Core.Tests/Societies.Core.Tests.csproj
+
+      - name: Build authoritative Godot project
+        run: dotnet build src/societies/Societies.csproj --configuration Release --no-restore
+
+      - name: Run all unit tests with coverage
+        run: >
+          dotnet test tests/Societies.Core.Tests/Societies.Core.Tests.csproj
+          --configuration Release
+          --logger "trx;LogFileName=unit-tests.trx"
+          --collect:"XPlat Code Coverage"
+
+      - name: Build Godot C# solutions
+        run: godot --headless --path src/societies --build-solutions --quit
+
+      - name: Run headless smoke suite
+        run: godot --headless --path src/societies res://tests/HeadlessTestRunner.tscn
+
+      - name: Generate core test report
+        uses: dorny/test-reporter@v1
+        if: success() || failure()
+        with:
+          name: Core Test Results
+          path: '**/TestResults/*.trx'
+          reporter: dotnet-trx
+          fail-on-error: false
+          fail-on-empty: false
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        if: success() || failure()
+        with:
+          files: '**/coverage.cobertura.xml'
+          fail_ci_if_error: false
+          verbose: true
+
   run-extended-tests:
     runs-on: ubuntu-latest
 

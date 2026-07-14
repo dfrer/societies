@@ -1,10 +1,12 @@
 name: Tests
 
 on:
-  push:
-    branches: [master, main]
   pull_request:
     branches: [master, main]
+
+concurrency:
+  group: pr-tests-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
 
 jobs:
   build-test-smoke:
@@ -18,18 +20,10 @@ jobs:
         id: change_scope
         shell: bash
         env:
-          EVENT_NAME: ${{ github.event_name }}
-          BEFORE_SHA: ${{ github.event.before }}
-          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.sha }}
         run: |
           set -euo pipefail
-
-          if [[ "$EVENT_NAME" == "pull_request" ]]; then
-            BASE_SHA="$PR_BASE_SHA"
-          else
-            BASE_SHA="$BEFORE_SHA"
-          fi
 
           if [[ -z "$BASE_SHA" || "$BASE_SHA" =~ ^0+$ ]]; then
             echo "docs_only=false" >> "$GITHUB_OUTPUT"
@@ -106,13 +100,20 @@ jobs:
         if: steps.change_scope.outputs.docs_only != 'true'
         run: dotnet build src/societies/Societies.csproj --configuration Release --no-restore
 
-      - name: Run unit tests with coverage
+      - name: Run fast unit tests
         if: steps.change_scope.outputs.docs_only != 'true'
-        run: >
-          dotnet test tests/Societies.Core.Tests/Societies.Core.Tests.csproj
-          --configuration Release
-          --logger "trx;LogFileName=unit-tests.trx"
-          --collect:"XPlat Code Coverage"
+        shell: pwsh
+        run: |
+          $manifest = Get-Content tests/test-manifest.json -Raw | ConvertFrom-Json
+          $fastFilter = $manifest.required.dotnet.tiers.fast.filter
+          dotnet test tests/Societies.Core.Tests/Societies.Core.Tests.csproj `
+            --configuration Release `
+            --logger "trx;LogFileName=fast-unit-tests.trx" `
+            --filter $fastFilter
+
+          if ($LASTEXITCODE -ne 0) {
+            exit $LASTEXITCODE
+          }
 
       - name: Build Godot C# solutions
         if: steps.change_scope.outputs.docs_only != 'true'
@@ -121,21 +122,3 @@ jobs:
       - name: Run headless smoke suite
         if: steps.change_scope.outputs.docs_only != 'true'
         run: godot --headless --path src/societies res://tests/HeadlessTestRunner.tscn
-
-      - name: Generate test report
-        uses: dorny/test-reporter@v1
-        if: steps.change_scope.outputs.docs_only != 'true' && (success() || failure())
-        with:
-          name: Test Results
-          path: '**/TestResults/*.trx'
-          reporter: dotnet-trx
-          fail-on-error: false
-          fail-on-empty: false
-
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v4
-        if: steps.change_scope.outputs.docs_only != 'true' && (success() || failure())
-        with:
-          files: '**/coverage.cobertura.xml'
-          fail_ci_if_error: false
-          verbose: true
