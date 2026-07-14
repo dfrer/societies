@@ -16,6 +16,28 @@
 
 This is the authoritative short-horizon execution plan for the next two weeks. `CURRENT_BUILD.md` remains the authority for what the game already contains. Older session planning remains design reference only.
 
+## Long-Term North-Star Alignment
+
+This sprint is a preliminary continuation, not a redefinition of the full game. The long-term product direction is an Eco-like society and ecology simulation in which human players and AI citizens coexist, specialize, cooperate, compete, deliberate, and experience shared material consequences. The intended added value is not unrestricted AI behavior; it is a society whose inhabitants can reason about, explain, negotiate, and remember consequential events while humans retain meaningful economic and political agency.
+
+### Deterministic simulation and LLM boundary
+
+- The authoritative simulation owns world facts and outcomes, including resources, ecology, production, inventories, ownership, laws, votes, and other state-changing rules as those systems are introduced.
+- LLM-driven components may interpret structured observations, form intentions, explain motives, negotiate, deliberate, summarize memories, and propose actions.
+- Every proposed action that changes the world must pass through explicit deterministic commands, validation, and recorded outcomes. An LLM response is never itself authoritative game state.
+- Human participation must remain consequential. AI citizens should provide continuity, social texture, and autonomous interests without solving the civilization on the player's behalf or reducing the player to a spectator.
+- Core simulation progress, validation, replay, and recovery must remain possible when an external model is unavailable, delayed, or returns an invalid proposal.
+
+These principles constrain future design decisions but add no LLM, dialogue, multiplayer, market, or governance implementation to this two-week sprint. Those systems remain deferred until the current deterministic crisis slice answers whether helping and directing a visible society is understandable and fun.
+
+### Planning drift log
+
+Record only discoveries that may change the long-term vision, architecture, prototype order, or validation strategy. Do not rewrite the long-term library during the sprint unless a contradiction blocks current implementation.
+
+| Date | Evidence or trigger | Planning implication | Affected anchors | Disposition |
+|---|---|---|---|---|
+| 2026-07-13 | Product-direction review clarified the Eco-like ecology/society goal and the role of LLM-enabled citizens alongside human participants. | Preserve deterministic world authority; use LLMs for bounded reasoning and communication; protect meaningful human agency. | Session 2 AI design, Session 6 roadmap, Session 7 master plan | Reconcile after the Day 10 result; no sprint scope change. |
+
 ## Execution Log
 
 - **2026-07-09, Day 1 started:** refreshed `origin`, fast-forwarded local `master` from `c58e3de` to `379300d`, and created `feature/v3-runtime-hardening`.
@@ -57,6 +79,19 @@ At the end of Day 10, record one explicit result:
 - **Continue V3:** technical gates pass and the crisis demonstrates understandable agency.
 - **Narrow iteration:** engineering passes, but playtests show that the crisis, directive, or citizen causality needs refinement.
 - **Stop feature expansion:** correctness, determinism, persistence, or the performance safety gate fails; return to the last green boundary before adding systems.
+
+### Day 10 long-term planning reconciliation
+
+After recording the sprint result, perform a focused reconciliation before selecting the next implementation stage:
+
+1. Compare technical and playtest evidence against the north-star principles above.
+2. Record which major assumptions were validated, weakened, invalidated, or remain unknown.
+3. Re-sequence future prototypes around the next highest-risk product question rather than the oldest feature list.
+4. Update only the affected anchor documents first: `planning/README.md`, Session 2 AI design, Session 6 prototyping roadmap, Session 7 master plan, and `planning/meta/technical-constants.md` when a measured constant changed.
+5. Classify other affected planning documents as **Retained**, **Needs revalidation**, **Deferred**, **Superseded**, or **Reference only** instead of rewriting the full library.
+6. Carry unresolved drift entries into the next short-horizon plan with a named validation method or explicit deferral.
+
+The reconciliation is a decision checkpoint, not an automatic feature-expansion approval. The code, `CURRENT_BUILD.md`, validated evidence, and observed playtest results remain authoritative.
 
 ## Starting Reality
 
