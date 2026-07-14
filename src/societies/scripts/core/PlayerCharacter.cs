@@ -14,11 +14,10 @@ namespace Societies.Core
         [Export] public float Gravity { get; set; } = 18.0f;
         [Export] public float MouseSensitivity { get; set; } = 0.0025f;
 
-        public InventoryComponent? Inventory { get; set; }
         public TerrainGenerator? Terrain { get; set; }
         public bool ControlsEnabled => _controlsEnabled;
 
-        public event Action<string, int>? Harvested;
+        public event Action<string, int>? HarvestRequested;
 
         private Node3D? _cameraPivot;
         private Camera3D? _camera;
@@ -180,16 +179,12 @@ namespace Societies.Core
 
         private void TryHarvest()
         {
-            if (_focusedResource == null || Inventory == null)
+            if (_focusedResource == null)
             {
                 return;
             }
 
-            if (_focusedResource.TryHarvest(1, out string itemId, out int amount))
-            {
-                Inventory.AddItem(itemId, amount);
-                Harvested?.Invoke(itemId, amount);
-            }
+            HarvestRequested?.Invoke(_focusedResource.SiteId, 1);
         }
 
         private void ClampToWorld()

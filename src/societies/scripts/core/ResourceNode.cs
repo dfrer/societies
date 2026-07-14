@@ -8,6 +8,7 @@ namespace Societies.Core
     public partial class ResourceNode : Entity
     {
         [Export] public string ResourceId { get; set; } = "logs";
+        [Export] public string SiteId { get; set; } = string.Empty;
         [Export] public int UnitsRemaining { get; set; } = 5;
         [Export] public string ClusterId { get; set; } = string.Empty;
 
@@ -32,26 +33,10 @@ namespace Societies.Core
             base._Ready();
         }
 
-        public bool TryHarvest(int amount, out string itemId, out int harvestedAmount)
+        public void ApplyProjection(int unitsRemaining)
         {
-            itemId = ResourceId;
-            harvestedAmount = 0;
-
-            if (UnitsRemaining <= 0 || amount <= 0)
-            {
-                return false;
-            }
-
-            harvestedAmount = Mathf.Min(amount, UnitsRemaining);
-            UnitsRemaining -= harvestedAmount;
+            UnitsRemaining = Mathf.Max(0, unitsRemaining);
             UpdateVisualState();
-
-            if (UnitsRemaining <= 0)
-            {
-                QueueFree();
-            }
-
-            return true;
         }
 
         private void BuildNode()

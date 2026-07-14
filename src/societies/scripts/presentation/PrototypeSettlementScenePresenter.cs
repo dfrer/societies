@@ -73,6 +73,7 @@ namespace Societies.Simulation
                 result.ResourceSpawns
                     .Select(spawn => new PrototypeResourceSnapshot
                     {
+                        SiteId = spawn.SiteId,
                         ResourceId = spawn.ResourceId,
                         UnitsRemaining = spawn.UnitsRemaining,
                         Position = PrototypeSerializableVector3.FromVector3(spawn.Position),
@@ -81,60 +82,41 @@ namespace Societies.Simulation
                     .ToList());
         }
 
-        public IReadOnlyList<PrototypeResourceSnapshot> CaptureResourceSnapshots()
-        {
-            return _entitiesRoot
-                .GetChildren()
-                .OfType<ResourceNode>()
-                .OrderBy(node => node.Name.ToString())
-                .Select(node => new PrototypeResourceSnapshot
-                {
-                    ResourceId = node.ResourceId,
-                    UnitsRemaining = node.UnitsRemaining,
-                    Position = PrototypeSerializableVector3.FromVector3(node.Position),
-                    ClusterId = node.ClusterId
-                })
-                .ToList();
-        }
-
-        public IReadOnlyList<PrototypeResourceSiteState> CaptureResourceSites()
-        {
-            return _entitiesRoot
-                .GetChildren()
-                .OfType<ResourceNode>()
-                .OrderBy(node => node.Name.ToString())
-                .Select(node => new PrototypeResourceSiteState(
-                    node.Name.ToString(),
-                    node.ResourceId,
-                    node.Position,
-                    node.UnitsRemaining,
-                    node.ClusterId))
-                .ToList();
-        }
-
-        public bool ApplyHarvestRequest(PrototypeHarvestRequest request, out string itemId, out int harvestedAmount)
-        {
-            itemId = string.Empty;
-            harvestedAmount = 0;
-
-            ResourceNode? node = _entitiesRoot
-                .GetChildren()
-                .OfType<ResourceNode>()
-                .FirstOrDefault(candidate => candidate.Name.ToString() == request.TargetNodeName);
-
-            return node != null && node.TryHarvest(request.Amount, out itemId, out harvestedAmount);
-        }
-
         public void ReplaceResourceNodes(IReadOnlyList<PrototypeResourceSnapshot> resourceSnapshots)
         {
             ClearChildren(_entitiesRoot);
 
-            Dictionary<string, int> counters = new();
-            foreach (PrototypeResourceSnapshot snapshot in resourceSnapshots)
+            foreach (PrototypeResourceSnapshot snapshot in resourceSnapshots.Where(resource => resource.UnitsRemaining > 0))
             {
-                int sequence = counters.TryGetValue(snapshot.ResourceId, out int current) ? current + 1 : 1;
-                counters[snapshot.ResourceId] = sequence;
-                SpawnResourceNode(snapshot.ResourceId, snapshot.Position.ToVector3(), snapshot.UnitsRemaining, sequence, snapshot.ClusterId);
+                SpawnResourceNode(snapshot);
+            }
+        }
+
+        public void SyncResources(IReadOnlyList<PrototypeResourceSnapshot> resourceSnapshots)
+        {
+            Dictionary<string, ResourceNode> existing = _entitiesRoot.GetChildren()
+                .OfType<ResourceNode>()
+                .ToDictionary(node => node.SiteId, System.StringComparer.Ordinal);
+            HashSet<string> active = new(System.StringComparer.Ordinal);
+            foreach (PrototypeResourceSnapshot snapshot in resourceSnapshots.Where(resource => resource.UnitsRemaining > 0))
+            {
+                active.Add(snapshot.SiteId);
+                if (existing.TryGetValue(snapshot.SiteId, out ResourceNode? node))
+                {
+                    node.ApplyProjection(snapshot.UnitsRemaining);
+                }
+                else
+                {
+                    SpawnResourceNode(snapshot);
+                }
+            }
+
+            foreach ((string siteId, ResourceNode node) in existing)
+            {
+                if (!active.Contains(siteId))
+                {
+                    node.Free();
+                }
             }
         }
 
@@ -299,18 +281,19 @@ namespace Societies.Simulation
             };
         }
 
-        private void SpawnResourceNode(string resourceId, Vector3 position, int unitsRemaining, int sequence, string clusterId)
+        private void SpawnResourceNode(PrototypeResourceSnapshot snapshot)
         {
             ResourceNode node = new()
             {
-                Name = $"{resourceId}_{sequence}",
-                ResourceId = resourceId,
-                UnitsRemaining = unitsRemaining,
-                ClusterId = clusterId
+                Name = snapshot.SiteId,
+                SiteId = snapshot.SiteId,
+                ResourceId = snapshot.ResourceId,
+                UnitsRemaining = snapshot.UnitsRemaining,
+                ClusterId = snapshot.ClusterId
             };
 
             _entitiesRoot.AddChild(node);
-            node.Position = position;
+            node.Position = snapshot.Position.ToVector3();
         }
 
         private static void ClearChildren(Node parent)
