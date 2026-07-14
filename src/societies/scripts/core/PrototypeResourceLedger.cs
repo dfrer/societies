@@ -2,6 +2,7 @@ using Godot;
 using Societies.Simulation;
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
 
@@ -13,12 +14,18 @@ namespace Societies.Core
     internal sealed class PrototypeResourceLedger
     {
         private readonly Dictionary<string, Site> _sites;
+        private readonly Site[] _orderedSites;
+        private IReadOnlyList<PrototypeResourceSiteState> _cachedActiveSites = Array.Empty<PrototypeResourceSiteState>();
+        private long _cachedActiveSitesRevision = -1;
 
         public long Revision { get; private set; }
 
         private PrototypeResourceLedger(IEnumerable<Site> sites)
         {
-            _sites = sites.ToDictionary(site => site.SiteId, StringComparer.Ordinal);
+            _orderedSites = sites
+                .OrderBy(site => site.SiteId, StringComparer.Ordinal)
+                .ToArray();
+            _sites = _orderedSites.ToDictionary(site => site.SiteId, StringComparer.Ordinal);
         }
 
         public static PrototypeResourceLedger Create(WorldGenerationResult world)
@@ -74,7 +81,7 @@ namespace Societies.Core
             }
             else
             {
-                foreach (Site site in baseline._sites.Values)
+                foreach (Site site in baseline._orderedSites)
                 {
                     site.UnitsRemaining = 0;
                 }
@@ -87,7 +94,7 @@ namespace Societies.Core
                         throw new InvalidDataException("Runtime snapshot contains a null resource row.");
                     }
                     ValidateResource(resource);
-                    List<Site> candidates = baseline._sites.Values
+                    List<Site> candidates = baseline._orderedSites
                         .Where(site => MatchesLegacy(site, resource))
                         .ToList();
                     if (candidates.Count != 1 || !matched.Add(candidates[0].SiteId))
@@ -105,32 +112,63 @@ namespace Societies.Core
 
         public IReadOnlyList<PrototypeResourceSnapshot> CaptureSnapshots(bool includeDepleted = true)
         {
-            return _sites.Values
-                .Where(site => includeDepleted || site.UnitsRemaining > 0)
-                .OrderBy(site => site.SiteId, StringComparer.Ordinal)
-                .Select(site => new PrototypeResourceSnapshot
+            List<PrototypeResourceSnapshot> snapshots = new(_orderedSites.Length);
+            foreach (Site site in _orderedSites)
+            {
+                if (!includeDepleted && site.UnitsRemaining <= 0)
+                {
+                    continue;
+                }
+
+                snapshots.Add(new PrototypeResourceSnapshot
                 {
                     SiteId = site.SiteId,
                     ResourceId = site.ResourceId,
                     UnitsRemaining = site.UnitsRemaining,
                     Position = PrototypeSerializableVector3.FromVector3(site.Position),
                     ClusterId = site.ClusterId
-                })
-                .ToList();
+                });
+            }
+
+            return snapshots;
         }
 
         public IReadOnlyList<PrototypeResourceSiteState> CaptureActiveSites()
         {
-            return _sites.Values
-                .Where(site => site.UnitsRemaining > 0)
-                .OrderBy(site => site.SiteId, StringComparer.Ordinal)
-                .Select(site => new PrototypeResourceSiteState(
+            if (_cachedActiveSitesRevision == Revision)
+            {
+                return _cachedActiveSites;
+            }
+
+            int activeCount = 0;
+            foreach (Site site in _orderedSites)
+            {
+                if (site.UnitsRemaining > 0)
+                {
+                    activeCount++;
+                }
+            }
+
+            PrototypeResourceSiteState[] activeSites = new PrototypeResourceSiteState[activeCount];
+            int writeIndex = 0;
+            foreach (Site site in _orderedSites)
+            {
+                if (site.UnitsRemaining <= 0)
+                {
+                    continue;
+                }
+
+                activeSites[writeIndex++] = new PrototypeResourceSiteState(
                     site.SiteId,
                     site.ResourceId,
                     site.Position,
                     site.UnitsRemaining,
-                    site.ClusterId))
-                .ToList();
+                    site.ClusterId);
+            }
+
+            _cachedActiveSites = new ReadOnlyCollection<PrototypeResourceSiteState>(activeSites);
+            _cachedActiveSitesRevision = Revision;
+            return _cachedActiveSites;
         }
 
         public PrototypeHarvestResult Apply(in PrototypeHarvestCommand command)

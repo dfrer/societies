@@ -151,6 +151,41 @@ namespace Societies.Core.Tests
         }
 
         [Fact]
+        public void ResourceLedger_ActiveProjectionCachesByRevisionAndSnapshotsAreDefensive()
+        {
+            PrototypeCatalogBundle bundle = LoadCatalogs();
+            PrototypeRuntimeSession session = new(bundle.Scenarios.Resolve("balanced_basin"), bundle.RoleQuotas.Roles);
+            session.Initialize(8.0f);
+            PrototypeResourceSnapshot original = session.ResourceSnapshots.First(resource => resource.UnitsRemaining >= 2);
+            IReadOnlyList<PrototypeResourceSnapshot> callerSnapshots = session.ResourceSnapshots;
+            callerSnapshots.Single(resource => resource.SiteId == original.SiteId).UnitsRemaining = 0;
+            Assert.Equal(original.UnitsRemaining, session.ResourceSnapshots.Single(resource => resource.SiteId == original.SiteId).UnitsRemaining);
+
+            FieldInfo ledgerField = typeof(PrototypeRuntimeSession).GetField(
+                "_resourceLedger",
+                BindingFlags.Instance | BindingFlags.NonPublic) ?? throw new InvalidOperationException("Missing resource ledger field.");
+            object ledger = ledgerField.GetValue(session) ?? throw new InvalidOperationException("Resource ledger unavailable.");
+            MethodInfo captureActiveSites = ledger.GetType().GetMethod("CaptureActiveSites") ??
+                throw new InvalidOperationException("Missing active-site projection method.");
+
+            object firstProjection = captureActiveSites.Invoke(ledger, null)!;
+            object cachedProjection = captureActiveSites.Invoke(ledger, null)!;
+            Assert.Same(firstProjection, cachedProjection);
+            long revisionBefore = session.ResourceRevision;
+            Assert.False(session.HarvestForPlayer("missing_site", 1).Succeeded);
+            Assert.Equal(revisionBefore, session.ResourceRevision);
+            Assert.Same(firstProjection, captureActiveSites.Invoke(ledger, null));
+
+            Assert.True(session.HarvestForPlayer(original.SiteId, 1).Succeeded);
+            Assert.Equal(revisionBefore + 1, session.ResourceRevision);
+            object refreshedProjection = captureActiveSites.Invoke(ledger, null)!;
+            Assert.NotSame(firstProjection, refreshedProjection);
+            Assert.Same(refreshedProjection, captureActiveSites.Invoke(ledger, null));
+            IReadOnlyList<PrototypeResourceSiteState> activeSites = (IReadOnlyList<PrototypeResourceSiteState>)refreshedProjection;
+            Assert.Equal(original.UnitsRemaining - 1, activeSites.Single(site => site.NodeName == original.SiteId).UnitsRemaining);
+        }
+
+        [Fact]
         public void ResourceLedger_PlayerHarvestMutatesLedgerAndInventoryExactlyOnce()
         {
             PrototypeCatalogBundle bundle = LoadCatalogs();
