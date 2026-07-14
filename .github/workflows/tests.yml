@@ -14,12 +14,68 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Classify change scope
+        id: change_scope
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BEFORE_SHA: ${{ github.event.before }}
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+
+          if [[ "$EVENT_NAME" == "pull_request" ]]; then
+            BASE_SHA="$PR_BASE_SHA"
+          else
+            BASE_SHA="$BEFORE_SHA"
+          fi
+
+          if [[ -z "$BASE_SHA" || "$BASE_SHA" =~ ^0+$ ]]; then
+            echo "docs_only=false" >> "$GITHUB_OUTPUT"
+            echo "base_sha=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if ! git cat-file -e "${BASE_SHA}^{commit}" 2>/dev/null; then
+            git fetch --no-tags --depth=1 origin "$BASE_SHA"
+          fi
+
+          mapfile -t changed_files < <(git diff --name-only "$BASE_SHA" "$HEAD_SHA")
+          docs_only=true
+
+          if [[ ${#changed_files[@]} -eq 0 ]]; then
+            docs_only=false
+          fi
+
+          for path in "${changed_files[@]}"; do
+            if [[ "$path" != *.md ]]; then
+              docs_only=false
+              break
+            fi
+          done
+
+          echo "Changed files:"
+          printf '  %s\n' "${changed_files[@]}"
+          echo "docs_only=$docs_only" >> "$GITHUB_OUTPUT"
+          echo "base_sha=$BASE_SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Validate Markdown-only changes
+        if: steps.change_scope.outputs.docs_only == 'true'
+        shell: bash
+        env:
+          BASE_SHA: ${{ steps.change_scope.outputs.base_sha }}
+          HEAD_SHA: ${{ github.sha }}
+        run: git diff --check "$BASE_SHA" "$HEAD_SHA"
+
       - name: Setup .NET 8
+        if: steps.change_scope.outputs.docs_only != 'true'
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 8.0.x
 
       - name: Cache NuGet packages
+        if: steps.change_scope.outputs.docs_only != 'true'
         uses: actions/cache@v4
         with:
           path: ~/.nuget/packages
@@ -28,6 +84,7 @@ jobs:
             ${{ runner.os }}-nuget-
 
       - name: Install Godot .NET 4.6.2
+        if: steps.change_scope.outputs.docs_only != 'true'
         run: |
           wget -q -O godot.zip https://github.com/godotengine/godot-builds/releases/download/4.6.2-stable/Godot_v4.6.2-stable_mono_linux_x86_64.zip
           unzip -q godot.zip -d godot-bin
@@ -42,12 +99,15 @@ jobs:
           godot --version
 
       - name: Restore dependencies
+        if: steps.change_scope.outputs.docs_only != 'true'
         run: dotnet restore tests/Societies.Core.Tests/Societies.Core.Tests.csproj
 
       - name: Build authoritative Godot project
+        if: steps.change_scope.outputs.docs_only != 'true'
         run: dotnet build src/societies/Societies.csproj --configuration Release --no-restore
 
       - name: Run unit tests with coverage
+        if: steps.change_scope.outputs.docs_only != 'true'
         run: >
           dotnet test tests/Societies.Core.Tests/Societies.Core.Tests.csproj
           --configuration Release
@@ -55,14 +115,16 @@ jobs:
           --collect:"XPlat Code Coverage"
 
       - name: Build Godot C# solutions
+        if: steps.change_scope.outputs.docs_only != 'true'
         run: godot --headless --path src/societies --build-solutions --quit
 
       - name: Run headless smoke suite
+        if: steps.change_scope.outputs.docs_only != 'true'
         run: godot --headless --path src/societies res://tests/HeadlessTestRunner.tscn
 
       - name: Generate test report
         uses: dorny/test-reporter@v1
-        if: success() || failure()
+        if: steps.change_scope.outputs.docs_only != 'true' && (success() || failure())
         with:
           name: Test Results
           path: '**/TestResults/*.trx'
@@ -72,7 +134,7 @@ jobs:
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
-        if: success() || failure()
+        if: steps.change_scope.outputs.docs_only != 'true' && (success() || failure())
         with:
           files: '**/coverage.cobertura.xml'
           fail_ci_if_error: false
