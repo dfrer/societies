@@ -725,6 +725,34 @@ namespace Societies.Simulation
         bool Succeeded,
         string FailureReason);
 
+    public readonly record struct PrototypeContributionResult(
+        string ResourceId,
+        int RequestedQuantity,
+        int AppliedQuantity,
+        bool Succeeded,
+        string FailureReason);
+
+    public sealed class PrototypeContributionBatchResult
+    {
+        public PrototypeContributionBatchResult(
+            IReadOnlyList<PrototypeContributionResult> results,
+            bool succeeded,
+            string failureReason)
+        {
+            Results = results;
+            Succeeded = succeeded;
+            FailureReason = failureReason;
+        }
+
+        public IReadOnlyList<PrototypeContributionResult> Results { get; }
+
+        public bool Succeeded { get; }
+
+        public string FailureReason { get; }
+
+        public int AppliedQuantity => Results.Sum(result => result.AppliedQuantity);
+    }
+
     public readonly record struct PrototypeSettlementEvent(
         string EventType,
         string Message);

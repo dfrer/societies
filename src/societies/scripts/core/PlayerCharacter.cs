@@ -13,11 +13,14 @@ namespace Societies.Core
         [Export] public float JumpVelocity { get; set; } = 5.5f;
         [Export] public float Gravity { get; set; } = 18.0f;
         [Export] public float MouseSensitivity { get; set; } = 0.0025f;
+        [Export] public float ContributionRangeMeters { get; set; } = 4.5f;
 
         public TerrainGenerator? Terrain { get; set; }
         public bool ControlsEnabled => _controlsEnabled;
+        public Vector3 ContributionDepotPosition { get; set; }
 
         public event Action<string, int>? HarvestRequested;
+        public event Action<Vector3, ulong>? ContributionRequested;
 
         private Node3D? _cameraPivot;
         private Camera3D? _camera;
@@ -70,7 +73,7 @@ namespace Societies.Core
 
             if (Input.IsActionJustPressed("interact"))
             {
-                TryHarvest();
+                ProcessInteractionInput(Engine.GetPhysicsFrames());
             }
         }
 
@@ -78,7 +81,9 @@ namespace Societies.Core
         {
             if (_focusedResource == null)
             {
-                return "Look at a resource node and press E";
+                return IsWithinContributionRange()
+                    ? "Press E to contribute all raw resources to the central depot"
+                    : "Look at a resource node and press E";
             }
 
             return $"Press E to harvest {_focusedResource.DisplayName} ({_focusedResource.UnitsRemaining} left)";
@@ -185,6 +190,25 @@ namespace Societies.Core
             }
 
             HarvestRequested?.Invoke(_focusedResource.SiteId, 1);
+        }
+
+        public void ProcessInteractionInput(ulong inputFrame)
+        {
+            if (_focusedResource != null)
+            {
+                TryHarvest();
+                return;
+            }
+
+            if (IsWithinContributionRange())
+            {
+                ContributionRequested?.Invoke(GlobalPosition, inputFrame);
+            }
+        }
+
+        private bool IsWithinContributionRange()
+        {
+            return GlobalPosition.DistanceTo(ContributionDepotPosition) <= ContributionRangeMeters;
         }
 
         private void ClampToWorld()

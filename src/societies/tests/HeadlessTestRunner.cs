@@ -50,6 +50,7 @@ namespace Societies.Tests
             Test_Node_Creation();
             Test_SceneTree_Access();
             await Test_MainScene_BootstrapSmoke();
+            await Test_MainScene_DepotContributionInputSmoke();
             await Test_MainScene_FrameCatchUpCapSmoke();
             await Test_MainScene_HudRefreshCoalescingSmoke();
             await Test_MainScene_RuntimeMetricsBatchSmoke();
@@ -191,6 +192,55 @@ namespace Societies.Tests
             catch (Exception ex)
             {
                 Fail(nameof(Test_MainScene_BootstrapSmoke), ex);
+            }
+            finally
+            {
+                if (scene != null)
+                {
+                    scene.QueueFree();
+                    await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+                }
+            }
+        }
+
+        private async Task Test_MainScene_DepotContributionInputSmoke()
+        {
+            Node? scene = null;
+
+            try
+            {
+                PackedScene packedScene = GD.Load<PackedScene>("res://scenes/main.tscn");
+                Assert(packedScene != null, "Main scene failed to load");
+
+                scene = packedScene!.Instantiate();
+                AddChild(scene);
+                await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+
+                GameManager manager = scene as GameManager ?? throw new Exception("Main scene root is not GameManager");
+                manager.SetProcess(false);
+                PlayerCharacter player = manager.GetNodeOrNull<PlayerCharacter>("World/Players/LocalPlayer") ??
+                    throw new Exception("LocalPlayer missing");
+                PrototypeHud hud = manager.GetNodeOrNull<PrototypeHud>("UI") ?? throw new Exception("PrototypeHud missing");
+                int initialLogs = manager.Stockpile.GetCount("logs");
+                manager.Inventory.AddItem("logs", 3);
+                manager.Inventory.AddItem("stone_axe", 1);
+                player.GlobalPosition = manager.CentralDepotPosition;
+
+                player.ProcessInteractionInput(700);
+                player.ProcessInteractionInput(700);
+
+                Assert(manager.Inventory.GetCount("logs") == 0, "Depot input should remove every eligible raw resource");
+                Assert(manager.Inventory.GetCount("stone_axe") == 1, "Depot input should keep crafted tools personal");
+                Assert(manager.Stockpile.GetCount("logs") == initialLogs + 3, "Depot input should add the exact raw quantity once");
+                Assert(hud.StatusText.Contains("Contributed", StringComparison.Ordinal), "Depot input should present deterministic success feedback");
+                Assert(hud.InventoryText.Contains("stone axe: 1", StringComparison.Ordinal), "Inventory HUD should retain the crafted tool");
+                Assert(!hud.InventoryText.Contains("logs:", StringComparison.Ordinal), "Inventory HUD should remove deposited logs");
+
+                Pass(nameof(Test_MainScene_DepotContributionInputSmoke));
+            }
+            catch (Exception ex)
+            {
+                Fail(nameof(Test_MainScene_DepotContributionInputSmoke), ex);
             }
             finally
             {

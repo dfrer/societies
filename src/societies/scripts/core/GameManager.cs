@@ -5,6 +5,7 @@ using Societies.UI;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text.Json;
 
 namespace Societies.Core
@@ -57,6 +58,7 @@ namespace Societies.Core
         private PrototypeSettlementScenePresenter? _scenePresenter;
         private readonly InventoryComponent _fallbackInventory = new();
         private readonly FixedStepAccumulator _fixedStepAccumulator = new(TickIntervalSeconds, MaxTicksPerFrame);
+        private readonly PrototypeContributionInteraction _contributionInteraction = new();
         private readonly RuntimeMetricsCollector? _runtimeMetrics = CreateRuntimeMetricsCollector();
         private double _backlogWarningCooldownSeconds;
         private CameraMode _cameraMode = CameraMode.Player;
@@ -97,6 +99,10 @@ namespace Societies.Core
         public double? PerformanceBootstrapMilliseconds { get; private set; }
 
         public InventoryComponent Inventory => _runtimeSession?.Inventory ?? _fallbackInventory;
+
+        public InventoryComponent Stockpile => _runtimeSession?.Stockpile ?? _fallbackInventory;
+
+        public Vector3 CentralDepotPosition => _runtimeSession?.CentralDepotPosition ?? Vector3.Zero;
 
         public CameraMode CurrentCameraMode => _cameraMode;
 
@@ -428,7 +434,7 @@ namespace Societies.Core
 
             if (!_runtimeSession.SupportsRuntimeSnapshotPersistence)
             {
-                const string statusText = "Crisis snapshot persistence is deferred until schema v7";
+                string statusText = _runtimeSession.RuntimeSnapshotPersistenceDeferralMessage;
                 _hud?.SetStatusText(statusText);
                 return string.Empty;
             }
@@ -636,6 +642,8 @@ namespace Societies.Core
 
             _player.HarvestRequested -= OnPlayerHarvestRequested;
             _player.HarvestRequested += OnPlayerHarvestRequested;
+            _player.ContributionRequested -= OnPlayerContributionRequested;
+            _player.ContributionRequested += OnPlayerContributionRequested;
             _player.Terrain = _terrain;
             _player.SetControlEnabled(_cameraMode == CameraMode.Player);
 
@@ -703,6 +711,7 @@ namespace Societies.Core
             _fixedStepAccumulator.Reset();
             _backlogWarningCooldownSeconds = 0.0;
             _runtimeMetrics?.Reset();
+            _contributionInteraction.Reset();
         }
 
         private void CreateRuntimeSession(PrototypeScenarioDefinition scenario)
@@ -736,7 +745,8 @@ namespace Societies.Core
                 _catalogs?.RoleQuotas.Roles,
                 orderSelectionMode,
                 extractionPlanningMode,
-                routeDistanceMode);
+                routeDistanceMode,
+                _catalogs?.Resources.Resources);
         }
 
         private void BindPlayerToRuntime()
@@ -744,6 +754,7 @@ namespace Societies.Core
             if (_player != null)
             {
                 _player.Terrain = _terrain;
+                _player.ContributionDepotPosition = CentralDepotPosition;
                 _player.SetControlEnabled(_cameraMode == CameraMode.Player);
             }
 
@@ -1103,6 +1114,49 @@ namespace Societies.Core
             UpdateHud();
         }
 
+        public PrototypeContributionBatchResult TryContributeAllAtDepot(
+            Vector3 playerPosition,
+            ulong inputFrame)
+        {
+            float interactionRange = _player?.ContributionRangeMeters ?? 4.5f;
+            return _contributionInteraction.Execute(
+                _runtimeSession,
+                playerPosition,
+                interactionRange,
+                inputFrame);
+        }
+
+        private void OnPlayerContributionRequested(Vector3 playerPosition, ulong inputFrame)
+        {
+            PrototypeContributionBatchResult result = TryContributeAllAtDepot(playerPosition, inputFrame);
+            if (result.Succeeded)
+            {
+                string summary = string.Join(
+                    ", ",
+                    result.Results.Select(item =>
+                        $"{InventoryComponent.FormatItemName(item.ResourceId)} x{item.AppliedQuantity}"));
+                _hud?.SetStatusText($"Contributed {summary}");
+                UpdateSettlementPresentationFromSession();
+                UpdateHud();
+                return;
+            }
+
+            if (result.FailureReason == "duplicate_input")
+            {
+                return;
+            }
+
+            string statusText = result.FailureReason switch
+            {
+                "empty_inventory" => "No resources to contribute",
+                "no_eligible_resources" => "No eligible raw resources to contribute",
+                "out_of_range" => "Move closer to the central depot",
+                "stockpile_rejected" => "Central depot cannot accept those resources",
+                _ => "Contribution rejected"
+            };
+            _hud?.SetStatusText(statusText);
+        }
+
         private void SyncResourcePresentationIfChanged(bool force = false)
         {
             if (_runtimeSession == null || _scenePresenter == null)
@@ -1266,6 +1320,7 @@ namespace Societies.Core
             if (_player != null)
             {
                 _player.HarvestRequested -= OnPlayerHarvestRequested;
+                _player.ContributionRequested -= OnPlayerContributionRequested;
             }
 
             Instance = null;
