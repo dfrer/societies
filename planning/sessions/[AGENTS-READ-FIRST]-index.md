@@ -2,6 +2,8 @@
 
 > Prototype reality note (2026-04-03): the authoritative implementation is currently the Godot prototype under `src/societies/`. The planning documents below include long-term and aspirational material that is not yet implemented in code.
 
+> **Canonical alignment (2026-07-14):** Every session below is aspirational/reference material. Current implementation authority is [`CURRENT_BUILD.md`](../../CURRENT_BUILD.md) and current sequencing is [`planning/active/`](../active/). The unifying product contract is [PRODUCT-THESIS.md](../PRODUCT-THESIS.md): “A deterministic civilization/ecology simulation where humans and AI citizens work, trade, negotiate, govern, and experience shared consequences.”
+
 > **PROJECT**: Societies - AI-Powered Society Simulation Game  
 > **STATUS**: 🟢 Active Development  
 > **LAST UPDATED**: 2026-02-01  

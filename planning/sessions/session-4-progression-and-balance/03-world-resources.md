@@ -5,6 +5,12 @@
 **Date Created**: 2026-02-01  
 **Document**: 03-world-resources.md
 
+> **Canonical alignment (2026-07-14):** Aspirational world-resources reference. Current scope is [planning/active/](../../active/) and implementation truth is [CURRENT_BUILD.md](../../../CURRENT_BUILD.md). See [PRODUCT-THESIS.md](../../PRODUCT-THESIS.md).
+
+## Product Contract Alignment
+
+Ecology and resources are deterministic shared facts. Resource mutations must be validated commands and recorded events, while LLMs may only interpret structured observations or propose action; invalid or unavailable output must safely fall back without changing the world.
+
 ---
 
 ## Table of Contents

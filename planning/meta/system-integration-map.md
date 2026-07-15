@@ -6,6 +6,12 @@
 **Version**: 1.0  
 **Date**: 2026-02-01  
 
+> **Canonical alignment (2026-07-14):** Aspirational integration reference; current scope is governed by [`planning/active/`](../active/) and repo truth by [`CURRENT_BUILD.md`](../../CURRENT_BUILD.md). See [PRODUCT-THESIS.md](../PRODUCT-THESIS.md).
+
+## Product Contract Overlay
+
+Integrations must preserve deterministic simulation ownership of facts and outcomes. Inputs become validated commands and recorded events; LLMs receive structured observations and may only deliberate, communicate, summarize, or propose. Model failure or invalid output must safely fall back. Ecology, economy, trade, and governance must surface shared legible consequences for consequential humans and rights-bearing AI citizens without granting either model output or AI citizens special authority.
+
 ---
 
 ## Table of Contents

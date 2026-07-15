@@ -8,6 +8,12 @@
 > - `planning/meta/technical-constants.md` - TICK_RATE, retention policies
 > - `03-data-persistence.md` - events table schema, partitioning strategy
 
+> **Canonical alignment (2026-07-14):** Aspirational event architecture reference. Current scope is [planning/active/](../../active/) and implementation truth is [CURRENT_BUILD.md](../../../CURRENT_BUILD.md). See [PRODUCT-THESIS.md](../../PRODUCT-THESIS.md).
+
+## Product Contract Alignment
+
+The deterministic simulation is the source of facts and outcomes: every mutation is a validated command expressed as a recorded event. LLMs only consume structured observations and may deliberate, communicate, summarize, or propose; invalid or unavailable output must safely fall back without creating an event.
+
 ---
 
 ## 1. Event Sourcing Architecture

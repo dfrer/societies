@@ -12,6 +12,12 @@
 > **Requires**: [Session 1 Architecture](../session-1-technical-architecture/)
 > **Informs**: [Future Sessions] (Session 3-7 planning not yet started)
 
+> **Canonical alignment (2026-07-14):** Aspirational political/social reference. Current scope is [planning/active/](../../active/) and implementation truth is [CURRENT_BUILD.md](../../../CURRENT_BUILD.md). See [PRODUCT-THESIS.md](../../PRODUCT-THESIS.md).
+
+## Product Contract Alignment
+
+Humans remain consequential and AI citizens hold material interests and rights, but neither LLM output nor AI citizenship has special authority. Deterministic governance validates civic commands and records outcomes; LLMs may communicate or propose from structured observations and must safely fall back when unavailable or invalid.
+
 ---
 
 ## 5. Political Behavior Model

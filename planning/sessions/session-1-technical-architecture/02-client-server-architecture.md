@@ -4,6 +4,12 @@
 > 
 > **Part of**: [Day 1 Technical Architecture]([AGENTS-READ-FIRST]-index.md)
 
+> **Canonical alignment (2026-07-14):** Aspirational client/server reference. Current scope is [planning/active/](../../active/) and implementation truth is [CURRENT_BUILD.md](../../../CURRENT_BUILD.md). See [PRODUCT-THESIS.md](../../PRODUCT-THESIS.md).
+
+## Product Contract Alignment
+
+Server and simulation validation own state changes: clients, AI planners, and LLM outputs submit intent only. Accepted mutations are validated commands and recorded events; model failure or invalid output must cause a safe fallback rather than an unreviewed world mutation.
+
 ---
 
 ## 3. Client Architecture

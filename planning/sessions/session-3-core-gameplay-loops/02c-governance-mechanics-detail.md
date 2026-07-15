@@ -13,6 +13,12 @@
 > **Informs**: [Session 5 Governance Mechanics](../session-5-governance-mechanics/)
 > **Constants Reference**: [Technical Constants](../../meta/technical-constants.md)
 
+> **Canonical alignment (2026-07-14):** Aspirational governance specification. Current scope is [planning/active/](../../active/) and implementation truth is [CURRENT_BUILD.md](../../../CURRENT_BUILD.md). See [PRODUCT-THESIS.md](../../PRODUCT-THESIS.md).
+
+## Product Contract Alignment
+
+Governance outcomes come only from deterministic validation of civic commands and recorded events. Humans remain consequential; AI citizens have material interests and rights but no special authority, while LLMs may deliberate, communicate, summarize, or propose from structured observations and safely fall back when invalid or unavailable.
+
 ---
 
 ## Overview

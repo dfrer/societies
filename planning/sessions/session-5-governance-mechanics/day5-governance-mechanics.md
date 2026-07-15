@@ -5,6 +5,12 @@
 **Date Started**: 2026-01-29  
 **Date Completed**: 2026-01-29
 
+> **Canonical alignment (2026-07-14):** Aspirational governance reference. Current scope is [planning/active/](../../active/) and implementation truth is [CURRENT_BUILD.md](../../../CURRENT_BUILD.md). See [PRODUCT-THESIS.md](../../PRODUCT-THESIS.md).
+
+## Product Contract Alignment
+
+Humans remain consequential and AI citizens have material interests and rights without special authority. Laws and civic outcomes are deterministic validated commands and recorded events; LLMs may deliberate, communicate, summarize, or propose from structured observations only and must safely fall back if invalid or unavailable.
+
 ---
 
 ## Purpose

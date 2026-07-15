@@ -1,6 +1,12 @@
 # SOCIETIES: Comprehensive Breakdown of Features and Gameplay
 *An AI-Enhanced Multiplayer Civilization Simulation*
 
+> **Canonical alignment (2026-07-14):** This is an aspirational feature reference, not implementation truth. Read [PRODUCT-THESIS.md](../PRODUCT-THESIS.md), [`CURRENT_BUILD.md`](../../CURRENT_BUILD.md), and [`planning/active/`](../active/) first. “A deterministic civilization/ecology simulation where humans and AI citizens work, trade, negotiate, govern, and experience shared consequences.”
+
+## Product Contract Overlay
+
+The deterministic simulation owns facts and outcomes; humans and AI citizens participate through validated commands whose effects become recorded events. LLMs may read structured observations and deliberate, communicate, summarize, or propose, but do not mutate world state or gain special civic authority. AI citizens have material interests and rights; humans remain consequential. Ecology, economy, trade, and governance must create shared, legible consequences, and unavailable or invalid model output must safely fall back.
+
 A society and ecology simulation and multiplayer game where human players and AI citizens coexist as equals in a low poly-3D, reasonably sized, global simulation, with **25 Agents (MVP) scaling to 50-100 Agents post-MVP**. Alongside surviving and working on their own goals, all agents are economic and political participants that participate communally with other agents to make towns, cities, states, nations and even federations that work together, or even against each other to grow and cook food, build shelters, create infrastructure, and much more. Together or in competition they build civilizations that persist, adapt, and survive by navigating ecological, societal, and existential problems.
 
 The core of the gameplay loop is Agents—Both human and AI—surviving, building, being creative, creating goals, building homes, progressing careers, facilitating connections, manufacturing automation, all while facing escalating challenges, together.

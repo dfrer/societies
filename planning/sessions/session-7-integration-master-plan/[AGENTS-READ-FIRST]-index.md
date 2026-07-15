@@ -3,6 +3,10 @@
 **Status:** Ready for Review  
 **Main Document:** [day7-master-development-plan.md](./day7-master-development-plan.md) (~1,020 lines)
 
+> **Current roadmap overlay (2026-07-14):** This integration plan is aspirational/reference and is not the current authoritative implementation plan. [`planning/active/`](../../active/) and [`CURRENT_BUILD.md`](../../../CURRENT_BUILD.md) win whenever this library conflicts. See [PRODUCT-THESIS.md](../../PRODUCT-THESIS.md): “A deterministic civilization/ecology simulation where humans and AI citizens work, trade, negotiate, govern, and experience shared consequences.”
+
+**Superseding delivery sequence:** current V3 crisis slice → bounded civic policy loop → bounded LLM-mediated expression only after the non-LLM loop proves fun → trade and institutions → multiplayer scaling.
+
 ---
 
 ## Quick Access
