@@ -29,6 +29,14 @@ namespace Societies.Tests
         private const string ExhaustiveExtractionMode = "exhaustive_reference";
         private const string CachedDistanceOnlyRouteDistanceMode = "cached_distance_only";
         private const string FullMaterializationReferenceRouteDistanceMode = "full_materialization_reference";
+        private const string FullArtifactMode = "full_artifacts";
+        private const string TimingOnlyArtifactMode = "timing_only";
+        private const string TimingOnlyArtifactUnavailableReason =
+            "timing_only_mode_omits_persistence_artifacts_and_deterministic_hashes";
+        private const string TimingOnlyScenarioId = "empty_stores";
+        private const int TimingOnlySeed = 1701;
+        private const int TimingOnlyCitizenCount = 12;
+        private const int TimingOnlyMeasuredTicks = 300;
         private const int MaximumMeasuredTicks = 4096;
         private static readonly UTF8Encoding Utf8NoBom = new(encoderShouldEmitUTF8Identifier: false);
         private static readonly JsonSerializerOptions JsonOptions = new()
@@ -73,6 +81,13 @@ namespace Societies.Tests
 
         private int Execute(PerformanceRunConfiguration configuration, string exactInvocation)
         {
+            PerformanceRunEnvironment environment = BuildEnvironment();
+            if (configuration.ArtifactMode == TimingOnlyArtifactMode && !environment.VerifiedReleaseExecution)
+            {
+                throw new InvalidOperationException(
+                    "Timing-only mode requires verified Godot ExportRelease execution.");
+            }
+
             if (Directory.Exists(configuration.OutputDirectory) || File.Exists(configuration.OutputDirectory))
             {
                 throw new IOException($"Performance output path already exists: {configuration.OutputDirectory}");
@@ -204,7 +219,6 @@ namespace Societies.Tests
                 }
 
                 PerformanceSampleStatistics externalStatistics = PerformanceRunStatistics.Compute(externalTickSamples);
-                PerformanceRunEnvironment environment = BuildEnvironment();
                 PerformanceBudgetAssessment budget = PerformanceRunBudgets.EvaluateForRun(
                     externalStatistics,
                     bootstrapMilliseconds,
@@ -216,22 +230,39 @@ namespace Societies.Tests
                     environment.VerifiedReleaseExecution);
                 configuration.BudgetProfile = budget.Profile;
 
-                long artifactStart = Stopwatch.GetTimestamp();
-                string legacySnapshotPath = manager.SaveSnapshotToDisk();
-                double artifactSerializationMilliseconds = Stopwatch.GetElapsedTime(artifactStart).TotalMilliseconds;
-                if (string.IsNullOrWhiteSpace(legacySnapshotPath) || !File.Exists(legacySnapshotPath))
-                {
-                    throw new InvalidOperationException("Core snapshot serialization did not produce the legacy snapshot artifact.");
-                }
-
                 PerformanceRunArtifacts artifacts = BuildArtifactPaths(configuration);
-                ValidateCoreArtifacts(artifacts);
-                PerformanceRunHashes hashes = BuildHashes(artifacts);
+                double artifactSerializationMilliseconds = 0.0;
+                PerformanceRunHashes hashes;
+                if (configuration.ArtifactMode == FullArtifactMode)
+                {
+                    long artifactStart = Stopwatch.GetTimestamp();
+                    string legacySnapshotPath = manager.SaveSnapshotToDisk();
+                    artifactSerializationMilliseconds = Stopwatch.GetElapsedTime(artifactStart).TotalMilliseconds;
+                    if (string.IsNullOrWhiteSpace(legacySnapshotPath) || !File.Exists(legacySnapshotPath))
+                    {
+                        throw new InvalidOperationException("Core snapshot serialization did not produce the legacy snapshot artifact.");
+                    }
+
+                    ValidateCoreArtifacts(artifacts);
+                    hashes = BuildHashes(artifacts);
+                }
+                else
+                {
+                    hashes = new PerformanceRunHashes
+                    {
+                        Available = false,
+                        UnavailableReason = TimingOnlyArtifactUnavailableReason
+                    };
+                }
 
                 PerformanceDiagnosticsSummary? diagnostics = null;
                 PerformanceSampleStatistics? internalStatistics = null;
                 if (configuration.MetricsEnabled)
                 {
+                    if (configuration.ArtifactMode == TimingOnlyArtifactMode)
+                    {
+                        runtimeMetrics!.ExportCsv(artifacts.RuntimeMetricsCsv!);
+                    }
                     (diagnostics, internalStatistics) = ValidateEnabledRuntimeMetrics(
                         runtimeMetrics!,
                         artifacts.RuntimeMetricsCsv!,
@@ -275,12 +306,17 @@ namespace Societies.Tests
                         : "none",
                     CachePreparationBoundary = GetCachePreparationBoundary(configuration),
                     MeasurementBoundary = "one external Stopwatch sample around each StepSimulationTicks(1) call",
-                    ArtifactBoundary = "SaveSnapshotToDisk only; performance report serialization excluded"
+                    ArtifactBoundary = configuration.ArtifactMode == FullArtifactMode
+                        ? "SaveSnapshotToDisk only; performance report serialization excluded"
+                        : "timing-only mode; no runtime snapshot, event-log, or deterministic-state serialization"
                 };
                 var result = new PerformanceRunResult
                 {
                     CapturedUtc = DateTime.UtcNow.ToString("O", CultureInfo.InvariantCulture),
                     Status = status,
+                    AssessmentScope = configuration.ArtifactMode == FullArtifactMode
+                        ? "single_run_indicator_not_median_of_three_gate"
+                        : "timing_and_budget_only_persistence_artifact_equivalence_unavailable",
                     ExactInvocation = exactInvocation,
                     Configuration = configuration,
                     Environment = environment,
@@ -301,7 +337,9 @@ namespace Societies.Tests
                 WriteResultArtifacts(result);
                 GD.Print(
                     $"PERF {configuration.RunId}: {status}; p95={externalStatistics.P95Milliseconds.ToString("F3", CultureInfo.InvariantCulture)} ms; " +
-                    $"hash={hashes.DeterministicStateAndEventSha256}");
+                    (hashes.Available
+                        ? $"hash={hashes.DeterministicStateAndEventSha256}"
+                        : $"artifact-equivalence=unavailable ({hashes.UnavailableReason})"));
 
                 return budget.SafetyPassed == false && !configuration.AllowSafetyFailure ? 2 : 0;
             }
@@ -344,6 +382,7 @@ namespace Societies.Tests
                 "--selector-mode",
                 "--extraction-planning-mode",
                 "--route-distance-mode",
+                "--artifact-mode",
                 "--comparison-group",
                 "--trial-index",
                 "--allow-safety-failure"
@@ -364,7 +403,7 @@ namespace Societies.Tests
 
             foreach (string key in allowed)
             {
-                if (!values.ContainsKey(key))
+                if (key != "--artifact-mode" && !values.ContainsKey(key))
                 {
                     throw new ArgumentException($"Missing required performance runner argument '{key}'.");
                 }
@@ -459,8 +498,17 @@ namespace Societies.Tests
                 _ => throw new ArgumentException(
                     "Route-distance mode must be 'cached_distance_only' or 'full_materialization_reference'.")
             };
+            string artifactMode = values.TryGetValue("--artifact-mode", out string? requestedArtifactMode)
+                ? requestedArtifactMode switch
+                {
+                    FullArtifactMode => FullArtifactMode,
+                    TimingOnlyArtifactMode => TimingOnlyArtifactMode,
+                    _ => throw new ArgumentException(
+                        "Artifact mode must be 'full_artifacts' or 'timing_only'.")
+                }
+                : FullArtifactMode;
 
-            return new PerformanceRunConfiguration
+            var configuration = new PerformanceRunConfiguration
             {
                 ScenarioId = scenarioId,
                 SimulationSeed = seed,
@@ -480,12 +528,43 @@ namespace Societies.Tests
                 SelectorMode = selectorMode,
                 ExtractionPlanningMode = extractionPlanningMode,
                 RouteDistanceMode = routeDistanceMode,
+                ArtifactMode = artifactMode,
                 ComparisonGroup = comparisonGroup,
                 TrialIndex = trialIndex,
                 WarmupMode = warmupTicks > 0 ? "simulation_ticks" : "none",
                 CacheWarmupEnabled = false,
                 BudgetProfile = PerformanceBudgetProfile.Characterization
             };
+            ValidateArtifactModeConfiguration(configuration);
+            return configuration;
+        }
+
+        private static void ValidateArtifactModeConfiguration(PerformanceRunConfiguration configuration)
+        {
+            if (configuration.ArtifactMode != TimingOnlyArtifactMode)
+            {
+                return;
+            }
+
+            bool isCanonicalRepresentative =
+                configuration.ScenarioId == TimingOnlyScenarioId &&
+                configuration.SimulationSeed == TimingOnlySeed &&
+                configuration.CitizenCount == TimingOnlyCitizenCount &&
+                configuration.MeasuredTicks == TimingOnlyMeasuredTicks &&
+                configuration.WarmupTicks == 0 &&
+                configuration.CacheMode == ColdCacheMode &&
+                configuration.SelectorMode == OptimizedSelectorMode &&
+                configuration.ExtractionPlanningMode == ExactBoundedExtractionMode &&
+                configuration.RouteDistanceMode == CachedDistanceOnlyRouteDistanceMode &&
+                configuration.ExecutionRoute == "export_release";
+            if (!isCanonicalRepresentative)
+            {
+                throw new ArgumentException(
+                    "Timing-only mode is restricted to the V3-W2-VIS representative: " +
+                    "empty_stores, seed 1701, 12 citizens, 300 measured ticks, zero warmup, cold cache, " +
+                    "exact_branch_and_bound selector, exact_bounded extraction, cached_distance_only routing, " +
+                    "and export_release execution.");
+            }
         }
 
         private static void ValidateRuntimeIdentity(GameManager manager, PerformanceRunConfiguration configuration)
@@ -783,13 +862,20 @@ namespace Societies.Tests
         private static PerformanceRunArtifacts BuildArtifactPaths(PerformanceRunConfiguration configuration)
         {
             string root = configuration.OutputDirectory;
+            bool persistenceArtifactsAvailable = configuration.ArtifactMode == FullArtifactMode;
             return new PerformanceRunArtifacts
             {
-                Snapshot = Path.Combine(root, "snapshot-v2.json"),
-                EventLog = Path.Combine(root, "event-log-v2.json"),
-                RunSummary = Path.Combine(root, "run-summary-v2.json"),
-                WorldSummary = Path.Combine(root, "world-summary-v2.json"),
-                DeterministicMetricsCsv = Path.Combine(root, "metrics-timeseries-v2.csv"),
+                PersistenceArtifactsAvailable = persistenceArtifactsAvailable,
+                PersistenceArtifactsUnavailableReason = persistenceArtifactsAvailable
+                    ? string.Empty
+                    : TimingOnlyArtifactUnavailableReason,
+                Snapshot = persistenceArtifactsAvailable ? Path.Combine(root, "snapshot-v2.json") : string.Empty,
+                EventLog = persistenceArtifactsAvailable ? Path.Combine(root, "event-log-v2.json") : string.Empty,
+                RunSummary = persistenceArtifactsAvailable ? Path.Combine(root, "run-summary-v2.json") : string.Empty,
+                WorldSummary = persistenceArtifactsAvailable ? Path.Combine(root, "world-summary-v2.json") : string.Empty,
+                DeterministicMetricsCsv = persistenceArtifactsAvailable
+                    ? Path.Combine(root, "metrics-timeseries-v2.csv")
+                    : string.Empty,
                 RuntimeMetricsCsv = Path.Combine(root, "runtime-batch-metrics-v4.csv"),
                 PerformanceResults = Path.Combine(root, "perf-results.json"),
                 PerformanceMatrix = Path.Combine(root, "perf-matrix.csv"),
@@ -827,6 +913,7 @@ namespace Societies.Tests
 
             return new PerformanceRunHashes
             {
+                Available = true,
                 SnapshotSha256 = ToLowerHex(SHA256.HashData(snapshotBytes)),
                 EventLogSha256 = ToLowerHex(SHA256.HashData(eventLogBytes)),
                 DeterministicStateAndEventSha256 = ToLowerHex(combined.GetHashAndReset())
@@ -1045,7 +1132,9 @@ namespace Societies.Tests
                 "Warmup ticks advance deterministic simulation state; eager/all-pairs route-cache warmup is disabled.",
                 $"Comparison group '{configuration.ComparisonGroup}', trial {configuration.TrialIndex}.",
                 "This is a single-run indicator. The release gate requires the median of three comparable metrics-off runs.",
-                "Core artifact serialization and runner report serialization are excluded from measured tick samples."
+                configuration.ArtifactMode == FullArtifactMode
+                    ? "Core artifact serialization and runner report serialization are excluded from measured tick samples."
+                    : "Timing-only mode skips runtime snapshot, event-log, and deterministic-state serialization; full artifact equivalence is unavailable."
             };
             switch (configuration.CacheMode)
             {
@@ -1120,10 +1209,12 @@ namespace Societies.Tests
                 "forced_first_lookup_observed,forced_first_lookup_miss,forced_exact_endpoints_match," +
                 "forced_changed_cell_in_post_plan,forced_commit_to_first_lookup_ms," +
                 "first_batch_path_lookups,first_batch_path_hits,first_batch_path_misses,first_batch_invalidations," +
-                "forced_segment_was_built_before,forced_segment_is_built_after,forced_completion_tick," +
-                "forced_cache_entries_after_rebuild,forced_first_lookup_used_new_version," +
-                "forced_pre_query_version,forced_pre_plan_version,forced_post_query_version,forced_post_plan_version," +
-                "forced_pre_plan_cost,forced_post_plan_cost";
+                 "forced_segment_was_built_before,forced_segment_is_built_after,forced_completion_tick," +
+                 "forced_cache_entries_after_rebuild,forced_first_lookup_used_new_version," +
+                 "forced_pre_query_version,forced_pre_plan_version,forced_post_query_version,forced_post_plan_version," +
+                 "forced_pre_plan_cost,forced_post_plan_cost," +
+                 "artifact_mode,persistence_artifacts_available,persistence_artifacts_unavailable_reason," +
+                 "deterministic_hashes_available,deterministic_hashes_unavailable_reason";
             PerformanceDiagnosticsSummary? diagnostics = result.Diagnostics;
             PerformanceForcedInvalidationEvidence? forced = result.CacheEvidence.ForcedInvalidation;
             PrototypeForcedInvalidationProbeSnapshot? forcedProbe = forced?.Probe;
@@ -1219,7 +1310,12 @@ namespace Societies.Tests
                 forcedProbe?.PostChangeQueryVersion?.ToString(CultureInfo.InvariantCulture) ?? string.Empty,
                 forcedProbe?.PostChangePlanVersion?.ToString(CultureInfo.InvariantCulture) ?? string.Empty,
                 forcedProbe?.PreChangePlanCost is double preChangeCost ? Format(preChangeCost) : string.Empty,
-                forcedProbe?.PostChangePlanCost is double postChangeCost ? Format(postChangeCost) : string.Empty
+                forcedProbe?.PostChangePlanCost is double postChangeCost ? Format(postChangeCost) : string.Empty,
+                Csv(result.Configuration.ArtifactMode),
+                result.Artifacts.PersistenceArtifactsAvailable ? "true" : "false",
+                Csv(result.Artifacts.PersistenceArtifactsUnavailableReason),
+                result.Hashes.Available ? "true" : "false",
+                Csv(result.Hashes.UnavailableReason)
             });
             return $"{header}{System.Environment.NewLine}{row}{System.Environment.NewLine}";
         }
@@ -1231,6 +1327,7 @@ namespace Societies.Tests
             builder.AppendLine($"Status: {result.Status}");
             builder.AppendLine($"Configuration: {result.Configuration.ScenarioId}, seed {result.Configuration.SimulationSeed}, {result.Configuration.CitizenCount} citizens, {result.Configuration.MeasuredTicks} measured ticks, metrics {(result.Configuration.MetricsEnabled ? "on" : "off")}");
             builder.AppendLine($"Comparison: {result.Configuration.ComparisonGroup}, trial {result.Configuration.TrialIndex}; cache mode {result.Configuration.CacheMode}; selector {result.Configuration.SelectorMode}; extraction {result.Configuration.ExtractionPlanningMode}; route distance {result.Configuration.RouteDistanceMode}");
+            builder.AppendLine($"Artifact mode: {result.Configuration.ArtifactMode}; persistence artifacts available: {result.Artifacts.PersistenceArtifactsAvailable}");
             builder.AppendLine($"Measured cached route-distance fast-path hits: {result.MeasuredCachedRouteDistanceFastPathHits}");
             builder.AppendLine($"Execution route: {result.Configuration.ExecutionRoute}; runner: {result.Configuration.RunnerExecutablePath}");
             builder.AppendLine($"Managed build: {result.Environment.ManagedBuildConfiguration}; assembly configuration: {result.Environment.ManagedAssemblyConfiguration}; verified release: {result.Environment.VerifiedReleaseExecution}");
@@ -1253,7 +1350,9 @@ namespace Societies.Tests
                     $"commit-to-first-lookup {Format(forced.Probe.CommitToFirstLookupMilliseconds ?? 0.0)} ms");
             }
             builder.AppendLine($"Budget profile: {result.Budget.Profile}; target {FormatNullableBool(result.Budget.TargetPassed)}; safety {FormatNullableBool(result.Budget.SafetyPassed)}");
-            builder.AppendLine($"Deterministic state+event hash: {result.Hashes.DeterministicStateAndEventSha256}");
+            builder.AppendLine(result.Hashes.Available
+                ? $"Deterministic state+event hash: {result.Hashes.DeterministicStateAndEventSha256}"
+                : $"Deterministic artifact equivalence: unavailable ({result.Hashes.UnavailableReason})");
             builder.AppendLine($"Output: {result.Configuration.OutputDirectory}");
             return builder.ToString();
         }
