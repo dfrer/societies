@@ -150,12 +150,7 @@ namespace Societies.Tests
                     settledCamera);
                 string imageFile = $"{presetId}.png";
                 string imagePath = Path.Combine(outputDirectory, imageFile);
-                // ProcessFrame settles deterministic presentation state, but it does not guarantee
-                // the CanvasLayer draw has reached the viewport texture. Complete the renderer's
-                // draw/sync path before readback so every card contains a whole HUD frame.
-                await ToSignal(RenderingServer.Singleton, RenderingServer.SignalName.FramePostDraw);
-                RenderingServer.Singleton.ForceDraw(false);
-                RenderingServer.Singleton.ForceSync();
+                await SynchronizeViewportReadbackAsync();
                 Image captureImage = GetViewport().GetTexture().GetImage();
                 if (captureImage.GetWidth() != CaptureWidth || captureImage.GetHeight() != CaptureHeight)
                 {
@@ -167,6 +162,11 @@ namespace Societies.Tests
                 {
                     throw new InvalidOperationException($"Could not save '{imageFile}': {saveResult}.");
                 }
+
+                // The capture backend alternates viewport readback buffers. Consume the paired
+                // synchronized buffer so the next preset begins on the same known-good parity.
+                await SynchronizeViewportReadbackAsync();
+                _ = GetViewport().GetTexture().GetImage();
 
                 images.Add(new VisualCaptureImageRecord(
                     presetId,
@@ -222,6 +222,16 @@ namespace Societies.Tests
             string manifestPath = Path.Combine(outputDirectory, "capture-manifest.json");
             File.WriteAllText(manifestPath, JsonSerializer.Serialize(manifest, new JsonSerializerOptions { WriteIndented = true }));
             manager.QueueFree();
+        }
+
+        private async Task SynchronizeViewportReadbackAsync()
+        {
+            // ProcessFrame settles deterministic presentation state, but it does not guarantee
+            // the CanvasLayer draw has reached the viewport texture. Complete the renderer's
+            // draw/sync path before each capture or discarded parity readback.
+            await ToSignal(RenderingServer.Singleton, RenderingServer.SignalName.FramePostDraw);
+            RenderingServer.Singleton.ForceDraw(false);
+            RenderingServer.Singleton.ForceSync();
         }
 
         private static void ConfigureCaptureWindow()
