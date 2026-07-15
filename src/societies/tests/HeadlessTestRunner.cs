@@ -51,6 +51,7 @@ namespace Societies.Tests
             Test_SceneTree_Access();
             await Test_MainScene_BootstrapSmoke();
             await Test_MainScene_DepotContributionInputSmoke();
+            await Test_MainScene_DirectiveInputSmoke();
             await Test_MainScene_FrameCatchUpCapSmoke();
             await Test_MainScene_HudRefreshCoalescingSmoke();
             await Test_MainScene_RuntimeMetricsBatchSmoke();
@@ -241,6 +242,50 @@ namespace Societies.Tests
             catch (Exception ex)
             {
                 Fail(nameof(Test_MainScene_DepotContributionInputSmoke), ex);
+            }
+            finally
+            {
+                if (scene != null)
+                {
+                    scene.QueueFree();
+                    await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+                }
+            }
+        }
+
+        private async Task Test_MainScene_DirectiveInputSmoke()
+        {
+            Node? scene = null;
+
+            try
+            {
+                PackedScene packedScene = GD.Load<PackedScene>("res://scenes/main.tscn");
+                Assert(packedScene != null, "Main scene failed to load");
+
+                scene = packedScene!.Instantiate();
+                AddChild(scene);
+                await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+
+                GameManager manager = scene as GameManager ?? throw new Exception("Main scene root is not GameManager");
+                manager.SetProcess(false);
+                PrototypeHud hud = manager.GetNodeOrNull<PrototypeHud>("UI") ?? throw new Exception("PrototypeHud missing");
+                Assert(manager.CurrentDirective == PrototypeSettlementDirective.Neutral, "Directive should start neutral");
+                Assert(hud.SettlementText.Contains("Directive: Neutral", StringComparison.Ordinal), "HUD should expose neutral directive state");
+
+                manager._UnhandledInput(new InputEventKey { Pressed = true, Keycode = Key.Key2 });
+                Assert(manager.CurrentDirective == PrototypeSettlementDirective.FoodAndFuel, "Key 2 should select Food & Fuel");
+                Assert(hud.SettlementText.Contains("Directive: Food & Fuel", StringComparison.Ordinal), "HUD should expose Food & Fuel");
+                Assert(hud.StatusText.Contains("Directive set: Food & Fuel", StringComparison.Ordinal), "Directive input should provide status feedback");
+
+                manager._UnhandledInput(new InputEventKey { Pressed = true, Keycode = Key.Key3 });
+                Assert(manager.CurrentDirective == PrototypeSettlementDirective.Shelter, "Key 3 should select Shelter");
+                Assert(hud.SettlementText.Contains("Directive: Shelter", StringComparison.Ordinal), "HUD should expose Shelter");
+
+                Pass(nameof(Test_MainScene_DirectiveInputSmoke));
+            }
+            catch (Exception ex)
+            {
+                Fail(nameof(Test_MainScene_DirectiveInputSmoke), ex);
             }
             finally
             {

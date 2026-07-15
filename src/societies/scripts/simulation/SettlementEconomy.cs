@@ -90,11 +90,41 @@ namespace Societies.Simulation
                 weather,
                 activeClaimedOrderIds,
                 ref omittedExtractionOrderCount);
+            AnnotateDirectiveAffinities(orders);
             orders = RemoveClaimedOrders(orders, activeClaimedOrderIds);
             _workOrdersGeneratedUncappedThisTick = orders.Count + omittedExtractionOrderCount;
             _extractionOrdersOmittedThisTick = omittedExtractionOrderCount;
             orders = ApplyWorkOrderFrontierLimit(orders, _workOrdersGeneratedUncappedThisTick);
             return orders;
+        }
+
+        private void AnnotateDirectiveAffinities(IEnumerable<PrototypeWorkOrder> orders)
+        {
+            foreach (PrototypeWorkOrder order in orders)
+            {
+                (order.DirectiveAffinity, order.DirectiveCause) = order.Kind switch
+                {
+                    PrototypeWorkOrderKind.RefuelHearth =>
+                        (PrototypeDirectiveAffinity.FoodAndFuel, "hearth refueling"),
+                    PrototypeWorkOrderKind.Build when IsHutOrder(order) =>
+                        (PrototypeDirectiveAffinity.Shelter, "hut construction"),
+                    _ => order.ResourceId switch
+                    {
+                        "berries" => (PrototypeDirectiveAffinity.FoodAndFuel, "berry reserves"),
+                        "meals" => (PrototypeDirectiveAffinity.FoodAndFuel, "meal production"),
+                        "firewood" => (PrototypeDirectiveAffinity.FoodAndFuel, "fuel supply"),
+                        "logs" or "timber" => (PrototypeDirectiveAffinity.Shelter, "construction lumber"),
+                        "reeds" or "thatch" => (PrototypeDirectiveAffinity.Shelter, "shelter thatch"),
+                        _ => (PrototypeDirectiveAffinity.None, string.Empty)
+                    }
+                };
+            }
+        }
+
+        private bool IsHutOrder(PrototypeWorkOrder order)
+        {
+            return !string.IsNullOrWhiteSpace(order.StructureId) &&
+                string.Equals(GetStructure(order.StructureId)?.StructureKindId, "hut", StringComparison.Ordinal);
         }
 
         internal PrototypeExtractionFrontierProbe PlanExtractionFrontierForTesting(

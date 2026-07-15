@@ -96,6 +96,9 @@ namespace Societies.Core
         public long CachedRouteDistanceFastPathHits =>
             _runtimeSession?.CachedRouteDistanceFastPathHits ?? 0;
 
+        public PrototypeSettlementDirective CurrentDirective =>
+            _runtimeSession?.ActiveDirective ?? PrototypeSettlementDirective.Neutral;
+
         public double? PerformanceBootstrapMilliseconds { get; private set; }
 
         public InventoryComponent Inventory => _runtimeSession?.Inventory ?? _fallbackInventory;
@@ -187,6 +190,14 @@ namespace Societies.Core
                     TryCraftRecipe("stone_axe");
                     GetViewport().SetInputAsHandled();
                     break;
+                case Key.Key2:
+                    SelectDirective(PrototypeSettlementDirective.FoodAndFuel);
+                    GetViewport().SetInputAsHandled();
+                    break;
+                case Key.Key3:
+                    SelectDirective(PrototypeSettlementDirective.Shelter);
+                    GetViewport().SetInputAsHandled();
+                    break;
                 case Key.F3:
                     SelectNextInspectedCitizen();
                     GetViewport().SetInputAsHandled();
@@ -234,6 +245,28 @@ namespace Societies.Core
         {
             int ticksAttempted = 0;
             RunTickBatch(Math.Max(0, tickCount), RuntimeMetricsBatchKind.ManualStep, ref ticksAttempted);
+        }
+
+        public PrototypeDirectiveChangeResult SelectDirective(PrototypeSettlementDirective directive)
+        {
+            if (_runtimeSession == null)
+            {
+                return new PrototypeDirectiveChangeResult(
+                    PrototypeSettlementDirective.Neutral,
+                    PrototypeSettlementDirective.Neutral,
+                    false,
+                    false,
+                    "runtime_unavailable");
+            }
+
+            PrototypeDirectiveChangeResult result = _runtimeSession.SetDirective(directive);
+            if (result.Succeeded)
+            {
+                string displayName = PrototypeSettlementDirectiveCatalog.GetDisplayName(result.CurrentDirective);
+                NotifyStatus(result.Changed ? $"Directive set: {displayName}" : $"Directive already set: {displayName}");
+            }
+
+            return result;
         }
 
         internal PrototypePerformanceProbeSnapshot CapturePerformanceProbeState()
@@ -983,7 +1016,8 @@ namespace Societies.Core
                 _runtimeSession?.WorldSeed,
                 _cameraMode,
                 _overlayMode,
-                _lastWorldSummary);
+                _lastWorldSummary,
+                _runtimeSession?.ActiveDirective ?? PrototypeSettlementDirective.Neutral);
 
             UpdateSettlementPresentationFromSessionOrFallback();
         }

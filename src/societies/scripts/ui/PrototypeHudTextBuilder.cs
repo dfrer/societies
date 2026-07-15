@@ -13,7 +13,7 @@ namespace Societies.UI
         public static string BuildHelpText()
         {
             return "WASD move  Shift sprint  Space jump  Mouse look  E harvest\n" +
-                   "Tab inventory  1 craft Stone Axe  F3 cycle citizen  F4 cycle structure  F5 toggle weather  F6 save snapshot  F7 reset run\n" +
+                   "Tab inventory  1 craft Stone Axe  2 Food & Fuel  3 Shelter  F3 cycle citizen  F4 cycle structure  F5 toggle weather  F6 save snapshot  F7 reset run\n" +
                    "F8 observer  F9 load snapshot  F10 overlays (terrain/routes/depots)  F11 next build  F12 pause build  Esc mouse";
         }
 
@@ -105,13 +105,15 @@ namespace Societies.UI
             int hearthFuel = 0,
             IReadOnlyList<PrototypeStructureState>? structures = null,
             float averageTravelWorkRatio = 0.0f,
-            IReadOnlyDictionary<string, int>? routeBacklogTicksByKind = null)
+            IReadOnlyDictionary<string, int>? routeBacklogTicksByKind = null,
+            PrototypeSettlementDirective directive = PrototypeSettlementDirective.Neutral)
         {
             List<string> lines = new() { "Settlement" };
 
             int activeCitizens = workers.Count(worker => worker.Phase != PrototypeWorkerPhase.Idle);
             lines.Add($"State: {classification}");
             lines.Add($"Citizens: {activeCitizens}/{workers.Count} active");
+            lines.Add($"Directive: {PrototypeSettlementDirectiveCatalog.GetDisplayName(directive)}");
             lines.Add($"Meals: {mealCoveragePercent} %  Beds: {bedCoveragePercent} %  Hearth Fuel: {hearthFuel}");
             lines.Add($"Travel/Work: {averageTravelWorkRatio:0.00}");
 

@@ -49,6 +49,15 @@ namespace Societies.Core
         public PrototypeSettlementSnapshot? Settlement { get; set; } = new();
     }
 
+    /// <summary>
+    /// Frozen schema-v7 directive payload. W2-05 will attach this contract to
+    /// <see cref="PrototypeRuntimeSnapshot"/>; schema-v6 snapshots must not silently persist it.
+    /// </summary>
+    public sealed class PrototypeDirectiveSnapshot
+    {
+        public string DirectiveId { get; set; } = "neutral";
+    }
+
     public sealed class PrototypeResourceSnapshot
     {
         public string SiteId { get; set; } = string.Empty;

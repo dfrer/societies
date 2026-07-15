@@ -24,7 +24,8 @@ namespace Societies.Simulation
             PrototypeWorkOrder Order,
             int OriginalIndex,
             float Score,
-            PrototypePathPlan FirstPathPlan);
+            PrototypePathPlan FirstPathPlan,
+            string DirectiveCause = "");
 
         private void InitializeCitizens(IReadOnlyList<PrototypeRoleQuotaDefinition> roleQuotas)
         {
@@ -174,7 +175,7 @@ namespace Societies.Simulation
                 return;
             }
 
-            if (BeginOrder(citizen, order, result, selection!.FirstPathPlan))
+            if (BeginOrder(citizen, order, result, selection!.FirstPathPlan, selection.DirectiveCause))
             {
                 availableOrders.Remove(order);
             }
@@ -184,27 +185,66 @@ namespace Societies.Simulation
             PrototypeWorkerState citizen,
             IReadOnlyList<PrototypeWorkOrder> availableOrders)
         {
+            ExactOrderSelection? selected = SelectGenericOrderForDirective(
+                citizen,
+                availableOrders,
+                _activeDirective,
+                trackSelectorDiagnostics: true);
+            if (selected == null ||
+                _activeDirective == PrototypeSettlementDirective.Neutral ||
+                PrototypeSettlementDirectiveCatalog.GetAssignmentScoreBonus(_activeDirective, selected.Order) <= 0.0f)
+            {
+                return selected;
+            }
+
+            ExactOrderSelection? neutral = SelectGenericOrderForDirective(
+                citizen,
+                availableOrders,
+                PrototypeSettlementDirective.Neutral,
+                trackSelectorDiagnostics: false);
+            if (neutral == null || string.Equals(neutral.Order.OrderId, selected.Order.OrderId, StringComparison.Ordinal))
+            {
+                return selected;
+            }
+
+            return selected with { DirectiveCause = selected.Order.DirectiveCause };
+        }
+
+        private ExactOrderSelection? SelectGenericOrderForDirective(
+            PrototypeWorkerState citizen,
+            IReadOnlyList<PrototypeWorkOrder> availableOrders,
+            PrototypeSettlementDirective directive,
+            bool trackSelectorDiagnostics)
+        {
             bool useTopologyBounds = _orderSelectionMode == PrototypeOrderSelectionMode.ExactBranchAndBound &&
                 ShouldBuildGeometricDistanceField(
                     citizen.Position,
                     availableOrders.Select(GetFirstTravelDestination));
             List<OrderSelectionCandidate> candidates = availableOrders
-                .Select((order, index) => new OrderSelectionCandidate(
-                    order,
-                    index,
-                    useTopologyBounds
-                        ? order.Priority + GetRoleBonus(citizen.Role, order) -
-                            (PrototypeOrderSelectionMath.ExactDistancePenalty * ComputeRouteDistanceLowerBound(
+                .Select((order, index) =>
+                {
+                    float selectionBonus = GetRoleBonus(citizen.Role, order) +
+                        PrototypeSettlementDirectiveCatalog.GetAssignmentScoreBonus(directive, order);
+                    return new OrderSelectionCandidate(
+                        order,
+                        index,
+                        useTopologyBounds
+                            ? order.Priority + selectionBonus -
+                                (PrototypeOrderSelectionMath.ExactDistancePenalty * ComputeRouteDistanceLowerBound(
+                                    citizen.Position,
+                                    GetFirstTravelDestination(order)))
+                            : PrototypeOrderSelectionMath.ComputeScoreUpperBound(
+                                order.Priority,
+                                selectionBonus,
                                 citizen.Position,
-                                GetFirstTravelDestination(order)))
-                        : PrototypeOrderSelectionMath.ComputeScoreUpperBound(
-                            order.Priority,
-                            GetRoleBonus(citizen.Role, order),
-                            citizen.Position,
-                            GetFirstTravelDestination(order),
-                            _world.WorldMap.Cells.Count)))
+                                GetFirstTravelDestination(order),
+                                _world.WorldMap.Cells.Count));
+                })
                 .ToList();
-            _selectorCandidatesBoundedThisTick += candidates.Count;
+            if (trackSelectorDiagnostics)
+            {
+                _selectorCandidatesBoundedThisTick += candidates.Count;
+            }
 
             IEnumerable<OrderSelectionCandidate> evaluationOrder = _orderSelectionMode == PrototypeOrderSelectionMode.ExactBranchAndBound
                 ? candidates
@@ -223,22 +263,32 @@ namespace Societies.Simulation
                     best != null &&
                     candidate.ScoreUpperBound < best.Score)
                 {
-                    _selectorCandidatesPrunedThisTick += orderedCandidates.Count - candidateIndex;
+                    if (trackSelectorDiagnostics)
+                    {
+                        _selectorCandidatesPrunedThisTick += orderedCandidates.Count - candidateIndex;
+                    }
                     break;
                 }
 
                 if (!TryScoreOrder(
                     citizen,
                     candidate.Order,
-                    PathPlanLookupPurpose.GenericOrderSelection,
+                    trackSelectorDiagnostics ? PathPlanLookupPurpose.GenericOrderSelection : PathPlanLookupPurpose.General,
+                    directive,
                     out float exactScore,
                     out PrototypePathPlan? firstPathPlan))
                 {
-                    _unreachableWorkOrderCandidatesSkippedThisTick++;
+                    if (trackSelectorDiagnostics)
+                    {
+                        _unreachableWorkOrderCandidatesSkippedThisTick++;
+                    }
                     continue;
                 }
 
-                _selectorCandidatesExactScoredThisTick++;
+                if (trackSelectorDiagnostics)
+                {
+                    _selectorCandidatesExactScoredThisTick++;
+                }
                 ExactOrderSelection exact = new(
                     candidate.Order,
                     candidate.OriginalIndex,
@@ -251,6 +301,28 @@ namespace Societies.Simulation
             }
 
             return best;
+        }
+
+        internal PrototypeDirectiveSelectionProbe SelectDirectiveOrderForTesting(
+            PrototypeWorkerState citizen,
+            IReadOnlyList<PrototypeWorkOrder> availableOrders,
+            PrototypeSettlementDirective directive)
+        {
+            PrototypeSettlementDirective previous = _activeDirective;
+            _activeDirective = directive;
+            try
+            {
+                ExactOrderSelection? selected = SelectGenericOrder(citizen, availableOrders);
+                return selected == null
+                    ? new PrototypeDirectiveSelectionProbe(string.Empty, string.Empty)
+                    : new PrototypeDirectiveSelectionProbe(
+                        selected.Order.OrderId,
+                        BuildCurrentOrderReason(selected.Order, selected.DirectiveCause));
+            }
+            finally
+            {
+                _activeDirective = previous;
+            }
         }
 
         private static bool IsPreferredExactSelection(ExactOrderSelection candidate, ExactOrderSelection currentBest)
@@ -730,11 +802,12 @@ namespace Societies.Simulation
             PrototypeWorkerState citizen,
             PrototypeWorkOrder order,
             PrototypeSettlementTickResult result,
-            PrototypePathPlan? selectedFirstPathPlan = null)
+            PrototypePathPlan? selectedFirstPathPlan = null,
+            string directiveCause = "")
         {
             citizen.CurrentOrderId = order.OrderId;
             citizen.CurrentOrderKind = order.Kind;
-            citizen.CurrentOrderReason = order.Reason;
+            citizen.CurrentOrderReason = BuildCurrentOrderReason(order, directiveCause);
             citizen.TargetStructureId = order.StructureId;
             citizen.TargetResourceNodeName = order.TargetNodeName;
             citizen.SourceStoreId = order.SourceStoreId;
@@ -1257,6 +1330,23 @@ namespace Societies.Simulation
             out float score,
             out PrototypePathPlan? firstPathPlan)
         {
+            return TryScoreOrder(
+                citizen,
+                order,
+                purpose,
+                PrototypeSettlementDirective.Neutral,
+                out score,
+                out firstPathPlan);
+        }
+
+        private bool TryScoreOrder(
+            PrototypeWorkerState citizen,
+            PrototypeWorkOrder order,
+            PathPlanLookupPurpose purpose,
+            PrototypeSettlementDirective directive,
+            out float score,
+            out PrototypePathPlan? firstPathPlan)
+        {
             if (!TryComputeOrderRouteDistance(citizen, order, purpose, out float routeDistance, out firstPathPlan))
             {
                 score = 0.0f;
@@ -1265,8 +1355,16 @@ namespace Societies.Simulation
 
             float distancePenalty = routeDistance * PrototypeOrderSelectionMath.ExactDistancePenalty;
             float roleBonus = GetRoleBonus(citizen.Role, order);
-            score = order.Priority + roleBonus - distancePenalty;
+            float directiveBonus = PrototypeSettlementDirectiveCatalog.GetAssignmentScoreBonus(directive, order);
+            score = order.Priority + roleBonus + directiveBonus - distancePenalty;
             return true;
+        }
+
+        private string BuildCurrentOrderReason(PrototypeWorkOrder order, string directiveCause)
+        {
+            return string.IsNullOrWhiteSpace(directiveCause)
+                ? order.Reason
+                : $"{order.Reason} | Why: {PrototypeSettlementDirectiveCatalog.GetDisplayName(_activeDirective)} — {directiveCause}";
         }
         private bool TryComputeOrderRouteDistance(
             PrototypeWorkerState citizen,

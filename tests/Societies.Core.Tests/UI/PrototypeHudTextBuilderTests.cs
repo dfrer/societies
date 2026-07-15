@@ -20,6 +20,8 @@ namespace Societies.Core.Tests
             Assert.Contains("F10 overlays", helpText);
             Assert.Contains("F11 next build", helpText);
             Assert.Contains("F12 pause build", helpText);
+            Assert.Contains("2 Food & Fuel", helpText);
+            Assert.Contains("3 Shelter", helpText);
         }
 
         [Fact]
@@ -122,10 +124,12 @@ namespace Societies.Core.Tests
                     }
                 },
                 1.10f,
-                new Dictionary<string, int> { ["haultodepot"] = 4 });
+                new Dictionary<string, int> { ["haultodepot"] = 4 },
+                PrototypeSettlementDirective.Shelter);
 
             Assert.Contains("Settlement", settlementText);
             Assert.Contains("State: Stable", settlementText);
+            Assert.Contains("Directive: Shelter", settlementText);
             Assert.Contains("Build Queue Focus: Hut (active)", settlementText);
             Assert.Contains("Travel/Work: 1.10", settlementText);
             Assert.Contains("meals x1", settlementText);
@@ -144,7 +148,7 @@ namespace Societies.Core.Tests
                     DisplayName = "Citizen 2",
                     Role = PrototypeCitizenRole.Builder,
                     CurrentOrderKind = PrototypeWorkOrderKind.Build,
-                    CurrentOrderReason = "hut.priority",
+                    CurrentOrderReason = "construction ready | Why: Shelter — hut construction",
                     CarryItemId = "timber",
                     CarryAmount = 2,
                     Needs = new PrototypeNeedState
@@ -173,6 +177,7 @@ namespace Societies.Core.Tests
             Assert.Contains("Structure: Hut", inspectorText);
             Assert.Contains("Carry: timber x2", inspectorText);
             Assert.Contains("Route: 12.5 m", inspectorText);
+            Assert.Contains("Why: Shelter — hut construction", inspectorText);
         }
     }
 }

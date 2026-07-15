@@ -57,6 +57,67 @@ namespace Societies.Simulation
         Repath
     }
 
+    public enum PrototypeSettlementDirective
+    {
+        Neutral,
+        FoodAndFuel,
+        Shelter
+    }
+
+    public enum PrototypeDirectiveAffinity
+    {
+        None,
+        FoodAndFuel,
+        Shelter
+    }
+
+    public readonly record struct PrototypeDirectiveChangeResult(
+        PrototypeSettlementDirective PreviousDirective,
+        PrototypeSettlementDirective CurrentDirective,
+        bool Succeeded,
+        bool Changed,
+        string FailureReason);
+
+    public static class PrototypeSettlementDirectiveCatalog
+    {
+        public const float AssignmentScoreBonus = 240.0f;
+
+        public static string GetId(PrototypeSettlementDirective directive)
+        {
+            return directive switch
+            {
+                PrototypeSettlementDirective.Neutral => "neutral",
+                PrototypeSettlementDirective.FoodAndFuel => "food_and_fuel",
+                PrototypeSettlementDirective.Shelter => "shelter",
+                _ => throw new System.ArgumentOutOfRangeException(nameof(directive))
+            };
+        }
+
+        public static string GetDisplayName(PrototypeSettlementDirective directive)
+        {
+            return directive switch
+            {
+                PrototypeSettlementDirective.Neutral => "Neutral",
+                PrototypeSettlementDirective.FoodAndFuel => "Food & Fuel",
+                PrototypeSettlementDirective.Shelter => "Shelter",
+                _ => throw new System.ArgumentOutOfRangeException(nameof(directive))
+            };
+        }
+
+        public static float GetAssignmentScoreBonus(
+            PrototypeSettlementDirective directive,
+            PrototypeWorkOrder order)
+        {
+            bool matches = directive switch
+            {
+                PrototypeSettlementDirective.FoodAndFuel => order.DirectiveAffinity == PrototypeDirectiveAffinity.FoodAndFuel,
+                PrototypeSettlementDirective.Shelter => order.DirectiveAffinity == PrototypeDirectiveAffinity.Shelter,
+                _ => false
+            };
+            return matches ? AssignmentScoreBonus : 0.0f;
+        }
+    }
+
     public enum PrototypeSettlementClassification
     {
         Stable,
@@ -603,6 +664,10 @@ namespace Societies.Simulation
 
         public string Reason { get; set; } = string.Empty;
 
+        public PrototypeDirectiveAffinity DirectiveAffinity { get; set; }
+
+        public string DirectiveCause { get; set; } = string.Empty;
+
         public Vector3 TargetPosition { get; set; }
 
         public int Amount { get; set; } = 1;
@@ -617,6 +682,10 @@ namespace Societies.Simulation
         int PathPlanCacheMisses,
         long CachedRouteDistanceFastPathHits,
         PrototypePerformanceProbeSnapshot PerformanceProbe);
+
+    internal readonly record struct PrototypeDirectiveSelectionProbe(
+        string OrderId,
+        string CurrentOrderReason);
 
     public sealed class PrototypeWorkerState
     {
