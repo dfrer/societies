@@ -391,7 +391,7 @@ try {
             "arrival" { 70.0 }
             "settlement_overview" { 62.0 }
             "contribution_point" { 66.0 }
-            "citizen_inspection" { 54.0 }
+            "citizen_inspection" { 62.0 }
             "terminal_crisis" { 62.0 }
             default { throw "Capture manifest has an unknown preset '$preset'." }
         }
