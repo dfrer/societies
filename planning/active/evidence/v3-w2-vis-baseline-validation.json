@@ -1,7 +1,7 @@
 {
   "schemaVersion": 4,
   "workItem": "V3-W2-VIS",
-  "status": "capture_validated_performance_blocked",
+  "status": "timing_only_representative_threshold_failure_allowed",
   "base": {
     "branch": "feature/v3-w2-vis-baseline",
     "baseMaster": "d519d4d",
@@ -76,13 +76,31 @@
     "gateRepair": "An exhaustive-reference shadow frontier aligns backlog diagnostics with shipped exact-bounded capped-frontier semantics without changing shipped/default world behavior or schema. A clean d519d4d archive executes the no-input trace at tick 9777 with event count 7495 and SHA-256 ab219da9ad492a0011bd70160548d29da3420569eb6a89facd74c6c63145a880; the scripted default snapshot remains tick 1253, hut switch 245, SHA-256 a81d7083649911a3244446bcde991f215dc0237ea2aa8967b94bfc0c9a98bd3b.",
     "headlessCaptureDiagnostic": "VisualCaptureRunner reached the canonical scenario but cannot read a viewport texture under Godot headless dummy rendering (texture_2d_get parameter t is null); headless output is therefore not reviewed visual evidence.",
     "capture": "validated: GUI capture exit 0; five PNGs, schema-4 manifest, reproduction record, exact 1920x1080 forward_plus",
-    "performance": "blocked: ReleaseExport templates in protected user AppData are inaccessible under current session approval limit; crisis-active Debug pair refuses schema-v6 snapshot artifact until W2-05",
+    "performance": {
+      "status": "timing_only_representative_threshold_failure_allowed",
+      "sourceCommit": "50f16cd6491350053af45ba7164cb5121cc3bf26",
+      "command": "canonical empty_stores seed1701 citizens12 warmup2 measured300 cold/exact_branch_and_bound/exact_bounded/cached_distance_only timing_only ReleaseExport -AllowPrimarySafetyFailure",
+      "contractStatus": "pass",
+      "releaseExportVerified": true,
+      "p95Ms": 55.4529,
+      "p95SafetyMs": 50,
+      "p95Pass": false,
+      "maxMs": 142.9547,
+      "maxSafetyMs": 250,
+      "maxPass": true,
+      "failureAllowed": true,
+      "matrixSchemaAndMetadata": true,
+      "persistenceHashEquivalence": "unavailable: timing-only mode",
+      "equivalenceArtifactSha256": "a0c85afc361af697010d3fb247814a094c1b4b76917953a0c97a357725028ce5",
+      "artifactPath": "artifacts/performance/20260715-215916-702-empty_stores-seed1701-c12-t300-w2-mcold-atiming_only-r1-9f6a82bc",
+      "priorUnwaivedCleanRun": { "p95Ms": 50.3602, "maxMs": 140.9202, "status": "failed_unwaived" }
+    },
     "debugCharacterization": "balanced_basin 12 citizens/300 ticks dirty-source pair passed deterministic hash fd518fe0...; p95 off/on 55.9687/51.2184 ms and max off 667.0811 ms; not W1-03 evidence"
   },
   "statusReconciliation": {
-    "w2VisComplete": false,
-    "w2VisReason": "Capture and implementation gates are green, but representative empty_stores ReleaseExport W1-03 safety evidence is blocked; do not overclaim milestone completion.",
-    "nextContractedSlice": "V3-W2-05 (not activated)",
+    "w2VisComplete": true,
+    "w2VisReason": "Complete only by explicit one-time user-authorized waiver; timing-only representative p95 remains above safety and persistence/hash equivalence is unavailable.",
+    "nextContractedSlice": "V3-W2-05 (inactive/not implemented)",
     "weeks3To4": "Draft/Conditional and inactive until W2-06 records Continue V3"
   }
 }
