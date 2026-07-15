@@ -105,4 +105,8 @@ godot --headless --path src/societies res://tests/HeadlessTestRunner.tscn
 
 ## CI Scope
 
-CI should validate the authoritative Godot build and its supporting .NET tests only.
+- GitHub `master` protection requires an up-to-date `build-test-smoke` check on a pull request, applies to administrators, requires resolved review conversations, and blocks force-pushes and branch deletion.
+- Markdown-only pull requests run `git diff --check` and skip the managed/Godot toolchain.
+- Other pull requests run the Release build, the manifest-owned 118-test fast tier, the Godot solution build, and the 16-test headless smoke suite. Superseded runs on the same pull request are cancelled.
+- `Weekly Full Validation` runs Friday evening in Vancouver and on manual dispatch. It owns all 211 core .NET tests with coverage, Godot validation, and the extended test project.
+- Release-route performance matrices and sprint-end evidence remain explicit milestone validation rather than per-pull-request checks.

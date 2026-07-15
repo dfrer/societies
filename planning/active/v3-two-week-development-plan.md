@@ -610,11 +610,11 @@ Deliver `V3_SPRINT_VALIDATION_REPORT.md` with baseline-versus-RC results, defect
 | Tier | Purpose | Cadence |
 |---|---|---|
 | Fast | Build, deterministic units, navigation edges, schema checks, short session advance, one Godot bootstrap | Before coding, after logical changes, before push; <90 s local target |
-| Required full | All .NET and Godot headless tests | Every review/merge; parallel CI jobs when available |
-| Nightly/slow | 1,000-tick repeat, save-at-500 resume, 16/24-citizen perf, catch-up cap, artifact validation | Nightly during sprint |
-| Extended | Frontier starvation, capped/uncapped workload, path/logistics, 16/24/64 scaling | End of each week; 256 citizens informational only |
+| Required PR | Markdown-only diff validation, or Release build plus the manifest-owned 118-test fast tier and 16-test Godot headless suite | Every pull request; enforced on protected `master` by `build-test-smoke` |
+| Weekly full | All 211 core .NET tests with coverage, all Godot headless tests, and the extended test project | Friday evening in Vancouver and manual dispatch |
+| Release/slow | 1,000-tick repeat, save-at-500 resume, 16/24-citizen performance, catch-up cap, artifact validation, and release-route evidence | End-of-sprint gate and before any new performance claim |
 
-The existing full validation loop remains authoritative until a replacement proves it runs the same manifest.
+`.github/workflows/tests.yml` is the protected fast pull-request gate. `.github/workflows/tests-extended.yml` owns scheduled/manual full validation. The local full validation loop remains authoritative for sprint-end and release-candidate evidence, but is not required for each pull request.
 
 Standard commands:
 
