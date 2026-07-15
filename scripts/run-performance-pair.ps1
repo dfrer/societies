@@ -452,7 +452,19 @@ if ($releaseReferenceRequested -and -not $RequireRelease -and -not $AllowDebugRe
 $godot = Resolve-Godot
 $projectPath = Join-Path $repoRoot "src\societies"
 $expectedGodotVersion = "4.6.2"
-$godotVersionLines = @(& $godot --version 2>&1)
+$godotVersionProbe = $godot
+if ([System.Environment]::OSVersion.Platform -eq [System.PlatformID]::Win32NT) {
+    $godotBaseName = [System.IO.Path]::GetFileNameWithoutExtension($godot)
+    if (-not $godotBaseName.EndsWith("_console", [System.StringComparison]::OrdinalIgnoreCase)) {
+        $godotConsoleCandidate = Join-Path `
+            (Split-Path -Parent $godot) `
+            ($godotBaseName + "_console" + [System.IO.Path]::GetExtension($godot))
+        if (Test-Path -LiteralPath $godotConsoleCandidate -PathType Leaf) {
+            $godotVersionProbe = (Resolve-Path -LiteralPath $godotConsoleCandidate).Path
+        }
+    }
+}
+$godotVersionLines = @(& $godotVersionProbe --version 2>&1)
 if ($LASTEXITCODE -ne 0) {
     throw "Could not query the resolved Godot executable version."
 }
