@@ -386,6 +386,13 @@ namespace Societies.Tests
                 Assert(PrototypeVisualCaptureConfiguration.TerminalCrisisEventCount == 8148, "Capture terminal-crisis provenance should retain the 10.5 reference event count");
                 Assert(PrototypeVisualCaptureConfiguration.TerminalCrisisTraceSha256 == "69f3e22402e31a53b1d4c16899883956fcc5fdb14fbe47d8a4eb8baef007174f", "Capture terminal-crisis provenance should retain the 10.5 reference trace hash");
                 Assert(PrototypeVisualCaptureConfiguration.LightingHour == 10.5f, "Capture lighting hour should be fixed");
+                Assert(PrototypeVisualCaptureConfiguration.TryGetPreset("citizen_inspection", out PrototypeVisualCapturePreset citizenInspection), "Citizen inspection capture preset should exist");
+                Assert(
+                    citizenInspection.CameraKind == PrototypeVisualCaptureCameraKind.Observer &&
+                    citizenInspection.CameraOffset == new Vector3(17, 12, 18) &&
+                    citizenInspection.LookAtOffset == new Vector3(0, 1.2f, 0) &&
+                    citizenInspection.FieldOfView == 62.0f,
+                    "Citizen inspection should retain its fixed high observer composition above placeholder terrain");
                 foreach ((float width, float height) in new[] { (1920.0f, 1080.0f), (1280.0f, 720.0f) })
                 {
                     PrototypeHudLayout layout = PrototypeHudLayout.Calculate(width, height);

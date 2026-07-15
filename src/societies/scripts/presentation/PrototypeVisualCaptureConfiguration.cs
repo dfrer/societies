@@ -26,7 +26,8 @@ namespace Societies.Presentation
                 ["arrival"] = new("arrival", PrototypeVisualCaptureCameraKind.Player, new Vector3(0, 2.1f, -17), new Vector3(0, 1.7f, 0), 70.0f),
                 ["settlement_overview"] = new("settlement_overview", PrototypeVisualCaptureCameraKind.Observer, new Vector3(-36, 42, 36), new Vector3(0, 1.0f, 0), 62.0f),
                 ["contribution_point"] = new("contribution_point", PrototypeVisualCaptureCameraKind.Player, new Vector3(-8, 3.1f, -9), new Vector3(-3.6f, 1.0f, -2.2f), 66.0f),
-                ["citizen_inspection"] = new("citizen_inspection", PrototypeVisualCaptureCameraKind.Observer, new Vector3(-11.0f, 7.5f, 11.0f), new Vector3(0, 1.15f, 0), 54.0f),
+                // Keep the selected citizen centered while clearing the placeholder terrain band.
+                ["citizen_inspection"] = new("citizen_inspection", PrototypeVisualCaptureCameraKind.Observer, new Vector3(17, 12, 18), new Vector3(0, 1.2f, 0), 62.0f),
                 ["terminal_crisis"] = new("terminal_crisis", PrototypeVisualCaptureCameraKind.Observer, new Vector3(17, 12, 18), new Vector3(0, 1.2f, 0), 62.0f)
             };
 
