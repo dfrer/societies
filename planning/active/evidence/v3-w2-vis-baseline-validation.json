@@ -1,7 +1,7 @@
 {
-  "schemaVersion": 2,
+  "schemaVersion": 4,
   "workItem": "V3-W2-VIS",
-  "status": "implemented_evidence_pending",
+  "status": "capture_validated_performance_blocked",
   "base": {
     "branch": "feature/v3-w2-vis-baseline",
     "baseMaster": "d519d4d",
@@ -46,6 +46,26 @@
     "emptyStoresPerformancePair": true,
     "w1_03SafetyLimits": true
   },
+  "captureEvidence": {
+    "buildSha": "2393e884b902d54b50f54d8dfcd966f9bbae11f0",
+    "outputPath": "docs/evidence/v3-w2-vis/2393e884b902d54b50f54d8dfcd966f9bbae11f0",
+    "manifest": { "file": "capture-manifest.json", "sha256": "b2754d8aafe7006a40527e24b7fbfc47460a4e467b7ae07fa30948e3a18e1c59" },
+    "reproduction": { "file": "reproduction.json", "sha256": "7b8fe5f2a1fd7d5374e92796880278c8ea0b6a0616e3d415ced77c19eaff6184" },
+    "resolution": "1920x1080",
+    "renderer": "forward_plus",
+    "schemaVersion": 4,
+    "captureExitCode": 0,
+    "managedAssemblySha256": "7fb5b1b31b33a4f7daf6b7bc64ed4a6473b814a51caa9b15db4615d9dbf5e4f6",
+    "terminalTrace": { "tick": 9777, "eventCount": 8148, "sha256": "69f3e22402e31a53b1d4c16899883956fcc5fdb14fbe47d8a4eb8baef007174f" },
+    "images": [
+      { "preset": "arrival", "file": "arrival.png", "sha256": "0aa9cc56bc0ea05d838af008cc8a1c8fdf46a9fcfba97bc773bf546eb9c08e68" },
+      { "preset": "settlement_overview", "file": "settlement_overview.png", "sha256": "46d2802607bd51a7d813fe6aa552e38fcc2bcfecb497030f005689df092b8210" },
+      { "preset": "contribution_point", "file": "contribution_point.png", "sha256": "6c51f9f989d3cd66b013ff4fb0fe9418f0e75576ba357be27d1195c486320b24" },
+      { "preset": "citizen_inspection", "file": "citizen_inspection.png", "sha256": "639a10543aa47ce5561cf1a300e6035e7f1a656af5c1257cc5e1440ffe8083c3" },
+      { "preset": "terminal_crisis", "file": "terminal_crisis.png", "sha256": "ef5eb4bb9761fe71a6f597f5b893fab75513fa6487e0b0fe1ba6b8b16bd86581" }
+    ],
+    "renderedFrameReview": "Product cues are legible. Dark wedges appear consistent with placeholder heightfield/directional-light shading and remain a visual residual for human confirmation."
+  },
   "validation": {
     "portableGodotPath": "C:/tmp/godot-4.6.2-mono/Godot_v4.6.2-stable_mono_win64/Godot_v4.6.2-stable_mono_win64.exe",
     "portableGodotVersion": "4.6.2",
@@ -55,13 +75,14 @@
     "headlessChecks": "passed: 22/22 with 0 failed after schema-v4 capture hardening; covers stable cue reset, fixed hub phase, canonical transforms and FOV, hidden debug/overlay state, actual presentation-light lock values, contribution fixture, terminal cause, renderer metadata, and HUD bounds",
     "gateRepair": "An exhaustive-reference shadow frontier aligns backlog diagnostics with shipped exact-bounded capped-frontier semantics without changing shipped/default world behavior or schema. A clean d519d4d archive executes the no-input trace at tick 9777 with event count 7495 and SHA-256 ab219da9ad492a0011bd70160548d29da3420569eb6a89facd74c6c63145a880; the scripted default snapshot remains tick 1253, hut switch 245, SHA-256 a81d7083649911a3244446bcde991f215dc0237ea2aa8967b94bfc0c9a98bd3b.",
     "headlessCaptureDiagnostic": "VisualCaptureRunner reached the canonical scenario but cannot read a viewport texture under Godot headless dummy rendering (texture_2d_get parameter t is null); headless output is therefore not reviewed visual evidence.",
-    "capture": "pending clean GUI-capable build",
-    "performance": "pending clean applicable W1-03 safety comparison"
+    "capture": "validated: GUI capture exit 0; five PNGs, schema-4 manifest, reproduction record, exact 1920x1080 forward_plus",
+    "performance": "blocked: ReleaseExport templates in protected user AppData are inaccessible under current session approval limit; crisis-active Debug pair refuses schema-v6 snapshot artifact until W2-05",
+    "debugCharacterization": "balanced_basin 12 citizens/300 ticks dirty-source pair passed deterministic hash fd518fe0...; p95 off/on 55.9687/51.2184 ms and max off 667.0811 ms; not W1-03 evidence"
   },
   "statusReconciliation": {
     "w2VisComplete": false,
-    "w2VisReason": "No clean-build reference image set or representative safety evidence has been captured.",
-    "nextContractedSlice": "V3-W2-05",
+    "w2VisReason": "Capture and implementation gates are green, but representative empty_stores ReleaseExport W1-03 safety evidence is blocked; do not overclaim milestone completion.",
+    "nextContractedSlice": "V3-W2-05 (not activated)",
     "weeks3To4": "Draft/Conditional and inactive until W2-06 records Continue V3"
   }
 }
