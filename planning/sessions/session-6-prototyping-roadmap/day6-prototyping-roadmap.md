@@ -5,6 +5,14 @@
 **Date Started**: 2026-01-30  
 **Date Completed**: 2026-01-30
 
+> **Current roadmap overlay (2026-07-14):** This historical roadmap is aspirational/reference, not current execution authority. [planning/active/](../../active/) and [CURRENT_BUILD.md](../../../CURRENT_BUILD.md) govern. See [PRODUCT-THESIS.md](../../PRODUCT-THESIS.md): “A deterministic civilization/ecology simulation where humans and AI citizens work, trade, negotiate, govern, and experience shared consequences.”
+
+## Superseding Delivery Sequence
+
+Current V3 crisis slice → bounded civic policy loop → bounded LLM-mediated expression only after the non-LLM loop proves fun → trade and institutions → multiplayer scaling.
+
+The deterministic simulation owns facts and outcomes; all mutations are validated commands and recorded events. LLMs only read structured observations and may deliberate, communicate, summarize, or propose, with safe fallback for unavailable or invalid output. Humans remain consequential, while AI citizens have material interests and rights but no special authority.
+
 ---
 
 ## Purpose

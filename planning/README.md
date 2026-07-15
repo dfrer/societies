@@ -3,8 +3,11 @@
 ## Active Plan
 
 - [Societies V3: Two-Week Development Plan](active/v3-two-week-development-plan.md) — July 13–24, 2026
+- **Draft/Conditional:** [Societies V3: Weeks 3-4 Development Plan](active/v3-weeks-3-4-development-plan.md) - July 27-August 7, 2026; it activates only if W2-06 concludes **Continue V3**.
+
 
 Short-horizon plans under `planning/active/` are grounded in the current build and take priority over older aspirational documents during their execution window. The code and `CURRENT_BUILD.md` remain authoritative for what is implemented.
+The product-level intent and deterministic/LLM boundary are maintained in [PRODUCT-THESIS.md](PRODUCT-THESIS.md). It is a north star, not evidence of implemented systems.
 
 ## What Is This?
 

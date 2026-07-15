@@ -13,6 +13,12 @@
 **Date Completed**: TBD  
 **Document Type**: Technical Specification
 
+> **Canonical alignment (2026-07-14):** Aspirational jurisdiction reference. Current scope is [planning/active/](../../active/) and implementation truth is [CURRENT_BUILD.md](../../../CURRENT_BUILD.md). See [PRODUCT-THESIS.md](../../PRODUCT-THESIS.md).
+
+## Product Contract Alignment
+
+Jurisdiction and property outcomes are deterministic facts produced by validated civic commands and recorded events. Rights-bearing AI citizens do not gain special authority; LLMs may explain or propose from structured observations but cannot mutate claims, and invalid output safely falls back.
+
 ---
 
 ## Executive Summary

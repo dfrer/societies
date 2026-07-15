@@ -3,6 +3,10 @@
 **Status:** Ready for Review  
 **Main Document:** [day6-prototyping-roadmap.md](./day6-prototyping-roadmap.md) (~880 lines)
 
+> **Current roadmap overlay (2026-07-14):** This session is aspirational/reference, not the active implementation plan. [`planning/active/`](../../active/) and [`CURRENT_BUILD.md`](../../../CURRENT_BUILD.md) govern. See [PRODUCT-THESIS.md](../../PRODUCT-THESIS.md): “A deterministic civilization/ecology simulation where humans and AI citizens work, trade, negotiate, govern, and experience shared consequences.”
+
+**Superseding delivery sequence:** current V3 crisis slice → bounded civic policy loop → bounded LLM-mediated expression only after the non-LLM loop proves fun → trade and institutions → multiplayer scaling.
+
 ---
 
 ## Quick Access

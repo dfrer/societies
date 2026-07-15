@@ -6,6 +6,12 @@
 **Last Updated**: 2026-02-01  
 **Dependencies**: technical-constants.md, Session 2 - 02-economic-behavior.md
 
+> **Canonical alignment (2026-07-14):** Aspirational economy specification. Current scope is [planning/active/](../../active/) and implementation truth is [CURRENT_BUILD.md](../../../CURRENT_BUILD.md). See [PRODUCT-THESIS.md](../../PRODUCT-THESIS.md).
+
+## Product Contract Alignment
+
+Economy and trade must create shared, legible consequences. Balances, transfers, and prices are deterministic outcomes of validated commands and recorded events; LLMs may propose or communicate trade intent from structured observations, never mutate the system directly, and safely fall back when invalid or unavailable.
+
 ---
 
 ## Overview

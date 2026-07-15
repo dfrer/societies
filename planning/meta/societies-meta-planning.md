@@ -5,6 +5,8 @@
 **Target Timeline**: 3-4 Weeks (Session-Based)  
 **Last Updated**: January 2026
 
+> **Canonical alignment (2026-07-14):** This historical planning method is reference-only. [`planning/active/`](../active/) and [`CURRENT_BUILD.md`](../../CURRENT_BUILD.md) govern current execution. See [PRODUCT-THESIS.md](../PRODUCT-THESIS.md): “A deterministic civilization/ecology simulation where humans and AI citizens work, trade, negotiate, govern, and experience shared consequences.”
+
 ---
 
 ## Purpose of This Document

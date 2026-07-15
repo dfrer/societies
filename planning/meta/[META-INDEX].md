@@ -2,6 +2,8 @@
 
 Cross-cutting project documentation and reference materials that span multiple sessions.
 
+> **Canonical alignment (2026-07-14):** This library is aspirational/reference material. The current implementation authority is [`CURRENT_BUILD.md`](../../CURRENT_BUILD.md), and short-horizon work is governed by [`planning/active/`](../active/). The product contract is [PRODUCT-THESIS.md](../PRODUCT-THESIS.md): “A deterministic civilization/ecology simulation where humans and AI citizens work, trade, negotiate, govern, and experience shared consequences.”
+
 ## Project Overview
 - [Societies Comprehensive Breakdown](societies-comprehensive-breakdown.md) - Complete project breakdown and high-level architecture
 - [Societies Meta Planning](societies-meta-planning.md) - Planning methodology and session structure documentation

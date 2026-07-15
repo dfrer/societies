@@ -6,6 +6,8 @@
 **Date Completed**: January 31, 2026  
 **Location**: planning/sessions/session-2-ai-system-design/
 
+> **Canonical alignment (2026-07-14):** Aspirational AI design reference. Read [PRODUCT-THESIS.md](../../PRODUCT-THESIS.md), [`planning/active/`](../../active/), and [`CURRENT_BUILD.md`](../../../CURRENT_BUILD.md) first; LLM-mediated expression is not current simulation authority.
+
 ---
 
 ## Quick Navigation Table

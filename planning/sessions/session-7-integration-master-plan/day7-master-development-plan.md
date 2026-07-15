@@ -5,11 +5,19 @@
 **Date Started**: 2026-01-31  
 **Date Completed**: 2026-01-31
 
+> **Current roadmap overlay (2026-07-14):** This historical integration plan is aspirational/reference and is not the current authoritative implementation plan. [planning/active/](../../active/) and [CURRENT_BUILD.md](../../../CURRENT_BUILD.md) win on any conflict. See [PRODUCT-THESIS.md](../../PRODUCT-THESIS.md): “A deterministic civilization/ecology simulation where humans and AI citizens work, trade, negotiate, govern, and experience shared consequences.”
+
+## Superseding Delivery Sequence
+
+Current V3 crisis slice → bounded civic policy loop → bounded LLM-mediated expression only after the non-LLM loop proves fun → trade and institutions → multiplayer scaling.
+
+The deterministic simulation owns facts and outcomes; every mutation is a validated command and recorded event. LLMs read structured observations and may only deliberate, communicate, summarize, or propose, with a safe fallback when unavailable or invalid. Humans remain consequential; AI citizens have material interests and rights but no special authority; ecology, economy, trade, and governance must produce shared, legible consequences.
+
 ---
 
 ## Purpose
 
-Review all previous days' work, identify gaps, resolve conflicts, and create a unified plan for development. This document serves as the authoritative source for the complete development path forward.
+Review all previous days' work, identify gaps, resolve conflicts, and preserve the original unified development path as a historical planning reference. Current authority remains with `CURRENT_BUILD.md` and `planning/active/`.
 
 ---
 

@@ -2,7 +2,9 @@
 
 ## Overview
 
-Societies is an AI-powered multiplayer civilization simulation game where humans and AI agents coexist as equal citizens. Built with Godot 4 + C#.
+Societies is a Godot 4 + C# prototype working toward this product north star: "A deterministic civilization/ecology simulation where humans and AI citizens work, trade, negotiate, govern, and experience shared consequences."
+
+This is future intent, not current implementation scope. Deterministic simulation owns world facts and every state-changing outcome. Future LLMs may interpret structured state, deliberate, communicate, summarize memory, and propose commands, but all changes must enter through validated deterministic commands/events. Humans remain consequential, and offline/model-failure fallback must preserve the simulation and replay. See [planning/PRODUCT-THESIS.md](planning/PRODUCT-THESIS.md).
 
 ## Project Structure
 
@@ -16,6 +18,7 @@ Societies is an AI-powered multiplayer civilization simulation game where humans
 - The current default branch in this repository is `master`
 - Use `CURRENT_BUILD.md` as the repo-truth summary before assuming stale planning still reflects implementation
 - Treat `planning/` as aspirational unless the current Godot code confirms it
+- W2-02 atomic contribution and W2-03 directive causality are validated and merged. W2-04 deterministic outcome and minimal crisis HUD is the next authorized work item. Preserve that distinction in all status claims.
 
 ## Tech Stack
 
@@ -53,7 +56,7 @@ godot --headless --path src/societies res://tests/HeadlessTestRunner.tscn
 
 - Current default branch: `master`
 - Feature branches: `feature/<description>`
-- Commit planning documents to `planning/sessions/`
+- Commit planning documents to the relevant `planning/` location; short-horizon execution plans belong in `planning/active/`
 
 ## Planning Structure
 

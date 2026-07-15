@@ -3,6 +3,12 @@
 **Time Scale**: 5-15 minutes  
 **Focus**: Real-time actions and immediate player decisions  
 
+> **Canonical alignment (2026-07-14):** Aspirational gameplay-loop reference. Current scope is [planning/active/](../../active/) and implementation truth is [CURRENT_BUILD.md](../../../CURRENT_BUILD.md). See [PRODUCT-THESIS.md](../../PRODUCT-THESIS.md).
+
+## Product Contract Alignment
+
+Moment-to-moment play must give humans consequential, legible choices while ecology, economy, trade, and governance feed shared outcomes. The simulation validates commands and records events; any LLM expression is optional, observation-driven, and safely fallible.
+
 ---
 
 ## Overview

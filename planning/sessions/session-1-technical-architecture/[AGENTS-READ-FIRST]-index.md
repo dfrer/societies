@@ -2,6 +2,8 @@
 
 > Prototype reality note (2026-04-03): the authoritative implementation is currently the Godot prototype under `src/societies/`. This session documents long-term architecture goals and should not be treated as current implementation truth without code confirmation.
 
+> **Canonical alignment (2026-07-14):** Aspirational architecture reference. Read [PRODUCT-THESIS.md](../../PRODUCT-THESIS.md), [`planning/active/`](../../active/), and [`CURRENT_BUILD.md`](../../../CURRENT_BUILD.md) before making implementation decisions.
+
 > **[AGENTS-READ-FIRST]**: This is the navigation hub for all Day 1 Technical Architecture documentation. Start here to understand what each file contains and how to navigate between them.
 
 ---
