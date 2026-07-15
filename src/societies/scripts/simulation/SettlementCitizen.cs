@@ -178,7 +178,7 @@ namespace Societies.Simulation
 
             if (BeginOrder(citizen, order, result, selection!.FirstPathPlan, selection.DirectiveCause))
             {
-                availableOrders.Remove(order);
+                RemoveClaimedOrdersFromCurrentTick(availableOrders, order);
             }
         }
 
@@ -304,6 +304,15 @@ namespace Societies.Simulation
             }
 
             return directiveBest with { DirectiveCause = directiveBest.Order.DirectiveCause };
+        }
+
+        private void RemoveClaimedOrdersFromCurrentTick(
+            List<PrototypeWorkOrder> availableOrders,
+            PrototypeWorkOrder claimedOrder)
+        {
+            availableOrders.RemoveAll(candidate =>
+                string.Equals(candidate.OrderId, claimedOrder.OrderId, StringComparison.Ordinal) ||
+                !CanReserveProcessOrder(candidate));
         }
 
         internal PrototypeDirectiveSelectionProbe SelectDirectiveOrderForTesting(
@@ -870,71 +879,64 @@ namespace Societies.Simulation
             }
 
             string outputId = citizen.CarryItemId;
-            switch (structure.StructureKindId)
+            if (!PrototypeProcessingRecipeCatalog.TryResolve(structure.StructureKindId, outputId, out PrototypeProcessingRecipe recipe))
             {
-                case "wood_yard":
-                    if (!structure.InputStore.Remove("logs", 1))
-                    {
-                        FailBlockedStructure(structure, citizen, result, "process.logs.missing", "Wood yard lacks logs");
-                        return false;
-                    }
-
-                    if (outputId == "firewood")
-                    {
-                        structure.OutputStore.Add("firewood", 2);
-                        IncrementCount(_producedResources, "firewood", 2);
-                    }
-                    else
-                    {
-                        structure.OutputStore.Add("timber", 1);
-                        IncrementCount(_producedResources, "timber", 1);
-                    }
-
-                    IncrementCount(_consumedResources, "logs", 1);
-                    break;
-
-                case "cookfire":
-                    if (!structure.InputStore.Remove("berries", 2) || !structure.InputStore.Remove("firewood", 1))
-                    {
-                        FailBlockedStructure(structure, citizen, result, "process.meals.blocked", "Cookfire lacks berries or firewood");
-                        return false;
-                    }
-
-                    structure.OutputStore.Add("meals", 2);
-                    IncrementCount(_producedResources, "meals", 2);
-                    IncrementCount(_consumedResources, "berries", 2);
-                    IncrementCount(_consumedResources, "firewood", 1);
-                    break;
-
-                case "drying_rack":
-                    if (!structure.InputStore.Remove("reeds", 2))
-                    {
-                        FailBlockedStructure(structure, citizen, result, "process.reeds.missing", "Drying rack lacks reeds");
-                        return false;
-                    }
-
-                    structure.OutputStore.Add("thatch", 1);
-                    IncrementCount(_producedResources, "thatch", 1);
-                    IncrementCount(_consumedResources, "reeds", 2);
-                    break;
-
-                case "kiln":
-                    if (!structure.InputStore.Remove("stone", 1) ||
-                        !structure.InputStore.Remove("clay", 1) ||
-                        !structure.InputStore.Remove("firewood", 1))
-                    {
-                        FailBlockedStructure(structure, citizen, result, "process.brick.blocked", "Kiln lacks stone, clay, or firewood");
-                        return false;
-                    }
-
-                    structure.OutputStore.Add("brick", 1);
-                    IncrementCount(_producedResources, "brick", 1);
-                    IncrementCount(_consumedResources, "stone", 1);
-                    IncrementCount(_consumedResources, "clay", 1);
-                    IncrementCount(_consumedResources, "firewood", 1);
-                    break;
+                FailBlockedStructure(structure, citizen, result, "process.recipe.unknown", $"{structure.DisplayName} has no recipe for {outputId}");
+                return false;
             }
 
+            return TryCompleteProcessingRecipe(
+                structure,
+                citizen,
+                result,
+                outputId,
+                recipe.OutputAmount,
+                recipe.Inputs,
+                $"{structure.DisplayName} lacks inputs or output capacity");
+        }
+        private bool TryCompleteProcessingRecipe(
+            PrototypeStructureState structure,
+            PrototypeWorkerState citizen,
+            PrototypeSettlementTickResult result,
+            string outputId,
+            int outputAmount,
+            IReadOnlyList<KeyValuePair<string, int>> inputs,
+            string blockedMessage)
+        {
+            if (structure.OutputStore.AvailableCapacity < outputAmount ||
+                inputs.Any(input => structure.InputStore.GetCount(input.Key) < input.Value))
+            {
+                FailBlockedStructure(structure, citizen, result, "process.recipe.blocked", blockedMessage);
+                return false;
+            }
+
+            foreach (KeyValuePair<string, int> input in inputs)
+            {
+                if (!structure.InputStore.Remove(input.Key, input.Value))
+                {
+                    throw new InvalidOperationException($"Processing preflight changed before consuming {input.Key} at {structure.StructureId}.");
+                }
+            }
+
+            if (!structure.OutputStore.Add(outputId, outputAmount))
+            {
+                foreach (KeyValuePair<string, int> input in inputs)
+                {
+                    if (!structure.InputStore.Add(input.Key, input.Value))
+                    {
+                        throw new InvalidOperationException($"Could not roll back {input.Key} after failed processing output at {structure.StructureId}.");
+                    }
+                }
+
+                throw new InvalidOperationException($"Processing output {outputId} could not be stored at {structure.StructureId} after a successful preflight.");
+            }
+
+            foreach (KeyValuePair<string, int> input in inputs)
+            {
+                IncrementCount(_consumedResources, input.Key, input.Value);
+            }
+
+            IncrementCount(_producedResources, outputId, outputAmount);
             structure.ActiveTicks++;
             result.Events.Add(new PrototypeSettlementEvent(
                 PrototypeEventTypes.SettlementProcessCompleted,

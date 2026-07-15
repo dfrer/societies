@@ -109,6 +109,33 @@ namespace Societies.Core.Tests
             Assert.Contains("Why: Shelter — construction lumber", changedReason, StringComparison.Ordinal);
         }
 
+        [Fact]
+        public void WoodYardProcessingCandidates_KeepFuelPriorityAndAllowShelterToChooseTimber()
+        {
+            PrototypeSettlementSimulation simulation = CreateSimulation(out _);
+            PrototypeWorkerState citizen = simulation.Workers.OrderBy(worker => worker.WorkerId, StringComparer.Ordinal).First();
+            citizen.Position = citizen.HomePosition;
+
+            PrototypeWorkOrder firewood = Order("process.wood_yard_1.firewood", 930, PrototypeDirectiveAffinity.FoodAndFuel, "fuel supply", citizen.Position);
+            PrototypeWorkOrder timber = Order("process.wood_yard_1.timber", 760, PrototypeDirectiveAffinity.Shelter, "construction lumber", citizen.Position);
+
+            Assert.Equal("process.wood_yard_1.firewood", Select(
+                simulation,
+                citizen,
+                new[] { firewood, timber },
+                PrototypeSettlementDirective.Neutral).OrderId);
+            Assert.Equal("process.wood_yard_1.firewood", Select(
+                simulation,
+                citizen,
+                new[] { firewood, timber },
+                PrototypeSettlementDirective.FoodAndFuel).OrderId);
+            Assert.Equal("process.wood_yard_1.timber", Select(
+                simulation,
+                citizen,
+                new[] { firewood, timber },
+                PrototypeSettlementDirective.Shelter).OrderId);
+        }
+
         [Theory]
         [InlineData(PrototypeSettlementDirective.FoodAndFuel)]
         [InlineData(PrototypeSettlementDirective.Shelter)]

@@ -682,6 +682,27 @@ namespace Societies.Simulation
         public int Amount { get; set; } = 1;
     }
 
+    internal readonly record struct PrototypeProcessingRecipe(
+        int OutputAmount,
+        IReadOnlyList<KeyValuePair<string, int>> Inputs);
+
+    internal static class PrototypeProcessingRecipeCatalog
+    {
+        internal static bool TryResolve(string structureKindId, string outputId, out PrototypeProcessingRecipe recipe)
+        {
+            recipe = (structureKindId, outputId) switch
+            {
+                ("wood_yard", "firewood") => new PrototypeProcessingRecipe(2, new[] { new KeyValuePair<string, int>("logs", 1) }),
+                ("wood_yard", "timber") => new PrototypeProcessingRecipe(1, new[] { new KeyValuePair<string, int>("logs", 1) }),
+                ("cookfire", "meals") => new PrototypeProcessingRecipe(2, new[] { new KeyValuePair<string, int>("berries", 2), new KeyValuePair<string, int>("firewood", 1) }),
+                ("drying_rack", "thatch") => new PrototypeProcessingRecipe(1, new[] { new KeyValuePair<string, int>("reeds", 2) }),
+                ("kiln", "brick") => new PrototypeProcessingRecipe(1, new[] { new KeyValuePair<string, int>("stone", 1), new KeyValuePair<string, int>("clay", 1), new KeyValuePair<string, int>("firewood", 1) }),
+                _ => default
+            };
+            return recipe.OutputAmount > 0;
+        }
+    }
+
     internal readonly record struct PrototypeExtractionFrontierProbe(
         IReadOnlyList<PrototypeWorkOrder> Orders,
         int VirtualUncappedCount,

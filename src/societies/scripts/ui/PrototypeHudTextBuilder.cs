@@ -244,6 +244,42 @@ namespace Societies.UI
             return string.Join('\n', lines);
         }
 
+        public static string BuildCrisisText(
+            PrototypeCrisisState? crisis,
+            PrototypeSettlementDirective directive,
+            IReadOnlyDictionary<string, long>? contributionCountsByResource)
+        {
+            if (crisis == null)
+            {
+                return "Crisis: none";
+            }
+
+            PrototypeCrisisDefinition definition = crisis.Definition;
+            PrototypeCrisisObservation observation = crisis.LastObservation;
+            string contributions = contributionCountsByResource is { Count: > 0 }
+                ? string.Join(", ", contributionCountsByResource
+                    .OrderBy(pair => pair.Key, System.StringComparer.Ordinal)
+                    .Select(pair => $"{InventoryComponent.FormatItemName(pair.Key)} x{pair.Value}"))
+                : "none";
+            List<string> lines = new()
+            {
+                $"Crisis: {definition.DisplayName}",
+                $"Time: {crisis.RemainingTicks}/{crisis.DeadlineTicks} ticks remaining ({crisis.RemainingSeconds:0.0}s)",
+                $"Directive: {PrototypeSettlementDirectiveCatalog.GetDisplayName(directive)}",
+                $"Contributed: {contributionCountsByResource?.Values.Sum() ?? 0} ({contributions})",
+                $"Stable conditions: capable {observation.CapableCitizens}/{definition.RequiredCapableCitizens} {(crisis.HasObservation && observation.CapableCitizens >= definition.RequiredCapableCitizens ? "ok" : "pending")}; meals {observation.Meals}/{definition.RequiredMeals} {(crisis.HasObservation && observation.Meals >= definition.RequiredMeals ? "ok" : "pending")}",
+                $"                  fuel {observation.HearthFuel}/{definition.RequiredHearthFuel} {(crisis.HasObservation && observation.HearthFuel >= definition.RequiredHearthFuel ? "ok" : "pending")}; beds {observation.BedCoveragePercent}/{definition.RequiredBedCoveragePercent}% {(crisis.HasObservation && observation.BedCoveragePercent >= definition.RequiredBedCoveragePercent ? "ok" : "pending")}",
+                $"Hold: stable {crisis.StableHoldTicks}/{definition.StableHoldTicks}  collapse {crisis.CollapseHoldTicks}/{definition.CollapseHoldTicks}"
+            };
+
+            if (crisis.IsTerminal)
+            {
+                lines.Add($"Outcome: {crisis.BuildTerminalSummary()}");
+            }
+
+            return string.Join('\n', lines);
+        }
+
         private static string FormatStoreSummary(PrototypeResourceStoreState store)
         {
             if (store.Items.Count == 0)

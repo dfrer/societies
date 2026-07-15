@@ -140,6 +140,49 @@ namespace Societies.Core.Tests
         }
 
         [Fact]
+        public void BuildCrisisText_ShowsContractProgressContributionsAndTerminalCauseDeterministically()
+        {
+            PrototypeCrisisDefinition definition = new()
+            {
+                Id = "hud_test",
+                DisplayName = "HUD Test",
+                TicksPerSecond = 20,
+                DeadlineTicks = 20,
+                RequiredCapableCitizens = 2,
+                RequiredMeals = 3,
+                RequiredHearthFuel = 4,
+                RequiredBedCoveragePercent = 50,
+                StableHoldTicks = 2,
+                CollapseIncapacitatedCitizens = 9,
+                CollapseHoldTicks = 3,
+                CitizenNeedRateMultiplier = 1.0f
+            };
+            PrototypeCrisisState crisis = new(definition);
+            crisis.Advance(new PrototypeCrisisObservation(3, 2, 3, 4, 50));
+            string active = PrototypeHudTextBuilder.BuildCrisisText(
+                crisis,
+                PrototypeSettlementDirective.FoodAndFuel,
+                new Dictionary<string, long> { ["logs"] = 2, ["berries"] = 3 });
+            crisis.Advance(new PrototypeCrisisObservation(3, 2, 3, 4, 50));
+            string terminal = PrototypeHudTextBuilder.BuildCrisisText(
+                crisis,
+                PrototypeSettlementDirective.FoodAndFuel,
+                new Dictionary<string, long> { ["berries"] = 3, ["logs"] = 2 });
+
+            Assert.Contains("Crisis: HUD Test", active);
+            Assert.Contains("Time: 19/20 ticks remaining", active);
+            Assert.Contains("Directive: Food & Fuel", active);
+            Assert.Contains("Contributed: 5 (berries x3, logs x2)", active);
+            Assert.Contains("capable 2/2 ok", active);
+            Assert.Contains("meals 3/3 ok", active);
+            Assert.Contains("fuel 4/4 ok", active);
+            Assert.Contains("beds 50/50% ok", active);
+            Assert.Contains("Hold: stable 1/2", active);
+            Assert.Contains("Outcome: Stable: all conditions held 2/2 ticks", terminal);
+            Assert.Equal("Crisis: none", PrototypeHudTextBuilder.BuildCrisisText(null, PrototypeSettlementDirective.Neutral, null));
+        }
+
+        [Fact]
         public void BuildInspectorText_IncludesCitizenAndStructureDetails()
         {
             string inspectorText = PrototypeHudTextBuilder.BuildInspectorText(

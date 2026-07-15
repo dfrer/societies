@@ -4,7 +4,10 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Text.Json;
+
+[assembly: InternalsVisibleTo("Societies.Core.Tests")]
 
 namespace Societies.Core
 {
@@ -90,6 +93,8 @@ namespace Societies.Core
         public IReadOnlyDictionary<string, long> ContributionCountsByResource => _contributionCountsByResource;
 
         public long TotalContributedQuantity => _contributionCountsByResource.Values.Sum();
+
+        public int CentralDepotOccupiedQuantity => _settlementSimulation?.CentralDepot.Occupied ?? 0;
 
         public Vector3 CentralDepotPosition =>
             _settlementSimulation?.CentralDepot.Position ?? PrototypeSettlementLayout.GetStockpileWorldPosition(SettlementAnchorPosition);
@@ -225,6 +230,11 @@ namespace Societies.Core
             return _settlementSimulation?.CapturePerformanceProbeState() ?? default;
         }
 
+        internal PrototypeSettlementSnapshot CaptureSettlementSnapshotForTesting()
+        {
+            return _settlementSimulation?.CaptureSnapshot(SimulationTick) ?? new PrototypeSettlementSnapshot();
+        }
+
         public int ClearDerivedPathCacheForPerformance()
         {
             return _settlementSimulation?.ClearDerivedPathCacheForPerformance() ?? 0;
@@ -333,6 +343,7 @@ namespace Societies.Core
                     _settlementSimulation.MealCount,
                     _settlementSimulation.HearthFuel,
                     _settlementSimulation.BedCoveragePercent));
+                RecordCrisisTerminalOutcomeIfNeeded();
             }
 
             return new PrototypeRuntimeTickResult(
@@ -359,6 +370,19 @@ namespace Societies.Core
                 PrototypeEventTypes.SettlementDirectiveChanged,
                 $"Directive changed from {PrototypeSettlementDirectiveCatalog.GetDisplayName(previous)} to {PrototypeSettlementDirectiveCatalog.GetDisplayName(directive)}");
             return new PrototypeDirectiveChangeResult(previous, directive, true, true, string.Empty);
+        }
+
+        private void RecordCrisisTerminalOutcomeIfNeeded()
+        {
+            if (_crisisState == null || !_crisisState.TryMarkTerminalEventEmitted())
+            {
+                return;
+            }
+
+            string eventType = _crisisState.Outcome == PrototypeCrisisOutcome.Stable
+                ? PrototypeEventTypes.CrisisStabilized
+                : PrototypeEventTypes.CrisisCollapsed;
+            RecordEvent(eventType, _crisisState.BuildTerminalSummary());
         }
 
         public void RecordSettlementEvents(IEnumerable<PrototypeSettlementEvent> settlementEvents)
