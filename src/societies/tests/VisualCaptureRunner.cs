@@ -151,9 +151,11 @@ namespace Societies.Tests
                 string imageFile = $"{presetId}.png";
                 string imagePath = Path.Combine(outputDirectory, imageFile);
                 // ProcessFrame settles deterministic presentation state, but it does not guarantee
-                // the CanvasLayer draw has reached the viewport texture. Wait for the renderer's
-                // post-draw signal so readback contains the complete HUD instead of a partial frame.
+                // the CanvasLayer draw has reached the viewport texture. Complete the renderer's
+                // draw/sync path before readback so every card contains a whole HUD frame.
                 await ToSignal(RenderingServer.Singleton, RenderingServer.SignalName.FramePostDraw);
+                RenderingServer.Singleton.ForceDraw(false);
+                RenderingServer.Singleton.ForceSync();
                 Image captureImage = GetViewport().GetTexture().GetImage();
                 if (captureImage.GetWidth() != CaptureWidth || captureImage.GetHeight() != CaptureHeight)
                 {
