@@ -22,6 +22,55 @@ namespace Societies.Core.Tests
         }
 
         [Fact]
+        public void DirectiveAdjustedFrontier_RetainsBoostedOrder()
+        {
+            List<PrototypeWorkOrder> orders = Enumerable.Range(0, 50)
+                .Select(index => Order($"neutral.{index:D2}", 700, PrototypeDirectiveAffinity.None, string.Empty))
+                .Append(Order("shelter", 640, PrototypeDirectiveAffinity.Shelter, "construction lumber"))
+                .ToList();
+
+            List<PrototypeWorkOrder> raw = PrototypeExtractionPlanningMath.ApplyFrontierLimit(orders, 50, orders.Count);
+            List<PrototypeWorkOrder> adjusted = PrototypeExtractionPlanningMath.ApplyFrontierLimit(
+                orders,
+                50,
+                orders.Count,
+                order => order.Priority + PrototypeSettlementDirectiveCatalog.GetAssignmentScoreBonus(
+                    PrototypeSettlementDirective.Shelter,
+                    order));
+
+            Assert.DoesNotContain(raw, order => order.OrderId == "shelter");
+            Assert.Contains(adjusted, order => order.OrderId == "shelter");
+        }
+
+        [Fact]
+        public void DirectiveAdjustedExtractionBound_PreventsUnsoundClassOmission()
+        {
+            int[] existingPriorities = Enumerable.Repeat(700, 50).ToArray();
+            string[] eligibleOrderIds = { "extract.logs_1" };
+            HashSet<string> claimed = new(StringComparer.Ordinal);
+
+            Assert.True(PrototypeExtractionPlanningMath.TryComputeWholeResourceClassOmission(
+                existingPriorities,
+                50,
+                priorityUpperBound: 640,
+                eligibleOrderIds,
+                claimed,
+                desiredUnits: 1,
+                out int rawOmitted));
+            Assert.Equal(1, rawOmitted);
+
+            Assert.False(PrototypeExtractionPlanningMath.TryComputeWholeResourceClassOmission(
+                existingPriorities,
+                50,
+                priorityUpperBound: 640 + (int)PrototypeSettlementDirectiveCatalog.AssignmentScoreBonus,
+                eligibleOrderIds,
+                claimed,
+                desiredUnits: 1,
+                out int adjustedOmitted));
+            Assert.Equal(0, adjustedOmitted);
+        }
+
+        [Fact]
         public void DirectiveSelection_LabelsCauseOnlyWhenModifierChangesWinner()
         {
             PrototypeSettlementSimulation simulation = CreateSimulation(out _);

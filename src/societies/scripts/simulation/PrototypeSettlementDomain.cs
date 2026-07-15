@@ -108,10 +108,17 @@ namespace Societies.Simulation
             PrototypeSettlementDirective directive,
             PrototypeWorkOrder order)
         {
+            return GetAssignmentScoreBonus(directive, order.DirectiveAffinity);
+        }
+
+        public static float GetAssignmentScoreBonus(
+            PrototypeSettlementDirective directive,
+            PrototypeDirectiveAffinity affinity)
+        {
             bool matches = directive switch
             {
-                PrototypeSettlementDirective.FoodAndFuel => order.DirectiveAffinity == PrototypeDirectiveAffinity.FoodAndFuel,
-                PrototypeSettlementDirective.Shelter => order.DirectiveAffinity == PrototypeDirectiveAffinity.Shelter,
+                PrototypeSettlementDirective.FoodAndFuel => affinity == PrototypeDirectiveAffinity.FoodAndFuel,
+                PrototypeSettlementDirective.Shelter => affinity == PrototypeDirectiveAffinity.Shelter,
                 _ => false
             };
             return matches ? AssignmentScoreBonus : 0.0f;
@@ -210,15 +217,17 @@ namespace Societies.Simulation
         public static List<PrototypeWorkOrder> ApplyFrontierLimit(
             List<PrototypeWorkOrder> orders,
             int frontierBudget,
-            int virtualUncappedCount)
+            int virtualUncappedCount,
+            System.Func<PrototypeWorkOrder, float>? effectivePriority = null)
         {
             if (virtualUncappedCount <= frontierBudget)
             {
                 return orders;
             }
 
+            System.Func<PrototypeWorkOrder, float> priority = effectivePriority ?? (order => order.Priority);
             return orders
-                .OrderByDescending(order => order.Priority)
+                .OrderByDescending(priority)
                 .ThenBy(order => order.OrderId, System.StringComparer.Ordinal)
                 .Take(frontierBudget)
                 .ToList();

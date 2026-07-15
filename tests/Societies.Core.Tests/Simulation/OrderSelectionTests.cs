@@ -150,6 +150,9 @@ namespace Societies.Core.Tests
         [InlineData("wetland_builder", PrototypeSettlementDirective.Neutral)]
         [InlineData("wetland_builder", PrototypeSettlementDirective.FoodAndFuel)]
         [InlineData("wetland_builder", PrototypeSettlementDirective.Shelter)]
+        [InlineData("empty_stores", PrototypeSettlementDirective.Neutral)]
+        [InlineData("empty_stores", PrototypeSettlementDirective.FoodAndFuel)]
+        [InlineData("empty_stores", PrototypeSettlementDirective.Shelter)]
         public void OptimizedSelector_MatchesExhaustiveReferenceForThreeHundredTicks(
             string scenarioId,
             PrototypeSettlementDirective directive)
