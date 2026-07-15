@@ -150,6 +150,10 @@ namespace Societies.Tests
                     settledCamera);
                 string imageFile = $"{presetId}.png";
                 string imagePath = Path.Combine(outputDirectory, imageFile);
+                // ProcessFrame settles deterministic presentation state, but it does not guarantee
+                // the CanvasLayer draw has reached the viewport texture. Wait for the renderer's
+                // post-draw signal so readback contains the complete HUD instead of a partial frame.
+                await ToSignal(RenderingServer.Singleton, RenderingServer.SignalName.FramePostDraw);
                 Image captureImage = GetViewport().GetTexture().GetImage();
                 if (captureImage.GetWidth() != CaptureWidth || captureImage.GetHeight() != CaptureHeight)
                 {
