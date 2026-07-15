@@ -138,11 +138,24 @@ namespace Societies.Core.Tests
         }
 
         [Theory]
-        [InlineData("balanced_basin")]
-        [InlineData("long_haul_quarry")]
-        [InlineData("food_poor_highlands")]
-        [InlineData("wetland_builder")]
-        public void OptimizedSelector_MatchesExhaustiveReferenceForThreeHundredTicks(string scenarioId)
+        [InlineData("balanced_basin", PrototypeSettlementDirective.Neutral)]
+        [InlineData("balanced_basin", PrototypeSettlementDirective.FoodAndFuel)]
+        [InlineData("balanced_basin", PrototypeSettlementDirective.Shelter)]
+        [InlineData("long_haul_quarry", PrototypeSettlementDirective.Neutral)]
+        [InlineData("long_haul_quarry", PrototypeSettlementDirective.FoodAndFuel)]
+        [InlineData("long_haul_quarry", PrototypeSettlementDirective.Shelter)]
+        [InlineData("food_poor_highlands", PrototypeSettlementDirective.Neutral)]
+        [InlineData("food_poor_highlands", PrototypeSettlementDirective.FoodAndFuel)]
+        [InlineData("food_poor_highlands", PrototypeSettlementDirective.Shelter)]
+        [InlineData("wetland_builder", PrototypeSettlementDirective.Neutral)]
+        [InlineData("wetland_builder", PrototypeSettlementDirective.FoodAndFuel)]
+        [InlineData("wetland_builder", PrototypeSettlementDirective.Shelter)]
+        [InlineData("empty_stores", PrototypeSettlementDirective.Neutral)]
+        [InlineData("empty_stores", PrototypeSettlementDirective.FoodAndFuel)]
+        [InlineData("empty_stores", PrototypeSettlementDirective.Shelter)]
+        public void OptimizedSelector_MatchesExhaustiveReferenceForThreeHundredTicks(
+            string scenarioId,
+            PrototypeSettlementDirective directive)
         {
             PrototypeCatalogBundle optimizedBundle = LoadCatalogs();
             PrototypeCatalogBundle exhaustiveBundle = LoadCatalogs();
@@ -180,13 +193,15 @@ namespace Societies.Core.Tests
                 PrototypeSettlementTickResult optimizedResult = optimized.Advance(
                     optimizedResources,
                     currentHour,
-                    PrototypeWeather.Clear);
+                    PrototypeWeather.Clear,
+                    directive: directive);
                 optimizedRuntime.Stop();
                 exhaustiveRuntime.Start();
                 PrototypeSettlementTickResult exhaustiveResult = exhaustive.Advance(
                     exhaustiveResources,
                     currentHour,
-                    PrototypeWeather.Clear);
+                    PrototypeWeather.Clear,
+                    directive: directive);
                 exhaustiveRuntime.Stop();
 
                 optimizedQueries += optimized.Diagnostics.SelectorExactPathQueries;
@@ -217,7 +232,7 @@ namespace Societies.Core.Tests
             Assert.Equal(exhaustiveSnapshot, optimizedSnapshot);
             Assert.True(optimizedQueries <= exhaustiveQueries);
 
-            if (scenarioId == "balanced_basin")
+            if (scenarioId == "balanced_basin" && directive == PrototypeSettlementDirective.Neutral)
             {
                 Assert.True(
                     optimizedQueries * 100 <= exhaustiveQueries * 40,
@@ -228,7 +243,7 @@ namespace Societies.Core.Tests
             }
 
             _output.WriteLine(
-                $"{scenarioId}: optimized queries={optimizedQueries}, exhaustive queries={exhaustiveQueries}, " +
+                $"{scenarioId}/{directive}: optimized queries={optimizedQueries}, exhaustive queries={exhaustiveQueries}, " +
                 $"reduction={(1.0 - (optimizedQueries / (double)Math.Max(1, exhaustiveQueries))):P2}, " +
                 $"optimized runtime={optimizedRuntime.Elapsed.TotalSeconds:F3}s, exhaustive runtime={exhaustiveRuntime.Elapsed.TotalSeconds:F3}s");
         }

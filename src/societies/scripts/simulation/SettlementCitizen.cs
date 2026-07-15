@@ -18,13 +18,15 @@ namespace Societies.Simulation
         private sealed record OrderSelectionCandidate(
             PrototypeWorkOrder Order,
             int OriginalIndex,
-            float ScoreUpperBound);
+            float NeutralScoreUpperBound,
+            float DirectiveScoreUpperBound);
 
         private sealed record ExactOrderSelection(
             PrototypeWorkOrder Order,
             int OriginalIndex,
             float Score,
-            PrototypePathPlan FirstPathPlan);
+            PrototypePathPlan FirstPathPlan,
+            string DirectiveCause = "");
 
         private void InitializeCitizens(IReadOnlyList<PrototypeRoleQuotaDefinition> roleQuotas)
         {
@@ -174,7 +176,7 @@ namespace Societies.Simulation
                 return;
             }
 
-            if (BeginOrder(citizen, order, result, selection!.FirstPathPlan))
+            if (BeginOrder(citizen, order, result, selection!.FirstPathPlan, selection.DirectiveCause))
             {
                 availableOrders.Remove(order);
             }
@@ -189,39 +191,70 @@ namespace Societies.Simulation
                     citizen.Position,
                     availableOrders.Select(GetFirstTravelDestination));
             List<OrderSelectionCandidate> candidates = availableOrders
-                .Select((order, index) => new OrderSelectionCandidate(
-                    order,
-                    index,
-                    useTopologyBounds
-                        ? order.Priority + GetRoleBonus(citizen.Role, order) -
+                .Select((order, index) =>
+                {
+                    float roleBonus = GetRoleBonus(citizen.Role, order);
+                    float directiveBonus = PrototypeSettlementDirectiveCatalog.GetAssignmentScoreBonus(_activeDirective, order);
+                    float neutralUpperBound;
+                    if (useTopologyBounds)
+                    {
+                        neutralUpperBound = order.Priority + roleBonus -
                             (PrototypeOrderSelectionMath.ExactDistancePenalty * ComputeRouteDistanceLowerBound(
                                 citizen.Position,
-                                GetFirstTravelDestination(order)))
-                        : PrototypeOrderSelectionMath.ComputeScoreUpperBound(
+                                GetFirstTravelDestination(order)));
+                    }
+                    else
+                    {
+                        neutralUpperBound = PrototypeOrderSelectionMath.ComputeScoreUpperBound(
                             order.Priority,
-                            GetRoleBonus(citizen.Role, order),
+                            roleBonus,
                             citizen.Position,
                             GetFirstTravelDestination(order),
-                            _world.WorldMap.Cells.Count)))
+                            _world.WorldMap.Cells.Count);
+                    }
+
+                    return new OrderSelectionCandidate(
+                        order,
+                        index,
+                        neutralUpperBound,
+                        neutralUpperBound + directiveBonus);
+                })
                 .ToList();
             _selectorCandidatesBoundedThisTick += candidates.Count;
 
             IEnumerable<OrderSelectionCandidate> evaluationOrder = _orderSelectionMode == PrototypeOrderSelectionMode.ExactBranchAndBound
                 ? candidates
-                    .OrderByDescending(candidate => candidate.ScoreUpperBound)
+                    .OrderByDescending(candidate => Math.Max(candidate.NeutralScoreUpperBound, candidate.DirectiveScoreUpperBound))
                     .ThenBy(candidate => candidate.Order.OrderId, StringComparer.Ordinal)
                     .ThenBy(candidate => candidate.OriginalIndex)
                 : candidates.OrderBy(candidate => candidate.OriginalIndex);
 
             List<OrderSelectionCandidate> orderedCandidates = evaluationOrder.ToList();
-            ExactOrderSelection? best = null;
+            float[] suffixNeutralBounds = new float[orderedCandidates.Count + 1];
+            float[] suffixDirectiveBounds = new float[orderedCandidates.Count + 1];
+            suffixNeutralBounds[^1] = float.NegativeInfinity;
+            suffixDirectiveBounds[^1] = float.NegativeInfinity;
+            for (int index = orderedCandidates.Count - 1; index >= 0; index--)
+            {
+                suffixNeutralBounds[index] = Math.Max(
+                    orderedCandidates[index].NeutralScoreUpperBound,
+                    suffixNeutralBounds[index + 1]);
+                suffixDirectiveBounds[index] = Math.Max(
+                    orderedCandidates[index].DirectiveScoreUpperBound,
+                    suffixDirectiveBounds[index + 1]);
+            }
+
+            ExactOrderSelection? neutralBest = null;
+            ExactOrderSelection? directiveBest = null;
 
             for (int candidateIndex = 0; candidateIndex < orderedCandidates.Count; candidateIndex++)
             {
                 OrderSelectionCandidate candidate = orderedCandidates[candidateIndex];
                 if (_orderSelectionMode == PrototypeOrderSelectionMode.ExactBranchAndBound &&
-                    best != null &&
-                    candidate.ScoreUpperBound < best.Score)
+                    neutralBest != null &&
+                    directiveBest != null &&
+                    suffixNeutralBounds[candidateIndex] < neutralBest.Score &&
+                    suffixDirectiveBounds[candidateIndex] < directiveBest.Score)
                 {
                     _selectorCandidatesPrunedThisTick += orderedCandidates.Count - candidateIndex;
                     break;
@@ -231,7 +264,7 @@ namespace Societies.Simulation
                     citizen,
                     candidate.Order,
                     PathPlanLookupPurpose.GenericOrderSelection,
-                    out float exactScore,
+                    out float neutralScore,
                     out PrototypePathPlan? firstPathPlan))
                 {
                     _unreachableWorkOrderCandidatesSkippedThisTick++;
@@ -239,18 +272,60 @@ namespace Societies.Simulation
                 }
 
                 _selectorCandidatesExactScoredThisTick++;
-                ExactOrderSelection exact = new(
+                ExactOrderSelection neutral = new(
                     candidate.Order,
                     candidate.OriginalIndex,
-                    exactScore,
+                    neutralScore,
                     firstPathPlan!);
-                if (best == null || IsPreferredExactSelection(exact, best))
+                if (neutralBest == null || IsPreferredExactSelection(neutral, neutralBest))
                 {
-                    best = exact;
+                    neutralBest = neutral;
+                }
+
+                float directiveScore = neutralScore +
+                    PrototypeSettlementDirectiveCatalog.GetAssignmentScoreBonus(_activeDirective, candidate.Order);
+                ExactOrderSelection directive = new(
+                    candidate.Order,
+                    candidate.OriginalIndex,
+                    directiveScore,
+                    firstPathPlan!);
+                if (directiveBest == null || IsPreferredExactSelection(directive, directiveBest))
+                {
+                    directiveBest = directive;
                 }
             }
 
-            return best;
+            if (directiveBest == null ||
+                neutralBest == null ||
+                _activeDirective == PrototypeSettlementDirective.Neutral ||
+                string.Equals(neutralBest.Order.OrderId, directiveBest.Order.OrderId, StringComparison.Ordinal))
+            {
+                return directiveBest;
+            }
+
+            return directiveBest with { DirectiveCause = directiveBest.Order.DirectiveCause };
+        }
+
+        internal PrototypeDirectiveSelectionProbe SelectDirectiveOrderForTesting(
+            PrototypeWorkerState citizen,
+            IReadOnlyList<PrototypeWorkOrder> availableOrders,
+            PrototypeSettlementDirective directive)
+        {
+            PrototypeSettlementDirective previous = _activeDirective;
+            _activeDirective = directive;
+            try
+            {
+                ExactOrderSelection? selected = SelectGenericOrder(citizen, availableOrders);
+                return selected == null
+                    ? new PrototypeDirectiveSelectionProbe(string.Empty, string.Empty)
+                    : new PrototypeDirectiveSelectionProbe(
+                        selected.Order.OrderId,
+                        BuildCurrentOrderReason(selected.Order, selected.DirectiveCause));
+            }
+            finally
+            {
+                _activeDirective = previous;
+            }
         }
 
         private static bool IsPreferredExactSelection(ExactOrderSelection candidate, ExactOrderSelection currentBest)
@@ -730,11 +805,12 @@ namespace Societies.Simulation
             PrototypeWorkerState citizen,
             PrototypeWorkOrder order,
             PrototypeSettlementTickResult result,
-            PrototypePathPlan? selectedFirstPathPlan = null)
+            PrototypePathPlan? selectedFirstPathPlan = null,
+            string directiveCause = "")
         {
             citizen.CurrentOrderId = order.OrderId;
             citizen.CurrentOrderKind = order.Kind;
-            citizen.CurrentOrderReason = order.Reason;
+            citizen.CurrentOrderReason = BuildCurrentOrderReason(order, directiveCause);
             citizen.TargetStructureId = order.StructureId;
             citizen.TargetResourceNodeName = order.TargetNodeName;
             citizen.SourceStoreId = order.SourceStoreId;
@@ -1267,6 +1343,13 @@ namespace Societies.Simulation
             float roleBonus = GetRoleBonus(citizen.Role, order);
             score = order.Priority + roleBonus - distancePenalty;
             return true;
+        }
+
+        private string BuildCurrentOrderReason(PrototypeWorkOrder order, string directiveCause)
+        {
+            return string.IsNullOrWhiteSpace(directiveCause)
+                ? order.Reason
+                : $"{order.Reason} | Why: {PrototypeSettlementDirectiveCatalog.GetDisplayName(_activeDirective)} — {directiveCause}";
         }
         private bool TryComputeOrderRouteDistance(
             PrototypeWorkerState citizen,

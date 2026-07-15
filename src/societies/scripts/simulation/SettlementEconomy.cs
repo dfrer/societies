@@ -80,6 +80,7 @@ namespace Societies.Simulation
             AddProductionOrders(orders);
             AddBuildOrders(orders);
             orders = RemoveClaimedOrders(orders, activeClaimedOrderIds);
+            AnnotateDirectiveAffinities(orders);
 
             int omittedExtractionOrderCount = 0;
             AddReserveExtractionOrders(
@@ -95,6 +96,47 @@ namespace Societies.Simulation
             _extractionOrdersOmittedThisTick = omittedExtractionOrderCount;
             orders = ApplyWorkOrderFrontierLimit(orders, _workOrdersGeneratedUncappedThisTick);
             return orders;
+        }
+
+        private void AnnotateDirectiveAffinities(IEnumerable<PrototypeWorkOrder> orders)
+        {
+            foreach (PrototypeWorkOrder order in orders)
+            {
+                (order.DirectiveAffinity, order.DirectiveCause) = order.Kind switch
+                {
+                    PrototypeWorkOrderKind.RefuelHearth =>
+                        (PrototypeDirectiveAffinity.FoodAndFuel, "hearth refueling"),
+                    PrototypeWorkOrderKind.Build when IsHutOrder(order) =>
+                        (PrototypeDirectiveAffinity.Shelter, "hut construction"),
+                    _ => GetDirectiveMetadataForResource(order.ResourceId)
+                };
+            }
+        }
+
+        private static (PrototypeDirectiveAffinity Affinity, string Cause) GetDirectiveMetadataForResource(string resourceId)
+        {
+            return resourceId switch
+            {
+                "berries" => (PrototypeDirectiveAffinity.FoodAndFuel, "berry reserves"),
+                "meals" => (PrototypeDirectiveAffinity.FoodAndFuel, "meal production"),
+                "firewood" => (PrototypeDirectiveAffinity.FoodAndFuel, "fuel supply"),
+                "logs" or "timber" => (PrototypeDirectiveAffinity.Shelter, "construction lumber"),
+                "reeds" or "thatch" => (PrototypeDirectiveAffinity.Shelter, "shelter thatch"),
+                _ => (PrototypeDirectiveAffinity.None, string.Empty)
+            };
+        }
+
+        private int GetDirectiveAdjustedPriority(PrototypeWorkOrder order)
+        {
+            return checked(order.Priority + (int)PrototypeSettlementDirectiveCatalog.GetAssignmentScoreBonus(
+                _activeDirective,
+                order));
+        }
+
+        private bool IsHutOrder(PrototypeWorkOrder order)
+        {
+            return !string.IsNullOrWhiteSpace(order.StructureId) &&
+                string.Equals(GetStructure(order.StructureId)?.StructureKindId, "hut", StringComparison.Ordinal);
         }
 
         internal PrototypeExtractionFrontierProbe PlanExtractionFrontierForTesting(
@@ -148,7 +190,8 @@ namespace Societies.Simulation
             return PrototypeExtractionPlanningMath.ApplyFrontierLimit(
                 orders,
                 frontierBudget,
-                virtualUncappedCount);
+                virtualUncappedCount,
+                order => GetDirectiveAdjustedPriority(order));
         }
         private void AddRefuelOrders(List<PrototypeWorkOrder> orders)
         {
@@ -501,13 +544,16 @@ namespace Societies.Simulation
             int priorityUpperBound = PrototypeExtractionPlanningMath.ComputePriorityUpperBound(
                 priority,
                 hasBuiltCorridor);
+            (PrototypeDirectiveAffinity directiveAffinity, string directiveCause) = GetDirectiveMetadataForResource(resourceId);
+            int effectivePriorityUpperBound = checked(priorityUpperBound +
+                (int)PrototypeSettlementDirectiveCatalog.GetAssignmentScoreBonus(_activeDirective, directiveAffinity));
             int frontierBudget = Math.Max(50, _citizens.Count * 5);
             if (_extractionPlanningMode == PrototypeExtractionPlanningMode.ExactBounded &&
                 !_uncappedOrders &&
                 PrototypeExtractionPlanningMath.TryComputeWholeResourceClassOmission(
-                    orders.Select(order => order.Priority).ToArray(),
+                    orders.Select(GetDirectiveAdjustedPriority).ToArray(),
                     frontierBudget,
-                    priorityUpperBound,
+                    effectivePriorityUpperBound,
                     eligibleSites.Select(site => $"extract.{site.NodeName}").ToArray(),
                     activeClaimedOrderIds,
                     desiredUnits,
@@ -598,6 +644,8 @@ namespace Societies.Simulation
                     ClusterId = site.ClusterId,
                     Label = PrototypeSettlementLayout.GetResourceTargetLabel(resourceId),
                     Reason = $"reserve target for {InventoryComponent.FormatItemName(resourceId)}",
+                    DirectiveAffinity = directiveAffinity,
+                    DirectiveCause = directiveCause,
                     TargetPosition = interactionPosition,
                     Amount = 1
                 });

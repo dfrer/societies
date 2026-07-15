@@ -117,6 +117,7 @@ namespace Societies.Simulation
         private readonly PrototypeOrderSelectionMode _orderSelectionMode;
         private readonly PrototypeExtractionPlanningMode _extractionPlanningMode;
         private readonly PrototypeRouteDistanceMode _routeDistanceMode;
+        private PrototypeSettlementDirective _activeDirective = PrototypeSettlementDirective.Neutral;
         private long _cachedRouteDistanceFastPathHits;
         public PrototypeSettlementSimulation(
             PrototypeScenarioDefinition scenario,
@@ -343,9 +344,11 @@ namespace Societies.Simulation
             IReadOnlyList<PrototypeResourceSiteState> resources,
             float currentHour,
             PrototypeWeather weather,
-            RuntimeMetricsCollector? runtimeMetrics = null)
+            RuntimeMetricsCollector? runtimeMetrics = null,
+            PrototypeSettlementDirective directive = PrototypeSettlementDirective.Neutral)
         {
             PrototypeSettlementTickResult result = new();
+            _activeDirective = directive;
             _totalTicks++;
 
             _workOrdersGeneratedThisTick = 0;

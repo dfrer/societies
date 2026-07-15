@@ -1,0 +1,169 @@
+{
+  "schemaVersion": 1,
+  "capturedUtc": "2026-07-15T01:59:05.6625671Z",
+  "workItem": "V3-W2-03",
+  "status": "directive_causality_validated",
+  "branch": "feature/v3-w2-03-directives",
+  "baseCommit": "42a0af2cb10e361fde9d6bc16af9912db3754a3c",
+  "initialImplementationCommit": "92ee7e5ca0866246863ff1749308971635fee93b",
+  "implementationCommit": "f71965d6b21aec580af61ce46e04b7ee9673c5f3",
+  "scope": {
+    "implemented": [
+      "session-owned Neutral, Food & Fuel, and Shelter directive states",
+      "validated deterministic directive command and ordered change event",
+      "constant-time directive affinity bonus in exact scoring, selector upper bounds, extraction omission bounds, and the global work-order frontier",
+      "single-pass exact neutral and directive winner comparison with strict suffix-bound pruning",
+      "causal CurrentOrderReason decoration only when the directive changes the neutral winner",
+      "future-assignment-only behavior with active work preserved and critical eat/sleep/recovery dominance",
+      "player keys 2 and 3 plus immediate active-directive HUD/status presentation",
+      "frozen directive payload shape and explicit schema-v6 directive-state persistence fail-fast boundary"
+    ],
+    "deferred": [
+      "W2-04 terminal crisis events, reset/replay, and full crisis HUD",
+      "W2-05 runtime snapshot schema v7 attachment and directive serialization",
+      "W2-06 Release performance matrix and observed playtests"
+    ],
+    "runtimeSnapshotSchemaVersion": 6,
+    "directiveStateSerialized": false,
+    "directiveStateCaptureFailsFast": true
+  },
+  "directiveContract": {
+    "states": [
+      "neutral",
+      "food_and_fuel",
+      "shelter"
+    ],
+    "assignmentScoreBonus": 240,
+    "foodAndFuelAffinities": [
+      "berries",
+      "meals",
+      "firewood",
+      "hearth refueling",
+      "related hauling and processing"
+    ],
+    "shelterAffinities": [
+      "logs",
+      "timber",
+      "reeds",
+      "thatch",
+      "hut supply and construction"
+    ],
+    "activeOrdersCancelledOnChange": false,
+    "needDrivenSelectionRunsBeforeDirectiveScoring": true,
+    "causalClaimRequiresDifferentNeutralWinner": true
+  },
+  "correctness": {
+    "exactScoreIncludesModifier": true,
+    "geometricAndStraightLineSelectorBoundsIncludeModifier": true,
+    "globalFrontierIncludesModifier": true,
+    "extractionClassOmissionIncludesModifier": true,
+    "strictTieCandidatesRetained": true,
+    "counterfactualUsesSecondRoutePass": false,
+    "counterfactualWarmsHiddenGeneralCacheEntries": false,
+    "fixedSeedDirectiveMixesDifferMaterially": true,
+    "foodAndFuelRelevantAssignmentsIncrease": true,
+    "shelterRelevantAssignmentsIncrease": true,
+    "criticalNutritionDominates": true,
+    "criticalFatigueDominates": true,
+    "commandEventOrderingDeterministic": true
+  },
+  "validation": {
+    "sourceCommit": "f71965d6b21aec580af61ce46e04b7ee9673c5f3",
+    "sourceCodeMatchesCommit": true,
+    "workingTreeClean": false,
+    "workingTreeNote": "Unrelated concurrent product-thesis, long-horizon planning, AGENTS, README, and .codex changes remained unstaged and were excluded from both implementation commits.",
+    "focusedDirectiveTests": {
+      "configuration": "Debug",
+      "filter": "FullyQualifiedName~PrototypeDirective",
+      "passed": 14,
+      "failed": 0,
+      "includesFrontierAndOmissionProofs": true,
+      "includesFixedSeedMixProof": true
+    },
+    "selectorDifferentialTests": {
+      "configuration": "Debug",
+      "class": "OrderSelectionTests",
+      "passed": 20,
+      "failed": 0,
+      "scenarioDirectiveDifferentials": 15,
+      "ticksPerDifferential": 300,
+      "shippedScenarios": [
+        "balanced_basin",
+        "long_haul_quarry",
+        "food_poor_highlands",
+        "wetland_builder",
+        "empty_stores"
+      ],
+      "compared": [
+        "selected order IDs",
+        "complete worker state and causal reasons",
+        "events",
+        "harvest requests and resource effects",
+        "final settlement snapshots"
+      ]
+    },
+    "pullRequestFastTier": {
+      "manifestOwned": true,
+      "configuration": "Debug",
+      "passed": 147,
+      "failed": 0
+    },
+    "fullDotnetSuite": {
+      "declared": 251,
+      "ran": false,
+      "reason": "The task policy reserves the full coverage and soak route for Weekly Full Validation or manual dispatch; W2-03 ran focused, selector-differential, and manifest-owned fast validation instead.",
+      "integrationOwnedByWeeklyValidation": 11,
+      "soakOwnedByWeeklyValidation": 93
+    },
+    "godotHeadless": {
+      "passed": 18,
+      "failed": 0,
+      "directiveInputSmokePassed": true,
+      "activeDirectiveHudPassed": true
+    },
+    "managedBuildConfigurations": [
+      "Debug",
+      "ExportDebug",
+      "ExportRelease"
+    ],
+    "buildWarnings": 0,
+    "buildErrors": 0,
+    "expectedRuntimeWarningsObserved": [
+      "frame catch-up backlog diagnostic",
+      "optional runtime-metrics I/O isolation diagnostic"
+    ]
+  },
+  "review": {
+    "reviewer": "independent deep_reviewer agent /root/review_w2_03",
+    "modelEffortMetadataExposedToReviewer": false,
+    "initialP0Findings": 0,
+    "initialP1Findings": 1,
+    "initialP2Findings": 2,
+    "initialP3Findings": 0,
+    "resolvedFindings": [
+      "directive-unaware pre-selector frontier and extraction omission",
+      "missing empty_stores three-state differential coverage",
+      "second-pass counterfactual selection and hidden cache/metrics work"
+    ],
+    "finalP0Findings": 0,
+    "finalP1Findings": 0,
+    "finalP2Findings": 0,
+    "finalP3Findings": 0,
+    "finalConclusion": "clean"
+  },
+  "performance": {
+    "newCanonicalMatrixRun": false,
+    "currentImplementationPerformanceRevalidated": false,
+    "reason": "W2-03 validation proves deterministic selector equivalence and removes the rejected second route-selection pass, but makes no new Release timing claim; the canonical Release matrix remains W2-06 scope.",
+    "historicalAuthorityEvidence": "planning/active/evidence/v3-w1-06-session-resource-ledger-validation.json",
+    "historicalHardSafetyGate": "passed",
+    "historicalFormalBudget": "target_missed",
+    "historicalStressClassification": "non_gating_characterization_red"
+  },
+  "decision": {
+    "w203Complete": true,
+    "allW203AcceptanceCriteriaGreen": true,
+    "scopeConstraintPreserved": true,
+    "nextAuthorizedWork": "V3-W2-04 deterministic outcome and minimal crisis HUD after this PR is green and merged"
+  }
+}

@@ -26,6 +26,7 @@ namespace Societies.Core
         private readonly PrototypeRouteDistanceMode _routeDistanceMode;
         private readonly HashSet<string> _eligibleContributionResourceIds;
         private readonly Dictionary<string, long> _contributionCountsByResource = new(StringComparer.Ordinal);
+        private PrototypeSettlementDirective _activeDirective = PrototypeSettlementDirective.Neutral;
 
         public PrototypeRuntimeSession(
             PrototypeScenarioDefinition scenario,
@@ -63,14 +64,28 @@ namespace Societies.Core
 
         public PrototypeCrisisState? Crisis => _crisisState;
 
+        public PrototypeSettlementDirective ActiveDirective => _activeDirective;
+
+        public PrototypeDirectiveSnapshot CaptureDirectiveSnapshot()
+        {
+            return new PrototypeDirectiveSnapshot
+            {
+                DirectiveId = PrototypeSettlementDirectiveCatalog.GetId(_activeDirective)
+            };
+        }
+
         public bool SupportsRuntimeSnapshotPersistence =>
-            Scenario.Crisis == null && _contributionCountsByResource.Count == 0;
+            Scenario.Crisis == null &&
+            _contributionCountsByResource.Count == 0 &&
+            _activeDirective == PrototypeSettlementDirective.Neutral;
 
         public string RuntimeSnapshotPersistenceDeferralMessage => Scenario.Crisis != null
             ? "Runtime snapshot persistence for crisis scenarios is deferred until schema v7."
             : _contributionCountsByResource.Count > 0
                 ? "Runtime snapshot persistence for contribution state is deferred until schema v7."
-                : string.Empty;
+                : _activeDirective != PrototypeSettlementDirective.Neutral
+                    ? "Runtime snapshot persistence for directive state is deferred until schema v7."
+                    : string.Empty;
 
         public IReadOnlyDictionary<string, long> ContributionCountsByResource => _contributionCountsByResource;
 
@@ -236,6 +251,7 @@ namespace Societies.Core
             EventLog.Clear();
             MetricsTracker.Clear();
             _contributionCountsByResource.Clear();
+            _activeDirective = PrototypeSettlementDirective.Neutral;
             Inventory.ReplaceContents(new Dictionary<string, int>());
             Stockpile.ReplaceContents(new Dictionary<string, int>());
             _world = PrototypeWorldGenerator.Generate(Scenario);
@@ -299,7 +315,12 @@ namespace Societies.Core
             }
 
             IReadOnlyList<PrototypeResourceSiteState> resources = _resourceLedger?.CaptureActiveSites() ?? System.Array.Empty<PrototypeResourceSiteState>();
-            PrototypeSettlementTickResult settlementResult = _settlementSimulation?.Advance(resources, CurrentHour, CurrentWeather, runtimeMetrics) ?? new PrototypeSettlementTickResult();
+            PrototypeSettlementTickResult settlementResult = _settlementSimulation?.Advance(
+                resources,
+                CurrentHour,
+                CurrentWeather,
+                runtimeMetrics,
+                _activeDirective) ?? new PrototypeSettlementTickResult();
             IReadOnlyList<PrototypeHarvestResult> harvestResults = ApplyAiHarvestRequests(settlementResult.HarvestRequests, runtimeMetrics);
 
             RecordSettlementEvents(settlementResult.Events);
@@ -318,6 +339,26 @@ namespace Societies.Core
                 settlementResult,
                 harvestResults,
                 SimulationTick % 20 == 0);
+        }
+
+        public PrototypeDirectiveChangeResult SetDirective(PrototypeSettlementDirective directive)
+        {
+            PrototypeSettlementDirective previous = _activeDirective;
+            if (!Enum.IsDefined(typeof(PrototypeSettlementDirective), directive))
+            {
+                return new PrototypeDirectiveChangeResult(previous, previous, false, false, "invalid_directive");
+            }
+
+            if (directive == previous)
+            {
+                return new PrototypeDirectiveChangeResult(previous, previous, true, false, string.Empty);
+            }
+
+            _activeDirective = directive;
+            RecordEvent(
+                PrototypeEventTypes.SettlementDirectiveChanged,
+                $"Directive changed from {PrototypeSettlementDirectiveCatalog.GetDisplayName(previous)} to {PrototypeSettlementDirectiveCatalog.GetDisplayName(directive)}");
+            return new PrototypeDirectiveChangeResult(previous, directive, true, true, string.Empty);
         }
 
         public void RecordSettlementEvents(IEnumerable<PrototypeSettlementEvent> settlementEvents)

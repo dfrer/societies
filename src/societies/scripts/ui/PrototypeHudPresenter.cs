@@ -43,7 +43,8 @@ namespace Societies.UI
             int? worldSeed = null,
             CameraMode cameraMode = CameraMode.Player,
             TerrainOverlayMode overlayMode = TerrainOverlayMode.None,
-            PrototypeWorldSummary? worldSummary = null)
+            PrototypeWorldSummary? worldSummary = null,
+            PrototypeSettlementDirective directive = PrototypeSettlementDirective.Neutral)
         {
             hud.SetDebugText(
                 PrototypeHudTextBuilder.BuildDebugText(
@@ -70,7 +71,8 @@ namespace Societies.UI
                     hearthFuel,
                     structures,
                     averageTravelWorkRatio,
-                    routeBacklogTicksByKind));
+                    routeBacklogTicksByKind,
+                    directive));
             hud.SetWorldText(
                 PrototypeHudTextBuilder.BuildWorldText(
                     scenarioId ?? "unknown",

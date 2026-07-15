@@ -461,9 +461,10 @@ Acceptance:
 - Contribution events and per-resource counters are deterministic.
 - Unit, session, save/load, and Godot interaction tests cover the path.
 
-Status: **complete at `a75acf4`**. The command and depot input paths are deterministic and atomic, citizen consumption uses the existing central-depot authority, repeated-frame input cannot duplicate a batch, and schema-v6 capture fails explicitly when contribution counters would otherwise be lost. W2-03 remains unstarted.
+Status: **complete at `a75acf4`**. The command and depot input paths are deterministic and atomic, citizen consumption uses the existing central-depot authority, repeated-frame input cannot duplicate a batch, and schema-v6 capture fails explicitly when contribution counters would otherwise be lost.
 
 #### V3-W2-03 — Two directives and citizen causal explanation
+Status: **complete at `f71965d`**. Neutral, Food & Fuel, and Shelter are session-owned deterministic choices; directive bonuses participate in exact scoring, selector bounds, extraction omission, and the global frontier without cancelling active work or outranking critical needs. A single exact route pass tracks both neutral and directive winners, and the inspector claims `Why:` only when the directive changes the selected order. Validation passes 14/14 focused cases, 20/20 selector cases including all 15 scenario/directive 300-tick differentials, 147/147 manifest-fast tests, 18/18 Godot tests, and three zero-warning builds. The full 251-test weekly route and a new Release timing matrix were not run. Final independent review is clean. See `planning/active/evidence/v3-w2-03-directive-causality-validation.json`.
 
 Add two choices:
 
