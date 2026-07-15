@@ -36,6 +36,7 @@ namespace Societies.Tests
         private const string TimingOnlyScenarioId = "empty_stores";
         private const int TimingOnlySeed = 1701;
         private const int TimingOnlyCitizenCount = 12;
+        private const int TimingOnlyWarmupTicks = 2;
         private const int TimingOnlyMeasuredTicks = 300;
         private const int MaximumMeasuredTicks = 4096;
         private static readonly UTF8Encoding Utf8NoBom = new(encoderShouldEmitUTF8Identifier: false);
@@ -551,7 +552,7 @@ namespace Societies.Tests
                 configuration.SimulationSeed == TimingOnlySeed &&
                 configuration.CitizenCount == TimingOnlyCitizenCount &&
                 configuration.MeasuredTicks == TimingOnlyMeasuredTicks &&
-                configuration.WarmupTicks == 0 &&
+                configuration.WarmupTicks == TimingOnlyWarmupTicks &&
                 configuration.CacheMode == ColdCacheMode &&
                 configuration.SelectorMode == OptimizedSelectorMode &&
                 configuration.ExtractionPlanningMode == ExactBoundedExtractionMode &&
@@ -561,7 +562,7 @@ namespace Societies.Tests
             {
                 throw new ArgumentException(
                     "Timing-only mode is restricted to the V3-W2-VIS representative: " +
-                    "empty_stores, seed 1701, 12 citizens, 300 measured ticks, zero warmup, cold cache, " +
+                    "empty_stores, seed 1701, 12 citizens, 2 preconditioning ticks, 300 measured ticks, cold cache, " +
                     "exact_branch_and_bound selector, exact_bounded extraction, cached_distance_only routing, " +
                     "and export_release execution.");
             }

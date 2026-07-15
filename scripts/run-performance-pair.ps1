@@ -449,13 +449,13 @@ $timingOnlyRepresentativeIdentityValid =
     $Seed -eq 1701 -and
     $Citizens -eq 12 -and
     $Ticks -eq 300 -and
-    $WarmupTicks -eq 0 -and
+    $WarmupTicks -eq 2 -and
     $CacheMode -eq "cold" -and
     $SelectorMode -eq "exact_branch_and_bound" -and
     $ExtractionPlanningMode -eq "exact_bounded" -and
     $RouteDistanceMode -eq "cached_distance_only"
 if ($ArtifactMode -eq "timing_only" -and -not $timingOnlyRepresentativeIdentityValid) {
-    throw "ArtifactMode 'timing_only' is restricted to the V3-W2-VIS representative: empty_stores, seed 1701, 12 citizens, 300 measured ticks, zero warmup, cold cache, exact_branch_and_bound selector, exact_bounded extraction, and cached_distance_only routing."
+    throw "ArtifactMode 'timing_only' is restricted to the V3-W2-VIS representative: empty_stores, seed 1701, 12 citizens, 2 preconditioning ticks, 300 measured ticks, cold cache, exact_branch_and_bound selector, exact_bounded extraction, and cached_distance_only routing."
 }
 
 $gitSha = (git rev-parse HEAD).Trim()
@@ -1036,8 +1036,8 @@ $matrixSchemaValid =
     $onMatrix.Count -eq 2 -and
     $offMatrix[0] -eq $onMatrix[0] -and
     @($requiredMatrixArtifactColumns | Where-Object { $_ -notin $matrixHeaderColumns }).Count -eq 0
-$offMatrixRecords = if ($matrixSchemaValid) { @(Import-Csv -LiteralPath $offMatrixPath) } else { @() }
-$onMatrixRecords = if ($matrixSchemaValid) { @(Import-Csv -LiteralPath $onMatrixPath) } else { @() }
+$offMatrixRecords = @(if ($matrixSchemaValid) { Import-Csv -LiteralPath $offMatrixPath })
+$onMatrixRecords = @(if ($matrixSchemaValid) { Import-Csv -LiteralPath $onMatrixPath })
 $matrixArtifactMetadataValid =
     $offMatrixRecords.Count -eq 1 -and
     $onMatrixRecords.Count -eq 1
