@@ -115,6 +115,44 @@ function Get-VectorDistance {
     return [math]::Sqrt($sum)
 }
 
+function Get-PngDimensions {
+    param([string]$Path)
+
+    $stream = [System.IO.File]::Open($Path, [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, [System.IO.FileShare]::Read)
+    try {
+        [byte[]]$header = New-Object byte[] 24
+        $offset = 0
+        while ($offset -lt $header.Length) {
+            $read = $stream.Read($header, $offset, $header.Length - $offset)
+            if ($read -le 0) {
+                throw "Capture image '$Path' is too short to contain a PNG IHDR header."
+            }
+            $offset += $read
+        }
+
+        [byte[]]$signature = 137, 80, 78, 71, 13, 10, 26, 10
+        for ($index = 0; $index -lt $signature.Length; $index++) {
+            if ($header[$index] -ne $signature[$index]) {
+                throw "Capture image '$Path' is not a PNG file."
+            }
+        }
+        if ([System.Text.Encoding]::ASCII.GetString($header, 12, 4) -cne "IHDR") {
+            throw "Capture image '$Path' does not begin with a PNG IHDR chunk."
+        }
+
+        [uint32]$width = (([uint32]$header[16] -shl 24) -bor ([uint32]$header[17] -shl 16) -bor ([uint32]$header[18] -shl 8) -bor [uint32]$header[19])
+        [uint32]$height = (([uint32]$header[20] -shl 24) -bor ([uint32]$header[21] -shl 16) -bor ([uint32]$header[22] -shl 8) -bor [uint32]$header[23])
+        if ($width -eq 0 -or $height -eq 0 -or $width -gt [int]::MaxValue -or $height -gt [int]::MaxValue) {
+            throw "Capture image '$Path' has invalid PNG dimensions ${width}x${height}."
+        }
+
+        return [pscustomobject]@{ Width = [int]$width; Height = [int]$height }
+    }
+    finally {
+        $stream.Dispose()
+    }
+}
+
 function ConvertTo-WindowsCommandLineArgument {
     param([string]$Argument)
 
@@ -150,6 +188,46 @@ function ConvertTo-WindowsCommandLineArgument {
     }
     [void]$builder.Append('"')
     return $builder.ToString()
+}
+
+function Remove-DirectoryWithRetry {
+    param(
+        [string]$Path,
+        [int]$TimeoutMilliseconds = 30000,
+        [int]$RetryDelayMilliseconds = 250
+    )
+
+    if (-not (Test-Path -LiteralPath $Path)) {
+        return
+    }
+    if ($TimeoutMilliseconds -le 0 -or $RetryDelayMilliseconds -le 0) {
+        throw "Cleanup timeout and retry delay must be positive."
+    }
+
+    $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
+    $lastError = $null
+    $attempt = 0
+    do {
+        $attempt++
+        try {
+            Remove-Item -LiteralPath $Path -Recurse -Force -ErrorAction Stop
+        }
+        catch {
+            $lastError = $_
+        }
+
+        if (-not (Test-Path -LiteralPath $Path)) {
+            return
+        }
+
+        if ($stopwatch.ElapsedMilliseconds -lt $TimeoutMilliseconds) {
+            Start-Sleep -Milliseconds ([Math]::Min($RetryDelayMilliseconds, $TimeoutMilliseconds - [int]$stopwatch.ElapsedMilliseconds))
+        }
+    }
+    while ($stopwatch.ElapsedMilliseconds -lt $TimeoutMilliseconds)
+
+    $detail = if ($null -ne $lastError) { $lastError.Exception.Message } else { "the directory still exists after Remove-Item returned" }
+    throw "Capture scratch directory '$Path' could not be removed after $attempt attempts over $($stopwatch.ElapsedMilliseconds)ms. Close processes retaining compiler files and remove it manually. Last error: $detail"
 }
 
 function Invoke-ProcessAndWait {
@@ -309,9 +387,9 @@ try {
         $expectedTerminal = $preset -eq "terminal_crisis"
         $expectedFov = switch ($preset) {
             "arrival" { 70.0 }
-            "settlement_overview" { 67.0 }
+            "settlement_overview" { 62.0 }
             "contribution_point" { 66.0 }
-            "citizen_inspection" { 58.0 }
+            "citizen_inspection" { 54.0 }
             "terminal_crisis" { 62.0 }
             default { throw "Capture manifest has an unknown preset '$preset'." }
         }
@@ -402,6 +480,14 @@ try {
             (Get-Item -LiteralPath $imagePath).Length -le 0) {
             throw "Capture image '$preset' is missing, outside the evidence directory, or empty."
         }
+        $pngDimensions = Get-PngDimensions -Path $imagePath
+        if ($pngDimensions.Width -ne 1920 -or $pngDimensions.Height -ne 1080) {
+            throw "Capture image '$preset' is $($pngDimensions.Width)x$($pngDimensions.Height); expected 1920x1080."
+        }
+        if ([int](Require-ManifestProperty $image "PixelWidth") -ne $pngDimensions.Width -or
+            [int](Require-ManifestProperty $image "PixelHeight") -ne $pngDimensions.Height) {
+            throw "Capture manifest image '$preset' pixel dimensions do not match its PNG header."
+        }
     }
 
     $reproduction = [ordered]@{
@@ -443,9 +529,6 @@ finally {
         [System.Environment]::SetEnvironmentVariable($name, $savedEnvironment[$name], "Process")
     }
     if (Test-Path -LiteralPath $workRoot) {
-        Remove-Item -LiteralPath $workRoot -Recurse -Force -ErrorAction Stop
-    }
-    if (Test-Path -LiteralPath $workRoot) {
-        throw "Capture work directory was not removed: $workRoot"
+        Remove-DirectoryWithRetry -Path $workRoot
     }
 }

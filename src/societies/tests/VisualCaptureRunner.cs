@@ -18,6 +18,8 @@ namespace Societies.Tests
     /// </summary>
     public partial class VisualCaptureRunner : Node
     {
+        private const int CaptureWidth = 1920;
+        private const int CaptureHeight = 1080;
         private static readonly string[] RequiredPresets =
         {
             "arrival", "settlement_overview", "contribution_point", "citizen_inspection", "terminal_crisis"
@@ -45,6 +47,9 @@ namespace Societies.Tests
 
         private async Task CaptureAsync(string outputDirectory, string gitSha)
         {
+            ConfigureCaptureWindow();
+            await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+            await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
             PackedScene mainScene = GD.Load<PackedScene>("res://scenes/main.tscn")
                 ?? throw new InvalidOperationException("Main scene failed to load.");
             GameManager manager = mainScene.Instantiate<GameManager>();
@@ -68,6 +73,8 @@ namespace Societies.Tests
             List<VisualCaptureImageRecord> images = new();
             VisualCaptureGraphicsRecord graphics = CaptureGraphicsSettings();
             float simulationDayLengthSeconds = GetSimulationDayLengthSeconds(manager);
+            int capturedWidth = 0;
+            int capturedHeight = 0;
             foreach (string presetId in RequiredPresets)
             {
                 long expectedTick = GetExpectedTick(presetId);
@@ -143,7 +150,13 @@ namespace Societies.Tests
                     settledCamera);
                 string imageFile = $"{presetId}.png";
                 string imagePath = Path.Combine(outputDirectory, imageFile);
-                Error saveResult = GetViewport().GetTexture().GetImage().SavePng(imagePath);
+                Image captureImage = GetViewport().GetTexture().GetImage();
+                if (captureImage.GetWidth() != CaptureWidth || captureImage.GetHeight() != CaptureHeight)
+                {
+                    throw new InvalidOperationException(
+                        $"Visual capture image '{presetId}' is {captureImage.GetWidth()}x{captureImage.GetHeight()}; expected {CaptureWidth}x{CaptureHeight}.");
+                }
+                Error saveResult = captureImage.SavePng(imagePath);
                 if (saveResult != Error.Ok)
                 {
                     throw new InvalidOperationException($"Could not save '{imageFile}': {saveResult}.");
@@ -167,7 +180,18 @@ namespace Societies.Tests
                     settledAnimationPhase,
                     presentation,
                     canonicalCamera,
-                    settledCamera));
+                    settledCamera,
+                    captureImage.GetWidth(),
+                    captureImage.GetHeight()));
+                if (capturedWidth == 0 && capturedHeight == 0)
+                {
+                    capturedWidth = captureImage.GetWidth();
+                    capturedHeight = captureImage.GetHeight();
+                }
+                else if (capturedWidth != captureImage.GetWidth() || capturedHeight != captureImage.GetHeight())
+                {
+                    throw new InvalidOperationException("Visual capture images must retain identical pixel dimensions.");
+                }
             }
 
             PrototypeVisualCaptureMetadata finalMetadata = manager.VisualCaptureMetadata;
@@ -184,14 +208,20 @@ namespace Societies.Tests
                 PrototypeVisualCaptureConfiguration.SettlementAnimationPhase,
                 simulationDayLengthSeconds,
                 PrototypeSimulationTime.TickIntervalSeconds,
-                GetViewport().GetVisibleRect().Size.X,
-                GetViewport().GetVisibleRect().Size.Y,
+                capturedWidth,
+                capturedHeight,
                 graphics,
                 RequiredPresets,
                 images);
             string manifestPath = Path.Combine(outputDirectory, "capture-manifest.json");
             File.WriteAllText(manifestPath, JsonSerializer.Serialize(manifest, new JsonSerializerOptions { WriteIndented = true }));
             manager.QueueFree();
+        }
+
+        private static void ConfigureCaptureWindow()
+        {
+            DisplayServer.WindowSetFlag(DisplayServer.WindowFlags.Borderless, true);
+            DisplayServer.WindowSetSize(new Vector2I(CaptureWidth, CaptureHeight));
         }
 
         private static long GetExpectedTick(string presetId) => presetId switch
@@ -511,7 +541,9 @@ namespace Societies.Tests
             double SettlementAnimationPhase,
             VisualCapturePresentationRecord Presentation,
             VisualCaptureCameraRecord CanonicalCamera,
-            VisualCaptureCameraRecord Camera);
+            VisualCaptureCameraRecord Camera,
+            int PixelWidth,
+            int PixelHeight);
 
         private sealed record VisualCaptureCrisisRecord(
             string Outcome,

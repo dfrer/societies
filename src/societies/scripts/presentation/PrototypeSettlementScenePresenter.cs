@@ -128,6 +128,10 @@ namespace Societies.Simulation
         public void SyncWorkers(IReadOnlyList<PrototypeWorkerState> workers)
         {
             HashSet<string> activeWorkerIds = workers.Select(worker => worker.WorkerId).ToHashSet();
+            string? featuredWorkerId = workers
+                .OrderBy(worker => worker.WorkerId, StringComparer.Ordinal)
+                .Select(worker => worker.WorkerId)
+                .FirstOrDefault();
 
             foreach ((string workerId, PrototypeWorkerAgent node) in _workerNodes.ToList())
             {
@@ -157,6 +161,29 @@ namespace Societies.Simulation
                 }
 
                 node.ApplyState(worker);
+                ApplyWorkerLabelVisibility(node, worker.WorkerId == featuredWorkerId);
+            }
+        }
+
+        /// <summary>
+        /// Keeps dense settlement activity legible without changing the normal HUD's selected-citizen detail.
+        /// The stable first worker is also the capture inspection target, so one compact world label preserves
+        /// its current activity while nearby placeholder actors remain visually readable.
+        /// </summary>
+        private static void ApplyWorkerLabelVisibility(PrototypeWorkerAgent worker, bool isFeatured)
+        {
+            Label3D? activityLabel = worker.GetNodeOrNull<Label3D>("Label");
+            if (activityLabel != null)
+            {
+                activityLabel.Visible = isFeatured;
+                activityLabel.FontSize = 14;
+                activityLabel.PixelSize = 0.0035f;
+            }
+
+            Label3D? beaconLabel = worker.GetNodeOrNull<Label3D>("BeaconRoot/BeaconLabel");
+            if (beaconLabel != null)
+            {
+                beaconLabel.Visible = false;
             }
         }
 
