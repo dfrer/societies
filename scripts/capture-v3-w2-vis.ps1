@@ -439,7 +439,7 @@ try {
         if ($preset -eq "contribution_point") {
             if (-not [bool](Require-ManifestProperty $contribution "IsContributionFrame") -or
                 -not [bool](Require-ManifestProperty $contribution "PlayerWithinDepotRange") -or
-                -not ([string](Require-ManifestProperty $contribution "StatusText")).Contains("Contributed", [System.StringComparison]::Ordinal)) {
+                ([string](Require-ManifestProperty $contribution "StatusText")).IndexOf("Contributed", [System.StringComparison]::Ordinal) -lt 0) {
                 throw "Capture manifest contribution image must record the canonical in-range player/depot pose and visible success cue."
             }
             $range = [double](Require-ManifestProperty $contribution "ContributionRangeMeters")
