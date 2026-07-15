@@ -3,6 +3,12 @@
 Societies is currently a Godot 4 + C# prototype for validating a low-friction society-sim foundation.
 
 The authoritative executable target is the Godot project under `src/societies/`.
+## Product North Star
+
+> "A deterministic civilization/ecology simulation where humans and AI citizens work, trade, negotiate, govern, and experience shared consequences."
+
+This is future product intent, not a claim that all of those systems are implemented. The deterministic simulation owns facts and every world-changing outcome; future LLM capabilities interpret structured state, deliberate, communicate, summarize memory, and propose actions through validated deterministic commands/events. See [the product thesis](planning/PRODUCT-THESIS.md).
+
 
 - Project: `src/societies/project.godot`
 - Main scene: `src/societies/scenes/main.tscn`
@@ -15,6 +21,8 @@ Use [CURRENT_BUILD.md](CURRENT_BUILD.md) as the short repo-truth reference.
 ## Current Prototype
 
 See [CURRENT_BUILD.md](CURRENT_BUILD.md) for the up-to-date prototype scope, validation commands, and implementation details.
+Current implemented reality is V3 W2-03 complete: the `empty_stores` crisis contract, atomic contribution path, and session-owned directives with causal assignment explanations are deterministic and validated. W2-04 deterministic outcome and minimal crisis HUD is next. The possible [V3 Weeks 3-4 plan](planning/active/v3-weeks-3-4-development-plan.md) remains Draft/Conditional and cannot activate unless W2-06 concludes **Continue V3**.
+
 
 ## Planning vs Code
 

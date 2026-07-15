@@ -12,6 +12,12 @@
 > **Requires**: [Session 1 Architecture](../session-1-technical-architecture/)
 > **Informs**: [Future Sessions] (Session 3-7 planning not yet started)
 
+> **Canonical alignment (2026-07-14):** Aspirational narrative/debugging reference. Current scope is [planning/active/](../../active/) and implementation truth is [CURRENT_BUILD.md](../../../CURRENT_BUILD.md). See [PRODUCT-THESIS.md](../../PRODUCT-THESIS.md).
+
+## Product Contract Alignment
+
+Narrative is a legible view of deterministic, recorded consequences across ecology, economy, trade, and governance. LLMs may summarize or communicate structured observation; they do not establish facts, and unavailable or invalid output must leave a safe deterministic narrative fallback.
+
 ---
 
 ## 9. Emergent Narrative System

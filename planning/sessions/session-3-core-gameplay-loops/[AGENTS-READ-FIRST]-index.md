@@ -3,6 +3,8 @@
 **Status**: COMPLETE - Compartmentalized  
 **Last Updated**: 2026-02-01  
 
+> **Canonical alignment (2026-07-14):** Aspirational gameplay reference. Current delivery is governed by [`planning/active/`](../../active/) and [`CURRENT_BUILD.md`](../../../CURRENT_BUILD.md); see [PRODUCT-THESIS.md](../../PRODUCT-THESIS.md).
+
 ---
 
 ## Quick Access

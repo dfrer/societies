@@ -7,6 +7,8 @@
 **Source constants**: `TechnicalConstants.cs` (authoritative)  
 **Perspective**: Third-person over-the-shoulder (implied by low-poly 3D, open world, Eco-comparable design)
 
+> **Canonical alignment (2026-07-14):** These are targeted player-facing reference contracts. The product contract is [PRODUCT-THESIS.md](../PRODUCT-THESIS.md); current scope and implementation truth remain [`planning/active/`](../active/) and [`CURRENT_BUILD.md`](../../CURRENT_BUILD.md).
+
 ---
 
 ## CONTRACT GROUP 1: WASD Movement Direction

@@ -81,6 +81,8 @@ At the end of Day 10, record one explicit result:
 - **Narrow iteration:** engineering passes, but playtests show that the crisis, directive, or citizen causality needs refinement.
 - **Stop feature expansion:** correctness, determinism, persistence, or the performance safety gate fails; return to the last green boundary before adding systems.
 
+The canonical product north star and deterministic/LLM boundary are maintained in [PRODUCT-THESIS.md](../PRODUCT-THESIS.md). If the W2-06 report concludes **Continue V3**, evaluate [the Draft/Conditional Weeks 3-4 plan](v3-weeks-3-4-development-plan.md); it does not activate before that conclusion.
+
 ### Day 10 long-term planning reconciliation
 
 After recording the sprint result, perform a focused reconciliation before selecting the next implementation stage:
@@ -465,6 +467,7 @@ Status: **complete at `a75acf4`**. The command and depot input paths are determi
 
 #### V3-W2-03 — Two directives and citizen causal explanation
 Status: **complete at `f71965d`**. Neutral, Food & Fuel, and Shelter are session-owned deterministic choices; directive bonuses participate in exact scoring, selector bounds, extraction omission, and the global frontier without cancelling active work or outranking critical needs. A single exact route pass tracks both neutral and directive winners, and the inspector claims `Why:` only when the directive changes the selected order. Validation passes 14/14 focused cases, 20/20 selector cases including all 15 scenario/directive 300-tick differentials, 147/147 manifest-fast tests, 18/18 Godot tests, and three zero-warning builds. The full 251-test weekly route and a new Release timing matrix were not run. Final independent review is clean. See `planning/active/evidence/v3-w2-03-directive-causality-validation.json`.
+
 
 Add two choices:
 

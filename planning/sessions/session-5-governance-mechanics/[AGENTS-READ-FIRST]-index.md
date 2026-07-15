@@ -3,6 +3,8 @@
 **Status:** Ready for Review  
 **Main Document:** [day5-governance-mechanics.md](./day5-governance-mechanics.md) **(~1,200 lines)**
 
+> **Canonical alignment (2026-07-14):** Aspirational governance reference. Current scope is [`planning/active/`](../../active/); implementation truth is [`CURRENT_BUILD.md`](../../../CURRENT_BUILD.md). See [PRODUCT-THESIS.md](../../PRODUCT-THESIS.md).
+
 ---
 
 ## Quick Access

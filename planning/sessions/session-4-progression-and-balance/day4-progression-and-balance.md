@@ -5,6 +5,12 @@
 **Date Started**: 2026-01-28  
 **Date Completed**: 2026-01-28
 
+> **Canonical alignment (2026-07-14):** Aspirational progression/balance reference. Current scope is [planning/active/](../../active/) and implementation truth is [CURRENT_BUILD.md](../../../CURRENT_BUILD.md). See [PRODUCT-THESIS.md](../../PRODUCT-THESIS.md).
+
+## Product Contract Alignment
+
+Progression must make shared ecological, economic, trade, and governance consequences legible and consequential to humans and AI citizens. Deterministic simulation owns measured state and outcomes; LLM output is optional expression only and must safely fall back.
+
 ---
 
 ## Purpose

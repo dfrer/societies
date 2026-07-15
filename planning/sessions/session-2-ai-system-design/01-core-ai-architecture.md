@@ -23,6 +23,12 @@
 **Location**: planning/sessions/session-2-ai-system-design/
 **Document Size**: ~10,800 lines | 14 sections | 50+ code examples
 
+> **Canonical alignment (2026-07-14):** Aspirational AI design reference. Current scope is [planning/active/](../../active/) and implementation truth is [CURRENT_BUILD.md](../../../CURRENT_BUILD.md). See [PRODUCT-THESIS.md](../../PRODUCT-THESIS.md).
+
+## Product Contract Alignment
+
+AI citizens have material interests and rights but no special authority. Deterministic systems choose and validate outcomes; LLMs receive structured observations and may only deliberate, communicate, summarize, or propose. Humans remain consequential, and unavailable or invalid model output must safely fall back.
+
 ---
 
 ## Purpose

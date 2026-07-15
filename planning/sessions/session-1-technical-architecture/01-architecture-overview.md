@@ -4,6 +4,12 @@
 > 
 > **Part of**: [Day 1 Technical Architecture]([AGENTS-READ-FIRST]-index.md)
 
+> **Canonical alignment (2026-07-14):** Aspirational architecture reference. Current scope is [planning/active/](../../active/) and implementation truth is [CURRENT_BUILD.md](../../../CURRENT_BUILD.md). See [PRODUCT-THESIS.md](../../PRODUCT-THESIS.md).
+
+## Product Contract Alignment
+
+The deterministic simulation owns facts and outcomes. Any human or AI action becomes a validated command and recorded event; LLMs may read structured observations and deliberate, communicate, summarize, or propose, never directly mutate state. Invalid or unavailable model output must safely fall back.
+
 ---
 
 # Session 1: Technical Architecture - Deep Planning Document

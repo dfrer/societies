@@ -12,6 +12,12 @@
 > **Requires**: [Session 1 Architecture](../session-1-technical-architecture/)
 > **Informs**: [Future Sessions] (Session 3-7 planning not yet started)
 
+> **Canonical alignment (2026-07-14):** Aspirational economic-AI reference. Current scope is [planning/active/](../../active/) and implementation truth is [CURRENT_BUILD.md](../../../CURRENT_BUILD.md). See [PRODUCT-THESIS.md](../../PRODUCT-THESIS.md).
+
+## Product Contract Alignment
+
+Economic facts, inventory, prices, and transfers are deterministic simulation outcomes reached through validated commands and recorded events. LLMs may explain or propose an AI citizen's trade intent from structured observations, but may not directly mutate the economy; invalid output safely falls back.
+
 ---
 
 ## 4. Economic Behavior Model

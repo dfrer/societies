@@ -4,6 +4,12 @@
 > 
 > **Part of**: [Day 1 Technical Architecture]([AGENTS-READ-FIRST]-index.md)
 
+> **Canonical alignment (2026-07-14):** Aspirational persistence reference. Current scope is [planning/active/](../../active/) and implementation truth is [CURRENT_BUILD.md](../../../CURRENT_BUILD.md). See [PRODUCT-THESIS.md](../../PRODUCT-THESIS.md).
+
+## Product Contract Alignment
+
+Persistence must preserve deterministic facts and outcomes as recorded events following validated commands. LLM text, summaries, and proposals are context or audit artifacts, not world truth; failed or invalid model output is safely ignored or replaced by deterministic fallback behavior.
+
 ---
 
 ## 6. Save/Replay System

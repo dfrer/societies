@@ -17,6 +17,15 @@ This is the only in-repo implementation that currently has:
 - a buildable C# project
 - a runnable automated validation path
 
+## Product Direction and Current Status
+
+The product north star is: "A deterministic civilization/ecology simulation where humans and AI citizens work, trade, negotiate, govern, and experience shared consequences."
+
+That statement is future intent. Current implementation facts remain limited to the scope below. The deterministic simulation owns facts and all world-changing outcomes; any future LLM layer is limited to interpreting structured state, deliberating, communicating, summarizing memory, and proposing actions. Validated deterministic commands/events remain the only state-change path. Humans must stay consequential, and offline/model-failure fallback must preserve simulation and replay. See [planning/PRODUCT-THESIS.md](planning/PRODUCT-THESIS.md).
+
+Current milestone truth: the Week 1 hard gate is green; its formal target and 24-citizen stress characterization remain missed. W2-02 atomic contribution is validated and merged at `42a0af2`. W2-03 directives are validated and merged at `b61a7dc`; W2-04 remains unstarted. The Draft/Conditional [V3 Weeks 3-4 plan](planning/active/v3-weeks-3-4-development-plan.md) may activate only if W2-06 records **Continue V3**.
+
+
 ## Current Prototype Scope
 
 The current build is Prototype V3 W2-03: a deterministic local settlement simulation with terrain-aware logistics, a frozen crisis contract, atomic player contribution, session-owned settlement directives with causal assignment explanations, and an isolated voxel feasibility spike.
