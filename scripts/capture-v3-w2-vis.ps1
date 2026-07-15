@@ -310,7 +310,9 @@ try {
     [System.Environment]::SetEnvironmentVariable("DOTNET_CLI_HOME", $dotnetHome, "Process")
 
     $projectPath = Join-Path $repoRoot "src\societies\Societies.csproj"
-    $buildArguments = @("build", $projectPath, "--configuration", "Debug", "--no-restore", "--nologo", "-t:Rebuild")
+    # Keep Roslyn's shared compiler out of capture scratch: analyzer assemblies can otherwise
+    # remain locked after the build, preventing the strict evidence cleanup from completing.
+    $buildArguments = @("build", $projectPath, "--configuration", "Debug", "--no-restore", "--nologo", "-t:Rebuild", "-p:UseSharedCompilation=false")
     & $dotnet @buildArguments
     $buildExitCode = $LASTEXITCODE
     if ($buildExitCode -ne 0) {
@@ -501,7 +503,7 @@ try {
         build = [ordered]@{
             configuration = "Debug"
             project = "src/societies/Societies.csproj"
-            command = "$dotnet build src/societies/Societies.csproj --configuration Debug --no-restore --nologo -t:Rebuild"
+            command = "$dotnet build src/societies/Societies.csproj --configuration Debug --no-restore --nologo -t:Rebuild -p:UseSharedCompilation=false"
             exitCode = $buildExitCode
             managedAssembly = "src/societies/.godot/mono/temp/bin/Debug/Societies.dll"
             managedAssemblySha256 = $assemblyHash
