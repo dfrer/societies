@@ -10,6 +10,13 @@ namespace Societies.UI
     /// </summary>
     public static class PrototypeHudTextBuilder
     {
+        /// <summary>Two-line normal-play help that remains readable in the compact HUD.</summary>
+        public static string BuildCompactHelpText()
+        {
+            return "WASD move  E harvest  Tab inventory  2 Food & Fuel  3 Shelter\n" +
+                   "F3 citizen  F4 structure  F11 next build  F12 pause build  Esc mouse";
+        }
+
         public static string BuildHelpText()
         {
             return "WASD move  Shift sprint  Space jump  Mouse look  E harvest\n" +
@@ -195,6 +202,64 @@ namespace Societies.UI
             return string.Join('\n', lines);
         }
 
+        /// <summary>Three-line world identity used by the bounded normal-play HUD.</summary>
+        public static string BuildCompactWorldText(
+            string scenarioId,
+            int worldSeed,
+            CameraMode cameraMode,
+            TerrainOverlayMode overlayMode)
+        {
+            return $"World: {scenarioId} | seed {worldSeed}\n{cameraMode} | {overlayMode}";
+        }
+
+        /// <summary>
+        /// Bounded normal-play settlement summary. Citizen rows are deliberately aggregated:
+        /// selecting a citizen (F3) exposes their complete reason in the inspector card.
+        /// </summary>
+        public static string BuildCompactSettlementText(
+            IReadOnlyDictionary<string, int> stockpile,
+            IReadOnlyList<PrototypeWorkerState> workers,
+            PrototypeSettlementClassification classification = PrototypeSettlementClassification.Strained,
+            string? buildQueueStatusText = null,
+            int mealCoveragePercent = 0,
+            int bedCoveragePercent = 0,
+            int hearthFuel = 0,
+            IReadOnlyList<PrototypeStructureState>? structures = null,
+            PrototypeSettlementDirective directive = PrototypeSettlementDirective.Neutral)
+        {
+            int activeCitizens = workers.Count(worker => worker.Phase != PrototypeWorkerPhase.Idle);
+            List<string> lines = new()
+            {
+                "Settlement",
+                $"State: {classification}",
+                $"Directive: {PrototypeSettlementDirectiveCatalog.GetDisplayName(directive)}",
+                $"Citizens: {activeCitizens}/{workers.Count} active (details: F3)",
+                $"Needs: meals {mealCoveragePercent}% | beds {bedCoveragePercent}% | fuel {hearthFuel}",
+                $"Stockpile: {BuildCompactStoreSummary(stockpile)}"
+            };
+
+            PrototypeWorkerState? targetWorker = workers.FirstOrDefault(worker =>
+                !string.IsNullOrWhiteSpace(worker.TargetLabel));
+            if (targetWorker != null)
+            {
+                lines.Add($"Target: {targetWorker.DisplayName} -> {targetWorker.TargetLabel}");
+            }
+
+            if (!string.IsNullOrWhiteSpace(buildQueueStatusText))
+            {
+                lines.Add($"Build: {buildQueueStatusText}");
+            }
+
+            if (structures is { Count: > 0 })
+            {
+                int built = structures.Count(structure => structure.IsBuilt);
+                int blocked = structures.Count(structure => structure.IsBlocked);
+                lines.Add($"Structures: {built}/{structures.Count} built" + (blocked > 0 ? $" | {blocked} blocked" : string.Empty));
+            }
+
+            return string.Join('\n', lines);
+        }
+
         public static string BuildInspectorText(
             PrototypeWorkerState? selectedCitizen,
             PrototypeStructureState? selectedStructure)
@@ -244,6 +309,40 @@ namespace Societies.UI
             return string.Join('\n', lines);
         }
 
+        /// <summary>Bounded inspector summary; the selected citizen's assignment reason is never omitted.</summary>
+        public static string BuildCompactInspectorText(
+            PrototypeWorkerState? selectedCitizen,
+            PrototypeStructureState? selectedStructure)
+        {
+            List<string> lines = new() { "Inspector" };
+            if (selectedCitizen != null)
+            {
+                string order = selectedCitizen.CurrentOrderKind?.ToString() ?? selectedCitizen.Phase.ToString();
+                string reason = string.IsNullOrWhiteSpace(selectedCitizen.CurrentOrderReason)
+                    ? "none"
+                    : selectedCitizen.CurrentOrderReason ?? "none";
+                lines.Add($"Citizen: {selectedCitizen.DisplayName} [{selectedCitizen.Role}]");
+                lines.Add($"Needs: nutrition {selectedCitizen.Needs.Nutrition:0} | fatigue {selectedCitizen.Needs.Fatigue:0}");
+                lines.Add($"Order: {order}");
+                lines.Add($"Why: {reason}");
+                lines.Add($"Route: {selectedCitizen.Navigation.CurrentRouteLengthMeters:0.0} m | {selectedCitizen.Navigation.CurrentRouteTravelTicks} ticks");
+            }
+            else
+            {
+                lines.Add("Citizen: none");
+            }
+
+            if (selectedStructure != null)
+            {
+                string status = selectedStructure.IsBuilt
+                    ? selectedStructure.IsBlocked ? $"blocked ({selectedStructure.BlockedReason})" : "built"
+                    : "planned";
+                lines.Add($"Structure: {selectedStructure.DisplayName} ({status})");
+            }
+
+            return string.Join('\n', lines);
+        }
+
         public static string BuildCrisisText(
             PrototypeCrisisState? crisis,
             PrototypeSettlementDirective directive,
@@ -278,6 +377,61 @@ namespace Societies.UI
             }
 
             return string.Join('\n', lines);
+        }
+
+        /// <summary>Short crisis reading for the fixed normal-play card at both target resolutions.</summary>
+        public static string BuildCompactCrisisText(
+            PrototypeCrisisState? crisis,
+            PrototypeSettlementDirective directive,
+            IReadOnlyDictionary<string, long>? contributionCountsByResource)
+        {
+            if (crisis == null)
+            {
+                return "Crisis: none";
+            }
+
+            PrototypeCrisisDefinition definition = crisis.Definition;
+            PrototypeCrisisObservation observation = crisis.LastObservation;
+            string contributions = contributionCountsByResource is { Count: > 0 }
+                ? string.Join(", ", contributionCountsByResource
+                    .OrderBy(pair => pair.Key, System.StringComparer.Ordinal)
+                    .Take(2)
+                    .Select(pair => $"{InventoryComponent.FormatItemName(pair.Key)} x{pair.Value}"))
+                : "none";
+            if (contributionCountsByResource is { Count: > 2 })
+            {
+                contributions += $" +{contributionCountsByResource.Count - 2}";
+            }
+            List<string> lines = new()
+            {
+                $"Crisis: {definition.DisplayName}",
+                $"Time: {crisis.RemainingTicks}/{crisis.DeadlineTicks} ({crisis.RemainingSeconds:0.0}s)",
+                $"Directive: {PrototypeSettlementDirectiveCatalog.GetDisplayName(directive)}",
+                $"Contributed: {contributionCountsByResource?.Values.Sum() ?? 0} ({contributions})",
+                $"Stable conditions: cap {observation.CapableCitizens}/{definition.RequiredCapableCitizens} meal {observation.Meals}/{definition.RequiredMeals} fuel {observation.HearthFuel}/{definition.RequiredHearthFuel} bed {observation.BedCoveragePercent}/{definition.RequiredBedCoveragePercent}%",
+                $"Hold: stable {crisis.StableHoldTicks}/{definition.StableHoldTicks} | collapse {crisis.CollapseHoldTicks}/{definition.CollapseHoldTicks}"
+            };
+
+            if (crisis.IsTerminal)
+            {
+                lines.Add($"Outcome: {crisis.BuildTerminalSummary()}");
+            }
+
+            return string.Join('\n', lines);
+        }
+
+        private static string BuildCompactStoreSummary(IReadOnlyDictionary<string, int> store)
+        {
+            if (store.Count == 0)
+            {
+                return "empty";
+            }
+
+            return string.Join(", ", store
+                .OrderBy(pair => pair.Key)
+                .Take(3)
+                .Select(pair => $"{InventoryComponent.FormatItemName(pair.Key)} x{pair.Value}")) +
+                (store.Count > 3 ? $" +{store.Count - 3}" : string.Empty);
         }
 
         private static string FormatStoreSummary(PrototypeResourceStoreState store)

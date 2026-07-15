@@ -95,6 +95,22 @@ namespace Societies.Core
             _pitch = Rotation.X;
         }
 
+        public bool ApplyCapturePose(Vector3 cameraPosition, Vector3 lookAt, float fieldOfView)
+        {
+            BuildVisuals();
+            if (_camera == null)
+            {
+                return false;
+            }
+
+            GlobalPosition = cameraPosition;
+            LookAt(lookAt, Vector3.Up);
+            _pitch = Rotation.X;
+            _camera.Fov = fieldOfView;
+            _camera.Current = true;
+            return true;
+        }
+
         public void SetControlEnabled(bool enabled)
         {
             _controlsEnabled = enabled;

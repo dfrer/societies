@@ -1,5 +1,6 @@
 using Godot;
 using Societies.Core;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -18,8 +19,10 @@ namespace Societies.Simulation
         private TerrainGenerator _terrain;
         private PrototypeSettlementHub? _settlementHub;
         private Node3D? _overlayRoot;
+        private Node3D? _worldCueRoot;
         private TerrainOverlayMode _lastOverlayMode;
         private int _lastOverlaySignature;
+        private int _lastWorldCueSignature;
 
         public PrototypeSettlementScenePresenter(
             Node3D agentsRoot,
@@ -62,6 +65,8 @@ namespace Societies.Simulation
             ClearChildren(_agentsRoot);
             _overlayRoot?.QueueFree();
             _overlayRoot = null;
+            _worldCueRoot?.Free();
+            _worldCueRoot = null;
             _workerNodes.Clear();
         }
 
@@ -167,7 +172,9 @@ namespace Societies.Simulation
             TerrainOverlayMode overlayMode = TerrainOverlayMode.None,
             IReadOnlyList<PrototypePathSegmentState>? pathSegments = null,
             IReadOnlyList<PrototypeRemoteDepotState>? remoteDepots = null,
-            IReadOnlyList<PrototypeRouteHeatCellState>? routeHeatCells = null)
+            IReadOnlyList<PrototypeRouteHeatCellState>? routeHeatCells = null,
+            PrototypeSettlementDirective directive = PrototypeSettlementDirective.Neutral,
+            PrototypeCrisisState? crisis = null)
         {
             EnsureSettlementHub().ApplyState(
                 stockpile,
@@ -177,9 +184,39 @@ namespace Societies.Simulation
                 buildQueueStatusText,
                 mealCoveragePercent,
                 bedCoveragePercent,
-                hearthFuel);
+                hearthFuel,
+                directive,
+                crisis);
+
+            UpdatePersistentWorldCues(pathSegments ?? System.Array.Empty<PrototypePathSegmentState>());
 
             UpdateNavigationOverlays(overlayMode, pathSegments ?? new List<PrototypePathSegmentState>(), remoteDepots ?? new List<PrototypeRemoteDepotState>(), routeHeatCells ?? new List<PrototypeRouteHeatCellState>());
+        }
+
+        private void UpdatePersistentWorldCues(IReadOnlyList<PrototypePathSegmentState> pathSegments)
+        {
+            IReadOnlyList<PrototypePathSegmentState> orderedSegments = pathSegments
+                .OrderBy(segment => segment.StructureId, StringComparer.Ordinal).ToList();
+            int signature = orderedSegments.Aggregate(17, (hash, segment) => HashCode.Combine(hash, segment.StructureId, segment.Position, segment.IsBuilt));
+            if (_worldCueRoot != null && signature == _lastWorldCueSignature)
+            {
+                return;
+            }
+
+            _lastWorldCueSignature = signature;
+            _worldCueRoot ??= new Node3D { Name = "SettlementWorldCues" };
+            if (_worldCueRoot.GetParent() == null)
+            {
+                _environmentRoot.AddChild(_worldCueRoot);
+            }
+
+            ClearChildren(_worldCueRoot);
+            int index = 0;
+            foreach (PrototypePathSegmentState segment in orderedSegments)
+            {
+                _worldCueRoot.AddChild(CreatePathStateCue(segment, index));
+                index++;
+            }
         }
 
         private void UpdateNavigationOverlays(
@@ -238,15 +275,50 @@ namespace Societies.Simulation
             }
         }
 
+        internal static Node3D CreatePathStateCue(PrototypePathSegmentState segment, int index)
+        {
+            bool isBuilt = segment.IsBuilt;
+            Node3D cue = new()
+            {
+                Name = $"PathSegment-{index:000}",
+                Position = segment.Position
+            };
+            cue.SetMeta("path_state", isBuilt ? "built" : "planned");
+
+            MeshInstance3D surface = CreatePathMarker(Vector3.Zero, isBuilt);
+            surface.Name = "Surface";
+            cue.AddChild(surface);
+            cue.AddChild(new Label3D
+            {
+                Name = "StateLabel",
+                Billboard = BaseMaterial3D.BillboardModeEnum.Enabled,
+                Position = new Vector3(0.0f, 0.38f, 0.0f),
+                Text = isBuilt ? "BUILT PATH" : "PLANNED PATH",
+                FontSize = 12,
+                Modulate = isBuilt
+                    ? new Color(0.95f, 0.79f, 0.34f)
+                    : new Color(0.72f, 0.82f, 0.88f)
+            });
+            return cue;
+        }
+
         private static MeshInstance3D CreatePathMarker(Vector3 position)
+        {
+            return CreatePathMarker(position, isBuilt: true);
+        }
+
+        private static MeshInstance3D CreatePathMarker(Vector3 position, bool isBuilt)
         {
             return new MeshInstance3D
             {
                 Mesh = new BoxMesh { Size = new Vector3(1.6f, 0.12f, 1.6f) },
                 Position = position + new Vector3(0.0f, 0.06f, 0.0f),
+                Transparency = isBuilt ? 0.0f : 0.45f,
                 MaterialOverride = new StandardMaterial3D
                 {
-                    AlbedoColor = new Color(0.86f, 0.72f, 0.28f),
+                    AlbedoColor = isBuilt
+                        ? new Color(0.86f, 0.72f, 0.28f)
+                        : new Color(0.42f, 0.56f, 0.66f),
                     Transparency = BaseMaterial3D.TransparencyEnum.Alpha
                 }
             };

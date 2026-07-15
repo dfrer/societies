@@ -12,7 +12,7 @@ namespace Societies.UI
     {
         public static void Initialize(PrototypeHud hud)
         {
-            hud.SetHelpText(PrototypeHudTextBuilder.BuildHelpText());
+            hud.SetHelpText(PrototypeHudTextBuilder.BuildCompactHelpText());
         }
 
         public static void Apply(
@@ -63,7 +63,7 @@ namespace Societies.UI
             hud.SetInventoryText(inventory.GetSummaryText());
             hud.SetCraftingText(CraftingSystem.GetRecipeSummary(inventory));
             hud.SetSettlementText(
-                PrototypeHudTextBuilder.BuildSettlementText(
+                PrototypeHudTextBuilder.BuildCompactSettlementText(
                     stockpile,
                     workers,
                     settlementClassification,
@@ -72,21 +72,17 @@ namespace Societies.UI
                     bedCoveragePercent,
                     hearthFuel,
                     structures,
-                    averageTravelWorkRatio,
-                    routeBacklogTicksByKind,
                     directive));
             hud.SetWorldText(
-                PrototypeHudTextBuilder.BuildWorldText(
+                PrototypeHudTextBuilder.BuildCompactWorldText(
                     scenarioId ?? "unknown",
                     worldSeed ?? 0,
                     cameraMode,
-                    overlayMode,
-                    worldSummary,
-                    averageRouteLengthMeters,
-                    pathCoverageRatio));
-            hud.SetInspectorText(PrototypeHudTextBuilder.BuildInspectorText(selectedCitizen, selectedStructure));
-            hud.SetCrisisText(PrototypeHudTextBuilder.BuildCrisisText(crisis, directive, contributionCountsByResource));
+                    overlayMode));
+            hud.SetInspectorText(PrototypeHudTextBuilder.BuildCompactInspectorText(selectedCitizen, selectedStructure));
+            hud.SetCrisisText(PrototypeHudTextBuilder.BuildCompactCrisisText(crisis, directive, contributionCountsByResource));
             hud.SetInteractionText(interactionText);
+            hud.SetPresentationState(directive, settlementClassification, crisis);
         }
     }
 }

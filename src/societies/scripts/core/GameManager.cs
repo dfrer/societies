@@ -1,5 +1,6 @@
 using Godot;
 using Societies.Multiplayer;
+using Societies.Presentation;
 using Societies.Simulation;
 using Societies.UI;
 using System;
@@ -75,6 +76,8 @@ namespace Societies.Core
         private PrototypeExtractionPlanningMode _performanceExtractionPlanningModeOverride = PrototypeExtractionPlanningMode.ExactBounded;
         private PrototypeRouteDistanceMode _performanceRouteDistanceModeOverride = PrototypeRouteDistanceMode.CachedDistanceOnly;
         private bool _readyStarted;
+        private bool _visualCaptureConfigured;
+        private string _selectedVisualCapturePresetId = string.Empty;
 
         public bool IsGameRunning { get; private set; }
 
@@ -117,6 +120,38 @@ namespace Societies.Core
 
         public RuntimeMetricsCollector? RuntimeMetrics => _runtimeMetrics;
 
+        public bool IsVisualCaptureConfigured => _visualCaptureConfigured;
+
+        public IEnumerable<string> VisualCapturePresetIds => PrototypeVisualCaptureConfiguration.PresetIds;
+
+        public PrototypeVisualCaptureMetadata VisualCaptureMetadata => new(
+            CurrentScenarioId,
+            SimulationSeed,
+            SimulationTick,
+            PrototypeVisualCaptureConfiguration.LightingHour,
+            PrototypeVisualCaptureConfiguration.LightingMultiplier,
+            _selectedVisualCapturePresetId,
+            _runtimeSession?.Crisis?.IsTerminal == true,
+            _runtimeSession?.CurrentHour ?? PrototypeVisualCaptureConfiguration.LightingHour);
+
+        public PrototypeVisualCapturePoseMetadata VisualCapturePoseMetadata
+        {
+            get
+            {
+                Camera3D? camera = _cameraMode == CameraMode.Player
+                    ? _player?.GetNodeOrNull<Camera3D>("CameraPivot/Camera3D")
+                    : _observerRig?.GetNodeOrNull<Camera3D>("Camera3D");
+                return new PrototypeVisualCapturePoseMetadata(
+                    _cameraMode.ToString(),
+                    camera?.GlobalPosition ?? Vector3.Zero,
+                    camera?.GlobalRotation ?? Vector3.Zero,
+                    _player?.GlobalPosition ?? Vector3.Zero,
+                    _player?.GlobalRotation ?? Vector3.Zero);
+            }
+        }
+
+        public string SelectedVisualCaptureCitizenId => GetSelectedCitizen()?.WorkerId ?? string.Empty;
+
         public override void _Ready()
         {
             _readyStarted = true;
@@ -140,7 +175,9 @@ namespace Societies.Core
 
         public override void _Process(double delta)
         {
-            if (!IsGameRunning)
+            // Canonical visual capture settles rendered frames between images. Those frames must
+            // never advance simulation state; AdvanceVisualCaptureToTick is the sole tick path.
+            if (!IsGameRunning || _visualCaptureConfigured)
             {
                 return;
             }
@@ -243,8 +280,139 @@ namespace Societies.Core
 
         public void StepSimulationTicks(int tickCount)
         {
+            if (_visualCaptureConfigured)
+            {
+                throw new InvalidOperationException(
+                    "Visual capture ticks must be advanced through AdvanceVisualCaptureToTick.");
+            }
+
             int ticksAttempted = 0;
             RunTickBatch(Math.Max(0, tickCount), RuntimeMetricsBatchKind.ManualStep, ref ticksAttempted);
+        }
+
+        /// <summary>Sets the immutable W2 capture scenario before this node enters the scene tree.</summary>
+        public void ConfigureVisualCaptureStartup()
+        {
+            if (_readyStarted || IsInsideTree())
+            {
+                throw new InvalidOperationException("Visual capture startup must be configured before the game manager enters the scene tree.");
+            }
+
+            _scenarioId = PrototypeVisualCaptureConfiguration.ScenarioId;
+            _simulationSeed = PrototypeVisualCaptureConfiguration.SimulationSeed;
+            _visualCaptureConfigured = true;
+        }
+
+        /// <summary>Resets a ready manager to the catalog-owned canonical capture scenario.</summary>
+        public bool ApplyVisualCaptureScenario()
+        {
+            if (!_readyStarted || _runtimeSession == null || _environmentController == null)
+            {
+                return false;
+            }
+
+            _visualCaptureConfigured = true;
+            _environmentController.StartHour = PrototypeVisualCaptureConfiguration.LightingHour;
+            SetScenario(PrototypeVisualCaptureConfiguration.ScenarioId);
+            ApplyVisualCaptureLighting();
+            return SelectVisualCapturePreset("arrival");
+        }
+
+        /// <summary>Advances only through authoritative simulation ticks; capture lighting remains presentation-only.</summary>
+        public bool AdvanceVisualCaptureToTick(long targetTick)
+        {
+            if (!_visualCaptureConfigured || _runtimeSession == null || targetTick < SimulationTick)
+            {
+                return false;
+            }
+
+            while (SimulationTick < targetTick)
+            {
+                long remaining = targetTick - SimulationTick;
+                int ticksAttempted = 0;
+                RunTickBatch((int)Math.Min(remaining, 512), RuntimeMetricsBatchKind.ManualStep, ref ticksAttempted);
+            }
+
+            ApplyVisualCaptureLighting();
+            return true;
+        }
+
+        public bool SelectVisualCapturePreset(string presetId)
+        {
+            if (!_visualCaptureConfigured || _runtimeSession == null ||
+                !PrototypeVisualCaptureConfiguration.TryGetPreset(presetId, out PrototypeVisualCapturePreset preset))
+            {
+                return false;
+            }
+
+            Vector3 focus = _runtimeSession.SettlementAnchorPosition;
+            if (preset.Id == "citizen_inspection")
+            {
+                focus = GetSelectedCitizen()?.Position ?? focus;
+            }
+
+            Vector3 cameraPosition = focus + preset.CameraOffset;
+            Vector3 lookAt = focus + preset.LookAtOffset;
+            _cameraMode = preset.CameraKind == PrototypeVisualCaptureCameraKind.Player
+                ? CameraMode.Player
+                : CameraMode.Observer;
+            BindPlayerToRuntime();
+            bool applied = preset.CameraKind == PrototypeVisualCaptureCameraKind.Player
+                ? _player?.ApplyCaptureCameraPose(cameraPosition, lookAt, preset.FieldOfView) == true
+                : _observerRig?.ApplyCapturePose(cameraPosition, lookAt, preset.FieldOfView) == true;
+            if (applied)
+            {
+                _selectedVisualCapturePresetId = preset.Id;
+            }
+
+            return applied;
+        }
+
+        /// <summary>Selects the same stable worker that the capture camera will inspect.</summary>
+        public bool SelectVisualCaptureInspectionCitizen()
+        {
+            if (!_visualCaptureConfigured || _runtimeSession == null || _runtimeSession.Workers.Count == 0)
+            {
+                return false;
+            }
+
+            _selectedCitizenInspectionIndex = _runtimeSession.Workers
+                .Select((worker, index) => (worker, index))
+                .OrderBy(candidate => candidate.worker.WorkerId, StringComparer.Ordinal)
+                .First()
+                .index;
+            _hud?.SetStatusText($"Inspecting {_runtimeSession.Workers[_selectedCitizenInspectionIndex].DisplayName}");
+            UpdateHud();
+            return true;
+        }
+
+        /// <summary>Places the visual-capture player body in deterministic central-depot interaction range.</summary>
+        public bool PositionVisualCapturePlayerAtDepot()
+        {
+            if (!_visualCaptureConfigured || _runtimeSession == null || _player == null)
+            {
+                return false;
+            }
+
+            _player.GlobalPosition = CentralDepotPosition;
+            return _player.GlobalPosition.DistanceTo(CentralDepotPosition) <= _player.ContributionRangeMeters;
+        }
+
+        /// <summary>Exercises the canonical player's contribution input path with a fixed capture input frame.</summary>
+        public bool SubmitVisualCaptureContribution()
+        {
+            if (!_visualCaptureConfigured || _runtimeSession == null || _player == null ||
+                !PositionVisualCapturePlayerAtDepot())
+            {
+                return false;
+            }
+
+            int initialStockpileLogs = Stockpile.GetCount("logs");
+            Inventory.AddItem("logs", PrototypeVisualCaptureConfiguration.ContributionLogQuantity);
+            _player.ProcessInteractionInput(PrototypeVisualCaptureConfiguration.ContributionInputFrame);
+            return Inventory.GetCount("logs") == 0 &&
+                Stockpile.GetCount("logs") == initialStockpileLogs + PrototypeVisualCaptureConfiguration.ContributionLogQuantity &&
+                _hud?.StatusText.Contains("Contributed", StringComparison.Ordinal) == true;
         }
 
         public PrototypeDirectiveChangeResult SelectDirective(PrototypeSettlementDirective directive)
@@ -655,6 +823,11 @@ namespace Societies.Core
                 _environmentRoot.AddChild(_environmentController);
             }
 
+            if (_visualCaptureConfigured)
+            {
+                _environmentController.StartHour = PrototypeVisualCaptureConfiguration.LightingHour;
+            }
+
             _scenePresenter = new PrototypeSettlementScenePresenter(
                 _agentsRoot,
                 _entitiesRoot,
@@ -727,6 +900,7 @@ namespace Societies.Core
 
             BindPlayerToRuntime();
             ApplyRuntimeStateToScene();
+            ApplyVisualCaptureLighting();
             _scenePresenter.SyncWorkers(_runtimeSession.Workers);
             UpdateSettlementPresentationFromSession();
             CaptureMetricsSnapshot();
@@ -910,6 +1084,17 @@ namespace Societies.Core
             float sunlightMultiplier = PrototypeWeatherService.GetSunlightMultiplier(weather);
             _environmentController?.ApplyState(_runtimeSession.CurrentHour, sunlightMultiplier);
             _environmentController?.ApplyWeatherState(weather, _runtimeSession.TimeUntilNextWeatherShift);
+            ApplyVisualCaptureLighting();
+        }
+
+        private void ApplyVisualCaptureLighting()
+        {
+            if (_visualCaptureConfigured)
+            {
+                _environmentController?.SetPresentationLighting(
+                    PrototypeVisualCaptureConfiguration.LightingHour,
+                    PrototypeVisualCaptureConfiguration.LightingMultiplier);
+            }
         }
 
         private void UpdateSettlementPresentationFromSession()
@@ -931,7 +1116,9 @@ namespace Societies.Core
                 _overlayMode,
                 _runtimeSession.PathSegments,
                 _runtimeSession.RemoteDepots,
-                _runtimeSession.RouteHeatCells);
+                _runtimeSession.RouteHeatCells,
+                _runtimeSession.ActiveDirective,
+                _runtimeSession.Crisis);
         }
 
         private void UpdateSettlementPresentationFromSessionOrFallback()
@@ -953,7 +1140,9 @@ namespace Societies.Core
                 _overlayMode,
                 _runtimeSession?.PathSegments ?? System.Array.Empty<PrototypePathSegmentState>(),
                 _runtimeSession?.RemoteDepots ?? System.Array.Empty<PrototypeRemoteDepotState>(),
-                _runtimeSession?.RouteHeatCells ?? System.Array.Empty<PrototypeRouteHeatCellState>());
+                _runtimeSession?.RouteHeatCells ?? System.Array.Empty<PrototypeRouteHeatCellState>(),
+                _runtimeSession?.ActiveDirective ?? PrototypeSettlementDirective.Neutral,
+                _runtimeSession?.Crisis);
         }
 
         private void NotifyStatus(string message)

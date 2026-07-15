@@ -20,9 +20,14 @@ namespace Societies.Simulation
         public string CurrentWeatherName => PrototypeWeatherService.GetName(CurrentWeather);
         public float WeatherSunlightMultiplier => PrototypeWeatherService.GetSunlightMultiplier(CurrentWeather);
         public float CurrentHour { get; private set; }
+        public bool IsPresentationLightingLocked => _presentationLightingHour.HasValue;
+        public float? PresentationLightingHour => _presentationLightingHour;
+        public float? PresentationLightingMultiplier => _presentationLightingMultiplier;
 
         private DirectionalLight3D? _sunLight;
         private float _weatherLightMultiplier = 1.0f;
+        private float? _presentationLightingHour;
+        private float? _presentationLightingMultiplier;
 
         public override void _Ready()
         {
@@ -62,6 +67,21 @@ namespace Societies.Simulation
             UpdateLighting();
         }
 
+        /// <summary>Locks only rendering lighting; simulation time and weather remain authoritative.</summary>
+        public void SetPresentationLighting(float hour, float multiplier)
+        {
+            _presentationLightingHour = Mathf.PosMod(hour, 24.0f);
+            _presentationLightingMultiplier = Mathf.Max(0.0f, multiplier);
+            UpdateLighting();
+        }
+
+        public void ClearPresentationLighting()
+        {
+            _presentationLightingHour = null;
+            _presentationLightingMultiplier = null;
+            UpdateLighting();
+        }
+
         public string GetTimeText()
         {
             return FormatTime(CurrentHour);
@@ -69,7 +89,9 @@ namespace Societies.Simulation
 
         private void UpdateLighting()
         {
-            PrototypeLightingState lighting = CalculateLightingState(CurrentHour, _weatherLightMultiplier);
+            PrototypeLightingState lighting = CalculateLightingState(
+                _presentationLightingHour ?? CurrentHour,
+                _presentationLightingMultiplier ?? _weatherLightMultiplier);
 
             if (_sunLight != null)
             {

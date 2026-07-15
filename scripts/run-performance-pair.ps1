@@ -52,7 +52,8 @@ function Resolve-Godot {
 
     $wingetRoot = Join-Path $env:LOCALAPPDATA "Microsoft\WinGet\Packages"
     if (Test-Path -LiteralPath $wingetRoot) {
-        $candidate = Get-ChildItem -LiteralPath $wingetRoot -Recurse -Filter "Godot*_console.exe" -ErrorAction SilentlyContinue |
+        $candidate = Get-ChildItem -LiteralPath $wingetRoot -Recurse -Filter "Godot*.exe" -ErrorAction SilentlyContinue |
+            Where-Object { $_.Name -notlike "*_console.exe" } |
             Sort-Object LastWriteTimeUtc -Descending |
             Select-Object -First 1
 
@@ -74,6 +75,84 @@ function Write-Utf8NoBom {
 
     $encoding = New-Object System.Text.UTF8Encoding($false)
     [System.IO.File]::WriteAllText($Path, $Content, $encoding)
+}
+
+function ConvertTo-WindowsCommandLineArgument {
+    param([string]$Argument)
+
+    if ($Argument.Length -eq 0) { return '""' }
+    if ($Argument -notmatch '[\s"]') { return $Argument }
+
+    $builder = [System.Text.StringBuilder]::new()
+    [void]$builder.Append('"')
+    $backslashCount = 0
+    for ($index = 0; $index -lt $Argument.Length; $index++) {
+        $character = $Argument[$index]
+        if ($character -eq [char]'\') {
+            $backslashCount++
+            continue
+        }
+
+        if ($character -eq [char]'"') {
+            [void]$builder.Append([string]::new([char]'\', (2 * $backslashCount) + 1))
+            [void]$builder.Append('"')
+            $backslashCount = 0
+            continue
+        }
+
+        if ($backslashCount -gt 0) {
+            [void]$builder.Append([string]::new([char]'\', $backslashCount))
+            $backslashCount = 0
+        }
+        [void]$builder.Append($character)
+    }
+
+    if ($backslashCount -gt 0) {
+        [void]$builder.Append([string]::new([char]'\', 2 * $backslashCount))
+    }
+    [void]$builder.Append('"')
+    return $builder.ToString()
+}
+
+function Invoke-ProcessAndWait {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Executable,
+        [Parameter(Mandatory = $true)]
+        [string[]]$Arguments,
+        [Parameter(Mandatory = $true)]
+        [string]$WorkingDirectory
+    )
+
+    $startInfo = [System.Diagnostics.ProcessStartInfo]::new()
+    $startInfo.FileName = $Executable
+    $startInfo.WorkingDirectory = $WorkingDirectory
+    $startInfo.UseShellExecute = $false
+    # Inherit standard handles so GUI Godot remains render-capable and redirected streams cannot deadlock.
+    $startInfo.RedirectStandardOutput = $false
+    $startInfo.RedirectStandardError = $false
+    if ($null -ne $startInfo.ArgumentList) {
+        foreach ($argument in $Arguments) {
+            [void]$startInfo.ArgumentList.Add($argument)
+        }
+    }
+    else {
+        $startInfo.Arguments = (($Arguments | ForEach-Object { ConvertTo-WindowsCommandLineArgument -Argument $_ }) -join ' ')
+    }
+
+    $process = [System.Diagnostics.Process]::new()
+    $process.StartInfo = $startInfo
+    try {
+        if (-not $process.Start()) {
+            throw "Could not start executable '$Executable'."
+        }
+
+        $process.WaitForExit()
+        return $process.ExitCode
+    }
+    finally {
+        $process.Dispose()
+    }
 }
 
 function Test-NonEmptyText {
@@ -304,10 +383,19 @@ function Invoke-PerformanceRun {
         "--allow-safety-failure", $allowSafetyText
     )
 
-    & $script:runnerExecutable @runnerArguments
+    if ($script:executionRoute -eq "editor_scene") {
+        $runnerExitCode = Invoke-ProcessAndWait `
+            -Executable $script:runnerExecutable `
+            -Arguments $runnerArguments `
+            -WorkingDirectory $script:repoRoot
+    }
+    else {
+        & $script:runnerExecutable @runnerArguments
+        $runnerExitCode = $LASTEXITCODE
+    }
 
-    if ($LASTEXITCODE -ne 0) {
-        throw "Performance runner '$RunId' exited with code $LASTEXITCODE."
+    if ($runnerExitCode -ne 0) {
+        throw "Performance runner '$RunId' exited with code $runnerExitCode."
     }
 }
 
@@ -410,13 +498,12 @@ if ($ReleaseExport) {
     [System.IO.Directory]::CreateDirectory($releaseDirectory) | Out-Null
     $releaseExecutable = Join-Path $releaseDirectory "SocietiesPerformance.exe"
 
-    & $godot `
-        --headless `
-        --path $projectPath `
-        --export-release $ExportPreset `
-        $releaseExecutable
-    if ($LASTEXITCODE -ne 0) {
-        throw "Godot Release export exited with code $LASTEXITCODE."
+    $exportExitCode = Invoke-ProcessAndWait `
+        -Executable $godot `
+        -Arguments @("--headless", "--path", $projectPath, "--export-release", $ExportPreset, $releaseExecutable) `
+        -WorkingDirectory $repoRoot
+    if ($exportExitCode -ne 0) {
+        throw "Godot Release export exited with code $exportExitCode."
     }
 
     $consoleWrapper = Join-Path $releaseDirectory "SocietiesPerformance.console.exe"
@@ -444,9 +531,12 @@ elseif (-not [string]::IsNullOrWhiteSpace($ExistingReleaseRunner)) {
 }
 else {
     if (-not $SkipBuild) {
-        & $godot --headless --path $projectPath --build-solutions --quit
-        if ($LASTEXITCODE -ne 0) {
-            throw "Godot solution build exited with code $LASTEXITCODE."
+        $buildExitCode = Invoke-ProcessAndWait `
+            -Executable $godot `
+            -Arguments @("--headless", "--path", $projectPath, "--build-solutions", "--quit") `
+            -WorkingDirectory $repoRoot
+        if ($buildExitCode -ne 0) {
+            throw "Godot solution build exited with code $buildExitCode."
         }
     }
 

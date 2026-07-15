@@ -612,6 +612,14 @@ namespace Societies.Core.Tests
                 Assert.True(exhaustiveProbe.AllPathCacheKeysMatchNavigationRulesVersion);
                 Assert.Equal(exhaustiveProbe.NavigationRulesVersion, optimizedProbe.NavigationRulesVersion);
                 Assert.Equal(exhaustiveProbe.TotalNavigationInvalidations, optimizedProbe.TotalNavigationInvalidations);
+                Assert.Equal(
+                    exhaustive.RouteBacklogTicksByKind.OrderBy(pair => pair.Key, StringComparer.Ordinal),
+                    optimized.RouteBacklogTicksByKind.OrderBy(pair => pair.Key, StringComparer.Ordinal));
+                if (scenarioId == "balanced_basin" && tick == 218)
+                {
+                    Assert.Equal(218, optimized.RouteBacklogTicksByKind.GetValueOrDefault("extract"));
+                    Assert.Equal(48, optimized.RouteBacklogTicksByKind.GetValueOrDefault("buildpath"));
+                }
                 currentHour = AdvanceHour(currentHour);
             }
 

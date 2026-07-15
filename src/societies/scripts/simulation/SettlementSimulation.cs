@@ -402,7 +402,10 @@ namespace Societies.Simulation
                 buildWorkOrdersPhase.Complete();
             }
             _workOrdersGeneratedThisTick = availableOrders.Count;
-            UpdateRouteBacklogMetrics(availableOrders);
+            if (_extractionPlanningMode != PrototypeExtractionPlanningMode.ExhaustiveReference)
+            {
+                UpdateRouteBacklogMetrics(availableOrders);
+            }
 
             foreach (PrototypeWorkerState citizen in _citizens.OrderBy(candidate => candidate.WorkerId, StringComparer.Ordinal))
             {

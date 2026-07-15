@@ -1,0 +1,67 @@
+{
+  "schemaVersion": 2,
+  "workItem": "V3-W2-VIS",
+  "status": "implemented_evidence_pending",
+  "base": {
+    "branch": "feature/v3-w2-vis-baseline",
+    "baseMaster": "d519d4d",
+    "w2_04": "merged via PR #117"
+  },
+  "captureContract": {
+    "scenario": "empty_stores",
+    "seed": 1701,
+    "initialTick": 0,
+    "citizenInspectionTick": 1,
+    "terminalCrisisTickSource": "PrototypeVisualCaptureConfiguration.TerminalCrisisTick, recorded per capture manifest",
+    "terminalTraceProvenance": "The 10.5 capture source is the repeated no-input trace at tick 9777, Collapsed/IncapacitatedHold, event count 8148, SHA-256 69f3e22402e31a53b1d4c16899883956fcc5fdb14fbe47d8a4eb8baef007174f; it is distinct from the historical 8.0 W2-04 7495-event trace.",
+    "simulationHourEvidence": "Each manifest image records actual and deterministically derived simulation hour; tick-zero frames require 10.5, while ticks 1 and the manifest-recorded terminal tick derive from the recorded day length and tick interval.",
+    "terminalOutcomeEvidence": "terminal_crisis requires Outcome=Collapsed, CollapseCause=IncapacitatedHold, and the authoritative causal summary.",
+    "graphicsEvidence": "capture-manifest.json records the active Godot runtime renderer method and explicit project renderer method or engine_default.",
+    "poseEvidence": "Each frame records canonical and settled camera/player transforms plus FOV; capture fails if controls drift either transform or FOV while frames settle.",
+    "presentationStateEvidence": "Each frame records and requires debug hidden, TerrainOverlayMode.None, and EnvironmentController's actual presentation-lock hour/multiplier.",
+    "settlementAnimationEvidence": "Each frame records expected and settled hub animation phase; capture applies the configured fixed phase and disables hub processing before frame waits.",
+    "contributionEvidence": "contribution_point records player/depot vectors, interaction range, in-range state, and the visible Contributed success cue; the capture script requires the recorded distance to remain within range.",
+    "captureWorkCleanup": "scripts/capture-v3-w2-vis.ps1 removes .capture-work on both success and failure.",
+    "lightingHour": 10.5,
+    "lightingMultiplier": 1.0,
+    "referenceOverviewPathState": "planned corridor segments at tick 0",
+    "builtPathConvention": "retained distinct BUILT PATH label and opaque warm material",
+    "presetIds": [
+      "arrival",
+      "settlement_overview",
+      "contribution_point",
+      "citizen_inspection",
+      "terminal_crisis"
+    ],
+    "captureScript": "scripts/capture-v3-w2-vis.ps1",
+    "captureScene": "res://tests/VisualCaptureRunner.tscn",
+    "referenceRoot": "docs/evidence/v3-w2-vis/<build-sha>/"
+  },
+  "requiredEvidence": {
+    "cleanBuild": true,
+    "fivePngFiles": true,
+    "captureManifest": true,
+    "reproductionRecord": true,
+    "headlessCaptureAndHudChecks": true,
+    "emptyStoresPerformancePair": true,
+    "w1_03SafetyLimits": true
+  },
+  "validation": {
+    "portableGodotPath": "C:/tmp/godot-4.6.2-mono/Godot_v4.6.2-stable_mono_win64/Godot_v4.6.2-stable_mono_win64.exe",
+    "portableGodotVersion": "4.6.2",
+    "standaloneDotnetBuild": "passed: Debug build, 0 warnings, 0 errors",
+    "portableGodotBuild": "not required: portable Godot loaded the standalone Debug managed assembly",
+    "releaseDotnetTests": "passed: 269/269 with 0 failed/skipped; the exhaustive-reference diagnostic repair preserves shipped/default exact-bounded selection, capped-backlog classification, and persisted snapshots",
+    "headlessChecks": "passed: 22/22 with 0 failed after schema-v4 capture hardening; covers stable cue reset, fixed hub phase, canonical transforms and FOV, hidden debug/overlay state, actual presentation-light lock values, contribution fixture, terminal cause, renderer metadata, and HUD bounds",
+    "gateRepair": "An exhaustive-reference shadow frontier aligns backlog diagnostics with shipped exact-bounded capped-frontier semantics without changing shipped/default world behavior or schema. A clean d519d4d archive executes the no-input trace at tick 9777 with event count 7495 and SHA-256 ab219da9ad492a0011bd70160548d29da3420569eb6a89facd74c6c63145a880; the scripted default snapshot remains tick 1253, hut switch 245, SHA-256 a81d7083649911a3244446bcde991f215dc0237ea2aa8967b94bfc0c9a98bd3b.",
+    "headlessCaptureDiagnostic": "VisualCaptureRunner reached the canonical scenario but cannot read a viewport texture under Godot headless dummy rendering (texture_2d_get parameter t is null); headless output is therefore not reviewed visual evidence.",
+    "capture": "pending clean GUI-capable build",
+    "performance": "pending clean applicable W1-03 safety comparison"
+  },
+  "statusReconciliation": {
+    "w2VisComplete": false,
+    "w2VisReason": "No clean-build reference image set or representative safety evidence has been captured.",
+    "nextContractedSlice": "V3-W2-05",
+    "weeks3To4": "Draft/Conditional and inactive until W2-06 records Continue V3"
+  }
+}

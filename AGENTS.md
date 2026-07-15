@@ -18,7 +18,7 @@ This is future intent, not current implementation scope. Deterministic simulatio
 - The current default branch in this repository is `master`
 - Use `CURRENT_BUILD.md` as the repo-truth summary before assuming stale planning still reflects implementation
 - Treat `planning/` as aspirational unless the current Godot code confirms it
-- W2-02 atomic contribution and W2-03 directive causality are validated and merged. W2-04 deterministic outcome and minimal crisis HUD is the next authorized work item. Preserve that distinction in all status claims.
+- W2-02 atomic contribution, W2-03 directive causality, and W2-04 deterministic outcomes/minimal crisis HUD are validated and merged; W2-04 landed through PR #117 at master `d519d4d`. V3-W2-VIS is implemented and locally validated on `feature/v3-w2-vis-baseline`, but clean capture and representative performance evidence remain pending. Do not start W2-05 or activate Weeks 3-4 until that gate clears and `CURRENT_BUILD.md` identifies the next authorized slice.
 
 ## Tech Stack
 
