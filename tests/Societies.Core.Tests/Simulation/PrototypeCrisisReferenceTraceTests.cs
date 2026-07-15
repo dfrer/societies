@@ -19,8 +19,8 @@ namespace Societies.Core.Tests
             Assert.InRange(first.TerminalTick, 8 * 60 * PrototypeSimulationTime.TicksPerSecond, 14 * 60 * PrototypeSimulationTime.TicksPerSecond);
             Assert.Equal(PrototypeCrisisOutcome.Collapsed, first.Outcome);
             Assert.Equal(PrototypeCrisisCollapseCause.IncapacitatedHold, first.CollapseCause);
-            Assert.Equal(7532, first.EventCount);
-            Assert.Equal("e99b79066ae85fc5617ef21295a29ae1dfc4591932ffea127eae7788073daa36", first.TraceHash);
+            Assert.Equal(7533, first.EventCount);
+            Assert.Equal("01fedc29bae1aadeef47bab2a645f4bfd390fb2eab39243d7bd18def90c3aafc", first.TraceHash);
         }
 
         private static RuntimeCrisisTrace RunNoInputSessionTrace()

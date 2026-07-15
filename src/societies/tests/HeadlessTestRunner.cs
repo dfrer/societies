@@ -52,6 +52,7 @@ namespace Societies.Tests
             await Test_MainScene_BootstrapSmoke();
             await Test_MainScene_DepotContributionInputSmoke();
             await Test_MainScene_DirectiveInputSmoke();
+            await Test_MainScene_CrisisHudPresentationSmoke();
             await Test_MainScene_FrameCatchUpCapSmoke();
             await Test_MainScene_HudRefreshCoalescingSmoke();
             await Test_MainScene_RuntimeMetricsBatchSmoke();
@@ -286,6 +287,78 @@ namespace Societies.Tests
             catch (Exception ex)
             {
                 Fail(nameof(Test_MainScene_DirectiveInputSmoke), ex);
+            }
+            finally
+            {
+                if (scene != null)
+                {
+                    scene.QueueFree();
+                    await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+                }
+            }
+        }
+
+        private async Task Test_MainScene_CrisisHudPresentationSmoke()
+        {
+            Node? scene = null;
+
+            try
+            {
+                PackedScene packedScene = GD.Load<PackedScene>("res://scenes/main.tscn");
+                Assert(packedScene != null, "Main scene failed to load");
+                scene = packedScene!.Instantiate();
+                AddChild(scene);
+                await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+
+                GameManager manager = scene as GameManager ?? throw new Exception("Main scene root is not GameManager");
+                manager.SetProcess(false);
+                manager.SetScenario("empty_stores");
+                PlayerCharacter player = manager.GetNodeOrNull<PlayerCharacter>("World/Players/LocalPlayer") ??
+                    throw new Exception("LocalPlayer missing");
+                PrototypeHud hud = manager.GetNodeOrNull<PrototypeHud>("UI") ?? throw new Exception("PrototypeHud missing");
+                Assert(hud.CrisisText.Contains("Crisis: Empty Stores", StringComparison.Ordinal), "Crisis HUD should present the active catalog crisis");
+                Assert(hud.CrisisText.Contains("Directive: Neutral", StringComparison.Ordinal), "Crisis HUD should present the active directive");
+
+                manager.Inventory.AddItem("logs", 3);
+                player.GlobalPosition = manager.CentralDepotPosition;
+                player.ProcessInteractionInput(301);
+                Assert(hud.CrisisText.Contains("Contributed: 3 (logs x3)", StringComparison.Ordinal), "Crisis HUD should show contribution on the next presentation update");
+
+                manager.ResetPrototypeRun();
+                Assert(hud.CrisisText.Contains("Contributed: 0 (none)", StringComparison.Ordinal), "Reset should clear crisis presentation state without replay contamination");
+
+                PrototypeCrisisState terminal = new(new PrototypeCrisisDefinition
+                {
+                    Id = "hud_terminal",
+                    DisplayName = "HUD Terminal",
+                    TicksPerSecond = 20,
+                    DeadlineTicks = 4,
+                    RequiredCapableCitizens = 1,
+                    RequiredMeals = 0,
+                    RequiredHearthFuel = 0,
+                    RequiredBedCoveragePercent = 0,
+                    StableHoldTicks = 2,
+                    CollapseIncapacitatedCitizens = 9,
+                    CollapseHoldTicks = 2,
+                    CitizenNeedRateMultiplier = 1.0f
+                });
+                terminal.Advance(new PrototypeCrisisObservation(1, 1, 0, 0, 0));
+                terminal.Advance(new PrototypeCrisisObservation(1, 1, 0, 0, 0));
+                PrototypeHudPresenter.Apply(
+                    hud, 60, 0, "08:00", "Clear", "Local", 2, new InventoryComponent(),
+                    new Dictionary<string, int>(), Array.Empty<PrototypeWorkerState>(), Array.Empty<PrototypeStructureState>(),
+                    PrototypeSettlementClassification.Stable, string.Empty, 0, 0, 0, 0.0f, 0.0f, 0.0f,
+                    new Dictionary<string, int>(), string.Empty, directive: PrototypeSettlementDirective.Shelter,
+                    crisis: terminal, contributionCountsByResource: new Dictionary<string, long> { ["logs"] = 3 });
+                Assert(hud.CrisisText.Contains("Outcome: Stable: all conditions held 2/2 ticks", StringComparison.Ordinal), "Live HUD presenter should show terminal causal summary");
+
+                manager.SetScenario("balanced_basin");
+                Assert(hud.CrisisText == "Crisis: none", "Crisis-absent scenarios should retain their non-crisis HUD behavior");
+                Pass(nameof(Test_MainScene_CrisisHudPresentationSmoke));
+            }
+            catch (Exception ex)
+            {
+                Fail(nameof(Test_MainScene_CrisisHudPresentationSmoke), ex);
             }
             finally
             {

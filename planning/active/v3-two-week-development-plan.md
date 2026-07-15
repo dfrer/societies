@@ -511,6 +511,8 @@ Acceptance:
 - The no-input reference collapses and scripted reference stabilizes.
 - A contribution is reflected on the next presentation update.
 
+Status: **validated and ready for commit or pull request on `feature/v3-w2-04-crisis-outcome-hud`; final staged deep re-review is clean with P0/P1/P2/P3 all zero.** The candidate-alone P1 and trace-scope P2 are resolved: every wood-yard candidate validates its own inputs and exact output capacity, and a scoped internal settlement snapshot accessor preserves public schema-v6 fail-fast behavior. One-slot firewood rejection falls back safely to timber, one log cannot reserve a second recipe, and `WoodYardProcessingTests` pass 6/6 in about 5s. Two independent unchanged-catalog runs pass 1/1 in 1m14s, switch directives at tick 245, and reach Stable at tick 1,253. SHA-256 `a81d7083649911a3244446bcde991f215dc0237ea2aa8967b94bfc0c9a98bd3b` canonicalizes ordered `EventLog`, crisis/directive snapshots, contribution counters, inventory, stockpile, sorted resource snapshots, and the complete `PrototypeSettlementSnapshot`; prior narrower hashes are superseded, and this is not a per-tick complete trace. Selector equivalence passes 15/15 in 6m27s and directive validation passes 11/11 in 36s. Release fast passes 159/159 with 0 failed/skipped in 58s test time (66.2s wall), with a CS0436 generated-`Main` conflict warning; all three solution configurations pass with zero warnings/errors in 6.8s total wall time. Godot 4.6.2 headless passes 19/19 with 0 failed in 148.9s with only expected warnings. The manifest declares 263 required .NET tests. The full 263-test weekly route and new Release performance matrix were not run, so no new performance claim is made. W2-VIS, W2-05, and W2-06 remain unstarted.
+
 #### V3-W2-VIS — Visual and representational baseline
 
 Create a reproducible visual target for the playable slice before outside testers see it. This is a placeholder-quality representation baseline, not a production-art pass and not a dependency on custom models, animation, music, or audio.
@@ -616,20 +618,34 @@ Deliver `V3_SPRINT_VALIDATION_REPORT.md` with baseline-versus-RC results, defect
 
 | Tier | Purpose | Cadence |
 |---|---|---|
-| Fast | Build, deterministic units, navigation edges, schema checks, short session advance, one Godot bootstrap | Before coding, after logical changes, before push; <90 s local target |
-| Required PR | Markdown-only diff validation, or Release build plus the manifest-owned 118-test fast tier and 16-test Godot headless suite | Every pull request; enforced on protected `master` by `build-test-smoke` |
-| Weekly full | All 211 core .NET tests with coverage, all Godot headless tests, and the extended test project | Friday evening in Vancouver and manual dispatch |
-| Release/slow | 1,000-tick repeat, save-at-500 resume, 16/24-citizen performance, catch-up cap, artifact validation, and release-route evidence | End-of-sprint gate and before any new performance claim |
+| Iteration/focused | Changed deterministic units, schema/state checks, short session advance, or the smallest relevant Godot smoke | During implementation and after each logical change |
+| Merge/fast | Release build, manifest-owned 159-test fast tier, and 19-test Godot headless suite | Before merge or handoff; W2-04 gate and final staged deep re-review are green |
+| Weekly/milestone full | All 263 required .NET tests, all 19 Godot tests, and extended coverage where supported | Weekly, sprint-end, milestone, or relevant boundary change |
+| Conditional release/performance | Repeat/resume, release-route artifacts, 16/24-citizen characterization, and performance matrix | Only for performance-sensitive changes, hard-gate rechecks, or a new performance claim |
 
 `.github/workflows/tests.yml` is the protected fast pull-request gate. `.github/workflows/tests-extended.yml` owns scheduled/manual full validation. The local full validation loop remains authoritative for sprint-end and release-candidate evidence, but is not required for each pull request.
+
+Use a planning guardrail of approximately 60% playable implementation/presentation, 20% focused automation/integration, and 20% play, observation, and synthesis. This is not a timesheet; shift the balance when a red or high-risk safety gate requires repair. Full/slow/performance routes are not routine per-slice checks. Once a coherent/readable path exists, perform an author smoke; begin observed play before release-grade polish. Deterministic, persistence, replay, and fallback checks trigger whenever those boundaries change; performance matrices trigger only under the conditional tier above. Deep review is triggered by security, state authority, persistence, determinism-sensitive, performance, public-contract, migration, milestone work, or consequence that warrants it.
 
 Standard commands:
 
 ```powershell
+$manifest = Get-Content tests/test-manifest.json -Raw | ConvertFrom-Json
+$fastFilter = $manifest.required.dotnet.tiers.fast.filter
+
+# Iteration/focused example; replace the filter with the touched test class or name.
+dotnet test tests/Societies.Core.Tests/Societies.Core.Tests.csproj --configuration Release --filter "FullyQualifiedName~PrototypeCrisisTests"
+
+# Merge/fast.
 dotnet build src/societies/Societies.csproj --configuration Release
-dotnet test tests/Societies.Core.Tests/Societies.Core.Tests.csproj --configuration Release
+dotnet test tests/Societies.Core.Tests/Societies.Core.Tests.csproj --configuration Release --filter $fastFilter
 godot --headless --path src/societies res://tests/HeadlessTestRunner.tscn
+
+# Weekly/milestone full route; do not duplicate it after already running the same integrated gate.
 ./scripts/run-prototype-validation.ps1
+
+# Conditional release/performance evidence only.
+./scripts/run-performance-baseline-matrix.ps1
 ```
 
 If `godot` is not on `PATH`, Day 0 must resolve and record the absolute Godot 4.6.2 Mono executable (or the repository's supported environment variable) and use that same binary throughout the sprint.

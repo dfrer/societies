@@ -44,7 +44,9 @@ namespace Societies.UI
             CameraMode cameraMode = CameraMode.Player,
             TerrainOverlayMode overlayMode = TerrainOverlayMode.None,
             PrototypeWorldSummary? worldSummary = null,
-            PrototypeSettlementDirective directive = PrototypeSettlementDirective.Neutral)
+            PrototypeSettlementDirective directive = PrototypeSettlementDirective.Neutral,
+            PrototypeCrisisState? crisis = null,
+            IReadOnlyDictionary<string, long>? contributionCountsByResource = null)
         {
             hud.SetDebugText(
                 PrototypeHudTextBuilder.BuildDebugText(
@@ -83,6 +85,7 @@ namespace Societies.UI
                     averageRouteLengthMeters,
                     pathCoverageRatio));
             hud.SetInspectorText(PrototypeHudTextBuilder.BuildInspectorText(selectedCitizen, selectedStructure));
+            hud.SetCrisisText(PrototypeHudTextBuilder.BuildCrisisText(crisis, directive, contributionCountsByResource));
             hud.SetInteractionText(interactionText);
         }
     }

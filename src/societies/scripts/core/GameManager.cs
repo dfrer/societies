@@ -1017,7 +1017,9 @@ namespace Societies.Core
                 _cameraMode,
                 _overlayMode,
                 _lastWorldSummary,
-                _runtimeSession?.ActiveDirective ?? PrototypeSettlementDirective.Neutral);
+                _runtimeSession?.ActiveDirective ?? PrototypeSettlementDirective.Neutral,
+                _runtimeSession?.Crisis,
+                _runtimeSession?.ContributionCountsByResource);
 
             UpdateSettlementPresentationFromSessionOrFallback();
         }

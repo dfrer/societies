@@ -337,27 +337,44 @@ namespace Societies.Simulation
         }
         private void AddWoodYardOrders(List<PrototypeWorkOrder> orders, PrototypeStructureState woodYard)
         {
-            int firewoodShortfall = Math.Max(0, GetFirewoodTarget() - (_centralDepot.GetCount("firewood") + woodYard.OutputStore.GetCount("firewood")));
+            int committedFirewood = _structures.Sum(structure => structure.InputStore.GetCount("firewood")) + HearthFuel;
+            int firewoodShortfall = Math.Max(0, GetFirewoodTarget() - (_centralDepot.GetCount("firewood") + woodYard.OutputStore.GetCount("firewood") + committedFirewood));
             int timberNeed = GetPendingConstructionRequirement("timber") - (_centralDepot.GetCount("timber") + woodYard.OutputStore.GetCount("timber"));
 
             AddStoreSupplyOrders(orders, woodYard, "logs", Math.Max(4, firewoodShortfall + Math.Max(0, timberNeed)));
 
             if (woodYard.InputStore.GetCount("logs") > 0 && woodYard.OutputStore.AvailableCapacity > 0)
             {
-                string outputId = firewoodShortfall > 0 ? "firewood" : "timber";
-                orders.Add(new PrototypeWorkOrder
+                if (firewoodShortfall > 0)
                 {
-                    OrderId = $"process.{woodYard.StructureId}.{outputId}",
-                    Kind = PrototypeWorkOrderKind.Process,
-                    Priority = firewoodShortfall > 0 ? 930 : 760,
-                    ResourceId = outputId,
-                    StructureId = woodYard.StructureId,
-                    Label = woodYard.DisplayName,
-                    Reason = firewoodShortfall > 0 ? "fuel shortage" : "construction lumber",
-                    TargetPosition = woodYard.Position,
-                    Amount = 1
-                });
+                    AddWoodYardProcessOrder(orders, woodYard, "firewood", 930, "fuel shortage");
+                }
+
+                if (timberNeed > 0)
+                {
+                    AddWoodYardProcessOrder(orders, woodYard, "timber", 760, "construction lumber");
+                }
             }
+        }
+        private static void AddWoodYardProcessOrder(
+            List<PrototypeWorkOrder> orders,
+            PrototypeStructureState woodYard,
+            string outputId,
+            int priority,
+            string reason)
+        {
+            orders.Add(new PrototypeWorkOrder
+            {
+                OrderId = $"process.{woodYard.StructureId}.{outputId}",
+                Kind = PrototypeWorkOrderKind.Process,
+                Priority = priority,
+                ResourceId = outputId,
+                StructureId = woodYard.StructureId,
+                Label = woodYard.DisplayName,
+                Reason = reason,
+                TargetPosition = woodYard.Position,
+                Amount = 1
+            });
         }
         private void AddCookfireOrders(List<PrototypeWorkOrder> orders, PrototypeStructureState cookfire)
         {
@@ -718,14 +735,57 @@ namespace Societies.Simulation
                 .ToHashSet(StringComparer.Ordinal);
         }
 
-        private static List<PrototypeWorkOrder> RemoveClaimedOrders(
+        private List<PrototypeWorkOrder> RemoveClaimedOrders(
             List<PrototypeWorkOrder> orders,
             IReadOnlySet<string> claimedOrderIds)
         {
             return orders
-                .Where(order => !claimedOrderIds.Contains(order.OrderId))
+                .Where(order => !claimedOrderIds.Contains(order.OrderId) &&
+                    CanReserveProcessOrder(order))
                 .ToList();
         }
+
+        private bool CanReserveProcessOrder(PrototypeWorkOrder order)
+        {
+            if (order.Kind != PrototypeWorkOrderKind.Process ||
+                !PrototypeProcessingRecipeCatalog.TryResolve(
+                    GetStructure(order.StructureId)?.StructureKindId ?? string.Empty,
+                    order.ResourceId,
+                    out PrototypeProcessingRecipe candidateRecipe))
+            {
+                return true;
+            }
+
+            PrototypeStructureState? structure = GetStructure(order.StructureId);
+            if (structure == null)
+            {
+                return false;
+            }
+
+            List<PrototypeProcessingRecipe> activeRecipes = _citizens
+                .Where(citizen => citizen.CurrentOrderKind == PrototypeWorkOrderKind.Process &&
+                    citizen.Phase != PrototypeWorkerPhase.Idle &&
+                    citizen.Phase != PrototypeWorkerPhase.Incapacitated &&
+                    string.Equals(citizen.TargetStructureId, structure.StructureId, StringComparison.Ordinal))
+                .Select(citizen => PrototypeProcessingRecipeCatalog.TryResolve(structure.StructureKindId, citizen.CarryItemId, out PrototypeProcessingRecipe recipe)
+                    ? recipe
+                    : default)
+                .Where(recipe => recipe.OutputAmount > 0)
+                .ToList();
+
+            activeRecipes.Add(candidateRecipe);
+
+            if (activeRecipes.Sum(recipe => recipe.OutputAmount) > structure.OutputStore.AvailableCapacity)
+            {
+                return false;
+            }
+
+            return activeRecipes
+                .SelectMany(recipe => recipe.Inputs)
+                .GroupBy(input => input.Key, StringComparer.Ordinal)
+                .All(group => group.Sum(input => input.Value) <= structure.InputStore.GetCount(group.Key));
+        }
+
         private Dictionary<string, int> BuildSettlementSummary()
         {
             Dictionary<string, int> summary = new(StringComparer.Ordinal);

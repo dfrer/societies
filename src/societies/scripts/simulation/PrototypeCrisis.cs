@@ -56,6 +56,9 @@ namespace Societies.Simulation
 
         public int ElapsedTicks { get; private set; }
 
+        /// <summary>Frozen contract deadline exposed for presentation and the W2-05 persistence attachment.</summary>
+        public int DeadlineTicks => _definition.DeadlineTicks;
+
         public double ElapsedSeconds => ElapsedTicks / (double)_definition.TicksPerSecond;
 
         public int RemainingTicks => Math.Max(0, _definition.DeadlineTicks - ElapsedTicks);
@@ -71,6 +74,13 @@ namespace Societies.Simulation
         public PrototypeCrisisCollapseCause CollapseCause { get; private set; } = PrototypeCrisisCollapseCause.None;
 
         public bool IsTerminal => Outcome != PrototypeCrisisOutcome.Active;
+
+        /// <summary>
+        /// The session marks this only after recording the authoritative terminal event.  It is
+        /// deliberately part of the strict crisis checkpoint, rather than the deferred runtime
+        /// snapshot schema, so a resumed terminal crisis cannot emit a second outcome event.
+        /// </summary>
+        public bool TerminalEventEmitted { get; private set; }
 
         public bool HasObservation { get; private set; }
 
@@ -120,6 +130,31 @@ namespace Societies.Simulation
             }
         }
 
+        public bool TryMarkTerminalEventEmitted()
+        {
+            if (!IsTerminal || TerminalEventEmitted)
+            {
+                return false;
+            }
+
+            TerminalEventEmitted = true;
+            return true;
+        }
+
+        public string BuildTerminalSummary()
+        {
+            return Outcome switch
+            {
+                PrototypeCrisisOutcome.Stable =>
+                    $"Stable: all conditions held {StableHoldTicks}/{_definition.StableHoldTicks} ticks",
+                PrototypeCrisisOutcome.Collapsed when CollapseCause == PrototypeCrisisCollapseCause.IncapacitatedHold =>
+                    $"Collapsed: incapacity held {CollapseHoldTicks}/{_definition.CollapseHoldTicks} ticks",
+                PrototypeCrisisOutcome.Collapsed when CollapseCause == PrototypeCrisisCollapseCause.Deadline =>
+                    $"Collapsed: deadline reached at {ElapsedTicks}/{_definition.DeadlineTicks} ticks",
+                _ => "Crisis active"
+            };
+        }
+
         public PrototypeCrisisStateSnapshot CaptureSnapshot()
         {
             return new PrototypeCrisisStateSnapshot
@@ -130,6 +165,7 @@ namespace Societies.Simulation
                 CollapseHoldTicks = CollapseHoldTicks,
                 Outcome = Outcome,
                 CollapseCause = CollapseCause,
+                TerminalEventEmitted = TerminalEventEmitted,
                 HasObservation = HasObservation,
                 LastObservation = LastObservation
             };
@@ -156,7 +192,8 @@ namespace Societies.Simulation
                 throw new ArgumentException("A progressed crisis snapshot must contain an observation.", nameof(snapshot));
             }
 
-            if ((snapshot.Outcome == PrototypeCrisisOutcome.Active && snapshot.CollapseCause != PrototypeCrisisCollapseCause.None) ||
+            if ((snapshot.Outcome == PrototypeCrisisOutcome.Active &&
+                    (snapshot.CollapseCause != PrototypeCrisisCollapseCause.None || snapshot.TerminalEventEmitted)) ||
                 (snapshot.Outcome == PrototypeCrisisOutcome.Stable && snapshot.CollapseCause != PrototypeCrisisCollapseCause.None) ||
                 (snapshot.Outcome == PrototypeCrisisOutcome.Collapsed && snapshot.CollapseCause == PrototypeCrisisCollapseCause.None))
             {
@@ -196,6 +233,7 @@ namespace Societies.Simulation
             CollapseHoldTicks = snapshot.CollapseHoldTicks;
             Outcome = snapshot.Outcome;
             CollapseCause = snapshot.CollapseCause;
+            TerminalEventEmitted = snapshot.TerminalEventEmitted;
             HasObservation = snapshot.HasObservation;
             LastObservation = snapshot.LastObservation;
         }
@@ -238,6 +276,8 @@ namespace Societies.Simulation
         public PrototypeCrisisOutcome Outcome { get; set; }
 
         public PrototypeCrisisCollapseCause CollapseCause { get; set; }
+
+        public bool TerminalEventEmitted { get; set; }
 
         public bool HasObservation { get; set; }
 

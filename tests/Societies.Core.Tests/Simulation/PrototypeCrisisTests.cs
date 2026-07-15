@@ -223,18 +223,101 @@ namespace Societies.Core.Tests
         }
 
         [Fact]
-        public void FixedSeedCandidateSuccessContractEnvelopeStabilizesWithinTargetWindowAndRepeatsExactly()
+        public void FixedSeedScriptedCommandsStabilizeAndRepeatExactly()
         {
-            PrototypeScenarioDefinition scenario = LoadCatalogs().Scenarios.Resolve("empty_stores");
-            CrisisTraceResult first = RunCandidateSuccessContractEnvelope(scenario);
-            CrisisTraceResult second = RunCandidateSuccessContractEnvelope(scenario);
+            CrisisTraceResult first = RunCatalogScriptedSuccessSchedule();
+            CrisisTraceResult second = RunCatalogScriptedSuccessSchedule();
 
-            Assert.Equal(first, second);
             Assert.Equal(PrototypeCrisisOutcome.Stable, first.Outcome);
             Assert.Equal(PrototypeCrisisCollapseCause.None, first.CollapseCause);
-            Assert.InRange(first.TerminalTick, 10 * 60 * 20, 18 * 60 * 20 - 1);
-            Assert.Equal(18384, first.TerminalTick);
-            Assert.Equal("46e645177e7a00a74160a5bd5a219448ab137f3d205585b2ae28a54fb786a734", first.Hash);
+            Assert.Equal(1253, first.TerminalTick);
+            Assert.Equal(245, first.HutBuiltSwitchTick);
+            Assert.Equal("a81d7083649911a3244446bcde991f215dc0237ea2aa8967b94bfc0c9a98bd3b", first.Hash);
+            Assert.Equal(first, second);
+        }
+
+        [Fact]
+        public void ShortUnitNoInputCollapseRepeatsWithOneTerminalEvent()
+        {
+            CrisisTraceResult first = RunNoInputCollapseSchedule();
+            CrisisTraceResult second = RunNoInputCollapseSchedule();
+
+            Assert.Equal(first, second);
+            Assert.Equal(PrototypeCrisisOutcome.Collapsed, first.Outcome);
+            Assert.Equal(PrototypeCrisisCollapseCause.Deadline, first.CollapseCause);
+            Assert.Equal(6, first.TerminalTick);
+        }
+
+        [Fact]
+        public void TerminalEventIsExactlyOnceAndStrictCheckpointPreventsReemission()
+        {
+            PrototypeCrisisState state = CreateState();
+            Advance(state, StableObservation(), state.Definition.StableHoldTicks);
+
+            Assert.True(state.TryMarkTerminalEventEmitted());
+            Assert.False(state.TryMarkTerminalEventEmitted());
+            PrototypeCrisisStateSnapshot terminal = JsonSerializer.Deserialize<PrototypeCrisisStateSnapshot>(
+                JsonSerializer.Serialize(state.CaptureSnapshot()))!;
+            Assert.True(terminal.TerminalEventEmitted);
+
+            PrototypeCrisisState resumed = CreateState();
+            resumed.Restore(terminal);
+            Assert.True(resumed.IsTerminal);
+            Assert.True(resumed.TerminalEventEmitted);
+            Assert.False(resumed.TryMarkTerminalEventEmitted());
+
+            PrototypeCrisisStateSnapshot beforeAdvance = resumed.CaptureSnapshot();
+            resumed.Advance(CollapsedObservation());
+            Assert.Equal(JsonSerializer.Serialize(beforeAdvance), JsonSerializer.Serialize(resumed.CaptureSnapshot()));
+
+            PrototypeCrisisState active = CreateState();
+            active.Advance(StrainedObservation());
+            PrototypeCrisisStateSnapshot impossibleActive = active.CaptureSnapshot();
+            impossibleActive.TerminalEventEmitted = true;
+            Assert.Throws<ArgumentException>(() => CreateState().Restore(impossibleActive));
+
+            Advance(active, StableObservation(), active.Definition.StableHoldTicks);
+            Assert.True(active.TryMarkTerminalEventEmitted());
+        }
+
+        [Fact]
+        public void StrictCheckpointResumePreservesCollapseHoldAndTerminalEventState()
+        {
+            PrototypeCrisisState continuous = CreateState();
+            Advance(continuous, CollapsedObservation(), 100);
+            PrototypeCrisisState resumed = CreateState();
+            resumed.Restore(JsonSerializer.Deserialize<PrototypeCrisisStateSnapshot>(
+                JsonSerializer.Serialize(continuous.CaptureSnapshot()))!);
+
+            Advance(continuous, CollapsedObservation(), continuous.Definition.CollapseHoldTicks - 100);
+            Advance(resumed, CollapsedObservation(), resumed.Definition.CollapseHoldTicks - 100);
+            Assert.Equal(PrototypeCrisisOutcome.Collapsed, resumed.Outcome);
+            Assert.True(continuous.TryMarkTerminalEventEmitted());
+            Assert.True(resumed.TryMarkTerminalEventEmitted());
+            Assert.Equal(JsonSerializer.Serialize(continuous.CaptureSnapshot()), JsonSerializer.Serialize(resumed.CaptureSnapshot()));
+        }
+
+        [Fact]
+        public void SessionTerminalEventIsExactlyOnceAndInitializeResetsReplayState()
+        {
+            PrototypeRuntimeSession session = CreateShortUnitCrisisSession(stable: true);
+            RunShortUnitSuccessCommands(session);
+            string firstTrace = BuildSessionTrace(session);
+            Assert.Single(session.EventLog.Entries.Where(entry => entry.EventType == PrototypeEventTypes.CrisisStabilized));
+            Assert.True(session.Crisis!.TerminalEventEmitted);
+
+            _ = session.Advance(TickIntervalSeconds, DayLengthSeconds);
+            Assert.Single(session.EventLog.Entries.Where(entry => entry.EventType == PrototypeEventTypes.CrisisStabilized));
+            Assert.Equal(2, session.Crisis.ElapsedTicks);
+
+            session.Initialize(8.0f);
+            Assert.False(session.Crisis!.HasObservation);
+            Assert.False(session.Crisis.TerminalEventEmitted);
+            Assert.Empty(session.ContributionCountsByResource);
+            Assert.Empty(session.EventLog.Entries);
+
+            RunShortUnitSuccessCommands(session);
+            Assert.Equal(firstTrace, BuildSessionTrace(session));
         }
 
         [Fact]
@@ -284,43 +367,192 @@ namespace Societies.Core.Tests
             return state;
         }
 
-        private static CrisisTraceResult RunCandidateSuccessContractEnvelope(PrototypeScenarioDefinition scenario)
+        private static CrisisTraceResult RunCatalogScriptedSuccessSchedule()
         {
-            PrototypeCrisisState state = new(scenario.Crisis!);
-            DeterministicRandom random = new(scenario.SimulationSeed ^ 0x51A7);
-            int stableStartTick = random.NextIntInclusive(10 * 60 * 20, state.Definition.DeadlineTicks - state.Definition.StableHoldTicks);
-            StringBuilder trace = new();
+            PrototypeCatalogBundle bundle = LoadCatalogs();
+            PrototypeScenarioDefinition scenario = bundle.Scenarios.Resolve("empty_stores");
+            AssertFrozenEmptyStoresContract(scenario);
+            PrototypeRuntimeSession session = new(scenario, bundle.RoleQuotas.Roles, resourceDefinitions: bundle.Resources.Resources);
+            session.Initialize(8.0f);
 
-            while (!state.IsTerminal)
+            Assert.Equal("collapsed", scenario.ExpectedOutcome);
+            session.Inventory.AddItem("berries", 1000);
+            session.Inventory.AddItem("logs", 1000);
+            session.Inventory.AddItem("reeds", 1000);
+            Assert.True(session.SetDirective(PrototypeSettlementDirective.Shelter).Changed);
+            Assert.True(session.ContributeToStockpile("logs", 30).Succeeded);
+            Assert.True(session.ContributeToStockpile("reeds", 12).Succeeded);
+            Assert.True(session.ContributeToStockpile("berries", 18).Succeeded);
+            int hutBuiltSwitchTick = -1;
+
+            while (!session.Crisis!.IsTerminal)
             {
-                PrototypeCrisisObservation observation = state.ElapsedTicks + 1 >= stableStartTick
-                    ? StableObservation()
-                    : StrainedObservation();
-                state.Advance(observation);
-                AppendTraceState(trace, state);
+                bool hutBuilt = session.Structures.Any(structure =>
+                    string.Equals(structure.StructureId, "hut_3", StringComparison.Ordinal) && structure.IsBuilt);
+                if (hutBuilt && hutBuiltSwitchTick < 0)
+                {
+                    hutBuiltSwitchTick = checked((int)session.SimulationTick);
+                    Assert.True(session.SetDirective(PrototypeSettlementDirective.FoodAndFuel).Changed);
+                }
+
+                if (session.SimulationTick % 250 == 0 && session.CentralDepotOccupiedQuantity <= 60)
+                {
+                    Assert.True(session.ContributeToStockpile("logs", 8).Succeeded);
+                    Assert.True(session.ContributeToStockpile("berries", 8).Succeeded);
+                    if (!hutBuilt)
+                    {
+                        Assert.True(session.ContributeToStockpile("reeds", 4).Succeeded);
+                    }
+                }
+
+                _ = session.Advance(TickIntervalSeconds, DayLengthSeconds);
             }
 
-            return BuildTraceResult(state, trace);
+            Assert.True(
+                session.Crisis.Outcome == PrototypeCrisisOutcome.Stable,
+                $"Scripted catalog run ended {session.Crisis.Outcome}/{session.Crisis.CollapseCause} at {session.SimulationTick}; " +
+                $"obs={session.Crisis.LastObservation}; contributions={string.Join(',', session.ContributionCountsByResource.OrderBy(pair => pair.Key).Select(pair => $"{pair.Key}:{pair.Value}"))}; " +
+                $"stockpile={string.Join(',', session.Stockpile.Items.OrderBy(pair => pair.Key).Select(pair => $"{pair.Key}:{pair.Value}"))}; " +
+                $"hutBuiltSwitchTick={hutBuiltSwitchTick}; structures={string.Join(';', session.Structures.Where(structure => structure.StructureKindId is "hut" or "cookfire" or "wood_yard").OrderBy(structure => structure.StructureId).Select(structure => $"{structure.StructureId}[{structure.IsBuilt},{string.Join(',', structure.InputStore.Items.Select(pair => $"{pair.Key}:{pair.Value}"))},{string.Join(',', structure.OutputStore.Items.Select(pair => $"{pair.Key}:{pair.Value}"))}]") )}.");
+            Assert.True(session.ContributionCountsByResource.Values.Sum() > 0);
+            Assert.Contains(session.EventLog.Entries, entry => entry.EventType == PrototypeEventTypes.PlayerContributionSucceeded);
+            Assert.Contains(session.EventLog.Entries, entry => entry.EventType == PrototypeEventTypes.SettlementDirectiveChanged);
+            return BuildSessionTraceResult(session, hutBuiltSwitchTick);
         }
 
-        private static CrisisTraceResult BuildTraceResult(PrototypeCrisisState state, StringBuilder trace)
+        private static CrisisTraceResult RunNoInputCollapseSchedule()
         {
-            string hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(trace.ToString()))).ToLowerInvariant();
-            return new CrisisTraceResult(state.ElapsedTicks, state.Outcome, state.CollapseCause, hash);
+            PrototypeRuntimeSession session = CreateShortUnitCrisisSession(stable: false);
+            while (!session.Crisis!.IsTerminal)
+            {
+                _ = session.Advance(TickIntervalSeconds, DayLengthSeconds);
+            }
+
+            return BuildSessionTraceResult(session);
         }
 
-        private static void AppendTraceState(StringBuilder trace, PrototypeCrisisState state)
+        private static void RunShortUnitSuccessCommands(PrototypeRuntimeSession session)
         {
-            PrototypeCrisisObservation observation = state.LastObservation;
-            trace.Append(state.ElapsedTicks).Append('|')
-                .Append(observation.CapableCitizens).Append('|')
-                .Append(observation.Meals).Append('|')
-                .Append(observation.HearthFuel).Append('|')
-                .Append(observation.BedCoveragePercent).Append('|')
-                .Append(state.StableHoldTicks).Append('|')
-                .Append(state.CollapseHoldTicks).Append('|')
-                .Append((int)state.Outcome).Append('|')
-                .Append((int)state.CollapseCause).Append('\n');
+            session.Inventory.AddItem("logs", 3);
+            Assert.True(session.SetDirective(PrototypeSettlementDirective.Shelter).Changed);
+            Assert.True(session.ContributeToStockpile("logs", 3).Succeeded);
+            while (!session.Crisis!.IsTerminal)
+            {
+                _ = session.Advance(TickIntervalSeconds, DayLengthSeconds);
+            }
+        }
+
+        private static PrototypeRuntimeSession CreateShortUnitCrisisSession(bool stable)
+        {
+            PrototypeCatalogBundle bundle = LoadCatalogs();
+            PrototypeScenarioDefinition scenario = JsonSerializer.Deserialize<PrototypeScenarioDefinition>(
+                JsonSerializer.Serialize(bundle.Scenarios.Resolve("empty_stores")))!;
+            PrototypeCrisisDefinition crisis = scenario.Crisis!;
+            crisis.DeadlineTicks = stable ? 12 : 6;
+            crisis.StableHoldTicks = 2;
+            crisis.CollapseHoldTicks = 3;
+            crisis.CollapseIncapacitatedCitizens = 100;
+            crisis.RequiredCapableCitizens = stable ? 1 : scenario.InitialCitizens + 1;
+            crisis.RequiredMeals = 0;
+            crisis.RequiredHearthFuel = 0;
+            crisis.RequiredBedCoveragePercent = 0;
+            PrototypeRuntimeSession session = new(scenario, bundle.RoleQuotas.Roles, resourceDefinitions: bundle.Resources.Resources);
+            session.Initialize(8.0f);
+            return session;
+        }
+
+        private static CrisisTraceResult BuildSessionTraceResult(PrototypeRuntimeSession session, int hutBuiltSwitchTick = -1)
+        {
+            PrototypeCrisisState crisis = session.Crisis!;
+            string trace = BuildSessionTrace(session);
+            string hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(trace))).ToLowerInvariant();
+            return new CrisisTraceResult(crisis.ElapsedTicks, crisis.Outcome, crisis.CollapseCause, hutBuiltSwitchTick, hash);
+        }
+
+        private static string BuildSessionTrace(PrototypeRuntimeSession session)
+        {
+            StringBuilder trace = new();
+            AppendCanonicalJson(trace, session.EventLog.Entries);
+            trace.Append('|');
+            AppendCanonicalJson(trace, session.Crisis!.CaptureSnapshot());
+            trace.Append('|');
+            AppendCanonicalJson(trace, session.CaptureDirectiveSnapshot());
+            trace.Append('|');
+            AppendCanonicalJson(trace, session.ContributionCountsByResource);
+            trace.Append('|');
+            AppendCanonicalJson(trace, session.Inventory.Items);
+            trace.Append('|');
+            AppendCanonicalJson(trace, session.Stockpile.Items);
+            trace.Append('|');
+            AppendCanonicalJson(trace, session.ResourceSnapshots.OrderBy(resource => resource.SiteId, StringComparer.Ordinal).ToArray());
+            trace.Append('|');
+            AppendCanonicalJson(trace, session.CaptureSettlementSnapshotForTesting());
+            return trace.ToString();
+        }
+
+        private static void AppendCanonicalJson(StringBuilder trace, object value)
+        {
+            using JsonDocument document = JsonDocument.Parse(JsonSerializer.Serialize(value));
+            AppendCanonicalJsonElement(trace, document.RootElement);
+        }
+
+        private static void AppendCanonicalJsonElement(StringBuilder trace, JsonElement element)
+        {
+            switch (element.ValueKind)
+            {
+                case JsonValueKind.Object:
+                    trace.Append('{');
+                    bool firstProperty = true;
+                    foreach (JsonProperty property in element.EnumerateObject().OrderBy(property => property.Name, StringComparer.Ordinal))
+                    {
+                        if (!firstProperty)
+                        {
+                            trace.Append(',');
+                        }
+
+                        trace.Append(JsonSerializer.Serialize(property.Name)).Append(':');
+                        AppendCanonicalJsonElement(trace, property.Value);
+                        firstProperty = false;
+                    }
+
+                    trace.Append('}');
+                    break;
+
+                case JsonValueKind.Array:
+                    trace.Append('[');
+                    int index = 0;
+                    foreach (JsonElement item in element.EnumerateArray())
+                    {
+                        if (index++ > 0)
+                        {
+                            trace.Append(',');
+                        }
+
+                        AppendCanonicalJsonElement(trace, item);
+                    }
+
+                    trace.Append(']');
+                    break;
+
+                default:
+                    trace.Append(element.GetRawText());
+                    break;
+            }
+        }
+
+        private static void AssertFrozenEmptyStoresContract(PrototypeScenarioDefinition scenario)
+        {
+            PrototypeCrisisDefinition crisis = Assert.IsType<PrototypeCrisisDefinition>(scenario.Crisis);
+            Assert.Equal(1701, scenario.SimulationSeed);
+            Assert.Equal(21600, crisis.DeadlineTicks);
+            Assert.Equal(9, crisis.RequiredCapableCitizens);
+            Assert.Equal(6, crisis.RequiredMeals);
+            Assert.Equal(4, crisis.RequiredHearthFuel);
+            Assert.Equal(50, crisis.RequiredBedCoveragePercent);
+            Assert.Equal(900, crisis.StableHoldTicks);
+            Assert.Equal(6, crisis.CollapseIncapacitatedCitizens);
+            Assert.Equal(200, crisis.CollapseHoldTicks);
+            Assert.Equal(0.0875f, crisis.CitizenNeedRateMultiplier);
         }
 
         private static PrototypeCrisisState CreateState()
@@ -372,6 +604,7 @@ namespace Societies.Core.Tests
             int TerminalTick,
             PrototypeCrisisOutcome Outcome,
             PrototypeCrisisCollapseCause CollapseCause,
+            int HutBuiltSwitchTick,
             string Hash);
     }
 }
