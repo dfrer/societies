@@ -448,6 +448,7 @@ namespace Societies.Tests
                 Assert(!settlementHub.IsProcessing() && Math.Abs(settlementHub.AnimationPhase - PrototypeVisualCaptureConfiguration.SettlementAnimationPhase) <= 0.000001,
                     "Visual capture should lock the settlement hub to its fixed animation phase before frame waits");
                 PrototypeHud hud = manager.GetNodeOrNull<PrototypeHud>("UI") ?? throw new Exception("PrototypeHud missing");
+                Assert(hud.Layer == PrototypeHud.PresentationCanvasLayer, "Normal-play HUD should render on its dedicated presentation canvas layer");
                 EnvironmentController environment = manager.GetNodeOrNull<EnvironmentController>("World/Environment/Environment")
                     ?? throw new Exception("Visual capture requires EnvironmentController");
                 Assert(!hud.IsDebugVisible && manager.CurrentOverlayMode.ToString() == "None", "Visual capture should hide debug UI and clear terrain overlays");

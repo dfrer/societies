@@ -18,7 +18,7 @@ This is future intent, not current implementation scope. Deterministic simulatio
 - The current default branch in this repository is `master`
 - Use `CURRENT_BUILD.md` as the repo-truth summary before assuming stale planning still reflects implementation
 - Treat `planning/` as aspirational unless the current Godot code confirms it
-- W2-02 atomic contribution, W2-03 directive causality, and W2-04 deterministic outcomes/minimal crisis HUD are validated and merged; W2-04 landed through PR #117 at master `d519d4d`. V3-W2-VIS is implemented and locally validated on `feature/v3-w2-vis-baseline`, but clean capture and representative performance evidence remain pending. Do not start W2-05 or activate Weeks 3-4 until that gate clears and `CURRENT_BUILD.md` identifies the next authorized slice.
+- W2-02 atomic contribution, W2-03 directive causality, and W2-04 deterministic outcomes/minimal crisis HUD are validated and merged; W2-04 landed through PR #117 at master `d519d4d`. V3-W2-VIS implementation/capture/full tests are complete by the explicit one-time waiver recorded in `CURRENT_BUILD.md`; performance safety did not pass (p95 55.4529 ms vs 50 ms, max 142.9547 ms vs 250 ms), and timing-only persistence/hash equivalence is unavailable. W2-05 is next but inactive/not implemented; Weeks 3-4 remain inactive until W2-06 records Continue V3.
 
 ## Tech Stack
 

@@ -9,6 +9,13 @@ namespace Societies.UI
     /// </summary>
     public partial class PrototypeHud : CanvasLayer
     {
+        /// <summary>
+        /// Keeps normal-play text in the dedicated presentation canvas above every world canvas.
+        /// This is deliberately independent of the 3D renderer so capture readback cannot mix
+        /// placeholder terrain shading into HUD cards.
+        /// </summary>
+        public const int PresentationCanvasLayer = 100;
+
         private Label? _debugLabel;
         private Label? _inventoryLabel;
         private Label? _craftingLabel;
@@ -54,6 +61,7 @@ namespace Societies.UI
 
         public override void _Ready()
         {
+            Layer = PresentationCanvasLayer;
             BuildHud();
             GetViewport().SizeChanged += RefreshLayoutFromViewport;
         }
@@ -338,7 +346,9 @@ namespace Societies.UI
                 };
                 style = new StyleBoxFlat
                 {
-                    BgColor = new Color(0.035f, 0.065f, 0.075f, emphasized ? 0.91f : 0.78f),
+                    // Capture and normal play need the same unambiguous reading. Opaque cards
+                    // prevent dark 3D placeholder geometry from visually bleeding through text.
+                    BgColor = new Color(0.035f, 0.065f, 0.075f, 1.0f),
                     BorderColor = accent,
                     CornerRadiusTopLeft = 6,
                     CornerRadiusTopRight = 6,

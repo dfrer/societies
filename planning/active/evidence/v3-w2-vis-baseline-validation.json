@@ -64,7 +64,7 @@
       { "preset": "citizen_inspection", "file": "citizen_inspection.png", "sha256": "639a10543aa47ce5561cf1a300e6035e7f1a656af5c1257cc5e1440ffe8083c3" },
       { "preset": "terminal_crisis", "file": "terminal_crisis.png", "sha256": "ef5eb4bb9761fe71a6f597f5b893fab75513fa6487e0b0fe1ba6b8b16bd86581" }
     ],
-    "renderedFrameReview": "Product cues are legible. Dark wedges appear consistent with placeholder heightfield/directional-light shading and remain a visual residual for human confirmation."
+    "renderedFrameReview": "Initial rendered-frame review found product cues legible and dark wedges consistent with placeholder heightfield/directional-light shading, not camera intersection. Deep-review artifact correction is pending until root recaptures; do not overclaim the visual conclusion yet."
   },
   "validation": {
     "portableGodotPath": "C:/tmp/godot-4.6.2-mono/Godot_v4.6.2-stable_mono_win64/Godot_v4.6.2-stable_mono_win64.exe",
