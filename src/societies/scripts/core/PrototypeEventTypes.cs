@@ -14,6 +14,7 @@ namespace Societies.Core
         public const string SnapshotSaved = "runtime.snapshot.saved";
         public const string SnapshotLoaded = "runtime.snapshot.loaded";
         public const string PlayerHarvestSucceeded = "player.harvest.succeeded";
+        public const string PlayerContributionSucceeded = "player.contribution.succeeded";
         public const string PlayerCraftSucceeded = "player.craft.succeeded";
         public const string PlayerCraftFailed = "player.craft.failed";
         public const string AiTaskAssigned = "ai.task.assigned";

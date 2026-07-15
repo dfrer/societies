@@ -179,6 +179,50 @@ namespace Societies.Simulation
 
         public PrototypeResourceStoreState CentralDepot => _centralDepot;
 
+        public bool CanDepositToCentralDepot(
+            IReadOnlyList<KeyValuePair<string, int>> resources,
+            out string rejectionReason)
+        {
+            HashSet<string> resourceIds = new(StringComparer.Ordinal);
+            if (resources.Count == 0 || resources.Any(resource =>
+                    string.IsNullOrWhiteSpace(resource.Key) ||
+                    !resourceIds.Add(resource.Key) ||
+                    resource.Value <= 0 ||
+                    !_centralDepot.CanAccept(resource.Key) ||
+                    _centralDepot.GetCount(resource.Key) > int.MaxValue - resource.Value))
+            {
+                rejectionReason = "stockpile_rejected";
+                return false;
+            }
+
+            long totalQuantity = resources.Sum(resource => (long)resource.Value);
+            if (totalQuantity > _centralDepot.AvailableCapacity)
+            {
+                rejectionReason = "stockpile_rejected";
+                return false;
+            }
+
+            rejectionReason = string.Empty;
+            return true;
+        }
+
+        public bool TryDepositToCentralDepot(
+            IReadOnlyList<KeyValuePair<string, int>> resources,
+            out string rejectionReason)
+        {
+            if (!CanDepositToCentralDepot(resources, out rejectionReason))
+            {
+                return false;
+            }
+
+            foreach ((string resourceId, int amount) in resources)
+            {
+                _centralDepot.Items[resourceId] = _centralDepot.GetCount(resourceId) + amount;
+            }
+
+            return true;
+        }
+
         public sealed class PrototypeSettlementDiagnosticsState
         {
             public int TotalTicksMeasured;

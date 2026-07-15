@@ -24,13 +24,16 @@ namespace Societies.Core
         private readonly PrototypeOrderSelectionMode _orderSelectionMode;
         private readonly PrototypeExtractionPlanningMode _extractionPlanningMode;
         private readonly PrototypeRouteDistanceMode _routeDistanceMode;
+        private readonly HashSet<string> _eligibleContributionResourceIds;
+        private readonly Dictionary<string, long> _contributionCountsByResource = new(StringComparer.Ordinal);
 
         public PrototypeRuntimeSession(
             PrototypeScenarioDefinition scenario,
             IReadOnlyList<PrototypeRoleQuotaDefinition>? roleQuotas = null,
             PrototypeOrderSelectionMode orderSelectionMode = PrototypeOrderSelectionMode.ExactBranchAndBound,
             PrototypeExtractionPlanningMode extractionPlanningMode = PrototypeExtractionPlanningMode.ExactBounded,
-            PrototypeRouteDistanceMode routeDistanceMode = PrototypeRouteDistanceMode.CachedDistanceOnly)
+            PrototypeRouteDistanceMode routeDistanceMode = PrototypeRouteDistanceMode.CachedDistanceOnly,
+            IReadOnlyList<PrototypeResourceDefinition>? resourceDefinitions = null)
         {
             Scenario = scenario;
             Inventory = new InventoryComponent();
@@ -42,6 +45,10 @@ namespace Societies.Core
             _orderSelectionMode = orderSelectionMode;
             _extractionPlanningMode = extractionPlanningMode;
             _routeDistanceMode = routeDistanceMode;
+            _eligibleContributionResourceIds = resourceDefinitions?
+                .Where(resource => string.Equals(resource.Category, "raw", StringComparison.OrdinalIgnoreCase))
+                .Select(resource => resource.Id)
+                .ToHashSet(StringComparer.Ordinal) ?? new HashSet<string>(StringComparer.Ordinal);
         }
 
         public PrototypeScenarioDefinition Scenario { get; }
@@ -56,7 +63,24 @@ namespace Societies.Core
 
         public PrototypeCrisisState? Crisis => _crisisState;
 
-        public bool SupportsRuntimeSnapshotPersistence => Scenario.Crisis == null;
+        public bool SupportsRuntimeSnapshotPersistence =>
+            Scenario.Crisis == null && _contributionCountsByResource.Count == 0;
+
+        public string RuntimeSnapshotPersistenceDeferralMessage => Scenario.Crisis != null
+            ? "Runtime snapshot persistence for crisis scenarios is deferred until schema v7."
+            : _contributionCountsByResource.Count > 0
+                ? "Runtime snapshot persistence for contribution state is deferred until schema v7."
+                : string.Empty;
+
+        public IReadOnlyDictionary<string, long> ContributionCountsByResource => _contributionCountsByResource;
+
+        public long TotalContributedQuantity => _contributionCountsByResource.Values.Sum();
+
+        public Vector3 CentralDepotPosition =>
+            _settlementSimulation?.CentralDepot.Position ?? PrototypeSettlementLayout.GetStockpileWorldPosition(SettlementAnchorPosition);
+
+        public IReadOnlyDictionary<string, int> ConsumedResources =>
+            _settlementSimulation?.ConsumedResources ?? new Dictionary<string, int>();
 
         public long SimulationTick { get; private set; }
 
@@ -211,6 +235,7 @@ namespace Societies.Core
 
             EventLog.Clear();
             MetricsTracker.Clear();
+            _contributionCountsByResource.Clear();
             Inventory.ReplaceContents(new Dictionary<string, int>());
             Stockpile.ReplaceContents(new Dictionary<string, int>());
             _world = PrototypeWorldGenerator.Generate(Scenario);
@@ -358,6 +383,107 @@ namespace Societies.Core
             return result.Succeeded;
         }
 
+        public PrototypeContributionResult ContributeToStockpile(string itemId, int amount)
+        {
+            if (string.IsNullOrWhiteSpace(itemId) || !_eligibleContributionResourceIds.Contains(itemId))
+            {
+                return ContributionFailure(itemId, amount, "invalid_item");
+            }
+
+            if (amount <= 0)
+            {
+                return ContributionFailure(itemId, amount, "invalid_amount");
+            }
+
+            if (_settlementSimulation == null)
+            {
+                return ContributionFailure(itemId, amount, "runtime_unavailable");
+            }
+
+            if (Inventory.GetCount(itemId) < amount)
+            {
+                return ContributionFailure(itemId, amount, "insufficient_quantity");
+            }
+
+            KeyValuePair<string, int>[] transfer = { new(itemId, amount) };
+            PrototypeContributionBatchResult batchResult = ApplyContributionBatch(transfer);
+            return batchResult.Succeeded
+                ? batchResult.Results[0]
+                : ContributionFailure(itemId, amount, batchResult.FailureReason);
+        }
+
+        public PrototypeContributionBatchResult ContributeAllEligibleToStockpile()
+        {
+            KeyValuePair<string, int>[] transfers = Inventory.Items
+                .Where(item => item.Value > 0 && _eligibleContributionResourceIds.Contains(item.Key))
+                .OrderBy(item => item.Key, StringComparer.Ordinal)
+                .ToArray();
+            if (transfers.Length == 0)
+            {
+                string reason = Inventory.Items.Count == 0 ? "empty_inventory" : "no_eligible_resources";
+                return new PrototypeContributionBatchResult(Array.Empty<PrototypeContributionResult>(), false, reason);
+            }
+
+            return ApplyContributionBatch(transfers);
+        }
+
+        private PrototypeContributionBatchResult ApplyContributionBatch(
+            IReadOnlyList<KeyValuePair<string, int>> transfers)
+        {
+            if (_settlementSimulation == null)
+            {
+                return new PrototypeContributionBatchResult(Array.Empty<PrototypeContributionResult>(), false, "runtime_unavailable");
+            }
+
+            if (!_settlementSimulation.CanDepositToCentralDepot(transfers, out string rejectionReason))
+            {
+                return new PrototypeContributionBatchResult(Array.Empty<PrototypeContributionResult>(), false, rejectionReason);
+            }
+
+            Dictionary<string, int> remainingInventory = new(Inventory.Items, StringComparer.Ordinal);
+            foreach ((string itemId, int amount) in transfers)
+            {
+                int remaining = remainingInventory.GetValueOrDefault(itemId) - amount;
+                if (remaining < 0)
+                {
+                    return new PrototypeContributionBatchResult(Array.Empty<PrototypeContributionResult>(), false, "insufficient_quantity");
+                }
+
+                if (remaining == 0)
+                {
+                    remainingInventory.Remove(itemId);
+                }
+                else
+                {
+                    remainingInventory[itemId] = remaining;
+                }
+            }
+
+            if (!_settlementSimulation.TryDepositToCentralDepot(transfers, out rejectionReason))
+            {
+                return new PrototypeContributionBatchResult(Array.Empty<PrototypeContributionResult>(), false, rejectionReason);
+            }
+
+            Inventory.ReplaceContents(remainingInventory);
+            List<PrototypeContributionResult> results = new(transfers.Count);
+            foreach ((string itemId, int amount) in transfers)
+            {
+                _contributionCountsByResource[itemId] = _contributionCountsByResource.GetValueOrDefault(itemId) + amount;
+                RecordEvent(
+                    PrototypeEventTypes.PlayerContributionSucceeded,
+                    $"Contributed {InventoryComponent.FormatItemName(itemId)} x{amount} to the central depot");
+                results.Add(new PrototypeContributionResult(itemId, amount, amount, true, string.Empty));
+            }
+
+            SyncSettlementViews();
+            return new PrototypeContributionBatchResult(results, true, string.Empty);
+        }
+
+        private static PrototypeContributionResult ContributionFailure(string itemId, int amount, string reason)
+        {
+            return new PrototypeContributionResult(itemId, amount, 0, false, reason);
+        }
+
         private IReadOnlyList<PrototypeHarvestResult> ApplyAiHarvestRequests(
             IReadOnlyList<PrototypeHarvestRequest> requests,
             RuntimeMetricsCollector? runtimeMetrics = null)
@@ -449,8 +575,7 @@ namespace Societies.Core
         {
             if (!SupportsRuntimeSnapshotPersistence)
             {
-                throw new InvalidOperationException(
-                    "Runtime snapshot persistence for crisis scenarios is deferred until schema v7.");
+                throw new InvalidOperationException(RuntimeSnapshotPersistenceDeferralMessage);
             }
 
             List<PrototypeWorkerSnapshot> workers = Workers
@@ -525,8 +650,7 @@ namespace Societies.Core
         {
             if (!SupportsRuntimeSnapshotPersistence)
             {
-                throw new InvalidDataException(
-                    "Runtime snapshot persistence for crisis scenarios is deferred until schema v7.");
+                throw new InvalidDataException(RuntimeSnapshotPersistenceDeferralMessage);
             }
 
             ValidateSnapshot(snapshot);
@@ -571,6 +695,7 @@ namespace Societies.Core
             _settlementSimulation = candidateSettlement;
             Inventory.ReplaceContents(snapshot.Inventory);
             Stockpile.ReplaceContents(snapshot.Stockpile);
+            _contributionCountsByResource.Clear();
             SyncSettlementViews();
             MetricsTracker.Clear();
         }

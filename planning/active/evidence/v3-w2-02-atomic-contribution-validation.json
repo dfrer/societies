@@ -1,0 +1,144 @@
+{
+  "schemaVersion": 1,
+  "capturedUtc": "2026-07-15T00:41:50.7962701Z",
+  "workItem": "V3-W2-02",
+  "status": "atomic_contribution_validated",
+  "branch": "feature/v3-w2-02-atomic-contribution",
+  "baseCommit": "7e2998d04fa3067e473bbe343d00d2045f855fa7",
+  "implementationCommit": "a75acf4a39bc8d8833a679632d9ba809857d4627",
+  "scope": {
+    "implemented": [
+      "catalog-gated ContributeToStockpile command with structured deterministic result",
+      "preflighted ordinal deposit-all batch from player inventory to the authoritative central depot",
+      "raw-resource eligibility with crafted-tool exclusion",
+      "central-depot proximity prompt and real player input forwarding",
+      "same-frame contribution input deduplication",
+      "deterministic success events and per-resource contribution counters",
+      "explicit schema-v6 contribution-state persistence fail-fast boundary"
+    ],
+    "deferred": [
+      "3D contribution crate",
+      "partial-quantity contribution picker",
+      "W2-03 settlement directives and causal explanations",
+      "W2-04 terminal crisis events and HUD",
+      "W2-05 runtime snapshot schema v7 and contribution/crisis persistence"
+    ],
+    "runtimeSnapshotSchemaVersion": 6,
+    "contributionStateSerialized": false,
+    "contributionStateCaptureFailsFast": true,
+    "w203Started": false
+  },
+  "commandContract": {
+    "eligibleResourceCategory": "raw",
+    "eligibleResourceIds": [
+      "berries",
+      "clay",
+      "logs",
+      "reeds",
+      "stone"
+    ],
+    "craftedToolsRemainPersonal": true,
+    "depositAllOrdering": "ordinal_resource_id",
+    "authoritativeDestination": "settlement.central_depot",
+    "stockpileProjectionWrittenDirectly": false,
+    "failureReasonsCovered": [
+      "empty_inventory",
+      "no_eligible_resources",
+      "invalid_item",
+      "invalid_amount",
+      "insufficient_quantity",
+      "runtime_unavailable",
+      "stockpile_rejected",
+      "out_of_range",
+      "duplicate_input"
+    ]
+  },
+  "correctness": {
+    "sourceAndDestinationQuantitiesMatch": true,
+    "singleResourceTransferExactlyOnce": true,
+    "multiResourceBatchPreflightedBeforeMutation": true,
+    "batchCapacityFailureLeavesAllResourcesUnchanged": true,
+    "allFailurePathsLeaveInventoryUnchanged": true,
+    "allFailurePathsLeaveStockpileUnchanged": true,
+    "allFailurePathsLeaveEventsUnchanged": true,
+    "allFailurePathsLeaveCountersUnchanged": true,
+    "sameFrameDuplicateTransfers": 0,
+    "citizensConsumeThroughExistingWorkOrders": true,
+    "secondResourceAuthorityAdded": false,
+    "deterministicResultEventAndCounterOrdering": true,
+    "legacyNoContributionV5V6PersistenceUnchanged": true,
+    "crisisAndContributionSchemaV6StateLossPrevented": true
+  },
+  "validation": {
+    "sourceCommit": "a75acf4a39bc8d8833a679632d9ba809857d4627",
+    "sourceCodeMatchesCommit": true,
+    "workingTreeClean": false,
+    "workingTreeNote": "Unrelated concurrent product-thesis, long-horizon planning, AGENTS, README, and .codex changes remained unstaged and were excluded from the implementation commit.",
+    "focusedContributionTests": {
+      "command": "dotnet test tests/Societies.Core.Tests/Societies.Core.Tests.csproj --configuration Release --filter FullyQualifiedName~PrototypeContributionTests",
+      "passed": 15,
+      "failed": 0
+    },
+    "pullRequestFastTier": {
+      "manifestOwned": true,
+      "passed": 133,
+      "failed": 0
+    },
+    "fullDotnetSuite": {
+      "declared": 226,
+      "ran": false,
+      "reason": "The task policy reserves the 39-minute full coverage and soak route for Weekly Full Validation or manual dispatch; W2-02 ran targeted and manifest-owned fast validation instead.",
+      "integrationOwnedByWeeklyValidation": 11,
+      "soakOwnedByWeeklyValidation": 82
+    },
+    "godotHeadless": {
+      "passed": 17,
+      "failed": 0,
+      "depotInputSmokePassed": true
+    },
+    "managedBuildConfigurations": [
+      "Debug",
+      "ExportDebug",
+      "ExportRelease"
+    ],
+    "buildWarnings": 0,
+    "buildErrors": 0,
+    "expectedRuntimeWarningsObserved": [
+      "frame catch-up backlog diagnostic",
+      "optional runtime-metrics I/O isolation diagnostic"
+    ]
+  },
+  "review": {
+    "reviewer": "independent deep_reviewer agent /root/review_w2_02",
+    "modelEffortMetadataExposedToReviewer": false,
+    "finalP0Findings": 0,
+    "finalP1Findings": 0,
+    "finalP2ImplementationFindings": 0,
+    "finalP3Findings": 0,
+    "publicationBookkeepingFindingResolvedByThisArtifact": true,
+    "reviewedRisks": [
+      "double spend",
+      "partial mutation",
+      "duplicated input",
+      "authority bypass",
+      "eligibility leakage",
+      "deterministic ordering",
+      "persistence boundary"
+    ]
+  },
+  "performance": {
+    "newCanonicalMatrixRun": false,
+    "reason": "W2-02 adds a bounded player command and interaction path; no performance threshold or simulation hot-loop algorithm changed.",
+    "authorityEvidence": "planning/active/evidence/v3-w1-06-session-resource-ledger-validation.json",
+    "hardSafetyGate": "passed",
+    "formalBudget": "target_missed",
+    "stressClassification": "non_gating_characterization_red"
+  },
+  "decision": {
+    "w202Complete": true,
+    "allW202CoreAcceptanceCriteriaGreen": true,
+    "stretchWorkDeferred": true,
+    "scopeConstraintPreserved": true,
+    "nextAuthorizedWork": "V3-W2-03 two directives and citizen causal explanation after this PR is green and merged"
+  }
+}
