@@ -105,8 +105,8 @@
         "1920x1080",
         "1280x720"
       ],
-      "status": "complete_by_explicit_waiver_performance_safety_failed",
-      "note": "The manifest declares 269 .NET tests: 165 fast, 11 integration, and 93 soak; and 22 Godot tests: six fast, fourteen integration, and two soak. V3-W2-VIS implementation/capture/full tests are complete by explicit one-time waiver: clean timing-only ReleaseExport p95 55.4529 ms vs 50 ms safety (FAIL), max 142.9547 ms vs 250 ms (PASS), persistence/hash equivalence unavailable. W2-05 remains next but inactive/not implemented; Weeks 3-4 remain inactive pending W2-06 Continue V3."
+      "status": "complete_by_explicit_exception_performance_failed_visual_readback_waived",
+      "note": "The manifest declares 269 .NET tests: 165 fast, 11 integration, and 93 soak; and 22 Godot tests: six fast, fourteen integration, and two soak. V3-W2-VIS implementation/functional tests are complete by explicit exception: timing-only ReleaseExport p95 55.4529 ms vs 50 ms safety (FAIL), max 142.9547 ms vs 250 ms (PASS), persistence/hash equivalence unavailable; Windows Forward+ PNG readback intermittently clips CanvasLayer glyphs/panels despite passing HUD assertions, so visual acceptance is waived, not passed. W2-05 remains next but inactive/not implemented; Weeks 3-4 remain inactive pending W2-06 Continue V3."
     },
     "performancePair": {
       "script": "scripts/run-performance-pair.ps1",
