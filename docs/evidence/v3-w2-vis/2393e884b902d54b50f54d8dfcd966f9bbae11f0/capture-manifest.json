@@ -1,0 +1,462 @@
+{
+  "SchemaVersion": 4,
+  "BuildSha": "2393e884b902d54b50f54d8dfcd966f9bbae11f0",
+  "Scenario": "empty_stores",
+  "Seed": 1701,
+  "TerminalCrisisTick": 9777,
+  "TerminalCrisisEventCount": 8148,
+  "TerminalCrisisTraceSha256": "69f3e22402e31a53b1d4c16899883956fcc5fdb14fbe47d8a4eb8baef007174f",
+  "LightingHour": 10.5,
+  "LightingMultiplier": 1,
+  "SettlementAnimationPhase": 0,
+  "SimulationDayLengthSeconds": 300,
+  "SimulationTickIntervalSeconds": 0.05,
+  "ResolutionWidth": 1920,
+  "ResolutionHeight": 1080,
+  "GraphicsSettings": {
+    "RuntimeRendererMethod": "forward_plus",
+    "ProjectRendererMethod": "forward_plus"
+  },
+  "Presets": [
+    "arrival",
+    "settlement_overview",
+    "contribution_point",
+    "citizen_inspection",
+    "terminal_crisis"
+  ],
+  "Images": [
+    {
+      "PresetId": "arrival",
+      "File": "arrival.png",
+      "ExpectedSimulationTick": 0,
+      "ExpectedSimulationHour": 10.5,
+      "ExpectedTerminalCrisis": false,
+      "ExpectedSelectedPresetId": "arrival",
+      "SimulationTick": 0,
+      "SimulationHour": 10.5,
+      "IsTerminalCrisis": false,
+      "SelectedPresetId": "arrival",
+      "SelectedCitizenId": "citizen_1",
+      "Crisis": {
+        "Outcome": "Active",
+        "CollapseCause": "None",
+        "CausalSummary": ""
+      },
+      "Contribution": {
+        "IsContributionFrame": false,
+        "PlayerWithinDepotRange": false,
+        "ContributionRangeMeters": 0,
+        "PlayerPosition": [],
+        "DepotPosition": [],
+        "StatusText": ""
+      },
+      "ExpectedSettlementAnimationPhase": 0,
+      "SettlementAnimationPhase": 0,
+      "Presentation": {
+        "IsDebugVisible": false,
+        "TerrainOverlayMode": "None",
+        "IsPresentationLightingLocked": true,
+        "PresentationLightingHour": 10.5,
+        "PresentationLightingMultiplier": 1
+      },
+      "CanonicalCamera": {
+        "CameraMode": "Player",
+        "CameraPosition": [
+          11,
+          -0.27437544,
+          -18
+        ],
+        "CameraRotation": [
+          -0.023525063,
+          -3.1415925,
+          0
+        ],
+        "PlayerBodyPosition": [
+          11,
+          -0.6888833,
+          -9
+        ],
+        "PlayerBodyRotation": [
+          -0,
+          0,
+          0
+        ],
+        "FieldOfView": 70
+      },
+      "Camera": {
+        "CameraMode": "Player",
+        "CameraPosition": [
+          11,
+          -0.27437544,
+          -18
+        ],
+        "CameraRotation": [
+          -0.023525063,
+          -3.1415925,
+          0
+        ],
+        "PlayerBodyPosition": [
+          11,
+          -0.6888833,
+          -9
+        ],
+        "PlayerBodyRotation": [
+          -0,
+          0,
+          0
+        ],
+        "FieldOfView": 70
+      },
+      "PixelWidth": 1920,
+      "PixelHeight": 1080
+    },
+    {
+      "PresetId": "settlement_overview",
+      "File": "settlement_overview.png",
+      "ExpectedSimulationTick": 0,
+      "ExpectedSimulationHour": 10.5,
+      "ExpectedTerminalCrisis": false,
+      "ExpectedSelectedPresetId": "settlement_overview",
+      "SimulationTick": 0,
+      "SimulationHour": 10.5,
+      "IsTerminalCrisis": false,
+      "SelectedPresetId": "settlement_overview",
+      "SelectedCitizenId": "citizen_1",
+      "Crisis": {
+        "Outcome": "Active",
+        "CollapseCause": "None",
+        "CausalSummary": ""
+      },
+      "Contribution": {
+        "IsContributionFrame": false,
+        "PlayerWithinDepotRange": false,
+        "ContributionRangeMeters": 0,
+        "PlayerPosition": [],
+        "DepotPosition": [],
+        "StatusText": ""
+      },
+      "ExpectedSettlementAnimationPhase": 0,
+      "SettlementAnimationPhase": 0,
+      "Presentation": {
+        "IsDebugVisible": false,
+        "TerrainOverlayMode": "None",
+        "IsPresentationLightingLocked": true,
+        "PresentationLightingHour": 10.5,
+        "PresentationLightingMultiplier": 1
+      },
+      "CanonicalCamera": {
+        "CameraMode": "Observer",
+        "CameraPosition": [
+          -25,
+          39.625626,
+          35
+        ],
+        "CameraRotation": [
+          -0.6779741,
+          -0.7853982,
+          0
+        ],
+        "PlayerBodyPosition": [
+          11,
+          -0.6888833,
+          -9
+        ],
+        "PlayerBodyRotation": [
+          -0,
+          0,
+          0
+        ],
+        "FieldOfView": 62
+      },
+      "Camera": {
+        "CameraMode": "Observer",
+        "CameraPosition": [
+          -25,
+          39.625626,
+          35
+        ],
+        "CameraRotation": [
+          -0.6779741,
+          -0.7853982,
+          0
+        ],
+        "PlayerBodyPosition": [
+          11,
+          -0.6888833,
+          -9
+        ],
+        "PlayerBodyRotation": [
+          -0,
+          0,
+          0
+        ],
+        "FieldOfView": 62
+      },
+      "PixelWidth": 1920,
+      "PixelHeight": 1080
+    },
+    {
+      "PresetId": "contribution_point",
+      "File": "contribution_point.png",
+      "ExpectedSimulationTick": 0,
+      "ExpectedSimulationHour": 10.5,
+      "ExpectedTerminalCrisis": false,
+      "ExpectedSelectedPresetId": "contribution_point",
+      "SimulationTick": 0,
+      "SimulationHour": 10.5,
+      "IsTerminalCrisis": false,
+      "SelectedPresetId": "contribution_point",
+      "SelectedCitizenId": "citizen_1",
+      "Crisis": {
+        "Outcome": "Active",
+        "CollapseCause": "None",
+        "CausalSummary": ""
+      },
+      "Contribution": {
+        "IsContributionFrame": true,
+        "PlayerWithinDepotRange": true,
+        "ContributionRangeMeters": 4.5,
+        "PlayerPosition": [
+          8.8,
+          -2.3752353,
+          -0.19999999
+        ],
+        "DepotPosition": [
+          8.8,
+          -2.3752353,
+          -0.19999999
+        ],
+        "StatusText": "Contributed logs x3"
+      },
+      "ExpectedSettlementAnimationPhase": 0,
+      "SettlementAnimationPhase": 0,
+      "Presentation": {
+        "IsDebugVisible": false,
+        "TerrainOverlayMode": "None",
+        "IsPresentationLightingLocked": true,
+        "PresentationLightingHour": 10.5,
+        "PresentationLightingMultiplier": 1
+      },
+      "CanonicalCamera": {
+        "CameraMode": "Player",
+        "CameraPosition": [
+          3,
+          0.72562456,
+          -10
+        ],
+        "CameraRotation": [
+          -0.2536926,
+          -2.567288,
+          0
+        ],
+        "PlayerBodyPosition": [
+          8.8,
+          -2.3752353,
+          -0.19999999
+        ],
+        "PlayerBodyRotation": [
+          -0,
+          0,
+          0
+        ],
+        "FieldOfView": 66
+      },
+      "Camera": {
+        "CameraMode": "Player",
+        "CameraPosition": [
+          3,
+          0.72562456,
+          -10
+        ],
+        "CameraRotation": [
+          -0.2536926,
+          -2.567288,
+          0
+        ],
+        "PlayerBodyPosition": [
+          8.8,
+          -2.3752353,
+          -0.19999999
+        ],
+        "PlayerBodyRotation": [
+          -0,
+          0,
+          0
+        ],
+        "FieldOfView": 66
+      },
+      "PixelWidth": 1920,
+      "PixelHeight": 1080
+    },
+    {
+      "PresetId": "citizen_inspection",
+      "File": "citizen_inspection.png",
+      "ExpectedSimulationTick": 1,
+      "ExpectedSimulationHour": 10.504,
+      "ExpectedTerminalCrisis": false,
+      "ExpectedSelectedPresetId": "citizen_inspection",
+      "SimulationTick": 1,
+      "SimulationHour": 10.504,
+      "IsTerminalCrisis": false,
+      "SelectedPresetId": "citizen_inspection",
+      "SelectedCitizenId": "citizen_1",
+      "Crisis": {
+        "Outcome": "Active",
+        "CollapseCause": "None",
+        "CausalSummary": ""
+      },
+      "Contribution": {
+        "IsContributionFrame": false,
+        "PlayerWithinDepotRange": false,
+        "ContributionRangeMeters": 0,
+        "PlayerPosition": [],
+        "DepotPosition": [],
+        "StatusText": ""
+      },
+      "ExpectedSettlementAnimationPhase": 0,
+      "SettlementAnimationPhase": 0,
+      "Presentation": {
+        "IsDebugVisible": false,
+        "TerrainOverlayMode": "None",
+        "IsPresentationLightingLocked": true,
+        "PresentationLightingHour": 10.5,
+        "PresentationLightingMultiplier": 1
+      },
+      "CanonicalCamera": {
+        "CameraMode": "Observer",
+        "CameraPosition": [
+          0,
+          5.023506,
+          6.2
+        ],
+        "CameraRotation": [
+          -0.3875496,
+          -0.7853982,
+          0
+        ],
+        "PlayerBodyPosition": [
+          11,
+          -0.6888833,
+          -9
+        ],
+        "PlayerBodyRotation": [
+          -0,
+          0,
+          0
+        ],
+        "FieldOfView": 54
+      },
+      "Camera": {
+        "CameraMode": "Observer",
+        "CameraPosition": [
+          0,
+          5.023506,
+          6.2
+        ],
+        "CameraRotation": [
+          -0.3875496,
+          -0.7853982,
+          0
+        ],
+        "PlayerBodyPosition": [
+          11,
+          -0.6888833,
+          -9
+        ],
+        "PlayerBodyRotation": [
+          -0,
+          0,
+          0
+        ],
+        "FieldOfView": 54
+      },
+      "PixelWidth": 1920,
+      "PixelHeight": 1080
+    },
+    {
+      "PresetId": "terminal_crisis",
+      "File": "terminal_crisis.png",
+      "ExpectedSimulationTick": 9777,
+      "ExpectedSimulationHour": 1.6060058,
+      "ExpectedTerminalCrisis": true,
+      "ExpectedSelectedPresetId": "terminal_crisis",
+      "SimulationTick": 9777,
+      "SimulationHour": 1.6060058,
+      "IsTerminalCrisis": true,
+      "SelectedPresetId": "terminal_crisis",
+      "SelectedCitizenId": "citizen_1",
+      "Crisis": {
+        "Outcome": "Collapsed",
+        "CollapseCause": "IncapacitatedHold",
+        "CausalSummary": "Collapsed: incapacity held 200/200 ticks"
+      },
+      "Contribution": {
+        "IsContributionFrame": false,
+        "PlayerWithinDepotRange": false,
+        "ContributionRangeMeters": 0,
+        "PlayerPosition": [],
+        "DepotPosition": [],
+        "StatusText": ""
+      },
+      "ExpectedSettlementAnimationPhase": 0,
+      "SettlementAnimationPhase": 0,
+      "Presentation": {
+        "IsDebugVisible": false,
+        "TerrainOverlayMode": "None",
+        "IsPresentationLightingLocked": true,
+        "PresentationLightingHour": 10.5,
+        "PresentationLightingMultiplier": 1
+      },
+      "CanonicalCamera": {
+        "CameraMode": "Observer",
+        "CameraPosition": [
+          28,
+          9.625625,
+          17
+        ],
+        "CameraRotation": [
+          -0.4113254,
+          0.75683445,
+          0
+        ],
+        "PlayerBodyPosition": [
+          11,
+          -0.6888833,
+          -9
+        ],
+        "PlayerBodyRotation": [
+          -0,
+          0,
+          0
+        ],
+        "FieldOfView": 62
+      },
+      "Camera": {
+        "CameraMode": "Observer",
+        "CameraPosition": [
+          28,
+          9.625625,
+          17
+        ],
+        "CameraRotation": [
+          -0.4113254,
+          0.75683445,
+          0
+        ],
+        "PlayerBodyPosition": [
+          11,
+          -0.6888833,
+          -9
+        ],
+        "PlayerBodyRotation": [
+          -0,
+          0,
+          0
+        ],
+        "FieldOfView": 62
+      },
+      "PixelWidth": 1920,
+      "PixelHeight": 1080
+    }
+  ]
+}

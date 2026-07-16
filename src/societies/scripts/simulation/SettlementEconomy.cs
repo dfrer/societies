@@ -83,6 +83,11 @@ namespace Societies.Simulation
             AnnotateDirectiveAffinities(orders);
 
             int omittedExtractionOrderCount = 0;
+            HashSet<string>? exhaustiveProjectedOmittedOrderIds =
+                _extractionPlanningMode == PrototypeExtractionPlanningMode.ExhaustiveReference
+                    ? new HashSet<string>(StringComparer.Ordinal)
+                    : null;
+            int exhaustiveProjectedOmittedOrderCount = 0;
             AddReserveExtractionOrders(
                 orders,
                 resources,
@@ -90,10 +95,22 @@ namespace Societies.Simulation
                 currentHour,
                 weather,
                 activeClaimedOrderIds,
-                ref omittedExtractionOrderCount);
+                ref omittedExtractionOrderCount,
+                exhaustiveProjectedOmittedOrderIds,
+                ref exhaustiveProjectedOmittedOrderCount);
             orders = RemoveClaimedOrders(orders, activeClaimedOrderIds);
             _workOrdersGeneratedUncappedThisTick = orders.Count + omittedExtractionOrderCount;
             _extractionOrdersOmittedThisTick = omittedExtractionOrderCount;
+            if (_extractionPlanningMode == PrototypeExtractionPlanningMode.ExhaustiveReference)
+            {
+                List<PrototypeWorkOrder> projectedOrders = orders
+                    .Where(order => !exhaustiveProjectedOmittedOrderIds!.Contains(order.OrderId))
+                    .ToList();
+                projectedOrders = ApplyWorkOrderFrontierLimit(
+                    projectedOrders,
+                    projectedOrders.Count + exhaustiveProjectedOmittedOrderCount);
+                UpdateRouteBacklogMetrics(projectedOrders);
+            }
             orders = ApplyWorkOrderFrontierLimit(orders, _workOrdersGeneratedUncappedThisTick);
             return orders;
         }
@@ -151,6 +168,7 @@ namespace Societies.Simulation
             int missesBefore = _pathPlanCacheMissesThisTick;
             long fastPathHitsBefore = _cachedRouteDistanceFastPathHits;
             int omittedCount = 0;
+            int projectedOmittedCount = 0;
 
             foreach ((string resourceId, int desiredUnits, int basePriority) in extractionClasses)
             {
@@ -161,7 +179,9 @@ namespace Societies.Simulation
                     desiredUnits,
                     basePriority,
                     activeClaimedOrderIds,
-                    ref omittedCount);
+                    ref omittedCount,
+                    null,
+                    ref projectedOmittedCount);
             }
 
             orders = RemoveClaimedOrders(orders, activeClaimedOrderIds);
@@ -530,13 +550,15 @@ namespace Societies.Simulation
             float currentHour,
             PrototypeWeather weather,
             IReadOnlySet<string> activeClaimedOrderIds,
-            ref int omittedExtractionOrderCount)
+            ref int omittedExtractionOrderCount,
+            HashSet<string>? exhaustiveProjectedOmittedOrderIds,
+            ref int exhaustiveProjectedOmittedOrderCount)
         {
-            AddExtractionOrders(orders, resources, "logs", Math.Max(0, GetLogTarget() - GetAccessibleResourceCount("logs", committedCarries)), 640, activeClaimedOrderIds, ref omittedExtractionOrderCount);
-            AddExtractionOrders(orders, resources, "berries", Math.Max(0, GetBerryTarget() - GetAccessibleResourceCount("berries", committedCarries)), 900, activeClaimedOrderIds, ref omittedExtractionOrderCount);
-            AddExtractionOrders(orders, resources, "reeds", Math.Max(0, GetPendingConstructionRequirement("thatch") - GetAccessibleResourceCount("reeds", committedCarries)), 700, activeClaimedOrderIds, ref omittedExtractionOrderCount);
-            AddExtractionOrders(orders, resources, "stone", Math.Max(0, GetPendingConstructionRequirement("stone") - GetAccessibleResourceCount("stone", committedCarries)), 620, activeClaimedOrderIds, ref omittedExtractionOrderCount);
-            AddExtractionOrders(orders, resources, "clay", Math.Max(0, GetPendingConstructionRequirement("clay") - GetAccessibleResourceCount("clay", committedCarries)), 620, activeClaimedOrderIds, ref omittedExtractionOrderCount);
+            AddExtractionOrders(orders, resources, "logs", Math.Max(0, GetLogTarget() - GetAccessibleResourceCount("logs", committedCarries)), 640, activeClaimedOrderIds, ref omittedExtractionOrderCount, exhaustiveProjectedOmittedOrderIds, ref exhaustiveProjectedOmittedOrderCount);
+            AddExtractionOrders(orders, resources, "berries", Math.Max(0, GetBerryTarget() - GetAccessibleResourceCount("berries", committedCarries)), 900, activeClaimedOrderIds, ref omittedExtractionOrderCount, exhaustiveProjectedOmittedOrderIds, ref exhaustiveProjectedOmittedOrderCount);
+            AddExtractionOrders(orders, resources, "reeds", Math.Max(0, GetPendingConstructionRequirement("thatch") - GetAccessibleResourceCount("reeds", committedCarries)), 700, activeClaimedOrderIds, ref omittedExtractionOrderCount, exhaustiveProjectedOmittedOrderIds, ref exhaustiveProjectedOmittedOrderCount);
+            AddExtractionOrders(orders, resources, "stone", Math.Max(0, GetPendingConstructionRequirement("stone") - GetAccessibleResourceCount("stone", committedCarries)), 620, activeClaimedOrderIds, ref omittedExtractionOrderCount, exhaustiveProjectedOmittedOrderIds, ref exhaustiveProjectedOmittedOrderCount);
+            AddExtractionOrders(orders, resources, "clay", Math.Max(0, GetPendingConstructionRequirement("clay") - GetAccessibleResourceCount("clay", committedCarries)), 620, activeClaimedOrderIds, ref omittedExtractionOrderCount, exhaustiveProjectedOmittedOrderIds, ref exhaustiveProjectedOmittedOrderCount);
         }
         private void AddExtractionOrders(
             List<PrototypeWorkOrder> orders,
@@ -545,7 +567,9 @@ namespace Societies.Simulation
             int desiredUnits,
             int priority,
             IReadOnlySet<string> activeClaimedOrderIds,
-            ref int omittedExtractionOrderCount)
+            ref int omittedExtractionOrderCount,
+            HashSet<string>? exhaustiveProjectedOmittedOrderIds,
+            ref int exhaustiveProjectedOmittedOrderCount)
         {
             if (desiredUnits <= 0)
             {
@@ -565,6 +589,26 @@ namespace Societies.Simulation
             int effectivePriorityUpperBound = checked(priorityUpperBound +
                 (int)PrototypeSettlementDirectiveCatalog.GetAssignmentScoreBonus(_activeDirective, directiveAffinity));
             int frontierBudget = Math.Max(50, _citizens.Count * 5);
+            int projectedOmittedCount = 0;
+            bool omitFromExhaustiveDiagnosticProjection =
+                _extractionPlanningMode == PrototypeExtractionPlanningMode.ExhaustiveReference &&
+                !_uncappedOrders &&
+                exhaustiveProjectedOmittedOrderIds != null &&
+                PrototypeExtractionPlanningMath.TryComputeWholeResourceClassOmission(
+                    orders
+                        .Where(order => !exhaustiveProjectedOmittedOrderIds.Contains(order.OrderId))
+                        .Select(GetDirectiveAdjustedPriority)
+                        .ToArray(),
+                    frontierBudget,
+                    effectivePriorityUpperBound,
+                    eligibleSites.Select(site => $"extract.{site.NodeName}").ToArray(),
+                    activeClaimedOrderIds,
+                    desiredUnits,
+                    out projectedOmittedCount);
+            if (omitFromExhaustiveDiagnosticProjection)
+            {
+                exhaustiveProjectedOmittedOrderCount += projectedOmittedCount;
+            }
             if (_extractionPlanningMode == PrototypeExtractionPlanningMode.ExactBounded &&
                 !_uncappedOrders &&
                 PrototypeExtractionPlanningMath.TryComputeWholeResourceClassOmission(
@@ -580,6 +624,7 @@ namespace Societies.Simulation
                 return;
             }
 
+            int firstGeneratedOrderIndex = orders.Count;
             List<PrototypeExtractionCandidate> candidates = eligibleSites
                 .Select((site, originalIndex) =>
                 {
@@ -666,6 +711,13 @@ namespace Societies.Simulation
                     TargetPosition = interactionPosition,
                     Amount = 1
                 });
+            }
+            if (omitFromExhaustiveDiagnosticProjection)
+            {
+                foreach (PrototypeWorkOrder order in orders.Skip(firstGeneratedOrderIndex))
+                {
+                    exhaustiveProjectedOmittedOrderIds!.Add(order.OrderId);
+                }
             }
         }
         private bool TryResolveWalkableInteractionPosition(Vector3 resourcePosition, out Vector3 interactionPosition)

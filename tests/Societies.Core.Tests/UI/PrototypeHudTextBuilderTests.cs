@@ -222,5 +222,74 @@ namespace Societies.Core.Tests
             Assert.Contains("Route: 12.5 m", inspectorText);
             Assert.Contains("Why: Shelter — hut construction", inspectorText);
         }
+
+        [Fact]
+        public void CompactBuilders_PreserveRequiredStateAndAggregateCitizenRows()
+        {
+            List<PrototypeWorkerState> workers = new();
+            for (int index = 0; index < 12; index++)
+            {
+                workers.Add(new PrototypeWorkerState
+                {
+                    DisplayName = $"Citizen {index + 1}",
+                    Phase = index == 0 ? PrototypeWorkerPhase.Harvesting : PrototypeWorkerPhase.Idle,
+                    TargetLabel = index == 0 ? "Tree" : string.Empty
+                });
+            }
+
+            string settlement = PrototypeHudTextBuilder.BuildCompactSettlementText(
+                new Dictionary<string, int> { ["berries"] = 3, ["logs"] = 2 },
+                workers,
+                PrototypeSettlementClassification.Strained,
+                "Hut active",
+                25,
+                50,
+                1,
+                new[]
+                {
+                    new PrototypeStructureState { IsBuilt = true },
+                    new PrototypeStructureState { IsBlocked = true }
+                },
+                PrototypeSettlementDirective.FoodAndFuel);
+            string world = PrototypeHudTextBuilder.BuildCompactWorldText(
+                "empty_stores", 1701, CameraMode.Player, TerrainOverlayMode.None);
+            string inspector = PrototypeHudTextBuilder.BuildCompactInspectorText(
+                new PrototypeWorkerState
+                {
+                    DisplayName = "Citizen 1",
+                    Role = PrototypeCitizenRole.Hauler,
+                    Needs = new PrototypeNeedState { Nutrition = 78.0f, Fatigue = 24.0f },
+                    Navigation = new PrototypeCitizenNavigationState
+                    {
+                        CurrentRouteLengthMeters = 12.5f,
+                        CurrentRouteTravelTicks = 16
+                    }
+                },
+                null);
+
+            Assert.Contains("Citizens: 1/12 active (details: F3)", settlement);
+            Assert.Contains("Target: Citizen 1 -> Tree", settlement);
+            Assert.DoesNotContain("Citizen 1 [", settlement);
+            Assert.Contains("Food & Fuel", settlement);
+            Assert.Contains("Directive: Food & Fuel", settlement);
+            Assert.Contains("Needs: meals 25% | beds 50% | fuel 1", settlement);
+            Assert.Contains("Stockpile: berries x3, logs x2", settlement);
+            Assert.Contains("Structures: 1/2 built | 1 blocked", settlement);
+            Assert.DoesNotContain("?", settlement);
+            Assert.True(
+                PrototypeHudLayout.Calculate(1280.0f, 720.0f)
+                    .GetTextBudget(PrototypeHudLayout.Settlement, settlement, 15)
+                    .Fits,
+                "Compact settlement text must fit the 1280x720 card after citizen aggregation.");
+            Assert.Equal(2, world.Split('\n').Length);
+            Assert.Equal("World: empty_stores | seed 1701\nPlayer | None", world);
+            Assert.DoesNotContain("?", world);
+            Assert.Contains("Needs: nutrition 78 | fatigue 24", inspector);
+            Assert.Contains("Route: 12.5 m | 16 ticks", inspector);
+            Assert.DoesNotContain("?", inspector);
+            Assert.Equal(2, PrototypeHudTextBuilder.BuildCompactHelpText().Split('\n').Length);
+            Assert.Contains("F11 next build", PrototypeHudTextBuilder.BuildCompactHelpText());
+            Assert.Contains("F12 pause build", PrototypeHudTextBuilder.BuildCompactHelpText());
+        }
     }
 }

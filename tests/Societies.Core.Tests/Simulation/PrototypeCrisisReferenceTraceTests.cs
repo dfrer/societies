@@ -11,23 +11,34 @@ namespace Societies.Core.Tests
         [Fact]
         public void EmptyStores_NoInputSessionTraceCollapsesWithinTargetAndRepeatsExactly()
         {
-            RuntimeCrisisTrace first = RunNoInputSessionTrace();
-            RuntimeCrisisTrace second = RunNoInputSessionTrace();
+            RuntimeCrisisTrace historicalFirst = RunNoInputSessionTrace(8.0f);
+            RuntimeCrisisTrace historicalSecond = RunNoInputSessionTrace(8.0f);
 
-            Assert.Equal(first, second);
-            Assert.Equal(9735, first.TerminalTick);
-            Assert.InRange(first.TerminalTick, 8 * 60 * PrototypeSimulationTime.TicksPerSecond, 14 * 60 * PrototypeSimulationTime.TicksPerSecond);
-            Assert.Equal(PrototypeCrisisOutcome.Collapsed, first.Outcome);
-            Assert.Equal(PrototypeCrisisCollapseCause.IncapacitatedHold, first.CollapseCause);
-            Assert.Equal(7533, first.EventCount);
-            Assert.Equal("01fedc29bae1aadeef47bab2a645f4bfd390fb2eab39243d7bd18def90c3aafc", first.TraceHash);
+            Assert.Equal(historicalFirst, historicalSecond);
+            Assert.Equal(9777, historicalFirst.TerminalTick);
+            Assert.InRange(historicalFirst.TerminalTick, 8 * 60 * PrototypeSimulationTime.TicksPerSecond, 14 * 60 * PrototypeSimulationTime.TicksPerSecond);
+            Assert.Equal(PrototypeCrisisOutcome.Collapsed, historicalFirst.Outcome);
+            Assert.Equal(PrototypeCrisisCollapseCause.IncapacitatedHold, historicalFirst.CollapseCause);
+            Assert.Equal(7495, historicalFirst.EventCount);
+            Assert.Equal("ab219da9ad492a0011bd70160548d29da3420569eb6a89facd74c6c63145a880", historicalFirst.TraceHash);
+
+            RuntimeCrisisTrace captureFirst = RunNoInputSessionTrace(10.5f);
+            RuntimeCrisisTrace captureSecond = RunNoInputSessionTrace(10.5f);
+
+            Assert.Equal(captureFirst, captureSecond);
+            Assert.Equal(9777, captureFirst.TerminalTick);
+            Assert.InRange(captureFirst.TerminalTick, 8 * 60 * PrototypeSimulationTime.TicksPerSecond, 14 * 60 * PrototypeSimulationTime.TicksPerSecond);
+            Assert.Equal(PrototypeCrisisOutcome.Collapsed, captureFirst.Outcome);
+            Assert.Equal(PrototypeCrisisCollapseCause.IncapacitatedHold, captureFirst.CollapseCause);
+            Assert.Equal(8148, captureFirst.EventCount);
+            Assert.Equal("69f3e22402e31a53b1d4c16899883956fcc5fdb14fbe47d8a4eb8baef007174f", captureFirst.TraceHash);
         }
 
-        private static RuntimeCrisisTrace RunNoInputSessionTrace()
+        private static RuntimeCrisisTrace RunNoInputSessionTrace(float initialHour)
         {
             PrototypeCatalogBundle bundle = PrototypeCatalogLoader.LoadFromDirectory(GetCatalogDirectoryPath());
             PrototypeRuntimeSession session = new(bundle.Scenarios.Resolve("empty_stores"), bundle.RoleQuotas.Roles);
-            session.Initialize(8.0f);
+            session.Initialize(initialHour);
             StringBuilder trace = new();
             int recordedEventCount = 0;
 

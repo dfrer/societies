@@ -18,7 +18,7 @@ This is future intent, not current implementation scope. Deterministic simulatio
 - The current default branch in this repository is `master`
 - Use `CURRENT_BUILD.md` as the repo-truth summary before assuming stale planning still reflects implementation
 - Treat `planning/` as aspirational unless the current Godot code confirms it
-- W2-02 atomic contribution and W2-03 directive causality are validated and merged. W2-04 deterministic outcome and minimal crisis HUD is the next authorized work item. Preserve that distinction in all status claims.
+- W2-02 atomic contribution, W2-03 directive causality, and W2-04 deterministic outcomes/minimal crisis HUD are validated and merged; W2-04 landed through PR #117 at master `d519d4d`. V3-W2-VIS implementation/functional tests are complete by explicit exception recorded in `CURRENT_BUILD.md`; performance safety did not pass (p95 55.4529 ms vs 50 ms, max 142.9547 ms vs 250 ms), timing-only persistence/hash equivalence is unavailable, and Windows Forward+ PNG readback intermittently clips CanvasLayer glyphs/panels despite passing HUD assertions, so visual acceptance is waived, not passed. W2-05 is next but inactive/not implemented; Weeks 3-4 remain inactive until W2-06 records Continue V3.
 
 ## Tech Stack
 

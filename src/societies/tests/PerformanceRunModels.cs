@@ -41,6 +41,8 @@ namespace Societies.Tests
 
         public string RouteDistanceMode { get; set; } = string.Empty;
 
+        public string ArtifactMode { get; set; } = "full_artifacts";
+
         public string ComparisonGroup { get; set; } = string.Empty;
 
         public int TrialIndex { get; set; }
@@ -194,6 +196,10 @@ namespace Societies.Tests
 
     internal sealed class PerformanceRunHashes
     {
+        public bool Available { get; set; } = true;
+
+        public string UnavailableReason { get; set; } = string.Empty;
+
         public string SnapshotSha256 { get; set; } = string.Empty;
 
         public string EventLogSha256 { get; set; } = string.Empty;
@@ -203,6 +209,10 @@ namespace Societies.Tests
 
     internal sealed class PerformanceRunArtifacts
     {
+        public bool PersistenceArtifactsAvailable { get; set; } = true;
+
+        public string PersistenceArtifactsUnavailableReason { get; set; } = string.Empty;
+
         public string Snapshot { get; set; } = string.Empty;
 
         public string EventLog { get; set; } = string.Empty;

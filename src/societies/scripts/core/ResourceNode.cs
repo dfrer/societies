@@ -13,6 +13,7 @@ namespace Societies.Core
         [Export] public string ClusterId { get; set; } = string.Empty;
 
         private Node3D? _visualRoot;
+        private Label3D? _stateLabel;
 
         public override void _Ready()
         {
@@ -80,6 +81,17 @@ namespace Societies.Core
                     CreateReedVisual();
                     break;
             }
+
+            _stateLabel = new Label3D
+            {
+                Name = "ResourceLabel",
+                Billboard = BaseMaterial3D.BillboardModeEnum.Enabled,
+                Position = new Vector3(0.0f, 3.55f, 0.0f),
+                FontSize = 14,
+                Modulate = new Color(0.95f, 0.94f, 0.84f)
+            };
+            AddChild(_stateLabel);
+            UpdateVisualState();
         }
 
         private void CreateTreeVisual()
@@ -167,6 +179,10 @@ namespace Societies.Core
 
             float normalized = Mathf.Clamp(UnitsRemaining / 6.0f, 0.2f, 1.0f);
             _visualRoot.Scale = new Vector3(1.0f, normalized, 1.0f);
+            if (_stateLabel != null)
+            {
+                _stateLabel.Text = $"{DisplayName}\n{UnitsRemaining} available";
+            }
         }
 
         private static MeshInstance3D CreateMesh(PrimitiveMesh mesh, Color color, Vector3 position)

@@ -1,6 +1,7 @@
 using Godot;
 using Societies.Core;
 using Societies.Multiplayer;
+using Societies.Presentation;
 using Societies.Simulation;
 using Societies.UI;
 using System;
@@ -49,10 +50,13 @@ namespace Societies.Tests
             Test_Vector3_Operations();
             Test_Node_Creation();
             Test_SceneTree_Access();
+            Test_RunOutputDirectory_IsolatedPerInvocation();
             await Test_MainScene_BootstrapSmoke();
             await Test_MainScene_DepotContributionInputSmoke();
             await Test_MainScene_DirectiveInputSmoke();
             await Test_MainScene_CrisisHudPresentationSmoke();
+            Test_VisualCaptureConfigurationAndHudLayout();
+            await Test_MainScene_VisualCaptureContractSmoke();
             await Test_MainScene_FrameCatchUpCapSmoke();
             await Test_MainScene_HudRefreshCoalescingSmoke();
             await Test_MainScene_RuntimeMetricsBatchSmoke();
@@ -359,6 +363,161 @@ namespace Societies.Tests
             catch (Exception ex)
             {
                 Fail(nameof(Test_MainScene_CrisisHudPresentationSmoke), ex);
+            }
+            finally
+            {
+                if (scene != null)
+                {
+                    scene.QueueFree();
+                    await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+                }
+            }
+        }
+
+        private void Test_VisualCaptureConfigurationAndHudLayout()
+        {
+            try
+            {
+                string[] expected = { "arrival", "settlement_overview", "contribution_point", "citizen_inspection", "terminal_crisis" };
+                Assert(expected.OrderBy(id => id).SequenceEqual(PrototypeVisualCaptureConfiguration.PresetIds.OrderBy(id => id)), "Capture configuration should define exactly five named presets");
+                Assert(PrototypeVisualCaptureConfiguration.ScenarioId == "empty_stores", "Capture scenario should be empty_stores");
+                Assert(PrototypeVisualCaptureConfiguration.SimulationSeed == 1701, "Capture seed should be fixed");
+                Assert(PrototypeVisualCaptureConfiguration.TerminalCrisisTick == 9777, "Capture terminal-crisis tick should match the observed canonical terminal state");
+                Assert(PrototypeVisualCaptureConfiguration.TerminalCrisisEventCount == 8148, "Capture terminal-crisis provenance should retain the 10.5 reference event count");
+                Assert(PrototypeVisualCaptureConfiguration.TerminalCrisisTraceSha256 == "69f3e22402e31a53b1d4c16899883956fcc5fdb14fbe47d8a4eb8baef007174f", "Capture terminal-crisis provenance should retain the 10.5 reference trace hash");
+                Assert(PrototypeVisualCaptureConfiguration.LightingHour == 10.5f, "Capture lighting hour should be fixed");
+                Assert(PrototypeVisualCaptureConfiguration.TryGetPreset("citizen_inspection", out PrototypeVisualCapturePreset citizenInspection), "Citizen inspection capture preset should exist");
+                Assert(
+                    citizenInspection.CameraKind == PrototypeVisualCaptureCameraKind.Observer &&
+                    citizenInspection.CameraOffset == new Vector3(17, 12, 18) &&
+                    citizenInspection.LookAtOffset == new Vector3(0, 1.2f, 0) &&
+                    citizenInspection.FieldOfView == 62.0f,
+                    "Citizen inspection should retain its fixed high observer composition above placeholder terrain");
+                foreach ((float width, float height) in new[] { (1920.0f, 1080.0f), (1280.0f, 720.0f) })
+                {
+                    PrototypeHudLayout layout = PrototypeHudLayout.Calculate(width, height);
+                    Assert(!layout.HasOverlaps(), $"HUD cards should not overlap at {width}x{height}");
+                    foreach (KeyValuePair<string, PrototypeHudBounds> card in layout.Bounds)
+                    {
+                        Assert(card.Value.FitsWithin(width, height), $"HUD card {card.Key} should fit at {width}x{height}");
+                    }
+                }
+
+                Node3D plannedPathCue = PrototypeSettlementScenePresenter.CreatePathStateCue(
+                    new PrototypePathSegmentState { StructureId = "path_segment_planned", IsBuilt = false },
+                    0);
+                Node3D builtPathCue = PrototypeSettlementScenePresenter.CreatePathStateCue(
+                    new PrototypePathSegmentState { StructureId = "path_segment_built", IsBuilt = true },
+                    1);
+                Assert(plannedPathCue.Name == "PathSegment-000" && builtPathCue.Name == "PathSegment-001", "Path-state cues should use stable state-neutral names");
+                Assert(plannedPathCue.GetMeta("path_state").AsString() == "planned" && builtPathCue.GetMeta("path_state").AsString() == "built", "Path-state cue metadata should reflect authoritative construction state");
+                Assert(plannedPathCue.GetNode<Label3D>("StateLabel").Text == "PLANNED PATH", "Unbuilt path convention should be labeled PLANNED PATH");
+                Assert(builtPathCue.GetNode<Label3D>("StateLabel").Text == "BUILT PATH", "Built path convention should be labeled BUILT PATH");
+                MeshInstance3D plannedSurface = plannedPathCue.GetNode<MeshInstance3D>("Surface");
+                MeshInstance3D builtSurface = builtPathCue.GetNode<MeshInstance3D>("Surface");
+                StandardMaterial3D plannedMaterial = plannedSurface.MaterialOverride as StandardMaterial3D
+                    ?? throw new Exception("Planned path material missing");
+                StandardMaterial3D builtMaterial = builtSurface.MaterialOverride as StandardMaterial3D
+                    ?? throw new Exception("Built path material missing");
+                Assert(plannedMaterial.AlbedoColor != builtMaterial.AlbedoColor, "Planned and built paths should use distinct materials");
+                Assert(plannedSurface.Transparency > builtSurface.Transparency, "Planned path surface should read as incomplete beside the opaque built convention");
+                plannedPathCue.Free();
+                builtPathCue.Free();
+
+                Pass(nameof(Test_VisualCaptureConfigurationAndHudLayout));
+            }
+            catch (Exception ex)
+            {
+                Fail(nameof(Test_VisualCaptureConfigurationAndHudLayout), ex);
+            }
+        }
+
+        private async Task Test_MainScene_VisualCaptureContractSmoke()
+        {
+            Node? scene = null;
+            try
+            {
+                PackedScene packedScene = GD.Load<PackedScene>("res://scenes/main.tscn");
+                Assert(packedScene != null, "Main scene failed to load");
+                GameManager manager = packedScene!.Instantiate<GameManager>();
+                manager.ConfigureVisualCaptureStartup();
+                scene = manager;
+                AddChild(scene);
+                await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+                await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+
+                Assert(manager.ApplyVisualCaptureScenario(), "Visual capture scenario should apply after ready");
+                Assert(manager.CurrentScenarioId == "empty_stores" && manager.SimulationSeed == 1701, "Visual capture should use the canonical scenario and seed");
+                Assert(manager.VisualCaptureMetadata.SimulationTick == 0, "Visual capture should start at tick zero");
+                PrototypeSettlementHub settlementHub = manager.GetNodeOrNull<PrototypeSettlementHub>("World/Environment/SettlementHub")
+                    ?? throw new Exception("Visual capture requires the settlement hub");
+                settlementHub.SetVisualCaptureAnimationPhase(PrototypeVisualCaptureConfiguration.SettlementAnimationPhase);
+                Assert(!settlementHub.IsProcessing() && Math.Abs(settlementHub.AnimationPhase - PrototypeVisualCaptureConfiguration.SettlementAnimationPhase) <= 0.000001,
+                    "Visual capture should lock the settlement hub to its fixed animation phase before frame waits");
+                PrototypeHud hud = manager.GetNodeOrNull<PrototypeHud>("UI") ?? throw new Exception("PrototypeHud missing");
+                Assert(hud.Layer == PrototypeHud.PresentationCanvasLayer, "Normal-play HUD should render on its dedicated presentation canvas layer");
+                EnvironmentController environment = manager.GetNodeOrNull<EnvironmentController>("World/Environment/Environment")
+                    ?? throw new Exception("Visual capture requires EnvironmentController");
+                Assert(!hud.IsDebugVisible && manager.CurrentOverlayMode.ToString() == "None", "Visual capture should hide debug UI and clear terrain overlays");
+                Assert(environment.IsPresentationLightingLocked &&
+                    environment.PresentationLightingHour == PrototypeVisualCaptureConfiguration.LightingHour &&
+                    environment.PresentationLightingMultiplier == PrototypeVisualCaptureConfiguration.LightingMultiplier,
+                    "Visual capture should expose its actual locked environment lighting state");
+                await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+                await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+                manager._Process(1.0);
+                manager._Process(1.0);
+                Assert(manager.VisualCaptureMetadata.SimulationTick == 0, "Rendered frames must not advance canonical visual capture simulation");
+                Assert(!settlementHub.IsProcessing() && Math.Abs(settlementHub.AnimationPhase - PrototypeVisualCaptureConfiguration.SettlementAnimationPhase) <= 0.000001,
+                    "Visual capture frame waits must retain the fixed settlement animation phase");
+                Assert(manager.GetNodeOrNull("World/Environment/SettlementHub/ContributionPoint") != null, "Contribution point should have a stable named node");
+                Node3D worldCues = manager.GetNodeOrNull<Node3D>("World/Environment/SettlementWorldCues") ?? throw new Exception("Settlement cues should have a stable named root");
+                Node3D plannedPathCue = worldCues.GetNodeOrNull<Node3D>("PathSegment-000") ?? throw new Exception("Planned-path cue should have a stable named node");
+                Assert(plannedPathCue.GetMeta("path_state").AsString() == "planned", "Canonical tick-zero path cue should report authoritative planned state");
+                Assert(plannedPathCue.GetNode<Label3D>("StateLabel").Text == "PLANNED PATH", "Canonical tick-zero path cue should be labeled PLANNED PATH");
+                Assert(worldCues.GetChildren().OfType<Node3D>().All(cue => cue.GetMeta("path_state").AsString() == "planned"), "Canonical tick-zero overview must not fabricate a built path");
+                Label3D queuedHutLabel = manager.GetNodeOrNull<Label3D>("World/Environment/SettlementHub/StructureMarkers/hut_3/Label") ?? throw new Exception("Queued hut marker missing");
+                Assert(queuedHutLabel.Text == "Hut\nplanned", "Queued hut construction should remain distinct from path-corridor state");
+
+                Assert(hud.CrisisText.Contains("Crisis: Empty Stores", StringComparison.Ordinal) && hud.CrisisText.Contains("Time:", StringComparison.Ordinal) && hud.CrisisText.Contains("Directive: Neutral", StringComparison.Ordinal) && hud.CrisisText.Contains("Contributed:", StringComparison.Ordinal) && hud.CrisisText.Contains("Stable conditions:", StringComparison.Ordinal), "Normal view should expose required crisis state text");
+                Assert(manager.SelectDirective(PrototypeSettlementDirective.FoodAndFuel).Changed, "Visual capture smoke should select Food & Fuel");
+                Assert(hud.PresentationState.DirectiveCue == PrototypeHudCue.FoodAndFuel, "HUD should expose the Food & Fuel state cue");
+                Assert(manager.SelectNextInspectedCitizen(), "Visual capture smoke should select a citizen");
+                Assert(hud.InspectorText.Contains("Citizen:", StringComparison.Ordinal), "Normal view should expose an inspected citizen");
+                foreach (string presetId in manager.VisualCapturePresetIds)
+                {
+                    Assert(manager.SelectVisualCapturePreset(presetId), $"Preset {presetId} should apply");
+                    Assert(manager.VisualCaptureMetadata.SelectedPresetId == presetId, $"Metadata should record preset {presetId}");
+                }
+                Assert(manager.PositionVisualCapturePlayerAtDepot(), "Visual capture should place the player body in deterministic depot range");
+                Assert(manager.SelectVisualCapturePreset("contribution_point"), "Contribution capture preset should apply after player positioning");
+                Assert(manager.SubmitVisualCaptureContribution(), "Contribution capture should use the authoritative player input path and report success");
+                Assert(hud.StatusText.Contains("Contributed", StringComparison.Ordinal), "Contribution capture should expose a successful contribution cue");
+
+                Assert(manager.ApplyVisualCaptureScenario(), "Visual capture should reset the canonical no-input scenario after contribution capture");
+                Node3D resetWorldCues = manager.GetNodeOrNull<Node3D>("World/Environment/SettlementWorldCues")
+                    ?? throw new Exception("Visual capture reset should recreate the stable settlement-cue root synchronously");
+                Assert(resetWorldCues.Name == "SettlementWorldCues", "Visual capture reset should retain the exact stable settlement-cue root name");
+                await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+                Node3D settledResetWorldCues = manager.GetNodeOrNull<Node3D>("World/Environment/SettlementWorldCues")
+                    ?? throw new Exception("Visual capture reset should retain the stable settlement-cue root after queued frees settle");
+                Assert(settledResetWorldCues.Name == "SettlementWorldCues", "Settled visual capture reset should retain the exact stable settlement-cue root name");
+                Assert(
+                    manager.AdvanceVisualCaptureToTick(PrototypeVisualCaptureConfiguration.CitizenInspectionTick) &&
+                    manager.VisualCaptureMetadata.SimulationTick == PrototypeVisualCaptureConfiguration.CitizenInspectionTick,
+                    "Visual capture should advance citizen inspection through authoritative ticks");
+                Assert(manager.SelectVisualCaptureInspectionCitizen(), "Visual capture should select a stable citizen for matching camera focus and inspector state");
+                Assert(hud.InspectorText.Contains("Why:", StringComparison.Ordinal) && !hud.InspectorText.Contains("Why: none", StringComparison.Ordinal), "Citizen inspection should show a non-empty causal Why explanation");
+                Assert(manager.SelectVisualCapturePreset("citizen_inspection"), "Citizen inspection capture preset should focus the selected stable citizen");
+                Assert(manager.AdvanceVisualCaptureToTick(PrototypeVisualCaptureConfiguration.CitizenInspectionTick), "Visual capture should retain an already reached explicit tick");
+                await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+                await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+                Assert(manager.VisualCaptureMetadata.SimulationTick == PrototypeVisualCaptureConfiguration.CitizenInspectionTick, "Rendered frames must not advance visual capture after an explicit tick advance");
+                Pass(nameof(Test_MainScene_VisualCaptureContractSmoke));
+            }
+            catch (Exception ex)
+            {
+                Fail(nameof(Test_MainScene_VisualCaptureContractSmoke), ex);
             }
             finally
             {
@@ -1098,15 +1257,34 @@ namespace Societies.Tests
 
         private static string CreateRunOutputDirectory(string testName)
         {
-            string directory = Path.Combine(Path.GetTempPath(), "societies-headless", testName);
-
-            if (Directory.Exists(directory))
-            {
-                Directory.Delete(directory, true);
-            }
+            string directory = Path.Combine(
+                Path.GetTempPath(),
+                "societies-headless",
+                testName,
+                Guid.NewGuid().ToString("N"));
 
             Directory.CreateDirectory(directory);
             return directory;
+        }
+
+        private void Test_RunOutputDirectory_IsolatedPerInvocation()
+        {
+            try
+            {
+                string firstDirectory = CreateRunOutputDirectory(nameof(Test_RunOutputDirectory_IsolatedPerInvocation));
+                string sentinelPath = Path.Combine(firstDirectory, "sentinel.txt");
+                File.WriteAllText(sentinelPath, "preserve existing test artifacts");
+
+                string secondDirectory = CreateRunOutputDirectory(nameof(Test_RunOutputDirectory_IsolatedPerInvocation));
+
+                Assert(firstDirectory != secondDirectory, "Each headless test invocation must receive an isolated output directory");
+                Assert(File.Exists(sentinelPath), "Creating a run output directory must not delete artifacts from another invocation");
+                Pass(nameof(Test_RunOutputDirectory_IsolatedPerInvocation));
+            }
+            catch (Exception ex)
+            {
+                Fail(nameof(Test_RunOutputDirectory_IsolatedPerInvocation), ex);
+            }
         }
 
         private static PrototypeCatalogBundle LoadCatalogBundle()

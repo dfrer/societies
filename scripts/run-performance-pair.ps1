@@ -13,6 +13,8 @@ param(
     [string]$ExtractionPlanningMode = "exact_bounded",
     [ValidateSet("cached_distance_only", "full_materialization_reference")]
     [string]$RouteDistanceMode = "cached_distance_only",
+    [ValidateSet("full_artifacts", "timing_only")]
+    [string]$ArtifactMode = "full_artifacts",
     [string]$ComparisonGroup,
     [int]$TrialIndex = 1,
     [string]$OutputRoot,
@@ -32,6 +34,7 @@ $CacheMode = $CacheMode.ToLowerInvariant()
 $SelectorMode = $SelectorMode.ToLowerInvariant()
 $ExtractionPlanningMode = $ExtractionPlanningMode.ToLowerInvariant()
 $RouteDistanceMode = $RouteDistanceMode.ToLowerInvariant()
+$ArtifactMode = $ArtifactMode.ToLowerInvariant()
 
 $repoRoot = Split-Path -Parent $PSScriptRoot
 Set-Location $repoRoot
@@ -52,7 +55,8 @@ function Resolve-Godot {
 
     $wingetRoot = Join-Path $env:LOCALAPPDATA "Microsoft\WinGet\Packages"
     if (Test-Path -LiteralPath $wingetRoot) {
-        $candidate = Get-ChildItem -LiteralPath $wingetRoot -Recurse -Filter "Godot*_console.exe" -ErrorAction SilentlyContinue |
+        $candidate = Get-ChildItem -LiteralPath $wingetRoot -Recurse -Filter "Godot*.exe" -ErrorAction SilentlyContinue |
+            Where-Object { $_.Name -notlike "*_console.exe" } |
             Sort-Object LastWriteTimeUtc -Descending |
             Select-Object -First 1
 
@@ -76,10 +80,94 @@ function Write-Utf8NoBom {
     [System.IO.File]::WriteAllText($Path, $Content, $encoding)
 }
 
+function ConvertTo-WindowsCommandLineArgument {
+    param([string]$Argument)
+
+    if ($Argument.Length -eq 0) { return '""' }
+    if ($Argument -notmatch '[\s"]') { return $Argument }
+
+    $builder = [System.Text.StringBuilder]::new()
+    [void]$builder.Append('"')
+    $backslashCount = 0
+    for ($index = 0; $index -lt $Argument.Length; $index++) {
+        $character = $Argument[$index]
+        if ($character -eq [char]'\') {
+            $backslashCount++
+            continue
+        }
+
+        if ($character -eq [char]'"') {
+            [void]$builder.Append([string]::new([char]'\', (2 * $backslashCount) + 1))
+            [void]$builder.Append('"')
+            $backslashCount = 0
+            continue
+        }
+
+        if ($backslashCount -gt 0) {
+            [void]$builder.Append([string]::new([char]'\', $backslashCount))
+            $backslashCount = 0
+        }
+        [void]$builder.Append($character)
+    }
+
+    if ($backslashCount -gt 0) {
+        [void]$builder.Append([string]::new([char]'\', 2 * $backslashCount))
+    }
+    [void]$builder.Append('"')
+    return $builder.ToString()
+}
+
+function Invoke-ProcessAndWait {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Executable,
+        [Parameter(Mandatory = $true)]
+        [string[]]$Arguments,
+        [Parameter(Mandatory = $true)]
+        [string]$WorkingDirectory
+    )
+
+    $startInfo = [System.Diagnostics.ProcessStartInfo]::new()
+    $startInfo.FileName = $Executable
+    $startInfo.WorkingDirectory = $WorkingDirectory
+    $startInfo.UseShellExecute = $false
+    # Inherit standard handles so GUI Godot remains render-capable and redirected streams cannot deadlock.
+    $startInfo.RedirectStandardOutput = $false
+    $startInfo.RedirectStandardError = $false
+    if ($null -ne $startInfo.ArgumentList) {
+        foreach ($argument in $Arguments) {
+            [void]$startInfo.ArgumentList.Add($argument)
+        }
+    }
+    else {
+        $startInfo.Arguments = (($Arguments | ForEach-Object { ConvertTo-WindowsCommandLineArgument -Argument $_ }) -join ' ')
+    }
+
+    $process = [System.Diagnostics.Process]::new()
+    $process.StartInfo = $startInfo
+    try {
+        if (-not $process.Start()) {
+            throw "Could not start executable '$Executable'."
+        }
+
+        $process.WaitForExit()
+        return $process.ExitCode
+    }
+    finally {
+        $process.Dispose()
+    }
+}
+
 function Test-NonEmptyText {
     param([object]$Value)
 
     return $null -ne $Value -and -not [string]::IsNullOrWhiteSpace([string]$Value)
+}
+
+function Test-EmptyText {
+    param([object]$Value)
+
+    return $null -eq $Value -or [string]::IsNullOrWhiteSpace([string]$Value)
 }
 
 function Test-Sha256 {
@@ -291,6 +379,7 @@ function Invoke-PerformanceRun {
         "--selector-mode", $SelectorMode,
         "--extraction-planning-mode", $ExtractionPlanningMode,
         "--route-distance-mode", $RouteDistanceMode,
+        "--artifact-mode", $ArtifactMode,
         "--comparison-group", $script:comparisonGroup,
         "--trial-index", $TrialIndex.ToString([System.Globalization.CultureInfo]::InvariantCulture),
         "--metrics", $MetricsMode,
@@ -304,10 +393,19 @@ function Invoke-PerformanceRun {
         "--allow-safety-failure", $allowSafetyText
     )
 
-    & $script:runnerExecutable @runnerArguments
+    if ($script:executionRoute -eq "editor_scene") {
+        $runnerExitCode = Invoke-ProcessAndWait `
+            -Executable $script:runnerExecutable `
+            -Arguments $runnerArguments `
+            -WorkingDirectory $script:repoRoot
+    }
+    else {
+        & $script:runnerExecutable @runnerArguments
+        $runnerExitCode = $LASTEXITCODE
+    }
 
-    if ($LASTEXITCODE -ne 0) {
-        throw "Performance runner '$RunId' exited with code $LASTEXITCODE."
+    if ($runnerExitCode -ne 0) {
+        throw "Performance runner '$RunId' exited with code $runnerExitCode."
     }
 }
 
@@ -343,6 +441,23 @@ if ($releaseRouteRequested) {
     $RequireRelease = $true
 }
 
+if ($ArtifactMode -eq "timing_only" -and -not $ReleaseExport) {
+    throw "ArtifactMode 'timing_only' requires -ReleaseExport so the representative is built and verified from the current clean source. Reused Release runners are not accepted."
+}
+$timingOnlyRepresentativeIdentityValid =
+    $Scenario -eq "empty_stores" -and
+    $Seed -eq 1701 -and
+    $Citizens -eq 12 -and
+    $Ticks -eq 300 -and
+    $WarmupTicks -eq 2 -and
+    $CacheMode -eq "cold" -and
+    $SelectorMode -eq "exact_branch_and_bound" -and
+    $ExtractionPlanningMode -eq "exact_bounded" -and
+    $RouteDistanceMode -eq "cached_distance_only"
+if ($ArtifactMode -eq "timing_only" -and -not $timingOnlyRepresentativeIdentityValid) {
+    throw "ArtifactMode 'timing_only' is restricted to the V3-W2-VIS representative: empty_stores, seed 1701, 12 citizens, 2 preconditioning ticks, 300 measured ticks, cold cache, exact_branch_and_bound selector, exact_bounded extraction, and cached_distance_only routing."
+}
+
 $gitSha = (git rev-parse HEAD).Trim()
 if ($LASTEXITCODE -ne 0) {
     throw "Could not resolve the current git SHA."
@@ -364,7 +479,19 @@ if ($releaseReferenceRequested -and -not $RequireRelease -and -not $AllowDebugRe
 $godot = Resolve-Godot
 $projectPath = Join-Path $repoRoot "src\societies"
 $expectedGodotVersion = "4.6.2"
-$godotVersionLines = @(& $godot --version 2>&1)
+$godotVersionProbe = $godot
+if ([System.Environment]::OSVersion.Platform -eq [System.PlatformID]::Win32NT) {
+    $godotBaseName = [System.IO.Path]::GetFileNameWithoutExtension($godot)
+    if (-not $godotBaseName.EndsWith("_console", [System.StringComparison]::OrdinalIgnoreCase)) {
+        $godotConsoleCandidate = Join-Path `
+            (Split-Path -Parent $godot) `
+            ($godotBaseName + "_console" + [System.IO.Path]::GetExtension($godot))
+        if (Test-Path -LiteralPath $godotConsoleCandidate -PathType Leaf) {
+            $godotVersionProbe = (Resolve-Path -LiteralPath $godotConsoleCandidate).Path
+        }
+    }
+}
+$godotVersionLines = @(& $godotVersionProbe --version 2>&1)
 if ($LASTEXITCODE -ne 0) {
     throw "Could not query the resolved Godot executable version."
 }
@@ -395,7 +522,7 @@ if ($comparisonGroup.Length -gt 96 -or
     throw "ComparisonGroup may contain only letters, digits, '.', '_' and '-' and may not contain '..' or exceed 96 characters."
 }
 $nonce = [Guid]::NewGuid().ToString("N").Substring(0, 8)
-$runDescriptor = "$timestamp-$safeScenario-seed$Seed-c$Citizens-t$Ticks-w$WarmupTicks-m$CacheMode-r$TrialIndex-$nonce"
+$runDescriptor = "$timestamp-$safeScenario-seed$Seed-c$Citizens-t$Ticks-w$WarmupTicks-m$CacheMode-a$ArtifactMode-r$TrialIndex-$nonce"
 if (-not $OutputRoot) {
     $OutputRoot = Join-Path $repoRoot "artifacts\performance\$runDescriptor"
 }
@@ -410,13 +537,12 @@ if ($ReleaseExport) {
     [System.IO.Directory]::CreateDirectory($releaseDirectory) | Out-Null
     $releaseExecutable = Join-Path $releaseDirectory "SocietiesPerformance.exe"
 
-    & $godot `
-        --headless `
-        --path $projectPath `
-        --export-release $ExportPreset `
-        $releaseExecutable
-    if ($LASTEXITCODE -ne 0) {
-        throw "Godot Release export exited with code $LASTEXITCODE."
+    $exportExitCode = Invoke-ProcessAndWait `
+        -Executable $godot `
+        -Arguments @("--headless", "--path", $projectPath, "--export-release", $ExportPreset, $releaseExecutable) `
+        -WorkingDirectory $repoRoot
+    if ($exportExitCode -ne 0) {
+        throw "Godot Release export exited with code $exportExitCode."
     }
 
     $consoleWrapper = Join-Path $releaseDirectory "SocietiesPerformance.console.exe"
@@ -444,9 +570,12 @@ elseif (-not [string]::IsNullOrWhiteSpace($ExistingReleaseRunner)) {
 }
 else {
     if (-not $SkipBuild) {
-        & $godot --headless --path $projectPath --build-solutions --quit
-        if ($LASTEXITCODE -ne 0) {
-            throw "Godot solution build exited with code $LASTEXITCODE."
+        $buildExitCode = Invoke-ProcessAndWait `
+            -Executable $godot `
+            -Arguments @("--headless", "--path", $projectPath, "--build-solutions", "--quit") `
+            -WorkingDirectory $repoRoot
+        if ($buildExitCode -ne 0) {
+            throw "Godot solution build exited with code $buildExitCode."
         }
     }
 
@@ -497,6 +626,7 @@ $configurationMatches =
     $offResult.configuration.selectorMode -eq $onResult.configuration.selectorMode -and
     $offResult.configuration.extractionPlanningMode -eq $onResult.configuration.extractionPlanningMode -and
     $offResult.configuration.routeDistanceMode -eq $onResult.configuration.routeDistanceMode -and
+    $offResult.configuration.artifactMode -eq $onResult.configuration.artifactMode -and
     $offResult.configuration.comparisonGroup -eq $onResult.configuration.comparisonGroup -and
     $offResult.configuration.trialIndex -eq $onResult.configuration.trialIndex -and
     $offResult.configuration.executionRoute -eq $onResult.configuration.executionRoute -and
@@ -512,6 +642,7 @@ $commandConfigurationMatches =
     $offResult.configuration.selectorMode -eq $SelectorMode -and
     $offResult.configuration.extractionPlanningMode -eq $ExtractionPlanningMode -and
     $offResult.configuration.routeDistanceMode -eq $RouteDistanceMode -and
+    $offResult.configuration.artifactMode -eq $ArtifactMode -and
     $offResult.configuration.comparisonGroup -eq $comparisonGroup -and
     $offResult.configuration.trialIndex -eq $TrialIndex -and
     $offResult.configuration.executionRoute -eq $executionRoute -and
@@ -521,6 +652,9 @@ $modeContractValid =
     $offResult.configuration.metricsEnabled -eq $false -and
     $onResult.configuration.metricsEnabled -eq $true -and
     $offResult.configuration.measurementMode -eq "one_manual_step_per_external_sample" -and
+    $offResult.configuration.artifactMode -eq $ArtifactMode -and
+    $onResult.configuration.artifactMode -eq $ArtifactMode -and
+    ($ArtifactMode -eq "full_artifacts" -or $timingOnlyRepresentativeIdentityValid) -and
     $offResult.configuration.cacheWarmupEnabled -eq $false -and
     $onResult.configuration.cacheWarmupEnabled -eq $false
 $routeDistanceEvidenceValid =
@@ -706,19 +840,53 @@ $tickBoundsMatch =
     $offResult.finalSimulationTick -eq $onResult.finalSimulationTick -and
     $offResult.measuredStartSimulationTick -eq $expectedStartTick -and
     $offResult.finalSimulationTick -eq $expectedFinalTick
-$hashesValid =
+$fullArtifactMode = $ArtifactMode -eq "full_artifacts"
+$timingOnlyUnavailableReasonMatches =
+    -not $fullArtifactMode -and
+    (Test-NonEmptyText $offResult.hashes.unavailableReason) -and
+    $offResult.hashes.unavailableReason -eq $onResult.hashes.unavailableReason
+$hashesValid = if ($fullArtifactMode) {
+    $offResult.hashes.available -eq $true -and
+    $onResult.hashes.available -eq $true -and
+    (Test-EmptyText $offResult.hashes.unavailableReason) -and
+    (Test-EmptyText $onResult.hashes.unavailableReason) -and
     (Test-Sha256 $offResult.hashes.snapshotSha256) -and
     (Test-Sha256 $onResult.hashes.snapshotSha256) -and
     (Test-Sha256 $offResult.hashes.eventLogSha256) -and
     (Test-Sha256 $onResult.hashes.eventLogSha256) -and
     (Test-Sha256 $offResult.hashes.deterministicStateAndEventSha256) -and
     (Test-Sha256 $onResult.hashes.deterministicStateAndEventSha256)
-$snapshotHashMatches = $hashesValid -and $offResult.hashes.snapshotSha256 -eq $onResult.hashes.snapshotSha256
-$eventLogHashMatches = $hashesValid -and $offResult.hashes.eventLogSha256 -eq $onResult.hashes.eventLogSha256
+}
+else {
+    $offResult.hashes.available -eq $false -and
+    $onResult.hashes.available -eq $false -and
+    $timingOnlyUnavailableReasonMatches -and
+    (Test-EmptyText $offResult.hashes.snapshotSha256) -and
+    (Test-EmptyText $onResult.hashes.snapshotSha256) -and
+    (Test-EmptyText $offResult.hashes.eventLogSha256) -and
+    (Test-EmptyText $onResult.hashes.eventLogSha256) -and
+    (Test-EmptyText $offResult.hashes.deterministicStateAndEventSha256) -and
+    (Test-EmptyText $onResult.hashes.deterministicStateAndEventSha256)
+}
+$snapshotHashMatches =
+    $fullArtifactMode -and
+    $hashesValid -and
+    $offResult.hashes.snapshotSha256 -eq $onResult.hashes.snapshotSha256
+$eventLogHashMatches =
+    $fullArtifactMode -and
+    $hashesValid -and
+    $offResult.hashes.eventLogSha256 -eq $onResult.hashes.eventLogSha256
 $combinedHashMatches =
+    $fullArtifactMode -and
     $hashesValid -and
     $offResult.hashes.deterministicStateAndEventSha256 -eq
     $onResult.hashes.deterministicStateAndEventSha256
+$deterministicArtifactEquivalenceAvailable = $fullArtifactMode
+$deterministicArtifactEquivalenceProven =
+    $fullArtifactMode -and
+    $snapshotHashMatches -and
+    $eventLogHashMatches -and
+    $combinedHashMatches
 $resultStatusesValid =
     @("characterization_complete", "pass", "target_missed", "safety_failure_allowed") -contains $offResult.status -and
     $onResult.status -eq "diagnostic_complete"
@@ -750,17 +918,98 @@ else {
     $onResult.diagnostics.navigationInvalidations -eq 1 -and
     $onResult.diagnostics.phases.navigationRebuildMilliseconds -gt 0
 }
+$reportArtifactContractValid = $true
+foreach ($result in @($offResult, $onResult)) {
+    foreach ($propertyName in @(
+        "performanceResults",
+        "performanceMatrix",
+        "performanceSummary",
+        "validationManifest")) {
+        $path = $result.artifacts.$propertyName
+        if (-not (Test-NonEmptyText $path) -or
+            -not (Test-Path -LiteralPath ([string]$path) -PathType Leaf)) {
+            $reportArtifactContractValid = $false
+        }
+    }
+}
+
+$persistenceArtifactContractValid = $true
+$persistenceArtifactNames = @(
+    "snapshot",
+    "eventLog",
+    "runSummary",
+    "worldSummary",
+    "deterministicMetricsCsv")
+if ($fullArtifactMode) {
+    foreach ($result in @($offResult, $onResult)) {
+        if ($result.artifacts.persistenceArtifactsAvailable -ne $true -or
+            -not (Test-EmptyText $result.artifacts.persistenceArtifactsUnavailableReason)) {
+            $persistenceArtifactContractValid = $false
+        }
+        foreach ($propertyName in $persistenceArtifactNames) {
+            $path = $result.artifacts.$propertyName
+            if (-not (Test-NonEmptyText $path) -or
+                -not (Test-Path -LiteralPath ([string]$path) -PathType Leaf)) {
+                $persistenceArtifactContractValid = $false
+            }
+        }
+    }
+}
+else {
+    foreach ($result in @($offResult, $onResult)) {
+        if ($result.artifacts.persistenceArtifactsAvailable -ne $false -or
+            -not (Test-NonEmptyText $result.artifacts.persistenceArtifactsUnavailableReason) -or
+            $result.artifacts.persistenceArtifactsUnavailableReason -ne $offResult.hashes.unavailableReason) {
+            $persistenceArtifactContractValid = $false
+        }
+        foreach ($propertyName in $persistenceArtifactNames) {
+            if (-not (Test-EmptyText $result.artifacts.$propertyName)) {
+                $persistenceArtifactContractValid = $false
+            }
+        }
+    }
+    foreach ($directory in @($offDirectory, $onDirectory)) {
+        foreach ($fileName in @(
+            "snapshot-v2.json",
+            "event-log-v2.json",
+            "run-summary-v2.json",
+            "world-summary-v2.json",
+            "metrics-timeseries-v2.csv")) {
+            if (Test-Path -LiteralPath (Join-Path $directory $fileName)) {
+                $persistenceArtifactContractValid = $false
+            }
+        }
+    }
+}
 $artifactContractValid =
     $offRuntimeMetricsAbsent -and
+    -not (Test-Path -LiteralPath (Join-Path $offDirectory "runtime-batch-metrics-v4.csv")) -and
     $onRuntimeMetricsValid -and
-    (Test-NonEmptyText $offResult.artifacts.snapshot) -and
-    (Test-NonEmptyText $onResult.artifacts.snapshot) -and
-    (Test-NonEmptyText $offResult.artifacts.eventLog) -and
-    (Test-NonEmptyText $onResult.artifacts.eventLog) -and
-    (Test-Path -LiteralPath ([string]$offResult.artifacts.snapshot) -PathType Leaf) -and
-    (Test-Path -LiteralPath ([string]$onResult.artifacts.snapshot) -PathType Leaf) -and
-    (Test-Path -LiteralPath ([string]$offResult.artifacts.eventLog) -PathType Leaf) -and
-    (Test-Path -LiteralPath ([string]$onResult.artifacts.eventLog) -PathType Leaf)
+    $reportArtifactContractValid -and
+    $persistenceArtifactContractValid
+
+$v3W2VisRepresentativeP95ThresholdMilliseconds = 50.0
+$v3W2VisRepresentativeMaximumThresholdMilliseconds = 250.0
+$v3W2VisRepresentativeAssessmentApplied =
+    -not $fullArtifactMode -and
+    $timingOnlyRepresentativeIdentityValid -and
+    $releaseEnvironmentValid
+$v3W2VisRepresentativeP95Milliseconds = [double]$offResult.externalTickStatistics.p95Milliseconds
+$v3W2VisRepresentativeMaximumMilliseconds = [double]$offResult.externalTickStatistics.maximumMilliseconds
+$v3W2VisRepresentativeP95Passed =
+    $v3W2VisRepresentativeAssessmentApplied -and
+    $v3W2VisRepresentativeP95Milliseconds -le $v3W2VisRepresentativeP95ThresholdMilliseconds
+$v3W2VisRepresentativeMaximumPassed =
+    $v3W2VisRepresentativeAssessmentApplied -and
+    $v3W2VisRepresentativeMaximumMilliseconds -le $v3W2VisRepresentativeMaximumThresholdMilliseconds
+$v3W2VisRepresentativePassed =
+    $v3W2VisRepresentativeAssessmentApplied -and
+    $v3W2VisRepresentativeP95Passed -and
+    $v3W2VisRepresentativeMaximumPassed
+$v3W2VisRepresentativeThresholdContractValid =
+    $fullArtifactMode -or
+    ($v3W2VisRepresentativeAssessmentApplied -and
+        ($v3W2VisRepresentativePassed -or [bool]$AllowPrimarySafetyFailure))
 $offMatrixPath = Join-Path $offDirectory "perf-matrix.csv"
 $onMatrixPath = Join-Path $onDirectory "perf-matrix.csv"
 $offMatrix = if (Test-Path -LiteralPath $offMatrixPath -PathType Leaf) {
@@ -775,10 +1024,41 @@ $onMatrix = if (Test-Path -LiteralPath $onMatrixPath -PathType Leaf) {
 else {
     @()
 }
+$requiredMatrixArtifactColumns = @(
+    "artifact_mode",
+    "persistence_artifacts_available",
+    "persistence_artifacts_unavailable_reason",
+    "deterministic_hashes_available",
+    "deterministic_hashes_unavailable_reason")
+$matrixHeaderColumns = if ($offMatrix.Count -gt 0) { @($offMatrix[0].Split(',')) } else { @() }
 $matrixSchemaValid =
     $offMatrix.Count -eq 2 -and
     $onMatrix.Count -eq 2 -and
-    $offMatrix[0] -eq $onMatrix[0]
+    $offMatrix[0] -eq $onMatrix[0] -and
+    @($requiredMatrixArtifactColumns | Where-Object { $_ -notin $matrixHeaderColumns }).Count -eq 0
+$offMatrixRecords = @(if ($matrixSchemaValid) { Import-Csv -LiteralPath $offMatrixPath })
+$onMatrixRecords = @(if ($matrixSchemaValid) { Import-Csv -LiteralPath $onMatrixPath })
+$matrixArtifactMetadataValid =
+    $offMatrixRecords.Count -eq 1 -and
+    $onMatrixRecords.Count -eq 1
+if ($matrixArtifactMetadataValid) {
+    foreach ($entry in @(
+        @{ Matrix = $offMatrixRecords[0]; Result = $offResult },
+        @{ Matrix = $onMatrixRecords[0]; Result = $onResult })) {
+        $matrixRecord = $entry.Matrix
+        $result = $entry.Result
+        if ($matrixRecord.artifact_mode -ne $result.configuration.artifactMode -or
+            $matrixRecord.persistence_artifacts_available -ne $result.artifacts.persistenceArtifactsAvailable.ToString().ToLowerInvariant() -or
+            $matrixRecord.persistence_artifacts_unavailable_reason -ne $result.artifacts.persistenceArtifactsUnavailableReason -or
+            $matrixRecord.deterministic_hashes_available -ne $result.hashes.available.ToString().ToLowerInvariant() -or
+            $matrixRecord.deterministic_hashes_unavailable_reason -ne $result.hashes.unavailableReason) {
+            $matrixArtifactMetadataValid = $false
+        }
+    }
+}
+$hashComparisonContractValid =
+    -not $fullArtifactMode -or
+    $deterministicArtifactEquivalenceProven
 $equivalent =
     $schemaValid -and
     $configurationMatches -and
@@ -796,20 +1076,40 @@ $equivalent =
     $processExecutableMatches -and
     $tickBoundsMatch -and
     $hashesValid -and
-    $snapshotHashMatches -and
-    $eventLogHashMatches -and
-    $combinedHashMatches -and
+    $hashComparisonContractValid -and
     $resultStatusesValid -and
     $artifactContractValid -and
+    $v3W2VisRepresentativeThresholdContractValid -and
     $matrixSchemaValid -and
+    $matrixArtifactMetadataValid -and
     (-not $RequireRelease -or $releaseEnvironmentValid)
+
+$pairStatus = if (-not $equivalent) {
+    "fail"
+}
+elseif (-not $fullArtifactMode -and -not $v3W2VisRepresentativePassed) {
+    if ($gitDirty) { "timing_only_representative_threshold_failure_allowed_dirty_source" } else { "timing_only_representative_threshold_failure_allowed" }
+}
+elseif (-not $fullArtifactMode) {
+    if ($gitDirty) { "timing_only_complete_dirty_source" } else { "timing_only_complete" }
+}
+elseif ($gitDirty) {
+    "pass_dirty_source"
+}
+else {
+    "pass"
+}
+$contractStatus = if (-not $equivalent) { "fail" } elseif ($gitDirty) { "pass_dirty_source" } else { "pass" }
 
 $equivalence = [ordered]@{
     schemaVersion = 6
     capturedUtc = [DateTime]::UtcNow.ToString("o")
-    status = if (-not $equivalent) { "fail" } elseif ($gitDirty) { "pass_dirty_source" } else { "pass" }
-    contractStatus = if (-not $equivalent) { "fail" } elseif ($gitDirty) { "pass_dirty_source" } else { "pass" }
-    budgetStatus = if ($offResult.budget.safetyPassed -eq $false) {
+    status = $pairStatus
+    contractStatus = $contractStatus
+    budgetStatus = if (-not $fullArtifactMode) {
+        "not_applicable_characterization_profile"
+    }
+    elseif ($offResult.budget.safetyPassed -eq $false) {
         "safety_failure"
     }
     elseif ($offResult.budget.targetPassed -eq $false) {
@@ -835,10 +1135,53 @@ $equivalence = [ordered]@{
     executionRoute = $executionRoute
     runnerExecutable = $runnerExecutable
     releaseEnvironmentValid = $releaseEnvironmentValid
+    artifactMode = $ArtifactMode
+    persistenceArtifactsAvailable = $fullArtifactMode
+    deterministicArtifactEquivalenceAvailable = $deterministicArtifactEquivalenceAvailable
+    deterministicArtifactEquivalenceProven = $deterministicArtifactEquivalenceProven
+    deterministicArtifactEquivalenceStatus = if (-not $deterministicArtifactEquivalenceAvailable) {
+        "unavailable"
+    }
+    elseif ($deterministicArtifactEquivalenceProven) {
+        "pass"
+    }
+    else {
+        "fail"
+    }
+    deterministicArtifactEquivalenceUnavailableReason = if ($deterministicArtifactEquivalenceAvailable) {
+        $null
+    }
+    else {
+        $offResult.hashes.unavailableReason
+    }
+    v3W2VisRepresentativeSafety = [ordered]@{
+        status = if (-not $v3W2VisRepresentativeAssessmentApplied) {
+            "not_applied"
+        }
+        elseif ($v3W2VisRepresentativePassed) {
+            "pass"
+        }
+        else {
+            "fail"
+        }
+        applied = $v3W2VisRepresentativeAssessmentApplied
+        source = "metrics_off_external_tick_statistics"
+        thresholdOrigin = "w1_03_numeric_safety_limits"
+        canonicalW1_03Gate = $false
+        p95Milliseconds = $v3W2VisRepresentativeP95Milliseconds
+        p95ThresholdMilliseconds = $v3W2VisRepresentativeP95ThresholdMilliseconds
+        p95Passed = $v3W2VisRepresentativeP95Passed
+        maximumMilliseconds = $v3W2VisRepresentativeMaximumMilliseconds
+        maximumThresholdMilliseconds = $v3W2VisRepresentativeMaximumThresholdMilliseconds
+        maximumPassed = $v3W2VisRepresentativeMaximumPassed
+        passed = $v3W2VisRepresentativePassed
+        failureAllowed = [bool]$AllowPrimarySafetyFailure
+    }
     resultSchemaValid = $schemaValid
     configurationMatches = $configurationMatches
     commandConfigurationMatches = $commandConfigurationMatches
     modeContractValid = $modeContractValid
+    timingOnlyRepresentativeIdentityValid = $timingOnlyRepresentativeIdentityValid
     routeDistanceEvidenceValid = $routeDistanceEvidenceValid
     routeDistanceManifestValid = $routeDistanceManifestValid
     metricsOffMeasuredCachedRouteDistanceFastPathHits = $offResult.measuredCachedRouteDistanceFastPathHits
@@ -864,12 +1207,17 @@ $equivalence = [ordered]@{
     processExecutableMatches = $processExecutableMatches
     tickBoundsMatch = $tickBoundsMatch
     hashesValid = $hashesValid
+    hashComparisonContractValid = $hashComparisonContractValid
     snapshotHashMatches = $snapshotHashMatches
     eventLogHashMatches = $eventLogHashMatches
     combinedHashMatches = $combinedHashMatches
     resultStatusesValid = $resultStatusesValid
     artifactContractValid = $artifactContractValid
+    reportArtifactContractValid = $reportArtifactContractValid
+    persistenceArtifactContractValid = $persistenceArtifactContractValid
+    v3W2VisRepresentativeThresholdContractValid = $v3W2VisRepresentativeThresholdContractValid
     matrixSchemaValid = $matrixSchemaValid
+    matrixArtifactMetadataValid = $matrixArtifactMetadataValid
     metricsOffRuntimeMetricsAbsent = $offRuntimeMetricsAbsent
     metricsOnRuntimeMetricsValid = $onRuntimeMetricsValid
     cacheMode = $CacheMode
@@ -893,11 +1241,24 @@ if ($matrixSchemaValid) {
     Write-Utf8NoBom -Path $aggregateMatrixPath -Content (($offMatrix[0], $offMatrix[1], $onMatrix[1]) -join [System.Environment]::NewLine)
 }
 
+$pairTitle = if ($fullArtifactMode) { "Societies metrics equivalence pair" } else { "Societies timing-only metrics pair" }
+$deterministicEvidenceLine = if ($deterministicArtifactEquivalenceAvailable) {
+    "Deterministic state+event hash: $($offResult.hashes.deterministicStateAndEventSha256)"
+}
+else {
+    "Deterministic artifact equivalence: unavailable ($($offResult.hashes.unavailableReason))"
+}
+$safetyEvidenceLine = if ($v3W2VisRepresentativeAssessmentApplied) {
+    "V3-W2-VIS representative thresholds (W1-03 numeric limits, not canonical W1-03 gate): p95 $v3W2VisRepresentativeP95Milliseconds/$v3W2VisRepresentativeP95ThresholdMilliseconds ms; maximum $v3W2VisRepresentativeMaximumMilliseconds/$v3W2VisRepresentativeMaximumThresholdMilliseconds ms; passed: $v3W2VisRepresentativePassed"
+}
+else {
+    "V3-W2-VIS representative thresholds: not applied"
+}
 $summaryLines = @(
-    "Societies metrics equivalence pair",
+    $pairTitle,
     "Status: $($equivalence.status)",
     "Scenario: $Scenario; seed: $Seed; citizens: $Citizens; warmup ticks: $WarmupTicks; measured ticks: $Ticks",
-    "Cache mode: $CacheMode; selector mode: $SelectorMode; extraction planning mode: $ExtractionPlanningMode; route-distance mode: $RouteDistanceMode; comparison group: $comparisonGroup; trial: $TrialIndex",
+    "Cache mode: $CacheMode; selector mode: $SelectorMode; extraction planning mode: $ExtractionPlanningMode; route-distance mode: $RouteDistanceMode; artifact mode: $ArtifactMode; comparison group: $comparisonGroup; trial: $TrialIndex",
     "Cache transition contract: $cacheTransitionContractValid; cache diagnostics contract: $cacheDiagnosticsContractValid",
     "Godot: expected $expectedGodotVersion; editor $resolvedGodotVersion; run $offRunGodotVersion",
     "Managed build: $($offResult.environment.managedBuildConfiguration)",
@@ -906,7 +1267,8 @@ $summaryLines = @(
     "Execution route: $executionRoute; verified release: $($offResult.environment.verifiedReleaseExecution)",
     "Metrics-off p95: $($offResult.externalTickStatistics.p95Milliseconds) ms",
     "Metrics-on p95: $($onResult.externalTickStatistics.p95Milliseconds) ms",
-    "Deterministic state+event hash: $($offResult.hashes.deterministicStateAndEventSha256)",
+    $safetyEvidenceLine,
+    $deterministicEvidenceLine,
     "Output: $OutputRoot"
 )
 Write-Utf8NoBom -Path (Join-Path $OutputRoot "pair-summary.txt") -Content ($summaryLines -join [System.Environment]::NewLine)
@@ -929,13 +1291,13 @@ if (-not $equivalent) {
     if (-not $godotVersionValid) { $failedChecks += "godot_version" }
     if (-not $processExecutableMatches) { $failedChecks += "process_executable" }
     if (-not $tickBoundsMatch) { $failedChecks += "tick_bounds" }
-    if (-not $hashesValid) { $failedChecks += "hash_format" }
-    if (-not $snapshotHashMatches) { $failedChecks += "snapshot_hash" }
-    if (-not $eventLogHashMatches) { $failedChecks += "event_log_hash" }
-    if (-not $combinedHashMatches) { $failedChecks += "combined_hash" }
+    if (-not $hashesValid) { $failedChecks += "hash_availability_contract" }
+    if (-not $hashComparisonContractValid) { $failedChecks += "deterministic_artifact_equivalence" }
     if (-not $resultStatusesValid) { $failedChecks += "result_status" }
     if (-not $artifactContractValid) { $failedChecks += "artifact_contract" }
+    if (-not $v3W2VisRepresentativeThresholdContractValid) { $failedChecks += "v3_w2_vis_representative_thresholds" }
     if (-not $matrixSchemaValid) { $failedChecks += "matrix_schema" }
+    if (-not $matrixArtifactMetadataValid) { $failedChecks += "matrix_artifact_metadata" }
     if ($RequireRelease -and -not $releaseEnvironmentValid) { $failedChecks += "release_environment" }
     throw "Performance pair contract validation failed: $($failedChecks -join ', ')."
 }

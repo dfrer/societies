@@ -192,6 +192,19 @@ namespace Societies.Core
             HarvestRequested?.Invoke(_focusedResource.SiteId, 1);
         }
 
+        public bool ApplyCaptureCameraPose(Vector3 cameraPosition, Vector3 lookAt, float fieldOfView)
+        {
+            if (_camera == null)
+            {
+                return false;
+            }
+
+            _camera.GlobalPosition = cameraPosition;
+            _camera.LookAt(lookAt, Vector3.Up);
+            _camera.Fov = fieldOfView;
+            return true;
+        }
+
         public void ProcessInteractionInput(ulong inputFrame)
         {
             if (_focusedResource != null)

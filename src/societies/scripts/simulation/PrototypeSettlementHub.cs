@@ -14,6 +14,8 @@ namespace Societies.Simulation
         private readonly Dictionary<string, Node3D> _structureMarkers = new();
         private MeshInstance3D? _hearthFlame;
         private OmniLight3D? _hearthLight;
+        private MeshInstance3D? _contributionBeacon;
+        private Node3D? _contributionRoot;
         private Label3D? _label;
         private Node3D? _stockpileRoot;
         private Node3D? _woodYardRoot;
@@ -27,6 +29,8 @@ namespace Societies.Simulation
 
         public bool IsCampfireLit => IsHearthLit;
 
+        public double AnimationPhase => _animationTime;
+
         public override void _Ready()
         {
             BuildVisuals();
@@ -35,7 +39,24 @@ namespace Societies.Simulation
         public override void _Process(double delta)
         {
             _animationTime += delta;
+            ApplyAnimationState();
+        }
 
+        /// <summary>Applies one fixed presentation-only phase and stops time-dependent hub animation for capture.</summary>
+        public void SetVisualCaptureAnimationPhase(double phase)
+        {
+            if (!double.IsFinite(phase))
+            {
+                throw new System.ArgumentOutOfRangeException(nameof(phase), "Capture animation phase must be finite.");
+            }
+
+            _animationTime = phase;
+            ApplyAnimationState();
+            SetProcess(false);
+        }
+
+        private void ApplyAnimationState()
+        {
             if (_hearthFlame?.Visible == true)
             {
                 float pulse = 0.9f + Mathf.Sin((float)_animationTime * 5.6f) * 0.08f;
@@ -71,7 +92,9 @@ namespace Societies.Simulation
             string buildQueueStatusText,
             int mealCoveragePercent,
             int bedCoveragePercent,
-            int hearthFuel)
+            int hearthFuel,
+            PrototypeSettlementDirective directive = PrototypeSettlementDirective.Neutral,
+            PrototypeCrisisState? crisis = null)
         {
             int stockpileTotal = stockpile.Values.Sum();
             for (int i = 0; i < _stockpileCrates.Count; i++)
@@ -109,14 +132,27 @@ namespace Societies.Simulation
                               $"State: {classification}\n" +
                               $"Citizens: {activeCitizens}/{citizens.Count} active\n" +
                               $"Meals {mealCoveragePercent}%  Beds {bedCoveragePercent}%  Hearth {hearthFuel}\n" +
+                              $"Directive: {PrototypeSettlementDirectiveCatalog.GetDisplayName(directive)}  Crisis: {GetCrisisText(crisis)}\n" +
                               $"{buildQueueStatusText}\n" +
                               $"Stockpile: {stockpileSummary}";
+            }
+
+            if (_contributionBeacon?.MaterialOverride is StandardMaterial3D beaconMaterial)
+            {
+                Color stateColor = crisis?.Outcome switch
+                {
+                    PrototypeCrisisOutcome.Stable => new Color(0.30f, 0.83f, 0.49f),
+                    PrototypeCrisisOutcome.Collapsed => new Color(0.91f, 0.25f, 0.22f),
+                    _ => new Color(0.26f, 0.72f, 0.91f)
+                };
+                beaconMaterial.AlbedoColor = stateColor;
+                beaconMaterial.Emission = stateColor;
             }
         }
 
         public void ApplyTerrainProfile(TerrainGenerator terrain, Vector3 settlementAnchorPosition)
         {
-            if (_stockpileRoot == null || _woodYardRoot == null || _hearthRoot == null)
+            if (_stockpileRoot == null || _woodYardRoot == null || _hearthRoot == null || _contributionRoot == null)
             {
                 return;
             }
@@ -129,6 +165,7 @@ namespace Societies.Simulation
                 stockpileWorld.X - settlementAnchorPosition.X,
                 terrain.SampleHeight(stockpileWorld) - settlementAnchorPosition.Y,
                 stockpileWorld.Z - settlementAnchorPosition.Z);
+            _contributionRoot.Position = _stockpileRoot.Position;
             _woodYardRoot.Position = new Vector3(
                 workbenchWorld.X - settlementAnchorPosition.X,
                 terrain.SampleHeight(workbenchWorld) - settlementAnchorPosition.Y,
@@ -156,6 +193,7 @@ namespace Societies.Simulation
             AddChild(_structureRoot);
 
             BuildStockpileVisual();
+            BuildContributionPointVisual();
             BuildWoodYardVisual();
             BuildHearthVisual();
 
@@ -170,6 +208,42 @@ namespace Societies.Simulation
             };
             AddChild(_label);
         }
+
+        private void BuildContributionPointVisual()
+        {
+            _contributionRoot = new Node3D { Name = "ContributionPoint", Position = PrototypeSettlementLayout.GetStockpileWorldPosition(Vector3.Zero) };
+            AddChild(_contributionRoot);
+            _contributionBeacon = CreateMesh(
+                new CylinderMesh { TopRadius = 1.25f, BottomRadius = 1.25f, Height = 0.08f },
+                new Color(0.26f, 0.72f, 0.91f),
+                new Vector3(0.0f, 0.05f, 0.0f));
+            _contributionBeacon.Name = "ContributionRing";
+            _contributionBeacon.MaterialOverride = new StandardMaterial3D
+            {
+                AlbedoColor = new Color(0.26f, 0.72f, 0.91f),
+                EmissionEnabled = true,
+                Emission = new Color(0.26f, 0.72f, 0.91f),
+                EmissionEnergyMultiplier = 0.75f
+            };
+            _contributionRoot.AddChild(_contributionBeacon);
+            _contributionRoot.AddChild(new Label3D
+            {
+                Name = "ContributionLabel",
+                Billboard = BaseMaterial3D.BillboardModeEnum.Enabled,
+                Position = new Vector3(0.0f, 1.15f, 0.0f),
+                Text = "CENTRAL DEPOT\nCONTRIBUTE HERE",
+                FontSize = 18,
+                Modulate = new Color(0.80f, 0.95f, 1.0f)
+            });
+        }
+
+        private static string GetCrisisText(PrototypeCrisisState? crisis) => crisis?.Outcome switch
+        {
+            PrototypeCrisisOutcome.Stable => "STABLE",
+            PrototypeCrisisOutcome.Collapsed => "COLLAPSED",
+            PrototypeCrisisOutcome.Active => "ACTIVE",
+            _ => "NONE"
+        };
 
         private void BuildStockpileVisual()
         {
