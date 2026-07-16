@@ -104,7 +104,7 @@
   },
   "statusReconciliation": {
     "w2VisComplete": true,
-    "w2VisReason": "Complete only by explicit one-time user-authorized waiver; timing-only representative p95 remains above safety and persistence/hash equivalence is unavailable.",
+    "w2VisReason": "Complete only by explicit two-exception user-authorized waiver: timing-only representative p95 remains above safety (55.4529 ms vs 50 ms), max passes (142.9547 ms vs 250 ms), persistence/hash equivalence is unavailable, and Windows Forward+ PNG CanvasLayer clipping makes visual acceptance waived_not_passed.",
     "nextContractedSlice": "V3-W2-05 (inactive/not implemented)",
     "weeks3To4": "Draft/Conditional and inactive until W2-06 records Continue V3"
   }
