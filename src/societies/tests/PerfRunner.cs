@@ -1424,7 +1424,7 @@ namespace Societies.Tests
             return value;
         }
 
-        private static string RequireSafeRunId(string value)
+        internal static string RequireSafeRunId(string value)
         {
             return RequireSafeIdentifier(value, "run id", 96);
         }

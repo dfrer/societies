@@ -26,7 +26,9 @@ param(
     [switch]$AllowPrimarySafetyFailure,
     [switch]$AllowDirtySource,
     [switch]$AllowDebugReference,
-    [switch]$RequireRelease
+    [switch]$RequireRelease,
+    [string]$RunIdContractDescriptor,
+    [string]$RunIdContractOutputRoot
 )
 
 $ErrorActionPreference = "Stop"
@@ -180,6 +182,129 @@ function Test-GitObjectId {
     param([object]$Value)
 
     return (Test-NonEmptyText $Value) -and ([string]$Value -match '^(?:[0-9a-fA-F]{40}|[0-9a-fA-F]{64})$')
+}
+
+function New-PerformanceRunnerRunId {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$RunDescriptor,
+        [Parameter(Mandatory = $true)]
+        [ValidateSet("off", "on")]
+        [string]$MetricsMode
+    )
+
+    # The descriptor remains the human-readable provenance key. The runner ID is
+    # a bounded, deterministic fingerprint because it is also used in artifact names.
+    $descriptorBytes = [System.Text.Encoding]::UTF8.GetBytes($RunDescriptor)
+    $sha256 = [System.Security.Cryptography.SHA256]::Create()
+    try {
+        $fingerprint = ([System.BitConverter]::ToString($sha256.ComputeHash($descriptorBytes))).Replace("-", "").ToLowerInvariant()
+    }
+    finally {
+        $sha256.Dispose()
+    }
+
+    return "perf-$($fingerprint.Substring(0, 24))-$MetricsMode"
+}
+
+function New-PerformanceRunIdentityArtifact {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$RunDescriptor,
+        [Parameter(Mandatory = $true)]
+        [string]$OffRunId,
+        [Parameter(Mandatory = $true)]
+        [string]$OnRunId,
+        [Parameter(Mandatory = $true)]
+        [object]$Source,
+        [Parameter(Mandatory = $true)]
+        [object]$Configuration
+    )
+
+    return [ordered]@{
+        schemaVersion = 1
+        capturedUtc = [DateTime]::UtcNow.ToString("o")
+        descriptor = $RunDescriptor
+        offRunId = $OffRunId
+        onRunId = $OnRunId
+        algorithm = "sha256_96bit_descriptor_fingerprint"
+        source = $Source
+        configuration = $Configuration
+    }
+}
+
+function Write-PerformanceRunIdentityArtifact {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$OutputRoot,
+        [Parameter(Mandatory = $true)]
+        [object]$Identity
+    )
+
+    $identityPath = Join-Path $OutputRoot "run-identity.json"
+    Write-Utf8NoBom -Path $identityPath -Content ($Identity | ConvertTo-Json -Depth 8)
+    $writtenIdentity = Get-Content -Raw -LiteralPath $identityPath | ConvertFrom-Json
+    if ($writtenIdentity.schemaVersion -ne 1 -or
+        [string]::IsNullOrWhiteSpace([string]$writtenIdentity.descriptor) -or
+        $writtenIdentity.algorithm -ne "sha256_96bit_descriptor_fingerprint" -or
+        $writtenIdentity.offRunId -eq $writtenIdentity.onRunId) {
+        throw "Run identity artifact did not satisfy its schema-v1 contract."
+    }
+
+    foreach ($runId in @([string]$writtenIdentity.offRunId, [string]$writtenIdentity.onRunId)) {
+        if ($runId.Length -gt 96 -or
+            $runId.Contains("..") -or
+            $runId -notmatch '^[A-Za-z0-9._-]+$') {
+            throw "Run identity artifact contains an unsafe runner ID."
+        }
+    }
+
+    return $identityPath
+}
+
+$contractDescriptorBound = $PSBoundParameters.ContainsKey("RunIdContractDescriptor")
+$contractOutputRootBound = $PSBoundParameters.ContainsKey("RunIdContractOutputRoot")
+if ($contractDescriptorBound -or $contractOutputRootBound) {
+    if (-not $contractDescriptorBound -or -not $contractOutputRootBound) {
+        throw "RunIdContractDescriptor and RunIdContractOutputRoot must be supplied together."
+    }
+    if ([string]::IsNullOrWhiteSpace($RunIdContractDescriptor)) {
+        throw "RunIdContractDescriptor must be non-empty."
+    }
+    if ([string]::IsNullOrWhiteSpace($RunIdContractOutputRoot)) {
+        throw "RunIdContractOutputRoot must be non-empty."
+    }
+
+    $productionParameterNames = @(
+        "Scenario", "Seed", "Citizens", "Ticks", "WarmupTicks", "CacheMode",
+        "SelectorMode", "ExtractionPlanningMode", "RouteDistanceMode", "ArtifactMode",
+        "ComparisonGroup", "TrialIndex", "OutputRoot", "GodotPath", "ExportPreset",
+        "ExistingReleaseRunner", "SkipBuild", "ReleaseExport", "AllowPrimarySafetyFailure",
+        "AllowDirtySource", "AllowDebugReference", "RequireRelease"
+    )
+    $mixedProductionParameters = @($PSBoundParameters.Keys | Where-Object { $productionParameterNames -contains $_ })
+    if ($mixedProductionParameters.Count -gt 0) {
+        throw "Run-ID contract mode cannot be combined with production parameter(s): $($mixedProductionParameters -join ', ')."
+    }
+
+    $contractOutputRoot = [System.IO.Path]::GetFullPath($RunIdContractOutputRoot)
+    if (Test-Path -LiteralPath $contractOutputRoot) {
+        throw "Run-ID contract output already exists: $contractOutputRoot"
+    }
+    [System.IO.Directory]::CreateDirectory($contractOutputRoot) | Out-Null
+    $contractOffRunId = New-PerformanceRunnerRunId -RunDescriptor $RunIdContractDescriptor -MetricsMode "off"
+    $contractOnRunId = New-PerformanceRunnerRunId -RunDescriptor $RunIdContractDescriptor -MetricsMode "on"
+    $contractIdentity = New-PerformanceRunIdentityArtifact `
+        -RunDescriptor $RunIdContractDescriptor `
+        -OffRunId $contractOffRunId `
+        -OnRunId $contractOnRunId `
+        -Source ([ordered]@{ kind = "offline_contract" }) `
+        -Configuration ([ordered]@{ kind = "offline_contract" })
+    $contractIdentityPath = Write-PerformanceRunIdentityArtifact `
+        -OutputRoot $contractOutputRoot `
+        -Identity $contractIdentity
+    Write-Output $contractIdentityPath
+    return
 }
 
 function Get-GitDirtyState {
@@ -523,6 +648,8 @@ if ($comparisonGroup.Length -gt 96 -or
 }
 $nonce = [Guid]::NewGuid().ToString("N").Substring(0, 8)
 $runDescriptor = "$timestamp-$safeScenario-seed$Seed-c$Citizens-t$Ticks-w$WarmupTicks-m$CacheMode-a$ArtifactMode-r$TrialIndex-$nonce"
+$offRunId = New-PerformanceRunnerRunId -RunDescriptor $runDescriptor -MetricsMode "off"
+$onRunId = New-PerformanceRunnerRunId -RunDescriptor $runDescriptor -MetricsMode "on"
 if (-not $OutputRoot) {
     $OutputRoot = Join-Path $repoRoot "artifacts\performance\$runDescriptor"
 }
@@ -530,9 +657,32 @@ $OutputRoot = [System.IO.Path]::GetFullPath($OutputRoot)
 if (Test-Path -LiteralPath $OutputRoot) {
     throw "Performance pair output already exists: $OutputRoot"
 }
+[System.IO.Directory]::CreateDirectory($OutputRoot) | Out-Null
+$runIdentity = New-PerformanceRunIdentityArtifact `
+    -RunDescriptor $runDescriptor `
+    -OffRunId $offRunId `
+    -OnRunId $onRunId `
+    -Source ([ordered]@{
+        gitSha = $gitSha
+        gitDirty = $gitDirty
+    }) `
+    -Configuration ([ordered]@{
+        scenarioId = $Scenario
+        simulationSeed = $Seed
+        citizens = $Citizens
+        warmupTicks = $WarmupTicks
+        measuredTicks = $Ticks
+        cacheMode = $CacheMode
+        selectorMode = $SelectorMode
+        extractionPlanningMode = $ExtractionPlanningMode
+        routeDistanceMode = $RouteDistanceMode
+        artifactMode = $ArtifactMode
+        comparisonGroup = $comparisonGroup
+        trialIndex = $TrialIndex
+    })
+$runIdentityPath = Write-PerformanceRunIdentityArtifact -OutputRoot $OutputRoot -Identity $runIdentity
 
 if ($ReleaseExport) {
-    [System.IO.Directory]::CreateDirectory($OutputRoot) | Out-Null
     $releaseDirectory = Join-Path $OutputRoot "release-runner"
     [System.IO.Directory]::CreateDirectory($releaseDirectory) | Out-Null
     $releaseExecutable = Join-Path $releaseDirectory "SocietiesPerformance.exe"
@@ -553,7 +703,6 @@ if ($ReleaseExport) {
     $executionRoute = "export_release"
 }
 elseif (-not [string]::IsNullOrWhiteSpace($ExistingReleaseRunner)) {
-    [System.IO.Directory]::CreateDirectory($OutputRoot) | Out-Null
     $runnerExecutable = (Resolve-Path -LiteralPath $ExistingReleaseRunner).Path
     if (-not $runnerExecutable.EndsWith(".console.exe", [System.StringComparison]::OrdinalIgnoreCase)) {
         throw "ExistingReleaseRunner must point to the exported .console.exe wrapper."
@@ -579,13 +728,10 @@ else {
         }
     }
 
-    [System.IO.Directory]::CreateDirectory($OutputRoot) | Out-Null
     $runnerExecutable = $godot
     $executionRoute = "editor_scene"
 }
 
-$offRunId = "$runDescriptor-off"
-$onRunId = "$runDescriptor-on"
 $offDirectory = Join-Path $OutputRoot "metrics-off"
 $onDirectory = Join-Path $OutputRoot "metrics-on"
 

@@ -1,0 +1,141 @@
+{
+  "schemaVersion": 1,
+  "scope": "V3-W2-06 clean-source technical validation",
+  "status": "PARTIAL_BLOCKED",
+  "capturedUtc": "2026-07-31T16:00:00Z",
+  "source": {
+    "repository": "C:\\tmp\\societies-v3-w2-06",
+    "branch": "feature/v3-w2-06-sprint-validation",
+    "gitSha": "f0e88f021f758385dec29867624e06c42b191ba1",
+    "requiredBaseSha": "f0e88f021f758385dec29867624e06c42b191ba1",
+    "preflightClean": true,
+    "postAttemptTrackedModification": {
+      "path": "src/societies/icon.svg.import",
+      "reason": "Godot export generated an incidental tracked import-file modification during the attempted matrix.",
+      "headSha256": "1964974204efd8371a51e4b61e319a43210858c3764bb622631a63c6078bc46d",
+      "worktreeSha256": "a5a4b53b32f5f407b31e2406aade822b12178cfb251cf34b0d4813e5feb61ed2",
+      "restored": false
+    }
+  },
+  "environment": {
+    "dotnetVersion": "9.0.311",
+    "godotPath": "C:\\Users\\hunte\\AppData\\Local\\Microsoft\\WinGet\\Packages\\GodotEngine.GodotEngine.Mono_Microsoft.Winget.Source_8wekyb3d8bbwe\\Godot_v4.6.2-stable_mono_win64\\Godot_v4.6.2-stable_mono_win64.exe",
+    "godotVersion": "4.6.2.stable.mono.official.71f334935",
+    "requiredGodotVersion": "4.6.2"
+  },
+  "commands": [
+    {
+      "command": "dotnet build src/societies/Societies.csproj --configuration Release",
+      "exitCode": 0,
+      "elapsed": "00:00:05.92",
+      "warnings": 0,
+      "errors": 0,
+      "result": "pass"
+    },
+    {
+      "command": "dotnet build src/societies/Societies.sln --configuration ExportRelease",
+      "exitCode": 0,
+      "elapsed": "00:00:02.94",
+      "warnings": 0,
+      "errors": 0,
+      "result": "pass"
+    },
+    {
+      "command": "./scripts/run-prototype-validation.ps1",
+      "environmentOverride": "GODOT_BIN=<resolved Godot 4.6.2 path>",
+      "exitCode": 0,
+      "elapsedSeconds": 553.8,
+      "result": "pass",
+      "declaredCoverage": {
+        "dotnetTests": 333,
+        "godotTests": 23,
+        "source": "tests/test-manifest.json and CURRENT_BUILD.md"
+      },
+      "limitation": "The script exited successfully but its child test summaries were not streamed by the execution wrapper; the declared suite counts are recorded, not independently parsed from this invocation."
+    },
+    {
+      "command": "./scripts/run-performance-baseline-matrix.ps1 -GodotPath <resolved Godot 4.6.2 path>",
+      "exitCode": 1,
+      "elapsedSeconds": 36.2,
+      "result": "blocked",
+      "matrixStatus": "fail",
+      "failedPhase": "run_matrix-c3-warm-t1",
+      "completedPairs": 1,
+      "selectedPairs": 14,
+      "runnerError": "Performance runner rejected generated run ID 20260731-155639-550-balanced_basin-seed1337-c3-t300-w2-mnatural_warm-afull_artifacts-r1-f3b2eb7b-off: run id may contain only letters, digits, '.', '_' and '-' and may not contain '..'.",
+      "retryPerformed": false,
+      "repairPerformed": false
+    }
+  ],
+  "partialMatrixObservation": {
+    "caseId": "matrix-c3-cold-t1",
+    "status": "pass",
+    "executionRoute": "export_release",
+    "managedAssemblyConfiguration": "ExportRelease",
+    "measuredTicks": 300,
+    "metricsOff": {
+      "p95Milliseconds": 32.5666,
+      "maxMilliseconds": 61.189,
+      "stateEventSha256": "0e30419b5f2aaed0d8736a6569b45d1a619d6995328cb67242a3259b8502204c"
+    },
+    "metricsOn": {
+      "p95Milliseconds": 45.958,
+      "maxMilliseconds": 53.6213,
+      "stateEventSha256": "0e30419b5f2aaed0d8736a6569b45d1a619d6995328cb67242a3259b8502204c"
+    },
+    "deterministicArtifacts": "metrics-off/on state-plus-event hashes match for this one completed pair",
+    "safetyStatus": "not_applicable",
+    "conclusion": "This is a single three-citizen characterization pair only; it is not baseline, median, target, or safety evidence."
+  },
+  "matrixArtifacts": [
+    {
+      "role": "run_plan",
+      "path": "C:\\tmp\\societies-v3-w2-06\\artifacts\\performance\\w103c-release-20260731-155613-291\\run-plan.json",
+      "sha256": "5e9275aa66862432cf543370d51a7c4153ee0543836be70d9c48297cb9a87879"
+    },
+    {
+      "role": "matrix_failure_result",
+      "path": "C:\\tmp\\societies-v3-w2-06\\artifacts\\performance\\w103c-release-20260731-155613-291\\perf-results.json",
+      "sha256": "5c19f4ef2d6b5b10abe166a3652264e6c861074bf0211787ccc23a499b0f8e4e"
+    },
+    {
+      "role": "matrix_failure_manifest",
+      "path": "C:\\tmp\\societies-v3-w2-06\\artifacts\\performance\\w103c-release-20260731-155613-291\\validation-manifest.json",
+      "sha256": "5c19f4ef2d6b5b10abe166a3652264e6c861074bf0211787ccc23a499b0f8e4e"
+    },
+    {
+      "role": "matrix_failure_summary",
+      "path": "C:\\tmp\\societies-v3-w2-06\\artifacts\\performance\\w103c-release-20260731-155613-291\\summary.txt",
+      "sha256": "f10c2204020fd201f9c1414d251525329a5198205bb6a882c4dd02fb631587a5"
+    },
+    {
+      "role": "completed_cold_pair_equivalence",
+      "path": "C:\\tmp\\societies-v3-w2-06\\artifacts\\performance\\w103c-release-20260731-155613-291\\cases\\matrix-c3-cold-t1\\equivalence-results.json",
+      "sha256": "9901370a30f1833a7b8e94878d79d45bf076dcb0db8b3f201a896047cf686a4f"
+    },
+    {
+      "role": "completed_cold_pair_matrix",
+      "path": "C:\\tmp\\societies-v3-w2-06\\artifacts\\performance\\w103c-release-20260731-155613-291\\cases\\matrix-c3-cold-t1\\perf-matrix.csv",
+      "sha256": "aeb7f6337b8f77a0323b13cdd1efecd8bfd9bc3798be7d3bf433ee1ba7cbefad"
+    },
+    {
+      "role": "completed_cold_pair_summary",
+      "path": "C:\\tmp\\societies-v3-w2-06\\artifacts\\performance\\w103c-release-20260731-155613-291\\cases\\matrix-c3-cold-t1\\pair-summary.txt",
+      "sha256": "ca0a6761c2357de861716b603a27471a0531469597189ca0ea32e13b8e59f347"
+    }
+  ],
+  "contractOutcomes": {
+    "oneThousandTickDeterminism": "unverified in this validation; the requested focused evidence was not run after the matrix tooling blocker.",
+    "checkpointResume": "unverified in this validation; the current declared repository contract remains exact 1,000-tick versus save-at-500/resume snapshots and events, but this run did not independently reprove it.",
+    "forcedNavigationInvalidation": "unverified in this validation; forced-c16-t1 did not start.",
+    "performanceSafety": "no conclusion; the canonical matrix is incomplete and its result explicitly makes no target-or-safety claim.",
+    "comparisonToAcceptedBaseline": "not comparable: the appropriate tracked W1-03c baseline matrix requires a complete contract-valid matrix. W2-VIS waivers were neither exercised nor reclassified."
+  },
+  "limitations": [
+    "No matrix retry was performed after the run-ID tooling failure.",
+    "No production or tooling repair was made.",
+    "The 1,000-tick soak, checkpoint/resume focus, and forced-invalidation case were not reached after the stop condition.",
+    "Raw generated artifacts remain ignored under artifacts/performance and are referenced by absolute path and SHA-256 above.",
+    "The attempted Godot export left src/societies/icon.svg.import modified in the temporary checkout; it was not restored by this validation task."
+  ]
+}
