@@ -2,6 +2,8 @@
 
 ## Document Control
 
+The July 13-24, 2026 execution window is historical. This document is retained for W2 continuity; the current bounded continuation is W2-05 as of July 30.
+
 | Field | Value |
 |---|---|
 | Status | Active |
@@ -539,9 +541,11 @@ Acceptance:
 
 The baseline may improve composition, lighting, materials, placeholder readability, and existing UI presentation. Production asset creation and broad visual polish remain deferred until the playtests justify them.
 
-Status: **complete by explicit two-exception waiver; performance safety did not pass and visual acceptance was waived.** W2-04 is merged through PR #117 at master `d519d4d`. Functional gates are green at Release .NET 269/269 (0 failed/skipped), Debug build 0 warnings/errors, and Godot 22/22; later capture fixes retained green Debug/Godot gates. Canonical capture source `2393e884b902d54b50f54d8dfcd966f9bbae11f0` is tracked with schema-4 manifest/reproduction and five PNGs. Later clean diagnostic source `2f37f01` plus bounded isolated trials show intermittent Windows Forward+ PNG CanvasLayer glyph/panel clipping; no later trial is canonical or tracked. Normal-play HUD assertions pass, but rendered-frame visual acceptance is waived, not passed. Final clean ReleaseExport timing-only evidence from `50f16cd6491350053af45ba7164cb5121cc3bf26` is accepted under the waiver: p95 `55.4529 ms` versus 50 ms (FAIL), max `142.9547 ms` versus 250 ms (PASS), `failureAllowed=true`, contractStatus `pass`; persistence/hash equivalence is unavailable. W2-05 remains next but inactive/not implemented; Weeks 3-4 remain Draft/Conditional and inactive until W2-06 records **Continue V3**.
+Status: **complete by explicit two-exception waiver; performance safety did not pass and visual acceptance was waived.** W2-04 is merged through PR #117 at master `d519d4d`. Functional gates are green at Release .NET 269/269 (0 failed/skipped), Debug build 0 warnings/errors, and Godot 22/22; later capture fixes retained green Debug/Godot gates. Canonical capture source `2393e884b902d54b50f54d8dfcd966f9bbae11f0` is tracked with schema-4 manifest/reproduction and five PNGs. Later clean diagnostic source `2f37f01` plus bounded isolated trials show intermittent Windows Forward+ PNG CanvasLayer glyph/panel clipping; no later trial is canonical or tracked. Normal-play HUD assertions pass, but rendered-frame visual acceptance is waived, not passed. Final clean ReleaseExport timing-only evidence from `50f16cd6491350053af45ba7164cb5121cc3bf26` is accepted under the waiver: p95 `55.4529 ms` versus 50 ms (FAIL), max `142.9547 ms` versus 250 ms (PASS), `failureAllowed=true`, contractStatus `pass`; persistence/hash equivalence is unavailable. W2-05 is the immediate persistence foundation and is **implemented and locally validated** on `feature/v3-w2-05-schema-v7`, committed at `cea7f8a`, with delivery tracked by PR #119. Weeks 3-4 remain Draft/Conditional and inactive until W2-06 records **Continue V3**.
 
 #### V3-W2-05 — Schema v7, telemetry, and automated slice tests
+
+Status: **Implemented and locally validated; delivery tracked by PR #119.** W2-05 is on `feature/v3-w2-05-schema-v7` and committed at `cea7f8a`. It is the immediate persistence foundation and does not implement the broader Demo 1 civic, economy, multiplayer, voxel-terrain, or live-provider direction; those remain accepted concept direction only and are not validated runtime scope.
 
 Freeze the directive/crisis persistence contract, bump runtime snapshots from v6 to v7, and add an explicit v6-to-v7 migration with Neutral/no-crisis defaults. A v5 save must migrate through v6 to v7. Extend events, summaries, and metrics with:
 
@@ -573,6 +577,8 @@ Acceptance:
 - The full suite remains green.
 - Slice tests use commands/domain state rather than brittle UI timing where possible.
 - One Godot smoke test covers the real input-to-HUD path.
+
+Local evidence: 333/333 .NET tests, 23/23 Godot tests, Release/ExportRelease/Debug builds with zero warnings/errors, and `scripts/run-prototype-validation.ps1` exit 0. The long crisis reference trace passes 2/2 in 8.1752 minutes. Final `git diff --check` and manifest JSON validation pass.
 
 #### V3-W2-06 — Release validation, playtests, and decision
 

@@ -160,6 +160,8 @@ namespace Societies.Simulation
             return new PrototypeCrisisStateSnapshot
             {
                 CrisisId = _definition.Id,
+                TicksPerSecond = _definition.TicksPerSecond,
+                DeadlineTicks = _definition.DeadlineTicks,
                 ElapsedTicks = ElapsedTicks,
                 StableHoldTicks = StableHoldTicks,
                 CollapseHoldTicks = CollapseHoldTicks,
@@ -175,6 +177,8 @@ namespace Societies.Simulation
         {
             ArgumentNullException.ThrowIfNull(snapshot);
             if (!string.Equals(snapshot.CrisisId, _definition.Id, StringComparison.Ordinal) ||
+                snapshot.TicksPerSecond != _definition.TicksPerSecond ||
+                snapshot.DeadlineTicks != _definition.DeadlineTicks ||
                 snapshot.ElapsedTicks < 0 || snapshot.ElapsedTicks > _definition.DeadlineTicks ||
                 snapshot.StableHoldTicks < 0 || snapshot.StableHoldTicks > _definition.StableHoldTicks ||
                 snapshot.CollapseHoldTicks < 0 || snapshot.CollapseHoldTicks > _definition.CollapseHoldTicks ||
@@ -266,6 +270,10 @@ namespace Societies.Simulation
     public sealed class PrototypeCrisisStateSnapshot
     {
         public string CrisisId { get; set; } = string.Empty;
+
+        public int TicksPerSecond { get; set; }
+
+        public int DeadlineTicks { get; set; }
 
         public int ElapsedTicks { get; set; }
 

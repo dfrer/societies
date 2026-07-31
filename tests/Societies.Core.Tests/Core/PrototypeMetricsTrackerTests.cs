@@ -16,7 +16,7 @@ namespace Societies.Core.Tests
 
             string[] lines = SplitCsvLines(csv);
             Assert.Single(lines);
-            Assert.Equal("simulation_tick,current_hour,weather,inventory_total,stockpile_total,worker_count,active_worker_count,resource_node_count,remaining_resource_units,settlement_classification,meal_coverage_percent,bed_coverage_percent,hearth_fuel,built_structure_count,blocked_structure_count,average_route_length_meters,average_travel_work_ratio,path_coverage_ratio,depot_throughput_total,route_backlog_tick_total", lines[0].Trim());
+            Assert.Equal("simulation_tick,current_hour,weather,inventory_total,stockpile_total,worker_count,active_worker_count,resource_node_count,remaining_resource_units,settlement_classification,meal_coverage_percent,bed_coverage_percent,hearth_fuel,built_structure_count,blocked_structure_count,average_route_length_meters,average_travel_work_ratio,path_coverage_ratio,depot_throughput_total,route_backlog_tick_total,crisis_elapsed_ticks,crisis_deadline_ticks,stability_hold_ticks,collapse_hold_ticks,crisis_outcome,crisis_failure_reason,terminal_event_emitted,first_directive_tick,first_contribution_tick,directive_changes,final_directive,contributions_by_resource,peak_incapacitated_citizens,minimum_meals,minimum_hearth_fuel,maximum_bed_coverage_percent,final_capable_citizens,final_incapacitated_citizens,final_meals,final_hearth_fuel,final_bed_coverage_percent,stability_hold_entries,stability_hold_breaks,collapse_hold_entries,collapse_hold_breaks", lines[0].Trim());
         }
 
         [Fact]
@@ -37,7 +37,7 @@ namespace Societies.Core.Tests
             string[] fields = data.Split(',');
             Assert.Equal("stable", fields[9]);
             // route_backlog_tick_total should be 1 (from routeBacklogTicksByKind: ["haul"] = 1)
-            Assert.Equal("1", fields[fields.Length - 1]);
+            Assert.Equal("1", fields[19]);
         }
 
         [Fact]

@@ -27,6 +27,8 @@ namespace Societies.Core
         {
             Dictionary<string, int> craftedItemCounts = BuildCraftedItemCounts(snapshot);
             PrototypeLogisticsMetricsState logisticsMetrics = snapshot.Settlement?.LogisticsMetrics ?? new PrototypeLogisticsMetricsState();
+            PrototypeRuntimeTelemetrySnapshot telemetry = snapshot.Telemetry ?? new PrototypeRuntimeTelemetrySnapshot();
+            PrototypeCrisisStateSnapshot? crisis = snapshot.Crisis;
 
             return new PrototypeRunSummary
             {
@@ -74,7 +76,36 @@ namespace Societies.Core
                 EventCountsByType = OrderCounts(
                     eventRecords
                         .GroupBy(record => record.EventType)
-                        .ToDictionary(group => group.Key, group => group.Count()))
+                        .ToDictionary(group => group.Key, group => group.Count())),
+                CrisisElapsedTicks = crisis?.ElapsedTicks ?? 0,
+                CrisisDeadlineTicks = crisis?.DeadlineTicks ?? 0,
+                CrisisElapsedSeconds = crisis == null || crisis.TicksPerSecond <= 0
+                    ? 0.0d
+                    : crisis.ElapsedTicks / (double)crisis.TicksPerSecond,
+                StabilityHoldTicks = crisis?.StableHoldTicks ?? 0,
+                CollapseHoldTicks = crisis?.CollapseHoldTicks ?? 0,
+                CrisisOutcome = crisis?.Outcome.ToString().ToLowerInvariant() ?? string.Empty,
+                CrisisFailureReason = FormatCollapseCause(crisis?.CollapseCause ?? PrototypeCrisisCollapseCause.None),
+                TerminalEventEmitted = crisis?.TerminalEventEmitted ?? false,
+                FirstDirectiveTick = telemetry.FirstDirectiveTick,
+                FirstContributionTick = telemetry.FirstContributionTick,
+                DirectiveChanges = telemetry.DirectiveChanges,
+                FinalDirective = snapshot.Directive?.DirectiveId ?? "neutral",
+                ContributionsByResource = OrderLongCounts(
+                    snapshot.ContributionCountsByResource ?? new Dictionary<string, long>()),
+                PeakIncapacitatedCitizens = telemetry.PeakIncapacitatedCitizens,
+                MinimumMeals = telemetry.MinimumMeals,
+                MinimumHearthFuel = telemetry.MinimumHearthFuel,
+                MaximumBedCoveragePercent = telemetry.MaximumBedCoveragePercent,
+                FinalCapableCitizens = telemetry.FinalCapableCitizens,
+                FinalIncapacitatedCitizens = telemetry.FinalIncapacitatedCitizens,
+                FinalMeals = telemetry.FinalMeals,
+                FinalHearthFuel = telemetry.FinalHearthFuel,
+                FinalBedCoveragePercent = telemetry.FinalBedCoveragePercent,
+                StabilityHoldEntries = telemetry.StabilityHoldEntries,
+                StabilityHoldBreaks = telemetry.StabilityHoldBreaks,
+                CollapseHoldEntries = telemetry.CollapseHoldEntries,
+                CollapseHoldBreaks = telemetry.CollapseHoldBreaks
             };
         }
 
@@ -213,6 +244,25 @@ namespace Societies.Core
                 .Where(pair => pair.Value > 0)
                 .OrderBy(pair => pair.Key)
                 .ToDictionary(pair => pair.Key, pair => pair.Value);
+        }
+
+        private static Dictionary<string, long> OrderLongCounts(IReadOnlyDictionary<string, long> counts)
+        {
+            return counts
+                .Where(pair => pair.Value > 0)
+                .OrderBy(pair => pair.Key)
+                .ToDictionary(pair => pair.Key, pair => pair.Value);
+        }
+
+        private static string FormatCollapseCause(PrototypeCrisisCollapseCause cause)
+        {
+            return cause switch
+            {
+                PrototypeCrisisCollapseCause.None => string.Empty,
+                PrototypeCrisisCollapseCause.IncapacitatedHold => "incapacitated_hold",
+                PrototypeCrisisCollapseCause.Deadline => "deadline",
+                _ => cause.ToString().ToLowerInvariant()
+            };
         }
 
         private static string FormatTime(float currentHour)

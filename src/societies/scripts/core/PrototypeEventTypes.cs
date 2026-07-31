@@ -16,6 +16,10 @@ namespace Societies.Core
         public const string PlayerHarvestSucceeded = "player.harvest.succeeded";
         public const string PlayerContributionSucceeded = "player.contribution.succeeded";
         public const string SettlementDirectiveChanged = "settlement.directive.changed";
+        public const string CrisisStabilityHoldEntered = "crisis.stability_hold.entered";
+        public const string CrisisStabilityHoldBroken = "crisis.stability_hold.broken";
+        public const string CrisisCollapseHoldEntered = "crisis.collapse_hold.entered";
+        public const string CrisisCollapseHoldBroken = "crisis.collapse_hold.broken";
         public const string CrisisStabilized = "crisis.stabilized";
         public const string CrisisCollapsed = "crisis.collapsed";
         public const string PlayerCraftSucceeded = "player.craft.succeeded";

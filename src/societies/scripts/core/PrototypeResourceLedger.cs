@@ -40,9 +40,9 @@ namespace Societies.Core
 
         public static PrototypeResourceLedger Restore(WorldGenerationResult world, PrototypeRuntimeSnapshot snapshot)
         {
-            if (snapshot.SchemaVersion is not (5 or 6))
+            if (snapshot.SchemaVersion is not (5 or 6 or 7))
             {
-                throw new InvalidDataException($"Unsupported runtime snapshot schema {snapshot.SchemaVersion}; expected 5 or 6.");
+                throw new InvalidDataException($"Unsupported runtime snapshot schema {snapshot.SchemaVersion}; expected 5, 6, or 7.");
             }
 
             if (snapshot.Resources == null)
@@ -51,11 +51,11 @@ namespace Societies.Core
             }
 
             PrototypeResourceLedger baseline = Create(world);
-            if (snapshot.SchemaVersion == 6)
+            if (snapshot.SchemaVersion >= 6)
             {
                 if (snapshot.Resources.Count != baseline._sites.Count)
                 {
-                    throw new InvalidDataException("Schema v6 resource ledger must contain every generated site.");
+                    throw new InvalidDataException($"Schema v{snapshot.SchemaVersion} resource ledger must contain every generated site.");
                 }
 
                 HashSet<string> seen = new(StringComparer.Ordinal);

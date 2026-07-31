@@ -4,6 +4,8 @@ Documents in this directory are short-horizon execution plans grounded in the au
 
 ## Current Plan
 
+The July 13-24, 2026 execution window shown below is historical; W2-05 is implemented and locally validated as of July 30, committed at `cea7f8a`, with delivery tracked by PR #119. The Weeks 3-4 dates are proposed only and remain conditional.
+
 - **Active:** [V3 two-week development plan](v3-two-week-development-plan.md) — July 13–24, 2026
 - **Draft/Conditional:** [V3 Weeks 3-4 development plan](v3-weeks-3-4-development-plan.md) - July 27-August 7, 2026; it activates only if W2-06 concludes **Continue V3**.
 

@@ -55,6 +55,7 @@ namespace Societies.Tests
             await Test_MainScene_DepotContributionInputSmoke();
             await Test_MainScene_DirectiveInputSmoke();
             await Test_MainScene_CrisisHudPresentationSmoke();
+            await Test_MainScene_CrisisPersistenceInputSmoke();
             Test_VisualCaptureConfigurationAndHudLayout();
             await Test_MainScene_VisualCaptureContractSmoke();
             await Test_MainScene_FrameCatchUpCapSmoke();
@@ -374,6 +375,96 @@ namespace Societies.Tests
             }
         }
 
+        private async Task Test_MainScene_CrisisPersistenceInputSmoke()
+        {
+            Node? scene = null;
+            string outputDirectory = CreateRunOutputDirectory(nameof(Test_MainScene_CrisisPersistenceInputSmoke));
+
+            try
+            {
+                System.Environment.SetEnvironmentVariable("SOCIETIES_RUN_OUTPUT_DIR", outputDirectory);
+                PackedScene packedScene = GD.Load<PackedScene>("res://scenes/main.tscn");
+                Assert(packedScene != null, "Main scene failed to load");
+                scene = packedScene!.Instantiate();
+                AddChild(scene);
+                await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+
+                GameManager manager = scene as GameManager ?? throw new Exception("Main scene root is not GameManager");
+                manager.SetProcess(false);
+                manager.SetScenario("empty_stores");
+                PlayerCharacter player = manager.GetNodeOrNull<PlayerCharacter>("World/Players/LocalPlayer") ??
+                    throw new Exception("LocalPlayer missing");
+                PrototypeHud hud = manager.GetNodeOrNull<PrototypeHud>("UI") ?? throw new Exception("PrototypeHud missing");
+
+                manager._UnhandledInput(new InputEventKey { Pressed = true, Keycode = Key.Key2 });
+                manager.Inventory.AddItem("logs", 3);
+                player.GlobalPosition = manager.CentralDepotPosition;
+                player.ProcessInteractionInput(701);
+                manager.StepSimulationTicks(5);
+                manager._UnhandledInput(new InputEventKey { Pressed = true, Keycode = Key.F6 });
+
+                string snapshotPath = Path.Combine(outputDirectory, "latest-snapshot.json");
+                Assert(File.Exists(snapshotPath), "F6 should persist the crisis snapshot");
+                PrototypeRuntimeSnapshot persisted = PrototypePersistenceService.LoadSnapshot(snapshotPath);
+                Assert(persisted.SchemaVersion == 7, "Godot save route should emit schema v7");
+                Assert(persisted.Directive?.DirectiveId == "food_and_fuel", "F6 should persist the input-selected directive");
+                Assert(persisted.ContributionCountsByResource.GetValueOrDefault("logs") == 3, "F6 should persist input contributions");
+                Assert(persisted.Crisis?.ElapsedTicks == 5, "F6 should persist crisis elapsed ticks");
+                Assert(hud.CrisisText.Contains("Directive: Food & Fuel", StringComparison.Ordinal), "HUD should show the saved directive");
+                Assert(hud.CrisisText.Contains("logs x3", StringComparison.Ordinal), "HUD should show the saved contribution");
+
+                manager._UnhandledInput(new InputEventKey { Pressed = true, Keycode = Key.Key3 });
+                manager.StepSimulationTicks(2);
+                manager._UnhandledInput(new InputEventKey { Pressed = true, Keycode = Key.F7 });
+                Assert(manager.CurrentDirective == PrototypeSettlementDirective.Neutral, "F7 should reset directive state");
+                Assert(manager.SimulationTick == 0, "F7 should reset crisis time");
+
+                manager._UnhandledInput(new InputEventKey { Pressed = true, Keycode = Key.F9 });
+                PrototypeRuntimeSnapshot restored = manager.CaptureSnapshot();
+                Assert(manager.CurrentDirective == PrototypeSettlementDirective.FoodAndFuel, "F9 should restore the input-selected directive");
+                Assert(restored.ContributionCountsByResource.GetValueOrDefault("logs") == 3, "F9 should restore contribution counters");
+                Assert(restored.Crisis?.ElapsedTicks == 5, "F9 should restore crisis elapsed ticks");
+                Assert(hud.CrisisText.Contains("Directive: Food & Fuel", StringComparison.Ordinal), "HUD should refresh to the restored directive");
+                Assert(hud.CrisisText.Contains("logs x3", StringComparison.Ordinal), "HUD should refresh to the restored contribution");
+
+                string liveBeforeCorruptLoad = PrototypePersistenceService.SerializeSnapshot(
+                    manager.CaptureSnapshot());
+                File.AppendAllText(
+                    Path.Combine(outputDirectory, "latest-event-log.json"),
+                    " ");
+                bool rejectedCorruptGeneration = false;
+                try
+                {
+                    _ = manager.LoadLatestSnapshotFromDisk();
+                }
+                catch (InvalidDataException)
+                {
+                    rejectedCorruptGeneration = true;
+                }
+
+                Assert(rejectedCorruptGeneration, "GameManager should reject a tampered schema-v7 companion");
+                Assert(
+                    PrototypePersistenceService.SerializeSnapshot(manager.CaptureSnapshot()) ==
+                    liveBeforeCorruptLoad,
+                    "Rejected artifact generation should leave live GameManager state unchanged");
+
+                Pass(nameof(Test_MainScene_CrisisPersistenceInputSmoke));
+            }
+            catch (Exception ex)
+            {
+                Fail(nameof(Test_MainScene_CrisisPersistenceInputSmoke), ex);
+            }
+            finally
+            {
+                System.Environment.SetEnvironmentVariable("SOCIETIES_RUN_OUTPUT_DIR", null);
+                if (scene != null)
+                {
+                    scene.QueueFree();
+                    await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+                }
+            }
+        }
+
         private void Test_VisualCaptureConfigurationAndHudLayout()
         {
             try
@@ -383,8 +474,8 @@ namespace Societies.Tests
                 Assert(PrototypeVisualCaptureConfiguration.ScenarioId == "empty_stores", "Capture scenario should be empty_stores");
                 Assert(PrototypeVisualCaptureConfiguration.SimulationSeed == 1701, "Capture seed should be fixed");
                 Assert(PrototypeVisualCaptureConfiguration.TerminalCrisisTick == 9777, "Capture terminal-crisis tick should match the observed canonical terminal state");
-                Assert(PrototypeVisualCaptureConfiguration.TerminalCrisisEventCount == 8148, "Capture terminal-crisis provenance should retain the 10.5 reference event count");
-                Assert(PrototypeVisualCaptureConfiguration.TerminalCrisisTraceSha256 == "69f3e22402e31a53b1d4c16899883956fcc5fdb14fbe47d8a4eb8baef007174f", "Capture terminal-crisis provenance should retain the 10.5 reference trace hash");
+                Assert(PrototypeVisualCaptureConfiguration.TerminalCrisisEventCount == 8149, "Capture terminal-crisis provenance should retain the schema-v7 10.5 reference event count");
+                Assert(PrototypeVisualCaptureConfiguration.TerminalCrisisTraceSha256 == "8a0239837c5f96ac5ef0e470e9e91178d620b7362213cf47eaa2aa20b637eecc", "Capture terminal-crisis provenance should retain the schema-v7 10.5 reference trace hash");
                 Assert(PrototypeVisualCaptureConfiguration.LightingHour == 10.5f, "Capture lighting hour should be fixed");
                 Assert(PrototypeVisualCaptureConfiguration.TryGetPreset("citizen_inspection", out PrototypeVisualCapturePreset citizenInspection), "Citizen inspection capture preset should exist");
                 Assert(

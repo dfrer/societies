@@ -25,6 +25,12 @@ Known repository truth at drafting:
 
 Activation requires W2-06 to conclude **Continue V3**. If correctness, determinism, persistence, build/test, or applicable safety gates are red, return to correctness/performance work and do not start this plan. If technical gates pass but observed playtests miss causal clarity, run a narrow clarity iteration against the existing civic loop rather than widening the product scope.
 
+The July 27-August 7 dates are a proposed historical window, not a current authorization. This document remains Draft/Conditional as of July 30.
+
+### Draft/Conditional Demo 1 foundation direction
+
+Concept Studio decisions accepted after W2-VIS describe a bounded persistent 2 km x 2 km island sandbox with classic survival UX, blocky/voxel-inspired presentation over the existing heightfield, logged deterministic admin commands, incremental claims/homesteads/settlements/jobs/production/crafting/shops/trade, 24 normal citizens with a 40-citizen characterization ceiling, and eventual testing with 1-3 humans. The Cognition Director is provider-neutral and coordinates independent citizen minds; deterministic routines and offline fallback remain authoritative, and LLMs may propose but never directly mutate world state. These are **Accepted** concept directions, not **Validated** implementation claims, and remain conditional on W2-06 **Continue V3** plus a later scoped plan.
+
 ## Product Question
 
 Can AI citizens hold understandable material interests and participate with a human in one consequential civic decision?
