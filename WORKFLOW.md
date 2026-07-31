@@ -10,7 +10,7 @@ V3-W2-05 is the immediate persistence foundation: attach crisis, contribution, a
 - Branch: `feature/v3-w2-05-schema-v7`
 - Base: `03bb3ec7ff82d13389e6e94b62f159b87f022b4b`
 - W2-VIS remains complete only under its documented two-exception waiver.
-- W2-05 is implemented and locally validated, but remains uncommitted, unpushed, without a PR, and unmerged.
+- W2-05 is implemented and locally validated, committed at `cea7f8a`, and published in draft PR #119; it remains unmerged.
 
 ## Accepted versus validated
 
@@ -26,4 +26,4 @@ Validated W2-VIS exceptions remain: p95 `55.4529 ms` is over the 50 ms safety bu
 
 ## Known risks and next action
 
-Do not activate Weeks 3-4 without W2-06 **Continue V3**. Residuals: the simple Food & Fuel -> Shelter-only pacing schedule exceeded 304 seconds during development (the representative adaptive Stable path is proven); atomic replacement relies on same-volume rename without explicit fsync; secondary V2/world/metrics artifacts remain outside the core generation manifest. The single next action is to review the intended diff and, only with delivery authorization, stage/commit/push/open a PR; do not claim merge or release. Final `git diff --check` and manifest JSON validation pass.
+Do not activate Weeks 3-4 without W2-06 **Continue V3**. Residuals: the simple Food & Fuel -> Shelter-only pacing schedule exceeded 304 seconds during development (the representative adaptive Stable path is proven); atomic replacement relies on same-volume rename without explicit fsync; secondary V2/world/metrics artifacts remain outside the core generation manifest. The single next action is to complete protected-master checks and review on draft PR #119; do not claim merge or release. Final `git diff --check` and manifest JSON validation pass.
