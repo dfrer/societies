@@ -42,7 +42,7 @@ Offline operation, model failure, invalid model output, timeout, or unavailable 
 | LLMs | No live model integration | Structured interpretation, deliberation, communication, memory summaries, and action proposals |
 | Networking | Not authoritative | Shared human/AI society experience, only when deterministic authority remains intact |
 
-W2-02 atomic contribution and W2-03 directive causality are validated and merged. W2-04 deterministic outcome and minimal crisis HUD is the next authorized work item. The next potential multi-week increment remains conditional on W2-06; see [V3 Weeks 3-4](active/v3-weeks-3-4-development-plan.md).
+W2-02 through W2-05 are validated and merged. W2-06 records **Stop Feature Expansion** because the clean performance safety gate remains red; the next potential multi-week increment remains inactive pending a bounded performance repair and fresh decision. See [the validation report](../V3_SPRINT_VALIDATION_REPORT.md) and [V3 Weeks 3-4](active/v3-weeks-3-4-development-plan.md).
 
 ## Near-Term Product Question
 

@@ -18,7 +18,7 @@ This is future intent, not current implementation scope. Deterministic simulatio
 - The current default branch in this repository is `master`
 - Use `CURRENT_BUILD.md` as the repo-truth summary before assuming stale planning still reflects implementation
 - Treat `planning/` as aspirational unless the current Godot code confirms it
-- W2-02 atomic contribution, W2-03 directive causality, and W2-04 deterministic outcomes/minimal crisis HUD are validated and merged; W2-04 landed through PR #117 at master `d519d4d`. V3-W2-VIS implementation/functional tests are complete by explicit exception recorded in `CURRENT_BUILD.md`; performance safety did not pass (p95 55.4529 ms vs 50 ms, max 142.9547 ms vs 250 ms), timing-only persistence/hash equivalence is unavailable, and Windows Forward+ PNG readback intermittently clips CanvasLayer glyphs/panels despite passing HUD assertions, so visual acceptance is waived, not passed. W2-05 is next but inactive/not implemented; Weeks 3-4 remain inactive until W2-06 records Continue V3.
+- W2-02 through W2-04 are validated and merged; W2-04 landed through PR #117 at master `d519d4d`. W2-05 is merged through PR #119 at master `f0e88f0` and locally validated on its feature branch. V3-W2-VIS is complete only by its explicit timing and visual-readback waivers: performance safety remains red, persistence/hash equivalence is unavailable, and visual acceptance is waived, not passed. W2-06 records **Stop Feature Expansion** in `V3_SPRINT_VALIDATION_REPORT.md`; Weeks 3-4 remain Draft/Conditional and inactive pending a future green performance boundary.
 
 ## Tech Stack
 
@@ -29,6 +29,8 @@ This is future intent, not current implementation scope. Deterministic simulatio
 - **Planning**: Markdown-based documentation
 
 ## Development Workflow
+
+For substantial features, fixes, performance work, and milestones, follow [planning/DEVELOPMENT_WORKFLOW.md](planning/DEVELOPMENT_WORKFLOW.md) after reading `CURRENT_BUILD.md` and the active plan. It defines the outcome contract, evidence tiers, delivery boundary, and milestone handoff; preserve unrelated work and do not overclaim red or unverified gates.
 
 ### For Planning
 1. Review existing session documents in `planning/sessions/`

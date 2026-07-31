@@ -7,12 +7,12 @@
 | Status | **Draft/Conditional** |
 | Execution window | Mon 2026-07-27 to Fri 2026-08-07 |
 | Capacity | One developer, 40-50 hours |
-| Activation | Only after `V3_SPRINT_VALIDATION_REPORT.md` from W2-06 concludes **Continue V3** |
+| Activation | Only after a green performance repair and a later explicit **Continue V3** decision |
 | Product north star | [PRODUCT-THESIS.md](../PRODUCT-THESIS.md) |
 | Current implementation truth | [CURRENT_BUILD.md](../../CURRENT_BUILD.md) |
 | Predecessor | [V3 two-week development plan](v3-two-week-development-plan.md) |
 
-This plan is not executable while W2-06 is unresolved. It describes a bounded follow-on if the existing V3 slice earns continuation; it does not declare any planned feature implemented.
+This plan is not executable after the W2-06 **Stop Feature Expansion** decision. It remains a conditional bounded follow-on only if a later performance repair earns a new continuation decision; it does not declare any planned feature implemented.
 
 ## Entry State and Decision Rule
 
@@ -21,15 +21,15 @@ Known repository truth at drafting:
 - The Week 1 hard performance/correctness gate is green.
 - The formal performance target remains missed, and 24-citizen stress remains characterization-red.
 - W2-02 (`empty_stores` crisis contract plus atomic shared-economy contribution) is validated and merged.
-- W2-03 directive causality is validated and merged; W2-04 through W2-06 remain before this plan can activate.
+- W2-02 through W2-05 are validated and merged; W2-06 concluded **Stop Feature Expansion** after the clean performance safety gate remained red.
 
-Activation requires W2-06 to conclude **Continue V3**. If correctness, determinism, persistence, build/test, or applicable safety gates are red, return to correctness/performance work and do not start this plan. If technical gates pass but observed playtests miss causal clarity, run a narrow clarity iteration against the existing civic loop rather than widening the product scope.
+Activation would require a later explicit **Continue V3** decision. W2-06 currently found red performance safety gates, so return to bounded correctness/performance work and do not start this plan. Product clarity was not evaluated because post-stop author smoke and external observed playtests were not run.
 
-The July 27-August 7 dates are a proposed historical window, not a current authorization. This document remains Draft/Conditional as of July 30.
+The July 27-August 7 dates are historical proposal only, not current authorization. This document remains Draft/Conditional and inactive after the W2-06 stop decision.
 
 ### Draft/Conditional Demo 1 foundation direction
 
-Concept Studio decisions accepted after W2-VIS describe a bounded persistent 2 km x 2 km island sandbox with classic survival UX, blocky/voxel-inspired presentation over the existing heightfield, logged deterministic admin commands, incremental claims/homesteads/settlements/jobs/production/crafting/shops/trade, 24 normal citizens with a 40-citizen characterization ceiling, and eventual testing with 1-3 humans. The Cognition Director is provider-neutral and coordinates independent citizen minds; deterministic routines and offline fallback remain authoritative, and LLMs may propose but never directly mutate world state. These are **Accepted** concept directions, not **Validated** implementation claims, and remain conditional on W2-06 **Continue V3** plus a later scoped plan.
+Concept Studio decisions accepted after W2-VIS describe a bounded persistent 2 km x 2 km island sandbox with classic survival UX, blocky/voxel-inspired presentation over the existing heightfield, logged deterministic admin commands, incremental claims/homesteads/settlements/jobs/production/crafting/shops/trade, 24 normal citizens with a 40-citizen characterization ceiling, and eventual testing with 1-3 humans. The Cognition Director is provider-neutral and coordinates independent citizen minds; deterministic routines and offline fallback remain authoritative, and LLMs may propose but never directly mutate world state. These are **Accepted** concept directions, not **Validated** implementation claims, and remain conditional on a green performance repair, a later explicit continuation decision, and a later scoped plan.
 
 ## Product Question
 
