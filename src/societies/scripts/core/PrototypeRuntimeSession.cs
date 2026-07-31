@@ -30,6 +30,7 @@ namespace Societies.Core
         private readonly HashSet<string> _eligibleContributionResourceIds;
         private readonly Dictionary<string, long> _contributionCountsByResource = new(StringComparer.Ordinal);
         private PrototypeSettlementDirective _activeDirective = PrototypeSettlementDirective.Neutral;
+        private PrototypeRuntimeTelemetrySnapshot _telemetry = new();
 
         public PrototypeRuntimeSession(
             PrototypeScenarioDefinition scenario,
@@ -77,22 +78,18 @@ namespace Societies.Core
             };
         }
 
-        public bool SupportsRuntimeSnapshotPersistence =>
-            Scenario.Crisis == null &&
-            _contributionCountsByResource.Count == 0 &&
-            _activeDirective == PrototypeSettlementDirective.Neutral;
+        public bool SupportsRuntimeSnapshotPersistence => true;
 
-        public string RuntimeSnapshotPersistenceDeferralMessage => Scenario.Crisis != null
-            ? "Runtime snapshot persistence for crisis scenarios is deferred until schema v7."
-            : _contributionCountsByResource.Count > 0
-                ? "Runtime snapshot persistence for contribution state is deferred until schema v7."
-                : _activeDirective != PrototypeSettlementDirective.Neutral
-                    ? "Runtime snapshot persistence for directive state is deferred until schema v7."
-                    : string.Empty;
+        public string RuntimeSnapshotPersistenceDeferralMessage => string.Empty;
 
         public IReadOnlyDictionary<string, long> ContributionCountsByResource => _contributionCountsByResource;
 
         public long TotalContributedQuantity => _contributionCountsByResource.Values.Sum();
+
+        public PrototypeRuntimeTelemetrySnapshot CaptureTelemetrySnapshot()
+        {
+            return CloneTelemetry(_telemetry);
+        }
 
         public int CentralDepotOccupiedQuantity => _settlementSimulation?.CentralDepot.Occupied ?? 0;
 
@@ -262,6 +259,7 @@ namespace Societies.Core
             MetricsTracker.Clear();
             _contributionCountsByResource.Clear();
             _activeDirective = PrototypeSettlementDirective.Neutral;
+            _telemetry = new PrototypeRuntimeTelemetrySnapshot();
             Inventory.ReplaceContents(new Dictionary<string, int>());
             Stockpile.ReplaceContents(new Dictionary<string, int>());
             _world = PrototypeWorldGenerator.Generate(Scenario);
@@ -337,12 +335,15 @@ namespace Societies.Core
             SyncSettlementViews();
             if (_crisisState != null && _settlementSimulation != null)
             {
+                int previousStableHoldTicks = _crisisState.StableHoldTicks;
+                int previousCollapseHoldTicks = _crisisState.CollapseHoldTicks;
                 _crisisState.Advance(new PrototypeCrisisObservation(
                     _settlementSimulation.Workers.Count,
                     _settlementSimulation.CapableCitizenCount,
                     _settlementSimulation.MealCount,
                     _settlementSimulation.HearthFuel,
                     _settlementSimulation.BedCoveragePercent));
+                RecordCrisisTelemetryAndTransitions(previousStableHoldTicks, previousCollapseHoldTicks);
                 RecordCrisisTerminalOutcomeIfNeeded();
             }
 
@@ -365,7 +366,20 @@ namespace Societies.Core
                 return new PrototypeDirectiveChangeResult(previous, previous, true, false, string.Empty);
             }
 
+            if (_telemetry.DirectiveChanges == int.MaxValue)
+            {
+                return new PrototypeDirectiveChangeResult(
+                    previous,
+                    previous,
+                    false,
+                    false,
+                    "counter_overflow");
+            }
+
             _activeDirective = directive;
+            _telemetry.FirstDirectiveTick ??= SimulationTick;
+            _telemetry.DirectiveChanges = checked(_telemetry.DirectiveChanges + 1);
+            _telemetry.FinalDirectiveId = PrototypeSettlementDirectiveCatalog.GetId(directive);
             RecordEvent(
                 PrototypeEventTypes.SettlementDirectiveChanged,
                 $"Directive changed from {PrototypeSettlementDirectiveCatalog.GetDisplayName(previous)} to {PrototypeSettlementDirectiveCatalog.GetDisplayName(directive)}");
@@ -383,6 +397,76 @@ namespace Societies.Core
                 ? PrototypeEventTypes.CrisisStabilized
                 : PrototypeEventTypes.CrisisCollapsed;
             RecordEvent(eventType, _crisisState.BuildTerminalSummary());
+        }
+
+        private void RecordCrisisTelemetryAndTransitions(
+            int previousStableHoldTicks,
+            int previousCollapseHoldTicks)
+        {
+            if (_crisisState == null || !_crisisState.HasObservation)
+            {
+                return;
+            }
+
+            PrototypeCrisisObservation observation = _crisisState.LastObservation;
+            if (!_telemetry.HasCrisisObservation)
+            {
+                _telemetry.HasCrisisObservation = true;
+                _telemetry.MinimumMeals = observation.Meals;
+                _telemetry.MinimumHearthFuel = observation.HearthFuel;
+                _telemetry.MaximumBedCoveragePercent = observation.BedCoveragePercent;
+            }
+            else
+            {
+                _telemetry.MinimumMeals = Math.Min(_telemetry.MinimumMeals, observation.Meals);
+                _telemetry.MinimumHearthFuel = Math.Min(_telemetry.MinimumHearthFuel, observation.HearthFuel);
+                _telemetry.MaximumBedCoveragePercent = Math.Max(
+                    _telemetry.MaximumBedCoveragePercent,
+                    observation.BedCoveragePercent);
+            }
+
+            _telemetry.PeakIncapacitatedCitizens = Math.Max(
+                _telemetry.PeakIncapacitatedCitizens,
+                observation.IncapacitatedCitizens);
+            _telemetry.FinalCapableCitizens = observation.CapableCitizens;
+            _telemetry.FinalIncapacitatedCitizens = observation.IncapacitatedCitizens;
+            _telemetry.FinalMeals = observation.Meals;
+            _telemetry.FinalHearthFuel = observation.HearthFuel;
+            _telemetry.FinalBedCoveragePercent = observation.BedCoveragePercent;
+
+            if (previousStableHoldTicks == 0 && _crisisState.StableHoldTicks > 0)
+            {
+                _telemetry.StabilityHoldEntries = IncrementSaturating(
+                    _telemetry.StabilityHoldEntries);
+                RecordEvent(
+                    PrototypeEventTypes.CrisisStabilityHoldEntered,
+                    $"Stability hold entered at {_crisisState.StableHoldTicks}/{_crisisState.Definition.StableHoldTicks} ticks");
+            }
+            else if (previousStableHoldTicks > 0 && _crisisState.StableHoldTicks == 0)
+            {
+                _telemetry.StabilityHoldBreaks = IncrementSaturating(
+                    _telemetry.StabilityHoldBreaks);
+                RecordEvent(
+                    PrototypeEventTypes.CrisisStabilityHoldBroken,
+                    $"Stability hold broken after {previousStableHoldTicks}/{_crisisState.Definition.StableHoldTicks} ticks");
+            }
+
+            if (previousCollapseHoldTicks == 0 && _crisisState.CollapseHoldTicks > 0)
+            {
+                _telemetry.CollapseHoldEntries = IncrementSaturating(
+                    _telemetry.CollapseHoldEntries);
+                RecordEvent(
+                    PrototypeEventTypes.CrisisCollapseHoldEntered,
+                    $"Collapse hold entered at {_crisisState.CollapseHoldTicks}/{_crisisState.Definition.CollapseHoldTicks} ticks");
+            }
+            else if (previousCollapseHoldTicks > 0 && _crisisState.CollapseHoldTicks == 0)
+            {
+                _telemetry.CollapseHoldBreaks = IncrementSaturating(
+                    _telemetry.CollapseHoldBreaks);
+                RecordEvent(
+                    PrototypeEventTypes.CrisisCollapseHoldBroken,
+                    $"Collapse hold broken after {previousCollapseHoldTicks}/{_crisisState.Definition.CollapseHoldTicks} ticks");
+            }
         }
 
         public void RecordSettlementEvents(IEnumerable<PrototypeSettlementEvent> settlementEvents)
@@ -500,6 +584,14 @@ namespace Societies.Core
                 return new PrototypeContributionBatchResult(Array.Empty<PrototypeContributionResult>(), false, "runtime_unavailable");
             }
 
+            if (!CanAccumulateContributionCounts(transfers))
+            {
+                return new PrototypeContributionBatchResult(
+                    Array.Empty<PrototypeContributionResult>(),
+                    false,
+                    "counter_overflow");
+            }
+
             if (!_settlementSimulation.CanDepositToCentralDepot(transfers, out string rejectionReason))
             {
                 return new PrototypeContributionBatchResult(Array.Empty<PrototypeContributionResult>(), false, rejectionReason);
@@ -530,10 +622,12 @@ namespace Societies.Core
             }
 
             Inventory.ReplaceContents(remainingInventory);
+            _telemetry.FirstContributionTick ??= SimulationTick;
             List<PrototypeContributionResult> results = new(transfers.Count);
             foreach ((string itemId, int amount) in transfers)
             {
-                _contributionCountsByResource[itemId] = _contributionCountsByResource.GetValueOrDefault(itemId) + amount;
+                _contributionCountsByResource[itemId] = checked(
+                    _contributionCountsByResource.GetValueOrDefault(itemId) + amount);
                 RecordEvent(
                     PrototypeEventTypes.PlayerContributionSucceeded,
                     $"Contributed {InventoryComponent.FormatItemName(itemId)} x{amount} to the central depot");
@@ -542,6 +636,41 @@ namespace Societies.Core
 
             SyncSettlementViews();
             return new PrototypeContributionBatchResult(results, true, string.Empty);
+        }
+
+        private bool CanAccumulateContributionCounts(
+            IReadOnlyList<KeyValuePair<string, int>> transfers)
+        {
+            try
+            {
+                long total = 0;
+                foreach (long existingCount in _contributionCountsByResource.Values)
+                {
+                    total = checked(total + existingCount);
+                }
+
+                Dictionary<string, long> pendingByResource = new(StringComparer.Ordinal);
+                foreach ((string itemId, int amount) in transfers)
+                {
+                    if (amount <= 0)
+                    {
+                        return false;
+                    }
+
+                    pendingByResource[itemId] = checked(
+                        pendingByResource.GetValueOrDefault(itemId) + amount);
+                    _ = checked(
+                        _contributionCountsByResource.GetValueOrDefault(itemId) +
+                        pendingByResource[itemId]);
+                    total = checked(total + amount);
+                }
+
+                return true;
+            }
+            catch (OverflowException)
+            {
+                return false;
+            }
         }
 
         private static PrototypeContributionResult ContributionFailure(string itemId, int amount, string reason)
@@ -633,14 +762,18 @@ namespace Societies.Core
                 AverageTravelWorkRatio,
                 PathCoverageRatio,
                 DepotThroughputByDepot,
-                RouteBacklogTicksByKind);
+                RouteBacklogTicksByKind,
+                _crisisState,
+                _activeDirective,
+                _contributionCountsByResource,
+                _telemetry);
         }
 
         public PrototypeRuntimeSnapshot CaptureSnapshot(Vector3 playerPosition)
         {
-            if (!SupportsRuntimeSnapshotPersistence)
+            if (_world == null || _resourceLedger == null || _weatherSimulation == null || _settlementSimulation == null)
             {
-                throw new InvalidOperationException(RuntimeSnapshotPersistenceDeferralMessage);
+                throw new InvalidOperationException("Runtime session must be initialized before capturing a snapshot.");
             }
 
             List<PrototypeWorkerSnapshot> workers = Workers
@@ -687,10 +820,12 @@ namespace Societies.Core
                     RouteWaypoints = worker.Navigation.RouteWaypoints.ToList()
                 })
                 .ToList();
+            PrototypeSettlementSnapshot settlement = _settlementSimulation.CaptureSnapshot(SimulationTick);
+            CanonicalizeSettlementDictionaries(settlement);
 
             return new PrototypeRuntimeSnapshot
             {
-                SchemaVersion = 6,
+                SchemaVersion = 7,
                 ScenarioId = Scenario.Id,
                 WorldSeed = WorldSeed,
                 WorldGenerationAttempt = WorldGenerationAttempt,
@@ -703,21 +838,22 @@ namespace Societies.Core
                 WeatherRandomState = WeatherRandomState,
                 PlayerPosition = PrototypeSerializableVector3.FromVector3(playerPosition),
                 SettlementAnchorPosition = PrototypeSerializableVector3.FromVector3(SettlementAnchorPosition),
-                Inventory = new Dictionary<string, int>(Inventory.Items),
-                Stockpile = new Dictionary<string, int>(Stockpile.Items),
+                Inventory = OrderDictionary(Inventory.Items),
+                Stockpile = OrderDictionary(Stockpile.Items),
                 Workers = workers,
                 Resources = ResourceSnapshots.ToList(),
-                Settlement = _settlementSimulation?.CaptureSnapshot(SimulationTick) ?? new PrototypeSettlementSnapshot()
+                Settlement = settlement,
+                Directive = CaptureDirectiveSnapshot(),
+                ContributionCountsByResource = _contributionCountsByResource
+                    .OrderBy(pair => pair.Key, StringComparer.Ordinal)
+                    .ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal),
+                Crisis = _crisisState?.CaptureSnapshot(),
+                Telemetry = CaptureTelemetrySnapshot()
             };
         }
 
         public void ApplySnapshot(PrototypeRuntimeSnapshot snapshot)
         {
-            if (!SupportsRuntimeSnapshotPersistence)
-            {
-                throw new InvalidDataException(RuntimeSnapshotPersistenceDeferralMessage);
-            }
-
             ValidateSnapshot(snapshot);
             if (!string.Equals(snapshot.ScenarioId, Scenario.Id, System.StringComparison.Ordinal) ||
                 snapshot.SimulationTick < 0 || !float.IsFinite(snapshot.CurrentHour) || !float.IsFinite(snapshot.TimeUntilNextWeatherShift))
@@ -733,7 +869,7 @@ namespace Societies.Core
 
             PrototypeResourceLedger candidateLedger = PrototypeResourceLedger.Restore(candidateWorld, snapshot);
             int derivedNavigationRulesVersion = 1 + snapshot.Settlement!.PathSegments.Count(segment => segment.IsBuilt);
-            if (snapshot.SchemaVersion == 6 && snapshot.Settlement.NavigationRulesVersion != derivedNavigationRulesVersion)
+            if (snapshot.SchemaVersion >= 6 && snapshot.Settlement.NavigationRulesVersion != derivedNavigationRulesVersion)
             {
                 throw new InvalidDataException(
                     $"Runtime snapshot navigation rules version {snapshot.Settlement.NavigationRulesVersion} does not match built path derivation {derivedNavigationRulesVersion}.");
@@ -750,6 +886,58 @@ namespace Societies.Core
                 routeDistanceMode: _routeDistanceMode);
             candidateSettlement.LoadState(snapshot.Settlement, derivedNavigationRulesVersion);
 
+            PrototypeSettlementDirective candidateDirective = PrototypeSettlementDirective.Neutral;
+            Dictionary<string, long> candidateContributionCounts = new(StringComparer.Ordinal);
+            PrototypeCrisisState? candidateCrisis = null;
+            PrototypeRuntimeTelemetrySnapshot candidateTelemetry = new();
+            if (snapshot.SchemaVersion == 7)
+            {
+                candidateDirective = ParseDirectiveStrict(snapshot.Directive!.DirectiveId);
+                candidateContributionCounts = snapshot.ContributionCountsByResource
+                    .ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal);
+                ValidateContributionCounts(candidateContributionCounts);
+                candidateTelemetry = CloneTelemetry(snapshot.Telemetry!);
+                ValidateTelemetry(
+                    candidateTelemetry,
+                    snapshot.SimulationTick,
+                    candidateDirective,
+                    candidateContributionCounts,
+                    snapshot.Crisis);
+
+                if (Scenario.Crisis == null)
+                {
+                    if (snapshot.Crisis != null)
+                    {
+                        throw new InvalidDataException("A crisis-free scenario cannot restore crisis state.");
+                    }
+                }
+                else
+                {
+                    if (snapshot.Crisis == null)
+                    {
+                        throw new InvalidDataException("Schema v7 crisis scenario snapshot is missing crisis state.");
+                    }
+
+                    candidateCrisis = new PrototypeCrisisState(Scenario.Crisis);
+                    try
+                    {
+                        candidateCrisis.Restore(snapshot.Crisis);
+                    }
+                    catch (ArgumentException exception)
+                    {
+                        throw new InvalidDataException("Runtime snapshot crisis state is malformed.", exception);
+                    }
+                }
+            }
+            else
+            {
+                ValidateLegacyV5V6Defaults(snapshot);
+                if (Scenario.Crisis != null)
+                {
+                    throw new InvalidDataException("Legacy schema snapshots cannot target a crisis scenario.");
+                }
+            }
+
             _simulationSeed = snapshot.SimulationSeed;
             SimulationTick = snapshot.SimulationTick;
             CurrentHour = snapshot.CurrentHour;
@@ -758,9 +946,16 @@ namespace Societies.Core
             _resourceLedger = candidateLedger;
             _weatherSimulation = candidateWeatherSimulation;
             _settlementSimulation = candidateSettlement;
+            _crisisState = candidateCrisis;
+            _activeDirective = candidateDirective;
+            _telemetry = candidateTelemetry;
             Inventory.ReplaceContents(snapshot.Inventory);
             Stockpile.ReplaceContents(snapshot.Stockpile);
             _contributionCountsByResource.Clear();
+            foreach ((string resourceId, long count) in candidateContributionCounts)
+            {
+                _contributionCountsByResource.Add(resourceId, count);
+            }
             SyncSettlementViews();
             MetricsTracker.Clear();
         }
@@ -785,8 +980,16 @@ namespace Societies.Core
 
         private static void ValidateSnapshot(PrototypeRuntimeSnapshot snapshot)
         {
+            if (snapshot.SchemaVersion is not (5 or 6 or 7))
+            {
+                throw new InvalidDataException(
+                    $"Unsupported runtime snapshot schema {snapshot.SchemaVersion}; expected 5, 6, or 7.");
+            }
+
             if (snapshot.Inventory == null || snapshot.Stockpile == null || snapshot.Workers == null ||
-                snapshot.Resources == null || snapshot.Settlement == null)
+                snapshot.Resources == null || snapshot.Settlement == null ||
+                snapshot.Directive == null || snapshot.ContributionCountsByResource == null ||
+                snapshot.Telemetry == null)
             {
                 throw new InvalidDataException("Runtime snapshot required collections cannot be null.");
             }
@@ -1003,6 +1206,209 @@ namespace Societies.Core
                     throw new InvalidDataException($"Runtime snapshot {label} ids must be nonblank and unique.");
                 }
             }
+        }
+
+        private void ValidateContributionCounts(IReadOnlyDictionary<string, long> counts)
+        {
+            if (counts.Any(pair =>
+                    string.IsNullOrWhiteSpace(pair.Key) ||
+                    pair.Value <= 0 ||
+                    !_eligibleContributionResourceIds.Contains(pair.Key)))
+            {
+                throw new InvalidDataException(
+                    "Runtime snapshot contribution counters contain an ineligible resource or non-positive count.");
+            }
+
+            try
+            {
+                _ = counts.Values.Aggregate(0L, (total, value) => checked(total + value));
+            }
+            catch (OverflowException exception)
+            {
+                throw new InvalidDataException(
+                    "Runtime snapshot contribution counters exceed the aggregate long limit.",
+                    exception);
+            }
+        }
+
+        private static int IncrementSaturating(int value)
+        {
+            return value == int.MaxValue ? int.MaxValue : checked(value + 1);
+        }
+
+        private static void ValidateLegacyV5V6Defaults(PrototypeRuntimeSnapshot snapshot)
+        {
+            if (!string.Equals(snapshot.Directive!.DirectiveId, "neutral", StringComparison.Ordinal) ||
+                snapshot.ContributionCountsByResource.Count != 0 ||
+                snapshot.Crisis != null ||
+                !IsDefaultTelemetry(snapshot.Telemetry!))
+            {
+                throw new InvalidDataException(
+                    $"Schema v{snapshot.SchemaVersion} snapshot contains state that belongs to schema v7.");
+            }
+        }
+
+        private static void ValidateTelemetry(
+            PrototypeRuntimeTelemetrySnapshot telemetry,
+            long simulationTick,
+            PrototypeSettlementDirective directive,
+            IReadOnlyDictionary<string, long> contributionCounts,
+            PrototypeCrisisStateSnapshot? crisis)
+        {
+            string expectedDirectiveId = PrototypeSettlementDirectiveCatalog.GetId(directive);
+            if (!string.Equals(telemetry.FinalDirectiveId, expectedDirectiveId, StringComparison.Ordinal) ||
+                telemetry.DirectiveChanges < 0 ||
+                telemetry.StabilityHoldEntries < 0 || telemetry.StabilityHoldBreaks < 0 ||
+                telemetry.CollapseHoldEntries < 0 || telemetry.CollapseHoldBreaks < 0 ||
+                telemetry.StabilityHoldBreaks > telemetry.StabilityHoldEntries ||
+                telemetry.CollapseHoldBreaks > telemetry.CollapseHoldEntries ||
+                !IsValidFirstTick(telemetry.FirstDirectiveTick, simulationTick) ||
+                !IsValidFirstTick(telemetry.FirstContributionTick, simulationTick) ||
+                (telemetry.DirectiveChanges == 0) != (telemetry.FirstDirectiveTick == null) ||
+                (contributionCounts.Count == 0) != (telemetry.FirstContributionTick == null))
+            {
+                throw new InvalidDataException("Runtime snapshot telemetry command history is inconsistent.");
+            }
+
+            if (!telemetry.HasCrisisObservation)
+            {
+                if (crisis?.HasObservation == true ||
+                    telemetry.PeakIncapacitatedCitizens != 0 ||
+                    telemetry.MinimumMeals != 0 ||
+                    telemetry.MinimumHearthFuel != 0 ||
+                    telemetry.MaximumBedCoveragePercent != 0 ||
+                    telemetry.FinalCapableCitizens != 0 ||
+                    telemetry.FinalIncapacitatedCitizens != 0 ||
+                    telemetry.FinalMeals != 0 ||
+                    telemetry.FinalHearthFuel != 0 ||
+                    telemetry.FinalBedCoveragePercent != 0 ||
+                    telemetry.StabilityHoldEntries != 0 ||
+                    telemetry.StabilityHoldBreaks != 0 ||
+                    telemetry.CollapseHoldEntries != 0 ||
+                    telemetry.CollapseHoldBreaks != 0)
+                {
+                    throw new InvalidDataException("Runtime snapshot telemetry has crisis aggregates without an observation.");
+                }
+
+                return;
+            }
+
+            if (crisis == null || !crisis.HasObservation)
+            {
+                throw new InvalidDataException("Runtime snapshot telemetry requires matching crisis observation state.");
+            }
+
+            PrototypeCrisisObservation final = crisis.LastObservation;
+            if (telemetry.PeakIncapacitatedCitizens < final.IncapacitatedCitizens ||
+                telemetry.MinimumMeals < 0 || telemetry.MinimumMeals > final.Meals ||
+                telemetry.MinimumHearthFuel < 0 || telemetry.MinimumHearthFuel > final.HearthFuel ||
+                telemetry.MaximumBedCoveragePercent < final.BedCoveragePercent ||
+                telemetry.MaximumBedCoveragePercent > 100 ||
+                telemetry.FinalCapableCitizens != final.CapableCitizens ||
+                telemetry.FinalIncapacitatedCitizens != final.IncapacitatedCitizens ||
+                telemetry.FinalMeals != final.Meals ||
+                telemetry.FinalHearthFuel != final.HearthFuel ||
+                telemetry.FinalBedCoveragePercent != final.BedCoveragePercent ||
+                (crisis.StableHoldTicks > 0 && telemetry.StabilityHoldEntries == 0) ||
+                (crisis.CollapseHoldTicks > 0 && telemetry.CollapseHoldEntries == 0))
+            {
+                throw new InvalidDataException("Runtime snapshot crisis telemetry does not match the final observation.");
+            }
+        }
+
+        private static bool IsValidFirstTick(long? tick, long simulationTick)
+        {
+            return tick == null || (tick.Value >= 0 && tick.Value <= simulationTick);
+        }
+
+        private static bool IsDefaultTelemetry(PrototypeRuntimeTelemetrySnapshot telemetry)
+        {
+            return telemetry.FirstDirectiveTick == null &&
+                telemetry.FirstContributionTick == null &&
+                telemetry.DirectiveChanges == 0 &&
+                string.Equals(telemetry.FinalDirectiveId, "neutral", StringComparison.Ordinal) &&
+                !telemetry.HasCrisisObservation &&
+                telemetry.PeakIncapacitatedCitizens == 0 &&
+                telemetry.MinimumMeals == 0 &&
+                telemetry.MinimumHearthFuel == 0 &&
+                telemetry.MaximumBedCoveragePercent == 0 &&
+                telemetry.FinalCapableCitizens == 0 &&
+                telemetry.FinalIncapacitatedCitizens == 0 &&
+                telemetry.FinalMeals == 0 &&
+                telemetry.FinalHearthFuel == 0 &&
+                telemetry.FinalBedCoveragePercent == 0 &&
+                telemetry.StabilityHoldEntries == 0 &&
+                telemetry.StabilityHoldBreaks == 0 &&
+                telemetry.CollapseHoldEntries == 0 &&
+                telemetry.CollapseHoldBreaks == 0;
+        }
+
+        private static PrototypeRuntimeTelemetrySnapshot CloneTelemetry(
+            PrototypeRuntimeTelemetrySnapshot telemetry)
+        {
+            return new PrototypeRuntimeTelemetrySnapshot
+            {
+                FirstDirectiveTick = telemetry.FirstDirectiveTick,
+                FirstContributionTick = telemetry.FirstContributionTick,
+                DirectiveChanges = telemetry.DirectiveChanges,
+                FinalDirectiveId = telemetry.FinalDirectiveId,
+                HasCrisisObservation = telemetry.HasCrisisObservation,
+                PeakIncapacitatedCitizens = telemetry.PeakIncapacitatedCitizens,
+                MinimumMeals = telemetry.MinimumMeals,
+                MinimumHearthFuel = telemetry.MinimumHearthFuel,
+                MaximumBedCoveragePercent = telemetry.MaximumBedCoveragePercent,
+                FinalCapableCitizens = telemetry.FinalCapableCitizens,
+                FinalIncapacitatedCitizens = telemetry.FinalIncapacitatedCitizens,
+                FinalMeals = telemetry.FinalMeals,
+                FinalHearthFuel = telemetry.FinalHearthFuel,
+                FinalBedCoveragePercent = telemetry.FinalBedCoveragePercent,
+                StabilityHoldEntries = telemetry.StabilityHoldEntries,
+                StabilityHoldBreaks = telemetry.StabilityHoldBreaks,
+                CollapseHoldEntries = telemetry.CollapseHoldEntries,
+                CollapseHoldBreaks = telemetry.CollapseHoldBreaks
+            };
+        }
+
+        private static void CanonicalizeSettlementDictionaries(PrototypeSettlementSnapshot settlement)
+        {
+            settlement.CentralDepot.Items = OrderDictionary(settlement.CentralDepot.Items);
+            foreach (PrototypeResourceStoreSnapshot store in settlement.SiteCaches)
+            {
+                store.Items = OrderDictionary(store.Items);
+            }
+            foreach (PrototypeStructureSnapshot structure in settlement.Structures)
+            {
+                structure.InputStore.Items = OrderDictionary(structure.InputStore.Items);
+                structure.OutputStore.Items = OrderDictionary(structure.OutputStore.Items);
+            }
+
+            settlement.ProducedResources = OrderDictionary(settlement.ProducedResources);
+            settlement.ConsumedResources = OrderDictionary(settlement.ConsumedResources);
+            settlement.BlockedReasonCounts = OrderDictionary(settlement.BlockedReasonCounts);
+            settlement.StructureCompletionTicks = OrderDictionary(settlement.StructureCompletionTicks);
+            settlement.LogisticsMetrics.DepotThroughputByDepot =
+                OrderDictionary(settlement.LogisticsMetrics.DepotThroughputByDepot);
+            settlement.LogisticsMetrics.RouteBacklogTicksByKind =
+                OrderDictionary(settlement.LogisticsMetrics.RouteBacklogTicksByKind);
+        }
+
+        private static Dictionary<string, TValue> OrderDictionary<TValue>(
+            IReadOnlyDictionary<string, TValue> values)
+        {
+            return values
+                .OrderBy(pair => pair.Key, StringComparer.Ordinal)
+                .ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal);
+        }
+
+        private static PrototypeSettlementDirective ParseDirectiveStrict(string directiveId)
+        {
+            return directiveId switch
+            {
+                "neutral" => PrototypeSettlementDirective.Neutral,
+                "food_and_fuel" => PrototypeSettlementDirective.FoodAndFuel,
+                "shelter" => PrototypeSettlementDirective.Shelter,
+                _ => throw new InvalidDataException($"Runtime snapshot directive '{directiveId}' is invalid.")
+            };
         }
 
         private static PrototypeWeather ParseWeatherStrict(string weatherName)

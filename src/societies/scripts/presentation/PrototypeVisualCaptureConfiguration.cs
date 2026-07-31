@@ -11,8 +11,8 @@ namespace Societies.Presentation
         public const int SimulationSeed = 1701;
         public const long InitialTick = 0;
         public const long TerminalCrisisTick = 9777;
-        public const int TerminalCrisisEventCount = 8148;
-        public const string TerminalCrisisTraceSha256 = "69f3e22402e31a53b1d4c16899883956fcc5fdb14fbe47d8a4eb8baef007174f";
+        public const int TerminalCrisisEventCount = 8149;
+        public const string TerminalCrisisTraceSha256 = "8a0239837c5f96ac5ef0e470e9e91178d620b7362213cf47eaa2aa20b637eecc";
         public const long CitizenInspectionTick = 1;
         public const ulong ContributionInputFrame = 1701;
         public const int ContributionLogQuantity = 3;

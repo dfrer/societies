@@ -83,9 +83,11 @@ namespace Societies.Core.Tests
             Assert.Equal(
                 JsonSerializer.Serialize(first.Crisis!.CaptureSnapshot()),
                 JsonSerializer.Serialize(second.Crisis!.CaptureSnapshot()));
-            Assert.False(first.SupportsRuntimeSnapshotPersistence);
-            Assert.Throws<InvalidOperationException>(() => first.CaptureSnapshot(Vector3.Zero));
-            Assert.Throws<InvalidDataException>(() => first.ApplySnapshot(new PrototypeRuntimeSnapshot()));
+            Assert.True(first.SupportsRuntimeSnapshotPersistence);
+            PrototypeRuntimeSnapshot persisted = first.CaptureSnapshot(Vector3.Zero);
+            Assert.Equal(7, persisted.SchemaVersion);
+            Assert.NotNull(persisted.Crisis);
+            Assert.Equal("empty_stores", persisted.Crisis!.CrisisId);
         }
 
         [Fact]
@@ -106,7 +108,7 @@ namespace Societies.Core.Tests
             Assert.Null(session.Crisis);
             Assert.Equal(2, session.HearthFuel);
             Assert.True(session.SupportsRuntimeSnapshotPersistence);
-            Assert.Equal(6, session.CaptureSnapshot(Vector3.Zero).SchemaVersion);
+            Assert.Equal(7, session.CaptureSnapshot(Vector3.Zero).SchemaVersion);
         }
 
         [Fact]
@@ -197,6 +199,8 @@ namespace Societies.Core.Tests
             PrototypeCrisisStateSnapshot impossible = new()
             {
                 CrisisId = checkpoint.CrisisId,
+                TicksPerSecond = checkpoint.TicksPerSecond,
+                DeadlineTicks = checkpoint.DeadlineTicks,
                 ElapsedTicks = 1,
                 StableHoldTicks = 450,
                 HasObservation = true,
@@ -232,7 +236,7 @@ namespace Societies.Core.Tests
             Assert.Equal(PrototypeCrisisCollapseCause.None, first.CollapseCause);
             Assert.Equal(1253, first.TerminalTick);
             Assert.Equal(245, first.HutBuiltSwitchTick);
-            Assert.Equal("a81d7083649911a3244446bcde991f215dc0237ea2aa8967b94bfc0c9a98bd3b", first.Hash);
+            Assert.Equal("b939d06b57bbf0c480e5f1b96d5c778e3789465d078ebee459e58f5a6e32b104", first.Hash);
             Assert.Equal(first, second);
         }
 

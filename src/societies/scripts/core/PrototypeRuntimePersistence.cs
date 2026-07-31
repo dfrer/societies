@@ -1,8 +1,10 @@
 using Godot;
 using Societies.Simulation;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Text.Json;
 
 namespace Societies.Core
@@ -12,7 +14,7 @@ namespace Societies.Core
     /// </summary>
     public sealed class PrototypeRuntimeSnapshot
     {
-        public int SchemaVersion { get; set; } = 6;
+        public int SchemaVersion { get; set; } = 7;
 
         public string ScenarioId { get; set; } = string.Empty;
 
@@ -47,15 +49,65 @@ namespace Societies.Core
         public List<PrototypeResourceSnapshot> Resources { get; set; } = new();
 
         public PrototypeSettlementSnapshot? Settlement { get; set; } = new();
+
+        public PrototypeDirectiveSnapshot? Directive { get; set; } = new();
+
+        public Dictionary<string, long> ContributionCountsByResource { get; set; } = new();
+
+        public PrototypeCrisisStateSnapshot? Crisis { get; set; }
+
+        public PrototypeRuntimeTelemetrySnapshot? Telemetry { get; set; } = new();
     }
 
     /// <summary>
-    /// Frozen schema-v7 directive payload. W2-05 will attach this contract to
-    /// <see cref="PrototypeRuntimeSnapshot"/>; schema-v6 snapshots must not silently persist it.
+    /// Frozen schema-v7 directive payload.
     /// </summary>
     public sealed class PrototypeDirectiveSnapshot
     {
         public string DirectiveId { get; set; } = "neutral";
+    }
+
+    /// <summary>
+    /// Compact, bounded telemetry required to continue a schema-v7 run exactly.
+    /// It records aggregate facts and transition counts, never a per-tick narrative.
+    /// </summary>
+    public sealed class PrototypeRuntimeTelemetrySnapshot
+    {
+        public long? FirstDirectiveTick { get; set; }
+
+        public long? FirstContributionTick { get; set; }
+
+        public int DirectiveChanges { get; set; }
+
+        public string FinalDirectiveId { get; set; } = "neutral";
+
+        public bool HasCrisisObservation { get; set; }
+
+        public int PeakIncapacitatedCitizens { get; set; }
+
+        public int MinimumMeals { get; set; }
+
+        public int MinimumHearthFuel { get; set; }
+
+        public int MaximumBedCoveragePercent { get; set; }
+
+        public int FinalCapableCitizens { get; set; }
+
+        public int FinalIncapacitatedCitizens { get; set; }
+
+        public int FinalMeals { get; set; }
+
+        public int FinalHearthFuel { get; set; }
+
+        public int FinalBedCoveragePercent { get; set; }
+
+        public int StabilityHoldEntries { get; set; }
+
+        public int StabilityHoldBreaks { get; set; }
+
+        public int CollapseHoldEntries { get; set; }
+
+        public int CollapseHoldBreaks { get; set; }
     }
 
     public sealed class PrototypeResourceSnapshot
@@ -189,7 +241,7 @@ namespace Societies.Core
 
     public sealed class PrototypeRunSummary
     {
-        public int SchemaVersion { get; set; } = 6;
+        public int SchemaVersion { get; set; } = 7;
 
         public string ScenarioId { get; set; } = string.Empty;
 
@@ -260,6 +312,58 @@ namespace Societies.Core
         public Dictionary<string, int> DepotThroughputByDepot { get; set; } = new();
 
         public Dictionary<string, int> RouteBacklogTicksByKind { get; set; } = new();
+
+        public int CrisisElapsedTicks { get; set; }
+
+        public int CrisisDeadlineTicks { get; set; }
+
+        public double CrisisElapsedSeconds { get; set; }
+
+        public int StabilityHoldTicks { get; set; }
+
+        public int CollapseHoldTicks { get; set; }
+
+        public string CrisisOutcome { get; set; } = string.Empty;
+
+        public string CrisisFailureReason { get; set; } = string.Empty;
+
+        public bool TerminalEventEmitted { get; set; }
+
+        public long? FirstDirectiveTick { get; set; }
+
+        public long? FirstContributionTick { get; set; }
+
+        public int DirectiveChanges { get; set; }
+
+        public string FinalDirective { get; set; } = "neutral";
+
+        public Dictionary<string, long> ContributionsByResource { get; set; } = new();
+
+        public int PeakIncapacitatedCitizens { get; set; }
+
+        public int MinimumMeals { get; set; }
+
+        public int MinimumHearthFuel { get; set; }
+
+        public int MaximumBedCoveragePercent { get; set; }
+
+        public int FinalCapableCitizens { get; set; }
+
+        public int FinalIncapacitatedCitizens { get; set; }
+
+        public int FinalMeals { get; set; }
+
+        public int FinalHearthFuel { get; set; }
+
+        public int FinalBedCoveragePercent { get; set; }
+
+        public int StabilityHoldEntries { get; set; }
+
+        public int StabilityHoldBreaks { get; set; }
+
+        public int CollapseHoldEntries { get; set; }
+
+        public int CollapseHoldBreaks { get; set; }
     }
 
     public struct PrototypeSerializableVector3
@@ -288,9 +392,84 @@ namespace Societies.Core
 
     public static class PrototypePersistenceService
     {
+        private static readonly string[] RequiredSchemaV7SnapshotProperties =
+        {
+            nameof(PrototypeRuntimeSnapshot.SchemaVersion),
+            nameof(PrototypeRuntimeSnapshot.ScenarioId),
+            nameof(PrototypeRuntimeSnapshot.WorldSeed),
+            nameof(PrototypeRuntimeSnapshot.WorldGenerationAttempt),
+            nameof(PrototypeRuntimeSnapshot.WorldHash),
+            nameof(PrototypeRuntimeSnapshot.SimulationSeed),
+            nameof(PrototypeRuntimeSnapshot.SimulationTick),
+            nameof(PrototypeRuntimeSnapshot.CurrentHour),
+            nameof(PrototypeRuntimeSnapshot.CurrentWeather),
+            nameof(PrototypeRuntimeSnapshot.TimeUntilNextWeatherShift),
+            nameof(PrototypeRuntimeSnapshot.WeatherRandomState),
+            nameof(PrototypeRuntimeSnapshot.PlayerPosition),
+            nameof(PrototypeRuntimeSnapshot.SettlementAnchorPosition),
+            nameof(PrototypeRuntimeSnapshot.Inventory),
+            nameof(PrototypeRuntimeSnapshot.Stockpile),
+            nameof(PrototypeRuntimeSnapshot.Workers),
+            nameof(PrototypeRuntimeSnapshot.Resources),
+            nameof(PrototypeRuntimeSnapshot.Settlement),
+            nameof(PrototypeRuntimeSnapshot.Directive),
+            nameof(PrototypeRuntimeSnapshot.ContributionCountsByResource),
+            nameof(PrototypeRuntimeSnapshot.Crisis),
+            nameof(PrototypeRuntimeSnapshot.Telemetry)
+        };
+        private static readonly string[] RequiredSchemaV7DirectiveProperties =
+        {
+            nameof(PrototypeDirectiveSnapshot.DirectiveId)
+        };
+        private static readonly string[] RequiredSchemaV7TelemetryProperties =
+        {
+            nameof(PrototypeRuntimeTelemetrySnapshot.FirstDirectiveTick),
+            nameof(PrototypeRuntimeTelemetrySnapshot.FirstContributionTick),
+            nameof(PrototypeRuntimeTelemetrySnapshot.DirectiveChanges),
+            nameof(PrototypeRuntimeTelemetrySnapshot.FinalDirectiveId),
+            nameof(PrototypeRuntimeTelemetrySnapshot.HasCrisisObservation),
+            nameof(PrototypeRuntimeTelemetrySnapshot.PeakIncapacitatedCitizens),
+            nameof(PrototypeRuntimeTelemetrySnapshot.MinimumMeals),
+            nameof(PrototypeRuntimeTelemetrySnapshot.MinimumHearthFuel),
+            nameof(PrototypeRuntimeTelemetrySnapshot.MaximumBedCoveragePercent),
+            nameof(PrototypeRuntimeTelemetrySnapshot.FinalCapableCitizens),
+            nameof(PrototypeRuntimeTelemetrySnapshot.FinalIncapacitatedCitizens),
+            nameof(PrototypeRuntimeTelemetrySnapshot.FinalMeals),
+            nameof(PrototypeRuntimeTelemetrySnapshot.FinalHearthFuel),
+            nameof(PrototypeRuntimeTelemetrySnapshot.FinalBedCoveragePercent),
+            nameof(PrototypeRuntimeTelemetrySnapshot.StabilityHoldEntries),
+            nameof(PrototypeRuntimeTelemetrySnapshot.StabilityHoldBreaks),
+            nameof(PrototypeRuntimeTelemetrySnapshot.CollapseHoldEntries),
+            nameof(PrototypeRuntimeTelemetrySnapshot.CollapseHoldBreaks)
+        };
+        private static readonly string[] RequiredSchemaV7CrisisProperties =
+        {
+            nameof(PrototypeCrisisStateSnapshot.CrisisId),
+            nameof(PrototypeCrisisStateSnapshot.TicksPerSecond),
+            nameof(PrototypeCrisisStateSnapshot.DeadlineTicks),
+            nameof(PrototypeCrisisStateSnapshot.ElapsedTicks),
+            nameof(PrototypeCrisisStateSnapshot.StableHoldTicks),
+            nameof(PrototypeCrisisStateSnapshot.CollapseHoldTicks),
+            nameof(PrototypeCrisisStateSnapshot.Outcome),
+            nameof(PrototypeCrisisStateSnapshot.CollapseCause),
+            nameof(PrototypeCrisisStateSnapshot.TerminalEventEmitted),
+            nameof(PrototypeCrisisStateSnapshot.HasObservation),
+            nameof(PrototypeCrisisStateSnapshot.LastObservation)
+        };
+        private static readonly string[] RequiredSchemaV7CrisisObservationProperties =
+        {
+            nameof(PrototypeCrisisObservation.TotalCitizens),
+            nameof(PrototypeCrisisObservation.CapableCitizens),
+            nameof(PrototypeCrisisObservation.Meals),
+            nameof(PrototypeCrisisObservation.HearthFuel),
+            nameof(PrototypeCrisisObservation.BedCoveragePercent),
+            nameof(PrototypeCrisisObservation.IncapacitatedCitizens)
+        };
+
         private static readonly JsonSerializerOptions JsonOptions = new()
         {
-            WriteIndented = true
+            WriteIndented = true,
+            MaxDepth = 64
         };
 
         public static string SerializeSnapshot(PrototypeRuntimeSnapshot snapshot)
@@ -300,20 +479,114 @@ namespace Societies.Core
 
         public static PrototypeRuntimeSnapshot DeserializeSnapshot(string json)
         {
-            using JsonDocument document = JsonDocument.Parse(json);
-            if (!document.RootElement.TryGetProperty(nameof(PrototypeRuntimeSnapshot.SchemaVersion), out JsonElement schema) ||
+            byte[] bytes = ValidateJsonPayload(
+                json,
+                PrototypeRunArtifactManager.MaximumSnapshotBytes,
+                PrototypeRunArtifactManager.MaximumSnapshotRows,
+                PrototypeRunArtifactManager.MaximumDictionaryEntries,
+                PrototypeRunArtifactManager.MaximumMessageLength,
+                "snapshot");
+            using JsonDocument document = JsonDocument.Parse(bytes);
+            if (document.RootElement.ValueKind != JsonValueKind.Object ||
+                !document.RootElement.TryGetProperty(nameof(PrototypeRuntimeSnapshot.SchemaVersion), out JsonElement schema) ||
                 schema.ValueKind != JsonValueKind.Number || !schema.TryGetInt32(out int schemaVersion))
             {
                 throw new InvalidDataException("Runtime snapshot is missing an integral SchemaVersion.");
             }
 
-            if (schemaVersion is not (5 or 6))
+            if (schemaVersion is not (5 or 6 or 7))
             {
-                throw new InvalidDataException($"Unsupported runtime snapshot schema {schemaVersion}; expected 5 or 6.");
+                throw new InvalidDataException($"Unsupported runtime snapshot schema {schemaVersion}; expected 5, 6, or 7.");
             }
 
-            PrototypeRuntimeSnapshot? snapshot = JsonSerializer.Deserialize<PrototypeRuntimeSnapshot>(json, JsonOptions);
+            if (schemaVersion == 7)
+            {
+                foreach (string propertyName in RequiredSchemaV7SnapshotProperties)
+                {
+                    if (!document.RootElement.TryGetProperty(propertyName, out _))
+                    {
+                        throw new InvalidDataException(
+                            $"Schema-v7 runtime snapshot is missing required property '{propertyName}'.");
+                    }
+                }
+
+                JsonElement directive = RequireObjectWithProperties(
+                    document.RootElement,
+                    nameof(PrototypeRuntimeSnapshot.Directive),
+                    RequiredSchemaV7DirectiveProperties);
+                _ = directive;
+                JsonElement telemetry = RequireObjectWithProperties(
+                    document.RootElement,
+                    nameof(PrototypeRuntimeSnapshot.Telemetry),
+                    RequiredSchemaV7TelemetryProperties);
+                _ = telemetry;
+
+                JsonElement crisis = document.RootElement.GetProperty(
+                    nameof(PrototypeRuntimeSnapshot.Crisis));
+                if (crisis.ValueKind != JsonValueKind.Null)
+                {
+                    RequireProperties(
+                        crisis,
+                        nameof(PrototypeRuntimeSnapshot.Crisis),
+                        RequiredSchemaV7CrisisProperties);
+                    JsonElement hasObservation = crisis.GetProperty(
+                        nameof(PrototypeCrisisStateSnapshot.HasObservation));
+                    if (hasObservation.ValueKind is not (JsonValueKind.True or JsonValueKind.False))
+                    {
+                        throw new InvalidDataException(
+                            "Schema-v7 crisis HasObservation must be a Boolean.");
+                    }
+
+                    if (hasObservation.GetBoolean())
+                    {
+                        _ = RequireObjectWithProperties(
+                            crisis,
+                            nameof(PrototypeCrisisStateSnapshot.LastObservation),
+                            RequiredSchemaV7CrisisObservationProperties);
+                    }
+                }
+            }
+
+            PrototypeRuntimeSnapshot? snapshot =
+                JsonSerializer.Deserialize<PrototypeRuntimeSnapshot>(bytes, JsonOptions);
             return snapshot ?? throw new InvalidDataException("Runtime snapshot payload is null.");
+        }
+
+        private static JsonElement RequireObjectWithProperties(
+            JsonElement parent,
+            string propertyName,
+            IReadOnlyList<string> requiredProperties)
+        {
+            if (!parent.TryGetProperty(propertyName, out JsonElement payload) ||
+                payload.ValueKind != JsonValueKind.Object)
+            {
+                throw new InvalidDataException(
+                    $"Schema-v7 runtime snapshot property '{propertyName}' must be an object.");
+            }
+
+            RequireProperties(payload, propertyName, requiredProperties);
+            return payload;
+        }
+
+        private static void RequireProperties(
+            JsonElement payload,
+            string payloadName,
+            IReadOnlyList<string> requiredProperties)
+        {
+            if (payload.ValueKind != JsonValueKind.Object)
+            {
+                throw new InvalidDataException(
+                    $"Schema-v7 runtime snapshot property '{payloadName}' must be an object.");
+            }
+
+            foreach (string propertyName in requiredProperties)
+            {
+                if (!payload.TryGetProperty(propertyName, out _))
+                {
+                    throw new InvalidDataException(
+                        $"Schema-v7 runtime snapshot property '{payloadName}' is missing required property '{propertyName}'.");
+                }
+            }
         }
 
         public static string SerializeEventLog(PrototypeEventLog eventLog)
@@ -323,7 +596,18 @@ namespace Societies.Core
 
         public static List<PrototypeEventRecord> DeserializeEventLog(string json)
         {
-            return JsonSerializer.Deserialize<List<PrototypeEventRecord>>(json, JsonOptions) ?? new List<PrototypeEventRecord>();
+            byte[] bytes = ValidateJsonPayload(
+                json,
+                PrototypeRunArtifactManager.MaximumEventLogBytes,
+                PrototypeRunArtifactManager.MaximumEventRows,
+                maximumObjectProperties: 8,
+                PrototypeRunArtifactManager.MaximumMessageLength,
+                "event log");
+            List<PrototypeEventRecord> eventLog =
+                JsonSerializer.Deserialize<List<PrototypeEventRecord>>(bytes, JsonOptions)
+                ?? throw new InvalidDataException("Event-log payload is null.");
+            PrototypeRunArtifactManager.ValidateStandaloneEventLog(eventLog);
+            return eventLog;
         }
 
         public static string SerializeRunSummary(PrototypeRunSummary summary)
@@ -333,41 +617,89 @@ namespace Societies.Core
 
         public static PrototypeRunSummary DeserializeRunSummary(string json)
         {
-            PrototypeRunSummary? summary = JsonSerializer.Deserialize<PrototypeRunSummary>(json, JsonOptions);
-            return summary ?? new PrototypeRunSummary();
+            byte[] bytes = ValidateJsonPayload(
+                json,
+                PrototypeRunArtifactManager.MaximumRunSummaryBytes,
+                PrototypeRunArtifactManager.MaximumSnapshotRows,
+                PrototypeRunArtifactManager.MaximumDictionaryEntries,
+                PrototypeRunArtifactManager.MaximumMessageLength,
+                "run summary");
+            PrototypeRunSummary summary =
+                JsonSerializer.Deserialize<PrototypeRunSummary>(bytes, JsonOptions)
+                ?? throw new InvalidDataException("Run-summary payload is null.");
+            PrototypeRunArtifactManager.ValidateStandaloneRunSummary(summary);
+            return summary;
         }
 
         public static void SaveSnapshot(string path, PrototypeRuntimeSnapshot snapshot)
         {
-            EnsureDirectory(path);
-            File.WriteAllText(path, SerializeSnapshot(snapshot));
+            string json = SerializeSnapshot(snapshot);
+            _ = DeserializeSnapshot(json);
+            AtomicWriteJson(path, json);
         }
 
         public static PrototypeRuntimeSnapshot LoadSnapshot(string path)
         {
-            return DeserializeSnapshot(File.ReadAllText(path));
+            byte[] bytes = PrototypeRunArtifactManager.ReadBoundedFile(
+                path,
+                PrototypeRunArtifactManager.MaximumSnapshotBytes,
+                "snapshot");
+            return DeserializeSnapshot(Encoding.UTF8.GetString(bytes));
         }
 
         public static void SaveEventLog(string path, PrototypeEventLog eventLog)
         {
-            EnsureDirectory(path);
-            File.WriteAllText(path, SerializeEventLog(eventLog));
+            string json = SerializeEventLog(eventLog);
+            _ = DeserializeEventLog(json);
+            AtomicWriteJson(path, json);
         }
 
         public static List<PrototypeEventRecord> LoadEventLog(string path)
         {
-            return DeserializeEventLog(File.ReadAllText(path));
+            byte[] bytes = PrototypeRunArtifactManager.ReadBoundedFile(
+                path,
+                PrototypeRunArtifactManager.MaximumEventLogBytes,
+                "event log");
+            return DeserializeEventLog(Encoding.UTF8.GetString(bytes));
         }
 
         public static void SaveRunSummary(string path, PrototypeRunSummary summary)
         {
-            EnsureDirectory(path);
-            File.WriteAllText(path, SerializeRunSummary(summary));
+            string json = SerializeRunSummary(summary);
+            _ = DeserializeRunSummary(json);
+            AtomicWriteJson(path, json);
         }
 
         public static PrototypeRunSummary LoadRunSummary(string path)
         {
-            return DeserializeRunSummary(File.ReadAllText(path));
+            byte[] bytes = PrototypeRunArtifactManager.ReadBoundedFile(
+                path,
+                PrototypeRunArtifactManager.MaximumRunSummaryBytes,
+                "run summary");
+            return DeserializeRunSummary(Encoding.UTF8.GetString(bytes));
+        }
+
+        private static byte[] ValidateJsonPayload(
+            string json,
+            long maximumBytes,
+            int maximumArrayItems,
+            int maximumObjectProperties,
+            int maximumStringBytes,
+            string label)
+        {
+            ArgumentNullException.ThrowIfNull(json);
+            byte[] bytes = Encoding.UTF8.GetBytes(json);
+            PrototypeRunArtifactManager.ValidatePayloadByteLength(
+                bytes,
+                maximumBytes,
+                label);
+            PrototypeRunArtifactManager.PreflightJson(
+                bytes,
+                maximumArrayItems,
+                maximumObjectProperties,
+                maximumStringBytes,
+                label);
+            return bytes;
         }
 
         public static string SerializeWorldSummary(PrototypeWorldSummary summary)
@@ -377,19 +709,34 @@ namespace Societies.Core
 
         public static PrototypeWorldSummary DeserializeWorldSummary(string json)
         {
-            PrototypeWorldSummary? summary = JsonSerializer.Deserialize<PrototypeWorldSummary>(json, JsonOptions);
-            return summary ?? new PrototypeWorldSummary();
+            byte[] bytes = ValidateJsonPayload(
+                json,
+                PrototypeRunArtifactManager.MaximumWorldSummaryBytes,
+                PrototypeRunArtifactManager.MaximumSnapshotRows,
+                PrototypeRunArtifactManager.MaximumDictionaryEntries,
+                PrototypeRunArtifactManager.MaximumMessageLength,
+                "world summary");
+            PrototypeWorldSummary summary =
+                JsonSerializer.Deserialize<PrototypeWorldSummary>(bytes, JsonOptions)
+                ?? throw new InvalidDataException("World-summary payload is null.");
+            PrototypeRunArtifactManager.ValidateStandaloneWorldSummary(summary);
+            return summary;
         }
 
         public static void SaveWorldSummary(string path, PrototypeWorldSummary summary)
         {
-            EnsureDirectory(path);
-            File.WriteAllText(path, SerializeWorldSummary(summary));
+            string json = SerializeWorldSummary(summary);
+            _ = DeserializeWorldSummary(json);
+            AtomicWriteJson(path, json);
         }
 
         public static PrototypeWorldSummary LoadWorldSummary(string path)
         {
-            return DeserializeWorldSummary(File.ReadAllText(path));
+            byte[] bytes = PrototypeRunArtifactManager.ReadBoundedFile(
+                path,
+                PrototypeRunArtifactManager.MaximumWorldSummaryBytes,
+                "world summary");
+            return DeserializeWorldSummary(Encoding.UTF8.GetString(bytes));
         }
 
         public static string? GetLatestFile(string directoryPath, string searchPattern)
@@ -405,13 +752,12 @@ namespace Societies.Core
                 .FirstOrDefault();
         }
 
-        private static void EnsureDirectory(string path)
+        private static void AtomicWriteJson(string path, string json)
         {
-            string? directory = Path.GetDirectoryName(path);
-            if (!string.IsNullOrWhiteSpace(directory))
-            {
-                Directory.CreateDirectory(directory);
-            }
+            PrototypeRunArtifactManager.AtomicWrite(
+                path,
+                Encoding.UTF8.GetBytes(json),
+                Guid.NewGuid().ToString("N"));
         }
     }
 }

@@ -44,18 +44,25 @@ namespace Societies.Core.Tests
         }
 
         [Fact]
-        public void DirectiveSnapshotContract_IsFrozenWhileSchemaSixFailsFast()
+        public void DirectiveSnapshotContract_RoundTripsAtSchemaSeven()
         {
             PrototypeRuntimeSession session = CreateSession();
             session.SetDirective(PrototypeSettlementDirective.Shelter);
 
-            PrototypeDirectiveSnapshot snapshot = session.CaptureDirectiveSnapshot();
+            PrototypeDirectiveSnapshot directive = session.CaptureDirectiveSnapshot();
 
-            Assert.Equal("shelter", snapshot.DirectiveId);
-            Assert.False(session.SupportsRuntimeSnapshotPersistence);
-            InvalidOperationException error = Assert.Throws<InvalidOperationException>(() => session.CaptureSnapshot(Vector3.Zero));
-            Assert.Contains("directive state", error.Message, StringComparison.Ordinal);
-            Assert.Contains("schema v7", error.Message, StringComparison.Ordinal);
+            Assert.Equal("shelter", directive.DirectiveId);
+            PrototypeRuntimeSnapshot snapshot = session.CaptureSnapshot(Vector3.Zero);
+            Assert.Equal(7, snapshot.SchemaVersion);
+            Assert.Equal("shelter", snapshot.Directive!.DirectiveId);
+            PrototypeCatalogBundle bundle = LoadCatalogs();
+            PrototypeRuntimeSession restored = new(
+                bundle.Scenarios.Resolve("balanced_basin"),
+                bundle.RoleQuotas.Roles,
+                resourceDefinitions: bundle.Resources.Resources);
+            restored.ApplySnapshot(snapshot);
+            Assert.Equal(PrototypeSettlementDirective.Shelter, restored.ActiveDirective);
+            Assert.Equal(1, restored.CaptureTelemetrySnapshot().DirectiveChanges);
         }
 
         [Fact]
@@ -68,6 +75,34 @@ namespace Societies.Core.Tests
 
             Assert.Equal(PrototypeSettlementDirective.Neutral, session.ActiveDirective);
             Assert.Equal("neutral", session.CaptureDirectiveSnapshot().DirectiveId);
+        }
+
+        [Fact]
+        public void RestoredMaximumDirectiveCounterRejectsNextChangeWithoutMutation()
+        {
+            PrototypeRuntimeSession source = CreateSession();
+            PrototypeRuntimeSnapshot snapshot = source.CaptureSnapshot(Vector3.Zero);
+            snapshot.Directive!.DirectiveId = "shelter";
+            snapshot.Telemetry!.FirstDirectiveTick = snapshot.SimulationTick;
+            snapshot.Telemetry.DirectiveChanges = int.MaxValue;
+            snapshot.Telemetry.FinalDirectiveId = "shelter";
+            PrototypeCatalogBundle bundle = LoadCatalogs();
+            PrototypeRuntimeSession restored = new(
+                bundle.Scenarios.Resolve("balanced_basin"),
+                bundle.RoleQuotas.Roles,
+                resourceDefinitions: bundle.Resources.Resources);
+            restored.ApplySnapshot(snapshot);
+            int eventsBefore = restored.EventLog.Entries.Count;
+
+            PrototypeDirectiveChangeResult result =
+                restored.SetDirective(PrototypeSettlementDirective.FoodAndFuel);
+
+            Assert.False(result.Succeeded);
+            Assert.False(result.Changed);
+            Assert.Equal("counter_overflow", result.FailureReason);
+            Assert.Equal(PrototypeSettlementDirective.Shelter, restored.ActiveDirective);
+            Assert.Equal(int.MaxValue, restored.CaptureTelemetrySnapshot().DirectiveChanges);
+            Assert.Equal(eventsBefore, restored.EventLog.Entries.Count);
         }
 
         private static PrototypeRuntimeSession CreateSession()

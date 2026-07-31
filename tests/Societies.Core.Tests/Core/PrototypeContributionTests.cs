@@ -269,25 +269,56 @@ namespace Societies.Core.Tests
         }
 
         [Fact]
-        public void ContributionStateFailsFastAtSchemaV6WhileUntouchedLegacySessionStillRoundTrips()
+        public void ContributionStateRoundTripsAtSchemaV7WhileUntouchedSessionRemainsEmpty()
         {
             PrototypeRuntimeSession contributed = CreateSession();
             contributed.Inventory.AddItem("clay", 2);
             Assert.True(contributed.ContributeToStockpile("clay", 2).Succeeded);
 
-            Assert.False(contributed.SupportsRuntimeSnapshotPersistence);
-            InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
-                contributed.CaptureSnapshot(Vector3.Zero));
-            Assert.Contains("contribution state", exception.Message, StringComparison.Ordinal);
-            Assert.Contains("schema v7", exception.Message, StringComparison.Ordinal);
+            Assert.True(contributed.SupportsRuntimeSnapshotPersistence);
+            PrototypeRuntimeSnapshot snapshot = contributed.CaptureSnapshot(Vector3.Zero);
+            Assert.Equal(7, snapshot.SchemaVersion);
+            Assert.Equal(2, snapshot.ContributionCountsByResource["clay"]);
+            PrototypeRuntimeSession restoredContribution = CreateSession(initialize: false);
+            restoredContribution.ApplySnapshot(
+                PrototypePersistenceService.DeserializeSnapshot(
+                    PrototypePersistenceService.SerializeSnapshot(snapshot)));
+            Assert.Equal(contributed.ContributionCountsByResource, restoredContribution.ContributionCountsByResource);
 
             PrototypeRuntimeSession untouched = CreateSession();
-            PrototypeRuntimeSnapshot snapshot = untouched.CaptureSnapshot(Vector3.Zero);
+            PrototypeRuntimeSnapshot untouchedSnapshot = untouched.CaptureSnapshot(Vector3.Zero);
             PrototypeRuntimeSession restored = CreateSession(initialize: false);
-            restored.ApplySnapshot(snapshot);
-            Assert.Equal(snapshot.Stockpile, restored.Stockpile.Items);
+            restored.ApplySnapshot(untouchedSnapshot);
+            Assert.Equal(untouchedSnapshot.Stockpile, restored.Stockpile.Items);
             Assert.Empty(restored.ContributionCountsByResource);
             Assert.True(restored.SupportsRuntimeSnapshotPersistence);
+        }
+
+        [Fact]
+        public void RestoredMaximumContributionCounterRejectsBeforeInventoryOrDepotMutation()
+        {
+            PrototypeRuntimeSession source = CreateSession();
+            PrototypeRuntimeSnapshot snapshot = source.CaptureSnapshot(Vector3.Zero);
+            snapshot.ContributionCountsByResource["logs"] = long.MaxValue;
+            snapshot.Telemetry!.FirstContributionTick = snapshot.SimulationTick;
+
+            PrototypeRuntimeSession restored = CreateSession(initialize: false);
+            restored.ApplySnapshot(snapshot);
+            restored.Inventory.AddItem("logs", 1);
+            Dictionary<string, int> inventoryBefore = new(restored.Inventory.Items);
+            Dictionary<string, int> stockpileBefore = new(restored.Stockpile.Items);
+            int depotBefore = restored.CentralDepotOccupiedQuantity;
+            int eventsBefore = restored.EventLog.Entries.Count;
+
+            PrototypeContributionResult result = restored.ContributeToStockpile("logs", 1);
+
+            Assert.False(result.Succeeded);
+            Assert.Equal("counter_overflow", result.FailureReason);
+            Assert.Equal(inventoryBefore, restored.Inventory.Items);
+            Assert.Equal(stockpileBefore, restored.Stockpile.Items);
+            Assert.Equal(depotBefore, restored.CentralDepotOccupiedQuantity);
+            Assert.Equal(eventsBefore, restored.EventLog.Entries.Count);
+            Assert.Equal(long.MaxValue, restored.ContributionCountsByResource["logs"]);
         }
 
         private static void AssertFailureWithoutMutation(

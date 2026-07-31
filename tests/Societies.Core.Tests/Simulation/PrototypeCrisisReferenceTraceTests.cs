@@ -1,7 +1,9 @@
 using Societies.Core;
 using Societies.Simulation;
+using Godot;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
 using Xunit;
 
 namespace Societies.Core.Tests
@@ -19,8 +21,8 @@ namespace Societies.Core.Tests
             Assert.InRange(historicalFirst.TerminalTick, 8 * 60 * PrototypeSimulationTime.TicksPerSecond, 14 * 60 * PrototypeSimulationTime.TicksPerSecond);
             Assert.Equal(PrototypeCrisisOutcome.Collapsed, historicalFirst.Outcome);
             Assert.Equal(PrototypeCrisisCollapseCause.IncapacitatedHold, historicalFirst.CollapseCause);
-            Assert.Equal(7495, historicalFirst.EventCount);
-            Assert.Equal("ab219da9ad492a0011bd70160548d29da3420569eb6a89facd74c6c63145a880", historicalFirst.TraceHash);
+            Assert.Equal(7496, historicalFirst.EventCount);
+            Assert.Equal("9ce28bf44c480d43b1313a48abfdea82900c266afc04f5351eff6e61d4e6b93a", historicalFirst.TraceHash);
 
             RuntimeCrisisTrace captureFirst = RunNoInputSessionTrace(10.5f);
             RuntimeCrisisTrace captureSecond = RunNoInputSessionTrace(10.5f);
@@ -30,8 +32,77 @@ namespace Societies.Core.Tests
             Assert.InRange(captureFirst.TerminalTick, 8 * 60 * PrototypeSimulationTime.TicksPerSecond, 14 * 60 * PrototypeSimulationTime.TicksPerSecond);
             Assert.Equal(PrototypeCrisisOutcome.Collapsed, captureFirst.Outcome);
             Assert.Equal(PrototypeCrisisCollapseCause.IncapacitatedHold, captureFirst.CollapseCause);
-            Assert.Equal(8148, captureFirst.EventCount);
-            Assert.Equal("69f3e22402e31a53b1d4c16899883956fcc5fdb14fbe47d8a4eb8baef007174f", captureFirst.TraceHash);
+            Assert.Equal(8149, captureFirst.EventCount);
+            Assert.Equal("8a0239837c5f96ac5ef0e470e9e91178d620b7362213cf47eaa2aa20b637eecc", captureFirst.TraceHash);
+        }
+
+        [Fact]
+        public void EmptyStores_FoodAndFuelThenShelterCheckpointResumeMatchesExactlyAndStabilizes()
+        {
+            PrototypeCatalogBundle bundle = PrototypeCatalogLoader.LoadFromDirectory(GetCatalogDirectoryPath());
+            PrototypeScenarioDefinition scenario = bundle.Scenarios.Resolve("empty_stores");
+            PrototypeRuntimeSession continuous = CreateScriptedSession(bundle, scenario);
+            const int checkpointTick = 600;
+            while (continuous.SimulationTick < checkpointTick)
+            {
+                ApplyFoodThenShelterSchedule(continuous);
+                _ = continuous.Advance((float)PrototypeSimulationTime.TickIntervalSeconds, 600.0f);
+            }
+
+            PrototypeRuntimeSnapshot checkpoint = continuous.CaptureSnapshot(Vector3.Zero);
+            List<PrototypeEventRecord> checkpointEvents = continuous.EventLog.Entries
+                .Select(entry => new PrototypeEventRecord
+                {
+                    Tick = entry.Tick,
+                    EventType = entry.EventType,
+                    Message = entry.Message
+                })
+                .ToList();
+            PrototypeRuntimeSession resumed = new(
+                scenario,
+                bundle.RoleQuotas.Roles,
+                resourceDefinitions: bundle.Resources.Resources);
+            resumed.ApplySnapshot(PrototypePersistenceService.DeserializeSnapshot(
+                PrototypePersistenceService.SerializeSnapshot(checkpoint)));
+            resumed.RestoreArtifacts(checkpointEvents, null);
+            Assert.Equal(
+                PrototypePersistenceService.SerializeSnapshot(checkpoint),
+                PrototypePersistenceService.SerializeSnapshot(resumed.CaptureSnapshot(Vector3.Zero)));
+
+            while (!continuous.Crisis!.IsTerminal && continuous.SimulationTick < 5000)
+            {
+                Assert.False(resumed.Crisis!.IsTerminal);
+                ApplyFoodThenShelterSchedule(continuous);
+                ApplyFoodThenShelterSchedule(resumed);
+                _ = continuous.Advance((float)PrototypeSimulationTime.TickIntervalSeconds, 600.0f);
+                _ = resumed.Advance((float)PrototypeSimulationTime.TickIntervalSeconds, 600.0f);
+                Assert.True(
+                    continuous.Stockpile.Items.OrderBy(pair => pair.Key).SequenceEqual(
+                        resumed.Stockpile.Items.OrderBy(pair => pair.Key)),
+                    $"Checkpoint/resume stockpile diverged at tick {continuous.SimulationTick}: " +
+                    $"continuous={string.Join(',', continuous.Stockpile.Items.OrderBy(pair => pair.Key).Select(pair => $"{pair.Key}:{pair.Value}"))}; " +
+                    $"resumed={string.Join(',', resumed.Stockpile.Items.OrderBy(pair => pair.Key).Select(pair => $"{pair.Key}:{pair.Value}"))}.");
+            }
+
+            Assert.True(continuous.Crisis.IsTerminal, "The scripted directive sequence must terminate within 5,000 ticks.");
+            Assert.True(resumed.Crisis!.IsTerminal);
+            Assert.Equal(PrototypeCrisisOutcome.Stable, continuous.Crisis.Outcome);
+            Assert.Equal(1253, continuous.SimulationTick);
+            Assert.Equal(PrototypeSettlementDirective.Shelter, continuous.ActiveDirective);
+            Assert.Equal(4, continuous.CaptureTelemetrySnapshot().DirectiveChanges);
+            string continuousSnapshot = PrototypePersistenceService.SerializeSnapshot(
+                continuous.CaptureSnapshot(Vector3.Zero));
+            string resumedSnapshot = PrototypePersistenceService.SerializeSnapshot(
+                resumed.CaptureSnapshot(Vector3.Zero));
+            string continuousEvents = JsonSerializer.Serialize(continuous.EventLog.Entries);
+            string resumedEvents = JsonSerializer.Serialize(resumed.EventLog.Entries);
+            Assert.Equal(continuousSnapshot, resumedSnapshot);
+            Assert.Equal(continuousEvents, resumedEvents);
+            Assert.Equal(
+                Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(continuousSnapshot + continuousEvents))),
+                Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(resumedSnapshot + resumedEvents))));
+            Assert.Single(continuous.EventLog.Entries.Where(entry =>
+                entry.EventType == PrototypeEventTypes.CrisisStabilized));
         }
 
         private static RuntimeCrisisTrace RunNoInputSessionTrace(float initialHour)
@@ -56,6 +127,55 @@ namespace Societies.Core.Tests
                 session.Crisis.CollapseCause,
                 hash,
                 session.EventLog.Entries.Count);
+        }
+
+        private static PrototypeRuntimeSession CreateScriptedSession(
+            PrototypeCatalogBundle bundle,
+            PrototypeScenarioDefinition scenario)
+        {
+            PrototypeRuntimeSession session = new(
+                scenario,
+                bundle.RoleQuotas.Roles,
+                resourceDefinitions: bundle.Resources.Resources);
+            session.Initialize(8.0f);
+            session.Inventory.AddItem("berries", 1000);
+            session.Inventory.AddItem("logs", 1000);
+            session.Inventory.AddItem("reeds", 1000);
+            Assert.True(session.SetDirective(PrototypeSettlementDirective.FoodAndFuel).Changed);
+            Assert.True(session.SetDirective(PrototypeSettlementDirective.Shelter).Changed);
+            Assert.True(session.ContributeToStockpile("logs", 30).Succeeded);
+            Assert.True(session.ContributeToStockpile("reeds", 12).Succeeded);
+            Assert.True(session.ContributeToStockpile("berries", 18).Succeeded);
+            return session;
+        }
+
+        private static void ApplyFoodThenShelterSchedule(PrototypeRuntimeSession session)
+        {
+            bool hutBuilt = session.Structures.Any(structure =>
+                string.Equals(structure.StructureId, "hut_3", StringComparison.Ordinal) &&
+                structure.IsBuilt);
+            if (hutBuilt && session.ActiveDirective == PrototypeSettlementDirective.Shelter)
+            {
+                Assert.True(session.SetDirective(PrototypeSettlementDirective.FoodAndFuel).Changed);
+            }
+
+            if (session.Crisis!.StableHoldTicks == session.Crisis.Definition.StableHoldTicks - 1 &&
+                session.ActiveDirective == PrototypeSettlementDirective.FoodAndFuel)
+            {
+                Assert.True(session.SetDirective(PrototypeSettlementDirective.Shelter).Changed);
+            }
+
+            if (session.SimulationTick > 0 &&
+                session.SimulationTick % 250 == 0 &&
+                session.CentralDepotOccupiedQuantity <= 60)
+            {
+                Assert.True(session.ContributeToStockpile("logs", 8).Succeeded);
+                Assert.True(session.ContributeToStockpile("berries", 8).Succeeded);
+                if (!hutBuilt)
+                {
+                    Assert.True(session.ContributeToStockpile("reeds", 4).Succeeded);
+                }
+            }
         }
 
         private static void AppendTick(StringBuilder trace, PrototypeRuntimeSession session, ref int recordedEventCount)

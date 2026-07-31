@@ -11,6 +11,13 @@ $ErrorActionPreference = "Stop"
 $repoRoot = Split-Path -Parent $PSScriptRoot
 Set-Location $repoRoot
 
+# This is the contract emitted by the current source tree. Historical W2-VIS
+# evidence remains tied to its original source revision and is not rewritten.
+$currentSourceTerminalCrisisContract = @{
+    EventCount = 8149
+    TraceSha256 = "8a0239837c5f96ac5ef0e470e9e91178d620b7362213cf47eaa2aa20b637eecc"
+}
+
 function Write-Utf8NoBom {
     param([string]$Path, [string]$Content)
     [System.IO.File]::WriteAllText($Path, $Content, (New-Object System.Text.UTF8Encoding($false)))
@@ -347,9 +354,9 @@ try {
     }
     $terminalCrisisTick = [long](Require-ManifestProperty $manifest "TerminalCrisisTick")
     if ($terminalCrisisTick -le 0) { throw "Capture manifest terminal crisis tick must be positive." }
-    if ([int](Require-ManifestProperty $manifest "TerminalCrisisEventCount") -ne 8148 -or
-        (Require-ManifestProperty $manifest "TerminalCrisisTraceSha256") -cne "69f3e22402e31a53b1d4c16899883956fcc5fdb14fbe47d8a4eb8baef007174f") {
-        throw "Capture manifest terminal-crisis provenance does not match the canonical 10.5 reference trace."
+    if ([int](Require-ManifestProperty $manifest "TerminalCrisisEventCount") -ne $currentSourceTerminalCrisisContract.EventCount -or
+        (Require-ManifestProperty $manifest "TerminalCrisisTraceSha256") -cne $currentSourceTerminalCrisisContract.TraceSha256) {
+        throw "Capture manifest terminal-crisis provenance does not match the current-source 10.5 reference trace."
     }
     Assert-ExactNumber -Actual (Require-ManifestProperty $manifest "LightingHour") -Expected 10.5 -Description "lighting hour"
     Assert-ExactNumber -Actual (Require-ManifestProperty $manifest "LightingMultiplier") -Expected 1.0 -Description "lighting multiplier"
