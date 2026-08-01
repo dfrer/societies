@@ -2,7 +2,7 @@
 
 ## Document Control
 
-The July 13-24, 2026 execution window is historical. This document is retained as the Stopped/Closed W2 record with required Definition-of-Done items unmet. A measured W2-06 performance repair is locally validated but remains red at the reference p95 safety gate; the next bounded action is characterization-only, and no feature expansion or Weeks 3-4 activation is authorized.
+The July 13-24, 2026 execution window is historical. This document is retained as the Stopped/Closed W2 record with required Definition-of-Done items unmet. A measured W2-06 performance repair remains red at the reference p95 safety gate; its follow-on spike characterization is complete, and the next bounded action is profiling inside BuildWorkOrders. No feature expansion or Weeks 3-4 activation is authorized.
 
 | Field | Value |
 |---|---|
@@ -582,9 +582,9 @@ Local W2-05 evidence: 333/333 .NET tests and 23/23 Godot tests with zero-warning
 
 #### V3-W2-06 — Release validation, playtests, and decision
 
-Current evidence superseding the historical execution text below: [v3-w2-06-performance-repair-validation.json](evidence/v3-w2-06-performance-repair-validation.json) records pushed/published branch `feature/v3-w2-06-performance-repair` at `b84f70e`, with commits `a8e04cc`, `84cc609`, `44414ec`; it has no PR and remains unmerged. The repair is contract-valid but `safety_failure` at reference p95 median `55.0153 ms`; Stop Feature Expansion remains active and the single next action is characterization-only.
+Current evidence superseding the historical execution text below: [v3-w2-06-performance-repair-validation.json](evidence/v3-w2-06-performance-repair-validation.json) records pushed/published branch `feature/v3-w2-06-performance-repair` at `b84f70e`, with commits `a8e04cc`, `84cc609`, `44414ec`; it has no PR and remains unmerged. The repair is contract-valid but `safety_failure` at reference p95 median `55.0153 ms`; Stop Feature Expansion remains active. The completed [spike characterization](evidence/v3-w2-06-spike-characterization.json) is on pushed branch `feature/v3-w2-06-spike-characterization` at `8529856` (unmerged, no PR): analyzer v2.1.0/schema 2 passed its focused Windows PowerShell 5.1 command and full 14-run regression, with independent review GO and no P0-P3 findings. The >50 ms sets are 16/16/17, with 15 common and 18 in the union. Across 45 common-spike samples, BuildWorkOrders is dominant at `2,858.6367 ms` of `4,268.8291 ms` wall (`66.965358%`; `69.462525%` of measured leaf time). The next bounded action is profiling inside BuildWorkOrders; no implementation, optimization, threshold change, feature expansion, PR/merge, or fresh matrix is authorized.
 
-Run the release candidate from a clean state. The completed W2-06 report records **Stop Feature Expansion** because the clean matrix is contract-valid but the 16-citizen reference p95 safety gate remains red; both 1,000-tick soak p95 values pass in the repair run:
+Historical execution record (already completed before the characterization boundary): run the release candidate from a clean state. The completed W2-06 report records **Stop Feature Expansion** because the clean matrix is contract-valid but the 16-citizen reference p95 safety gate remains red; both 1,000-tick soak p95 values pass in the repair run:
 
 - Release build and full .NET/Godot suites;
 - 16-citizen matrix and 1,000-tick determinism/resume;
@@ -604,7 +604,7 @@ Ask afterward:
 6. What caused the result, and did it feel fair?
 7. Would you play another crisis?
 
-Delivered `V3_SPRINT_VALIDATION_REPORT.md` records baseline-versus-RC results, defects/limitations, playtest availability, and the single sprint conclusion. The next action is bounded performance characterization/repair before any expansion.
+Delivered `V3_SPRINT_VALIDATION_REPORT.md` records baseline-versus-RC results, defects/limitations, playtest availability, and the single sprint conclusion. The characterization boundary is now complete; the next action is profiling inside BuildWorkOrders before any optimization or expansion.
 
 ## Ten-Day Schedule
 
