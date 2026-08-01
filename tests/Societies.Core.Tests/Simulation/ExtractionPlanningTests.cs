@@ -358,6 +358,71 @@ namespace Societies.Core.Tests
         }
 
         [Fact]
+        public void ControlledFrontier_VirtualExtractionKeysPreserveOrdinalAndClaimPrefixSemantics()
+        {
+            (PrototypeSettlementSimulation optimized, WorldGenerationResult optimizedWorld) = NewControlledSimulation(initialCitizens: 3);
+            (PrototypeSettlementSimulation fullMaterialization, WorldGenerationResult fullMaterializationWorld) = NewControlledSimulation(
+                uncappedOrders: true,
+                initialCitizens: 3);
+            List<PrototypeResourceSiteState> optimizedSites = BuildSyntheticResourceSites(optimizedWorld, count: 110);
+            List<PrototypeResourceSiteState> fullMaterializationSites = BuildSyntheticResourceSites(fullMaterializationWorld, count: 110);
+            string[] ordinalNodeNames = { "!", "/", "0", "A", "a", "aa", "é", "\uE000" };
+            for (int index = 0; index < ordinalNodeNames.Length; index++)
+            {
+                optimizedSites[index] = optimizedSites[index] with { NodeName = ordinalNodeNames[index] };
+                fullMaterializationSites[index] = fullMaterializationSites[index] with { NodeName = ordinalNodeNames[index] };
+            }
+            string[] activeClaims = { "extract.A", "extract", "extract.A.extra" };
+            for (int index = 0; index < activeClaims.Length; index++)
+            {
+                optimized.Citizens[index].CurrentOrderId = activeClaims[index];
+                optimized.Citizens[index].Phase = PrototypeWorkerPhase.MovingToResource;
+                fullMaterialization.Citizens[index].CurrentOrderId = activeClaims[index];
+                fullMaterialization.Citizens[index].Phase = PrototypeWorkerPhase.MovingToResource;
+            }
+            List<PrototypeWorkOrder> fixedOrders = new()
+            {
+                new PrototypeWorkOrder { OrderId = "extrac", Priority = 640 },
+                new PrototypeWorkOrder { OrderId = "extract-", Priority = 640 },
+                new PrototypeWorkOrder { OrderId = "extract/", Priority = 640 },
+                new PrototypeWorkOrder { OrderId = "extract.!!", Priority = 640 },
+                new PrototypeWorkOrder { OrderId = "extract..", Priority = 640 },
+                new PrototypeWorkOrder { OrderId = "extract./suffix", Priority = 640 },
+                new PrototypeWorkOrder { OrderId = "extract.A!", Priority = 640 },
+                new PrototypeWorkOrder { OrderId = "extract.a!", Priority = 640 },
+                new PrototypeWorkOrder { OrderId = "extract.\uE000!", Priority = 640 },
+                new PrototypeWorkOrder { OrderId = "zz.fixed", Priority = 640 }
+            };
+            (string ResourceId, int DesiredUnits, int BasePriority)[] extractionClass =
+            {
+                ("logs", DesiredUnits: 110, BasePriority: 640)
+            };
+
+            ControlledExtractionFrontierProbe optimizedProbe = PlanExtractionFrontier(
+                optimized,
+                fixedOrders,
+                optimizedSites,
+                extractionClass);
+            ControlledExtractionFrontierProbe fullMaterializationProbe = PlanExtractionFrontier(
+                fullMaterialization,
+                fixedOrders,
+                fullMaterializationSites,
+                extractionClass);
+
+            Assert.Equal(1, ReadLightweightFrontierActivations(optimized));
+            Assert.Equal(0, optimizedProbe.OmittedCount);
+            Assert.Equal(fullMaterializationProbe.VirtualUncappedCount, optimizedProbe.VirtualUncappedCount);
+            Assert.Equal(
+                JsonSerializer.Serialize(TopWorkOrders(fullMaterializationProbe.Orders, count: 50)),
+                JsonSerializer.Serialize(optimizedProbe.Orders));
+            Assert.Equal(fullMaterializationProbe.PathPlanLookups, optimizedProbe.PathPlanLookups);
+            Assert.Equal(fullMaterializationProbe.PathPlanCacheHits, optimizedProbe.PathPlanCacheHits);
+            Assert.Equal(fullMaterializationProbe.PathPlanCacheMisses, optimizedProbe.PathPlanCacheMisses);
+            Assert.Equal(fullMaterializationProbe.CachedRouteDistanceFastPathHits, optimizedProbe.CachedRouteDistanceFastPathHits);
+            Assert.DoesNotContain(optimizedProbe.Orders, order => order.OrderId == "extract.A");
+        }
+
+        [Fact]
         public void ControlledFrontier_NearProfitabilityBoundaryUsesLegacyMaterialization()
         {
             (PrototypeSettlementSimulation optimized, WorldGenerationResult optimizedWorld) = NewControlledSimulation();
