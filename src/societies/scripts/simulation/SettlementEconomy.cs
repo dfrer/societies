@@ -9,6 +9,7 @@ namespace Societies.Simulation
 {
     public sealed partial class PrototypeSettlementSimulation
     {
+        private int _lightweightExtractionFrontierActivations;
 
         private void SeedStartingStock()
         {
@@ -68,6 +69,7 @@ namespace Societies.Simulation
             float currentHour,
             PrototypeWeather weather)
         {
+            _lightweightExtractionFrontierActivations = 0;
             Dictionary<string, int> committedCarries = _citizens
                 .Where(citizen => citizen.CarryAmount > 0)
                 .GroupBy(citizen => citizen.CarryItemId)
@@ -83,6 +85,10 @@ namespace Societies.Simulation
             AnnotateDirectiveAffinities(orders);
 
             int omittedExtractionOrderCount = 0;
+            int unmaterializedExtractionOrderCount = 0;
+            bool useLightweightExtractionFrontier =
+                _extractionPlanningMode == PrototypeExtractionPlanningMode.ExactBounded && !_uncappedOrders;
+            HashSet<string>? generatedExtractionOrderIds = null;
             HashSet<string>? exhaustiveProjectedOmittedOrderIds =
                 _extractionPlanningMode == PrototypeExtractionPlanningMode.ExhaustiveReference
                     ? new HashSet<string>(StringComparer.Ordinal)
@@ -96,10 +102,15 @@ namespace Societies.Simulation
                 weather,
                 activeClaimedOrderIds,
                 ref omittedExtractionOrderCount,
+                ref unmaterializedExtractionOrderCount,
+                ref useLightweightExtractionFrontier,
+                ref generatedExtractionOrderIds,
                 exhaustiveProjectedOmittedOrderIds,
                 ref exhaustiveProjectedOmittedOrderCount);
             orders = RemoveClaimedOrders(orders, activeClaimedOrderIds);
-            _workOrdersGeneratedUncappedThisTick = orders.Count + omittedExtractionOrderCount;
+            _workOrdersGeneratedUncappedThisTick = orders.Count +
+                omittedExtractionOrderCount +
+                unmaterializedExtractionOrderCount;
             _extractionOrdersOmittedThisTick = omittedExtractionOrderCount;
             if (_extractionPlanningMode == PrototypeExtractionPlanningMode.ExhaustiveReference)
             {
@@ -161,6 +172,7 @@ namespace Societies.Simulation
             IReadOnlyList<PrototypeResourceSiteState> resources,
             IReadOnlyList<(string ResourceId, int DesiredUnits, int BasePriority)> extractionClasses)
         {
+            _lightweightExtractionFrontierActivations = 0;
             HashSet<string> activeClaimedOrderIds = BuildActiveClaimedOrderIds();
             List<PrototypeWorkOrder> orders = RemoveClaimedOrders(existingOrders.ToList(), activeClaimedOrderIds);
             int lookupsBefore = _pathPlanLookupsThisTick;
@@ -168,6 +180,10 @@ namespace Societies.Simulation
             int missesBefore = _pathPlanCacheMissesThisTick;
             long fastPathHitsBefore = _cachedRouteDistanceFastPathHits;
             int omittedCount = 0;
+            int unmaterializedCount = 0;
+            bool useLightweightExtractionFrontier =
+                _extractionPlanningMode == PrototypeExtractionPlanningMode.ExactBounded && !_uncappedOrders;
+            HashSet<string>? generatedExtractionOrderIds = null;
             int projectedOmittedCount = 0;
 
             foreach ((string resourceId, int desiredUnits, int basePriority) in extractionClasses)
@@ -180,12 +196,15 @@ namespace Societies.Simulation
                     basePriority,
                     activeClaimedOrderIds,
                     ref omittedCount,
+                    ref unmaterializedCount,
+                    ref useLightweightExtractionFrontier,
+                    ref generatedExtractionOrderIds,
                     null,
                     ref projectedOmittedCount);
             }
 
             orders = RemoveClaimedOrders(orders, activeClaimedOrderIds);
-            int virtualUncappedCount = orders.Count + omittedCount;
+            int virtualUncappedCount = orders.Count + omittedCount + unmaterializedCount;
             orders = ApplyWorkOrderFrontierLimit(orders, virtualUncappedCount);
             return new PrototypeExtractionFrontierProbe(
                 orders.ToArray(),
@@ -551,14 +570,17 @@ namespace Societies.Simulation
             PrototypeWeather weather,
             IReadOnlySet<string> activeClaimedOrderIds,
             ref int omittedExtractionOrderCount,
+            ref int unmaterializedExtractionOrderCount,
+            ref bool useLightweightExtractionFrontier,
+            ref HashSet<string>? generatedExtractionOrderIds,
             HashSet<string>? exhaustiveProjectedOmittedOrderIds,
             ref int exhaustiveProjectedOmittedOrderCount)
         {
-            AddExtractionOrders(orders, resources, "logs", Math.Max(0, GetLogTarget() - GetAccessibleResourceCount("logs", committedCarries)), 640, activeClaimedOrderIds, ref omittedExtractionOrderCount, exhaustiveProjectedOmittedOrderIds, ref exhaustiveProjectedOmittedOrderCount);
-            AddExtractionOrders(orders, resources, "berries", Math.Max(0, GetBerryTarget() - GetAccessibleResourceCount("berries", committedCarries)), 900, activeClaimedOrderIds, ref omittedExtractionOrderCount, exhaustiveProjectedOmittedOrderIds, ref exhaustiveProjectedOmittedOrderCount);
-            AddExtractionOrders(orders, resources, "reeds", Math.Max(0, GetPendingConstructionRequirement("thatch") - GetAccessibleResourceCount("reeds", committedCarries)), 700, activeClaimedOrderIds, ref omittedExtractionOrderCount, exhaustiveProjectedOmittedOrderIds, ref exhaustiveProjectedOmittedOrderCount);
-            AddExtractionOrders(orders, resources, "stone", Math.Max(0, GetPendingConstructionRequirement("stone") - GetAccessibleResourceCount("stone", committedCarries)), 620, activeClaimedOrderIds, ref omittedExtractionOrderCount, exhaustiveProjectedOmittedOrderIds, ref exhaustiveProjectedOmittedOrderCount);
-            AddExtractionOrders(orders, resources, "clay", Math.Max(0, GetPendingConstructionRequirement("clay") - GetAccessibleResourceCount("clay", committedCarries)), 620, activeClaimedOrderIds, ref omittedExtractionOrderCount, exhaustiveProjectedOmittedOrderIds, ref exhaustiveProjectedOmittedOrderCount);
+            AddExtractionOrders(orders, resources, "logs", Math.Max(0, GetLogTarget() - GetAccessibleResourceCount("logs", committedCarries)), 640, activeClaimedOrderIds, ref omittedExtractionOrderCount, ref unmaterializedExtractionOrderCount, ref useLightweightExtractionFrontier, ref generatedExtractionOrderIds, exhaustiveProjectedOmittedOrderIds, ref exhaustiveProjectedOmittedOrderCount);
+            AddExtractionOrders(orders, resources, "berries", Math.Max(0, GetBerryTarget() - GetAccessibleResourceCount("berries", committedCarries)), 900, activeClaimedOrderIds, ref omittedExtractionOrderCount, ref unmaterializedExtractionOrderCount, ref useLightweightExtractionFrontier, ref generatedExtractionOrderIds, exhaustiveProjectedOmittedOrderIds, ref exhaustiveProjectedOmittedOrderCount);
+            AddExtractionOrders(orders, resources, "reeds", Math.Max(0, GetPendingConstructionRequirement("thatch") - GetAccessibleResourceCount("reeds", committedCarries)), 700, activeClaimedOrderIds, ref omittedExtractionOrderCount, ref unmaterializedExtractionOrderCount, ref useLightweightExtractionFrontier, ref generatedExtractionOrderIds, exhaustiveProjectedOmittedOrderIds, ref exhaustiveProjectedOmittedOrderCount);
+            AddExtractionOrders(orders, resources, "stone", Math.Max(0, GetPendingConstructionRequirement("stone") - GetAccessibleResourceCount("stone", committedCarries)), 620, activeClaimedOrderIds, ref omittedExtractionOrderCount, ref unmaterializedExtractionOrderCount, ref useLightweightExtractionFrontier, ref generatedExtractionOrderIds, exhaustiveProjectedOmittedOrderIds, ref exhaustiveProjectedOmittedOrderCount);
+            AddExtractionOrders(orders, resources, "clay", Math.Max(0, GetPendingConstructionRequirement("clay") - GetAccessibleResourceCount("clay", committedCarries)), 620, activeClaimedOrderIds, ref omittedExtractionOrderCount, ref unmaterializedExtractionOrderCount, ref useLightweightExtractionFrontier, ref generatedExtractionOrderIds, exhaustiveProjectedOmittedOrderIds, ref exhaustiveProjectedOmittedOrderCount);
         }
         private void AddExtractionOrders(
             List<PrototypeWorkOrder> orders,
@@ -568,6 +590,9 @@ namespace Societies.Simulation
             int priority,
             IReadOnlySet<string> activeClaimedOrderIds,
             ref int omittedExtractionOrderCount,
+            ref int unmaterializedExtractionOrderCount,
+            ref bool useLightweightExtractionFrontier,
+            ref HashSet<string>? generatedExtractionOrderIds,
             HashSet<string>? exhaustiveProjectedOmittedOrderIds,
             ref int exhaustiveProjectedOmittedOrderCount)
         {
@@ -666,13 +691,32 @@ namespace Societies.Simulation
                     desiredUnits,
                     candidate => ComputeRouteDistance(_world.SettlementSpawn.AnchorPosition, candidate.InteractionPosition));
 
+            string[]? lightweightOrderIds = null;
+            int materializationBudget = checked(frontierBudget + activeClaimedOrderIds.Count);
+            int guaranteedAvoidedOrderCount = sites.Count - materializationBudget;
+            if (useLightweightExtractionFrontier && guaranteedAvoidedOrderCount >= frontierBudget)
+            {
+                generatedExtractionOrderIds ??= new HashSet<string>(StringComparer.Ordinal);
+                lightweightOrderIds = sites
+                    .Select(candidate => $"extract.{candidate.Site.NodeName}")
+                    .ToArray();
+                foreach (string orderId in lightweightOrderIds)
+                {
+                    if (!generatedExtractionOrderIds.Add(orderId))
+                    {
+                        useLightweightExtractionFrontier = false;
+                    }
+                }
+            }
+
             bool useDepotTopologyBounds = _extractionPlanningMode == PrototypeExtractionPlanningMode.ExactBounded &&
                 ShouldBuildGeometricDistanceField(
                     _centralDepot.Position,
                     sites.Select(candidate => candidate.InteractionPosition));
-            if (TryAddBoundedExtractionFrontier(
+            if (TryAddLightweightExtractionFrontier(
                 orders,
                 sites,
+                lightweightOrderIds,
                 resourceId,
                 priorityUpperBound,
                 directiveAffinity,
@@ -680,7 +724,8 @@ namespace Societies.Simulation
                 activeClaimedOrderIds,
                 frontierBudget,
                 useDepotTopologyBounds,
-                ref omittedExtractionOrderCount))
+                ref unmaterializedExtractionOrderCount,
+                ref useLightweightExtractionFrontier))
             {
                 return;
             }
@@ -707,9 +752,10 @@ namespace Societies.Simulation
             }
         }
 
-        private bool TryAddBoundedExtractionFrontier(
+        private bool TryAddLightweightExtractionFrontier(
             List<PrototypeWorkOrder> orders,
             IReadOnlyList<PrototypeExtractionCandidate> sites,
+            IReadOnlyList<string>? orderIds,
             string resourceId,
             int priorityUpperBound,
             PrototypeDirectiveAffinity directiveAffinity,
@@ -717,26 +763,35 @@ namespace Societies.Simulation
             IReadOnlySet<string> activeClaimedOrderIds,
             int frontierBudget,
             bool useDepotTopologyBounds,
-            ref int omittedExtractionOrderCount)
+            ref int unmaterializedExtractionOrderCount,
+            ref bool useLightweightExtractionFrontier)
         {
-            if (_extractionPlanningMode != PrototypeExtractionPlanningMode.ExactBounded ||
-                _uncappedOrders ||
-                sites.Count == 0 ||
-                orders.Count + sites.Count <= frontierBudget)
+            if (!useLightweightExtractionFrontier ||
+                orderIds == null ||
+                sites.Count == 0)
             {
                 return false;
             }
 
-            PrototypeExtractionCandidate[] candidatesByBestPossibleKey = sites
-                .OrderBy(candidate => candidate.Site.NodeName, StringComparer.Ordinal)
-                .ThenBy(candidate => candidate.OriginalIndex)
-                .ToArray();
-            string[] orderIds = candidatesByBestPossibleKey
-                .Select(candidate => $"extract.{candidate.Site.NodeName}")
-                .ToArray();
-            if (orderIds.Distinct(StringComparer.Ordinal).Count() != orderIds.Length ||
-                orderIds.Any(activeClaimedOrderIds.Contains))
+            int materializationBudget = checked(frontierBudget + activeClaimedOrderIds.Count);
+            int guaranteedAvoidedOrderCount = sites.Count - materializationBudget;
+            if (guaranteedAvoidedOrderCount < frontierBudget)
             {
+                return false;
+            }
+
+            HashSet<string> existingOrderIds = new(StringComparer.Ordinal);
+            foreach (PrototypeWorkOrder order in orders)
+            {
+                if (!existingOrderIds.Add(order.OrderId))
+                {
+                    useLightweightExtractionFrontier = false;
+                    return false;
+                }
+            }
+            if (orderIds.Any(existingOrderIds.Contains))
+            {
+                useLightweightExtractionFrontier = false;
                 return false;
             }
 
@@ -754,7 +809,7 @@ namespace Societies.Simulation
             void Offer(PrototypeExtractionFrontierEntry entry)
             {
                 frontier.Enqueue(entry, (entry.EffectivePriority, entry.OrderId));
-                if (frontier.Count > frontierBudget)
+                if (frontier.Count > materializationBudget)
                 {
                     frontier.Dequeue();
                 }
@@ -769,24 +824,10 @@ namespace Societies.Simulation
                     0));
             }
 
-            int effectivePriorityUpperBound = checked(priorityUpperBound +
-                (int)PrototypeSettlementDirectiveCatalog.GetAssignmentScoreBonus(_activeDirective, directiveAffinity));
-            List<PrototypeExtractionFrontierEntry> evaluatedCandidates = new(frontierBudget);
-            for (int index = 0; index < candidatesByBestPossibleKey.Length; index++)
+            for (int index = 0; index < sites.Count; index++)
             {
-                PrototypeExtractionCandidate candidate = candidatesByBestPossibleKey[index];
+                PrototypeExtractionCandidate candidate = sites[index];
                 string orderId = orderIds[index];
-                if (frontier.Count == frontierBudget)
-                {
-                    PrototypeExtractionFrontierEntry cutoff = frontier.Peek();
-                    if (effectivePriorityUpperBound < cutoff.EffectivePriority ||
-                        (effectivePriorityUpperBound == cutoff.EffectivePriority &&
-                            StringComparer.Ordinal.Compare(orderId, cutoff.OrderId) >= 0))
-                    {
-                        break;
-                    }
-                }
-
                 int adjustedPriority = ComputeExtractionPriority(
                     candidate,
                     priorityUpperBound,
@@ -798,21 +839,28 @@ namespace Societies.Simulation
                     orderId,
                     candidate,
                     adjustedPriority);
-                evaluatedCandidates.Add(evaluated);
                 Offer(evaluated);
             }
 
-            omittedExtractionOrderCount += sites.Count - evaluatedCandidates.Count;
-            foreach (PrototypeExtractionFrontierEntry evaluated in evaluatedCandidates)
+            PrototypeExtractionFrontierEntry[] retainedCandidates = frontier.UnorderedItems
+                .Select(item => item.Element)
+                .Where(entry => entry.Candidate.HasValue)
+                .ToArray();
+            int unclaimedSiteCount = orderIds.Count(orderId => !activeClaimedOrderIds.Contains(orderId));
+            int retainedUnclaimedCount = retainedCandidates.Count(entry =>
+                !activeClaimedOrderIds.Contains(entry.OrderId));
+            unmaterializedExtractionOrderCount += unclaimedSiteCount - retainedUnclaimedCount;
+            foreach (PrototypeExtractionFrontierEntry retained in retainedCandidates)
             {
                 orders.Add(CreateExtractionOrder(
-                    evaluated.Candidate!.Value,
+                    retained.Candidate!.Value,
                     resourceId,
-                    evaluated.AdjustedPriority,
+                    retained.AdjustedPriority,
                     directiveAffinity,
                     directiveCause));
             }
 
+            _lightweightExtractionFrontierActivations++;
             return true;
         }
 
