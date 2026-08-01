@@ -6,6 +6,26 @@ Statuses: **Open**, **Monitoring**, **Resolved**, **Deferred**, **Rejected**.
 
 ## Open entries
 
+### WI-SOCIETIES-2026-006 — PowerShell diagnostic regression was ANSI-sensitive on Linux CI
+
+- **Tier:** T1
+- **Status:** Monitoring
+- **Scope/project:** `E:\AIExperiments\games\societies`
+- **Category:** validation
+- **First seen:** 2026-08-01 (America/Vancouver)
+- **Last seen:** 2026-08-01 (America/Vancouver)
+- **Occurrences:** 1 PR #120 GitHub Actions failure
+- **Reporter:** main orchestrator
+- **Symptom:** The run-ID regression compared an expected PowerShell diagnostic against raw redirected output. Linux `pwsh` inserted ANSI styling into the error record, so the plain substring assertion failed even though the script returned nonzero and rejected the invalid contract invocation.
+- **Impact:** PR #120's required `build-test-smoke` check stopped at 228/229 fast tests, preventing the reviewed W2-06 packet from reaching its delivery gate.
+- **Evidence:** GitHub Actions run `30650118932`, job `91221022424`, failed `PerformancePairGenerator_WritesCompatibleBoundedRunIdentityAndValidatorRejectsUnsafeIds` at `Assert.Contains`; Windows local validation had passed the same test.
+- **Workaround:** None. Do not waive the required check or remove the diagnostic assertion.
+- **Root cause:** The test harness treated terminal presentation bytes as semantic diagnostic text and lacked bounded ANSI normalization before comparison.
+- **Proposed fix:** Completed locally: normalize ANSI CSI sequences in the test-only subprocess diagnostic before exact message assertions while retaining nonzero-exit and no-output-directory checks.
+- **Auto-fix eligibility/rationale:** No — T1 required-check failure needs a reviewed cross-platform regression fix.
+- **Resolution/validation:** Focused 1/1 and manifest-fast 229/229 pass locally; independent review returned GO with no P0-P3 findings. Monitoring through the PR #120 Linux rerun and for recurrence.
+- **Linked entry:** WI-GLOBAL-2026-076 in `C:\Users\hunte\Documents\Codex\WORKFLOW_ISSUES.md`.
+
 ### WI-SOCIETIES-2026-005 — Restricted Windows validation cannot read installed tool configuration or optional temp artifacts
 
 - **Tier:** T2

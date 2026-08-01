@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Societies.Tests;
 using Xunit;
@@ -9,6 +10,10 @@ namespace Societies.Core.Tests
 {
     public sealed class PerfRunnerRunIdTests
     {
+        private static readonly Regex AnsiControlSequence = new(
+            "\\x1B\\[[0-?]*[ -/]*[@-~]",
+            RegexOptions.CultureInvariant);
+
         [Fact]
         public void PerformancePairGenerator_WritesCompatibleBoundedRunIdentityAndValidatorRejectsUnsafeIds()
         {
@@ -26,6 +31,7 @@ namespace Societies.Core.Tests
 
             try
             {
+                Assert.Equal("diagnostic", NormalizeDiagnostic("\u001b[31;1mdiagnostic\u001b[0m"));
                 AssertGeneratorContractRejected(
                     descriptorOnlyOutputRoot,
                     "RunIdContractDescriptor and RunIdContractOutputRoot must be supplied together.",
@@ -96,9 +102,11 @@ namespace Societies.Core.Tests
             string scriptPath = FindRepositoryFile("scripts", "run-performance-pair.ps1");
             PowerShellResult result = RunPowerShell(scriptPath, arguments);
             Assert.NotEqual(0, result.ExitCode);
-            Assert.Contains(expectedDiagnostic, result.StandardOutput + result.StandardError);
+            Assert.Contains(expectedDiagnostic, NormalizeDiagnostic(result.StandardOutput + result.StandardError));
             Assert.False(Directory.Exists(outputRoot), $"Rejected contract invocation created output: {result.StandardOutput}{result.StandardError}");
         }
+
+        private static string NormalizeDiagnostic(string value) => AnsiControlSequence.Replace(value, string.Empty);
 
         private static PowerShellResult RunPowerShell(string scriptPath, params string[] scriptArguments)
         {
