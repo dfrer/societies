@@ -8,6 +8,8 @@ param(
 $ErrorActionPreference = "Stop"
 
 $repoRoot = [System.IO.Path]::GetFullPath((Split-Path -Parent $PSScriptRoot)).TrimEnd('\')
+$analyzerVersion = "2.1.0"
+$negativeResidualToleranceMilliseconds = 0.001
 $requiredColumns = @(
     "sequence", "batch_kind", "start_simulation_tick", "end_simulation_tick", "completed_ticks",
     "wall_ms", "max_tick_ms", "simulation_tick_ms", "session_advance_ms", "build_work_orders_ms",
@@ -108,6 +110,106 @@ function Get-Percent {
     param([double]$Part, [double]$Whole)
     if ($Whole -le 0.0) { return 0.0 }
     return Round-Value (100.0 * $Part / $Whole)
+}
+
+function Get-Median {
+    param([double[]]$Values)
+    if ($null -eq $Values -or $Values.Count -eq 0) { return $null }
+    $sorted = @($Values | Sort-Object)
+    $middle = [int][Math]::Floor($sorted.Count / 2.0)
+    if (($sorted.Count % 2) -eq 1) { return [double]$sorted[$middle] }
+    return ([double]$sorted[$middle - 1] + [double]$sorted[$middle]) / 2.0
+}
+
+function Get-PhaseBreakdown {
+    param([object]$Tick, [string]$Label)
+    $measuredLeafPhaseTotal =
+        $Tick.buildWorkOrdersMs + $Tick.routeSelectionMs + $Tick.sceneSyncMs +
+        $Tick.navigationRebuildMs + $Tick.harvestApplyMs + $Tick.updateHudMs
+    $rawResidual = $Tick.wallMs - $measuredLeafPhaseTotal
+    if ($rawResidual -lt -$negativeResidualToleranceMilliseconds) {
+        throw "Runtime CSV leaf phase total exceeds wall time by $([Math]::Abs((Round-Value $rawResidual))) ms: $Label"
+    }
+    $residual = [Math]::Max(0.0, $rawResidual)
+    $instrumentedProductionCosts = [ordered]@{
+        build_work_orders = $Tick.buildWorkOrdersMs
+        route_selection = $Tick.routeSelectionMs
+        scene_sync = $Tick.sceneSyncMs
+        navigation_rebuild = $Tick.navigationRebuildMs
+        harvest_apply = $Tick.harvestApplyMs
+        update_hud = $Tick.updateHudMs
+    }
+    $dominantName = $null
+    $dominantValue = -1.0
+    foreach ($entry in $instrumentedProductionCosts.GetEnumerator()) {
+        if ([double]$entry.Value -gt $dominantValue) {
+            $dominantName = [string]$entry.Key
+            $dominantValue = [double]$entry.Value
+        }
+    }
+    return [ordered]@{
+        wallMilliseconds = Round-Value $Tick.wallMs
+        simulationTickMilliseconds = Round-Value $Tick.simulationTickMs
+        sessionAdvanceMilliseconds = Round-Value $Tick.sessionAdvanceMs
+        buildWorkOrdersMilliseconds = Round-Value $Tick.buildWorkOrdersMs
+        routeSelectionMilliseconds = Round-Value $Tick.routeSelectionMs
+        sceneSyncMilliseconds = Round-Value $Tick.sceneSyncMs
+        navigationRebuildMilliseconds = Round-Value $Tick.navigationRebuildMs
+        harvestApplyMilliseconds = Round-Value $Tick.harvestApplyMs
+        updateHudMilliseconds = Round-Value $Tick.updateHudMs
+        measuredLeafPhaseTotalMilliseconds = Round-Value $measuredLeafPhaseTotal
+        residualUnattributedMilliseconds = Round-Value $residual
+        residualWasToleranceClamped = $rawResidual -lt 0.0
+        dominantExercisedCost = [ordered]@{
+            category = $dominantName
+            milliseconds = Round-Value $dominantValue
+            wallSharePercent = Get-Percent $dominantValue $Tick.wallMs
+        }
+    }
+}
+
+function Get-PhaseSummary {
+    param([object[]]$Ticks)
+    $properties = [ordered]@{
+        build_work_orders = "buildWorkOrdersMilliseconds"
+        route_selection = "routeSelectionMilliseconds"
+        scene_sync = "sceneSyncMilliseconds"
+        navigation_rebuild = "navigationRebuildMilliseconds"
+        harvest_apply = "harvestApplyMilliseconds"
+        update_hud = "updateHudMilliseconds"
+        measured_leaf_phase_total = "measuredLeafPhaseTotalMilliseconds"
+        residual_unattributed = "residualUnattributedMilliseconds"
+        wall = "wallMilliseconds"
+    }
+    $metrics = [ordered]@{}
+    $dominantName = $null
+    $dominantTotal = -1.0
+    foreach ($entry in $properties.GetEnumerator()) {
+        $propertyName = [string]$entry.Value
+        $values = @($Ticks | ForEach-Object {
+            [double]$_.phaseBreakdown.PSObject.Properties[$propertyName].Value
+        })
+        $total = if ($values.Count -eq 0) { 0.0 } else { [double](($values | Measure-Object -Sum).Sum) }
+        $average = if ($values.Count -eq 0) { $null } else { [double](($values | Measure-Object -Average).Average) }
+        $median = Get-Median $values
+        $metrics[[string]$entry.Key] = [ordered]@{
+            totalMilliseconds = Round-Value $total
+            medianMilliseconds = if ($null -eq $median) { $null } else { Round-Value $median }
+            meanMilliseconds = if ($null -eq $average) { $null } else { Round-Value $average }
+        }
+        if ($entry.Key -notin @("measured_leaf_phase_total", "residual_unattributed", "wall") -and $total -gt $dominantTotal) {
+            $dominantName = [string]$entry.Key
+            $dominantTotal = $total
+        }
+    }
+    return [ordered]@{
+        sampleCount = $Ticks.Count
+        metrics = $metrics
+        dominantExercisedCostByTotal = [ordered]@{
+            category = $dominantName
+            totalMilliseconds = Round-Value ([Math]::Max(0.0, $dominantTotal))
+        }
+    }
 }
 
 function Get-DisplayPath {
@@ -378,6 +480,7 @@ foreach ($runtimePath in $runtimePaths) {
             endTick = $endTick
             wallMs = Parse-Double $row.wall_ms "$label wall_ms"
             simulationTickMs = Parse-Double $row.simulation_tick_ms "$label simulation_tick_ms"
+            sessionAdvanceMs = Parse-Double $row.session_advance_ms "$label session_advance_ms"
             buildWorkOrdersMs = Parse-Double $row.build_work_orders_ms "$label build_work_orders_ms"
             routeSelectionMs = Parse-Double $row.route_selection_ms "$label route_selection_ms"
             navigationRebuildMs = Parse-Double $row.navigation_rebuild_ms "$label navigation_rebuild_ms"
@@ -391,9 +494,10 @@ foreach ($runtimePath in $runtimePaths) {
             selectorExactQueries = $selectorQueries
             navigationInvalidations = Parse-Int64 $row.navigation_invalidations_total "$label navigation_invalidations_total"
         }
-        foreach ($timeName in @("wallMs", "simulationTickMs", "buildWorkOrdersMs", "routeSelectionMs", "navigationRebuildMs", "harvestApplyMs", "sceneSyncMs", "updateHudMs")) {
+        foreach ($timeName in @("wallMs", "simulationTickMs", "sessionAdvanceMs", "buildWorkOrdersMs", "routeSelectionMs", "navigationRebuildMs", "harvestApplyMs", "sceneSyncMs", "updateHudMs")) {
             if ([double]$tick.$timeName -lt 0.0) { throw "Runtime CSV contains a negative timing '$timeName': $label" }
         }
+        $tick | Add-Member -MemberType NoteProperty -Name phaseBreakdown -Value ([pscustomobject](Get-PhaseBreakdown $tick $label))
         $ticks.Add($tick)
     }
 
@@ -449,6 +553,17 @@ foreach ($runtimePath in $runtimePaths) {
             endSimulationTick = $tick.endTick
             wallMilliseconds = Round-Value $tick.wallMs
             simulationTickMilliseconds = Round-Value $tick.simulationTickMs
+            sessionAdvanceMilliseconds = Round-Value $tick.sessionAdvanceMs
+            buildWorkOrdersMilliseconds = $tick.phaseBreakdown.buildWorkOrdersMilliseconds
+            routeSelectionMilliseconds = $tick.phaseBreakdown.routeSelectionMilliseconds
+            sceneSyncMilliseconds = $tick.phaseBreakdown.sceneSyncMilliseconds
+            navigationRebuildMilliseconds = $tick.phaseBreakdown.navigationRebuildMilliseconds
+            harvestApplyMilliseconds = $tick.phaseBreakdown.harvestApplyMilliseconds
+            updateHudMilliseconds = $tick.phaseBreakdown.updateHudMilliseconds
+            measuredLeafPhaseTotalMilliseconds = $tick.phaseBreakdown.measuredLeafPhaseTotalMilliseconds
+            residualUnattributedMilliseconds = $tick.phaseBreakdown.residualUnattributedMilliseconds
+            residualWasToleranceClamped = $tick.phaseBreakdown.residualWasToleranceClamped
+            dominantExercisedCost = $tick.phaseBreakdown.dominantExercisedCost
             attribution = $attribution
             priorTickNavigationInvalidations = $priorInvalidations
             currentTickNavigationInvalidations = $tick.navigationInvalidations
@@ -553,6 +668,7 @@ foreach ($runtimePath in $runtimePaths) {
             attributionCounts = $attributionCounts
             dominantPhaseCounts = $dominantCounts
             ticks = $spikes.ToArray()
+            phaseSummary = Get-PhaseSummary $spikeTicks
         }
         cacheMisses = [ordered]@{
             all = [long](($ticks | Measure-Object allPathMisses -Sum).Sum)
@@ -575,6 +691,7 @@ foreach ($runtimePath in $runtimePaths) {
     ) -join '|'
     $internalRuns.Add([pscustomobject]@{
         run = $runId
+        trialIndex = $runRecord.configuration.trialIndex
         repeatKey = $repeatKey
         spikeTicks = @($spikeTicks | ForEach-Object { [long]$_.endTick } | Sort-Object)
         ticks = $ticks.ToArray()
@@ -583,7 +700,19 @@ foreach ($runtimePath in $runtimePaths) {
 
 $repeatability = New-Object System.Collections.Generic.List[object]
 foreach ($group in @($internalRuns | Group-Object repeatKey | Where-Object { $_.Count -gt 1 } | Sort-Object Name)) {
-    $members = @($group.Group | Sort-Object run)
+    $members = @($group.Group | Sort-Object trialIndex, run)
+    $unionSet = New-Object 'System.Collections.Generic.HashSet[long]'
+    foreach ($member in $members) {
+        foreach ($value in $member.spikeTicks) { [void]$unionSet.Add($value) }
+    }
+    $unionTicks = @($unionSet | Sort-Object)
+    $commonTicks = @($members[0].spikeTicks)
+    for ($memberIndex = 1; $memberIndex -lt $members.Count; $memberIndex++) {
+        $memberSet = New-Object 'System.Collections.Generic.HashSet[long]'
+        foreach ($value in $members[$memberIndex].spikeTicks) { [void]$memberSet.Add($value) }
+        $commonTicks = @($commonTicks | Where-Object { $memberSet.Contains($_) })
+    }
+    $commonTicks = @($commonTicks | Sort-Object)
     $pairs = New-Object System.Collections.Generic.List[object]
     for ($leftIndex = 0; $leftIndex -lt $members.Count; $leftIndex++) {
         for ($rightIndex = $leftIndex + 1; $rightIndex -lt $members.Count; $rightIndex++) {
@@ -599,7 +728,9 @@ foreach ($group in @($internalRuns | Group-Object repeatKey | Where-Object { $_.
             $unionCount = $leftSet.Count + $rightSet.Count - $intersection.Count
             $pairs.Add([ordered]@{
                 leftRun = $members[$leftIndex].run
+                leftTrialIndex = $members[$leftIndex].trialIndex
                 rightRun = $members[$rightIndex].run
+                rightTrialIndex = $members[$rightIndex].trialIndex
                 exactTickSetIdentity = $leftOnly.Count -eq 0 -and $rightOnly.Count -eq 0
                 intersectionCount = $intersection.Count
                 unionCount = $unionCount
@@ -609,12 +740,61 @@ foreach ($group in @($internalRuns | Group-Object repeatKey | Where-Object { $_.
             })
         }
     }
+    $perRunTickSets = @($members | ForEach-Object {
+        [ordered]@{
+            run = $_.run
+            trialIndex = $_.trialIndex
+            count = $_.spikeTicks.Count
+            endSimulationTicks = @($_.spikeTicks)
+        }
+    })
+    $unionTickBreakdown = New-Object System.Collections.Generic.List[object]
+    foreach ($endTick in $unionTicks) {
+        $trialRecords = New-Object System.Collections.Generic.List[object]
+        foreach ($member in $members) {
+            $matches = @($member.ticks | Where-Object { $_.endTick -eq $endTick })
+            if ($matches.Count -ne 1) {
+                throw "Repeatability tick $endTick does not map to exactly one row in $($member.run)."
+            }
+            $tick = $matches[0]
+            $trialRecords.Add([ordered]@{
+                run = $member.run
+                trialIndex = $member.trialIndex
+                exceedsSpikeThreshold = $tick.wallMs -gt $ThresholdMilliseconds[0]
+                priorTickNavigationInvalidations = if ($tick.sequence -gt 0) {
+                    [long]$member.ticks[[int]$tick.sequence - 1].navigationInvalidations
+                }
+                else { [long]0 }
+                currentTickNavigationInvalidations = $tick.navigationInvalidations
+                phaseBreakdown = $tick.phaseBreakdown
+            })
+        }
+        $unionTickBreakdown.Add([ordered]@{
+            endSimulationTick = $endTick
+            exceedsThresholdInAllRuns = @($trialRecords | Where-Object { -not $_.exceedsSpikeThreshold }).Count -eq 0
+            trials = $trialRecords.ToArray()
+        })
+    }
+    $allSpikeSamples = @($members | ForEach-Object {
+        $_.ticks | Where-Object { $_.wallMs -gt $ThresholdMilliseconds[0] }
+    })
+    $commonSpikeSamples = @($members | ForEach-Object {
+        $_.ticks | Where-Object { $commonTicks -contains $_.endTick }
+    })
     $repeatability.Add([ordered]@{
         compatibilityKey = $group.Name
         spikeThresholdMilliseconds = [double]$ThresholdMilliseconds[0]
         runCount = $members.Count
         allRunsExactTickSetIdentity = @($pairs | Where-Object { -not $_.exactTickSetIdentity }).Count -eq 0
+        commonSpikeTickCount = $commonTicks.Count
+        commonSpikeEndSimulationTicks = $commonTicks
+        unionSpikeTickCount = $unionTicks.Count
+        unionSpikeEndSimulationTicks = $unionTicks
+        perRunSpikeTickSets = $perRunTickSets
         pairs = $pairs.ToArray()
+        unionTickPerTrialPhaseBreakdown = $unionTickBreakdown.ToArray()
+        allSpikeOccurrencesPhaseSummary = Get-PhaseSummary $allSpikeSamples
+        commonSpikeTicksAcrossRunsPhaseSummary = Get-PhaseSummary $commonSpikeSamples
     })
 }
 
@@ -631,13 +811,30 @@ $aggregateCorrelations = @(
 )
 
 $output = [ordered]@{
-    schemaVersion = 1
+    schemaVersion = 2
+    analyzerVersion = $analyzerVersion
     analysis = "performance_spike_characterization"
     diagnosticScope = [ordered]@{
         timingSource = "metrics_on_runtime_batches"
         claimBoundary = "diagnostic_characterization_only_not_a_release_gate"
         sourceContract = "clean_verified_export_release_equivalence_pairs"
         repeatabilityScope = "tick_set_identity_only_for_configuration-compatible_supplied_runs"
+        residualContract = [ordered]@{
+            formula = "wall_ms - measured_leaf_phase_total_ms"
+            measuredLeafPhaseFields = @(
+                "build_work_orders_ms", "route_selection_ms", "scene_sync_ms",
+                "navigation_rebuild_ms", "harvest_apply_ms", "update_hud_ms"
+            )
+            excludedInclusiveParentFields = @("simulation_tick_ms", "session_advance_ms")
+            overlapCaveat = "Runtime phases are independently inclusive. The two inclusive parent fields are reported but excluded from the sum; the summed leaf call sites are non-overlapping on the characterized route."
+            negativeResidualToleranceMilliseconds = $negativeResidualToleranceMilliseconds
+            negativeResidualHandling = "fail_below_negative_tolerance_otherwise_clamp_to_zero_and_flag"
+            dominantExercisedCostCandidates = @(
+                "build_work_orders", "route_selection", "scene_sync",
+                "navigation_rebuild", "harvest_apply", "update_hud"
+            )
+            residualSelectionPolicy = "reported_but_excluded_from_dominant_exercised_production_cost"
+        }
     }
     runtimeMetricsSchemaVersion = 4
     thresholdMilliseconds = @($ThresholdMilliseconds)

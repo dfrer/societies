@@ -1,6 +1,6 @@
 {
   "schemaVersion": 3,
-  "updatedUtc": "2026-08-01T20:04:12.7831019Z",
+  "updatedUtc": "2026-08-01T21:26:30.5006153Z",
   "required": {
     "dotnet": {
       "project": "tests/Societies.Core.Tests/Societies.Core.Tests.csproj",
@@ -203,6 +203,7 @@
       "postW105BaselineBudgetStatus": "safety_failure",
       "spikeCharacterizationEvidenceFile": "planning/active/evidence/v3-w1-05b-spike-characterization.json",
       "spikeCharacterizationScript": "scripts/analyze-performance-spikes.ps1",
+      "spikeCharacterizationFocusedTestScript": "tests/scripts/test-analyze-performance-spikes.ps1",
       "spikeCharacterizationSourceCommit": "227a7585d921255942c5d81e3e82bc3f91d01102",
       "cacheRepopulationEvidenceFile": "planning/active/evidence/v3-w1-05c-cache-repopulation-validation.json",
       "cacheRepopulationImplementationCommit": "a772d15ffc791da25e52afc9a04cb1a0ae655370",
