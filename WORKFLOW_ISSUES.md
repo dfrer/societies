@@ -6,7 +6,7 @@ Statuses: **Open**, **Monitoring**, **Resolved**, **Deferred**, **Rejected**.
 
 ## Open entries
 
-### WI-SOCIETIES-2026-006 — PowerShell diagnostic regression was presentation-sensitive on Linux CI
+### WI-SOCIETIES-2026-006 — PowerShell diagnostic assertion depended on rendered Linux error view
 
 - **Tier:** T1
 - **Status:** Monitoring
@@ -14,16 +14,16 @@ Statuses: **Open**, **Monitoring**, **Resolved**, **Deferred**, **Rejected**.
 - **Category:** validation
 - **First seen:** 2026-08-01 (America/Vancouver)
 - **Last seen:** 2026-08-01 (America/Vancouver)
-- **Occurrences:** 2 PR #120 GitHub Actions failures
+- **Occurrences:** 3 PR #120 GitHub Actions failures
 - **Reporter:** main orchestrator
-- **Symptom:** The run-ID regression compared an expected PowerShell diagnostic against redirected presentation output. Linux `pwsh` inserted ANSI styling plus ConciseView line wrapping/indentation, so the plain substring assertion failed even though the script returned nonzero and rejected the invalid contract invocation.
+- **Symptom:** The run-ID regression compared an expected PowerShell diagnostic against redirected presentation output. Linux `pwsh` applied ANSI styling, ConciseView wrapping/indentation, and truncation, so the semantic message was not reliably recoverable even though the script returned nonzero and rejected the invalid contract invocation.
 - **Impact:** PR #120's required `build-test-smoke` check stopped at 228/229 fast tests, preventing the reviewed W2-06 packet from reaching its delivery gate.
-- **Evidence:** GitHub Actions runs `30650118932` and `30710305255` failed `PerformancePairGenerator_WritesCompatibleBoundedRunIdentityAndValidatorRejectsUnsafeIds` at `Assert.Contains`; ANSI removal alone exposed remaining line wrapping. Windows local validation passed the same test.
+- **Evidence:** GitHub Actions runs `30650118932`, `30710305255`, and `30710621976` failed `PerformancePairGenerator_WritesCompatibleBoundedRunIdentityAndValidatorRejectsUnsafeIds`; ANSI and whitespace normalization could not reconstruct text truncated by the rendered error view. Windows local validation passed the same test.
 - **Workaround:** None. Do not waive the required check or remove the diagnostic assertion.
-- **Root cause:** The test harness treated terminal presentation bytes and layout whitespace as semantic diagnostic text.
-- **Proposed fix:** Completed locally: normalize ANSI CSI sequences and presentation whitespace in the test-only subprocess diagnostic before the unchanged exact message assertion while retaining nonzero-exit and no-output-directory checks.
+- **Root cause:** The test harness sourced semantic diagnostic evidence from PowerShell's rendered error view instead of the thrown exception message.
+- **Proposed fix:** Completed locally: a test-owned temporary PowerShell wrapper receives injection-safe JSON named parameters, catches the target exception, and emits only `Exception.Message`; exact message, nonzero-exit, empty-stdout, no-output-directory, success-output, case-insensitive switch, duplicate-name, and temp-cleanup checks remain enforced.
 - **Auto-fix eligibility/rationale:** No — T1 required-check failure needs a reviewed cross-platform regression fix.
-- **Resolution/validation:** Corrected focused 1/1 and manifest-fast 229/229 pass locally; independent rereview returned GO with no P0-P3 findings. Monitoring through the next PR #120 Linux rerun and for recurrence.
+- **Resolution/validation:** Structured-capture focused 1/1 and manifest-fast 229/229 pass locally; final independent rereview returned GO with no P0-P3 findings. Monitoring through the next PR #120 Linux rerun and for recurrence.
 - **Linked entry:** WI-GLOBAL-2026-076 in `C:\Users\hunte\Documents\Codex\WORKFLOW_ISSUES.md`.
 
 ### WI-SOCIETIES-2026-005 — Restricted Windows validation cannot read installed tool configuration or optional temp artifacts

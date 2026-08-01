@@ -1,7 +1,7 @@
 using System.ComponentModel;
 using System.Diagnostics;
+using System.Text;
 using System.Text.Json;
-using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Societies.Tests;
 using Xunit;
@@ -10,12 +10,43 @@ namespace Societies.Core.Tests
 {
     public sealed class PerfRunnerRunIdTests
     {
-        private static readonly Regex AnsiControlSequence = new(
-            "\\x1B\\[[0-?]*[ -/]*[@-~]",
-            RegexOptions.CultureInvariant);
-        private static readonly Regex WhitespaceRuns = new(
-            "\\s+",
-            RegexOptions.CultureInvariant);
+        private static readonly HashSet<string> SwitchParameterNames = new(StringComparer.OrdinalIgnoreCase)
+        {
+            "SkipBuild",
+            "ReleaseExport",
+            "AllowPrimarySafetyFailure",
+            "AllowDirtySource",
+            "AllowDebugReference",
+            "RequireRelease"
+        };
+
+        private const string PowerShellExceptionWrapper = @"
+param(
+    [Parameter(Mandatory = $true)][string]$TargetScriptPath,
+    [Parameter(Mandatory = $true)][string]$ArgumentPayloadPath
+)
+
+$argumentPayload = Get-Content -Raw -LiteralPath $ArgumentPayloadPath | ConvertFrom-Json
+$parameters = @{}
+foreach ($argument in $argumentPayload) {
+    $parameterName = [string]($argument.Name)
+    $parameterValue = $argument.Value
+    if ($null -eq $parameterValue) {
+        $parameters[$parameterName] = $true
+    }
+    else {
+        $parameters[$parameterName] = [string]$parameterValue
+    }
+}
+try {
+    & $TargetScriptPath @parameters
+    exit 0
+}
+catch {
+    [Console]::Error.WriteLine($_.Exception.Message)
+    exit 1
+}
+";
 
         [Fact]
         public void PerformancePairGenerator_WritesCompatibleBoundedRunIdentityAndValidatorRejectsUnsafeIds()
@@ -34,10 +65,17 @@ namespace Societies.Core.Tests
 
             try
             {
-                Assert.Equal(
-                    "RunIdContractDescriptor and RunIdContractOutputRoot must be supplied together.",
-                    NormalizeDiagnostic(
-                        "\u001b[31;1mRunIdContractDescriptor and\r\n    RunIdContractOutputRoot must be supplied together.\u001b[0m"));
+                IReadOnlyList<PowerShellParameter> lowercaseSwitchPayload =
+                    CreateParameterPayload(new[] { "-releaseexport" });
+                Assert.Collection(
+                    lowercaseSwitchPayload,
+                    parameter =>
+                    {
+                        Assert.Equal("releaseexport", parameter.Name);
+                        Assert.Null(parameter.Value);
+                    });
+                Assert.Throws<ArgumentException>(() =>
+                    CreateParameterPayload(new[] { "-ReleaseExport", "-releaseexport" }));
                 AssertGeneratorContractRejected(
                     descriptorOnlyOutputRoot,
                     "RunIdContractDescriptor and RunIdContractOutputRoot must be supplied together.",
@@ -95,6 +133,7 @@ namespace Societies.Core.Tests
             Assert.True(result.ExitCode == 0, $"PowerShell contract failed: {result.StandardError}{result.StandardOutput}");
 
             string identityPath = Path.Combine(outputRoot, "run-identity.json");
+            Assert.Contains(identityPath, result.StandardOutput);
             Assert.True(File.Exists(identityPath), $"Generator did not write {identityPath}. Output: {result.StandardOutput}");
             using JsonDocument document = JsonDocument.Parse(File.ReadAllText(identityPath));
             return document.RootElement.Clone();
@@ -108,24 +147,40 @@ namespace Societies.Core.Tests
             string scriptPath = FindRepositoryFile("scripts", "run-performance-pair.ps1");
             PowerShellResult result = RunPowerShell(scriptPath, arguments);
             Assert.NotEqual(0, result.ExitCode);
-            Assert.Contains(expectedDiagnostic, NormalizeDiagnostic(result.StandardOutput + result.StandardError));
+            Assert.Equal(expectedDiagnostic, result.StandardError.TrimEnd('\r', '\n'));
+            Assert.Empty(result.StandardOutput);
             Assert.False(Directory.Exists(outputRoot), $"Rejected contract invocation created output: {result.StandardOutput}{result.StandardError}");
         }
 
-        private static string NormalizeDiagnostic(string value) =>
-            WhitespaceRuns.Replace(AnsiControlSequence.Replace(value, string.Empty), " ").Trim();
-
         private static PowerShellResult RunPowerShell(string scriptPath, params string[] scriptArguments)
         {
-            using Process process = StartPowerShell(scriptPath, scriptArguments);
-            Task<string> standardOutputTask = process.StandardOutput.ReadToEndAsync();
-            Task<string> standardErrorTask = process.StandardError.ReadToEndAsync();
-            process.WaitForExit();
-            Task.WaitAll(standardOutputTask, standardErrorTask);
-            return new PowerShellResult(process.ExitCode, standardOutputTask.Result, standardErrorTask.Result);
+            string wrapperDirectory = Path.Combine(Path.GetTempPath(), $"societies-pwsh-wrapper-{Guid.NewGuid():N}");
+            Directory.CreateDirectory(wrapperDirectory);
+            try
+            {
+                string wrapperPath = Path.Combine(wrapperDirectory, "invoke-target.ps1");
+                string argumentPayloadPath = Path.Combine(wrapperDirectory, "arguments.json");
+                var utf8WithBom = new UTF8Encoding(encoderShouldEmitUTF8Identifier: true);
+                File.WriteAllText(wrapperPath, PowerShellExceptionWrapper, utf8WithBom);
+                File.WriteAllText(
+                    argumentPayloadPath,
+                    JsonSerializer.Serialize(CreateParameterPayload(scriptArguments)),
+                    utf8WithBom);
+
+                using Process process = StartPowerShell(wrapperPath, scriptPath, argumentPayloadPath);
+                Task<string> standardOutputTask = process.StandardOutput.ReadToEndAsync();
+                Task<string> standardErrorTask = process.StandardError.ReadToEndAsync();
+                process.WaitForExit();
+                Task.WaitAll(standardOutputTask, standardErrorTask);
+                return new PowerShellResult(process.ExitCode, standardOutputTask.Result, standardErrorTask.Result);
+            }
+            finally
+            {
+                DeleteDirectoryIfPresent(wrapperDirectory);
+            }
         }
 
-        private static Process StartPowerShell(string scriptPath, params string[] scriptArguments)
+        private static Process StartPowerShell(string wrapperPath, string scriptPath, string argumentPayloadPath)
         {
             string[] candidates = OperatingSystem.IsWindows()
                 ? new[] { "pwsh", "powershell" }
@@ -141,11 +196,11 @@ namespace Societies.Core.Tests
                 };
                 startInfo.ArgumentList.Add("-NoProfile");
                 startInfo.ArgumentList.Add("-File");
+                startInfo.ArgumentList.Add(wrapperPath);
+                startInfo.ArgumentList.Add("-TargetScriptPath");
                 startInfo.ArgumentList.Add(scriptPath);
-                foreach (string argument in scriptArguments)
-                {
-                    startInfo.ArgumentList.Add(argument);
-                }
+                startInfo.ArgumentList.Add("-ArgumentPayloadPath");
+                startInfo.ArgumentList.Add(argumentPayloadPath);
                 try
                 {
                     return Process.Start(startInfo) ?? throw new InvalidOperationException($"Could not start {candidate}.");
@@ -157,6 +212,39 @@ namespace Societies.Core.Tests
             }
 
             throw new InvalidOperationException("PowerShell was not available for the generator contract test.", lastStartException);
+        }
+
+        private static IReadOnlyList<PowerShellParameter> CreateParameterPayload(IReadOnlyList<string> arguments)
+        {
+            var parameters = new List<PowerShellParameter>();
+            var seenNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            for (int index = 0; index < arguments.Count; index++)
+            {
+                string parameterToken = arguments[index];
+                if (!parameterToken.StartsWith("-", StringComparison.Ordinal) || parameterToken.Length == 1)
+                {
+                    throw new ArgumentException($"Expected a named PowerShell parameter, got '{parameterToken}'.");
+                }
+
+                string name = parameterToken[1..];
+                if (!seenNames.Add(name))
+                {
+                    throw new ArgumentException($"PowerShell parameter '{parameterToken}' was supplied more than once.");
+                }
+                if (SwitchParameterNames.Contains(name))
+                {
+                    parameters.Add(new PowerShellParameter(name, null));
+                    continue;
+                }
+                if (++index >= arguments.Count)
+                {
+                    throw new ArgumentException($"PowerShell parameter '{parameterToken}' is missing a value.");
+                }
+
+                parameters.Add(new PowerShellParameter(name, arguments[index]));
+            }
+
+            return parameters;
         }
 
         private static string FindRepositoryFile(params string[] segments)
@@ -185,5 +273,6 @@ namespace Societies.Core.Tests
         }
 
         private sealed record PowerShellResult(int ExitCode, string StandardOutput, string StandardError);
+        private sealed record PowerShellParameter(string Name, string? Value);
     }
 }
