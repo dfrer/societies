@@ -21,9 +21,9 @@ Use [CURRENT_BUILD.md](CURRENT_BUILD.md) as the short repo-truth reference.
 ## Current Prototype
 
 See [CURRENT_BUILD.md](CURRENT_BUILD.md) for the up-to-date prototype scope, validation commands, and implementation details.
-Current implemented reality includes W2-04 and the merged W2-05 schema-v7 persistence foundation. W2-06 remains **Stop Feature Expansion** after a measured partial performance repair: the clean matrix is contract-valid, but reference p95 median is `55.0153 ms` versus the `50 ms` safety limit. The repair branch is local/unpushed/unmerged and is not a merge candidate. The [V3 Weeks 3-4 plan](planning/active/v3-weeks-3-4-development-plan.md) remains Draft/Conditional, inactive, and cannot activate while the stop decision stands.
+Current implemented reality includes W2-04 and the merged W2-05 schema-v7 persistence foundation. W2-06 remains **Stop Feature Expansion** after a measured partial performance repair: the clean matrix is contract-valid, but reference p95 median is `55.0153 ms` versus the `50 ms` safety limit. The repair branch is pushed/published at `b84f70e`, has no PR, remains unmerged, and is not a merge candidate. The [V3 Weeks 3-4 plan](planning/active/v3-weeks-3-4-development-plan.md) remains Draft/Conditional, inactive, and cannot activate while the stop decision stands.
 
-W2-04 and W2-05 are historical implementation milestones; see [CURRENT_BUILD.md](CURRENT_BUILD.md), the [W2-06 validation report](V3_SPRINT_VALIDATION_REPORT.md), and the [repair evidence](planning/active/evidence/v3-w2-06-performance-repair-validation.json) for current status. Base/master is merged PR #120 at `6d0958f`; the local repair branch has no PR. The current repair validation declares 341 .NET tests and 23 Godot tests.
+W2-04 and W2-05 are historical implementation milestones; see [CURRENT_BUILD.md](CURRENT_BUILD.md), the [W2-06 validation report](V3_SPRINT_VALIDATION_REPORT.md), and the [repair evidence](planning/active/evidence/v3-w2-06-performance-repair-validation.json) for current status. Base/master is merged PR #120 at `6d0958f`; the pushed repair branch has no PR. The current repair validation declares 341 .NET tests and 23 Godot tests.
 
 
 ## Planning vs Code

@@ -582,7 +582,7 @@ Local W2-05 evidence: 333/333 .NET tests and 23/23 Godot tests with zero-warning
 
 #### V3-W2-06 — Release validation, playtests, and decision
 
-Current evidence superseding the historical execution text below: [v3-w2-06-performance-repair-validation.json](evidence/v3-w2-06-performance-repair-validation.json) records local commits `a8e04cc`, `84cc609`, `44414ec` on an unpushed/unmerged branch. The repair is contract-valid but `safety_failure` at reference p95 median `55.0153 ms`; Stop Feature Expansion remains active and the single next action is characterization-only.
+Current evidence superseding the historical execution text below: [v3-w2-06-performance-repair-validation.json](evidence/v3-w2-06-performance-repair-validation.json) records pushed/published branch `feature/v3-w2-06-performance-repair` at `b84f70e`, with commits `a8e04cc`, `84cc609`, `44414ec`; it has no PR and remains unmerged. The repair is contract-valid but `safety_failure` at reference p95 median `55.0153 ms`; Stop Feature Expansion remains active and the single next action is characterization-only.
 
 Run the release candidate from a clean state. The completed W2-06 report records **Stop Feature Expansion** because the clean matrix is contract-valid but the 16-citizen reference p95 safety gate remains red; both 1,000-tick soak p95 values pass in the repair run:
 

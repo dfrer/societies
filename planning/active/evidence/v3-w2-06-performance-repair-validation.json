@@ -6,7 +6,9 @@
   "branch": "feature/v3-w2-06-performance-repair",
   "delivery": {
     "commits": ["a8e04cc", "84cc609", "44414ec"],
-    "pushed": false,
+    "pushed": true,
+    "remote_branch": "origin/feature/v3-w2-06-performance-repair",
+    "remote_url": "https://github.com/hunterontech/societies.git/tree/feature/v3-w2-06-performance-repair",
     "pull_request": null,
     "merged": false,
     "merge_ready": false

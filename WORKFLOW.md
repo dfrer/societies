@@ -8,7 +8,7 @@
 
 ## Repository truth
 
-- Branch: `feature/v3-w2-06-performance-repair` (local, unpushed, unmerged; commits `a8e04cc`, `84cc609`, `44414ec`; no PR).
+- Branch: `feature/v3-w2-06-performance-repair` (pushed/published at `b84f70e`, unmerged; commits `a8e04cc`, `84cc609`, `44414ec`; no PR).
 - Merged master: `6d0958f`, including PR #120.
 - Independent final review: GO; no P0-P3 findings.
 - Technical evidence: `planning/active/evidence/v3-w2-06-performance-repair-validation.json` (`BLOCKED_SAFETY_FAILURE`).

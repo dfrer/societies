@@ -6,10 +6,10 @@ The W2-06 decision remains **Closed — Stop Feature Expansion**. A measured par
 
 ## Repository truth
 
-This report is superseded by the measured partial repair in [v3-w2-06-performance-repair-validation.json](planning/active/evidence/v3-w2-06-performance-repair-validation.json). The repair branch is local and unpushed (`feature/v3-w2-06-performance-repair`, commits `a8e04cc`, `84cc609`, `44414ec`), with no PR and no merge. Its 14/14 contract-valid matrix still has a red reference p95 median of `55.0153 ms` versus the `50 ms` safety limit; it is not an overall performance improvement or merge candidate. Base/master is merged PR #120 at `6d0958f`.
+This report is superseded by the measured partial repair in [v3-w2-06-performance-repair-validation.json](planning/active/evidence/v3-w2-06-performance-repair-validation.json). The repair branch is pushed/published at `b84f70e` (`feature/v3-w2-06-performance-repair`, commits `a8e04cc`, `84cc609`, `44414ec`), with no PR and no merge. Its 14/14 contract-valid matrix still has a red reference p95 median of `55.0153 ms` versus the `50 ms` safety limit; it is not an overall performance improvement or merge candidate. Base/master is merged PR #120 at `6d0958f`.
 
 - Base and merged master: `6d0958f` (PR #120 merged).
-- Repair branch: `feature/v3-w2-06-performance-repair` (local, unpushed, unmerged; commits `a8e04cc`, `84cc609`, `44414ec`; no PR).
+- Repair branch: `feature/v3-w2-06-performance-repair` (pushed/published at `b84f70e`, unmerged; commits `a8e04cc`, `84cc609`, `44414ec`; no PR).
 - Independent final review: GO, no P0-P3 findings.
 - Technical evidence: [v3-w2-06-performance-repair-validation.json](planning/active/evidence/v3-w2-06-performance-repair-validation.json), status `BLOCKED_SAFETY_FAILURE`.
 

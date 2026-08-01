@@ -23,7 +23,7 @@ The product north star is: "A deterministic civilization/ecology simulation wher
 
 That statement is future intent. Current implementation facts remain limited to the scope below. The deterministic simulation owns facts and all world-changing outcomes; any future LLM layer is limited to interpreting structured state, deliberating, communicating, summarizing memory, and proposing actions. Validated deterministic commands/events remain the only state-change path. Humans must stay consequential, and offline/model-failure fallback must preserve simulation and replay. See [planning/PRODUCT-THESIS.md](planning/PRODUCT-THESIS.md).
 
-Current milestone truth: W2-02 through W2-05 are validated and merged; base/master is merged PR #120 at `6d0958f`. W2-06 remains **Stop Feature Expansion**: the local repair branch `feature/v3-w2-06-performance-repair` (commits `a8e04cc`, `84cc609`, `44414ec`) is unpushed, has no PR, and is unmerged. Its clean 14/14 matrix is contract-valid, but reference median p95 is `55.0153 ms` versus the `50 ms` safety limit; this is a measured partial repair, not an overall performance improvement or merge candidate. Weeks 3-4 remain Draft/Conditional and inactive.
+Current milestone truth: W2-02 through W2-05 are validated and merged; base/master is merged PR #120 at `6d0958f`. W2-06 remains **Stop Feature Expansion**: the repair branch `feature/v3-w2-06-performance-repair` is pushed and published at `b84f70e`, but has no PR and is unmerged. Its clean 14/14 matrix is contract-valid, but reference median p95 is `55.0153 ms` versus the `50 ms` safety limit; this is a measured partial repair, not an overall performance improvement or merge candidate. Weeks 3-4 remain Draft/Conditional and inactive.
 
 
 ## Current Prototype Scope
