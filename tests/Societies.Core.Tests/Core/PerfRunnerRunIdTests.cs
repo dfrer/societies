@@ -13,6 +13,9 @@ namespace Societies.Core.Tests
         private static readonly Regex AnsiControlSequence = new(
             "\\x1B\\[[0-?]*[ -/]*[@-~]",
             RegexOptions.CultureInvariant);
+        private static readonly Regex WhitespaceRuns = new(
+            "\\s+",
+            RegexOptions.CultureInvariant);
 
         [Fact]
         public void PerformancePairGenerator_WritesCompatibleBoundedRunIdentityAndValidatorRejectsUnsafeIds()
@@ -31,7 +34,10 @@ namespace Societies.Core.Tests
 
             try
             {
-                Assert.Equal("diagnostic", NormalizeDiagnostic("\u001b[31;1mdiagnostic\u001b[0m"));
+                Assert.Equal(
+                    "RunIdContractDescriptor and RunIdContractOutputRoot must be supplied together.",
+                    NormalizeDiagnostic(
+                        "\u001b[31;1mRunIdContractDescriptor and\r\n    RunIdContractOutputRoot must be supplied together.\u001b[0m"));
                 AssertGeneratorContractRejected(
                     descriptorOnlyOutputRoot,
                     "RunIdContractDescriptor and RunIdContractOutputRoot must be supplied together.",
@@ -106,7 +112,8 @@ namespace Societies.Core.Tests
             Assert.False(Directory.Exists(outputRoot), $"Rejected contract invocation created output: {result.StandardOutput}{result.StandardError}");
         }
 
-        private static string NormalizeDiagnostic(string value) => AnsiControlSequence.Replace(value, string.Empty);
+        private static string NormalizeDiagnostic(string value) =>
+            WhitespaceRuns.Replace(AnsiControlSequence.Replace(value, string.Empty), " ").Trim();
 
         private static PowerShellResult RunPowerShell(string scriptPath, params string[] scriptArguments)
         {
