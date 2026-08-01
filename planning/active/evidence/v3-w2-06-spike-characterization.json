@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAtUtc": "2026-08-01T21:26:30.5006153+00:00",
+  "generatedAtUtc": "2026-08-01T22:57:02.4599886Z",
   "workItem": "V3-W2-06 deterministic reference spike characterization",
   "status": "characterization_complete_performance_gate_unchanged",
   "source": {
@@ -47,12 +47,12 @@
   },
   "analyzer": {
     "path": "scripts/analyze-performance-spikes.ps1",
-    "version": "2.1.0",
-    "schemaVersion": 2,
-    "sha256": "52799ea3ed98c2d419a6e92a80a7ae2aff53afa68e1a017f84cdf0a1009baa39",
-    "command": ".\\scripts\\analyze-performance-spikes.ps1 -InputPath 'artifacts\\performance\\w103c-release-20260801-201349-555\\cases\\matrix-c16-cold-t1\\metrics-on','artifacts\\performance\\w103c-release-20260801-201349-555\\cases\\reference-c16-cold-t2\\metrics-on','artifacts\\performance\\w103c-release-20260801-201349-555\\cases\\reference-c16-cold-t3\\metrics-on' -OutputPath 'C:\\tmp\\reference-spike-analysis-v21-a.json'",
-    "resultSha256": "9d034b9a77d2ab6103876da844745c5d36615b7fc72ddd3dc65d33a0ac0ea60c",
-    "repeatedExecutionSha256": "9d034b9a77d2ab6103876da844745c5d36615b7fc72ddd3dc65d33a0ac0ea60c",
+    "version": "2.2.0",
+    "schemaVersion": 3,
+    "sha256": "eed23ab5420a5dbc3954fb15e01904869c80db5c6bada38d2cf9850836a85d57",
+    "command": ".\\scripts\\analyze-performance-spikes.ps1 -InputPath 'artifacts\\performance\\w103c-release-20260801-201349-555\\cases\\matrix-c16-cold-t1\\metrics-on','artifacts\\performance\\w103c-release-20260801-201349-555\\cases\\reference-c16-cold-t2\\metrics-on','artifacts\\performance\\w103c-release-20260801-201349-555\\cases\\reference-c16-cold-t3\\metrics-on' -OutputPath 'C:\\tmp\\reference-spike-analysis-v22-a.json'",
+    "resultSha256": "95de3fda273cb92cc7dff3002bdbbb030b9c220f35fdafb16aa9c45f22f43763",
+    "repeatedExecutionSha256": "95de3fda273cb92cc7dff3002bdbbb030b9c220f35fdafb16aa9c45f22f43763",
     "repeatedExecutionByteIdentical": true,
     "measurementContract": {
       "formula": "wall_ms - measured_leaf_phase_total_ms",
@@ -1561,11 +1561,11 @@
   ],
   "validation": {
     "focusedTestCommand": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\\tests\\scripts\\test-analyze-performance-spikes.ps1",
-    "focusedTestResult": "PASS: analyzer valid, deterministic, high-residual exclusion, missing-column, malformed-numeric, and negative-residual cases",
+    "focusedTestResult": "PASS: analyzer v4/v5 provenance, mixed-schema rejection, determinism, attribution, malformed inputs, and bounded JSON/CSV parser cases",
     "focusedTestHost": "Windows PowerShell 5.1.19041.6456",
-    "focusedTestScriptSha256": "414b17151e54be8950b2e3ddd6c3a1482cc784e0bea24a7883292b572c1800c3",
+    "focusedTestScriptSha256": "650163a30e78b192db2c68f3837db985156d06a7f6810fa1f1e0222248da2da5",
     "analyzerPowerShellParse": "passed",
     "repeatedCanonicalAnalyzerExecution": "passed_byte_identical",
-    "fullCanonicalRegression": "passed_14_runs_schema_2_analyzer_2.1.0"
+    "fullCanonicalRegression": "passed_14_runs_schema_3_analyzer_2.2.0"
   }
 }

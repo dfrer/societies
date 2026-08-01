@@ -67,22 +67,44 @@ namespace Societies.Simulation
         private List<PrototypeWorkOrder> BuildWorkOrders(
             IReadOnlyList<PrototypeResourceSiteState> resources,
             float currentHour,
-            PrototypeWeather weather)
+            PrototypeWeather weather,
+            RuntimeMetricsCollector? runtimeMetrics)
         {
-            _lightweightExtractionFrontierActivations = 0;
-            Dictionary<string, int> committedCarries = _citizens
-                .Where(citizen => citizen.CarryAmount > 0)
-                .GroupBy(citizen => citizen.CarryItemId)
-                .ToDictionary(group => group.Key, group => group.Sum(citizen => citizen.CarryAmount), StringComparer.Ordinal);
+            Dictionary<string, int> committedCarries;
+            HashSet<string> activeClaimedOrderIds;
+            RuntimeMetricsPhaseToken inputPreparationPhase = runtimeMetrics?.BeginPhase(
+                RuntimeMetricsPhase.BuildWorkOrdersInputPreparation) ?? default;
+            try
+            {
+                _lightweightExtractionFrontierActivations = 0;
+                committedCarries = _citizens
+                    .Where(citizen => citizen.CarryAmount > 0)
+                    .GroupBy(citizen => citizen.CarryItemId)
+                    .ToDictionary(group => group.Key, group => group.Sum(citizen => citizen.CarryAmount), StringComparer.Ordinal);
+                activeClaimedOrderIds = BuildActiveClaimedOrderIds();
+            }
+            finally
+            {
+                inputPreparationPhase.Complete();
+            }
 
-            HashSet<string> activeClaimedOrderIds = BuildActiveClaimedOrderIds();
-            List<PrototypeWorkOrder> orders = new();
-            AddRefuelOrders(orders);
-            AddHaulOrdersFromStores(orders);
-            AddProductionOrders(orders);
-            AddBuildOrders(orders);
-            orders = RemoveClaimedOrders(orders, activeClaimedOrderIds);
-            AnnotateDirectiveAffinities(orders);
+            List<PrototypeWorkOrder> orders;
+            RuntimeMetricsPhaseToken nonExtractionPhase = runtimeMetrics?.BeginPhase(
+                RuntimeMetricsPhase.BuildWorkOrdersNonExtraction) ?? default;
+            try
+            {
+                orders = new List<PrototypeWorkOrder>();
+                AddRefuelOrders(orders);
+                AddHaulOrdersFromStores(orders);
+                AddProductionOrders(orders);
+                AddBuildOrders(orders);
+                orders = RemoveClaimedOrders(orders, activeClaimedOrderIds);
+                AnnotateDirectiveAffinities(orders);
+            }
+            finally
+            {
+                nonExtractionPhase.Complete();
+            }
 
             int omittedExtractionOrderCount = 0;
             int unmaterializedExtractionOrderCount = 0;
@@ -94,36 +116,55 @@ namespace Societies.Simulation
                     ? new HashSet<string>(StringComparer.Ordinal)
                     : null;
             int exhaustiveProjectedOmittedOrderCount = 0;
-            AddReserveExtractionOrders(
-                orders,
-                resources,
-                committedCarries,
-                currentHour,
-                weather,
-                activeClaimedOrderIds,
-                ref omittedExtractionOrderCount,
-                ref unmaterializedExtractionOrderCount,
-                ref useLightweightExtractionFrontier,
-                ref generatedExtractionNodeNames,
-                exhaustiveProjectedOmittedOrderIds,
-                ref exhaustiveProjectedOmittedOrderCount);
-            orders = RemoveClaimedOrders(orders, activeClaimedOrderIds);
-            _workOrdersGeneratedUncappedThisTick = orders.Count +
-                omittedExtractionOrderCount +
-                unmaterializedExtractionOrderCount;
-            _extractionOrdersOmittedThisTick = omittedExtractionOrderCount;
-            if (_extractionPlanningMode == PrototypeExtractionPlanningMode.ExhaustiveReference)
+            RuntimeMetricsPhaseToken reserveExtractionPhase = runtimeMetrics?.BeginPhase(
+                RuntimeMetricsPhase.BuildWorkOrdersReserveExtraction) ?? default;
+            try
             {
-                List<PrototypeWorkOrder> projectedOrders = orders
-                    .Where(order => !exhaustiveProjectedOmittedOrderIds!.Contains(order.OrderId))
-                    .ToList();
-                projectedOrders = ApplyWorkOrderFrontierLimit(
-                    projectedOrders,
-                    projectedOrders.Count + exhaustiveProjectedOmittedOrderCount);
-                UpdateRouteBacklogMetrics(projectedOrders);
+                AddReserveExtractionOrders(
+                    orders,
+                    resources,
+                    committedCarries,
+                    currentHour,
+                    weather,
+                    activeClaimedOrderIds,
+                    ref omittedExtractionOrderCount,
+                    ref unmaterializedExtractionOrderCount,
+                    ref useLightweightExtractionFrontier,
+                    ref generatedExtractionNodeNames,
+                    exhaustiveProjectedOmittedOrderIds,
+                    ref exhaustiveProjectedOmittedOrderCount);
             }
-            orders = ApplyWorkOrderFrontierLimit(orders, _workOrdersGeneratedUncappedThisTick);
-            return orders;
+            finally
+            {
+                reserveExtractionPhase.Complete();
+            }
+
+            RuntimeMetricsPhaseToken finalizationPhase = runtimeMetrics?.BeginPhase(
+                RuntimeMetricsPhase.BuildWorkOrdersFinalization) ?? default;
+            try
+            {
+                orders = RemoveClaimedOrders(orders, activeClaimedOrderIds);
+                _workOrdersGeneratedUncappedThisTick = orders.Count +
+                    omittedExtractionOrderCount +
+                    unmaterializedExtractionOrderCount;
+                _extractionOrdersOmittedThisTick = omittedExtractionOrderCount;
+                if (_extractionPlanningMode == PrototypeExtractionPlanningMode.ExhaustiveReference)
+                {
+                    List<PrototypeWorkOrder> projectedOrders = orders
+                        .Where(order => !exhaustiveProjectedOmittedOrderIds!.Contains(order.OrderId))
+                        .ToList();
+                    projectedOrders = ApplyWorkOrderFrontierLimit(
+                        projectedOrders,
+                        projectedOrders.Count + exhaustiveProjectedOmittedOrderCount);
+                    UpdateRouteBacklogMetrics(projectedOrders);
+                }
+                orders = ApplyWorkOrderFrontierLimit(orders, _workOrdersGeneratedUncappedThisTick);
+                return orders;
+            }
+            finally
+            {
+                finalizationPhase.Complete();
+            }
         }
 
         private void AnnotateDirectiveAffinities(IEnumerable<PrototypeWorkOrder> orders)

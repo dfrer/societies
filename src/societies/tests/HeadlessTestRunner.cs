@@ -706,7 +706,8 @@ namespace Societies.Tests
             string? previousMetricsSetting = System.Environment.GetEnvironmentVariable(metricsEnvironmentVariable);
             string? previousOutputDirectory = System.Environment.GetEnvironmentVariable(outputEnvironmentVariable);
             string outputDirectory = CreateRunOutputDirectory(nameof(Test_MainScene_RuntimeMetricsBatchSmoke));
-            string runtimeMetricsPath = Path.Combine(outputDirectory, "runtime-batch-metrics-v4.csv");
+            string runtimeMetricsPath = Path.Combine(outputDirectory, "runtime-batch-metrics-v5.csv");
+            string legacyRuntimeMetricsPath = Path.Combine(outputDirectory, "runtime-batch-metrics-v4.csv");
             Node? disabledScene = null;
             Node? scene = null;
 
@@ -750,8 +751,10 @@ namespace Societies.Tests
                 }
                 Assert(reconfigurationRejected, "Performance startup should reject configuration after the first tree entry");
                 File.WriteAllText(runtimeMetricsPath, "stale runtime metrics");
+                File.WriteAllText(legacyRuntimeMetricsPath, "stale legacy runtime metrics");
                 disabledManager.SaveSnapshotToDisk();
                 Assert(!File.Exists(runtimeMetricsPath), "A metrics-disabled save should remove a stale runtime metrics artifact");
+                Assert(!File.Exists(legacyRuntimeMetricsPath), "A metrics-disabled save should remove the legacy runtime metrics artifact");
                 disabledScene.QueueFree();
                 await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
                 disabledScene = null;
@@ -767,11 +770,15 @@ namespace Societies.Tests
                 manager.ResetPrototypeRun();
                 Assert(metrics.Count == 0, "Reset should clear runtime metrics batches");
 
+                File.WriteAllText(legacyRuntimeMetricsPath, "preserve until v5 succeeds");
                 Directory.CreateDirectory(runtimeMetricsPath);
                 manager.SaveSnapshotToDisk();
                 Assert(
                     Directory.Exists(runtimeMetricsPath),
                     "An optional metrics export failure should not fail the core save");
+                Assert(
+                    File.Exists(legacyRuntimeMetricsPath),
+                    "A failed v5 metrics write should preserve the legacy artifact");
                 Directory.Delete(runtimeMetricsPath);
 
                 manager.StepSimulationTicks(2);
@@ -783,6 +790,18 @@ namespace Societies.Tests
                 Assert(afterManualStep[0].Phases.SimulationTickMilliseconds > 0.0, "Manual batch should measure simulation tick work");
                 Assert(afterManualStep[0].Phases.SessionAdvanceMilliseconds > 0.0, "Manual batch should measure session advancement");
                 Assert(afterManualStep[0].Phases.BuildWorkOrdersMilliseconds > 0.0, "Manual batch should measure work-order generation at its call site");
+                Assert(afterManualStep[0].Phases.BuildWorkOrdersInputPreparationMilliseconds > 0.0, "Manual batch should measure BuildWorkOrders input preparation");
+                Assert(afterManualStep[0].Phases.BuildWorkOrdersNonExtractionMilliseconds > 0.0, "Manual batch should measure non-extraction work-order synthesis");
+                Assert(afterManualStep[0].Phases.BuildWorkOrdersReserveExtractionMilliseconds > 0.0, "Manual batch should measure reserve-extraction generation");
+                Assert(afterManualStep[0].Phases.BuildWorkOrdersFinalizationMilliseconds > 0.0, "Manual batch should measure BuildWorkOrders finalization");
+                double buildWorkOrdersProfileTotal =
+                    afterManualStep[0].Phases.BuildWorkOrdersInputPreparationMilliseconds +
+                    afterManualStep[0].Phases.BuildWorkOrdersNonExtractionMilliseconds +
+                    afterManualStep[0].Phases.BuildWorkOrdersReserveExtractionMilliseconds +
+                    afterManualStep[0].Phases.BuildWorkOrdersFinalizationMilliseconds;
+                Assert(
+                    buildWorkOrdersProfileTotal <= afterManualStep[0].Phases.BuildWorkOrdersMilliseconds + 0.001,
+                    "Sequential BuildWorkOrders profile phases must reconcile within the inclusive parent");
                 Assert(afterManualStep[0].Phases.SceneSyncMilliseconds > 0.0, "Manual batch should measure scene synchronization");
                 Assert(afterManualStep[0].Phases.UpdateHudMilliseconds > 0.0, "Manual batch should measure its coalesced HUD refresh");
                 Assert(afterManualStep[0].WorkOrdersGeneratedUncappedTotal >= afterManualStep[0].WorkOrdersGeneratedTotal, "Uncapped work-order diagnostics must be preserved");
@@ -826,6 +845,7 @@ namespace Societies.Tests
 
                 manager.SaveSnapshotToDisk();
                 Assert(File.Exists(runtimeMetricsPath), "A metrics-enabled save should export runtime batch metrics");
+                Assert(!File.Exists(legacyRuntimeMetricsPath), "A successful v5 metrics write should remove the legacy artifact");
                 string runtimeMetricsCsv = File.ReadAllText(runtimeMetricsPath);
                 Assert(runtimeMetricsCsv.StartsWith("sequence,batch_kind,start_simulation_tick", StringComparison.Ordinal), "Runtime metrics CSV header mismatch");
                 string[] runtimeMetricsHeader = runtimeMetricsCsv.Split('\n', 2, StringSplitOptions.None)[0].TrimEnd('\r').Split(',');

@@ -395,7 +395,7 @@ namespace Societies.Simulation
             RuntimeMetricsPhaseToken buildWorkOrdersPhase = runtimeMetrics?.BeginPhase(RuntimeMetricsPhase.BuildWorkOrders) ?? default;
             try
             {
-                availableOrders = BuildWorkOrders(resources, currentHour, weather);
+                availableOrders = BuildWorkOrders(resources, currentHour, weather, runtimeMetrics);
             }
             finally
             {

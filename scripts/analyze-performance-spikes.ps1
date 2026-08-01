@@ -8,8 +8,13 @@ param(
 $ErrorActionPreference = "Stop"
 
 $repoRoot = [System.IO.Path]::GetFullPath((Split-Path -Parent $PSScriptRoot)).TrimEnd('\')
-$analyzerVersion = "2.1.0"
+$analyzerVersion = "2.2.0"
 $negativeResidualToleranceMilliseconds = 0.001
+$maximumJsonBytes = 4MB
+$maximumCsvBytes = 16MB
+$maximumCsvLines = 10001
+$maximumCsvLineCharacters = 65536
+$maximumJsonNestingDepth = 64
 $requiredColumns = @(
     "sequence", "batch_kind", "start_simulation_tick", "end_simulation_tick", "completed_ticks",
     "wall_ms", "max_tick_ms", "simulation_tick_ms", "session_advance_ms", "build_work_orders_ms",
@@ -35,6 +40,10 @@ $nonNegativeDoubleColumns = @(
     "harvest_apply_ms", "scene_sync_ms", "update_hud_ms", "candidate_orders_per_idle_citizen",
     "navigation_rebuild_ms", "route_selection_ms"
 )
+$v5ProfileColumns = @(
+    "build_work_orders_input_preparation_ms", "build_work_orders_non_extraction_ms",
+    "build_work_orders_reserve_extraction_ms", "build_work_orders_finalization_ms"
+)
 
 function Write-Utf8NoBom {
     param([string]$Path, [string]$Content)
@@ -51,6 +60,7 @@ function Read-Json {
     if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) {
         throw "$Label is missing: $Path"
     }
+    Assert-JsonBounds $Path $Label
     try {
         return Get-Content -Raw -LiteralPath $Path | ConvertFrom-Json
     }
@@ -110,6 +120,60 @@ function Get-Percent {
     param([double]$Part, [double]$Whole)
     if ($Whole -le 0.0) { return 0.0 }
     return Round-Value (100.0 * $Part / $Whole)
+}
+
+function Assert-JsonBounds {
+    param([string]$Path, [string]$Label)
+    $item = Get-Item -LiteralPath $Path
+    if ($item.Length -gt $maximumJsonBytes) {
+        throw "$Label exceeds the $maximumJsonBytes-byte JSON limit: $Path"
+    }
+    $reader = New-Object System.IO.StreamReader($item.FullName, $true)
+    try {
+        $depth = 0
+        $inString = $false
+        $escaped = $false
+        while (($value = $reader.Read()) -ne -1) {
+            $character = [char]$value
+            if ($inString) {
+                if ($escaped) { $escaped = $false; continue }
+                if ($character -eq '\') { $escaped = $true; continue }
+                if ($character -eq '"') { $inString = $false }
+                continue
+            }
+            if ($character -eq '"') { $inString = $true; continue }
+            if ($character -eq '{' -or $character -eq '[') {
+                $depth++
+                if ($depth -gt $maximumJsonNestingDepth) {
+                    throw "$Label exceeds the maximum JSON nesting depth $maximumJsonNestingDepth`: $Path"
+                }
+            }
+            elseif ($character -eq '}' -or $character -eq ']') {
+                $depth--
+                if ($depth -lt 0) { throw "$Label has invalid JSON nesting: $Path" }
+            }
+        }
+        if ($inString -or $depth -ne 0) { throw "$Label has invalid JSON nesting: $Path" }
+    }
+    finally { $reader.Dispose() }
+}
+
+function Assert-CsvBounds {
+    param([string]$Path)
+    $item = Get-Item -LiteralPath $Path
+    if ($item.Length -gt $maximumCsvBytes) { throw "Runtime CSV exceeds the $maximumCsvBytes-byte limit: $Path" }
+    $reader = New-Object System.IO.StreamReader($item.FullName, $true)
+    try {
+        $lineCount = 0
+        while (($line = $reader.ReadLine()) -ne $null) {
+            $lineCount++
+            if ($lineCount -gt $maximumCsvLines) { throw "Runtime CSV exceeds the $maximumCsvLines-line limit: $Path" }
+            if ($line.Length -gt $maximumCsvLineCharacters) {
+                throw "Runtime CSV line $lineCount exceeds the $maximumCsvLineCharacters-character limit: $Path"
+            }
+        }
+    }
+    finally { $reader.Dispose() }
 }
 
 function Get-Median {
@@ -306,26 +370,36 @@ foreach ($input in $InputPath) {
     }
     $item = Get-Item -LiteralPath $input
     if (-not $item.PSIsContainer) {
-        if ($item.Name -ne "runtime-batch-metrics-v4.csv") {
-            throw "Input files must be named runtime-batch-metrics-v4.csv: $($item.FullName)"
+        if ($item.Name -notin @("runtime-batch-metrics-v4.csv", "runtime-batch-metrics-v5.csv")) {
+            throw "Input files must be named runtime-batch-metrics-v4.csv or runtime-batch-metrics-v5.csv: $($item.FullName)"
         }
         $runtimePaths.Add($item.FullName)
         continue
     }
-    $direct = Join-Path $item.FullName "runtime-batch-metrics-v4.csv"
-    if (Test-Path -LiteralPath $direct -PathType Leaf) {
-        $runtimePaths.Add((Get-Item -LiteralPath $direct).FullName)
+    $direct = @(
+        "runtime-batch-metrics-v4.csv", "runtime-batch-metrics-v5.csv" |
+            ForEach-Object { Join-Path $item.FullName $_ } |
+            Where-Object { Test-Path -LiteralPath $_ -PathType Leaf }
+    )
+    if ($direct.Count -gt 0) {
+        foreach ($path in $direct) { $runtimePaths.Add((Get-Item -LiteralPath $path).FullName) }
         continue
     }
-    $found = @(Get-ChildItem -LiteralPath $item.FullName -Recurse -File -Filter "runtime-batch-metrics-v4.csv" |
+    $found = @(Get-ChildItem -LiteralPath $item.FullName -Recurse -File |
+        Where-Object { $_.Name -in @("runtime-batch-metrics-v4.csv", "runtime-batch-metrics-v5.csv") } |
         Sort-Object FullName)
     if ($found.Count -eq 0) {
-        throw "No runtime-batch-metrics-v4.csv artifacts were found under: $($item.FullName)"
+        throw "No runtime-batch-metrics-v4.csv or runtime-batch-metrics-v5.csv artifacts were found under: $($item.FullName)"
     }
     foreach ($file in $found) { $runtimePaths.Add($file.FullName) }
 }
 $runtimePaths = @($runtimePaths | Sort-Object -Unique)
 if ($runtimePaths.Count -eq 0) { throw "No runtime metrics artifacts were supplied." }
+foreach ($directoryGroup in @($runtimePaths | Group-Object { Split-Path -Parent $_ })) {
+    if ($directoryGroup.Count -gt 1) {
+        throw "A run directory cannot contain both runtime metrics schema v4 and v5 artifacts: $($directoryGroup.Name)"
+    }
+}
 
 $runs = New-Object System.Collections.Generic.List[object]
 $internalRuns = New-Object System.Collections.Generic.List[object]
@@ -333,6 +407,7 @@ $compatibilityKey = $null
 $compatibility = $null
 
 foreach ($runtimePath in $runtimePaths) {
+    $runtimeMetricsSchemaVersion = if ((Split-Path -Leaf $runtimePath) -eq "runtime-batch-metrics-v5.csv") { 5 } else { 4 }
     $runDirectory = Split-Path -Parent $runtimePath
     $resultPath = Join-Path $runDirectory "perf-results.json"
     $caseDirectory = Split-Path -Parent $runDirectory
@@ -411,6 +486,7 @@ foreach ($runtimePath in $runtimePaths) {
         throw "Input evidence is incompatible with the first run: $resultPath"
     }
 
+    Assert-CsvBounds $runtimePath
     $header = Get-Content -LiteralPath $runtimePath -TotalCount 1
     if ([string]::IsNullOrWhiteSpace($header)) { throw "Runtime CSV is empty: $runtimePath" }
     $columns = @($header.Split(','))
@@ -422,6 +498,15 @@ foreach ($runtimePath in $runtimePaths) {
     }
     foreach ($doubleColumn in $nonNegativeDoubleColumns) {
         if ($columns -notcontains $doubleColumn) { throw "Runtime CSV is missing numeric field '$doubleColumn': $runtimePath" }
+    }
+    $expectedColumnCount = if ($runtimeMetricsSchemaVersion -eq 5) { 40 } else { 36 }
+    if ($columns.Count -ne $expectedColumnCount) {
+        throw "Runtime CSV schema v$runtimeMetricsSchemaVersion must contain exactly $expectedColumnCount columns: $runtimePath"
+    }
+    if ($runtimeMetricsSchemaVersion -eq 5) {
+        foreach ($profileColumn in $v5ProfileColumns) {
+            if ($columns -notcontains $profileColumn) { throw "Runtime CSV schema v5 is missing '$profileColumn': $runtimePath" }
+        }
     }
     $rows = @(Import-Csv -LiteralPath $runtimePath)
     $measuredTicks = [int](Require-Property $configuration "measuredTicks" $resultPath)
@@ -636,6 +721,7 @@ foreach ($runtimePath in $runtimePaths) {
 
     $runRecord = [ordered]@{
         run = $runId
+        runtimeMetricsSchemaVersion = $runtimeMetricsSchemaVersion
         sourceArtifacts = [ordered]@{
             runtimeMetricsCsv = [ordered]@{
                 path = Get-DisplayPath $runtimePath
@@ -693,12 +779,19 @@ foreach ($runtimePath in $runtimePaths) {
         run = $runId
         trialIndex = $runRecord.configuration.trialIndex
         repeatKey = $repeatKey
+        runtimeMetricsSchemaVersion = $runtimeMetricsSchemaVersion
         spikeTicks = @($spikeTicks | ForEach-Object { [long]$_.endTick } | Sort-Object)
         ticks = $ticks.ToArray()
     })
 }
 
 $repeatability = New-Object System.Collections.Generic.List[object]
+foreach ($candidateGroup in @($internalRuns | Group-Object repeatKey | Where-Object { $_.Count -gt 1 })) {
+    $schemaVersions = @($candidateGroup.Group | ForEach-Object { $_.runtimeMetricsSchemaVersion } | Sort-Object -Unique)
+    if ($schemaVersions.Count -gt 1) {
+        throw "Repeatability groups cannot mix runtime metrics schema versions: $($candidateGroup.Name)"
+    }
+}
 foreach ($group in @($internalRuns | Group-Object repeatKey | Where-Object { $_.Count -gt 1 } | Sort-Object Name)) {
     $members = @($group.Group | Sort-Object trialIndex, run)
     $unionSet = New-Object 'System.Collections.Generic.HashSet[long]'
@@ -783,6 +876,7 @@ foreach ($group in @($internalRuns | Group-Object repeatKey | Where-Object { $_.
     })
     $repeatability.Add([ordered]@{
         compatibilityKey = $group.Name
+        runtimeMetricsSchemaVersion = [int]$members[0].runtimeMetricsSchemaVersion
         spikeThresholdMilliseconds = [double]$ThresholdMilliseconds[0]
         runCount = $members.Count
         allRunsExactTickSetIdentity = @($pairs | Where-Object { -not $_.exactTickSetIdentity }).Count -eq 0
@@ -799,6 +893,7 @@ foreach ($group in @($internalRuns | Group-Object repeatKey | Where-Object { $_.
 }
 
 $allTicks = @($internalRuns | ForEach-Object { $_.ticks })
+$observedRuntimeMetricsSchemaVersions = @($runs | ForEach-Object { $_.runtimeMetricsSchemaVersion } | Sort-Object -Unique)
 $aggregateCorrelations = @(
     Get-PearsonCorrelation $allTicks "buildWorkOrdersMs"
     Get-PearsonCorrelation $allTicks "routeSelectionMs"
@@ -811,14 +906,22 @@ $aggregateCorrelations = @(
 )
 
 $output = [ordered]@{
-    schemaVersion = 2
+    schemaVersion = 3
     analyzerVersion = $analyzerVersion
     analysis = "performance_spike_characterization"
     diagnosticScope = [ordered]@{
         timingSource = "metrics_on_runtime_batches"
         claimBoundary = "diagnostic_characterization_only_not_a_release_gate"
         sourceContract = "clean_verified_export_release_equivalence_pairs"
-        repeatabilityScope = "tick_set_identity_only_for_configuration-compatible_supplied_runs"
+        repeatabilityScope = "tick_set_identity_only_for_configuration-and-runtime-schema-compatible_supplied_runs; mixed-version groups rejected"
+        parserBounds = [ordered]@{
+            maximumJsonBytes = $maximumJsonBytes
+            maximumCsvBytes = $maximumCsvBytes
+            maximumCsvLines = $maximumCsvLines
+            maximumCsvLineCharacters = $maximumCsvLineCharacters
+            maximumJsonNestingDepth = $maximumJsonNestingDepth
+            enforcement = "preflight_before_ConvertFrom-Json_or_Import-Csv_materialization"
+        }
         residualContract = [ordered]@{
             formula = "wall_ms - measured_leaf_phase_total_ms"
             measuredLeafPhaseFields = @(
@@ -836,7 +939,8 @@ $output = [ordered]@{
             residualSelectionPolicy = "reported_but_excluded_from_dominant_exercised_production_cost"
         }
     }
-    runtimeMetricsSchemaVersion = 4
+    runtimeMetricsSchemaVersion = if ($observedRuntimeMetricsSchemaVersions.Count -eq 1) { [int]$observedRuntimeMetricsSchemaVersions[0] } else { $null }
+    runtimeMetricsSchemaVersions = $observedRuntimeMetricsSchemaVersions
     thresholdMilliseconds = @($ThresholdMilliseconds)
     compatibility = $compatibility
     runCount = $runs.Count

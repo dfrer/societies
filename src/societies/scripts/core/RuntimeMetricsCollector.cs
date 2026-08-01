@@ -16,6 +16,10 @@ namespace Societies.Core
         SimulationTick,
         SessionAdvance,
         BuildWorkOrders,
+        BuildWorkOrdersInputPreparation,
+        BuildWorkOrdersNonExtraction,
+        BuildWorkOrdersReserveExtraction,
+        BuildWorkOrdersFinalization,
         RouteSelection,
         HarvestApply,
         SceneSync,
@@ -70,6 +74,14 @@ namespace Societies.Core
         public double NavigationRebuildMilliseconds { get; init; } = 0.0;
 
         public double RouteSelectionMilliseconds { get; init; } = 0.0;
+
+        public double BuildWorkOrdersInputPreparationMilliseconds { get; init; } = 0.0;
+
+        public double BuildWorkOrdersNonExtractionMilliseconds { get; init; } = 0.0;
+
+        public double BuildWorkOrdersReserveExtractionMilliseconds { get; init; } = 0.0;
+
+        public double BuildWorkOrdersFinalizationMilliseconds { get; init; } = 0.0;
     }
 
     public readonly record struct RuntimeMetricsBatch(
@@ -136,7 +148,9 @@ namespace Societies.Core
             "candidate_orders_per_idle_citizen,navigation_rebuild_ms," +
             "route_selection_ms,selector_candidates_bounded_total,selector_candidates_exact_scored_total," +
             "selector_candidates_pruned_total,selector_exact_path_queries_total,selector_path_cache_hits_total," +
-            "selector_path_cache_misses_total,selector_selected_route_reuses_total";
+            "selector_path_cache_misses_total,selector_selected_route_reuses_total," +
+            "build_work_orders_input_preparation_ms,build_work_orders_non_extraction_ms," +
+            "build_work_orders_reserve_extraction_ms,build_work_orders_finalization_ms";
 
         private readonly RuntimeMetricsBatch[] _batches;
         private readonly TimeProvider _clock;
@@ -165,6 +179,10 @@ namespace Societies.Core
         private double _updateHudMilliseconds;
         private double _navigationRebuildMilliseconds;
         private double _routeSelectionMilliseconds;
+        private double _buildWorkOrdersInputPreparationMilliseconds;
+        private double _buildWorkOrdersNonExtractionMilliseconds;
+        private double _buildWorkOrdersReserveExtractionMilliseconds;
+        private double _buildWorkOrdersFinalizationMilliseconds;
         private long _workOrdersGeneratedTotal;
         private long _workOrdersGeneratedUncappedTotal;
         private long _workOrdersClaimedTotal;
@@ -342,7 +360,11 @@ namespace Societies.Core
                     _updateHudMilliseconds)
                 {
                     NavigationRebuildMilliseconds = _navigationRebuildMilliseconds,
-                    RouteSelectionMilliseconds = _routeSelectionMilliseconds
+                    RouteSelectionMilliseconds = _routeSelectionMilliseconds,
+                    BuildWorkOrdersInputPreparationMilliseconds = _buildWorkOrdersInputPreparationMilliseconds,
+                    BuildWorkOrdersNonExtractionMilliseconds = _buildWorkOrdersNonExtractionMilliseconds,
+                    BuildWorkOrdersReserveExtractionMilliseconds = _buildWorkOrdersReserveExtractionMilliseconds,
+                    BuildWorkOrdersFinalizationMilliseconds = _buildWorkOrdersFinalizationMilliseconds
                 },
                 _workOrdersGeneratedTotal,
                 _workOrdersGeneratedUncappedTotal,
@@ -462,6 +484,18 @@ namespace Societies.Core
                 case RuntimeMetricsPhase.BuildWorkOrders:
                     _buildWorkOrdersMilliseconds += elapsedMilliseconds;
                     break;
+                case RuntimeMetricsPhase.BuildWorkOrdersInputPreparation:
+                    _buildWorkOrdersInputPreparationMilliseconds += elapsedMilliseconds;
+                    break;
+                case RuntimeMetricsPhase.BuildWorkOrdersNonExtraction:
+                    _buildWorkOrdersNonExtractionMilliseconds += elapsedMilliseconds;
+                    break;
+                case RuntimeMetricsPhase.BuildWorkOrdersReserveExtraction:
+                    _buildWorkOrdersReserveExtractionMilliseconds += elapsedMilliseconds;
+                    break;
+                case RuntimeMetricsPhase.BuildWorkOrdersFinalization:
+                    _buildWorkOrdersFinalizationMilliseconds += elapsedMilliseconds;
+                    break;
                 case RuntimeMetricsPhase.RouteSelection:
                     _routeSelectionMilliseconds += elapsedMilliseconds;
                     break;
@@ -529,6 +563,10 @@ namespace Societies.Core
             _updateHudMilliseconds = 0.0;
             _navigationRebuildMilliseconds = 0.0;
             _routeSelectionMilliseconds = 0.0;
+            _buildWorkOrdersInputPreparationMilliseconds = 0.0;
+            _buildWorkOrdersNonExtractionMilliseconds = 0.0;
+            _buildWorkOrdersReserveExtractionMilliseconds = 0.0;
+            _buildWorkOrdersFinalizationMilliseconds = 0.0;
             _workOrdersGeneratedTotal = 0;
             _workOrdersGeneratedUncappedTotal = 0;
             _workOrdersClaimedTotal = 0;
@@ -593,7 +631,11 @@ namespace Societies.Core
                 batch.SelectorExactPathQueriesTotal.ToString(CultureInfo.InvariantCulture),
                 batch.SelectorPathCacheHitsTotal.ToString(CultureInfo.InvariantCulture),
                 batch.SelectorPathCacheMissesTotal.ToString(CultureInfo.InvariantCulture),
-                batch.SelectorSelectedRouteReusesTotal.ToString(CultureInfo.InvariantCulture)
+                batch.SelectorSelectedRouteReusesTotal.ToString(CultureInfo.InvariantCulture),
+                FormatDouble(batch.Phases.BuildWorkOrdersInputPreparationMilliseconds),
+                FormatDouble(batch.Phases.BuildWorkOrdersNonExtractionMilliseconds),
+                FormatDouble(batch.Phases.BuildWorkOrdersReserveExtractionMilliseconds),
+                FormatDouble(batch.Phases.BuildWorkOrdersFinalizationMilliseconds)
             };
 
             writer.WriteLine(string.Join(',', values));
