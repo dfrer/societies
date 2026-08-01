@@ -2,14 +2,16 @@
 
 ## Outcome
 
-The W2-06 decision is **Closed — Stop Feature Expansion**. The required performance gate is red, and manual/product evidence was not completed, so this is not a Complete/green milestone. The clean ExportRelease matrix is contract-valid (14/14 pairs), but the 16-citizen reference median p95 is 51.5988 ms against the 50 ms safety limit, and both 1,000-tick soak p95 values are also above 50 ms. The next work is a bounded performance characterization/repair; do not activate feature expansion or Weeks 3-4.
+The W2-06 decision remains **Closed — Stop Feature Expansion**. A measured partial repair is locally validated, but the clean ExportRelease matrix remains `safety_failure`: reference median p95 is 55.0153 ms against the 50 ms safety limit. This is not an overall performance improvement, merge candidate, Continue V3 decision, or Weeks 3-4 activation. The next action is characterization-only.
 
 ## Repository truth
 
-- Base and merged master: `f0e88f0` (PR #119 merged).
-- Validation branch: `feature/v3-w2-06-sprint-validation`.
-- Matrix repair source: `7952f37`, independently reviewed with no P0-P3 findings.
-- Technical evidence: [v3-w2-06-technical-validation.json](planning/active/evidence/v3-w2-06-technical-validation.json), schema 2, status `BLOCKED_SAFETY_FAILURE`.
+This report is superseded by the measured partial repair in [v3-w2-06-performance-repair-validation.json](planning/active/evidence/v3-w2-06-performance-repair-validation.json). The repair branch is local and unpushed (`feature/v3-w2-06-performance-repair`, commits `a8e04cc`, `84cc609`, `44414ec`), with no PR and no merge. Its 14/14 contract-valid matrix still has a red reference p95 median of `55.0153 ms` versus the `50 ms` safety limit; it is not an overall performance improvement or merge candidate. Base/master is merged PR #120 at `6d0958f`.
+
+- Base and merged master: `6d0958f` (PR #120 merged).
+- Repair branch: `feature/v3-w2-06-performance-repair` (local, unpushed, unmerged; commits `a8e04cc`, `84cc609`, `44414ec`; no PR).
+- Independent final review: GO, no P0-P3 findings.
+- Technical evidence: [v3-w2-06-performance-repair-validation.json](planning/active/evidence/v3-w2-06-performance-repair-validation.json), status `BLOCKED_SAFETY_FAILURE`.
 
 W2-05 is merged and locally validated; W2-VIS remains complete only under its documented timing and visual-readback waivers. Neither waiver is reclassified here.
 
@@ -19,18 +21,19 @@ W2-05 is merged and locally validated; W2-VIS remains complete only under its do
 |---|---|---|
 | Release build | Pass, 0 warnings/errors | f0e88f0 |
 | ExportRelease build | Pass, 0 warnings/errors | f0e88f0 |
-| Full validation at HEAD | Exit 0 in 737.9s; .NET 334/334 (0 failed/skipped, 9m22s), Godot 23/23 | `7952f37`; docs/narrative manifest notes only dirty |
+| Pre-repair validation (historical) | Exit 0 in 737.9s; .NET 334/334 (0 failed/skipped, 9m22s), Godot 23/23 | `7952f37`; not the repair result |
+| Full validation at repair HEAD | Exit 0 in 500.8s; .NET 341/341 (0 failed/skipped, 8m11s), Godot 23/23 | `44414ec` repair validation |
 | Performance contracts | Pass, 14/14 pairs | Clean 7952f37 matrix |
-| 16-citizen reference p95 | **Fail**: median 51.5988 ms vs 50 ms | Trials 54.2747 / 50.1764 / 51.5988 |
-| 16-citizen reference maximum | Pass: median 184.1399 ms vs 250 ms | Clean matrix |
-| 1,000-tick soak p95 | **Fail**: 50.2444 / 52.75 ms vs 50 ms | Deterministic repeat passed |
-| 1,000-tick soak maximum | Pass: 201.8161 / 177.7758 ms vs 250 ms | Clean matrix |
-| Forced invalidation | Pass: 27.8065 ms | Transition and safety contract passed |
-| 24-citizen stress | Characterization red, non-gating | 146.4716 ms p95 / 247.0534 ms max |
+| 16-citizen reference p95 | **Fail**: median 55.0153 ms vs 50 ms | Repair trials 55.2065 / 55.0153 / 51.0703 |
+| 16-citizen reference maximum | Pass: median 142.6394 ms vs 250 ms | Repair matrix |
+| 1,000-tick soak p95 | Pass: 46.826 / 45.1262 ms vs 50 ms | Deterministic repeat passed |
+| 1,000-tick soak maximum | Pass: 178.8473 / 164.876 ms vs 250 ms | Repair matrix |
+| Forced invalidation | Pass: 23.4193 ms | Transition and safety contract passed |
+| 24-citizen stress | Characterization red, non-gating | 142.5931 ms p95 / 206.4644 ms max |
 
-Compared with the accepted W1-03c baseline, the current reference median improved from 570.6155 ms to 51.5988 ms p95 and from 3694.2534 ms to 184.1399 ms maximum. Improvement does not make the hard safety gate green.
+Compared with the immediately prior W2-06 run, soaks, maxima, forced transition, and stress characterization improved, but reference p95 median worsened by 3.4165 ms (51.5988 to 55.0153) and remains red. Do not call this an overall performance improvement.
 
-HEAD validation also reports a generated test-build CS0436 warning, plus expected/nonfatal Godot frame-cap and optional runtime-metrics temp-path access-denied warnings. Debug project build completed with 0 warnings/errors. Earlier Release/ExportRelease results at `f0e88f0` are distinct provenance; final current-head builds rerun after the wrapper passed: Release `Societies.csproj` 0 warnings/errors in 1.57s and ExportRelease `Societies.sln` 0 warnings/errors in 4.96s.
+The repair validation observed a focused generated test-build CS0436 warning, plus expected/nonfatal Godot frame-cap and optional runtime-metrics temp-path access-denied warnings. Final repair builds passed with 0 warnings/errors: Release `Societies.csproj` in 3.80s and ExportRelease `Societies.sln` in 2.24s; the authoritative wrapper exited 0 in 500.8s.
 
 The explicit checkpoint/resume filter was not run after the red performance result. The current declared contract remains historical evidence, not a newly reproven W2-06 result.
 
@@ -52,4 +55,4 @@ Weeks 3-4 remain Draft/Conditional, inactive, and blocked by this stop decision;
 
 ## Next single action
 
-Run one bounded 16-citizen performance characterization/repair focused on the residual p95 variance and rerun the clean ExportRelease matrix before any feature or playtest expansion. Preserve deterministic contracts, the non-gating 24-citizen classification, and all W2-VIS waivers.
+Run one characterization-only breakdown of the deterministic 15 reference spike ticks across BuildWorkOrders, route selection, scene sync/invalidation, and total tick overhead. Do not optimize or expand features until an exercised dominant cost is selected; preserve deterministic contracts, the non-gating stress classification, and all W2-VIS waivers.

@@ -2,24 +2,24 @@
 
 ## Outcome
 
-- Player/product result: W2-05 persistence is merged and validated; W2-06 clean technical validation is complete.
-- Decision: **Stop Feature Expansion**. The contract-valid matrix still misses the 16-citizen reference and 1,000-tick soak p95 safety limits.
+- Player/product result: W2-05 persistence is merged and validated; W2-06 repair validation is complete but the product performance gate remains red.
+- Decision: **Stop Feature Expansion**. The contract-valid matrix still misses only the 16-citizen reference p95 safety limit; both 1,000-tick soak p95 values pass.
 - Non-goals: no feature expansion, Weeks 3-4 activation, tester claims, or W2-VIS waiver upgrades.
 
 ## Repository truth
 
-- Branch: `feature/v3-w2-06-sprint-validation`.
-- Merged master: `f0e88f0`, including PR #119.
-- Matrix repair: `7952f37`; independent review reported no P0-P3 findings.
-- Technical evidence: `planning/active/evidence/v3-w2-06-technical-validation.json` (`BLOCKED_SAFETY_FAILURE`).
-- Delivery packet: repair commit `7952f37` plus this reviewed handoff/report commit; use the branch and pull-request metadata rather than this file for live delivery status.
+- Branch: `feature/v3-w2-06-performance-repair` (local, unpushed, unmerged; commits `a8e04cc`, `84cc609`, `44414ec`; no PR).
+- Merged master: `6d0958f`, including PR #120.
+- Independent final review: GO; no P0-P3 findings.
+- Technical evidence: `planning/active/evidence/v3-w2-06-performance-repair-validation.json` (`BLOCKED_SAFETY_FAILURE`).
+- Delivery state: not ready to merge because the reference p95 safety gate is red.
 
 ## Evidence
 
 - Release and ExportRelease builds: pass, 0 warnings/errors.
-- HEAD validation: `./scripts/run-prototype-validation.ps1` exit 0 in 737.9s; .NET 334/334 (0 failed/skipped, 9m22s), Godot 23/23; Debug project build 0 warnings/errors. Generated test-build CS0436 and expected/nonfatal Godot frame-cap/optional temp-metrics access-denied warnings were observed. Final current-head Release `Societies.csproj` passed with 0 warnings/errors in 1.57s; ExportRelease `Societies.sln` passed with 0 warnings/errors in 4.96s. Earlier f0e Release/ExportRelease results remain distinct.
-- Clean ReleaseExport matrix: 14/14 contracts pass; reference p95 median `51.5988 ms` vs `50 ms` safety; soak p95 `50.2444/52.75 ms` vs `50 ms`; maxima pass; forced invalidation `27.8065 ms` passes.
-- 24-citizen stress remains characterization-only red (`146.4716 ms` p95 / `247.0534 ms` max).
+- HEAD validation: authoritative wrapper exit 0 in 500.8s; .NET 341/341 (0 failed/skipped, 8m11s), Godot 23/23. Release project build passed with 0 warnings/errors in 3.80s; ExportRelease solution build passed with 0 warnings/errors in 2.24s. A focused generated CS0436 warning is non-blocking and distinct.
+- Clean ReleaseExport matrix: 14/14 contracts pass; reference p95 median `55.0153 ms` vs `50 ms` safety; soak p95 `46.826/45.1262 ms`; maxima pass; forced invalidation `23.4193 ms` passes.
+- 24-citizen stress remains characterization-only red (`142.5931 ms` p95 / `206.4644 ms` max).
 - Checkpoint/resume filter was not rerun after the red safety result.
 
 ## Risks and gate state
@@ -30,7 +30,7 @@
 
 ## Continue with
 
-Run one bounded 16-citizen performance characterization/repair and rerun the clean ExportRelease matrix. Do not activate feature expansion until the hard safety gate is green and a new decision is recorded.
+Run one characterization-only breakdown of the deterministic 15 reference spike ticks across BuildWorkOrders, route selection, scene sync/invalidation, and total tick overhead. Do not optimize or activate feature expansion until an exercised dominant cost is selected and a new decision is recorded.
 
 ## Changed files
 

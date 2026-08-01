@@ -1,0 +1,68 @@
+{
+  "schema_version": 1,
+  "status": "BLOCKED_SAFETY_FAILURE",
+  "decision": "STOP_FEATURE_EXPANSION",
+  "base_master": "6d0958f",
+  "branch": "feature/v3-w2-06-performance-repair",
+  "delivery": {
+    "commits": ["a8e04cc", "84cc609", "44414ec"],
+    "pushed": false,
+    "pull_request": null,
+    "merged": false,
+    "merge_ready": false
+  },
+  "implementation": {
+    "summary": "Measured partial repair using exact profitable lightweight extraction frontier/materialization with virtual NodeName keys, exact route/cache behavior, duplicate/claimed fallbacks, and no per-candidate prefixed ID/interface-enumerator allocation.",
+    "independent_review": "GO",
+    "review_findings": "No P0-P3 findings"
+  },
+  "matrix": {
+    "root": "C:\\tmp\\societies-v3-w2-06-perf\\artifacts\\performance\\w103c-release-20260801-201349-555",
+    "command": ".\\scripts\\run-performance-baseline-matrix.ps1 -GodotPath 'C:\\Users\\hunte\\AppData\\Local\\Microsoft\\WinGet\\Packages\\GodotEngine.GodotEngine.Mono_Microsoft.Winget.Source_8wekyb3d8bbwe\\Godot_v4.6.2-stable_mono_win64\\Godot_v4.6.2-stable_mono_win64.exe'",
+    "contract": "pass",
+    "budget": "safety_failure",
+    "pairs": "14/14",
+    "inventory_exact": true,
+    "same_environment": true,
+    "same_release_build": true,
+    "verified_release": true,
+    "cold_warm_reference_soak_forced_contracts": true,
+    "validation_manifest": {"artifacts": 354, "failed_checks": 0},
+    "reference_p95_ms": [55.2065, 55.0153, 51.0703],
+    "reference_p95_median_ms": 55.0153,
+    "reference_max_ms": [137.7698, 181.5821, 142.6394],
+    "reference_max_median_ms": 142.6394,
+    "soak_p95_ms": [46.826, 45.1262],
+    "soak_max_ms": [178.8473, 164.876],
+    "forced_commit_to_first_lookup_ms": 23.4193,
+    "stress_p95_ms": 142.5931,
+    "stress_max_ms": 206.4644,
+    "deterministic_hash": "7fe45268e67b8dff1da6bbcf785dc996e275fd1d814e713fe83d50873d5cab8e",
+    "soak_repeat_hash": "16314b2dc1f6f6a0682f79de8d0ccd157d05888f3f0a6c513d26337a5f7b12d1"
+  },
+  "comparison": {
+    "prior_reference_p95_median_ms": 51.5988,
+    "prior_reference_max_median_ms": 184.1399,
+    "prior_soak_p95_ms": [50.2444, 52.75],
+    "prior_forced_ms": 27.8065,
+    "prior_stress_ms": [146.4716, 247.0534],
+    "interpretation": "Soaks, maxima, forced transition, and stress characterization improved, but reference p95 median worsened by 3.4165 ms and remains over the 50 ms safety limit. This is not an overall performance improvement or merge candidate."
+  },
+  "validation": {
+    "wrapper": "exit 0 in 500.8s",
+    "managed_full": "341/341, 0 failed/skipped, 8m11s",
+    "godot_headless": "23 passed, 0 failed",
+    "release_project_build": "0 warnings/errors in 3.80s",
+    "export_release_solution_build": "0 warnings/errors in 2.24s",
+    "focused_generated_cs0436": "non-blocking and distinct"
+  },
+  "core_hashes": {
+    "perf_matrix": "b6f91f10523c26aa91cc7ca7cb0ad7dd9b036c0de31dc28471654c0e46f18fa0",
+    "perf_results": "7939e9cf635c6b7178d8f7105763f0721dd7f38ccefc1a540f4af0ae9cce8cf7",
+    "run_plan": "a1ae2c6060e63a043e92a83653f49754265164eb4f7e111a91578aa847ba595e",
+    "summary": "ab08a182e1ca281eed6f31c97ba1d228bc9370bb31f4c337d2d7eab958850031",
+    "validation_manifest": "f8a9bdedbcb0bbf2646896a1f0c6e4c66233a945dcb4b85e2744c2271783d52d"
+  },
+  "next_action": "One characterization-only breakdown of the deterministic 15 reference spike ticks across BuildWorkOrders, route selection, scene sync/invalidation, and total tick overhead; no further optimization or feature work until an exercised dominant cost is selected.",
+  "scope": {"weeks_3_4": "inactive", "stop_feature_expansion": true, "w2_vis_waivers": "unchanged", "playtest_claims": false}
+}

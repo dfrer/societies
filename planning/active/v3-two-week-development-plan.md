@@ -2,7 +2,7 @@
 
 ## Document Control
 
-The July 13-24, 2026 execution window is historical. This document is retained as the Stopped/Closed W2 record with required Definition-of-Done items unmet; W2-06 concluded Stop Feature Expansion and the next bounded action is performance repair.
+The July 13-24, 2026 execution window is historical. This document is retained as the Stopped/Closed W2 record with required Definition-of-Done items unmet. A measured W2-06 performance repair is locally validated but remains red at the reference p95 safety gate; the next bounded action is characterization-only, and no feature expansion or Weeks 3-4 activation is authorized.
 
 | Field | Value |
 |---|---|
@@ -582,7 +582,9 @@ Local W2-05 evidence: 333/333 .NET tests and 23/23 Godot tests with zero-warning
 
 #### V3-W2-06 — Release validation, playtests, and decision
 
-Run the release candidate from a clean state. The completed W2-06 report records **Stop Feature Expansion** because the clean matrix is contract-valid but the 16-citizen reference and 1,000-tick soak p95 safety gates remain red:
+Current evidence superseding the historical execution text below: [v3-w2-06-performance-repair-validation.json](evidence/v3-w2-06-performance-repair-validation.json) records local commits `a8e04cc`, `84cc609`, `44414ec` on an unpushed/unmerged branch. The repair is contract-valid but `safety_failure` at reference p95 median `55.0153 ms`; Stop Feature Expansion remains active and the single next action is characterization-only.
+
+Run the release candidate from a clean state. The completed W2-06 report records **Stop Feature Expansion** because the clean matrix is contract-valid but the 16-citizen reference p95 safety gate remains red; both 1,000-tick soak p95 values pass in the repair run:
 
 - Release build and full .NET/Godot suites;
 - 16-citizen matrix and 1,000-tick determinism/resume;
