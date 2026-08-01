@@ -21,9 +21,9 @@ Use [CURRENT_BUILD.md](CURRENT_BUILD.md) as the short repo-truth reference.
 ## Current Prototype
 
 See [CURRENT_BUILD.md](CURRENT_BUILD.md) for the up-to-date prototype scope, validation commands, and implementation details.
-Current implemented reality is V3 W2-04: the `empty_stores` crisis contract, atomic contribution path, session-owned directives with causal assignment explanations, domain-owned terminal outcomes, and minimal procedural crisis HUD are implemented. Runtime snapshots remain schema v6 and explicitly fail fast rather than drop crisis, contribution, or directive state; W2-05 owns the v7 attachment. The possible [V3 Weeks 3-4 plan](planning/active/v3-weeks-3-4-development-plan.md) remains Draft/Conditional and cannot activate unless W2-06 concludes **Continue V3**.
+Current implemented reality includes W2-04 and the merged W2-05 schema-v7 persistence foundation. W2-06 records **Stop Feature Expansion** because the clean 16-citizen reference and 1,000-tick soak p95 safety gates remain red. The [V3 Weeks 3-4 plan](planning/active/v3-weeks-3-4-development-plan.md) remains Draft/Conditional, inactive, and cannot activate while the stop decision stands.
 
-W2-04 is implemented on `feature/v3-w2-04-crisis-outcome-hud`; final staged deep re-review is clean with P0/P1/P2/P3 all zero. The candidate-alone P1 and trace-scope P2 are resolved: every wood-yard candidate validates its own inputs and exact output capacity, while a scoped internal settlement snapshot accessor corrects the reference scope without changing public schema-v6 fail-fast behavior. One-slot firewood rejection safely falls back to timber, one log cannot reserve a second recipe, and `WoodYardProcessingTests` pass 6/6 in about 5s. On the unchanged `empty_stores` catalog, two independent runs pass 1/1 in 1m14s, switch at tick 245, and reach Stable at tick 1,253. SHA-256 `a81d7083649911a3244446bcde991f215dc0237ea2aa8967b94bfc0c9a98bd3b` covers ordered events plus complete final settlement/session state: ordered `EventLog`, crisis/directive snapshots, contribution counters, inventory, stockpile, sorted resource snapshots, and the complete `PrototypeSettlementSnapshot`. Prior narrower hashes are superseded; this is not a per-tick complete trace. Selector equivalence passes 15/15 in 6m27s and directive validation passes 11/11 in 36s. Release fast passes 159/159 with 0 failed/skipped in 58s test time (66.2s wall), with a CS0436 generated-`Main` conflict warning during test-project compilation; Debug, ExportDebug, and ExportRelease solution builds each pass with zero warnings/errors in 6.8s total wall time. Godot 4.6.2 headless passes 19/19 with 0 failed in 148.9s, with only expected frame-backlog and optional runtime-metrics temp-path access warnings. The manifest declares 263 .NET tests (159 fast, 11 integration, 93 soak) plus 19 Godot tests (12 integration). The full 263-test weekly route and a new Release matrix were not run, so historical W1-06 remains authoritative and no new timing claim is made. W2-04 is validated and ready for commit or pull request. See [the W2-04 validation record](planning/active/evidence/v3-w2-04-crisis-outcome-hud-validation.json).
+W2-04 and W2-05 are historical implementation milestones; see [CURRENT_BUILD.md](CURRENT_BUILD.md) and the [W2-06 validation report](V3_SPRINT_VALIDATION_REPORT.md) for current status and evidence. W2-05 is merged at master `f0e88f0`; W2-06 stopped feature expansion after the clean performance safety gate remained red. The current manifest declares 334 .NET tests (229 fast, 11 integration, 94 soak) and 23 Godot tests.
 
 
 ## Planning vs Code
@@ -34,13 +34,21 @@ Treat planning documents as aspirational unless they are confirmed by the curren
 
 ## Runtime Controls
 
-- `Tab`: toggle inventory panel
 - `1`: craft Stone Axe
-- `2`: craft Campfire
+- `2`: select Food & Fuel directive
+- `3`: select Shelter directive
+- `F3`: inspect citizen
+- `F4`: inspect structure
 - `F5`: toggle weather
 - `F6`: save snapshot, event log, and run summary
 - `F7`: reset the current deterministic run
+- `F8`: toggle observer camera
 - `F9`: load the latest snapshot set
+- `F10`: toggle overlay
+- `F11`: advance to next build
+- `F12`: pause/unpause
+- `Tab`: toggle inventory panel
+- `E`: interact
 
 ## Repository Layout
 
@@ -96,11 +104,11 @@ The Release route exports the `Windows Performance Release` preset and hard-fail
 
 These runs are not part of the pull-request gate. The runner writes ignored artifacts under `artifacts/performance/` and rejects content-dirty source by default so results identify reproducible code; stat-only touches whose Git blobs still match are not misclassified. It discovers Godot from `-GodotPath`, `GODOT_BIN`, `PATH`, or the standard WinGet package location. The editor/headless route remains Debug characterization. The Release execution route was first validated from clean commit `acf634f`; see `planning/active/evidence/v3-w1-03a-release-route-validation.json`.
 
-Performance result schema v5 separates deterministic simulation preconditioning from cache treatment and records independent non-persistent selector and extraction-planning modes; runtime metrics CSV remains schema v4. `cold` clears only the derived route cache, `natural_warm` retains the naturally populated cache, and `forced_invalidation` commits one prepared path segment and proves the first exact post-change lookup uses the new navigation version. Eager/all-pairs prewarming remains disabled. W1-04 caches reachability and cell routes while rematerializing exact endpoints; W1-05 uses safe exact branch-and-bound selection; W1-05c adds exact bounded extraction planning and a byte-equivalent indexed A-star representation. Exhaustive modes remain benchmark references only. Only `run-performance-cache-modes.ps1` can set `cacheModeEvidence`: it also requires cold/warm configuration and hash identity and explicitly leaves baseline, full-matrix, median, and target/safety claims false.
+Performance result schema v6 separates deterministic simulation preconditioning from cache treatment and records independent non-persistent selector and extraction-planning modes; runtime metrics CSV remains schema v4. `cold` clears only the derived route cache, `natural_warm` retains the naturally populated cache, and `forced_invalidation` commits one prepared path segment and proves the first exact post-change lookup uses the new navigation version. Eager/all-pairs prewarming remains disabled. W1-04 caches reachability and cell routes while rematerializing exact endpoints; W1-05 uses safe exact branch-and-bound selection; W1-05c adds exact bounded extraction planning and a byte-equivalent indexed A-star representation. Exhaustive modes remain benchmark references only. Only `run-performance-cache-modes.ps1` can set `cacheModeEvidence`: it also requires cold/warm configuration and hash identity and explicitly leaves baseline, full-matrix, median, and target/safety claims false.
 
 The clean verified ExportRelease cache-mode comparison passed from implementation commit `5444cc3`; see `planning/active/evidence/v3-w1-03b-cache-mode-validation.json`. It proves the three mode contracts and cold/warm deterministic equivalence for a short three-citizen smoke.
 
-The canonical W1-03c matrix completed from clean commit `a636967`. All 14 pairs, 28 metrics rows, artifact-integrity checks, cold/warm comparisons, three reference trials, repeated soaks, and the forced transition passed their evidence contracts. The measured budget did not pass: the 16-citizen cold median was p95 570.6155 ms and max 3694.2534 ms against 50 ms and 250 ms safety limits. The forced invalidation interval itself passed at 8.4171 ms, and eager/all-pairs warmup remains benchmark-only. See `planning/active/evidence/v3-w1-03c-performance-baseline-validation.json`. Week 2 feature expansion is blocked; continue correctness and algorithmic path-selection work in Godot before rerunning the matrix.
+The canonical W1-03c matrix completed from clean commit `a636967`. All 14 pairs, 28 metrics rows, artifact-integrity checks, cold/warm comparisons, three reference trials, repeated soaks, and the forced transition passed their evidence contracts. The measured budget did not pass: the 16-citizen cold median was p95 570.6155 ms and max 3694.2534 ms against 50 ms and 250 ms safety limits. The forced invalidation interval itself passed at 8.4171 ms, and eager/all-pairs warmup remains benchmark-only. Performance-result artifacts use schema v6; runtime metrics CSV remains schema v4. See `planning/active/evidence/v3-w1-03c-performance-baseline-validation.json`. Week 2 feature expansion is blocked; continue correctness and algorithmic path-selection work in Godot before rerunning the matrix.
 
 W1-04 corrects the navigation contract at implementation commit `7918d49`: blocked or disconnected endpoints no longer receive fabricated routes, diagonals cannot cut blocked corners, discounted paths retain an admissible deterministic A* search, and unreachable work is skipped with a stable diagnostic. Wetland reeds and clay use deterministic walkable interaction positions, including legacy snapshot normalization, without weakening blocked-terrain semantics. Local validation passed 110/110 .NET tests, 16/16 Godot headless tests, and all tracked managed configurations with zero warnings. See `planning/active/evidence/v3-w1-04-navigation-validation.json`.
 

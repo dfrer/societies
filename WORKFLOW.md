@@ -1,29 +1,54 @@
-# W2-05 continuation packet
+# W2-06 milestone handoff
 
-## Outcome and scope
+## Outcome
 
-V3-W2-05 is the immediate persistence foundation: attach crisis, contribution, and directive state to runtime schema v7; provide safe v5-to-v6-to-v7 migration and v7 round-trip behavior; extend bounded telemetry and automated slice coverage. Broader Demo 1 civic/economy/multiplayer/provider work is non-goal scope for this slice.
+- Player/product result: W2-05 persistence is merged and validated; W2-06 clean technical validation is complete.
+- Decision: **Stop Feature Expansion**. The contract-valid matrix still misses the 16-citizen reference and 1,000-tick soak p95 safety limits.
+- Non-goals: no feature expansion, Weeks 3-4 activation, tester claims, or W2-VIS waiver upgrades.
 
-## Repository state
+## Repository truth
 
-- Worktree: `C:\tmp\societies-v3-w2-05`
-- Branch: `feature/v3-w2-05-schema-v7`
-- Base: `03bb3ec7ff82d13389e6e94b62f159b87f022b4b`
-- W2-VIS remains complete only under its documented two-exception waiver.
-- W2-05 is implemented and locally validated, committed at `cea7f8a`, with delivery tracked by PR #119.
+- Branch: `feature/v3-w2-06-sprint-validation`.
+- Merged master: `f0e88f0`, including PR #119.
+- Matrix repair: `7952f37`; independent review reported no P0-P3 findings.
+- Technical evidence: `planning/active/evidence/v3-w2-06-technical-validation.json` (`BLOCKED_SAFETY_FAILURE`).
+- Delivery packet: repair commit `7952f37` plus this reviewed handoff/report commit; use the branch and pull-request metadata rather than this file for live delivery status.
 
-## Accepted versus validated
+## Evidence
 
-Accepted Demo 1 direction is documented in the reviewed Concept Studio imports: bounded persistent 2 km x 2 km island, classic survival UX, blocky/voxel-inspired presentation over heightfield, logged deterministic admin commands, incremental claims/homesteads/settlements/jobs/production/crafting/shops/trade, 24 normal and 40 characterization citizens, eventual 1-3 humans, and provider-neutral Cognition Director with deterministic routines/offline fallback and LLM proposals only. This is planning direction, not validated runtime.
+- Release and ExportRelease builds: pass, 0 warnings/errors.
+- HEAD validation: `./scripts/run-prototype-validation.ps1` exit 0 in 737.9s; .NET 334/334 (0 failed/skipped, 9m22s), Godot 23/23; Debug project build 0 warnings/errors. Generated test-build CS0436 and expected/nonfatal Godot frame-cap/optional temp-metrics access-denied warnings were observed. Final current-head Release `Societies.csproj` passed with 0 warnings/errors in 1.57s; ExportRelease `Societies.sln` passed with 0 warnings/errors in 4.96s. Earlier f0e Release/ExportRelease results remain distinct.
+- Clean ReleaseExport matrix: 14/14 contracts pass; reference p95 median `51.5988 ms` vs `50 ms` safety; soak p95 `50.2444/52.75 ms` vs `50 ms`; maxima pass; forced invalidation `27.8065 ms` passes.
+- 24-citizen stress remains characterization-only red (`146.4716 ms` p95 / `247.0534 ms` max).
+- Checkpoint/resume filter was not rerun after the red safety result.
 
-Validated W2-VIS exceptions remain: p95 `55.4529 ms` is over the 50 ms safety budget, max `142.9547 ms` is under the 250 ms limit, and persistence/hash equivalence is unavailable. The visual readback exception is waived, not passed.
+## Risks and gate state
 
-## Validation record
+- W2-VIS remains under its explicit timing and visual-readback waivers: visual acceptance is waived, timing p95 failed, and persistence/hash equivalence is unavailable.
+- Author smoke and external observed playtests were not run after the technical stop; product validation is incomplete.
+- Accepted Concept Studio direction remains accepted concept direction, not validated runtime scope.
 
-- Focused W2-05 evidence: long `PrototypeCrisisReferenceTraceTests` 2/2 passed in 8.1752 minutes; Stable checkpoint at tick 600 resumes exactly to terminal tick 1253 with final Shelter.
-- Release validation: `dotnet build src/societies/Societies.csproj --configuration Release` pass (0 warnings/errors, 1.07s); ExportRelease solution build pass (0 warnings/errors, 2.11s); `dotnet test ... --configuration Release` 333/333, 0 failed/skipped (8m35s); standalone Godot 4.6.2 Mono 23/23 (150.8s); `scripts/run-prototype-validation.ps1` exit 0 with Debug build 0 warnings/errors, 333/333 tests, and Godot 23/23.
-- Schema-v7 evidence: strict directive/contribution/full-crisis checkpoint and telemetry persistence; v5->v6->v7 migration; prepare-before-commit; strict nested presence; bounded manifest-last coherent snapshot/event/summary generation; bounded atomic save/load pairs; exactly-once terminal; overflow-safe fields; no per-tick narrative log. Reference hashes: no-input 7496 / `9ce28bf44c480d43b1313a48abfdea82900c266afc04f5351eff6e61d4e6b93a`; 10.5 capture 8149 / `8a0239837c5f96ac5ef0e470e9e91178d620b7362213cf47eaa2aa20b637eecc`; scripted Stable `b939d06b57bbf0c480e5f1b96d5c778e3789465d078ebee459e58f5a6e32b104`.
+## Continue with
 
-## Known risks and next action
+Run one bounded 16-citizen performance characterization/repair and rerun the clean ExportRelease matrix. Do not activate feature expansion until the hard safety gate is green and a new decision is recorded.
 
-Do not activate Weeks 3-4 without W2-06 **Continue V3**. Residuals: the simple Food & Fuel -> Shelter-only pacing schedule exceeded 304 seconds during development (the representative adaptive Stable path is proven); atomic replacement relies on same-volume rename without explicit fsync; secondary V2/world/metrics artifacts remain outside the core generation manifest. PR #119 is the W2-05 delivery gate; after it reaches `master`, the single next action is W2-06 validation and its explicit sprint conclusion. Do not claim release. Final `git diff --check` and manifest JSON validation pass.
+## Changed files
+
+- `V3_SPRINT_VALIDATION_REPORT.md`
+- `WORKFLOW.md`
+- `CURRENT_BUILD.md`
+- `README.md`
+- `AGENTS.md`
+- `planning/active/README.md`
+- `planning/active/v3-two-week-development-plan.md`
+- `planning/DEVELOPMENT_WORKFLOW.md`
+- `WORKFLOW_ISSUES.md`
+- `planning/PRODUCT-THESIS.md`
+- `planning/README.md`
+- `planning/active/evidence/v3-w2-06-technical-validation.json`
+- `planning/active/v3-w2-vis-baseline.md`
+- `planning/active/v3-weeks-3-4-development-plan.md`
+- `scripts/run-performance-pair.ps1`
+- `src/societies/tests/PerfRunner.cs`
+- `tests/Societies.Core.Tests/Core/PerfRunnerRunIdTests.cs`
+- `tests/test-manifest.json`

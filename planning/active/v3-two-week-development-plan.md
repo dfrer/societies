@@ -2,11 +2,11 @@
 
 ## Document Control
 
-The July 13-24, 2026 execution window is historical. This document is retained for W2 continuity; the current bounded continuation is W2-05 as of July 30.
+The July 13-24, 2026 execution window is historical. This document is retained as the Stopped/Closed W2 record with required Definition-of-Done items unmet; W2-06 concluded Stop Feature Expansion and the next bounded action is performance repair.
 
 | Field | Value |
 |---|---|
-| Status | Active |
+| Status | Stopped/Closed — Stop Feature Expansion |
 | Prepared | 2026-07-09 |
 | Execution window | Monday 2026-07-13 through Friday 2026-07-24 |
 | Day-zero preparation | Friday 2026-07-10, optional, 30–60 minutes |
@@ -83,7 +83,7 @@ At the end of Day 10, record one explicit result:
 - **Narrow iteration:** engineering passes, but playtests show that the crisis, directive, or citizen causality needs refinement.
 - **Stop feature expansion:** correctness, determinism, persistence, or the performance safety gate fails; return to the last green boundary before adding systems.
 
-The canonical product north star and deterministic/LLM boundary are maintained in [PRODUCT-THESIS.md](../PRODUCT-THESIS.md). If the W2-06 report concludes **Continue V3**, evaluate [the Draft/Conditional Weeks 3-4 plan](v3-weeks-3-4-development-plan.md); it does not activate before that conclusion.
+The canonical product north star and deterministic/LLM boundary are maintained in [PRODUCT-THESIS.md](../PRODUCT-THESIS.md). W2-06 records **Stop Feature Expansion**; evaluate [the Draft/Conditional Weeks 3-4 plan](v3-weeks-3-4-development-plan.md) only after a later explicit continuation decision.
 
 ### Day 10 long-term planning reconciliation
 
@@ -541,11 +541,11 @@ Acceptance:
 
 The baseline may improve composition, lighting, materials, placeholder readability, and existing UI presentation. Production asset creation and broad visual polish remain deferred until the playtests justify them.
 
-Status: **complete by explicit two-exception waiver; performance safety did not pass and visual acceptance was waived.** W2-04 is merged through PR #117 at master `d519d4d`. Functional gates are green at Release .NET 269/269 (0 failed/skipped), Debug build 0 warnings/errors, and Godot 22/22; later capture fixes retained green Debug/Godot gates. Canonical capture source `2393e884b902d54b50f54d8dfcd966f9bbae11f0` is tracked with schema-4 manifest/reproduction and five PNGs. Later clean diagnostic source `2f37f01` plus bounded isolated trials show intermittent Windows Forward+ PNG CanvasLayer glyph/panel clipping; no later trial is canonical or tracked. Normal-play HUD assertions pass, but rendered-frame visual acceptance is waived, not passed. Final clean ReleaseExport timing-only evidence from `50f16cd6491350053af45ba7164cb5121cc3bf26` is accepted under the waiver: p95 `55.4529 ms` versus 50 ms (FAIL), max `142.9547 ms` versus 250 ms (PASS), `failureAllowed=true`, contractStatus `pass`; persistence/hash equivalence is unavailable. W2-05 is the immediate persistence foundation and is **implemented and locally validated** on `feature/v3-w2-05-schema-v7`, committed at `cea7f8a`, with delivery tracked by PR #119. Weeks 3-4 remain Draft/Conditional and inactive until W2-06 records **Continue V3**.
+Status: **complete by explicit two-exception waiver; performance safety did not pass and visual acceptance was waived.** W2-04 is merged through PR #117 at master `d519d4d`. W2-05 is merged through PR #119 at master `f0e88f0`, after local validation on `feature/v3-w2-05-schema-v7` at `cea7f8a`. W2-VIS timing-only p95 `55.4529 ms` remains over safety, persistence/hash equivalence is unavailable, and visual acceptance is waived, not passed. See the [W2-06 validation report](../../V3_SPRINT_VALIDATION_REPORT.md). Weeks 3-4 remain Draft/Conditional and inactive after the Stop Feature Expansion decision.
 
 #### V3-W2-05 — Schema v7, telemetry, and automated slice tests
 
-Status: **Implemented and locally validated; delivery tracked by PR #119.** W2-05 is on `feature/v3-w2-05-schema-v7` and committed at `cea7f8a`. It is the immediate persistence foundation and does not implement the broader Demo 1 civic, economy, multiplayer, voxel-terrain, or live-provider direction; those remain accepted concept direction only and are not validated runtime scope.
+Status: **Merged and validated; PR #119 landed at master `f0e88f0`.** W2-05 is the persistence foundation and does not implement the broader Demo 1 civic, economy, multiplayer, voxel-terrain, or live-provider direction; those remain accepted concept direction only and are not validated runtime scope.
 
 Freeze the directive/crisis persistence contract, bump runtime snapshots from v6 to v7, and add an explicit v6-to-v7 migration with Neutral/no-crisis defaults. A v5 save must migrate through v6 to v7. Extend events, summaries, and metrics with:
 
@@ -578,17 +578,17 @@ Acceptance:
 - Slice tests use commands/domain state rather than brittle UI timing where possible.
 - One Godot smoke test covers the real input-to-HUD path.
 
-Local evidence: 333/333 .NET tests, 23/23 Godot tests, Release/ExportRelease/Debug builds with zero warnings/errors, and `scripts/run-prototype-validation.ps1` exit 0. The long crisis reference trace passes 2/2 in 8.1752 minutes. Final `git diff --check` and manifest JSON validation pass.
+Local W2-05 evidence: 333/333 .NET tests and 23/23 Godot tests with zero-warning builds; current W2-06 manifest declares 334 .NET (229 fast, 11 integration, 94 soak) and 23 Godot tests. The W2-06 wrapper exited 0, but child summaries were not independently parsed. The long crisis reference trace passes 2/2. Final `git diff --check` and manifest JSON validation pass.
 
 #### V3-W2-06 — Release validation, playtests, and decision
 
-Run the release candidate from a clean state:
+Run the release candidate from a clean state. The completed W2-06 report records **Stop Feature Expansion** because the clean matrix is contract-valid but the 16-citizen reference and 1,000-tick soak p95 safety gates remain red:
 
 - Release build and full .NET/Godot suites;
 - 16-citizen matrix and 1,000-tick determinism/resume;
 - forced navigation invalidation;
 - a 20–30 minute smoke covering contribution, both directives, inspection, save/load, outcome, reset, and artifacts;
-- five observed playtests if testers are available.
+- five observed playtests if testers are available (not run after the technical stop; product validation is incomplete).
 
 Give testers only the in-game briefing. Record time to first directive, harvest, contribution, citizen inspection, outcome, facilitator prompts, and confusion/boredom moments.
 
@@ -602,7 +602,7 @@ Ask afterward:
 6. What caused the result, and did it feel fair?
 7. Would you play another crisis?
 
-Deliver `V3_SPRINT_VALIDATION_REPORT.md` with baseline-versus-RC results, defects, playtest evidence, and one sprint conclusion.
+Delivered `V3_SPRINT_VALIDATION_REPORT.md` records baseline-versus-RC results, defects/limitations, playtest availability, and the single sprint conclusion. The next action is bounded performance characterization/repair before any expansion.
 
 ## Ten-Day Schedule
 
@@ -627,8 +627,8 @@ Deliver `V3_SPRINT_VALIDATION_REPORT.md` with baseline-versus-RC results, defect
 | Tier | Purpose | Cadence |
 |---|---|---|
 | Iteration/focused | Changed deterministic units, schema/state checks, short session advance, or the smallest relevant Godot smoke | During implementation and after each logical change |
-| Merge/fast | Release build, manifest-owned 165-test fast tier, and 22-test Godot headless suite | Before merge or handoff |
-| Weekly/milestone full | All 269 required .NET tests, all 22 Godot tests, and extended coverage where supported | Weekly, sprint-end, milestone, or relevant boundary change |
+| Merge/fast | Release build, current manifest-owned fast tier, and current Godot headless suite | Before merge or handoff |
+| Weekly/milestone full | All current manifest-declared required .NET/Godot tests and extended coverage where supported | Weekly, sprint-end, milestone, or relevant boundary change |
 | Conditional release/performance | Repeat/resume, release-route artifacts, 16/24-citizen characterization, and performance matrix | Only for performance-sensitive changes, hard-gate rechecks, or a new performance claim |
 
 `.github/workflows/tests.yml` is the protected fast pull-request gate. `.github/workflows/tests-extended.yml` owns scheduled/manual full validation. The local full validation loop remains authoritative for sprint-end and release-candidate evidence, but is not required for each pull request.
@@ -811,4 +811,4 @@ Decision rules:
 - Playtest evidence or its availability gap is recorded.
 - `CURRENT_BUILD.md` is updated to describe implemented V3 reality, not intent.
 - The report records Continue V3, Narrow Iteration, or Stop Feature Expansion.
-- This document becomes Complete or Superseded.
+- This document is Stopped/Closed with Stop Feature Expansion and required Definition-of-Done items unmet; the Weeks 3-4 proposal is Draft/Conditional and inactive.

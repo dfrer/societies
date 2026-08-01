@@ -3,7 +3,9 @@
 ## Active Plan
 
 - [Societies V3: Two-Week Development Plan](active/v3-two-week-development-plan.md) — July 13–24, 2026
-- **Draft/Conditional:** [Societies V3: Weeks 3-4 Development Plan](active/v3-weeks-3-4-development-plan.md) - July 27-August 7, 2026; it activates only if W2-06 concludes **Continue V3**.
+- **Draft/Conditional:** [Societies V3: Weeks 3-4 Development Plan](active/v3-weeks-3-4-development-plan.md) - July 27-August 7, 2026; it remains inactive after the W2-06 **Stop Feature Expansion** decision and requires a green performance repair plus a later explicit continuation.
+
+W2-06 is recorded in [V3 sprint validation report](../V3_SPRINT_VALIDATION_REPORT.md) as **Stop Feature Expansion**. The Weeks 3-4 document remains inactive until a later bounded decision reopens it.
 
 
 Short-horizon plans under `planning/active/` are grounded in the current build and take priority over older aspirational documents during their execution window. The code and `CURRENT_BUILD.md` remain authoritative for what is implemented.
