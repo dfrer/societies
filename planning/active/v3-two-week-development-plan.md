@@ -2,7 +2,7 @@
 
 ## Document Control
 
-The July 13-24, 2026 execution window is historical. This document is retained as the Stopped/Closed W2 record with required Definition-of-Done items unmet. A measured W2-06 performance repair remains red at the reference p95 safety gate; its follow-on spike characterization is complete, and the next bounded action is profiling inside BuildWorkOrders. No feature expansion or Weeks 3-4 activation is authorized.
+The July 13-24, 2026 execution window is historical. This document is retained as the Stopped/Closed W2 record with required Definition-of-Done items unmet. A measured W2-06 performance repair remains red at the reference p95 safety gate; BuildWorkOrders profiling is complete as dirty-source diagnostic evidence, and the next bounded action is to characterize one exercised operation inside `AddReserveExtractionOrders`. No implementation, feature expansion, threshold change, fresh matrix, or Weeks 3-4 activation is authorized.
 
 | Field | Value |
 |---|---|
@@ -582,7 +582,7 @@ Local W2-05 evidence: 333/333 .NET tests and 23/23 Godot tests with zero-warning
 
 #### V3-W2-06 — Release validation, playtests, and decision
 
-Current evidence superseding the historical execution text below: [v3-w2-06-performance-repair-validation.json](evidence/v3-w2-06-performance-repair-validation.json) records pushed/published branch `feature/v3-w2-06-performance-repair` at `b84f70e`, with commits `a8e04cc`, `84cc609`, `44414ec`; it has no PR and remains unmerged. The repair is contract-valid but `safety_failure` at reference p95 median `55.0153 ms`; Stop Feature Expansion remains active. The completed [spike characterization](evidence/v3-w2-06-spike-characterization.json) is on pushed branch `feature/v3-w2-06-spike-characterization` at `8529856` (unmerged, no PR): analyzer v2.1.0/schema 2 passed its focused Windows PowerShell 5.1 command and full 14-run regression, with independent review GO and no P0-P3 findings. The >50 ms sets are 16/16/17, with 15 common and 18 in the union. Across 45 common-spike samples, BuildWorkOrders is dominant at `2,858.6367 ms` of `4,268.8291 ms` wall (`66.965358%`; `69.462525%` of measured leaf time). The next bounded action is profiling inside BuildWorkOrders; no implementation, optimization, threshold change, feature expansion, PR/merge, or fresh matrix is authorized.
+Current evidence superseding the historical execution text below: [v3-w2-06-build-work-orders-profile.json](evidence/v3-w2-06-build-work-orders-profile.json) records pushed branch `feature/v3-w2-06-build-work-orders-profile` at `3605277` (unmerged, no PR), with diagnostic SHA `db64a0818f30f5c2b1e02f9feaa5db918cd90cfb7d59c2bff9edcf91b6aaaf09`, status `diagnostic_subcost_selected`, and dirty-source provenance. Three exact metrics-off/on 16-citizen seed-1337 trials reuse one ExportRelease bundle and preserve deterministic hashes. Spike sets are 16/17/15 (15 common, 18 union). Across 45 common-spike occurrences, `reserve_extraction` is `2,335.489 ms` of `2,749.9948 ms` BuildWorkOrders parent time (`84.927033%`); non-extraction is `406.3959 ms`, residual `0.0893 ms`. Runtime CSV is v5/40 columns; generic analyzer v2.2/schema 3 supports v4/v5 and profile analyzer is v2/schema 2. Exact PowerShell 5.1 suites, focused managed 15/15, Debug/Release/ExportRelease builds (0 warnings/errors), and fresh Godot 23/23 pass after cleanup; full 342-test validation was not rerun. Independent final deep review is GO with no P0-P3 findings. This is diagnostic-only, not the release gate. The next bounded action is to characterize inside `AddReserveExtractionOrders` and freeze one optimization contract; no implementation, optimization, threshold change, feature expansion, PR/merge, or fresh matrix is authorized.
 
 Historical execution record (already completed before the characterization boundary): run the release candidate from a clean state. The completed W2-06 report records **Stop Feature Expansion** because the clean matrix is contract-valid but the 16-citizen reference p95 safety gate remains red; both 1,000-tick soak p95 values pass in the repair run:
 
@@ -604,7 +604,7 @@ Ask afterward:
 6. What caused the result, and did it feel fair?
 7. Would you play another crisis?
 
-Delivered `V3_SPRINT_VALIDATION_REPORT.md` records baseline-versus-RC results, defects/limitations, playtest availability, and the single sprint conclusion. The characterization boundary is now complete; the next action is profiling inside BuildWorkOrders before any optimization or expansion.
+Delivered `V3_SPRINT_VALIDATION_REPORT.md` records baseline-versus-RC results, defects/limitations, playtest availability, and the single sprint conclusion. The profiling boundary is complete; the next action is characterization inside `AddReserveExtractionOrders` before any optimization or expansion.
 
 ## Ten-Day Schedule
 
