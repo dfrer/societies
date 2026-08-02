@@ -1,0 +1,131 @@
+{
+  "schemaVersion": 1,
+  "scope": "V3-W2-06 final authoritative local validation",
+  "status": "pass",
+  "source": {
+    "branch": "feature/v3-w2-06-reserve-extraction-optimization",
+    "gitSha": "478a4d9ca7cd71963c92b9bfb20bfecb7aa98fde",
+    "preflightStatus": "clean committed source with only expected untracked planning/active/evidence/v3-w2-06-clean-canonical-matrix-validation.json"
+  },
+  "tools": {
+    "dotnetVersion": "9.0.311",
+    "godotPath": "C:\\Users\\hunte\\AppData\\Local\\Microsoft\\WinGet\\Packages\\GodotEngine.GodotEngine.Mono_Microsoft.Winget.Source_8wekyb3d8bbwe\\Godot_v4.6.2-stable_mono_win64\\Godot_v4.6.2-stable_mono_win64.exe",
+    "godotVersion": "4.6.2.stable.mono.official.71f334935"
+  },
+  "boundInputs": [
+    {
+      "path": "tests/test-manifest.json",
+      "bytes": 17264,
+      "sha256": "30d1ee1d0df1d7e3ccb2afd5f41fa238a33bee1cd060b4acee475fc16ac64cfe"
+    },
+    {
+      "path": "scripts/run-prototype-validation.ps1",
+      "bytes": 1465,
+      "sha256": "0e8ef47fc1b7aa7a25ef434c6fc18666b5d12118a64359a55973a79f953bde21"
+    },
+    {
+      "path": "src/societies/Societies.csproj",
+      "bytes": 460,
+      "sha256": "0775244c2fc78c2c9e5e49de8b53ec8d4812744b31068ec629cb4b60092fcf61"
+    },
+    {
+      "path": "src/societies/Societies.sln",
+      "bytes": 1255,
+      "sha256": "89a06b1d6183c5da57785fad867f14b2167594c82c00bd2e8b873d4e130697e7"
+    },
+    {
+      "path": "src/societies/project.godot",
+      "bytes": 5147,
+      "sha256": "a8f26ad3ea220920f2a977848821b35f466ce1e6dcae834cd8406231ce4e120c"
+    }
+  ],
+  "commands": [
+    {
+      "command": "./scripts/run-prototype-validation.ps1",
+      "environment": "GODOT_BIN=<tools.godotPath>",
+      "exitCode": 0,
+      "wallSeconds": 325.2,
+      "result": "pass",
+      "wrapperSteps": [
+        "dotnet build src/societies/Societies.csproj (Debug default)",
+        "dotnet test tests/Societies.Core.Tests/Societies.Core.Tests.csproj --configuration Release",
+        "Godot --headless --path src/societies --build-solutions --quit",
+        "Godot --headless --path src/societies res://tests/HeadlessTestRunner.tscn"
+      ],
+      "outputProvenance": "Wrapper child output was buffered; its exit proves all wrapper steps succeeded but does not independently parse the child test counts."
+    },
+    {
+      "command": "dotnet build src/societies/Societies.csproj --configuration Debug",
+      "exitCode": 0,
+      "elapsedSeconds": 0.96,
+      "warnings": 0,
+      "errors": 0,
+      "result": "pass"
+    },
+    {
+      "command": "dotnet build src/societies/Societies.csproj --configuration Release",
+      "exitCode": 0,
+      "elapsedSeconds": 1.44,
+      "warnings": 0,
+      "errors": 0,
+      "result": "pass"
+    },
+    {
+      "command": "dotnet build src/societies/Societies.sln --configuration ExportRelease",
+      "exitCode": 0,
+      "elapsedSeconds": 2.96,
+      "warnings": 0,
+      "errors": 0,
+      "result": "pass"
+    },
+    {
+      "command": "dotnet test tests/Societies.Core.Tests/Societies.Core.Tests.csproj --configuration Release --no-build",
+      "exitCode": 0,
+      "elapsed": "00:05:14",
+      "passed": 350,
+      "failed": 0,
+      "skipped": 0,
+      "total": 350,
+      "result": "pass",
+      "outputProvenance": "Direct VSTest summary."
+    },
+    {
+      "command": "<tools.godotPath> --headless --path src/societies res://tests/HeadlessTestRunner.tscn",
+      "exitCode": 0,
+      "duration": "not independently captured; executed in a 5.8-second Debug-build plus headless-run envelope",
+      "result": "pass",
+      "testCount": {
+        "expected": 23,
+        "source": "tests/test-manifest.json",
+        "provenance": "The direct and wrapper headless processes exited 0, but their console summary was not captured; 23/23 is manifest-declared rather than independently parsed."
+      }
+    }
+  ],
+  "manifestCoverage": {
+    "managedExpected": 350,
+    "managedObserved": 350,
+    "godotExpected": 23,
+    "godotObserved": "not independently parsed; both headless invocations exited 0"
+  },
+  "generatedIconHandling": {
+    "path": "src/societies/icon.svg.import",
+    "cause": "Godot validation can regenerate this tracked import file.",
+    "headBlob": "3e357237b7c316d6e9044c24b95a02ca1e010b1f",
+    "currentWorktreeSha256": "1964974204efd8371a51e4b61e319a43210858c3764bb622631a63c6078bc46d",
+    "currentStatus": "restored: not listed as modified after validation",
+    "handling": "No restoration or unrelated overwrite was performed by this validation task."
+  },
+  "artifacts": {
+    "tracked": [],
+    "ignoredGenerated": [
+      "src/societies/.godot/mono/temp/",
+      "Godot import/build outputs"
+    ],
+    "preexistingUntrackedEvidence": "planning/active/evidence/v3-w2-06-clean-canonical-matrix-validation.json"
+  },
+  "limitations": [
+    "The wrapper contains no standalone JSON-schema or test-manifest validation step; it performs build, managed-test, solution-build, and headless-test steps only.",
+    "Godot's 23-test count is bound to the manifest and successful headless exits, not a captured runner summary.",
+    "Concurrent documentation, report, and workflow-registry changes observed after preflight are outside this validation record and were preserved."
+  ]
+}

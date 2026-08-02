@@ -7,12 +7,12 @@
 | Status | **Draft/Conditional** |
 | Execution window | Mon 2026-07-27 to Fri 2026-08-07 |
 | Capacity | One developer, 40-50 hours |
-| Activation | Only after a green performance repair and a later explicit **Continue V3** decision |
+| Activation | W3-01 may be queued after W2-06 delivery; W3-02+ and broader Weeks 3-4 require a later explicit **Continue V3** decision |
 | Product north star | [PRODUCT-THESIS.md](../PRODUCT-THESIS.md) |
 | Current implementation truth | [CURRENT_BUILD.md](../../CURRENT_BUILD.md) |
 | Predecessor | [V3 two-week development plan](v3-two-week-development-plan.md) |
 
-This plan is not executable after the W2-06 **Stop Feature Expansion** decision. It remains a conditional bounded follow-on only if a later performance repair earns a new continuation decision; it does not declare any planned feature implemented.
+W3-01 is queued as the next bounded action after W2-06 delivery. W3-02+ and broader Weeks 3-4 remain inactive until a later explicit **Continue V3** decision; this document does not declare any planned feature implemented.
 
 ## Entry State and Decision Rule
 
@@ -21,11 +21,11 @@ Known repository truth at drafting:
 - The Week 1 hard performance/correctness gate is green.
 - The formal performance target remains missed, and 24-citizen stress remains characterization-red.
 - W2-02 (`empty_stores` crisis contract plus atomic shared-economy contribution) is validated and merged.
-- W2-02 through W2-05 are validated and merged; W2-06 concluded **Stop Feature Expansion** after the clean performance safety gate remained red.
+- W2-02 through W2-05 are validated and merged; W2-06 initially concluded **Stop Feature Expansion**, then the clean `478a4d9` repair cleared the hard performance safety gate. W3-01 is queued after delivery; W3-02+ remain inactive pending explicit continuation.
 
-Activation would require a later explicit **Continue V3** decision. W2-06 currently found red performance safety gates, so return to bounded correctness/performance work and do not start this plan. Product clarity was not evaluated because post-stop author smoke and external observed playtests were not run.
+W2-06 hard safety gates are green at `478a4d9`, but delivery truth remains in Git/GitHub. Queue W3-01 only after that delivery boundary; keep W3-02+ and broader Weeks 3-4 inactive pending an explicit **Continue V3** decision. Product clarity was not evaluated because author smoke and external observed playtests were not run.
 
-The July 27-August 7 dates are historical proposal only, not current authorization. This document remains Draft/Conditional and inactive after the W2-06 stop decision.
+The July 27-August 7 dates are historical proposal only, not current authorization. This document remains Draft/Conditional: W3-01 is queued after W2-06 delivery, while W3-02+ and broader Weeks 3-4 remain inactive pending an explicit continuation decision.
 
 ### Draft/Conditional Demo 1 foundation direction
 
@@ -115,7 +115,7 @@ The deterministic validator rejects wrong version, unknown citizen/action/reason
 
 | Item | Estimate | Dependencies | Acceptance |
 |---|---:|---|---|
-| W3-01 Civic state and command/event contract | 5 h | W2-06 Continue V3; green technical gate | Exactly one policy state, valid decision window, deterministic command/event ordering, save/resume contract |
+| W3-01 Civic state and command/event contract | 5 h | W2-06 delivered at green hard gate | Exactly one policy state, valid decision window, deterministic command/event ordering, save/resume contract |
 | W3-02 Citizen interests and causal reasons | 5 h | W3-01 | Each citizen has a deterministic material preference/reason; reasons trace to structured facts; no policy bypasses critical needs |
 | W3-03 Wetland quota and shared consequence | 5 h | W3-01 | Both policies produce bounded, distinct, visible, replayable wetland/supply effects |
 | W3-04 LLM-readiness schema and fallback | 4 h | W3-02 | Versioned fixtures, validation failures, constrained action vocabulary, deterministic fallback/replay equivalence |
