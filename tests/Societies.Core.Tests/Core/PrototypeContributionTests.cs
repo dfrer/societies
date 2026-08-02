@@ -269,7 +269,7 @@ namespace Societies.Core.Tests
         }
 
         [Fact]
-        public void ContributionStateRoundTripsAtSchemaV7WhileUntouchedSessionRemainsEmpty()
+        public void ContributionStateRoundTripsAtSchemaV8WhileUntouchedSessionRemainsEmpty()
         {
             PrototypeRuntimeSession contributed = CreateSession();
             contributed.Inventory.AddItem("clay", 2);
@@ -277,7 +277,7 @@ namespace Societies.Core.Tests
 
             Assert.True(contributed.SupportsRuntimeSnapshotPersistence);
             PrototypeRuntimeSnapshot snapshot = contributed.CaptureSnapshot(Vector3.Zero);
-            Assert.Equal(7, snapshot.SchemaVersion);
+            Assert.Equal(8, snapshot.SchemaVersion);
             Assert.Equal(2, snapshot.ContributionCountsByResource["clay"]);
             PrototypeRuntimeSession restoredContribution = CreateSession(initialize: false);
             restoredContribution.ApplySnapshot(

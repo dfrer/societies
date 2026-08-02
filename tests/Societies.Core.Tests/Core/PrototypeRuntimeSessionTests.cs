@@ -305,7 +305,7 @@ namespace Societies.Core.Tests
             Assert.Equal(0, migratedOmission.UnitsRemaining);
             Assert.False(string.IsNullOrWhiteSpace(migratedOmission.SiteId));
             Assert.Contains(restored.Workers, worker => worker.TargetResourceNodeName == inFlightTarget);
-            Assert.Equal(7, restored.CaptureSnapshot(Vector3.Zero).SchemaVersion);
+            Assert.Equal(8, restored.CaptureSnapshot(Vector3.Zero).SchemaVersion);
         }
 
         [Fact]
@@ -323,7 +323,7 @@ namespace Societies.Core.Tests
             PrototypeRuntimeSession restored = new(bundle.Scenarios.Resolve("balanced_basin"), bundle.RoleQuotas.Roles);
             restored.ApplySnapshot(PrototypePersistenceService.DeserializeSnapshot(PrototypePersistenceService.SerializeSnapshot(snapshot)));
 
-            Assert.Equal(7, snapshot.SchemaVersion);
+            Assert.Equal(8, snapshot.SchemaVersion);
             Assert.Equal(JsonSerializer.Serialize(snapshot.Resources), JsonSerializer.Serialize(restored.ResourceSnapshots));
             Assert.Equal(JsonSerializer.Serialize(snapshot.Settlement), JsonSerializer.Serialize(restored.CaptureSnapshot(Vector3.Zero).Settlement));
         }

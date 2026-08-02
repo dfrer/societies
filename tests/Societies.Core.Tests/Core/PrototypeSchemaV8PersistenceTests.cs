@@ -6,13 +6,13 @@ using Xunit;
 
 namespace Societies.Core.Tests
 {
-    public sealed class PrototypeSchemaV7PersistenceTests
+    public sealed class PrototypeSchemaV8PersistenceTests
     {
         private const float TickIntervalSeconds = 1.0f / 20.0f;
         private const float DayLengthSeconds = 600.0f;
 
         [Fact]
-        public void LegacyV6AndV5SnapshotsMigrateToTheSameNeutralSchemaV7State()
+        public void LegacyV7V6AndV5SnapshotsMigrateToTheSameNeutralSchemaV8State()
         {
             PrototypeCatalogBundle bundle = LoadCatalogs();
             PrototypeScenarioDefinition scenario = bundle.Scenarios.Resolve("balanced_basin");
@@ -23,31 +23,43 @@ namespace Societies.Core.Tests
             }
 
             PrototypeRuntimeSnapshot current = source.CaptureSnapshot(Vector3.Zero);
+            string v7Json = DowngradeSnapshotJson(current, 7, clearStableResourceIds: false);
             string v6Json = DowngradeSnapshotJson(current, 6, clearStableResourceIds: false);
             string v5Json = DowngradeSnapshotJson(current, 5, clearStableResourceIds: true);
+            PrototypeRuntimeSnapshot legacyV7 = PrototypePersistenceService.DeserializeSnapshot(v7Json);
             PrototypeRuntimeSnapshot legacyV6 = PrototypePersistenceService.DeserializeSnapshot(v6Json);
             PrototypeRuntimeSnapshot legacyV5 = PrototypePersistenceService.DeserializeSnapshot(v5Json);
 
+            PrototypeRuntimeSession migratedV7 = CreateSession(bundle, scenario, initialize: false);
             PrototypeRuntimeSession migratedV6 = CreateSession(bundle, scenario, initialize: false);
             PrototypeRuntimeSession migratedV5 = CreateSession(bundle, scenario, initialize: false);
+            migratedV7.ApplySnapshot(legacyV7);
             migratedV6.ApplySnapshot(legacyV6);
             migratedV5.ApplySnapshot(legacyV5);
 
+            PrototypeRuntimeSnapshot v7Result = migratedV7.CaptureSnapshot(Vector3.Zero);
             PrototypeRuntimeSnapshot v6Result = migratedV6.CaptureSnapshot(Vector3.Zero);
             PrototypeRuntimeSnapshot v5Result = migratedV5.CaptureSnapshot(Vector3.Zero);
-            Assert.Equal(7, v6Result.SchemaVersion);
-            Assert.Equal(7, v5Result.SchemaVersion);
+            Assert.Equal(8, v7Result.SchemaVersion);
+            Assert.Equal(8, v6Result.SchemaVersion);
+            Assert.Equal(8, v5Result.SchemaVersion);
+            Assert.Equal("neutral", v7Result.CivicPolicy!.PolicyId);
+            Assert.Null(v7Result.CivicPolicy.SelectedTick);
+            Assert.Equal(0, v7Result.CivicPolicy.Version);
             Assert.Equal("neutral", v6Result.Directive!.DirectiveId);
             Assert.Empty(v6Result.ContributionCountsByResource);
             Assert.Null(v6Result.Crisis);
             Assert.False(v6Result.Telemetry!.HasCrisisObservation);
+            Assert.Equal(
+                PrototypePersistenceService.SerializeSnapshot(v7Result),
+                PrototypePersistenceService.SerializeSnapshot(v6Result));
             Assert.Equal(
                 PrototypePersistenceService.SerializeSnapshot(v6Result),
                 PrototypePersistenceService.SerializeSnapshot(v5Result));
         }
 
         [Fact]
-        public void SchemaV7CrisisRoundTripAndCheckpointResumeAreExact()
+        public void SchemaV8CrisisAndCivicRoundTripAndCheckpointResumeAreExact()
         {
             PrototypeCatalogBundle bundle = LoadCatalogs();
             PrototypeScenarioDefinition scenario = CreateShortCrisisScenario(bundle, stableHoldTicks: 4, requiredMeals: 0);
@@ -55,6 +67,10 @@ namespace Societies.Core.Tests
             continuous.Inventory.AddItem("logs", 3);
             Assert.True(continuous.SetDirective(PrototypeSettlementDirective.FoodAndFuel).Changed);
             Assert.True(continuous.ContributeToStockpile("logs", 3).Succeeded);
+            Assert.True(continuous.SelectCivicPolicy(new(
+                PrototypeCivicPolicy.ProtectWetland,
+                ExpectedVersion: 0,
+                IssuedTick: 0)).Succeeded);
             _ = continuous.Advance(TickIntervalSeconds, DayLengthSeconds);
             Assert.True(continuous.SetDirective(PrototypeSettlementDirective.Shelter).Changed);
             _ = continuous.Advance(TickIntervalSeconds, DayLengthSeconds);
@@ -84,6 +100,7 @@ namespace Societies.Core.Tests
                 JsonSerializer.Serialize(continuous.EventLog.Entries),
                 JsonSerializer.Serialize(resumed.EventLog.Entries));
             Assert.Equal(PrototypeCrisisOutcome.Stable, resumed.Crisis!.Outcome);
+            Assert.Equal("protect_wetland", resumed.CivicPolicy.PolicyId);
             Assert.True(resumed.Crisis.TerminalEventEmitted);
             Assert.Single(resumed.EventLog.Entries.Where(entry =>
                 entry.EventType == PrototypeEventTypes.CrisisStabilized));
@@ -97,6 +114,8 @@ namespace Societies.Core.Tests
             Assert.Equal(terminalEventCount, terminalResume.EventLog.Entries.Count);
             Assert.Single(terminalResume.EventLog.Entries.Where(entry =>
                 entry.EventType == PrototypeEventTypes.CrisisStabilized));
+            Assert.Single(terminalResume.EventLog.Entries.Where(entry =>
+                entry.EventType == PrototypeEventTypes.CivicPolicySelected));
         }
 
         [Fact]
@@ -126,7 +145,7 @@ namespace Societies.Core.Tests
             AssertRejectedWithoutMutation(session, invalidTelemetry, before, eventsBefore);
 
             JsonObject future = JsonNode.Parse(before)!.AsObject();
-            future[nameof(PrototypeRuntimeSnapshot.SchemaVersion)] = 8;
+            future[nameof(PrototypeRuntimeSnapshot.SchemaVersion)] = 9;
             Assert.Throws<InvalidDataException>(() =>
                 PrototypePersistenceService.DeserializeSnapshot(future.ToJsonString()));
             Assert.Equal(before, PrototypePersistenceService.SerializeSnapshot(session.CaptureSnapshot(Vector3.Zero)));
@@ -134,7 +153,113 @@ namespace Societies.Core.Tests
         }
 
         [Fact]
-        public void EverySchemaV7SnapshotPropertyIsRequiredWithoutLiveMutation()
+        public void NullMalformedAndInconsistentSchemaV8CivicPayloadsAreRejectedWithoutLiveMutation()
+        {
+            PrototypeCatalogBundle bundle = LoadCatalogs();
+            PrototypeScenarioDefinition scenario = bundle.Scenarios.Resolve("balanced_basin");
+            PrototypeRuntimeSession session = CreateSession(bundle, scenario);
+            string before = PrototypePersistenceService.SerializeSnapshot(
+                session.CaptureSnapshot(Vector3.Zero));
+            string eventsBefore = JsonSerializer.Serialize(session.EventLog.Entries);
+
+            List<Action<JsonObject>> corruptions = new()
+            {
+                root => root[nameof(PrototypeRuntimeSnapshot.CivicPolicy)] = null,
+                root => root[nameof(PrototypeRuntimeSnapshot.CivicPolicy)]!.AsObject()[nameof(PrototypeCivicPolicySnapshot.PolicyId)] = null,
+                root => root[nameof(PrototypeRuntimeSnapshot.CivicPolicy)]!.AsObject()[nameof(PrototypeCivicPolicySnapshot.PolicyId)] = "unknown",
+                root => root[nameof(PrototypeRuntimeSnapshot.CivicPolicy)]!.AsObject()[nameof(PrototypeCivicPolicySnapshot.PolicyId)] = "protect_wetland",
+                root => root[nameof(PrototypeRuntimeSnapshot.CivicPolicy)]!.AsObject()[nameof(PrototypeCivicPolicySnapshot.SelectedTick)] = 1,
+                root => root[nameof(PrototypeRuntimeSnapshot.CivicPolicy)]!.AsObject()[nameof(PrototypeCivicPolicySnapshot.Version)] = 1,
+                root => root[nameof(PrototypeRuntimeSnapshot.CivicPolicy)]!.AsObject()[nameof(PrototypeCivicPolicySnapshot.WindowStartTick)] = 1,
+                root => root[nameof(PrototypeRuntimeSnapshot.CivicPolicy)]!.AsObject()[nameof(PrototypeCivicPolicySnapshot.WindowEndTick)] = 1199
+            };
+
+            foreach (Action<JsonObject> corrupt in corruptions)
+            {
+                JsonObject malformed = JsonNode.Parse(before)!.AsObject();
+                corrupt(malformed);
+                Assert.Throws<InvalidDataException>(() =>
+                    PrototypePersistenceService.DeserializeSnapshot(malformed.ToJsonString()));
+                Assert.Equal(
+                    before,
+                    PrototypePersistenceService.SerializeSnapshot(
+                        session.CaptureSnapshot(Vector3.Zero)));
+                Assert.Equal(eventsBefore, JsonSerializer.Serialize(session.EventLog.Entries));
+            }
+        }
+
+        [Fact]
+        public void SchemaV8RetainsExistingUnknownPropertyTolerance()
+        {
+            PrototypeCatalogBundle bundle = LoadCatalogs();
+            PrototypeRuntimeSession session = CreateSession(
+                bundle,
+                bundle.Scenarios.Resolve("balanced_basin"));
+            string canonical = PrototypePersistenceService.SerializeSnapshot(
+                session.CaptureSnapshot(Vector3.Zero));
+            JsonObject extended = JsonNode.Parse(canonical)!.AsObject();
+            extended["FutureRootField"] = "ignored";
+            extended[nameof(PrototypeRuntimeSnapshot.CivicPolicy)]!
+                .AsObject()["FutureCivicField"] = 123;
+
+            PrototypeRuntimeSnapshot restored =
+                PrototypePersistenceService.DeserializeSnapshot(extended.ToJsonString());
+
+            Assert.Equal(
+                canonical,
+                PrototypePersistenceService.SerializeSnapshot(restored));
+        }
+
+        [Fact]
+        public void FrozenSchemaV7RootRequirementsRemainRequiredAndCivicFree()
+        {
+            PrototypeCatalogBundle bundle = LoadCatalogs();
+            PrototypeRuntimeSession session = CreateSession(
+                bundle,
+                bundle.Scenarios.Resolve("balanced_basin"));
+            string v7 = DowngradeSnapshotJson(
+                session.CaptureSnapshot(Vector3.Zero),
+                schemaVersion: 7,
+                clearStableResourceIds: false);
+            JsonObject complete = JsonNode.Parse(v7)!.AsObject();
+            Assert.False(complete.ContainsKey(nameof(PrototypeRuntimeSnapshot.CivicPolicy)));
+
+            foreach (string propertyName in complete.Select(pair => pair.Key).ToArray())
+            {
+                JsonObject incomplete = JsonNode.Parse(v7)!.AsObject();
+                Assert.True(incomplete.Remove(propertyName));
+                Assert.Throws<InvalidDataException>(() =>
+                    PrototypePersistenceService.DeserializeSnapshot(incomplete.ToJsonString()));
+            }
+        }
+
+        [Fact]
+        public void EverySchemaV8RunSummaryPropertyIsRequired()
+        {
+            PrototypeCatalogBundle bundle = LoadCatalogs();
+            PrototypeRuntimeSession session = CreateSession(
+                bundle,
+                bundle.Scenarios.Resolve("balanced_basin"));
+            PrototypeRuntimeSnapshot snapshot = session.CaptureSnapshot(Vector3.Zero);
+            PrototypeRunSummary summary = PrototypeRunSummaryBuilder.Build(
+                snapshot,
+                session.EventLog.Entries,
+                session.RunStartHour);
+            string complete = PrototypePersistenceService.SerializeRunSummary(summary);
+
+            foreach (string propertyName in typeof(PrototypeRunSummary)
+                .GetProperties()
+                .Select(property => property.Name))
+            {
+                JsonObject incomplete = JsonNode.Parse(complete)!.AsObject();
+                Assert.True(incomplete.Remove(propertyName));
+                Assert.Throws<InvalidDataException>(() =>
+                    PrototypePersistenceService.DeserializeRunSummary(incomplete.ToJsonString()));
+            }
+        }
+
+        [Fact]
+        public void EverySchemaV8SnapshotPropertyIsRequiredWithoutLiveMutation()
         {
             PrototypeCatalogBundle bundle = LoadCatalogs();
             PrototypeScenarioDefinition scenario = CreateShortCrisisScenario(bundle, stableHoldTicks: 5, requiredMeals: 0);
@@ -163,7 +288,7 @@ namespace Societies.Core.Tests
             }
         }
 
-        public static IEnumerable<object[]> NestedSchemaV7RequiredPropertyPaths()
+        public static IEnumerable<object[]> NestedSchemaV8RequiredPropertyPaths()
         {
             foreach (string propertyName in typeof(PrototypeDirectiveSnapshot)
                 .GetProperties()
@@ -196,11 +321,18 @@ namespace Societies.Core.Tests
                     propertyName
                 };
             }
+
+            foreach (string propertyName in typeof(PrototypeCivicPolicySnapshot)
+                .GetProperties()
+                .Select(property => property.Name))
+            {
+                yield return new object[] { nameof(PrototypeRuntimeSnapshot.CivicPolicy), propertyName };
+            }
         }
 
         [Theory]
-        [MemberData(nameof(NestedSchemaV7RequiredPropertyPaths))]
-        public void EveryNestedSchemaV7PropertyIsRequiredWithoutLiveMutation(
+        [MemberData(nameof(NestedSchemaV8RequiredPropertyPaths))]
+        public void EveryNestedSchemaV8PropertyIsRequiredWithoutLiveMutation(
             string payloadPath,
             string propertyName)
         {
@@ -221,6 +353,8 @@ namespace Societies.Core.Tests
                     incomplete[nameof(PrototypeRuntimeSnapshot.Telemetry)]!.AsObject(),
                 nameof(PrototypeRuntimeSnapshot.Crisis) =>
                     incomplete[nameof(PrototypeRuntimeSnapshot.Crisis)]!.AsObject(),
+                nameof(PrototypeRuntimeSnapshot.CivicPolicy) =>
+                    incomplete[nameof(PrototypeRuntimeSnapshot.CivicPolicy)]!.AsObject(),
                 _ => incomplete[nameof(PrototypeRuntimeSnapshot.Crisis)]!
                     .AsObject()[nameof(PrototypeCrisisStateSnapshot.LastObservation)]!
                     .AsObject()
@@ -305,7 +439,7 @@ namespace Societies.Core.Tests
         }
 
         [Fact]
-        public void SummaryAndMetricsExposeCompactSchemaV7CrisisTelemetry()
+        public void SummaryAndMetricsExposeCompactSchemaV8CrisisTelemetryAndCivicState()
         {
             PrototypeCatalogBundle bundle = LoadCatalogs();
             PrototypeScenarioDefinition scenario = CreateShortCrisisScenario(bundle, stableHoldTicks: 3, requiredMeals: 0);
@@ -313,6 +447,10 @@ namespace Societies.Core.Tests
             session.Inventory.AddItem("berries", 2);
             Assert.True(session.SetDirective(PrototypeSettlementDirective.FoodAndFuel).Changed);
             Assert.True(session.ContributeToStockpile("berries", 2).Succeeded);
+            Assert.True(session.SelectCivicPolicy(new(
+                PrototypeCivicPolicy.DrawDownWetland,
+                ExpectedVersion: 0,
+                IssuedTick: 0)).Succeeded);
             _ = session.Advance(TickIntervalSeconds, DayLengthSeconds);
             Assert.True(session.SetDirective(PrototypeSettlementDirective.Shelter).Changed);
             while (!session.Crisis!.IsTerminal)
@@ -331,7 +469,7 @@ namespace Societies.Core.Tests
                 null);
             string csv = session.MetricsTracker.BuildCsv();
 
-            Assert.Equal(7, summary.SchemaVersion);
+            Assert.Equal(8, summary.SchemaVersion);
             Assert.Equal("stable", summary.CrisisOutcome);
             Assert.Equal(string.Empty, summary.CrisisFailureReason);
             Assert.Equal(snapshot.Crisis!.ElapsedTicks, summary.CrisisElapsedTicks);
@@ -348,6 +486,9 @@ namespace Societies.Core.Tests
             Assert.Equal(snapshot.Telemetry.MaximumBedCoveragePercent, summary.MaximumBedCoveragePercent);
             Assert.Equal(1, summary.StabilityHoldEntries);
             Assert.Equal(0, summary.StabilityHoldBreaks);
+            Assert.Equal("draw_down_wetland", summary.CivicPolicy!.PolicyId);
+            Assert.Equal(0, summary.CivicPolicy.SelectedTick);
+            Assert.Equal(1, summary.CivicPolicy.Version);
             Assert.Contains("contributions_by_resource", csv, StringComparison.Ordinal);
             Assert.Contains("berries:2", csv, StringComparison.Ordinal);
             Assert.DoesNotContain("per_tick_narrative", csv, StringComparison.Ordinal);
@@ -403,10 +544,14 @@ namespace Societies.Core.Tests
         {
             JsonObject root = JsonNode.Parse(PrototypePersistenceService.SerializeSnapshot(snapshot))!.AsObject();
             root[nameof(PrototypeRuntimeSnapshot.SchemaVersion)] = schemaVersion;
-            root.Remove(nameof(PrototypeRuntimeSnapshot.Directive));
-            root.Remove(nameof(PrototypeRuntimeSnapshot.ContributionCountsByResource));
-            root.Remove(nameof(PrototypeRuntimeSnapshot.Crisis));
-            root.Remove(nameof(PrototypeRuntimeSnapshot.Telemetry));
+            if (schemaVersion < 7)
+            {
+                root.Remove(nameof(PrototypeRuntimeSnapshot.Directive));
+                root.Remove(nameof(PrototypeRuntimeSnapshot.ContributionCountsByResource));
+                root.Remove(nameof(PrototypeRuntimeSnapshot.Crisis));
+                root.Remove(nameof(PrototypeRuntimeSnapshot.Telemetry));
+            }
+            root.Remove(nameof(PrototypeRuntimeSnapshot.CivicPolicy));
             if (clearStableResourceIds)
             {
                 foreach (JsonNode? resource in root[nameof(PrototypeRuntimeSnapshot.Resources)]!.AsArray())

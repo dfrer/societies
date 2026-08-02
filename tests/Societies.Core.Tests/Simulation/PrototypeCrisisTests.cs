@@ -85,7 +85,7 @@ namespace Societies.Core.Tests
                 JsonSerializer.Serialize(second.Crisis!.CaptureSnapshot()));
             Assert.True(first.SupportsRuntimeSnapshotPersistence);
             PrototypeRuntimeSnapshot persisted = first.CaptureSnapshot(Vector3.Zero);
-            Assert.Equal(7, persisted.SchemaVersion);
+            Assert.Equal(8, persisted.SchemaVersion);
             Assert.NotNull(persisted.Crisis);
             Assert.Equal("empty_stores", persisted.Crisis!.CrisisId);
         }
@@ -108,7 +108,7 @@ namespace Societies.Core.Tests
             Assert.Null(session.Crisis);
             Assert.Equal(2, session.HearthFuel);
             Assert.True(session.SupportsRuntimeSnapshotPersistence);
-            Assert.Equal(7, session.CaptureSnapshot(Vector3.Zero).SchemaVersion);
+            Assert.Equal(8, session.CaptureSnapshot(Vector3.Zero).SchemaVersion);
         }
 
         [Fact]

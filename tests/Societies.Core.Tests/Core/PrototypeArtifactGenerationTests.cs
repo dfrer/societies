@@ -22,7 +22,7 @@ namespace Societies.Core.Tests
         private const string OutputEnvironmentVariable = "SOCIETIES_RUN_OUTPUT_DIR";
 
         [Fact]
-        public void SchemaV7ArtifactsRoundTripAsOneCommittedGeneration()
+        public void SchemaV8ArtifactsRoundTripAsOneCommittedGeneration()
         {
             using ArtifactFixture fixture = ArtifactFixture.Create();
             PrototypeRuntimeSession session = fixture.CreateSession();
@@ -42,7 +42,112 @@ namespace Societies.Core.Tests
         }
 
         [Fact]
-        public void SchemaV7LoadRejectsMissingManifestAndMissingCompanion()
+        public void SchemaV8SelectedCivicPolicyIsCoherentAcrossSnapshotEventSummaryAndManifest()
+        {
+            using ArtifactFixture fixture = ArtifactFixture.Create();
+            PrototypeRuntimeSession session = fixture.CreateSession();
+            Assert.True(session.SelectCivicPolicy(new(
+                PrototypeCivicPolicy.ProtectWetland,
+                ExpectedVersion: 0,
+                IssuedTick: session.SimulationTick)).Succeeded);
+            fixture.Save(session, session.CaptureSnapshot(Vector3.Zero));
+
+            PrototypeLoadedArtifacts loaded = Assert.NotNull(
+                fixture.Manager.LoadLatestArtifacts());
+
+            Assert.Equal("protect_wetland", loaded.Snapshot.CivicPolicy!.PolicyId);
+            Assert.Equal(session.SimulationTick, loaded.Snapshot.CivicPolicy.SelectedTick);
+            Assert.Equal("protect_wetland", loaded.RunSummary!.CivicPolicy!.PolicyId);
+            Assert.Single(loaded.EventLog.Where(entry =>
+                entry.EventType == PrototypeEventTypes.CivicPolicySelected));
+            PrototypeArtifactGenerationManifest manifest =
+                JsonSerializer.Deserialize<PrototypeArtifactGenerationManifest>(
+                    File.ReadAllText(fixture.Paths.GenerationManifestPath))!;
+            Assert.Equal(8, manifest.RuntimeSchemaVersion);
+        }
+
+        [Fact]
+        public void SchemaV8LoadRejectsCivicSummaryOrEventMismatchWithValidBindings()
+        {
+            using ArtifactFixture fixture = ArtifactFixture.Create();
+            PrototypeRuntimeSession session = fixture.CreateSession();
+            Assert.True(session.SelectCivicPolicy(new(
+                PrototypeCivicPolicy.ProtectWetland,
+                ExpectedVersion: 0,
+                IssuedTick: session.SimulationTick)).Succeeded);
+            fixture.Save(session, session.CaptureSnapshot(Vector3.Zero));
+
+            JsonObject summary = JsonNode.Parse(
+                File.ReadAllText(fixture.Paths.LegacyRunSummaryPath))!.AsObject();
+            summary[nameof(PrototypeRunSummary.CivicPolicy)]!
+                .AsObject()[nameof(PrototypeCivicPolicySnapshot.PolicyId)] = "draw_down_wetland";
+            File.WriteAllText(fixture.Paths.LegacyRunSummaryPath, summary.ToJsonString());
+            fixture.Rebind(
+                fixture.Paths.LegacyRunSummaryPath,
+                nameof(PrototypeArtifactGenerationManifest.RunSummary));
+            Assert.Throws<InvalidDataException>(() => fixture.Manager.LoadLatestArtifacts());
+
+            fixture.Save(session, session.CaptureSnapshot(Vector3.Zero));
+            JsonArray eventRows = JsonNode.Parse(
+                File.ReadAllText(fixture.Paths.LegacyEventLogPath))!.AsArray();
+            JsonObject civicEvent = eventRows
+                .Select(node => node!.AsObject())
+                .Single(node => node[nameof(PrototypeEventRecord.EventType)]!.GetValue<string>() ==
+                    PrototypeEventTypes.CivicPolicySelected);
+            civicEvent[nameof(PrototypeEventRecord.Message)] = "tampered";
+            File.WriteAllText(fixture.Paths.LegacyEventLogPath, eventRows.ToJsonString());
+            fixture.Rebind(
+                fixture.Paths.LegacyEventLogPath,
+                nameof(PrototypeArtifactGenerationManifest.EventLog));
+            Assert.Throws<InvalidDataException>(() => fixture.Manager.LoadLatestArtifacts());
+        }
+
+        [Fact]
+        public void EverySchemaV8GenerationManifestPropertyIsRequired()
+        {
+            using ArtifactFixture fixture = ArtifactFixture.Create();
+            PrototypeRuntimeSession session = fixture.CreateSession();
+            fixture.Save(session, session.CaptureSnapshot(Vector3.Zero));
+            string complete = File.ReadAllText(fixture.Paths.GenerationManifestPath);
+
+            foreach (string propertyName in typeof(PrototypeArtifactGenerationManifest)
+                .GetProperties()
+                .Select(property => property.Name))
+            {
+                JsonObject incomplete = JsonNode.Parse(complete)!.AsObject();
+                Assert.True(incomplete.Remove(propertyName));
+                File.WriteAllText(
+                    fixture.Paths.GenerationManifestPath,
+                    incomplete.ToJsonString());
+                Assert.Throws<InvalidDataException>(() =>
+                    fixture.Manager.LoadLatestArtifacts());
+            }
+
+            foreach (string bindingName in new[]
+            {
+                nameof(PrototypeArtifactGenerationManifest.Snapshot),
+                nameof(PrototypeArtifactGenerationManifest.EventLog),
+                nameof(PrototypeArtifactGenerationManifest.RunSummary)
+            })
+            {
+                foreach (string propertyName in typeof(PrototypeArtifactFileBinding)
+                    .GetProperties()
+                    .Select(property => property.Name))
+                {
+                    JsonObject incomplete = JsonNode.Parse(complete)!.AsObject();
+                    JsonObject binding = incomplete[bindingName]!.AsObject();
+                    Assert.True(binding.Remove(propertyName));
+                    File.WriteAllText(
+                        fixture.Paths.GenerationManifestPath,
+                        incomplete.ToJsonString());
+                    Assert.Throws<InvalidDataException>(() =>
+                        fixture.Manager.LoadLatestArtifacts());
+                }
+            }
+        }
+
+        [Fact]
+        public void SchemaV8LoadRejectsMissingManifestAndMissingCompanion()
         {
             using ArtifactFixture fixture = ArtifactFixture.Create();
             PrototypeRuntimeSession session = fixture.CreateSession();
@@ -57,7 +162,7 @@ namespace Societies.Core.Tests
         }
 
         [Fact]
-        public void SchemaV7LoadRejectsStaleOrTamperedCompanions()
+        public void SchemaV8LoadRejectsStaleOrTamperedCompanions()
         {
             using ArtifactFixture fixture = ArtifactFixture.Create();
             PrototypeRuntimeSession session = fixture.CreateSession();
@@ -72,7 +177,7 @@ namespace Societies.Core.Tests
         }
 
         [Fact]
-        public void SchemaV7LoadRejectsInverseTerminalEventEvenWhenHashesAndCountsMatch()
+        public void SchemaV8LoadRejectsInverseTerminalEventEvenWhenHashesAndCountsMatch()
         {
             using ArtifactFixture fixture = ArtifactFixture.Create();
             PrototypeRuntimeSession session = fixture.CreateTerminalSession();
@@ -105,7 +210,7 @@ namespace Societies.Core.Tests
         }
 
         [Fact]
-        public void SchemaV7LoadRejectsMalformedAndFutureSummaryWithValidBinding()
+        public void SchemaV8LoadRejectsMalformedAndFutureSummaryWithValidBinding()
         {
             using ArtifactFixture fixture = ArtifactFixture.Create();
             PrototypeRuntimeSession session = fixture.CreateSession();
@@ -119,7 +224,7 @@ namespace Societies.Core.Tests
 
             fixture.Save(session, session.CaptureSnapshot(Vector3.Zero));
             JsonObject summary = JsonNode.Parse(File.ReadAllText(fixture.Paths.LegacyRunSummaryPath))!.AsObject();
-            summary[nameof(PrototypeRunSummary.SchemaVersion)] = 8;
+            summary[nameof(PrototypeRunSummary.SchemaVersion)] = 9;
             File.WriteAllText(fixture.Paths.LegacyRunSummaryPath, summary.ToJsonString());
             fixture.Rebind(
                 fixture.Paths.LegacyRunSummaryPath,
@@ -128,7 +233,7 @@ namespace Societies.Core.Tests
         }
 
         [Fact]
-        public void SchemaV7LoadRejectsNullEventRowWithValidBinding()
+        public void SchemaV8LoadRejectsNullEventRowWithValidBinding()
         {
             using ArtifactFixture fixture = ArtifactFixture.Create();
             PrototypeRuntimeSession session = fixture.CreateSession();
@@ -145,7 +250,7 @@ namespace Societies.Core.Tests
         }
 
         [Fact]
-        public void SchemaV7LoadRejectsNegativeEventTickWithValidBinding()
+        public void SchemaV8LoadRejectsNegativeEventTickWithValidBinding()
         {
             using ArtifactFixture fixture = ArtifactFixture.Create();
             PrototypeRuntimeSession session = fixture.CreateSession();
@@ -164,7 +269,7 @@ namespace Societies.Core.Tests
         }
 
         [Fact]
-        public void SchemaV7LoadRejectsOversizedEventLogBeforeParsing()
+        public void SchemaV8LoadRejectsOversizedEventLogBeforeParsing()
         {
             using ArtifactFixture fixture = ArtifactFixture.Create();
             PrototypeRuntimeSession session = fixture.CreateSession();
@@ -222,6 +327,37 @@ namespace Societies.Core.Tests
             Assert.Equal(
                 PrototypePersistenceService.SerializeSnapshot(snapshot),
                 PrototypePersistenceService.SerializeSnapshot(loaded.Snapshot));
+        }
+
+        [Fact]
+        public void InconsistentCivicSavePreservesExistingCommittedGeneration()
+        {
+            using ArtifactFixture fixture = ArtifactFixture.Create();
+            PrototypeRuntimeSession session = fixture.CreateSession();
+            PrototypeRuntimeSnapshot committedSnapshot = session.CaptureSnapshot(Vector3.Zero);
+            fixture.Save(session, committedSnapshot);
+            string[] committedPaths =
+            {
+                fixture.Paths.LegacySnapshotPath,
+                fixture.Paths.LegacyEventLogPath,
+                fixture.Paths.LegacyRunSummaryPath,
+                fixture.Paths.GenerationManifestPath
+            };
+            Dictionary<string, byte[]> committedBytes = committedPaths.ToDictionary(
+                path => path,
+                File.ReadAllBytes,
+                StringComparer.Ordinal);
+            PrototypeRuntimeSnapshot invalid = PrototypePersistenceService.DeserializeSnapshot(
+                PrototypePersistenceService.SerializeSnapshot(committedSnapshot));
+            invalid.CivicPolicy!.PolicyId = "protect_wetland";
+
+            Assert.Throws<InvalidDataException>(() => fixture.Save(session, invalid));
+            foreach (string path in committedPaths)
+            {
+                Assert.Equal(committedBytes[path], File.ReadAllBytes(path));
+            }
+
+            Assert.NotNull(fixture.Manager.LoadLatestArtifacts());
         }
 
         private sealed class ArtifactFixture : IDisposable

@@ -40,9 +40,9 @@ namespace Societies.Core
 
         public static PrototypeResourceLedger Restore(WorldGenerationResult world, PrototypeRuntimeSnapshot snapshot)
         {
-            if (snapshot.SchemaVersion is not (5 or 6 or 7))
+            if (snapshot.SchemaVersion is not (5 or 6 or 7 or 8))
             {
-                throw new InvalidDataException($"Unsupported runtime snapshot schema {snapshot.SchemaVersion}; expected 5, 6, or 7.");
+                throw new InvalidDataException($"Unsupported runtime snapshot schema {snapshot.SchemaVersion}; expected 5, 6, 7, or 8.");
             }
 
             if (snapshot.Resources == null)
