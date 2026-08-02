@@ -2,11 +2,11 @@
 
 ## Document Control
 
-The July 13-24, 2026 execution window is historical. This document is retained as the W2 record; clean implementation `478a4d9` clears the W2-06 hard performance gate, while the stricter aspirational aggregate target remains missed. W3-01 is queued after W2-06 delivery; broader Weeks 3-4 activation remains inactive pending an explicit continuation decision.
+The July 13-24, 2026 execution window is historical. This document is retained as the W2 record; clean implementation `478a4d9` clears the W2-06 hard performance gate, while the stricter aspirational aggregate target remains missed. W3-01 is locally accepted at `9d8bff4` as the completed bounded exception; broader Weeks 3-4 activation remains inactive pending an explicit continuation decision.
 
 | Field | Value |
 |---|---|
-| Status | Validated — W2-06 hard gate cleared; W3-01 queued after delivery |
+| Status | Validated — W2-06 hard gate cleared; W3-01 locally accepted at `9d8bff4` |
 | Prepared | 2026-07-09 |
 | Execution window | Monday 2026-07-13 through Friday 2026-07-24 |
 | Day-zero preparation | Friday 2026-07-10, optional, 30–60 minutes |
@@ -543,7 +543,7 @@ Acceptance:
 
 The baseline may improve composition, lighting, materials, placeholder readability, and existing UI presentation. Production asset creation and broad visual polish remain deferred until the playtests justify them.
 
-Status: **complete by explicit two-exception waiver; W2-06 hard performance safety is green at `478a4d9`, while visual acceptance remains waived.** W2-04 is merged through PR #117 at master `d519d4d`. W2-05 is merged through PR #119 at master `f0e88f0`, after local validation on `feature/v3-w2-05-schema-v7` at `cea7f8a`. W2-VIS timing-only p95 `55.4529 ms` remains over safety, persistence/hash equivalence is unavailable, and visual acceptance is waived, not passed. See the [W2-06 validation report](../../V3_SPRINT_VALIDATION_REPORT.md). Queue W3-01 after delivery; broader Weeks 3-4 remain Draft/Conditional and inactive.
+Status: **complete by explicit two-exception waiver; W2-06 hard performance safety is green at `478a4d9`, while visual acceptance remains waived.** W2-04 is merged through PR #117 at master `d519d4d`. W2-05 is merged through PR #119 at master `f0e88f0`, after local validation on `feature/v3-w2-05-schema-v7` at `cea7f8a`. W2-VIS timing-only p95 `55.4529 ms` remains over safety, persistence/hash equivalence is unavailable, and visual acceptance is waived, not passed. W3-01 is locally accepted at `9d8bff4`; broader Weeks 3-4 remain Draft/Conditional and inactive.
 
 #### V3-W2-05 — Schema v7, telemetry, and automated slice tests
 
@@ -584,7 +584,7 @@ Historical W2-05/W2-06 pre-final evidence recorded 333/333 and 334-test manifest
 
 #### V3-W2-06 — Release validation, playtests, and decision
 
-Current evidence: [v3-w2-06-clean-canonical-matrix-validation.json](evidence/v3-w2-06-clean-canonical-matrix-validation.json) records implementation `478a4d9`, 14/14 clean pairs, 354 artifacts, and all hard contracts/safety limits passing. W2-06 is locally accepted; the single next bounded action is W3-01. No broader Weeks 3-4 gameplay has started.
+Current evidence: [v3-w3-01-validation.json](evidence/v3-w3-01-validation.json) and [v3-w3-01-performance-validation.json](evidence/v3-w3-01-performance-validation.json) record locally accepted implementation `9d8bff4`; W3-01 is complete, and no broader Weeks 3-4 gameplay has started.
 
 Historical execution record reconciled by the final W2-06 evidence: the clean matrix at `478a4d9` passes the 16-citizen reference and soak hard-safety gates; `budgetStatus=target_missed` is the stricter aspirational target result:
 
@@ -606,7 +606,7 @@ Ask afterward:
 6. What caused the result, and did it feel fair?
 7. Would you play another crisis?
 
-Delivered `V3_SPRINT_VALIDATION_REPORT.md` records final matrix results, defects/limitations, playtest availability, and the single sprint conclusion. W2-06 is locally accepted; the next action is W3-01 only.
+Delivered `V3_SPRINT_VALIDATION_REPORT.md` records final matrix results, defects/limitations, playtest availability, and the single sprint conclusion. W3-01 is locally accepted; no next feature is authorized without an explicit **Continue V3** decision.
 
 ## Ten-Day Schedule
 
@@ -815,4 +815,4 @@ Decision rules:
 - Playtest evidence or its availability gap is recorded.
 - `CURRENT_BUILD.md` is updated to describe implemented V3 reality, not intent.
 - The report records Continue V3, Narrow Iteration, or Stop Feature Expansion.
-- This document records the completed W2 validation boundary at `478a4d9`; W3-01 is queued after delivery, while the Weeks 3-4 proposal remains Draft/Conditional and inactive beyond that bounded action.
+- This document records the completed W2 validation boundary at `478a4d9` and the W3-01 bounded exception at `9d8bff4`; the Weeks 3-4 proposal remains Draft/Conditional and inactive beyond that bounded action.

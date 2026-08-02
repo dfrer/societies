@@ -21,9 +21,9 @@ Use [CURRENT_BUILD.md](CURRENT_BUILD.md) as the short repo-truth reference.
 ## Current Prototype
 
 See [CURRENT_BUILD.md](CURRENT_BUILD.md) for the up-to-date prototype scope, validation commands, and implementation details.
-Current implemented reality includes W2-04 and merged W2-05 schema-v7 persistence. W2-06 is locally accepted at `478a4d9`: hard-safety matrix gates pass, while the stricter aspirational target remains missed. W3-01 is the single next bounded action; broader Weeks 3-4 gameplay has not started.
+Current implemented reality includes W2-04/W2-05, W2-06, and the locally accepted W3-01 civic contract at `9d8bff4`. W3-01 is the completed bounded exception; W3-02+ and broader Weeks 3-4 remain inactive pending an explicit **Continue V3** decision.
 
-W2-04 and W2-05 are historical implementation milestones; see [CURRENT_BUILD.md](CURRENT_BUILD.md), the [W2-06 validation report](V3_SPRINT_VALIDATION_REPORT.md), and the [clean canonical matrix evidence](planning/active/evidence/v3-w2-06-clean-canonical-matrix-validation.json) for current status. The validated implementation is `478a4d9`; Git/GitHub remains authoritative for PR/merge state. Final full validation is 350/350 .NET and 23/23 Godot with zero-warning Debug/Release/ExportRelease builds; see [v3-w2-06-final-validation.json](planning/active/evidence/v3-w2-06-final-validation.json). Current runtime batch output is `runtime-batch-metrics-v6.csv` with 44 columns; older v4/v5 CSV claims belong to historical profiling artifacts.
+W2-04/W2-05 remain historical merged milestones; see [CURRENT_BUILD.md](CURRENT_BUILD.md) and the [W3-01 validation evidence](planning/active/evidence/v3-w3-01-validation.json) for current status. W3-01 provides one irreversible protect/draw-down policy, typed current-tick/expected-version command validation, inclusive `0..1200` window, exactly-once stable event, and schema-v8 persistence with strict v8 plus neutral v5-v7 migration. Git/GitHub remains authoritative for delivery/merge state. UI, effects, reasons, LLM integration, and W3-02+ are not implemented.
 
 
 ## Planning vs Code
