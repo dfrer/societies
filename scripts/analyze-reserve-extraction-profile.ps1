@@ -736,6 +736,7 @@ $optimizationContract = if ($selectedSubCost.status -eq "selected") {
 $sourceFiles = @(
     "src/societies/scripts/simulation/SettlementEconomy.cs",
     "src/societies/scripts/simulation/SettlementSimulation.cs",
+    "src/societies/scripts/simulation/SettlementInfrastructure.cs",
     "src/societies/scripts/core/RuntimeMetricsCollector.cs",
     "src/societies/scripts/core/PrototypeRunArtifactManager.cs",
     "src/societies/tests/PerfRunner.cs",

@@ -6,8 +6,8 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+$repositoryRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 if ([string]::IsNullOrWhiteSpace($AnalyzerPath)) {
-    $repositoryRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
     $AnalyzerPath = Join-Path $repositoryRoot "scripts\analyze-reserve-extraction-profile.ps1"
 }
 $AnalyzerPath = [System.IO.Path]::GetFullPath($AnalyzerPath)
@@ -308,6 +308,14 @@ try {
     Assert-True ($analysis.proposedOptimizationContract.selectedOperation -eq "candidate_enumeration_and_bound_selection") "Optimization contract must bind the selected operation."
     Assert-True ($analysis.runs[0].metricsOffRuntimeProfileAbsent -eq $true) "Metrics-off absence must be recorded."
     Assert-True ($analysis.source.provenance -eq "uncommitted_diagnostic_source") "Dirty diagnostic provenance is missing."
+    foreach ($principalSourcePath in @(
+        "src/societies/scripts/simulation/SettlementSimulation.cs",
+        "src/societies/scripts/simulation/SettlementInfrastructure.cs")) {
+        $sourceRecord = @($analysis.source.sourceFiles | Where-Object { $_.path -eq $principalSourcePath })
+        Assert-True ($sourceRecord.Count -eq 1) "Principal source manifest entry is missing or duplicated: $principalSourcePath"
+        $expectedHash = (Get-FileHash -LiteralPath (Join-Path $repositoryRoot $principalSourcePath) -Algorithm SHA256).Hash.ToLowerInvariant()
+        Assert-True ($sourceRecord[0].sha256 -eq $expectedHash) "Principal source manifest hash mismatch: $principalSourcePath"
+    }
     Assert-True ((Get-FileHash $validOutput -Algorithm SHA256).Hash -eq (Get-FileHash $repeatOutput -Algorithm SHA256).Hash) "Repeated profile outputs must be byte-identical."
 
     Invoke-ExpectedFailure $validInputs (Join-Path $validRoot "dirty-rejected.json") "requires -AllowDirtySource"

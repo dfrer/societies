@@ -241,7 +241,66 @@ namespace Societies.Simulation
         {
             int clearedEntryCount = _pathCache.Count;
             _pathCache.Clear();
+            ClearAllGeometricDistanceFields();
             return clearedEntryCount;
+        }
+
+        internal void EnablePerTickStableGeometricDistanceFieldReferenceModeForTesting()
+        {
+            if (_geometricDistanceFieldCacheAccessStarted)
+            {
+                throw new InvalidOperationException(
+                    "Geometric-distance-field cache mode must be selected before its first lookup.");
+            }
+
+            _usePerTickStableGeometricDistanceFieldReferenceMode = true;
+        }
+
+        internal GeometricDistanceFieldCacheProbe CaptureGeometricDistanceFieldCacheProbeForTesting()
+        {
+            bool allStableEntriesMatch = _navigationGrid != null;
+            if (_stableAnchorGeometricDistanceField != null &&
+                !StableEntryMatches(
+                    _stableAnchorGeometricDistanceField,
+                    _world.SettlementSpawn.AnchorPosition))
+            {
+                allStableEntriesMatch = false;
+            }
+
+            if (_stableDepotGeometricDistanceField != null &&
+                !StableEntryMatches(
+                    _stableDepotGeometricDistanceField,
+                    _centralDepot.Position))
+            {
+                allStableEntriesMatch = false;
+            }
+
+            return new GeometricDistanceFieldCacheProbe(
+                StableGeometricDistanceFieldCapacity,
+                StableGeometricDistanceFieldEntryCount,
+                _geometricDistanceFieldsThisTick.Count,
+                _stableGeometricDistanceFieldHitCount,
+                _stableGeometricDistanceFieldBuildCount,
+                _stableGeometricDistanceFieldClearCount,
+                _usePerTickStableGeometricDistanceFieldReferenceMode,
+                allStableEntriesMatch);
+        }
+
+        internal float ComputeRouteDistanceLowerBoundForTesting(
+            Vector3 startPosition,
+            Vector3 destinationPosition)
+        {
+            return ComputeRouteDistanceLowerBound(startPosition, destinationPosition);
+        }
+
+        internal void BeginGeometricDistanceFieldTickForTesting()
+        {
+            BeginGeometricDistanceFieldTick();
+        }
+
+        internal void InvalidateNavigationForTesting()
+        {
+            InvalidateNavigation(null);
         }
 
         public bool TryPrepareForcedPathCompletionForPerformance(out string structureId)
@@ -360,7 +419,7 @@ namespace Societies.Simulation
         private void RebuildNavigation()
         {
             _pathCache.Clear();
-            _geometricDistanceFieldsThisTick.Clear();
+            ClearAllGeometricDistanceFields();
             HashSet<Vector2I> builtPathCells = _pathSegments
                 .Where(segment => segment.IsBuilt)
                 .Select(segment => new Vector2I(segment.GridX, segment.GridY))
@@ -383,7 +442,22 @@ namespace Societies.Simulation
                 new HashSet<Vector2I>(),
                 _navigationRulesVersion);
 
-            if (!_geometricDistanceFieldsThisTick.TryGetValue(startPosition, out PrototypeNavigationGrid.GeometricDistanceField? field))
+            PrototypeNavigationGrid.GeometricDistanceField field;
+            _geometricDistanceFieldCacheAccessStarted = true;
+            if (TryResolveStableGeometricDistanceFieldSlot(
+                startPosition,
+                out StableGeometricDistanceFieldSlot stableSlot,
+                out TerrainCell originCell))
+            {
+                field = GetOrBuildStableGeometricDistanceField(stableSlot, startPosition, originCell);
+            }
+            else if (_geometricDistanceFieldsThisTick.TryGetValue(
+                startPosition,
+                out PrototypeNavigationGrid.GeometricDistanceField? cachedField))
+            {
+                field = cachedField!;
+            }
+            else
             {
                 field = _navigationGrid.BuildGeometricDistanceField(startPosition);
                 _geometricDistanceFieldsThisTick[startPosition] = field;
@@ -395,6 +469,190 @@ namespace Societies.Simulation
                     out float topologyLowerBound)
                 ? Math.Max(straightLineLowerBound, topologyLowerBound)
                 : straightLineLowerBound;
+        }
+
+        private int StableGeometricDistanceFieldEntryCount =>
+            (_stableAnchorGeometricDistanceField == null ? 0 : 1) +
+            (_stableDepotGeometricDistanceField == null ? 0 : 1);
+
+        private bool TryResolveStableGeometricDistanceFieldSlot(
+            Vector3 startPosition,
+            out StableGeometricDistanceFieldSlot slot,
+            out TerrainCell originCell)
+        {
+            bool isAnchor = startPosition == _world.SettlementSpawn.AnchorPosition;
+            bool isDepot = startPosition == _centralDepot.Position;
+            originCell = _world.WorldMap.GetNearestCell(startPosition);
+            if (!isAnchor && !isDepot)
+            {
+                slot = default;
+                return false;
+            }
+
+            if (isAnchor && isDepot)
+            {
+                TerrainCell anchorCell = _world.WorldMap.GetNearestCell(_world.SettlementSpawn.AnchorPosition);
+                TerrainCell depotCell = _world.WorldMap.GetNearestCell(_centralDepot.Position);
+                if (anchorCell.GridX != depotCell.GridX || anchorCell.GridY != depotCell.GridY)
+                {
+                    slot = default;
+                    return false;
+                }
+
+                slot = StableGeometricDistanceFieldSlot.Coalesced;
+                return true;
+            }
+
+            slot = isAnchor
+                ? StableGeometricDistanceFieldSlot.Anchor
+                : StableGeometricDistanceFieldSlot.Depot;
+            return true;
+        }
+
+        private PrototypeNavigationGrid.GeometricDistanceField GetOrBuildStableGeometricDistanceField(
+            StableGeometricDistanceFieldSlot slot,
+            Vector3 originPosition,
+            TerrainCell originCell)
+        {
+            if (slot == StableGeometricDistanceFieldSlot.Coalesced)
+            {
+                return GetOrBuildCoalescedGeometricDistanceField(originPosition, originCell);
+            }
+
+            if (slot == StableGeometricDistanceFieldSlot.Anchor)
+            {
+                return GetOrBuildStableGeometricDistanceFieldSlot(
+                    ref _stableAnchorGeometricDistanceField,
+                    originPosition,
+                    originCell);
+            }
+
+            return GetOrBuildStableGeometricDistanceFieldSlot(
+                ref _stableDepotGeometricDistanceField,
+                originPosition,
+                originCell);
+        }
+
+        private PrototypeNavigationGrid.GeometricDistanceField GetOrBuildCoalescedGeometricDistanceField(
+            Vector3 originPosition,
+            TerrainCell originCell)
+        {
+            if (_stableAnchorGeometricDistanceField != null &&
+                StableEntryMatches(_stableAnchorGeometricDistanceField, originPosition, originCell))
+            {
+                _stableGeometricDistanceFieldHitCount++;
+                ClearStableGeometricDistanceFieldSlot(ref _stableDepotGeometricDistanceField);
+                return _stableAnchorGeometricDistanceField.Field;
+            }
+
+            ClearStableGeometricDistanceFieldSlot(ref _stableAnchorGeometricDistanceField);
+            if (_stableDepotGeometricDistanceField != null &&
+                StableEntryMatches(_stableDepotGeometricDistanceField, originPosition, originCell))
+            {
+                StableGeometricDistanceFieldCacheEntry entry = _stableDepotGeometricDistanceField;
+                _stableDepotGeometricDistanceField = null;
+                _stableAnchorGeometricDistanceField = entry;
+                _stableGeometricDistanceFieldHitCount++;
+                return entry.Field;
+            }
+
+            ClearStableGeometricDistanceFieldSlot(ref _stableDepotGeometricDistanceField);
+            return BuildStableGeometricDistanceField(
+                ref _stableAnchorGeometricDistanceField,
+                originPosition,
+                originCell);
+        }
+
+        private PrototypeNavigationGrid.GeometricDistanceField GetOrBuildStableGeometricDistanceFieldSlot(
+            ref StableGeometricDistanceFieldCacheEntry? entry,
+            Vector3 originPosition,
+            TerrainCell originCell)
+        {
+            if (entry != null && StableEntryMatches(entry, originPosition, originCell))
+            {
+                _stableGeometricDistanceFieldHitCount++;
+                return entry.Field;
+            }
+
+            ClearStableGeometricDistanceFieldSlot(ref entry);
+            return BuildStableGeometricDistanceField(ref entry, originPosition, originCell);
+        }
+
+        private PrototypeNavigationGrid.GeometricDistanceField BuildStableGeometricDistanceField(
+            ref StableGeometricDistanceFieldCacheEntry? entry,
+            Vector3 originPosition,
+            TerrainCell originCell)
+        {
+            PrototypeNavigationGrid.GeometricDistanceField field =
+                _navigationGrid!.BuildGeometricDistanceField(originPosition);
+            entry = new StableGeometricDistanceFieldCacheEntry(
+                _navigationGrid,
+                _navigationRulesVersion,
+                originPosition,
+                originCell.GridX,
+                originCell.GridY,
+                field);
+            _stableGeometricDistanceFieldBuildCount++;
+            return field;
+        }
+
+        private bool StableEntryMatches(
+            StableGeometricDistanceFieldCacheEntry entry,
+            Vector3 originPosition)
+        {
+            TerrainCell originCell = _world.WorldMap.GetNearestCell(originPosition);
+            return StableEntryMatches(entry, originPosition, originCell);
+        }
+
+        private bool StableEntryMatches(
+            StableGeometricDistanceFieldCacheEntry entry,
+            Vector3 originPosition,
+            TerrainCell originCell)
+        {
+            return ReferenceEquals(entry.Grid, _navigationGrid) &&
+                entry.RulesVersion == _navigationRulesVersion &&
+                entry.OriginPosition == originPosition &&
+                entry.OriginGridX == originCell.GridX &&
+                entry.OriginGridY == originCell.GridY;
+        }
+
+        private void ClearStableGeometricDistanceFieldSlot(
+            ref StableGeometricDistanceFieldCacheEntry? entry)
+        {
+            if (entry == null)
+            {
+                return;
+            }
+
+            entry = null;
+            _stableGeometricDistanceFieldClearCount++;
+        }
+
+        private void BeginGeometricDistanceFieldTick()
+        {
+            _geometricDistanceFieldsThisTick.Clear();
+            if (_usePerTickStableGeometricDistanceFieldReferenceMode)
+            {
+                ClearStableGeometricDistanceFields();
+            }
+        }
+
+        private void ClearAllGeometricDistanceFields()
+        {
+            _geometricDistanceFieldsThisTick.Clear();
+            ClearStableGeometricDistanceFields();
+        }
+
+        private void ClearStableGeometricDistanceFields()
+        {
+            if (StableGeometricDistanceFieldEntryCount == 0)
+            {
+                return;
+            }
+
+            _stableAnchorGeometricDistanceField = null;
+            _stableDepotGeometricDistanceField = null;
+            _stableGeometricDistanceFieldClearCount++;
         }
 
         private bool ShouldBuildGeometricDistanceField(

@@ -1,5 +1,7 @@
 using Godot;
 using Societies.Simulation;
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using Xunit;
 using Xunit.Abstractions;
@@ -733,6 +735,231 @@ namespace Societies.Core.Tests
         }
 
         [Fact]
+        public void StableGeometricFieldCache_ReusesExactOriginAndReferenceRebuildsPerTick()
+        {
+            (PrototypeSettlementSimulation optimized, WorldGenerationResult optimizedWorld) = NewControlledSimulation();
+            (PrototypeSettlementSimulation reference, WorldGenerationResult referenceWorld) = NewControlledSimulation();
+            reference.EnablePerTickStableGeometricDistanceFieldReferenceModeForTesting();
+            Vector3 optimizedOrigin = optimizedWorld.SettlementSpawn.AnchorPosition;
+            Vector3 referenceOrigin = referenceWorld.SettlementSpawn.AnchorPosition;
+            Vector3 optimizedDestination = optimizedWorld.ResourceSpawns.First().Position;
+            Vector3 referenceDestination = referenceWorld.ResourceSpawns.First().Position;
+
+            float optimizedFirst = optimized.ComputeRouteDistanceLowerBoundForTesting(optimizedOrigin, optimizedDestination);
+            float optimizedSecond = optimized.ComputeRouteDistanceLowerBoundForTesting(optimizedOrigin, optimizedDestination);
+            PrototypeSettlementSimulation.GeometricDistanceFieldCacheProbe optimizedProbe =
+                optimized.CaptureGeometricDistanceFieldCacheProbeForTesting();
+            Assert.Equal(2, optimizedProbe.StableEntryCapacity);
+            Assert.Equal(1, optimizedProbe.StableEntryCount);
+            Assert.Equal(1, optimizedProbe.StableBuildCount);
+            Assert.Equal(1, optimizedProbe.StableHitCount);
+            Assert.Equal(0, optimizedProbe.StableClearCount);
+            Assert.True(optimizedProbe.AllStableEntriesMatchCurrentGridAndRulesVersion);
+            Assert.Equal(BitConverter.SingleToInt32Bits(optimizedFirst), BitConverter.SingleToInt32Bits(optimizedSecond));
+
+            optimized.BeginGeometricDistanceFieldTickForTesting();
+            float optimizedNextTick = optimized.ComputeRouteDistanceLowerBoundForTesting(optimizedOrigin, optimizedDestination);
+            optimizedProbe = optimized.CaptureGeometricDistanceFieldCacheProbeForTesting();
+            Assert.Equal(1, optimizedProbe.StableBuildCount);
+            Assert.Equal(2, optimizedProbe.StableHitCount);
+            Assert.Equal(0, optimizedProbe.StableClearCount);
+            Assert.Equal(BitConverter.SingleToInt32Bits(optimizedFirst), BitConverter.SingleToInt32Bits(optimizedNextTick));
+
+            float referenceFirst = reference.ComputeRouteDistanceLowerBoundForTesting(referenceOrigin, referenceDestination);
+            reference.BeginGeometricDistanceFieldTickForTesting();
+            float referenceNextTick = reference.ComputeRouteDistanceLowerBoundForTesting(referenceOrigin, referenceDestination);
+            PrototypeSettlementSimulation.GeometricDistanceFieldCacheProbe referenceProbe =
+                reference.CaptureGeometricDistanceFieldCacheProbeForTesting();
+            Assert.True(referenceProbe.PerTickReferenceMode);
+            Assert.Equal(2, referenceProbe.StableBuildCount);
+            Assert.Equal(1, referenceProbe.StableClearCount);
+            Assert.Equal(BitConverter.SingleToInt32Bits(referenceFirst), BitConverter.SingleToInt32Bits(referenceNextTick));
+            Assert.Equal(BitConverter.SingleToInt32Bits(referenceFirst), BitConverter.SingleToInt32Bits(optimizedFirst));
+
+            const int AllocationProbeTicks = 8;
+            long optimizedAllocationStart = GC.GetAllocatedBytesForCurrentThread();
+            for (int tick = 0; tick < AllocationProbeTicks; tick++)
+            {
+                optimized.BeginGeometricDistanceFieldTickForTesting();
+                _ = optimized.ComputeRouteDistanceLowerBoundForTesting(optimizedOrigin, optimizedDestination);
+            }
+
+            long optimizedAllocatedBytes = GC.GetAllocatedBytesForCurrentThread() - optimizedAllocationStart;
+            long referenceAllocationStart = GC.GetAllocatedBytesForCurrentThread();
+            for (int tick = 0; tick < AllocationProbeTicks; tick++)
+            {
+                reference.BeginGeometricDistanceFieldTickForTesting();
+                _ = reference.ComputeRouteDistanceLowerBoundForTesting(referenceOrigin, referenceDestination);
+            }
+
+            long referenceAllocatedBytes = GC.GetAllocatedBytesForCurrentThread() - referenceAllocationStart;
+            Assert.True(
+                optimizedAllocatedBytes < referenceAllocatedBytes,
+                $"Stable reuse must allocate less than per-tick rebuilding; optimized={optimizedAllocatedBytes}, reference={referenceAllocatedBytes}.");
+
+            Assert.DoesNotContain(
+                "GeometricDistanceField",
+                JsonSerializer.Serialize(optimized.CaptureSnapshot(0)),
+                StringComparison.Ordinal);
+            Assert.DoesNotContain(
+                typeof(PrototypeSettlementSimulation).GetMembers(
+                    System.Reflection.BindingFlags.Public |
+                    System.Reflection.BindingFlags.Instance |
+                    System.Reflection.BindingFlags.Static |
+                    System.Reflection.BindingFlags.DeclaredOnly),
+                member => member.Name.Contains("GeometricDistanceField", StringComparison.Ordinal));
+            Assert.Throws<InvalidOperationException>(
+                () => optimized.EnablePerTickStableGeometricDistanceFieldReferenceModeForTesting());
+        }
+
+        [Fact]
+        public void StableGeometricFieldCache_ExactIdentityBoundAndInvalidationAreAuthoritative()
+        {
+            (PrototypeSettlementSimulation simulation, WorldGenerationResult world) = NewControlledSimulation();
+            Vector3 anchor = world.SettlementSpawn.AnchorPosition;
+            Vector3 destination = world.ResourceSpawns.First().Position;
+            TerrainCell anchorCell = world.WorldMap.GetNearestCell(anchor);
+            Vector3 nearAnchor = anchor + new Vector3(0.001f, 0.0f, 0.001f);
+            TerrainCell nearAnchorCell = world.WorldMap.GetNearestCell(nearAnchor);
+            Assert.Equal(new Vector2I(anchorCell.GridX, anchorCell.GridY), new Vector2I(nearAnchorCell.GridX, nearAnchorCell.GridY));
+            Assert.False(anchor == nearAnchor);
+
+            _ = simulation.ComputeRouteDistanceLowerBoundForTesting(anchor, destination);
+            _ = simulation.ComputeRouteDistanceLowerBoundForTesting(nearAnchor, destination);
+            PrototypeSettlementSimulation.GeometricDistanceFieldCacheProbe probe =
+                simulation.CaptureGeometricDistanceFieldCacheProbeForTesting();
+            Assert.Equal(1, probe.StableEntryCount);
+            Assert.Equal(1, probe.EphemeralEntryCount);
+            Assert.Equal(1, probe.StableBuildCount);
+            Assert.Equal(0, probe.StableHitCount);
+
+            TerrainCell[] stableCells = world.WorldMap.Cells
+                .Where(cell => cell.Biome != BiomeType.Wetland && cell.SlopeDegrees <= 18.0f)
+                .Where(cell => cell.GridX != anchorCell.GridX || cell.GridY != anchorCell.GridY)
+                .Take(2)
+                .ToArray();
+            Assert.Equal(2, stableCells.Length);
+            simulation.CentralDepot.Position = stableCells[0].WorldPosition;
+            _ = simulation.ComputeRouteDistanceLowerBoundForTesting(simulation.CentralDepot.Position, destination);
+            probe = simulation.CaptureGeometricDistanceFieldCacheProbeForTesting();
+            Assert.Equal(2, probe.StableEntryCount);
+            Assert.Equal(2, probe.StableBuildCount);
+
+            simulation.CentralDepot.Position = stableCells[1].WorldPosition;
+            _ = simulation.ComputeRouteDistanceLowerBoundForTesting(simulation.CentralDepot.Position, destination);
+            probe = simulation.CaptureGeometricDistanceFieldCacheProbeForTesting();
+            Assert.Equal(2, probe.StableEntryCount);
+            Assert.Equal(3, probe.StableBuildCount);
+            Assert.Equal(1, probe.StableClearCount);
+            _ = simulation.ComputeRouteDistanceLowerBoundForTesting(anchor, destination);
+            probe = simulation.CaptureGeometricDistanceFieldCacheProbeForTesting();
+            Assert.Equal(2, probe.StableEntryCount);
+            Assert.Equal(3, probe.StableBuildCount);
+            Assert.Equal(1, probe.StableHitCount);
+
+            PrototypePerformanceProbeSnapshot beforeInvalidation = simulation.CapturePerformanceProbeState();
+            simulation.InvalidateNavigationForTesting();
+            PrototypePerformanceProbeSnapshot afterInvalidation = simulation.CapturePerformanceProbeState();
+            probe = simulation.CaptureGeometricDistanceFieldCacheProbeForTesting();
+            Assert.Equal(beforeInvalidation.NavigationRulesVersion + 1, afterInvalidation.NavigationRulesVersion);
+            Assert.Equal(0, probe.StableEntryCount);
+            Assert.Equal(0, probe.EphemeralEntryCount);
+            Assert.Equal(2, probe.StableClearCount);
+
+            _ = simulation.ComputeRouteDistanceLowerBoundForTesting(simulation.CentralDepot.Position, destination);
+            probe = simulation.CaptureGeometricDistanceFieldCacheProbeForTesting();
+            Assert.Equal(4, probe.StableBuildCount);
+            Assert.True(probe.AllStableEntriesMatchCurrentGridAndRulesVersion);
+
+            PrototypeSettlementSnapshot snapshot = simulation.CaptureSnapshot(0);
+            simulation.LoadState(snapshot);
+            probe = simulation.CaptureGeometricDistanceFieldCacheProbeForTesting();
+            Assert.Equal(0, probe.StableEntryCount);
+            Assert.Equal(0, probe.EphemeralEntryCount);
+            Assert.Equal(3, probe.StableClearCount);
+
+            _ = simulation.ComputeRouteDistanceLowerBoundForTesting(simulation.CentralDepot.Position, destination);
+            probe = simulation.CaptureGeometricDistanceFieldCacheProbeForTesting();
+            Assert.Equal(5, probe.StableBuildCount);
+            _ = simulation.ClearDerivedPathCacheForPerformance();
+            probe = simulation.CaptureGeometricDistanceFieldCacheProbeForTesting();
+            Assert.Equal(0, probe.StableEntryCount);
+            Assert.Equal(4, probe.StableClearCount);
+
+            simulation.BeginGeometricDistanceFieldTickForTesting();
+            Vector3 movingOrigin = stableCells[0].WorldPosition + new Vector3(0.05f, 0.0f, 0.05f);
+            _ = simulation.ComputeRouteDistanceLowerBoundForTesting(movingOrigin, destination);
+            probe = simulation.CaptureGeometricDistanceFieldCacheProbeForTesting();
+            Assert.Equal(0, probe.StableEntryCount);
+            Assert.Equal(1, probe.EphemeralEntryCount);
+            simulation.BeginGeometricDistanceFieldTickForTesting();
+            Assert.Equal(0, simulation.CaptureGeometricDistanceFieldCacheProbeForTesting().EphemeralEntryCount);
+
+            (PrototypeSettlementSimulation fresh, _) = NewControlledSimulation();
+            PrototypeSettlementSimulation.GeometricDistanceFieldCacheProbe freshProbe =
+                fresh.CaptureGeometricDistanceFieldCacheProbeForTesting();
+            Assert.Equal(0, freshProbe.StableEntryCount);
+            Assert.Equal(0, freshProbe.EphemeralEntryCount);
+            Assert.Equal(0, freshProbe.StableBuildCount);
+
+            (PrototypeSettlementSimulation namedSlots, WorldGenerationResult namedWorld) = NewControlledSimulation();
+            Vector3 namedDestination = namedWorld.ResourceSpawns.First().Position;
+            TerrainCell namedAnchorCell = namedWorld.WorldMap.GetNearestCell(namedWorld.SettlementSpawn.AnchorPosition);
+            TerrainCell[] namedStableCells = namedWorld.WorldMap.Cells
+                .Where(cell => cell.Biome != BiomeType.Wetland && cell.SlopeDegrees <= 18.0f)
+                .Where(cell => cell.GridX != namedAnchorCell.GridX || cell.GridY != namedAnchorCell.GridY)
+                .Take(3)
+                .ToArray();
+            Assert.Equal(3, namedStableCells.Length);
+            Vector3 originalNamedAnchor = namedWorld.SettlementSpawn.AnchorPosition;
+            _ = namedSlots.ComputeRouteDistanceLowerBoundForTesting(originalNamedAnchor, namedDestination);
+            namedSlots.CentralDepot.Position = namedStableCells[0].WorldPosition;
+            _ = namedSlots.ComputeRouteDistanceLowerBoundForTesting(namedSlots.CentralDepot.Position, namedDestination);
+
+            namedSlots.CentralDepot.Position = namedStableCells[1].WorldPosition;
+            _ = namedSlots.ComputeRouteDistanceLowerBoundForTesting(namedSlots.CentralDepot.Position, namedDestination);
+            PrototypeSettlementSimulation.GeometricDistanceFieldCacheProbe namedProbe =
+                namedSlots.CaptureGeometricDistanceFieldCacheProbeForTesting();
+            Assert.Equal(2, namedProbe.StableEntryCount);
+            Assert.Equal(3, namedProbe.StableBuildCount);
+            Assert.Equal(1, namedProbe.StableClearCount);
+            _ = namedSlots.ComputeRouteDistanceLowerBoundForTesting(originalNamedAnchor, namedDestination);
+            namedProbe = namedSlots.CaptureGeometricDistanceFieldCacheProbeForTesting();
+            Assert.Equal(3, namedProbe.StableBuildCount);
+            Assert.Equal(1, namedProbe.StableHitCount);
+
+            SetSettlementAnchorPositionForTesting(namedWorld, namedStableCells[2].WorldPosition);
+            _ = namedSlots.ComputeRouteDistanceLowerBoundForTesting(
+                namedWorld.SettlementSpawn.AnchorPosition,
+                namedDestination);
+            namedProbe = namedSlots.CaptureGeometricDistanceFieldCacheProbeForTesting();
+            Assert.Equal(2, namedProbe.StableEntryCount);
+            Assert.Equal(4, namedProbe.StableBuildCount);
+            Assert.Equal(2, namedProbe.StableClearCount);
+            _ = namedSlots.ComputeRouteDistanceLowerBoundForTesting(namedSlots.CentralDepot.Position, namedDestination);
+            namedProbe = namedSlots.CaptureGeometricDistanceFieldCacheProbeForTesting();
+            Assert.Equal(4, namedProbe.StableBuildCount);
+            Assert.Equal(2, namedProbe.StableHitCount);
+            Assert.True(namedProbe.AllStableEntriesMatchCurrentGridAndRulesVersion);
+
+            namedSlots.CentralDepot.Position = namedWorld.SettlementSpawn.AnchorPosition;
+            _ = namedSlots.ComputeRouteDistanceLowerBoundForTesting(
+                namedWorld.SettlementSpawn.AnchorPosition,
+                namedDestination);
+            namedProbe = namedSlots.CaptureGeometricDistanceFieldCacheProbeForTesting();
+            Assert.Equal(1, namedProbe.StableEntryCount);
+            Assert.Equal(4, namedProbe.StableBuildCount);
+            Assert.Equal(3, namedProbe.StableClearCount);
+            Vector3 nearCoalescedOrigin =
+                namedWorld.SettlementSpawn.AnchorPosition + new Vector3(0.001f, 0.0f, 0.001f);
+            _ = namedSlots.ComputeRouteDistanceLowerBoundForTesting(nearCoalescedOrigin, namedDestination);
+            namedProbe = namedSlots.CaptureGeometricDistanceFieldCacheProbeForTesting();
+            Assert.Equal(1, namedProbe.StableEntryCount);
+            Assert.Equal(1, namedProbe.EphemeralEntryCount);
+            Assert.InRange(namedProbe.StableEntryCount, 0, namedProbe.StableEntryCapacity);
+        }
+
+        [Fact]
         public void ExactTopK_DuplicateNamesPreserveExactDistanceAndOriginalInputOrder()
         {
             PrototypeExtractionCandidate[] candidates =
@@ -1008,6 +1235,175 @@ namespace Societies.Core.Tests
                 $"{scenarioId}: optimized queries={optimizedQueries}, exhaustive queries={exhaustiveQueries}, " +
                 $"reduction={(1.0 - optimizedQueries / (double)exhaustiveQueries):P2}; " +
                 $"general misses optimized={optimizedGeneralMisses}, exhaustive={exhaustiveGeneralMisses}");
+        }
+
+        [Theory]
+        [InlineData("balanced_basin")]
+        [InlineData("long_haul_quarry")]
+        [InlineData("food_poor_highlands")]
+        [InlineData("empty_stores")]
+        [InlineData("wetland_builder")]
+        public void StableGeometricFieldCache_MatchesPerTickReferenceForThreeHundredTicks(string scenarioId)
+        {
+            PrototypeCatalogBundle optimizedBundle = LoadCatalogs();
+            PrototypeCatalogBundle referenceBundle = LoadCatalogs();
+            PrototypeScenarioDefinition optimizedScenario = optimizedBundle.Scenarios.Resolve(scenarioId);
+            PrototypeScenarioDefinition referenceScenario = referenceBundle.Scenarios.Resolve(scenarioId);
+            if (scenarioId == "balanced_basin")
+            {
+                optimizedScenario.InitialCitizens = 16;
+                referenceScenario.InitialCitizens = 16;
+            }
+
+            WorldGenerationResult optimizedWorld = PrototypeWorldGenerator.Generate(optimizedScenario);
+            WorldGenerationResult referenceWorld = PrototypeWorldGenerator.Generate(referenceScenario);
+            PrototypeSettlementSimulation optimized = new(
+                optimizedScenario,
+                optimizedBundle.RoleQuotas.Roles,
+                optimizedWorld);
+            PrototypeSettlementSimulation reference = new(
+                referenceScenario,
+                referenceBundle.RoleQuotas.Roles,
+                referenceWorld);
+            reference.EnablePerTickStableGeometricDistanceFieldReferenceModeForTesting();
+            List<PrototypeResourceSiteState> optimizedResources = BuildResourceSites(optimizedWorld);
+            List<PrototypeResourceSiteState> referenceResources = BuildResourceSites(referenceWorld);
+            PrototypeSettlementDirective[] directives =
+            {
+                PrototypeSettlementDirective.Neutral,
+                PrototypeSettlementDirective.FoodAndFuel,
+                PrototypeSettlementDirective.Shelter
+            };
+            StringBuilder optimizedTrace = new();
+            StringBuilder referenceTrace = new();
+            float currentHour = 8.0f;
+
+            for (int tick = 1; tick <= 300; tick++)
+            {
+                PrototypeSettlementDirective directive = directives[(tick - 1) % directives.Length];
+                PrototypeSettlementTickResult optimizedResult = optimized.Advance(
+                    optimizedResources,
+                    currentHour,
+                    PrototypeWeather.Clear,
+                    directive: directive);
+                PrototypeSettlementTickResult referenceResult = reference.Advance(
+                    referenceResources,
+                    currentHour,
+                    PrototypeWeather.Clear,
+                    directive: directive);
+
+                string optimizedTick = CaptureStableCacheDifferentialTick(optimized, optimizedResult, optimizedResources, tick);
+                string referenceTick = CaptureStableCacheDifferentialTick(reference, referenceResult, referenceResources, tick);
+                Assert.Equal(referenceTick, optimizedTick);
+                optimizedTrace.AppendLine(optimizedTick);
+                referenceTrace.AppendLine(referenceTick);
+
+                ApplyHarvestRequests(optimized, optimizedResources, optimizedResult.HarvestRequests);
+                ApplyHarvestRequests(reference, referenceResources, referenceResult.HarvestRequests);
+                Assert.Equal(referenceResources, optimizedResources);
+                currentHour = AdvanceHour(currentHour);
+            }
+
+            string optimizedFinal = JsonSerializer.Serialize(optimized.CaptureSnapshot(300));
+            string referenceFinal = JsonSerializer.Serialize(reference.CaptureSnapshot(300));
+            Assert.Equal(referenceFinal, optimizedFinal);
+            Assert.Equal(
+                Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(referenceTrace.ToString()))),
+                Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(optimizedTrace.ToString()))));
+            Assert.True(optimized.CaptureGeometricDistanceFieldCacheProbeForTesting().StableHitCount > 0);
+            Assert.True(reference.CaptureGeometricDistanceFieldCacheProbeForTesting().StableClearCount > 0);
+        }
+
+        [Fact]
+        public void StableGeometricFieldCache_CheckpointResumeMatchesPerTickReferenceExactly()
+        {
+            PrototypeCatalogBundle sourceBundle = LoadCatalogs();
+            PrototypeScenarioDefinition sourceScenario = sourceBundle.Scenarios.Resolve("balanced_basin");
+            sourceScenario.InitialCitizens = 16;
+            PrototypeRuntimeSession source = new(
+                sourceScenario,
+                sourceBundle.RoleQuotas.Roles,
+                resourceDefinitions: sourceBundle.Resources.Resources);
+            source.Initialize(8.0f);
+            for (int tick = 1; tick <= 30; tick++)
+            {
+                _ = source.SetDirective((PrototypeSettlementDirective)((tick - 1) % 3));
+                _ = source.Advance(1.0f / 20.0f, 600.0f);
+            }
+
+            PrototypeRuntimeSnapshot checkpoint = PrototypePersistenceService.DeserializeSnapshot(
+                PrototypePersistenceService.SerializeSnapshot(source.CaptureSnapshot(Vector3.Zero)));
+            PrototypeCatalogBundle optimizedBundle = LoadCatalogs();
+            PrototypeCatalogBundle referenceBundle = LoadCatalogs();
+            PrototypeScenarioDefinition optimizedScenario = optimizedBundle.Scenarios.Resolve("balanced_basin");
+            PrototypeScenarioDefinition referenceScenario = referenceBundle.Scenarios.Resolve("balanced_basin");
+            optimizedScenario.InitialCitizens = 16;
+            referenceScenario.InitialCitizens = 16;
+            PrototypeRuntimeSession optimized = new(
+                optimizedScenario,
+                optimizedBundle.RoleQuotas.Roles,
+                resourceDefinitions: optimizedBundle.Resources.Resources);
+            PrototypeRuntimeSession reference = new(
+                referenceScenario,
+                referenceBundle.RoleQuotas.Roles,
+                resourceDefinitions: referenceBundle.Resources.Resources);
+            optimized.ApplySnapshot(checkpoint);
+            reference.ApplySnapshot(checkpoint);
+            PrototypeSettlementSimulation optimizedSimulation = GetSettlementSimulation(optimized);
+            PrototypeSettlementSimulation referenceSimulation = GetSettlementSimulation(reference);
+            referenceSimulation.EnablePerTickStableGeometricDistanceFieldReferenceModeForTesting();
+
+            for (int tick = 1; tick <= 60; tick++)
+            {
+                PrototypeSettlementDirective directive = (PrototypeSettlementDirective)((tick - 1) % 3);
+                Assert.Equal(reference.SetDirective(directive), optimized.SetDirective(directive));
+                PrototypeRuntimeTickResult optimizedResult = optimized.Advance(1.0f / 20.0f, 600.0f);
+                PrototypeRuntimeTickResult referenceResult = reference.Advance(1.0f / 20.0f, 600.0f);
+                Assert.Equal(JsonSerializer.Serialize(referenceResult), JsonSerializer.Serialize(optimizedResult));
+                Assert.Equal(
+                    PrototypePersistenceService.SerializeSnapshot(reference.CaptureSnapshot(Vector3.Zero)),
+                    PrototypePersistenceService.SerializeSnapshot(optimized.CaptureSnapshot(Vector3.Zero)));
+            }
+
+            Assert.True(optimizedSimulation.CaptureGeometricDistanceFieldCacheProbeForTesting().StableHitCount > 0);
+            Assert.True(referenceSimulation.CaptureGeometricDistanceFieldCacheProbeForTesting().StableClearCount > 0);
+        }
+
+        private static string CaptureStableCacheDifferentialTick(
+            PrototypeSettlementSimulation simulation,
+            PrototypeSettlementTickResult result,
+            IReadOnlyList<PrototypeResourceSiteState> resources,
+            int tick)
+        {
+            return JsonSerializer.Serialize(new
+            {
+                Result = result,
+                Workers = simulation.Workers.OrderBy(worker => worker.WorkerId, StringComparer.Ordinal),
+                Resources = resources,
+                Produced = simulation.ProducedResources.OrderBy(pair => pair.Key, StringComparer.Ordinal),
+                Consumed = simulation.ConsumedResources.OrderBy(pair => pair.Key, StringComparer.Ordinal),
+                Depot = simulation.CentralDepot,
+                PerformanceProbe = simulation.CapturePerformanceProbeState(),
+                Snapshot = simulation.CaptureSnapshot(tick)
+            });
+        }
+
+        private static PrototypeSettlementSimulation GetSettlementSimulation(PrototypeRuntimeSession session)
+        {
+            System.Reflection.FieldInfo field = typeof(PrototypeRuntimeSession).GetField(
+                "_settlementSimulation",
+                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!;
+            return (PrototypeSettlementSimulation)field.GetValue(session)!;
+        }
+
+        private static void SetSettlementAnchorPositionForTesting(
+            WorldGenerationResult world,
+            Vector3 anchorPosition)
+        {
+            System.Reflection.FieldInfo field = typeof(SettlementSpawnState).GetField(
+                "<AnchorPosition>k__BackingField",
+                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!;
+            field.SetValue(world.SettlementSpawn, anchorPosition);
         }
 
         private static PrototypeExtractionCandidate Candidate(string nodeName, float lowerBound, int originalIndex)
