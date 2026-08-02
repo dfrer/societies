@@ -1,105 +1,50 @@
-# W2-06 milestone handoff
+# W3-01 milestone handoff
 
 ## Outcome
 
-- W2-05 persistence is merged and validated; W2-06 is locally accepted at `478a4d9` because the clean hard-safety matrix passes. The aggregate target miss reflects stricter aspirational targets, not a hard acceptance failure.
-- The clean canonical matrix passes 14/14 pairs, 354 artifacts, and all hard contracts. W3-01 is the single next bounded action; broader Weeks 3-4 gameplay has not started.
-- W2-VIS retains its explicit timing/visual-readback waivers; Weeks 3-4 remain Draft/Conditional and inactive.
+- W3-01 is locally implemented and accepted at `9d8bff4` on `feature/v3-w3-01-civic-state-contract`; Git/GitHub remains authoritative for delivery and merge state.
+- The bounded exception is one irreversible protect/draw-down civic policy contract with typed current-tick/expected-version command validation, inclusive `0..1200` decision window, exactly-once stable event, strict schema-v8 checkpoint/run-summary/artifact persistence, strict v8 rejection, and neutral v5-v7 migration.
+- UI, effects, reasons, LLM integration, W3-02+, and broader Weeks 3-4 remain inactive pending an explicit **Continue V3** decision.
 
-## Repository truth
+## Validation and evidence
 
-- Validated implementation: `478a4d9`; Git/GitHub remains authoritative for final PR/merge state.
-- Historical characterization branches are retained as evidence only; final acceptance is anchored to clean implementation `478a4d9`.
-- Merged master: `6d0958f` (PR #120).
-- Evidence: [v3-w2-06-build-work-orders-profile.json](planning/active/evidence/v3-w2-06-build-work-orders-profile.json), SHA `db64a0818f30f5c2b1e02f9feaa5db918cd90cfb7d59c2bff9edcf91b6aaaf09`, status `diagnostic_subcost_selected`, dirty-source diagnostic provenance.
-- Independent review status is recorded in the implementation evidence; no separate new review claim is made here.
+- Focused suite: 145/145. Full .NET: 376/376, 0 failed/skipped. Godot 4.6.2 headless exited 0 with manifest 23; console count was not independently parsed. Debug/Release/ExportRelease builds reported zero warnings/errors. Deep review: GO, no P0-P3 findings.
+- Clean performance matrix: 14/14 pairs, 354/354 hashes. Reference median p95/max `47.9643/176.1198 ms`; soaks `38.5737/205.6055` and `38.0676/192.3137`; forced invalidation `22.8738 ms` correct. c24 `151.4178/198.9147 ms` is characterization-only; aspirational `target_missed` is not a safety failure. A general comparative regression assessment was not performed; hard safety did not regress against unchanged thresholds.
+- [Validation evidence](planning/active/evidence/v3-w3-01-validation.json), SHA-256 `b256b8edd2a117cde6253e75c80be638e8c17203ebb2f689dc1d992e66fe7d17`.
+- [Performance evidence](planning/active/evidence/v3-w3-01-performance-validation.json), SHA-256 `580c98175056cdba1f021d7624434cba70da767ed49fed5a3009654af47ab623`.
 
-## Evidence
+## Preserved context and risks
 
-- Three exact metrics-off/on 16-citizen `balanced_basin` seed-1337 trials reused one verified ExportRelease bundle; deterministic hashes are exact in all trials.
-- Spike sets are 16/17/15, with 15 common ticks and 18 in the union.
-- Across 45 common-spike occurrences, `reserve_extraction` is `2,335.489 ms` of `2,749.9948 ms` BuildWorkOrders parent time (`84.927033%`); non-extraction is `406.3959 ms`, and parent residual is `0.0893 ms`.
-- Current runtime batch output is `runtime-batch-metrics-v6.csv` with 44 columns. Earlier v4/v5 CSV claims belong to historical profiling artifacts; performance/equivalence JSON remains schema 6.
-- Final full validation: wrapper exit 0/325.2s; .NET 350/350, Godot 23/23, Debug/Release/ExportRelease zero warnings/errors; see [v3-w2-06-final-validation.json](planning/active/evidence/v3-w2-06-final-validation.json). The clean matrix is the release-gate evidence.
-
-## Risks and gate state
-
-- The canonical matrix hard-safety gate is green at `478a4d9`; only the stricter aspirational target is missed.
-- W2-VIS visual acceptance is waived, timing p95 failed, and persistence/hash equivalence is unavailable.
-- Author smoke and external observed playtests remain incomplete.
+W2-VIS timing/visual-readback waivers, W2-06 history, Demo 1 concept classification, playtest gaps, and historical schema/timing facts remain unchanged. No new UI or observed-playtest acceptance is claimed.
 
 ## Exactly one recommended next action
 
-After Git/GitHub confirms delivery, queue W3-01 only. Keep W3-02+ and broader Weeks 3-4 inactive until an explicit continuation decision.
+Record/confirm GitHub delivery of `9d8bff4`; do not start W3-02+ or broader Weeks 3-4 without an explicit **Continue V3** decision.
 
-## W2-06 exact changed-file inventory (34 paths)
+## Current delivery inventory (origin/master...HEAD union current modified/untracked handoff files; 25 paths)
 
 - `CURRENT_BUILD.md`
-- `planning/active/evidence/v3-w2-06-build-work-orders-profile.json`
-- `planning/active/evidence/v3-w2-06-clean-canonical-matrix-validation.json`
-- `planning/active/evidence/v3-w2-06-final-validation.json`
-- `planning/active/evidence/v3-w2-06-geometric-distance-field-cache-contract-amendment.json`
-- `planning/active/evidence/v3-w2-06-geometric-distance-field-cache-implementation-validation.json`
-- `planning/active/evidence/v3-w2-06-performance-repair-validation.json`
-- `planning/active/evidence/v3-w2-06-reserve-extraction-characterization.json`
-- `planning/active/evidence/v3-w2-06-spike-characterization.json`
-- `planning/active/v3-two-week-development-plan.md`
-- `planning/active/v3-weeks-3-4-development-plan.md`
 - `README.md`
-- `scripts/analyze-build-work-orders-profile.ps1`
-- `scripts/analyze-performance-spikes.ps1`
-- `scripts/analyze-reserve-extraction-profile.ps1`
-- `scripts/run-performance-pair.ps1`
-- `src/societies/scripts/core/PrototypeRunArtifactManager.cs`
-- `src/societies/scripts/core/RuntimeMetricsCollector.cs`
-- `src/societies/scripts/simulation/SettlementEconomy.cs`
-- `src/societies/scripts/simulation/SettlementInfrastructure.cs`
-- `src/societies/scripts/simulation/SettlementSimulation.cs`
-- `src/societies/tests/HeadlessTestRunner.cs`
-- `src/societies/tests/PerformanceRunModels.cs`
-- `src/societies/tests/PerfRunner.cs`
-- `tests/scripts/test-analyze-build-work-orders-profile.ps1`
-- `tests/scripts/test-analyze-performance-spikes.ps1`
-- `tests/scripts/test-analyze-reserve-extraction-profile.ps1`
-- `tests/Societies.Core.Tests/Core/RuntimeMetricsCollectorTests.cs`
-- `tests/Societies.Core.Tests/Simulation/ExtractionPlanningTests.cs`
-- `tests/Societies.Core.Tests/Simulation/SettlementDiagnosticsTests.cs`
-- `tests/test-manifest.json`
-- `V3_SPRINT_VALIDATION_REPORT.md`
 - `WORKFLOW.md`
 - `WORKFLOW_ISSUES.md`
-
-## Historical cumulative changed-file inventory
-
-- `V3_SPRINT_VALIDATION_REPORT.md`
-- `WORKFLOW.md`
-- `CURRENT_BUILD.md`
-- `README.md`
-- `AGENTS.md`
-- `planning/active/README.md`
+- `planning/active/evidence/v3-w3-01-performance-validation.json`
+- `planning/active/evidence/v3-w3-01-validation.json`
 - `planning/active/v3-two-week-development-plan.md`
-- `planning/DEVELOPMENT_WORKFLOW.md`
-- `WORKFLOW_ISSUES.md`
-- `planning/PRODUCT-THESIS.md`
-- `planning/README.md`
-- `planning/active/evidence/v3-w2-06-technical-validation.json`
-- `planning/active/v3-w2-vis-baseline.md`
 - `planning/active/v3-weeks-3-4-development-plan.md`
-- `scripts/run-performance-pair.ps1`
-- `scripts/analyze-performance-spikes.ps1`
-- `scripts/analyze-build-work-orders-profile.ps1`
-- `src/societies/scripts/simulation/SettlementEconomy.cs`
-- `src/societies/scripts/simulation/SettlementSimulation.cs`
-- `src/societies/scripts/core/RuntimeMetricsCollector.cs`
+- `src/societies/scripts/core/PrototypeCivicPolicy.cs`
+- `src/societies/scripts/core/PrototypeEventTypes.cs`
+- `src/societies/scripts/core/PrototypeResourceLedger.cs`
 - `src/societies/scripts/core/PrototypeRunArtifactManager.cs`
-- `src/societies/tests/PerfRunner.cs`
-- `src/societies/tests/PerformanceRunModels.cs`
+- `src/societies/scripts/core/PrototypeRunSummaryBuilder.cs`
+- `src/societies/scripts/core/PrototypeRuntimePersistence.cs`
+- `src/societies/scripts/core/PrototypeRuntimeSession.cs`
 - `src/societies/tests/HeadlessTestRunner.cs`
-- `tests/scripts/test-analyze-performance-spikes.ps1`
-- `tests/scripts/test-analyze-build-work-orders-profile.ps1`
-- `tests/Societies.Core.Tests/Core/PerfRunnerRunIdTests.cs`
-- `tests/Societies.Core.Tests/Core/RuntimeMetricsCollectorTests.cs`
-- `tests/Societies.Core.Tests/Simulation/SettlementDiagnosticsTests.cs`
+- `tests/Societies.Core.Tests/Core/PrototypeArtifactGenerationTests.cs`
+- `tests/Societies.Core.Tests/Core/PrototypeCivicPolicyTests.cs`
+- `tests/Societies.Core.Tests/Core/PrototypeContributionTests.cs`
+- `tests/Societies.Core.Tests/Core/PrototypeDirectiveSessionTests.cs`
+- `tests/Societies.Core.Tests/Core/PrototypePersistenceBoundaryTests.cs`
+- `tests/Societies.Core.Tests/Core/PrototypeRuntimeSessionTests.cs`
+- `tests/Societies.Core.Tests/Core/PrototypeSchemaV8PersistenceTests.cs`
+- `tests/Societies.Core.Tests/Simulation/PrototypeCrisisTests.cs`
 - `tests/test-manifest.json`
-- `planning/active/evidence/v3-w2-06-spike-characterization.json`
-- `planning/active/evidence/v3-w2-06-build-work-orders-profile.json`

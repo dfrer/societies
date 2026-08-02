@@ -36,6 +36,24 @@ namespace Societies.Core
             WriteIndented = true,
             MaxDepth = 16
         };
+        private static readonly string[] RequiredSchemaV8ManifestProperties =
+        {
+            nameof(PrototypeArtifactGenerationManifest.SchemaVersion),
+            nameof(PrototypeArtifactGenerationManifest.GenerationId),
+            nameof(PrototypeArtifactGenerationManifest.RuntimeSchemaVersion),
+            nameof(PrototypeArtifactGenerationManifest.ScenarioId),
+            nameof(PrototypeArtifactGenerationManifest.SimulationTick),
+            nameof(PrototypeArtifactGenerationManifest.EventCount),
+            nameof(PrototypeArtifactGenerationManifest.Snapshot),
+            nameof(PrototypeArtifactGenerationManifest.EventLog),
+            nameof(PrototypeArtifactGenerationManifest.RunSummary)
+        };
+        private static readonly string[] RequiredSchemaV8BindingProperties =
+        {
+            nameof(PrototypeArtifactFileBinding.FileName),
+            nameof(PrototypeArtifactFileBinding.ByteLength),
+            nameof(PrototypeArtifactFileBinding.Sha256)
+        };
 
         public PrototypeArtifactPaths GetArtifactPaths()
         {
@@ -110,7 +128,7 @@ namespace Societies.Core
                 "world summary");
             _ = PrototypePersistenceService.DeserializeWorldSummary(
                 Encoding.UTF8.GetString(worldSummaryBytes));
-            if (snapshot.SchemaVersion == 7)
+            if (snapshot.SchemaVersion is 7 or 8)
             {
                 PrototypeRuntimeSnapshot validatedSnapshot = DeserializeAndValidateSnapshotPayload(
                     snapshotBytes);
@@ -185,9 +203,9 @@ namespace Societies.Core
             byte[] snapshotBytes = ReadBoundedFile(paths.LegacySnapshotPath, MaximumSnapshotBytes, "snapshot");
             PrototypeRuntimeSnapshot snapshot = DeserializeAndValidateSnapshotPayload(snapshotBytes);
 
-            if (snapshot.SchemaVersion == 7)
+            if (snapshot.SchemaVersion is 7 or 8)
             {
-                return LoadSchemaV7Artifacts(paths, snapshot, snapshotBytes);
+                return LoadCommittedArtifacts(paths, snapshot, snapshotBytes);
             }
 
             PrototypeEventRecord[] eventLog = Array.Empty<PrototypeEventRecord>();
@@ -291,7 +309,7 @@ namespace Societies.Core
             return runSummary;
         }
 
-        private static PrototypeLoadedArtifacts LoadSchemaV7Artifacts(
+        private static PrototypeLoadedArtifacts LoadCommittedArtifacts(
             PrototypeArtifactPaths paths,
             PrototypeRuntimeSnapshot snapshot,
             byte[] snapshotBytes)
@@ -299,7 +317,7 @@ namespace Societies.Core
             if (!File.Exists(paths.GenerationManifestPath))
             {
                 throw new InvalidDataException(
-                    "Schema-v7 artifacts are incomplete because the generation manifest is missing.");
+                    $"Schema-v{snapshot.SchemaVersion} artifacts are incomplete because the generation manifest is missing.");
             }
 
             byte[] manifestBytes = ReadBoundedFile(
@@ -312,6 +330,10 @@ namespace Societies.Core
                 maximumObjectProperties: 32,
                 maximumStringBytes: MaximumMessageLength,
                 "generation manifest");
+            if (snapshot.SchemaVersion == 8)
+            {
+                ValidateSchemaV8ManifestShape(manifestBytes);
+            }
             PrototypeArtifactGenerationManifest manifest;
             try
             {
@@ -367,7 +389,8 @@ namespace Societies.Core
             }
 
             if (!Guid.TryParseExact(manifest.GenerationId, "N", out _) ||
-                manifest.RuntimeSchemaVersion != 7 ||
+                manifest.RuntimeSchemaVersion != snapshot.SchemaVersion ||
+                manifest.RuntimeSchemaVersion is not (7 or 8) ||
                 !string.Equals(manifest.ScenarioId, snapshot.ScenarioId, StringComparison.Ordinal) ||
                 manifest.SimulationTick != snapshot.SimulationTick ||
                 manifest.EventCount < 0 ||
@@ -382,6 +405,48 @@ namespace Societies.Core
             ValidateManifestBindingMetadata(manifest.Snapshot, paths.LegacySnapshotPath, MaximumSnapshotBytes);
             ValidateManifestBindingMetadata(manifest.EventLog, paths.LegacyEventLogPath, MaximumEventLogBytes);
             ValidateManifestBindingMetadata(manifest.RunSummary, paths.LegacyRunSummaryPath, MaximumRunSummaryBytes);
+        }
+
+        private static void ValidateSchemaV8ManifestShape(byte[] manifestBytes)
+        {
+            using JsonDocument document = JsonDocument.Parse(manifestBytes);
+            if (document.RootElement.ValueKind != JsonValueKind.Object)
+            {
+                throw new InvalidDataException("Schema-v8 generation manifest must be an object.");
+            }
+
+            foreach (string propertyName in RequiredSchemaV8ManifestProperties)
+            {
+                if (!document.RootElement.TryGetProperty(propertyName, out _))
+                {
+                    throw new InvalidDataException(
+                        $"Schema-v8 generation manifest is missing required property '{propertyName}'.");
+                }
+            }
+
+            foreach (string bindingName in new[]
+            {
+                nameof(PrototypeArtifactGenerationManifest.Snapshot),
+                nameof(PrototypeArtifactGenerationManifest.EventLog),
+                nameof(PrototypeArtifactGenerationManifest.RunSummary)
+            })
+            {
+                JsonElement binding = document.RootElement.GetProperty(bindingName);
+                if (binding.ValueKind != JsonValueKind.Object)
+                {
+                    throw new InvalidDataException(
+                        $"Schema-v8 generation manifest binding '{bindingName}' must be an object.");
+                }
+
+                foreach (string propertyName in RequiredSchemaV8BindingProperties)
+                {
+                    if (!binding.TryGetProperty(propertyName, out _))
+                    {
+                        throw new InvalidDataException(
+                            $"Schema-v8 generation manifest binding '{bindingName}' is missing required property '{propertyName}'.");
+                    }
+                }
+            }
         }
 
         private static void ValidateManifestBindingMetadata(
@@ -412,7 +477,7 @@ namespace Societies.Core
                 !string.Equals(binding.Sha256, actualHash, StringComparison.OrdinalIgnoreCase))
             {
                 throw new InvalidDataException(
-                    $"Schema-v7 {label} does not belong to the committed artifact generation.");
+                    $"Committed {label} does not belong to the artifact generation.");
             }
         }
 
@@ -452,15 +517,18 @@ namespace Societies.Core
             IReadOnlyList<PrototypeEventRecord> eventLog)
         {
             ValidateSummaryBounds(summary);
-            if (summary.SchemaVersion != 7 ||
+            if (summary.SchemaVersion != snapshot.SchemaVersion ||
                 !string.Equals(summary.ScenarioId, snapshot.ScenarioId, StringComparison.Ordinal) ||
                 summary.SimulationTick != snapshot.SimulationTick ||
                 summary.WorldSeed != snapshot.WorldSeed ||
                 summary.SimulationSeed != snapshot.SimulationSeed ||
                 !string.Equals(summary.FinalDirective, snapshot.Directive!.DirectiveId, StringComparison.Ordinal) ||
-                !DictionaryEqual(summary.ContributionsByResource, snapshot.ContributionCountsByResource))
+                !DictionaryEqual(summary.ContributionsByResource, snapshot.ContributionCountsByResource) ||
+                (snapshot.SchemaVersion == 8 &&
+                    !CivicPoliciesEqual(summary.CivicPolicy, snapshot.CivicPolicy)))
             {
-                throw new InvalidDataException("Run summary does not match the schema-v7 snapshot.");
+                throw new InvalidDataException(
+                    $"Run summary does not match the schema-v{snapshot.SchemaVersion} snapshot.");
             }
 
             Dictionary<string, int> actualEventCounts = eventLog
@@ -472,6 +540,10 @@ namespace Societies.Core
             }
 
             ValidateCrisisConsistency(snapshot.Crisis, summary, actualEventCounts);
+            if (snapshot.SchemaVersion == 8)
+            {
+                ValidateCivicPolicyConsistency(snapshot.CivicPolicy!, eventLog);
+            }
         }
 
         private static void ValidateCrisisConsistency(
@@ -544,6 +616,7 @@ namespace Societies.Core
                 snapshot.Directive == null ||
                 snapshot.ContributionCountsByResource == null ||
                 snapshot.Telemetry == null ||
+                (snapshot.SchemaVersion == 8 && snapshot.CivicPolicy == null) ||
                 snapshot.Workers.Count > MaximumSnapshotRows ||
                 snapshot.Resources.Count > MaximumSnapshotRows)
             {
@@ -570,7 +643,8 @@ namespace Societies.Core
                 summary.CollapseReason,
                 summary.CrisisOutcome,
                 summary.CrisisFailureReason,
-                summary.FinalDirective
+                summary.FinalDirective,
+                summary.CivicPolicy?.PolicyId ?? string.Empty
             };
             if (strings.Any(value => value == null || value.Length > MaximumMessageLength))
             {
@@ -602,11 +676,67 @@ namespace Societies.Core
         internal static void ValidateStandaloneRunSummary(PrototypeRunSummary summary)
         {
             ValidateSummaryBounds(summary);
-            if (summary.SchemaVersion is not (5 or 6 or 7) ||
+            if (summary.SchemaVersion is not (5 or 6 or 7 or 8) ||
                 summary.SimulationTick < 0)
             {
                 throw new InvalidDataException(
                     "Run summary has an unsupported schema or negative simulation tick.");
+            }
+
+            if (summary.SchemaVersion == 8)
+            {
+                PrototypeCivicPolicyState civicPolicy =
+                    PrototypeCivicPolicyState.PrepareRestore(summary.CivicPolicy!);
+                if (civicPolicy.SelectedTick > summary.SimulationTick)
+                {
+                    throw new InvalidDataException(
+                        "Run-summary civic policy selection tick exceeds the simulation tick.");
+                }
+            }
+        }
+
+        private static bool CivicPoliciesEqual(
+            PrototypeCivicPolicySnapshot? first,
+            PrototypeCivicPolicySnapshot? second)
+        {
+            return first != null && second != null &&
+                string.Equals(first.PolicyId, second.PolicyId, StringComparison.Ordinal) &&
+                first.SelectedTick == second.SelectedTick &&
+                first.Version == second.Version &&
+                first.WindowStartTick == second.WindowStartTick &&
+                first.WindowEndTick == second.WindowEndTick;
+        }
+
+        private static void ValidateCivicPolicyConsistency(
+            PrototypeCivicPolicySnapshot civicPolicy,
+            IReadOnlyList<PrototypeEventRecord> eventLog)
+        {
+            PrototypeCivicPolicyState restored = PrototypeCivicPolicyState.PrepareRestore(civicPolicy);
+            PrototypeEventRecord[] selectionEvents = eventLog
+                .Where(entry => string.Equals(
+                    entry.EventType,
+                    PrototypeEventTypes.CivicPolicySelected,
+                    StringComparison.Ordinal))
+                .ToArray();
+            int expectedCount = restored.Policy == PrototypeCivicPolicy.Neutral ? 0 : 1;
+            if (selectionEvents.Length != expectedCount)
+            {
+                throw new InvalidDataException(
+                    "Civic policy selection event presence does not match the snapshot state.");
+            }
+
+            if (expectedCount == 1)
+            {
+                PrototypeEventRecord selection = selectionEvents[0];
+                if (selection.Tick != restored.SelectedTick ||
+                    !string.Equals(
+                        selection.Message,
+                        PrototypeCivicPolicyCatalog.BuildSelectionMessage(restored.Policy),
+                        StringComparison.Ordinal))
+                {
+                    throw new InvalidDataException(
+                        "Civic policy selection event does not match the snapshot state.");
+                }
             }
         }
 
@@ -708,7 +838,7 @@ namespace Societies.Core
             if (bytes.LongLength > maximumBytes)
             {
                 throw new InvalidDataException(
-                    $"Schema-v7 {label} exceeds the {maximumBytes} byte limit.");
+                    $"{label} exceeds the {maximumBytes} byte limit.");
             }
         }
 
@@ -716,7 +846,7 @@ namespace Societies.Core
         {
             if (!File.Exists(path))
             {
-                throw new InvalidDataException($"Schema-v7 {label} artifact is missing.");
+                throw new InvalidDataException($"{label} artifact is missing.");
             }
 
             using FileStream stream = new(
@@ -727,7 +857,7 @@ namespace Societies.Core
             if (stream.Length > maximumBytes)
             {
                 throw new InvalidDataException(
-                    $"Schema-v7 {label} exceeds the {maximumBytes} byte limit.");
+                    $"{label} exceeds the {maximumBytes} byte limit.");
             }
 
             int boundedCapacity = checked((int)maximumBytes + 1);
@@ -750,7 +880,7 @@ namespace Societies.Core
             if (totalRead > maximumBytes || stream.ReadByte() != -1)
             {
                 throw new InvalidDataException(
-                    $"Schema-v7 {label} exceeds the {maximumBytes} byte limit.");
+                    $"{label} exceeds the {maximumBytes} byte limit.");
             }
 
             return boundedBuffer.AsSpan(0, totalRead).ToArray();

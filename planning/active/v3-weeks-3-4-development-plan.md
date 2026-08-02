@@ -7,12 +7,12 @@
 | Status | **Draft/Conditional** |
 | Execution window | Mon 2026-07-27 to Fri 2026-08-07 |
 | Capacity | One developer, 40-50 hours |
-| Activation | W3-01 may be queued after W2-06 delivery; W3-02+ and broader Weeks 3-4 require a later explicit **Continue V3** decision |
+| Activation | W3-01 is locally accepted at `9d8bff4`; W3-02+ and broader Weeks 3-4 require a later explicit **Continue V3** decision |
 | Product north star | [PRODUCT-THESIS.md](../PRODUCT-THESIS.md) |
 | Current implementation truth | [CURRENT_BUILD.md](../../CURRENT_BUILD.md) |
 | Predecessor | [V3 two-week development plan](v3-two-week-development-plan.md) |
 
-W3-01 is queued as the next bounded action after W2-06 delivery. W3-02+ and broader Weeks 3-4 remain inactive until a later explicit **Continue V3** decision; this document does not declare any planned feature implemented.
+W3-01 is the completed bounded exception, locally accepted at `9d8bff4`. W3-02+ and broader Weeks 3-4 remain inactive until a later explicit **Continue V3** decision; this document does not authorize another feature.
 
 ## Entry State and Decision Rule
 
@@ -21,11 +21,19 @@ Known repository truth at drafting:
 - The Week 1 hard performance/correctness gate is green.
 - The formal performance target remains missed, and 24-citizen stress remains characterization-red.
 - W2-02 (`empty_stores` crisis contract plus atomic shared-economy contribution) is validated and merged.
-- W2-02 through W2-05 are validated and merged; W2-06 initially concluded **Stop Feature Expansion**, then the clean `478a4d9` repair cleared the hard performance safety gate. W3-01 is queued after delivery; W3-02+ remain inactive pending explicit continuation.
+- W2-02 through W2-05 are validated and merged; W2-06 initially concluded **Stop Feature Expansion**, then the clean `478a4d9` repair cleared the hard performance safety gate. W3-01 is locally accepted at `9d8bff4`; W3-02+ remain inactive pending explicit continuation.
 
-W2-06 hard safety gates are green at `478a4d9`, but delivery truth remains in Git/GitHub. Queue W3-01 only after that delivery boundary; keep W3-02+ and broader Weeks 3-4 inactive pending an explicit **Continue V3** decision. Product clarity was not evaluated because author smoke and external observed playtests were not run.
+W2-06 hard safety gates are green at `478a4d9`, and W3-01 is locally accepted at `9d8bff4`; delivery/merge truth remains in Git/GitHub. Keep W3-02+ and broader Weeks 3-4 inactive pending an explicit **Continue V3** decision. Product clarity was not evaluated because author smoke and external observed playtests were not run.
 
-The July 27-August 7 dates are historical proposal only, not current authorization. This document remains Draft/Conditional: W3-01 is queued after W2-06 delivery, while W3-02+ and broader Weeks 3-4 remain inactive pending an explicit continuation decision.
+The July 27-August 7 dates are historical proposal only, not current authorization. This document remains Draft/Conditional: W3-01 is the completed bounded exception, while W3-02+ and broader Weeks 3-4 remain inactive pending an explicit continuation decision.
+
+### W3-01 accepted bounded exception
+
+Implementation commit `9d8bff4` adds one irreversible protect/draw-down civic policy contract: a typed command requires current tick and expected version, accepts the inclusive `0..1200` decision window, and emits one stable exactly-once event. Strict schema-v8 checkpoint, run-summary, and artifact persistence are implemented; strict v8 rejection and neutral v5-v7 migration are covered. The slice deliberately contains no UI, effects, reasons, LLM integration, or W3-02+ work.
+
+Validation: focused 145/145; full 376/376 .NET (0 failed/skipped); Godot 4.6.2 headless exit 0 with manifest 23 (console count not independently parsed); Debug/Release/ExportRelease zero warnings/errors; deep review GO with no P0-P3 findings. Clean performance matrix is 14/14 pairs and 354/354 hashes; reference median p95/max `47.9643/176.1198 ms`, soaks `38.5737/205.6055` and `38.0676/192.3137`, forced invalidation `22.8738 ms`; c24 `151.4178/198.9147 ms` is non-gating characterization and `target_missed` remains aspirational. A general comparative regression assessment was not performed; hard safety did not regress against unchanged thresholds.
+
+Evidence: [validation](evidence/v3-w3-01-validation.json) (`b256b8edd2a117cde6253e75c80be638e8c17203ebb2f689dc1d992e66fe7d17`) and [performance](evidence/v3-w3-01-performance-validation.json) (`580c98175056cdba1f021d7624434cba70da767ed49fed5a3009654af47ab623`).
 
 ### Draft/Conditional Demo 1 foundation direction
 

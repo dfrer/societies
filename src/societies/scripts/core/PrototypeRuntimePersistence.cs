@@ -14,7 +14,7 @@ namespace Societies.Core
     /// </summary>
     public sealed class PrototypeRuntimeSnapshot
     {
-        public int SchemaVersion { get; set; } = 7;
+        public int SchemaVersion { get; set; } = 8;
 
         public string ScenarioId { get; set; } = string.Empty;
 
@@ -57,6 +57,8 @@ namespace Societies.Core
         public PrototypeCrisisStateSnapshot? Crisis { get; set; }
 
         public PrototypeRuntimeTelemetrySnapshot? Telemetry { get; set; } = new();
+
+        public PrototypeCivicPolicySnapshot? CivicPolicy { get; set; } = new();
     }
 
     /// <summary>
@@ -241,7 +243,7 @@ namespace Societies.Core
 
     public sealed class PrototypeRunSummary
     {
-        public int SchemaVersion { get; set; } = 7;
+        public int SchemaVersion { get; set; } = 8;
 
         public string ScenarioId { get; set; } = string.Empty;
 
@@ -364,6 +366,8 @@ namespace Societies.Core
         public int CollapseHoldEntries { get; set; }
 
         public int CollapseHoldBreaks { get; set; }
+
+        public PrototypeCivicPolicySnapshot? CivicPolicy { get; set; } = new();
     }
 
     public struct PrototypeSerializableVector3
@@ -417,6 +421,32 @@ namespace Societies.Core
             nameof(PrototypeRuntimeSnapshot.Crisis),
             nameof(PrototypeRuntimeSnapshot.Telemetry)
         };
+        private static readonly string[] RequiredSchemaV8SnapshotProperties =
+        {
+            nameof(PrototypeRuntimeSnapshot.SchemaVersion),
+            nameof(PrototypeRuntimeSnapshot.ScenarioId),
+            nameof(PrototypeRuntimeSnapshot.WorldSeed),
+            nameof(PrototypeRuntimeSnapshot.WorldGenerationAttempt),
+            nameof(PrototypeRuntimeSnapshot.WorldHash),
+            nameof(PrototypeRuntimeSnapshot.SimulationSeed),
+            nameof(PrototypeRuntimeSnapshot.SimulationTick),
+            nameof(PrototypeRuntimeSnapshot.CurrentHour),
+            nameof(PrototypeRuntimeSnapshot.CurrentWeather),
+            nameof(PrototypeRuntimeSnapshot.TimeUntilNextWeatherShift),
+            nameof(PrototypeRuntimeSnapshot.WeatherRandomState),
+            nameof(PrototypeRuntimeSnapshot.PlayerPosition),
+            nameof(PrototypeRuntimeSnapshot.SettlementAnchorPosition),
+            nameof(PrototypeRuntimeSnapshot.Inventory),
+            nameof(PrototypeRuntimeSnapshot.Stockpile),
+            nameof(PrototypeRuntimeSnapshot.Workers),
+            nameof(PrototypeRuntimeSnapshot.Resources),
+            nameof(PrototypeRuntimeSnapshot.Settlement),
+            nameof(PrototypeRuntimeSnapshot.Directive),
+            nameof(PrototypeRuntimeSnapshot.ContributionCountsByResource),
+            nameof(PrototypeRuntimeSnapshot.Crisis),
+            nameof(PrototypeRuntimeSnapshot.Telemetry),
+            nameof(PrototypeRuntimeSnapshot.CivicPolicy)
+        };
         private static readonly string[] RequiredSchemaV7DirectiveProperties =
         {
             nameof(PrototypeDirectiveSnapshot.DirectiveId)
@@ -465,6 +495,18 @@ namespace Societies.Core
             nameof(PrototypeCrisisObservation.BedCoveragePercent),
             nameof(PrototypeCrisisObservation.IncapacitatedCitizens)
         };
+        private static readonly string[] RequiredSchemaV8CivicPolicyProperties =
+        {
+            nameof(PrototypeCivicPolicySnapshot.PolicyId),
+            nameof(PrototypeCivicPolicySnapshot.SelectedTick),
+            nameof(PrototypeCivicPolicySnapshot.Version),
+            nameof(PrototypeCivicPolicySnapshot.WindowStartTick),
+            nameof(PrototypeCivicPolicySnapshot.WindowEndTick)
+        };
+        private static readonly string[] RequiredSchemaV8RunSummaryProperties = typeof(PrototypeRunSummary)
+            .GetProperties()
+            .Select(property => property.Name)
+            .ToArray();
 
         private static readonly JsonSerializerOptions JsonOptions = new()
         {
@@ -494,31 +536,36 @@ namespace Societies.Core
                 throw new InvalidDataException("Runtime snapshot is missing an integral SchemaVersion.");
             }
 
-            if (schemaVersion is not (5 or 6 or 7))
+            if (schemaVersion is not (5 or 6 or 7 or 8))
             {
-                throw new InvalidDataException($"Unsupported runtime snapshot schema {schemaVersion}; expected 5, 6, or 7.");
+                throw new InvalidDataException($"Unsupported runtime snapshot schema {schemaVersion}; expected 5, 6, 7, or 8.");
             }
 
-            if (schemaVersion == 7)
+            if (schemaVersion is 7 or 8)
             {
-                foreach (string propertyName in RequiredSchemaV7SnapshotProperties)
+                IReadOnlyList<string> requiredSnapshotProperties = schemaVersion == 7
+                    ? RequiredSchemaV7SnapshotProperties
+                    : RequiredSchemaV8SnapshotProperties;
+                foreach (string propertyName in requiredSnapshotProperties)
                 {
                     if (!document.RootElement.TryGetProperty(propertyName, out _))
                     {
                         throw new InvalidDataException(
-                            $"Schema-v7 runtime snapshot is missing required property '{propertyName}'.");
+                            $"Schema-v{schemaVersion} runtime snapshot is missing required property '{propertyName}'.");
                     }
                 }
 
                 JsonElement directive = RequireObjectWithProperties(
                     document.RootElement,
                     nameof(PrototypeRuntimeSnapshot.Directive),
-                    RequiredSchemaV7DirectiveProperties);
+                    RequiredSchemaV7DirectiveProperties,
+                    schemaVersion);
                 _ = directive;
                 JsonElement telemetry = RequireObjectWithProperties(
                     document.RootElement,
                     nameof(PrototypeRuntimeSnapshot.Telemetry),
-                    RequiredSchemaV7TelemetryProperties);
+                    RequiredSchemaV7TelemetryProperties,
+                    schemaVersion);
                 _ = telemetry;
 
                 JsonElement crisis = document.RootElement.GetProperty(
@@ -528,13 +575,14 @@ namespace Societies.Core
                     RequireProperties(
                         crisis,
                         nameof(PrototypeRuntimeSnapshot.Crisis),
-                        RequiredSchemaV7CrisisProperties);
+                        RequiredSchemaV7CrisisProperties,
+                        schemaVersion);
                     JsonElement hasObservation = crisis.GetProperty(
                         nameof(PrototypeCrisisStateSnapshot.HasObservation));
                     if (hasObservation.ValueKind is not (JsonValueKind.True or JsonValueKind.False))
                     {
                         throw new InvalidDataException(
-                            "Schema-v7 crisis HasObservation must be a Boolean.");
+                            $"Schema-v{schemaVersion} crisis HasObservation must be a Boolean.");
                     }
 
                     if (hasObservation.GetBoolean())
@@ -542,41 +590,68 @@ namespace Societies.Core
                         _ = RequireObjectWithProperties(
                             crisis,
                             nameof(PrototypeCrisisStateSnapshot.LastObservation),
-                            RequiredSchemaV7CrisisObservationProperties);
+                            RequiredSchemaV7CrisisObservationProperties,
+                            schemaVersion);
                     }
+                }
+
+                if (schemaVersion == 8)
+                {
+                    _ = RequireObjectWithProperties(
+                        document.RootElement,
+                        nameof(PrototypeRuntimeSnapshot.CivicPolicy),
+                        RequiredSchemaV8CivicPolicyProperties,
+                        schemaVersion);
                 }
             }
 
             PrototypeRuntimeSnapshot? snapshot =
                 JsonSerializer.Deserialize<PrototypeRuntimeSnapshot>(bytes, JsonOptions);
-            return snapshot ?? throw new InvalidDataException("Runtime snapshot payload is null.");
+            if (snapshot == null)
+            {
+                throw new InvalidDataException("Runtime snapshot payload is null.");
+            }
+            if (schemaVersion == 8)
+            {
+                PrototypeCivicPolicyState civicPolicy =
+                    PrototypeCivicPolicyState.PrepareRestore(snapshot.CivicPolicy!);
+                if (civicPolicy.SelectedTick > snapshot.SimulationTick)
+                {
+                    throw new InvalidDataException(
+                        "Runtime snapshot civic policy selection tick exceeds the simulation tick.");
+                }
+            }
+
+            return snapshot;
         }
 
         private static JsonElement RequireObjectWithProperties(
             JsonElement parent,
             string propertyName,
-            IReadOnlyList<string> requiredProperties)
+            IReadOnlyList<string> requiredProperties,
+            int schemaVersion)
         {
             if (!parent.TryGetProperty(propertyName, out JsonElement payload) ||
                 payload.ValueKind != JsonValueKind.Object)
             {
                 throw new InvalidDataException(
-                    $"Schema-v7 runtime snapshot property '{propertyName}' must be an object.");
+                    $"Schema-v{schemaVersion} runtime snapshot property '{propertyName}' must be an object.");
             }
 
-            RequireProperties(payload, propertyName, requiredProperties);
+            RequireProperties(payload, propertyName, requiredProperties, schemaVersion);
             return payload;
         }
 
         private static void RequireProperties(
             JsonElement payload,
             string payloadName,
-            IReadOnlyList<string> requiredProperties)
+            IReadOnlyList<string> requiredProperties,
+            int schemaVersion)
         {
             if (payload.ValueKind != JsonValueKind.Object)
             {
                 throw new InvalidDataException(
-                    $"Schema-v7 runtime snapshot property '{payloadName}' must be an object.");
+                    $"Schema-v{schemaVersion} runtime snapshot property '{payloadName}' must be an object.");
             }
 
             foreach (string propertyName in requiredProperties)
@@ -584,7 +659,7 @@ namespace Societies.Core
                 if (!payload.TryGetProperty(propertyName, out _))
                 {
                     throw new InvalidDataException(
-                        $"Schema-v7 runtime snapshot property '{payloadName}' is missing required property '{propertyName}'.");
+                        $"Schema-v{schemaVersion} runtime snapshot property '{payloadName}' is missing required property '{propertyName}'.");
                 }
             }
         }
@@ -624,6 +699,32 @@ namespace Societies.Core
                 PrototypeRunArtifactManager.MaximumDictionaryEntries,
                 PrototypeRunArtifactManager.MaximumMessageLength,
                 "run summary");
+            using JsonDocument document = JsonDocument.Parse(bytes);
+            if (document.RootElement.ValueKind != JsonValueKind.Object ||
+                !document.RootElement.TryGetProperty(nameof(PrototypeRunSummary.SchemaVersion), out JsonElement schema) ||
+                schema.ValueKind != JsonValueKind.Number || !schema.TryGetInt32(out int schemaVersion))
+            {
+                throw new InvalidDataException("Run summary is missing an integral SchemaVersion.");
+            }
+
+            if (schemaVersion == 8)
+            {
+                foreach (string propertyName in RequiredSchemaV8RunSummaryProperties)
+                {
+                    if (!document.RootElement.TryGetProperty(propertyName, out _))
+                    {
+                        throw new InvalidDataException(
+                            $"Schema-v8 run summary is missing required property '{propertyName}'.");
+                    }
+                }
+
+                _ = RequireObjectWithProperties(
+                    document.RootElement,
+                    nameof(PrototypeRunSummary.CivicPolicy),
+                    RequiredSchemaV8CivicPolicyProperties,
+                    schemaVersion);
+            }
+
             PrototypeRunSummary summary =
                 JsonSerializer.Deserialize<PrototypeRunSummary>(bytes, JsonOptions)
                 ?? throw new InvalidDataException("Run-summary payload is null.");

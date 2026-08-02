@@ -30,6 +30,7 @@ namespace Societies.Core
         private readonly HashSet<string> _eligibleContributionResourceIds;
         private readonly Dictionary<string, long> _contributionCountsByResource = new(StringComparer.Ordinal);
         private PrototypeSettlementDirective _activeDirective = PrototypeSettlementDirective.Neutral;
+        private PrototypeCivicPolicyState _civicPolicy = new();
         private PrototypeRuntimeTelemetrySnapshot _telemetry = new();
 
         public PrototypeRuntimeSession(
@@ -69,6 +70,8 @@ namespace Societies.Core
         public PrototypeCrisisState? Crisis => _crisisState;
 
         public PrototypeSettlementDirective ActiveDirective => _activeDirective;
+
+        public PrototypeCivicPolicySnapshot CivicPolicy => _civicPolicy.CaptureSnapshot();
 
         public PrototypeDirectiveSnapshot CaptureDirectiveSnapshot()
         {
@@ -259,6 +262,7 @@ namespace Societies.Core
             MetricsTracker.Clear();
             _contributionCountsByResource.Clear();
             _activeDirective = PrototypeSettlementDirective.Neutral;
+            _civicPolicy = new PrototypeCivicPolicyState();
             _telemetry = new PrototypeRuntimeTelemetrySnapshot();
             Inventory.ReplaceContents(new Dictionary<string, int>());
             Stockpile.ReplaceContents(new Dictionary<string, int>());
@@ -384,6 +388,20 @@ namespace Societies.Core
                 PrototypeEventTypes.SettlementDirectiveChanged,
                 $"Directive changed from {PrototypeSettlementDirectiveCatalog.GetDisplayName(previous)} to {PrototypeSettlementDirectiveCatalog.GetDisplayName(directive)}");
             return new PrototypeDirectiveChangeResult(previous, directive, true, true, string.Empty);
+        }
+
+        public PrototypeCivicPolicyCommandResult SelectCivicPolicy(
+            PrototypeCivicPolicyCommand command)
+        {
+            PrototypeCivicPolicyCommandResult result = _civicPolicy.TrySelect(command, SimulationTick);
+            if (result.Succeeded)
+            {
+                RecordEvent(
+                    PrototypeEventTypes.CivicPolicySelected,
+                    PrototypeCivicPolicyCatalog.BuildSelectionMessage(command.RequestedPolicy));
+            }
+
+            return result;
         }
 
         private void RecordCrisisTerminalOutcomeIfNeeded()
@@ -825,7 +843,7 @@ namespace Societies.Core
 
             return new PrototypeRuntimeSnapshot
             {
-                SchemaVersion = 7,
+                SchemaVersion = 8,
                 ScenarioId = Scenario.Id,
                 WorldSeed = WorldSeed,
                 WorldGenerationAttempt = WorldGenerationAttempt,
@@ -848,7 +866,8 @@ namespace Societies.Core
                     .OrderBy(pair => pair.Key, StringComparer.Ordinal)
                     .ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal),
                 Crisis = _crisisState?.CaptureSnapshot(),
-                Telemetry = CaptureTelemetrySnapshot()
+                Telemetry = CaptureTelemetrySnapshot(),
+                CivicPolicy = _civicPolicy.CaptureSnapshot()
             };
         }
 
@@ -890,7 +909,8 @@ namespace Societies.Core
             Dictionary<string, long> candidateContributionCounts = new(StringComparer.Ordinal);
             PrototypeCrisisState? candidateCrisis = null;
             PrototypeRuntimeTelemetrySnapshot candidateTelemetry = new();
-            if (snapshot.SchemaVersion == 7)
+            PrototypeCivicPolicyState candidateCivicPolicy = new();
+            if (snapshot.SchemaVersion >= 7)
             {
                 candidateDirective = ParseDirectiveStrict(snapshot.Directive!.DirectiveId);
                 candidateContributionCounts = snapshot.ContributionCountsByResource
@@ -915,7 +935,7 @@ namespace Societies.Core
                 {
                     if (snapshot.Crisis == null)
                     {
-                        throw new InvalidDataException("Schema v7 crisis scenario snapshot is missing crisis state.");
+                        throw new InvalidDataException($"Schema v{snapshot.SchemaVersion} crisis scenario snapshot is missing crisis state.");
                     }
 
                     candidateCrisis = new PrototypeCrisisState(Scenario.Crisis);
@@ -926,6 +946,16 @@ namespace Societies.Core
                     catch (ArgumentException exception)
                     {
                         throw new InvalidDataException("Runtime snapshot crisis state is malformed.", exception);
+                    }
+                }
+
+                if (snapshot.SchemaVersion == 8)
+                {
+                    candidateCivicPolicy = PrototypeCivicPolicyState.PrepareRestore(snapshot.CivicPolicy!);
+                    if (candidateCivicPolicy.SelectedTick > snapshot.SimulationTick)
+                    {
+                        throw new InvalidDataException(
+                            "Runtime snapshot civic policy selection tick exceeds the simulation tick.");
                     }
                 }
             }
@@ -948,6 +978,7 @@ namespace Societies.Core
             _settlementSimulation = candidateSettlement;
             _crisisState = candidateCrisis;
             _activeDirective = candidateDirective;
+            _civicPolicy = candidateCivicPolicy;
             _telemetry = candidateTelemetry;
             Inventory.ReplaceContents(snapshot.Inventory);
             Stockpile.ReplaceContents(snapshot.Stockpile);
@@ -980,16 +1011,17 @@ namespace Societies.Core
 
         private static void ValidateSnapshot(PrototypeRuntimeSnapshot snapshot)
         {
-            if (snapshot.SchemaVersion is not (5 or 6 or 7))
+            if (snapshot.SchemaVersion is not (5 or 6 or 7 or 8))
             {
                 throw new InvalidDataException(
-                    $"Unsupported runtime snapshot schema {snapshot.SchemaVersion}; expected 5, 6, or 7.");
+                    $"Unsupported runtime snapshot schema {snapshot.SchemaVersion}; expected 5, 6, 7, or 8.");
             }
 
             if (snapshot.Inventory == null || snapshot.Stockpile == null || snapshot.Workers == null ||
                 snapshot.Resources == null || snapshot.Settlement == null ||
                 snapshot.Directive == null || snapshot.ContributionCountsByResource == null ||
-                snapshot.Telemetry == null)
+                snapshot.Telemetry == null ||
+                (snapshot.SchemaVersion == 8 && snapshot.CivicPolicy == null))
             {
                 throw new InvalidDataException("Runtime snapshot required collections cannot be null.");
             }

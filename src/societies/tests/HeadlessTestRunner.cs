@@ -406,7 +406,7 @@ namespace Societies.Tests
                 string snapshotPath = Path.Combine(outputDirectory, "latest-snapshot.json");
                 Assert(File.Exists(snapshotPath), "F6 should persist the crisis snapshot");
                 PrototypeRuntimeSnapshot persisted = PrototypePersistenceService.LoadSnapshot(snapshotPath);
-                Assert(persisted.SchemaVersion == 7, "Godot save route should emit schema v7");
+                Assert(persisted.SchemaVersion == 8, "Godot save route should emit schema v8");
                 Assert(persisted.Directive?.DirectiveId == "food_and_fuel", "F6 should persist the input-selected directive");
                 Assert(persisted.ContributionCountsByResource.GetValueOrDefault("logs") == 3, "F6 should persist input contributions");
                 Assert(persisted.Crisis?.ElapsedTicks == 5, "F6 should persist crisis elapsed ticks");
@@ -442,7 +442,7 @@ namespace Societies.Tests
                     rejectedCorruptGeneration = true;
                 }
 
-                Assert(rejectedCorruptGeneration, "GameManager should reject a tampered schema-v7 companion");
+                Assert(rejectedCorruptGeneration, "GameManager should reject a tampered schema-v8 companion");
                 Assert(
                     PrototypePersistenceService.SerializeSnapshot(manager.CaptureSnapshot()) ==
                     liveBeforeCorruptLoad,

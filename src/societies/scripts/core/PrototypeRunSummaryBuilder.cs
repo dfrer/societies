@@ -29,6 +29,8 @@ namespace Societies.Core
             PrototypeLogisticsMetricsState logisticsMetrics = snapshot.Settlement?.LogisticsMetrics ?? new PrototypeLogisticsMetricsState();
             PrototypeRuntimeTelemetrySnapshot telemetry = snapshot.Telemetry ?? new PrototypeRuntimeTelemetrySnapshot();
             PrototypeCrisisStateSnapshot? crisis = snapshot.Crisis;
+            PrototypeCivicPolicySnapshot civicPolicy =
+                snapshot.CivicPolicy ?? new PrototypeCivicPolicySnapshot();
 
             return new PrototypeRunSummary
             {
@@ -105,7 +107,15 @@ namespace Societies.Core
                 StabilityHoldEntries = telemetry.StabilityHoldEntries,
                 StabilityHoldBreaks = telemetry.StabilityHoldBreaks,
                 CollapseHoldEntries = telemetry.CollapseHoldEntries,
-                CollapseHoldBreaks = telemetry.CollapseHoldBreaks
+                CollapseHoldBreaks = telemetry.CollapseHoldBreaks,
+                CivicPolicy = new PrototypeCivicPolicySnapshot
+                {
+                    PolicyId = civicPolicy.PolicyId,
+                    SelectedTick = civicPolicy.SelectedTick,
+                    Version = civicPolicy.Version,
+                    WindowStartTick = civicPolicy.WindowStartTick,
+                    WindowEndTick = civicPolicy.WindowEndTick
+                }
             };
         }
 

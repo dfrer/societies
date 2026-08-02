@@ -6,6 +6,26 @@ Statuses: **Open**, **Monitoring**, **Resolved**, **Deferred**, **Rejected**.
 
 ## Open entries
 
+### WI-SOCIETIES-2026-008 - Godot import scan dirties clean performance source via line endings
+
+- **Tier:** T2
+- **Status:** Monitoring
+- **Scope/project:** `E:\AIExperiments\games\societies`
+- **Category:** validation tooling
+- **First seen:** 2026-08-01 (America/Vancouver)
+- **Last seen:** 2026-08-02 (America/Vancouver)
+- **Occurrences:** 2 clean performance-matrix runs
+- **Reporter:** main orchestrator and `performance_worker`
+- **Symptom:** A Godot headless import scan rewrites `src/societies/icon.svg.import` line endings even though its Git object remains identical to `HEAD`. The strict clean-source matrix then stops before the next pair.
+- **Impact:** W2-06 required explicit generated-file restoration; W3-01 lost four completed pairs and 90.314 seconds before rerunning from a prewarmed clean clone.
+- **Evidence:** In both milestones, `git hash-object` matched the `HEAD` blob `3e357237b7c316d6e9044c24b95a02ca1e010b1f`, content diff/numstat were empty, and restoring only the proven generated file returned tracked status to clean.
+- **Workaround:** Prewarm the exact clean clone with one Godot import scan, prove the icon import object matches `HEAD`, restore only that file, verify empty status, then start the canonical matrix.
+- **Root cause:** Godot normalizes the generated import metadata working-tree line endings after Git's clean-state check, while the matrix correctly treats any tracked stat change as unsafe.
+- **Proposed fix:** Add a bounded preflight import warmup and exact-object refresh before the matrix freezes source cleanliness; do not weaken content-dirty rejection.
+- **Auto-fix eligibility/rationale:** No - canonical evidence cleanliness and generated-file restoration require a separately reviewed tooling change.
+- **Resolution/validation:** Monitoring; the W3-01 clean-clone rerun passed 14/14 after the bounded workaround.
+- **Linked entry:** WI-GLOBAL-2026-077 in `C:\Users\hunte\Documents\Codex\WORKFLOW_ISSUES.md`.
+
 ### WI-SOCIETIES-2026-007 - Sandboxed Git cannot read the user-global excludes file
 
 - **Tier:** T2

@@ -102,7 +102,7 @@ namespace Societies.Core.Tests
             Assert.Throws<InvalidDataException>(() =>
                 PrototypePersistenceService.DeserializeRunSummary(
                     PrototypePersistenceService.SerializeRunSummary(
-                        new PrototypeRunSummary { SchemaVersion = 8 })));
+                        new PrototypeRunSummary { SchemaVersion = 9 })));
             Assert.Throws<InvalidDataException>(() =>
                 PrototypePersistenceService.DeserializeRunSummary(
                     PrototypePersistenceService.SerializeRunSummary(
@@ -136,7 +136,7 @@ namespace Societies.Core.Tests
         public void PublicFileLoadersRoundTripCurrentAndLegacyContracts()
         {
             using TemporaryDirectory fixture = TemporaryDirectory.Create();
-            foreach (int schemaVersion in new[] { 5, 6, 7 })
+            foreach (int schemaVersion in new[] { 5, 6, 7, 8 })
             {
                 PrototypeRuntimeSnapshot snapshot = new()
                 {
@@ -203,7 +203,7 @@ namespace Societies.Core.Tests
             Assert.Throws<InvalidDataException>(() =>
                 PrototypePersistenceService.SaveSnapshot(path, oversized));
             Assert.Equal(committed, File.ReadAllBytes(path));
-            Assert.Equal(7, PrototypePersistenceService.LoadSnapshot(path).SchemaVersion);
+            Assert.Equal(8, PrototypePersistenceService.LoadSnapshot(path).SchemaVersion);
         }
 
         [Fact]
@@ -247,7 +247,7 @@ namespace Societies.Core.Tests
             Assert.Throws<InvalidDataException>(() =>
                 PrototypePersistenceService.SaveRunSummary(path, excessiveSummary));
             Assert.Equal(committed, File.ReadAllBytes(path));
-            Assert.Equal(7, PrototypePersistenceService.LoadRunSummary(path).SchemaVersion);
+            Assert.Equal(8, PrototypePersistenceService.LoadRunSummary(path).SchemaVersion);
         }
 
         [Fact]
