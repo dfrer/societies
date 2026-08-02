@@ -1,0 +1,293 @@
+{
+  "schemaVersion": 1,
+  "workItem": "V3-W2-06 geometric-distance-field lifecycle contract amendment",
+  "status": "proposed_contract_amendment_requires_independent_review_no_implementation",
+  "capturedUtc": "2026-08-02T01:01:46.3888323Z",
+  "claimBoundary": "design_and_rejected-attempt_evidence_only_not_an_implemented_optimization_or_release_gate",
+  "repository": {
+    "branch": "feature/v3-w2-06-reserve-extraction-optimization",
+    "head": "4fa065be7386e75d288c9204657db72ad436cc84",
+    "rejectedAttemptRolledBack": true,
+    "rollbackVerification": "git status --short --branch reported only the branch header before this evidence file was added",
+    "staged": false,
+    "committed": false,
+    "pushed": false
+  },
+  "sourceInspection": {
+    "files": [
+      {
+        "path": "src/societies/scripts/simulation/SettlementSimulation.cs",
+        "sizeBytes": 40274,
+        "sha256": "726809fed1bcd493cb57886f4d0c53538bd336b62c6a650fdfe4a756b6ce0104"
+      },
+      {
+        "path": "src/societies/scripts/simulation/SettlementInfrastructure.cs",
+        "sizeBytes": 30317,
+        "sha256": "cfc7f2c9934afeadc71c2444f02b02d16394978362c22105e3e78c64eb214670"
+      },
+      {
+        "path": "src/societies/scripts/simulation/SettlementEconomy.cs",
+        "sizeBytes": 66935,
+        "sha256": "c0a3694a76e3081203abf20015f3c22a567a93c3225f3f6c711d4438d2fd5862"
+      },
+      {
+        "path": "src/societies/scripts/simulation/SettlementCitizen.cs",
+        "sizeBytes": 77006,
+        "sha256": "662c4a7161120e5d859ad1da238a44b599acdfba586da3edbd125f73a80cc156"
+      },
+      {
+        "path": "src/societies/scripts/simulation/PrototypeNavigation.cs",
+        "sizeBytes": 29737,
+        "sha256": "d8d04a9f9ba4760cb241acae0d629f7b07704f7b74c3df4cd7297880b19315e5"
+      },
+      {
+        "path": "src/societies/scripts/core/PrototypeRuntimeSession.cs",
+        "sizeBytes": 73384,
+        "sha256": "d18acd1083e7c2c3dd9288b63325fd1471cfa46b15d402ead8b750829863638b"
+      },
+      {
+        "path": "planning/active/evidence/v3-w2-06-reserve-extraction-characterization.json",
+        "sizeBytes": 150548,
+        "sha256": "7b3a69eb58b845a6208cc52bb264955b2d7b5c7dba34f62a002079a65d2aabfd"
+      }
+    ],
+    "authoritativeCallPath": [
+      "SettlementSimulation.cs:67 owns _geometricDistanceFieldsThisTick and Advance clears it unconditionally at line 373",
+      "SettlementEconomy.cs:732-757 builds settlement-anchor lower bounds during candidate selection",
+      "SettlementEconomy.cs:783-786 and 995-1018 request central-depot lower bounds during priority evaluation",
+      "SettlementCitizen.cs:189-205 requests lower bounds from moving citizen origins for generic selection",
+      "SettlementInfrastructure.cs:375-397 performs lookup/build and currently keys only by exact Vector3 startPosition",
+      "PrototypeNavigation.cs:200-259 builds the immutable grid-wide field; 625-672 retains the exact grid and origin and rejects an origin mismatch"
+    ],
+    "cacheAndInvalidationOwners": [
+      "SettlementInfrastructure.RebuildNavigation clears _pathCache and _geometricDistanceFieldsThisTick, then replaces _navigationGrid",
+      "SettlementInfrastructure.InvalidateNavigation increments _navigationRulesVersion and calls RebuildNavigation",
+      "SettlementSimulation.LoadState restores navigation rules and calls RebuildNavigation",
+      "PrototypeRuntimeSession.Initialize and scenario reset construct a new PrototypeSettlementSimulation",
+      "PrototypeRuntimeSession.ApplySnapshot constructs a new candidate simulation and LoadState rebuilds navigation before publication",
+      "SettlementInfrastructure.ClearDerivedPathCacheForPerformance currently clears only _pathCache and must clear any persistent geometric field under the amended contract"
+    ]
+  },
+  "rejectedAttempt": {
+    "approach": "Skip settlement-anchor geometric-bound construction when ExactTopK would select every unique candidate.",
+    "reasonRejected": "The same exact field is required later by central-depot priority materialization, so the work moved between measured child phases instead of being reliably removed from the reserve-extraction parent.",
+    "originIdentityEvidence": {
+      "artifact": "artifacts/performance/w206-reserve-extraction-optimization-t1/metrics-on/snapshot-v2.json",
+      "settlementAnchor": {
+        "x": 17.0,
+        "y": -5.2571683,
+        "z": -3.0
+      },
+      "centralDepot": {
+        "x": 17.0,
+        "y": -5.2571683,
+        "z": -3.0
+      },
+      "relationship": "equal under Godot's existing exact Vector3 equality semantics in the characterized balanced_basin run"
+    },
+    "diagnosticBoundary": {
+      "reference": "three dirty-source ExportRelease characterization trials recorded in v3-w2-06-reserve-extraction-characterization.json",
+      "rejectedAttempt": "three dirty-source ExportRelease trials under artifacts/performance/w206-reserve-extraction-optimization-t1 through t3; trials 2 and 3 reused trial 1's verified bundle",
+      "configuration": "balanced_basin seed 1337, 16 citizens, two warmup ticks, 300 measured ticks, cold cache, exact_branch_and_bound, exact_bounded, cached_distance_only",
+      "rejectedAnalysisPath": "artifacts/performance/w206-reserve-extraction-optimization-analysis.json",
+      "rejectedAnalysisSha256": "3f3ea83f185c1664db7751220db478df8ab41066c17c5a9407199769b6cc9126",
+      "cannotSatisfyCleanGate": true
+    },
+    "trialResults": [
+      {
+        "trial": 1,
+        "referenceCandidateTotalMilliseconds": 3485.1151,
+        "rejectedCandidateTotalMilliseconds": 810.469,
+        "candidateReductionPercent": 76.744843,
+        "referenceCandidateMedianMilliseconds": 8.69975,
+        "rejectedCandidateMedianMilliseconds": 0.1201,
+        "referenceRetainedTotalMilliseconds": 33.8273,
+        "rejectedRetainedTotalMilliseconds": 2575.2699,
+        "retainedIncreaseMilliseconds": 2541.4426,
+        "referenceRetainedMedianMilliseconds": 0.02905,
+        "rejectedRetainedMedianMilliseconds": 8.48185,
+        "referenceParentTotalMilliseconds": 3718.6554,
+        "rejectedParentTotalMilliseconds": 3564.0556,
+        "parentChangePercent": -4.157411,
+        "deterministicStateAndEventSha256": "7fe45268e67b8dff1da6bbcf785dc996e275fd1d814e713fe83d50873d5cab8e"
+      },
+      {
+        "trial": 2,
+        "referenceCandidateTotalMilliseconds": 3379.2509,
+        "rejectedCandidateTotalMilliseconds": 878.7722,
+        "candidateReductionPercent": 73.995059,
+        "referenceCandidateMedianMilliseconds": 8.64295,
+        "rejectedCandidateMedianMilliseconds": 0.12855,
+        "referenceRetainedTotalMilliseconds": 31.0985,
+        "rejectedRetainedTotalMilliseconds": 2612.5222,
+        "retainedIncreaseMilliseconds": 2581.4237,
+        "referenceRetainedMedianMilliseconds": 0.0292,
+        "rejectedRetainedMedianMilliseconds": 8.4429,
+        "referenceParentTotalMilliseconds": 3616.9124,
+        "rejectedParentTotalMilliseconds": 3692.7458,
+        "parentChangePercent": 2.096634,
+        "deterministicStateAndEventSha256": "7fe45268e67b8dff1da6bbcf785dc996e275fd1d814e713fe83d50873d5cab8e"
+      },
+      {
+        "trial": 3,
+        "referenceCandidateTotalMilliseconds": 3458.9627,
+        "rejectedCandidateTotalMilliseconds": 802.9365,
+        "candidateReductionPercent": 76.786784,
+        "referenceCandidateMedianMilliseconds": 8.56415,
+        "rejectedCandidateMedianMilliseconds": 0.11,
+        "referenceRetainedTotalMilliseconds": 31.0336,
+        "rejectedRetainedTotalMilliseconds": 2535.8522,
+        "retainedIncreaseMilliseconds": 2504.8186,
+        "referenceRetainedMedianMilliseconds": 0.0294,
+        "rejectedRetainedMedianMilliseconds": 8.3072,
+        "referenceParentTotalMilliseconds": 3695.9159,
+        "rejectedParentTotalMilliseconds": 3497.7628,
+        "parentChangePercent": -5.361407,
+        "deterministicStateAndEventSha256": "7fe45268e67b8dff1da6bbcf785dc996e275fd1d814e713fe83d50873d5cab8e"
+      }
+    ],
+    "behaviorValidationBeforeRollback": {
+      "controlledDirectReference": "1/1 passed",
+      "fiveShippedScenarioThreeHundredTickDifferentials": "5/5 passed with exact per-tick and final serialization plus cumulative SHA-256",
+      "checkpointResumeDifferential": "1/1 passed",
+      "focusedExtractionPlanningSuite": "41/41 passed",
+      "builds": "Debug, Release, and ExportRelease each passed with 0 warnings and 0 errors",
+      "godot": "23 passed, 0 failed",
+      "analyzers": "generic performance, BuildWorkOrders, and reserve-extraction PowerShell 5.1 suites passed"
+    },
+    "disposition": "Rejected implementation and tests were restored to HEAD 4fa065b; no optimization remains in production source."
+  },
+  "candidateOnlyContractFinding": {
+    "status": "insufficient_surface",
+    "finding": "Candidate-only logic can avoid the first request but cannot eliminate construction because retained priority evaluation immediately requests the identical anchor/depot field.",
+    "whyPureAllocationWorkIsInsufficient": "After removing the field build from the candidate phase, the residual candidate construction median was only 0.1100 to 0.12855 ms while the later field build was 8.3072 to 8.48185 ms median. LINQ/list allocation cleanup within candidate construction therefore cannot plausibly remove the measured shared field cost.",
+    "requiredAmendment": "Authorize lifecycle reuse of the immutable geometric-distance field across ticks for stable origins while retaining the existing per-tick behavior as an internal reference."
+  },
+  "proposedContractAmendment": {
+    "productValueGate": "Remove repeated construction of the same immutable settlement-anchor/central-depot geometric field from the reserve-extraction parent without changing pathfinding, lower-bound values, work orders, deterministic state, or any public/persistent contract.",
+    "proposedProductionSurface": [
+      "src/societies/scripts/simulation/SettlementSimulation.cs: cache ownership, stable-origin cache storage, internal reference mode, private/internal hit/build/clear counters, and per-tick ephemeral-cache lifecycle",
+      "src/societies/scripts/simulation/SettlementInfrastructure.cs: exact key construction, stable-versus-ephemeral lookup, invalidation, performance-cache clearing, and private/internal hit/build/clear counter updates",
+      "src/societies/scripts/simulation/PrototypeNavigation.cs: internal read-only grid identity descriptor only if required to bind every key input explicitly; no pathfinding or field algorithm change",
+      "focused tests under tests/Societies.Core.Tests/Simulation; runtime/persistence tests only where needed for restore and encapsulation proof",
+      "tests/test-manifest.json and one implementation-validation evidence JSON after implementation"
+    ],
+    "forbiddenProductionSurface": [
+      "SettlementEconomy candidate, frontier, priority, materialization, work-order, claim, or fallback algorithms",
+      "SettlementCitizen selection or assignment algorithms",
+      "PrototypeNavigationGrid pathfinding, neighbor ordering, field distance arithmetic, float operation order, walkability, or traversal policy",
+      "public constructors, startup flags, command-line flags, persistence schemas, snapshots, event formats, thresholds, feature scope, or release limits"
+    ],
+    "cacheArchitecture": {
+      "stableCrossTickCache": "A simulation-owned bounded cache for exact settlement-anchor and central-depot origins only. Current balanced_basin collapses these Godot-exact-equal origins to one entry; the hard capacity is two entries.",
+      "ephemeralPerTickCache": "Keep the current per-tick cache semantics for all other origins, including moving citizen positions; clear these entries at each Advance exactly as today.",
+      "fieldImmutability": "PrototypeNavigationGrid.GeometricDistanceField is immutable after construction and owns its exact grid reference, exact origin, origin cell index, and grid-sized float distance array.",
+      "destinationDomain": "Destination eligibility is not a field-key input because the field covers every walkable destination cell in the current grid. Eligible destination sets only decide whether ShouldBuildGeometricDistanceField reaches the construction threshold.",
+      "referenceMode": "An internal, non-persistent opt-in mode retains the current per-tick rebuild behavior for direct differential tests. Metrics-off/default runtime uses stable-cache reuse.",
+      "noHiddenExternalFlag": true
+    },
+    "exactCacheKeyContract": {
+      "navigationGridInstanceIdentity": "Reference identity of the exact current PrototypeNavigationGrid. This composite identity owns the world-map instance, grid cells, neighbor topology, world positions, accessibility mask, built-path flags, and traversal multipliers.",
+      "navigationRulesVersion": "Exact _navigationRulesVersion and PrototypeNavigationGrid.RulesVersion; mismatch is a miss and invalidates the entry.",
+      "gridShape": "Exact GridWidth, GridHeight, cell count, and bit-exact cell-size value from the current WorldMapState.",
+      "origin": "Godot's existing exact Vector3 equality semantics plus resolved origin grid X/Y identity. Approximate equality, including IsEqualApprox-style matching, is explicitly forbidden; same-cell origins that are not exactly equal remain distinct.",
+      "accessibilityAndTopology": "Bound to current grid instance and rules version, which encapsulate wetland exclusion, slope <= 18 degrees, diagonal corner-cut rejection, cell world positions, and neighbor topology.",
+      "movementAndBuiltPathCosts": "Geometric field arithmetic uses geometric neighbor distances, not movement-cost or built-path traversal multipliers. Nevertheless any current or future movement/rules/cost version change must conservatively rebuild navigation and invalidate stable fields before reuse.",
+      "lookupValidation": "A cache hit requires ReferenceEquals(entry.Grid, _navigationGrid), matching rules version, Godot exact Vector3 origin equality, and matching resolved origin-cell identity. Approximate Vector3 equality is never accepted. Any mismatch removes or bypasses the entry and rebuilds."
+    },
+    "authoritativeLifecycleAndInvalidation": {
+      "construct": "Build only after the existing ShouldBuildGeometricDistanceField threshold passes; never eagerly prefill.",
+      "reuse": "Reuse only stable-origin entries whose complete key and entry validation match. A hit performs no field allocation and no field rebuild.",
+      "advance": "Clear only ephemeral arbitrary-origin entries per tick; preserve valid stable entries in optimized/default mode. Reference mode clears both.",
+      "rebuildNavigation": "Clear both stable and ephemeral field caches before replacing _navigationGrid, whether the rebuild is initial, restoration-driven, or rule-change-driven.",
+      "invalidateNavigation": "Increment rules version, clear all field caches through RebuildNavigation, and prove the first post-change lookup uses the new grid/version.",
+      "loadStateAndRestore": "LoadState must end with empty derived caches bound to the newly rebuilt grid. ApplySnapshot publishes only the candidate simulation after its rebuild succeeds.",
+      "scenarioResetAndInitialize": "New PrototypeSettlementSimulation construction starts with empty caches; GameManager scenario switches and PrototypeRuntimeSession.Initialize cannot carry entries across worlds.",
+      "performanceCacheClear": "ClearDerivedPathCacheForPerformance must clear stable and ephemeral geometric fields as well as _pathCache so cold/forced-invalidation evidence cannot inherit a warm lower-bound field.",
+      "futureRuleOrCostMutation": "Any new walkability, neighbor topology, cell world-position, grid size/cell size, movement/accessibility, or geometric-distance rule mutation must route through navigation rebuild and full field-cache invalidation before becoming authoritative."
+    },
+    "memoryAndConcurrency": {
+      "stableEntryCapacity": 2,
+      "stableEntryEligibility": [
+        "_world.SettlementSpawn.AnchorPosition under Godot exact Vector3 equality",
+        "_centralDepot.Position under Godot exact Vector3 equality"
+      ],
+      "eviction": "No unbounded LRU. At most two stable keys exist; on an unexpected third stable key or key replacement, clear stale/non-current entries first and deterministically replace only the matching named stable-origin slot.",
+      "ephemeralBound": "Arbitrary origins remain bounded to one tick and are cleared at Advance; no moving citizen origin may enter the cross-tick cache.",
+      "estimatedEntryPayload": "One float per grid cell plus the existing immutable field object and key; maximum persistent payload is two fields for the current grid.",
+      "threadAssumption": "PrototypeSettlementSimulation Advance and all cache mutation are single-thread owned. No lock is added. Parallel simulation access is unsupported; introducing it requires a new review and synchronization contract.",
+      "persistence": "Derived field entries, cache keys, private/internal counters, and reference mode are never serialized, hashed into gameplay state, exported in public snapshots, or restored from disk.",
+      "counterVisibility": "Stable-cache hit, build, and clear counters remain private/internal and are read only through internal managed probes/tests. They are absent from persistence, public output, runtime CSV, performance/equivalence JSON, run summaries, world summaries, validation manifests, and generated artifacts.",
+      "publicSurface": "No public API, startup, CLI, GameManager, persistence, schema, or artifact contract gains a behavior selector."
+    },
+    "exactBehaviorToPreserve": [
+      "bit-identical lower-bound float results for every queried origin/destination and identical conservative fallback when a field cannot answer",
+      "byte-identical ordered final work orders, IDs, priorities, directive metadata, targets, and virtual uncapped counts",
+      "identical claims, duplicate/collision fallback, frontier capacity, priority and ordinal ties, path queries, lightweight-frontier activations, unreachable behavior, and navigation versions",
+      "identical assignments, workers including route float bits, resources, events, snapshots, checkpoint resumes, and deterministic state/event hashes",
+      "metrics-off default performs no diagnostic clock reads or CSV writes; private/internal counters are allocation-free scalar updates validated only by internal managed probes and absent from every persistence, public, CSV, JSON, summary, and artifact surface"
+    ],
+    "requiredTests": {
+      "directFieldLifecycle": [
+        "first stable lookup builds once; repeated same-tick and cross-tick exact-origin lookups hit and return bit-identical values",
+        "same-cell origins that are unequal under Godot exact Vector3 equality do not alias; approximate equality is never used",
+        "anchor/depot origins equal under Godot exact Vector3 equality and with the same resolved cell share one entry; distinct exact origins use at most two",
+        "moving citizen origins remain per-tick and never increase stable cache size",
+        "unwalkable origin, blocked destination, unreachable topology, same-cell endpoints, and float endpoint offsets preserve reference results",
+        "private/internal stable-cache hit/build/clear counters prove lifecycle behavior only through internal managed probes/tests and never enter persistence, public output, runtime CSV, performance/equivalence JSON, summaries, or artifacts"
+      ],
+      "invalidationAndRestore": [
+        "RebuildNavigation clears both cache domains and no entry retains the prior grid reference",
+        "natural built-path completion and forced invalidation increment rules version and force the first correct new-version build",
+        "ClearDerivedPathCacheForPerformance empties path plus stable/ephemeral field caches",
+        "snapshot restore and checkpoint resume start with empty derived caches and then match reference per tick",
+        "scenario reset/world regeneration, dimensions/cell-size changes, accessibility-mask changes, and rules/cost version changes cannot reuse an old field"
+      ],
+      "behaviorDifferentials": [
+        "optimized/default versus per-tick reference across zero/one/many claims, prefixes, duplicate collisions, capacity/tie, all resource classes, omission, uncapped/exhaustive, reachable/unreachable, all directives, and lightweight-frontier cases",
+        "all five shipped scenarios for 300 ticks with exact per-tick work-order/assignment/resource/event/snapshot/probe differentials and final deterministic hashes",
+        "checkpoint at a nonzero tick, serialize/deserialize, resume optimized and reference, and compare every remaining tick exactly"
+      ],
+      "encapsulation": [
+        "reflection/static source assertions show no stable cache, reference selector, or counters in public constructors, startup parsing, persistence models, snapshot JSON, event logs, runtime CSV, performance/equivalence JSON, summaries, generated artifacts, or deterministic hashes",
+        "reference mode can be selected only internally before field use and cannot change mid-run"
+      ]
+    },
+    "requiredValidation": [
+      "focused managed lifecycle and differential tests plus the complete manifest-owned managed suite",
+      "Debug, Release, and ExportRelease builds with 0 warnings and 0 errors",
+      "Godot headless exact declared count",
+      "all PowerShell 5.1 analyzer compatibility suites",
+      "bounded dirty three-trial ExportRelease reference/optimized diagnostics from one verified bundle proving selected-phase and reserve-parent timing, identical path/query behavior, allocation changes only where already externally observable, identical deterministic hashes, and no phase shift; diagnostics never assert private counter values",
+      "independent determinism/performance deep review before commit or delivery",
+      "JSON parsing, bound-file hashes, deterministic evidence regeneration, and git diff --check"
+    ],
+    "cleanCanonicalMatrixHardSafetyGate": {
+      "requiredBeforeW206CompletionOrDelivery": true,
+      "route": "fresh clean committed 14-pair ExportRelease canonical matrix after independent review",
+      "requiredResults": [
+        "reference median p95 <= 50 ms",
+        "reference median maximum <= 250 ms",
+        "both soak p95 and maximum safety limits pass",
+        "forced-invalidation transition and timing contract passes with the persistent field cache explicitly cleared",
+        "all 14 matrix pairs, equivalence, deterministic-hash, schema, artifact-binding, metrics-off absence, and cache-mode contracts pass; private field-cache counter values are not matrix or artifact contracts"
+      ],
+      "dirtySourceBoundary": "Dirty-source diagnostics and this design artifact cannot satisfy or replace the clean canonical hard-safety gate.",
+      "failureDisposition": "Any failed required result leaves W2-06 incomplete and undeliverable, keeps Stop Feature Expansion active, and makes the optimization unmergeable."
+    },
+    "rollbackAndStopConditions": [
+      "revert if any direct/reference lower-bound value or float bit differs",
+      "revert if any ordered work order, assignment, route, worker, resource, event, snapshot, checkpoint, or deterministic hash differs",
+      "revert if a stale grid/rules/world/accessibility entry survives any invalidation, restore, reset, or performance-cache clear",
+      "revert if moving origins can grow persistent memory beyond two entries or if concurrent mutation is introduced without a new contract",
+      "revert if bounded dirty diagnostics show phase movement without reserve-parent improvement",
+      "do not merge if any full validation or clean canonical safety-gate condition fails; Stop Feature Expansion remains active"
+    ]
+  },
+  "limitations": [
+    "No shared geometric-field lifecycle optimization is implemented by this artifact.",
+    "Rejected diagnostics are dirty-source characterization and are used only to explain the contract amendment.",
+    "The proposed exact key and invalidation contract requires independent architecture, determinism, and performance review before production edits.",
+    "W2-06 remains Stop Feature Expansion and no delivery, threshold change, commit, push, PR, or merge is authorized."
+  ]
+}
