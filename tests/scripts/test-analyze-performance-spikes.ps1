@@ -111,7 +111,7 @@ function New-RunFixture {
         [int]$TrialIndex,
         [object[]]$Rows,
         [switch]$OmitSceneSyncColumn,
-        [ValidateSet(4, 5)][int]$RuntimeSchemaVersion = 4
+        [ValidateSet(4, 5, 6)][int]$RuntimeSchemaVersion = 4
     )
     $metricsDirectory = Join-Path (Join-Path $Root $CaseId) "metrics-on"
     [System.IO.Directory]::CreateDirectory($metricsDirectory) | Out-Null
@@ -156,11 +156,17 @@ function New-RunFixture {
                 $record[$entry.Key] = $entry.Value
             }
         }
-        if ($RuntimeSchemaVersion -eq 5) {
+        if ($RuntimeSchemaVersion -ge 5) {
             $record["build_work_orders_input_preparation_ms"] = 1.0
             $record["build_work_orders_non_extraction_ms"] = 5.0
             $record["build_work_orders_reserve_extraction_ms"] = 20.0
             $record["build_work_orders_finalization_ms"] = 4.0
+        }
+        if ($RuntimeSchemaVersion -eq 6) {
+            $record["reserve_extraction_class_preparation_ms"] = 2.0
+            $record["reserve_extraction_candidate_enumeration_and_bound_selection_ms"] = 8.0
+            $record["reserve_extraction_active_frontier_and_claim_evaluation_ms"] = 7.0
+            $record["reserve_extraction_retained_materialization_ms"] = 2.0
         }
         [pscustomobject]$record
     })
@@ -208,7 +214,7 @@ try {
     & $AnalyzerPath -InputPath $validInputs -OutputPath $validOutput2 | Out-Null
     $analysis = Get-Content -Raw -LiteralPath $validOutput1 | ConvertFrom-Json
     $repeatability = @($analysis.repeatedSpikeTickSetIdentity)[0]
-    Assert-True ($analysis.schemaVersion -eq 3 -and $analysis.analyzerVersion -eq "2.2.0") "Analyzer schema/version mismatch."
+    Assert-True ($analysis.schemaVersion -eq 3 -and $analysis.analyzerVersion -eq "2.3.0") "Analyzer schema/version mismatch."
     Assert-True (($analysis.runtimeMetricsSchemaVersions -join ',') -eq "4") "Historical v4 analysis schema provenance is missing."
     Assert-True ($analysis.runtimeMetricsSchemaVersion -eq 4) "Historical v4 scalar schema provenance must remain available."
     Assert-True ($repeatability.allRunsExactTickSetIdentity -eq $false) "Unequal fixture spike sets must not report exact identity."
@@ -228,6 +234,15 @@ try {
     Assert-True (($v5Analysis.runtimeMetricsSchemaVersions -join ',') -eq "5") "Runtime v5 analysis schema provenance is missing."
     Assert-True ($v5Analysis.runtimeMetricsSchemaVersion -eq 5) "Runtime v5 scalar schema provenance is missing."
     Assert-True ($v5Analysis.runs[0].runtimeMetricsSchemaVersion -eq 5) "Runtime v5 run provenance is missing."
+
+    $v6Root = Join-Path $ownedRoot "v6"
+    $v6Input = New-RunFixture $v6Root "trial-1" 1 @((New-MetricsRow 0 60.0)) -RuntimeSchemaVersion 6
+    $v6Output = Join-Path $v6Root "analysis.json"
+    & $AnalyzerPath -InputPath @($v6Input) -OutputPath $v6Output | Out-Null
+    $v6Analysis = Get-Content -Raw -LiteralPath $v6Output | ConvertFrom-Json
+    Assert-True (($v6Analysis.runtimeMetricsSchemaVersions -join ',') -eq "6") "Runtime v6 analysis schema provenance is missing."
+    Assert-True ($v6Analysis.runtimeMetricsSchemaVersion -eq 6) "Runtime v6 scalar schema provenance is missing."
+    Assert-True ($v6Analysis.runs[0].runtimeMetricsSchemaVersion -eq 6) "Runtime v6 run provenance is missing."
 
     $mixedRoot = Join-Path $ownedRoot "mixed"
     $mixedInputs = @(
@@ -283,7 +298,7 @@ try {
     Write-Utf8NoBom (Join-Path $deepJsonInput "perf-results.json") ((('[' * 65) + '0' + (']' * 65)))
     Invoke-ExpectedFailure @($deepJsonInput) (Join-Path $deepJsonRoot "analysis.json") "nesting depth"
 
-    Write-Output "PASS: analyzer v4/v5 provenance, mixed-schema rejection, determinism, attribution, malformed inputs, and bounded JSON/CSV parser cases"
+    Write-Output "PASS: analyzer v4/v5/v6 provenance, mixed-schema rejection, determinism, attribution, malformed inputs, and bounded JSON/CSV parser cases"
 }
 finally {
     $expectedPrefix = $resolvedTemporaryRoot + '\'

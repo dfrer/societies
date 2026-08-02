@@ -130,7 +130,18 @@ namespace Societies.Core.Tests
             clock.AdvanceMilliseconds(2);
             nonExtraction.Complete();
             RuntimeMetricsPhaseToken reserveExtraction = collector.BeginPhase(RuntimeMetricsPhase.BuildWorkOrdersReserveExtraction);
-            clock.AdvanceMilliseconds(3);
+            RuntimeMetricsPhaseToken classPreparation = collector.BeginPhase(RuntimeMetricsPhase.ReserveExtractionClassPreparation);
+            clock.AdvanceMilliseconds(0.5);
+            classPreparation.Complete();
+            RuntimeMetricsPhaseToken candidateSelection = collector.BeginPhase(RuntimeMetricsPhase.ReserveExtractionCandidateEnumerationAndBoundSelection);
+            clock.AdvanceMilliseconds(1.0);
+            candidateSelection.Complete();
+            RuntimeMetricsPhaseToken frontierEvaluation = collector.BeginPhase(RuntimeMetricsPhase.ReserveExtractionActiveFrontierAndClaimEvaluation);
+            clock.AdvanceMilliseconds(1.0);
+            frontierEvaluation.Complete();
+            RuntimeMetricsPhaseToken retainedMaterialization = collector.BeginPhase(RuntimeMetricsPhase.ReserveExtractionRetainedMaterialization);
+            clock.AdvanceMilliseconds(0.5);
+            retainedMaterialization.Complete();
             reserveExtraction.Complete();
             RuntimeMetricsPhaseToken finalization = collector.BeginPhase(RuntimeMetricsPhase.BuildWorkOrdersFinalization);
             clock.AdvanceMilliseconds(4);
@@ -144,6 +155,16 @@ namespace Societies.Core.Tests
             Assert.Equal(2.0, phases.BuildWorkOrdersNonExtractionMilliseconds);
             Assert.Equal(3.0, phases.BuildWorkOrdersReserveExtractionMilliseconds);
             Assert.Equal(4.0, phases.BuildWorkOrdersFinalizationMilliseconds);
+            Assert.Equal(0.5, phases.ReserveExtractionClassPreparationMilliseconds);
+            Assert.Equal(1.0, phases.ReserveExtractionCandidateEnumerationAndBoundSelectionMilliseconds);
+            Assert.Equal(1.0, phases.ReserveExtractionActiveFrontierAndClaimEvaluationMilliseconds);
+            Assert.Equal(0.5, phases.ReserveExtractionRetainedMaterializationMilliseconds);
+            Assert.Equal(
+                phases.BuildWorkOrdersReserveExtractionMilliseconds,
+                phases.ReserveExtractionClassPreparationMilliseconds +
+                phases.ReserveExtractionCandidateEnumerationAndBoundSelectionMilliseconds +
+                phases.ReserveExtractionActiveFrontierAndClaimEvaluationMilliseconds +
+                phases.ReserveExtractionRetainedMaterializationMilliseconds);
             Assert.Equal(
                 phases.BuildWorkOrdersMilliseconds,
                 phases.BuildWorkOrdersInputPreparationMilliseconds +
@@ -299,13 +320,13 @@ namespace Societies.Core.Tests
                     .Split('\n', StringSplitOptions.RemoveEmptyEntries);
 
                 Assert.Equal(3, lines.Length);
-                Assert.Equal(40, lines[0].Split(',').Length);
-                Assert.Equal(40, lines[1].Split(',').Length);
+                Assert.Equal(44, lines[0].Split(',').Length);
+                Assert.Equal(44, lines[1].Split(',').Length);
                 Assert.Equal(string.Empty, lines[1].Split(',')[16]);
                 Assert.Equal(string.Empty, lines[1].Split(',')[21]);
                 Assert.Equal(string.Empty, lines[1].Split(',')[23]);
                 Assert.Equal(string.Empty, lines[1].Split(',')[26]);
-                Assert.Equal(40, lines[2].Split(',').Length);
+                Assert.Equal(44, lines[2].Split(',').Length);
                 Assert.Equal("path_plan_cache_misses_total", lines[0].Split(',')[20]);
                 Assert.Equal("navigation_rebuild_ms", lines[0].Split(',')[27]);
                 Assert.Equal("route_selection_ms", lines[0].Split(',')[28]);
@@ -313,6 +334,10 @@ namespace Societies.Core.Tests
                 Assert.Equal("selector_selected_route_reuses_total", lines[0].Split(',')[35]);
                 Assert.Equal("build_work_orders_input_preparation_ms", lines[0].Split(',')[36]);
                 Assert.Equal("build_work_orders_finalization_ms", lines[0].Split(',')[39]);
+                Assert.Equal("reserve_extraction_class_preparation_ms", lines[0].Split(',')[40]);
+                Assert.Equal("reserve_extraction_candidate_enumeration_and_bound_selection_ms", lines[0].Split(',')[41]);
+                Assert.Equal("reserve_extraction_active_frontier_and_claim_evaluation_ms", lines[0].Split(',')[42]);
+                Assert.Equal("reserve_extraction_retained_materialization_ms", lines[0].Split(',')[43]);
                 Assert.Equal("1.5", lines[2].Split(',')[26]);
                 Assert.Equal("0.25", lines[2].Split(',')[27]);
                 Assert.Equal("4", lines[2].Split(',')[32]);

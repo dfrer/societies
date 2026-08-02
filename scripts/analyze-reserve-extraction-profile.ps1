@@ -9,7 +9,7 @@ param(
 $ErrorActionPreference = "Stop"
 
 $repoRoot = [System.IO.Path]::GetFullPath((Split-Path -Parent $PSScriptRoot)).TrimEnd('\')
-$analyzerVersion = "2.0.0"
+$analyzerVersion = "1.1.0"
 $negativeResidualToleranceMilliseconds = 0.001
 $parentWallToleranceMilliseconds = 0.001
 $maximumJsonBytes = 2MB
@@ -17,18 +17,20 @@ $maximumCsvBytes = 4MB
 $maximumCsvLines = 301
 $maximumCsvLineCharacters = 16384
 $maximumJsonNestingDepth = 32
-$runtimeFileNames = @("runtime-batch-metrics-v5.csv", "runtime-batch-metrics-v6.csv")
+$runtimeFileNames = @("runtime-batch-metrics-v6.csv")
 $requiredColumns = @(
     "sequence", "batch_kind", "start_simulation_tick", "end_simulation_tick", "completed_ticks",
-    "wall_ms", "build_work_orders_ms", "build_work_orders_input_preparation_ms",
-    "build_work_orders_non_extraction_ms", "build_work_orders_reserve_extraction_ms",
-    "build_work_orders_finalization_ms"
+    "wall_ms", "build_work_orders_ms", "build_work_orders_reserve_extraction_ms",
+    "reserve_extraction_class_preparation_ms",
+    "reserve_extraction_candidate_enumeration_and_bound_selection_ms",
+    "reserve_extraction_active_frontier_and_claim_evaluation_ms",
+    "reserve_extraction_retained_materialization_ms"
 )
 $profileMetrics = [ordered]@{
-    input_preparation = "inputPreparationMilliseconds"
-    non_extraction = "nonExtractionMilliseconds"
-    reserve_extraction = "reserveExtractionMilliseconds"
-    finalization = "finalizationMilliseconds"
+    class_preparation = "classPreparationMilliseconds"
+    candidate_enumeration_and_bound_selection = "candidateEnumerationAndBoundSelectionMilliseconds"
+    active_frontier_and_claim_evaluation = "activeFrontierAndClaimEvaluationMilliseconds"
+    retained_materialization = "retainedMaterializationMilliseconds"
 }
 
 function Write-Utf8NoBom {
@@ -275,15 +277,13 @@ function Get-ProfileSummary {
     $metrics.children_total = Get-Statistics $childTotalValues
     $metrics.residual = Get-Statistics $residualValues
 
-    $dominantName = $null
-    $dominantTotal = -1.0
-    foreach ($entry in $profileMetrics.GetEnumerator()) {
-        $total = [double]$metrics[[string]$entry.Key].totalMilliseconds
-        if ($total -gt $dominantTotal) {
-            $dominantName = [string]$entry.Key
-            $dominantTotal = $total
-        }
-    }
+    $maximumTotal = [double](($profileMetrics.GetEnumerator() | ForEach-Object {
+        [double]$metrics[[string]$_.Key].totalMilliseconds
+    } | Measure-Object -Maximum).Maximum)
+    $maximumCategories = @($profileMetrics.GetEnumerator() | Where-Object {
+        [double]$metrics[[string]$_.Key].totalMilliseconds -eq $maximumTotal
+    } | ForEach-Object { [string]$_.Key })
+    $hasUniquePositiveMaximum = $maximumTotal -gt 0.0 -and $maximumCategories.Count -eq 1
     return [ordered]@{
         sampleCount = $Ticks.Count
         metrics = $metrics
@@ -294,9 +294,11 @@ function Get-ProfileSummary {
             exactRoundedIdentity = (Round-Value ([double]$metrics.children_total.totalMilliseconds + [double]$metrics.residual.totalMilliseconds)) -eq [double]$metrics.parent.totalMilliseconds
         }
         dominantExercisedSubCost = [ordered]@{
-            category = $dominantName
-            totalMilliseconds = Round-Value ([Math]::Max(0.0, $dominantTotal))
-            parentSharePercent = if ($metrics.parent.totalMilliseconds -le 0.0) { 0.0 } else { Round-Value (100.0 * $dominantTotal / [double]$metrics.parent.totalMilliseconds) }
+            category = if ($hasUniquePositiveMaximum) { $maximumCategories[0] } else { $null }
+            totalMilliseconds = Round-Value ([Math]::Max(0.0, $maximumTotal))
+            parentSharePercent = if ($metrics.parent.totalMilliseconds -le 0.0) { 0.0 } else { Round-Value (100.0 * $maximumTotal / [double]$metrics.parent.totalMilliseconds) }
+            uniquePositiveMaximum = $hasUniquePositiveMaximum
+            maximumTiedCategories = if ($maximumCategories.Count -gt 1) { $maximumCategories } else { @() }
         }
     }
 }
@@ -306,7 +308,7 @@ if ([double]::IsNaN($SpikeThresholdMilliseconds) -or
     $SpikeThresholdMilliseconds -le 0.0) {
     throw "SpikeThresholdMilliseconds must be finite and positive."
 }
-if ($InputPath.Count -ne 3) { throw "BuildWorkOrders profile analysis requires exactly 3 input paths." }
+if ($InputPath.Count -ne 3) { throw "Reserve-extraction profile analysis requires exactly 3 input paths." }
 
 $runtimePaths = New-Object System.Collections.Generic.List[string]
 foreach ($input in $InputPath) {
@@ -328,7 +330,7 @@ foreach ($input in $InputPath) {
     throw "No direct supported runtime metrics artifact was found under: $($item.FullName)"
 }
 $runtimePaths = @($runtimePaths | Sort-Object -Unique)
-if ($runtimePaths.Count -ne 3) { throw "BuildWorkOrders profile analysis requires exactly 3 distinct runtime metrics artifacts." }
+if ($runtimePaths.Count -ne 3) { throw "Reserve-extraction profile analysis requires exactly 3 distinct runtime metrics artifacts." }
 
 $internalRuns = New-Object System.Collections.Generic.List[object]
 $runOutputs = New-Object System.Collections.Generic.List[object]
@@ -339,7 +341,7 @@ $sourceDirty = $null
 $trialIndexes = New-Object 'System.Collections.Generic.HashSet[int]'
 
 foreach ($runtimePath in $runtimePaths) {
-    $runtimeMetricsSchemaVersion = if ((Split-Path -Leaf $runtimePath) -eq "runtime-batch-metrics-v6.csv") { 6 } else { 5 }
+    $runtimeMetricsSchemaVersion = 6
     $runtimeFileName = Split-Path -Leaf $runtimePath
     $runDirectory = Split-Path -Parent $runtimePath
     $pairDirectory = Split-Path -Parent $runDirectory
@@ -358,7 +360,7 @@ foreach ($runtimePath in $runtimePaths) {
 
     if ([int](Require-Property $result "schemaVersion" $resultPath) -ne 6 -or
         [int](Require-Property $equivalence "schemaVersion" $equivalencePath) -ne 6) {
-        throw "BuildWorkOrders profile evidence requires performance and equivalence schemaVersion 6: $runDirectory"
+        throw "Reserve-extraction profile evidence requires performance and equivalence schemaVersion 6: $runDirectory"
     }
     if ((Require-Property $configuration "metricsEnabled" $resultPath) -ne $true) {
         throw "The analyzed result is not metrics-on: $resultPath"
@@ -467,7 +469,7 @@ foreach ($runtimePath in $runtimePaths) {
     $header = Get-Content -LiteralPath $runtimePath -TotalCount 1
     if ([string]::IsNullOrWhiteSpace($header)) { throw "Runtime CSV is empty: $runtimePath" }
     $columns = @($header.Split(','))
-    $expectedColumnCount = if ($runtimeMetricsSchemaVersion -eq 6) { 44 } else { 40 }
+    $expectedColumnCount = 44
     if ($columns.Count -ne $expectedColumnCount) { throw "Runtime CSV schema v$runtimeMetricsSchemaVersion must contain exactly $expectedColumnCount columns: $runtimePath" }
     foreach ($required in $requiredColumns) {
         if ($columns -notcontains $required) { throw "Runtime CSV is missing '$required': $runtimePath" }
@@ -499,32 +501,37 @@ foreach ($runtimePath in $runtimePaths) {
         $previousEndTick = $endTick
 
         $wall = Parse-Double $row.wall_ms "$label wall_ms"
-        $parent = Parse-Double $row.build_work_orders_ms "$label build_work_orders_ms"
-        $inputPreparation = Parse-Double $row.build_work_orders_input_preparation_ms "$label build_work_orders_input_preparation_ms"
-        $nonExtraction = Parse-Double $row.build_work_orders_non_extraction_ms "$label build_work_orders_non_extraction_ms"
-        $reserveExtraction = Parse-Double $row.build_work_orders_reserve_extraction_ms "$label build_work_orders_reserve_extraction_ms"
-        $finalization = Parse-Double $row.build_work_orders_finalization_ms "$label build_work_orders_finalization_ms"
-        foreach ($timing in @($wall, $parent, $inputPreparation, $nonExtraction, $reserveExtraction, $finalization)) {
+        $buildWorkOrdersParent = Parse-Double $row.build_work_orders_ms "$label build_work_orders_ms"
+        $parent = Parse-Double $row.build_work_orders_reserve_extraction_ms "$label build_work_orders_reserve_extraction_ms"
+        $classPreparation = Parse-Double $row.reserve_extraction_class_preparation_ms "$label reserve_extraction_class_preparation_ms"
+        $candidateEnumerationAndBoundSelection = Parse-Double $row.reserve_extraction_candidate_enumeration_and_bound_selection_ms "$label reserve_extraction_candidate_enumeration_and_bound_selection_ms"
+        $activeFrontierAndClaimEvaluation = Parse-Double $row.reserve_extraction_active_frontier_and_claim_evaluation_ms "$label reserve_extraction_active_frontier_and_claim_evaluation_ms"
+        $retainedMaterialization = Parse-Double $row.reserve_extraction_retained_materialization_ms "$label reserve_extraction_retained_materialization_ms"
+        foreach ($timing in @($wall, $buildWorkOrdersParent, $parent, $classPreparation, $candidateEnumerationAndBoundSelection, $activeFrontierAndClaimEvaluation, $retainedMaterialization)) {
             if ($timing -lt 0.0) { throw "Runtime CSV timing fields must be non-negative: $label" }
         }
-        if ($parent -gt ($wall + $parentWallToleranceMilliseconds)) {
+        if ($buildWorkOrdersParent -gt ($wall + $parentWallToleranceMilliseconds)) {
             throw "BuildWorkOrders parent exceeds wall_ms beyond tolerance: $label"
         }
-        $childTotal = $inputPreparation + $nonExtraction + $reserveExtraction + $finalization
+        if ($parent -gt ($buildWorkOrdersParent + $parentWallToleranceMilliseconds)) {
+            throw "Reserve-extraction parent exceeds BuildWorkOrders beyond tolerance: $label"
+        }
+        $childTotal = $classPreparation + $candidateEnumerationAndBoundSelection + $activeFrontierAndClaimEvaluation + $retainedMaterialization
         $rawResidual = $parent - $childTotal
         if ($rawResidual -lt -$negativeResidualToleranceMilliseconds) {
-            throw "BuildWorkOrders child phase total exceeds its parent by $([Math]::Abs((Round-Value $rawResidual))) ms: $label"
+            throw "Reserve-extraction child phase total exceeds its parent by $([Math]::Abs((Round-Value $rawResidual))) ms: $label"
         }
         $ticks.Add([pscustomobject][ordered]@{
             sequence = $sequence
             startTick = $startTick
             endTick = $endTick
             wallMilliseconds = $wall
+            buildWorkOrdersParentMilliseconds = $buildWorkOrdersParent
             parentMilliseconds = $parent
-            inputPreparationMilliseconds = $inputPreparation
-            nonExtractionMilliseconds = $nonExtraction
-            reserveExtractionMilliseconds = $reserveExtraction
-            finalizationMilliseconds = $finalization
+            classPreparationMilliseconds = $classPreparation
+            candidateEnumerationAndBoundSelectionMilliseconds = $candidateEnumerationAndBoundSelection
+            activeFrontierAndClaimEvaluationMilliseconds = $activeFrontierAndClaimEvaluation
+            retainedMaterializationMilliseconds = $retainedMaterialization
             childTotalMilliseconds = $childTotal
             residualMilliseconds = [Math]::Max(0.0, $rawResidual)
             residualWasToleranceClamped = $rawResidual -lt 0.0
@@ -585,7 +592,7 @@ foreach ($run in $orderedRunOutputs) {
     $run | Add-Member -MemberType NoteProperty -Name reproductionCommand -Value (
         ".\scripts\run-performance-pair.ps1 $routeArgument -GodotPath '$godotPath' " +
         "-Scenario balanced_basin -Seed 1337 -Citizens 16 -WarmupTicks 2 -Ticks 300 -CacheMode cold " +
-        "-ComparisonGroup w206-build-work-orders-profile -TrialIndex $($run.trialIndex) " +
+        "-ComparisonGroup w206-reserve-extraction-profile -TrialIndex $($run.trialIndex) " +
         "-OutputRoot '$($run.pairRoot)' -AllowDirtySource -AllowPrimarySafetyFailure")
 }
 $commonSpikeTicks = @($orderedInternalRuns[0].spikeTicks)
@@ -631,6 +638,14 @@ foreach ($entry in $profileMetrics.GetEnumerator()) {
 
 $dominantCommonTotal = [double]$aggregateCommonSummary.dominantExercisedSubCost.totalMilliseconds
 $commonParentTotal = [double]$aggregateCommonSummary.metrics.parent.totalMilliseconds
+$perTrialDominantCategories = @($perTrialCommon | ForEach-Object {
+    [string]$_['commonSpikeSummary']['dominantExercisedSubCost']['category']
+})
+$uniquePerTrialDominantCategories = @($perTrialDominantCategories | Sort-Object -Unique)
+$allTrialsHaveUniquePositiveWinner = @($perTrialCommon | Where-Object {
+    $_['commonSpikeSummary']['dominantExercisedSubCost']['uniquePositiveMaximum'] -ne $true
+}).Count -eq 0
+$aggregateHasUniquePositiveWinner = $aggregateCommonSummary.dominantExercisedSubCost.uniquePositiveMaximum -eq $true
 $selectedSubCost = if ($commonSpikeTicks.Count -eq 0) {
     [ordered]@{
         status = "instrumentation_insufficient"
@@ -645,15 +660,78 @@ elseif ($commonParentTotal -le 0.0 -or $dominantCommonTotal -le 0.0) {
         reason = "Common spike samples do not contain positive parent and winning child-phase timings."
     }
 }
+elseif (-not $allTrialsHaveUniquePositiveWinner -or
+    -not $aggregateHasUniquePositiveWinner -or
+    $uniquePerTrialDominantCategories.Count -ne 1 -or
+    $uniquePerTrialDominantCategories[0] -ne $aggregateCommonSummary.dominantExercisedSubCost.category) {
+    [ordered]@{
+        status = "instrumentation_insufficient"
+        category = $null
+        reason = "No unique positive code-level maximum dominates the common spike samples consistently in trials 1, 2, and 3 and in aggregate; ties are non-selectable."
+        perTrialDominantCategories = $perTrialDominantCategories
+        perTrialMaximumTiedCategories = @($perTrialCommon | ForEach-Object {
+            @($_['commonSpikeSummary']['dominantExercisedSubCost']['maximumTiedCategories'])
+        })
+        aggregateMaximumTiedCategories = @($aggregateCommonSummary.dominantExercisedSubCost.maximumTiedCategories)
+    }
+}
 else {
     [ordered]@{
         status = "selected"
         category = $aggregateCommonSummary.dominantExercisedSubCost.category
         totalMilliseconds = $aggregateCommonSummary.dominantExercisedSubCost.totalMilliseconds
         parentSharePercent = $aggregateCommonSummary.dominantExercisedSubCost.parentSharePercent
-        basis = "largest child-phase total across common greater-than-threshold spike occurrences"
+        basis = "single unique positive code-level maximum across common-spike totals in each trial and in aggregate; equal maxima are non-selectable"
+        perTrialDominantCategories = $perTrialDominantCategories
     }
 }
+
+$allowedSurfaceByCategory = [ordered]@{
+    class_preparation = @("AddExtractionOrders resource-class eligibility, priority-bound, and whole-class omission preparation", "pure helpers and focused tests for that preparation only")
+    candidate_enumeration_and_bound_selection = @("AddExtractionOrders candidate construction and exact Top-K bound-selection path", "pure candidate-selection helpers and focused tests only")
+    active_frontier_and_claim_evaluation = @("TryAddLightweightExtractionFrontier active-claim lookup, priority evaluation, and bounded frontier offers", "private claim/frontier helpers and focused tests only")
+    retained_materialization = @("TryAddLightweightExtractionFrontier retained counting and order construction/appends", "CreateExtractionOrder and focused retained-materialization helpers/tests only")
+}
+$optimizationContract = if ($selectedSubCost.status -eq "selected") {
+    [ordered]@{
+        selectedOperation = $selectedSubCost.category
+        exactBehaviorToPreserve = @(
+            "byte-identical ordered final work orders, order IDs, priorities, directive metadata, targets, and virtual uncapped counts",
+            "identical active-claim exclusion, duplicate/collision fallback, strict frontier capacity, priority/tie ordering, path-query behavior, and lightweight-frontier activation semantics",
+            "identical per-tick assignments, worker state, resources, events, snapshots, and deterministic state/event hashes with metrics off and on"
+        )
+        allowedImplementationSurface = $allowedSurfaceByCategory[$selectedSubCost.category]
+        forbiddenSurface = @("public contracts", "runtime snapshot or persistence schemas", "thresholds", "simulation tick/order semantics", "feature scope")
+        referenceAndDifferentialMode = "retain the current selected-operation implementation as an internal opt-in reference; compare reference versus optimized mode per tick across direct fixtures and 300-tick shipped-scenario differentials before performance evidence"
+        requiredRegressionCases = @(
+            "zero/one/many active claims including ordinal prefix lookalikes",
+            "duplicate existing order IDs and extraction-node collisions forcing fallback",
+            "underfilled, exact-capacity, and over-capacity frontiers with equal-priority ordinal ties",
+            "all five resource classes, no eligible sites, whole-class omission, and uncapped/exhaustive fallbacks",
+            "navigation-version changes, reachable/unreachable routes, neutral/FoodAndFuel/Shelter directives, and checkpoint/resume"
+        )
+        fullValidation = @(
+            "fresh focused managed and Godot diagnostic coverage",
+            "complete manifest-owned .NET and exact-count Godot suites",
+            "zero-warning Debug, Release, and ExportRelease builds",
+            "all PowerShell analyzer suites, evidence hash verification, and git diff --check"
+        )
+        cleanCanonicalMatrixHardSafetyGate = [ordered]@{
+            requiredBeforeW206CompletionOrDelivery = $true
+            route = "fresh clean committed 14-pair ExportRelease canonical matrix after independent review"
+            requiredResults = @(
+                "reference median p95 must be less than or equal to 50 ms",
+                "reference median maximum must be less than or equal to 250 ms",
+                "both soak p95 and maximum safety limits must pass",
+                "forced-invalidation transition and timing contract must pass",
+                "all matrix, pair-equivalence, deterministic-hash, artifact-binding, and schema contracts must pass"
+            )
+            failureDisposition = "if any required result fails, W2-06 is not complete or deliverable, Stop Feature Expansion remains active, and the optimization is not mergeable"
+            dirtySourceBoundary = "dirty-source characterization cannot satisfy or replace this clean canonical hard-safety gate"
+        }
+        rollbackCondition = "revert and do not merge the optimization if any direct/reference differential, deterministic hash, artifact/schema contract, build/test gate, canonical matrix/equivalence/hash contract, reference median p95 <= 50 ms, reference median max <= 250 ms, soak safety limit, or forced-invalidation contract fails; Stop Feature Expansion remains active"
+    }
+} else { $null }
 
 $sourceFiles = @(
     "src/societies/scripts/simulation/SettlementEconomy.cs",
@@ -663,7 +741,10 @@ $sourceFiles = @(
     "src/societies/tests/PerfRunner.cs",
     "src/societies/tests/PerformanceRunModels.cs",
     "scripts/run-performance-pair.ps1",
-    "scripts/analyze-build-work-orders-profile.ps1"
+    "scripts/analyze-build-work-orders-profile.ps1",
+    "scripts/analyze-reserve-extraction-profile.ps1",
+    "tests/scripts/test-analyze-reserve-extraction-profile.ps1",
+    "tests/test-manifest.json"
 )
 $sourceFileRecords = @($sourceFiles | ForEach-Object {
     $path = Join-Path $repoRoot $_
@@ -677,10 +758,10 @@ foreach ($path in @($compatibility.processExecutablePath, $compatibility.runnerE
 }
 
 $output = [ordered]@{
-    schemaVersion = 2
+    schemaVersion = 1
     analyzerVersion = $analyzerVersion
-    workItem = "V3-W2-06 BuildWorkOrders diagnostic profiling"
-    status = if ($selectedSubCost.status -eq "selected") { "diagnostic_subcost_selected" } else { "instrumentation_insufficient" }
+    workItem = "V3-W2-06 AddReserveExtractionOrders diagnostic characterization"
+    status = if ($selectedSubCost.status -eq "selected") { "diagnostic_operation_selected" } else { "instrumentation_insufficient" }
     capturedUtc = [string]$orderedRunOutputs[0].capturedUtc
     claimBoundary = "diagnostic_characterization_only_not_release_gate_or_canonical_matrix"
     source = [ordered]@{
@@ -705,7 +786,7 @@ $output = [ordered]@{
     }
     commands = [ordered]@{
         trialPairs = @($orderedRunOutputs | ForEach-Object { $_.reproductionCommand })
-        analyzer = ".\scripts\analyze-build-work-orders-profile.ps1 -InputPath '" +
+        analyzer = ".\scripts\analyze-reserve-extraction-profile.ps1 -InputPath '" +
             (($orderedRunOutputs | ForEach-Object { $_.run }) -join "','") +
             "' -OutputPath '<output-json>' -AllowDirtySource"
     }
@@ -715,15 +796,16 @@ $output = [ordered]@{
         runtimeMetricsFile = "runtime-batch-metrics-v$($compatibility.runtimeMetricsSchemaVersion).csv"
         enabledBoundary = "existing nullable RuntimeMetricsCollector created only when SOCIETIES_PERF_METRICS=1"
         metricsOffContract = "no collector clock reads and no runtime profile CSV"
-        parentField = "build_work_orders_ms"
+        outerParentField = "build_work_orders_ms"
+        parentField = "build_work_orders_reserve_extraction_ms"
         sequentialNonOverlappingChildFields = @(
-            "build_work_orders_input_preparation_ms",
-            "build_work_orders_non_extraction_ms",
-            "build_work_orders_reserve_extraction_ms",
-            "build_work_orders_finalization_ms"
+            "reserve_extraction_class_preparation_ms",
+            "reserve_extraction_candidate_enumeration_and_bound_selection_ms",
+            "reserve_extraction_active_frontier_and_claim_evaluation_ms",
+            "reserve_extraction_retained_materialization_ms"
         )
-        residualFormula = "build_work_orders_ms - sum(sequential child fields)"
-        residualMeaning = "phase-boundary, control-flow, and diagnostic clock overhead inside the inclusive parent"
+        residualFormula = "build_work_orders_reserve_extraction_ms - sum(sequential child fields)"
+        residualMeaning = "reserve-target argument evaluation, control-flow, and diagnostic clock overhead inside the inclusive parent"
         negativeResidualToleranceMilliseconds = $negativeResidualToleranceMilliseconds
         parentWallToleranceMilliseconds = $parentWallToleranceMilliseconds
         invalidReconciliationHandling = "reject below negative tolerance; otherwise clamp to zero and flag"
@@ -748,11 +830,12 @@ $output = [ordered]@{
         perTrialVariance = $repeatabilityVariance
     }
     selectedSubCost = $selectedSubCost
+    proposedOptimizationContract = $optimizationContract
     limitations = @(
         "Metrics-on instrumentation adds monotonic clock reads and is unsuitable for release-gate timing claims.",
         "Dirty-source runs are identified as uncommitted diagnostic evidence and cannot become canonical release evidence.",
         "Only balanced_basin seed 1337, 16 citizens, cold cache, warmup ticks 2, and 300 measured ticks are characterized.",
-        "Sub-cost selection is descriptive and authorizes no optimization, threshold change, feature expansion, PR, or merge."
+        "Operation selection is descriptive and authorizes no optimization, threshold change, feature expansion, PR, or merge."
     )
 }
 

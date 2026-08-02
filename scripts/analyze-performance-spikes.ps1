@@ -8,7 +8,7 @@ param(
 $ErrorActionPreference = "Stop"
 
 $repoRoot = [System.IO.Path]::GetFullPath((Split-Path -Parent $PSScriptRoot)).TrimEnd('\')
-$analyzerVersion = "2.2.0"
+$analyzerVersion = "2.3.0"
 $negativeResidualToleranceMilliseconds = 0.001
 $maximumJsonBytes = 4MB
 $maximumCsvBytes = 16MB
@@ -370,14 +370,14 @@ foreach ($input in $InputPath) {
     }
     $item = Get-Item -LiteralPath $input
     if (-not $item.PSIsContainer) {
-        if ($item.Name -notin @("runtime-batch-metrics-v4.csv", "runtime-batch-metrics-v5.csv")) {
-            throw "Input files must be named runtime-batch-metrics-v4.csv or runtime-batch-metrics-v5.csv: $($item.FullName)"
+        if ($item.Name -notin @("runtime-batch-metrics-v4.csv", "runtime-batch-metrics-v5.csv", "runtime-batch-metrics-v6.csv")) {
+            throw "Input files must be named runtime-batch-metrics-v4.csv, runtime-batch-metrics-v5.csv, or runtime-batch-metrics-v6.csv: $($item.FullName)"
         }
         $runtimePaths.Add($item.FullName)
         continue
     }
     $direct = @(
-        "runtime-batch-metrics-v4.csv", "runtime-batch-metrics-v5.csv" |
+        "runtime-batch-metrics-v4.csv", "runtime-batch-metrics-v5.csv", "runtime-batch-metrics-v6.csv" |
             ForEach-Object { Join-Path $item.FullName $_ } |
             Where-Object { Test-Path -LiteralPath $_ -PathType Leaf }
     )
@@ -386,10 +386,10 @@ foreach ($input in $InputPath) {
         continue
     }
     $found = @(Get-ChildItem -LiteralPath $item.FullName -Recurse -File |
-        Where-Object { $_.Name -in @("runtime-batch-metrics-v4.csv", "runtime-batch-metrics-v5.csv") } |
+        Where-Object { $_.Name -in @("runtime-batch-metrics-v4.csv", "runtime-batch-metrics-v5.csv", "runtime-batch-metrics-v6.csv") } |
         Sort-Object FullName)
     if ($found.Count -eq 0) {
-        throw "No runtime-batch-metrics-v4.csv or runtime-batch-metrics-v5.csv artifacts were found under: $($item.FullName)"
+        throw "No runtime-batch-metrics-v4.csv, runtime-batch-metrics-v5.csv, or runtime-batch-metrics-v6.csv artifacts were found under: $($item.FullName)"
     }
     foreach ($file in $found) { $runtimePaths.Add($file.FullName) }
 }
@@ -397,7 +397,7 @@ $runtimePaths = @($runtimePaths | Sort-Object -Unique)
 if ($runtimePaths.Count -eq 0) { throw "No runtime metrics artifacts were supplied." }
 foreach ($directoryGroup in @($runtimePaths | Group-Object { Split-Path -Parent $_ })) {
     if ($directoryGroup.Count -gt 1) {
-        throw "A run directory cannot contain both runtime metrics schema v4 and v5 artifacts: $($directoryGroup.Name)"
+        throw "A run directory cannot contain multiple runtime metrics schema artifacts: $($directoryGroup.Name)"
     }
 }
 
@@ -407,7 +407,11 @@ $compatibilityKey = $null
 $compatibility = $null
 
 foreach ($runtimePath in $runtimePaths) {
-    $runtimeMetricsSchemaVersion = if ((Split-Path -Leaf $runtimePath) -eq "runtime-batch-metrics-v5.csv") { 5 } else { 4 }
+    $runtimeMetricsSchemaVersion = switch (Split-Path -Leaf $runtimePath) {
+        "runtime-batch-metrics-v6.csv" { 6 }
+        "runtime-batch-metrics-v5.csv" { 5 }
+        default { 4 }
+    }
     $runDirectory = Split-Path -Parent $runtimePath
     $resultPath = Join-Path $runDirectory "perf-results.json"
     $caseDirectory = Split-Path -Parent $runDirectory
@@ -499,13 +503,13 @@ foreach ($runtimePath in $runtimePaths) {
     foreach ($doubleColumn in $nonNegativeDoubleColumns) {
         if ($columns -notcontains $doubleColumn) { throw "Runtime CSV is missing numeric field '$doubleColumn': $runtimePath" }
     }
-    $expectedColumnCount = if ($runtimeMetricsSchemaVersion -eq 5) { 40 } else { 36 }
+    $expectedColumnCount = if ($runtimeMetricsSchemaVersion -eq 6) { 44 } elseif ($runtimeMetricsSchemaVersion -eq 5) { 40 } else { 36 }
     if ($columns.Count -ne $expectedColumnCount) {
         throw "Runtime CSV schema v$runtimeMetricsSchemaVersion must contain exactly $expectedColumnCount columns: $runtimePath"
     }
-    if ($runtimeMetricsSchemaVersion -eq 5) {
+    if ($runtimeMetricsSchemaVersion -ge 5) {
         foreach ($profileColumn in $v5ProfileColumns) {
-            if ($columns -notcontains $profileColumn) { throw "Runtime CSV schema v5 is missing '$profileColumn': $runtimePath" }
+            if ($columns -notcontains $profileColumn) { throw "Runtime CSV schema v$runtimeMetricsSchemaVersion is missing '$profileColumn': $runtimePath" }
         }
     }
     $rows = @(Import-Csv -LiteralPath $runtimePath)

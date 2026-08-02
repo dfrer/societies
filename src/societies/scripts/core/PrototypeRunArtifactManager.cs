@@ -159,6 +159,7 @@ namespace Societies.Core
             SaveRuntimeMetricsBestEffort(
                 paths.RuntimeMetricsCsvPath,
                 paths.LegacyRuntimeMetricsCsvPath,
+                paths.OlderLegacyRuntimeMetricsCsvPath,
                 runtimeMetricsCsvBytes,
                 generationId);
 
@@ -906,6 +907,7 @@ namespace Societies.Core
         private static void SaveRuntimeMetricsBestEffort(
             string path,
             string legacyPath,
+            string olderLegacyPath,
             byte[]? runtimeMetricsCsvBytes,
             string generationId)
         {
@@ -915,11 +917,13 @@ namespace Societies.Core
                 {
                     AtomicWrite(path, runtimeMetricsCsvBytes, generationId);
                     DeleteFileBestEffort(legacyPath);
+                    DeleteFileBestEffort(olderLegacyPath);
                     return;
                 }
 
                 DeleteFileBestEffort(path);
                 DeleteFileBestEffort(legacyPath);
+                DeleteFileBestEffort(olderLegacyPath);
             }
             catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
             {
@@ -972,9 +976,13 @@ namespace Societies.Core
 
         public string RuntimeMetricsCsvPath => Path.Combine(
             Path.GetDirectoryName(LegacySnapshotPath) ?? string.Empty,
-            "runtime-batch-metrics-v5.csv");
+            "runtime-batch-metrics-v6.csv");
 
         public string LegacyRuntimeMetricsCsvPath => Path.Combine(
+            Path.GetDirectoryName(LegacySnapshotPath) ?? string.Empty,
+            "runtime-batch-metrics-v5.csv");
+
+        public string OlderLegacyRuntimeMetricsCsvPath => Path.Combine(
             Path.GetDirectoryName(LegacySnapshotPath) ?? string.Empty,
             "runtime-batch-metrics-v4.csv");
     }

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 3,
-  "updatedUtc": "2026-08-01T22:57:02.4599886Z",
+  "updatedUtc": "2026-08-02T00:14:56.2161322Z",
   "required": {
     "dotnet": {
       "project": "tests/Societies.Core.Tests/Societies.Core.Tests.csproj",
@@ -122,10 +122,14 @@
       "baselineMatrixCanonicalPairCount": 14,
       "baselineMatrixStatus": "passed_contract_safety_passed_target_missed",
       "resultSchemaVersion": 6,
-      "runtimeBatchMetricsSchemaVersion": 5,
-      "runtimeBatchMetricsFile": "runtime-batch-metrics-v5.csv",
+      "runtimeBatchMetricsSchemaVersion": 6,
+      "runtimeBatchMetricsFile": "runtime-batch-metrics-v6.csv",
       "buildWorkOrdersProfileAnalyzer": "scripts/analyze-build-work-orders-profile.ps1",
       "buildWorkOrdersProfileAnalyzerSchemaVersion": 2,
+      "reserveExtractionProfileAnalyzer": "scripts/analyze-reserve-extraction-profile.ps1",
+      "reserveExtractionProfileAnalyzerVersion": "1.1.0",
+      "reserveExtractionProfileAnalyzerSchemaVersion": 1,
+      "reserveExtractionProfileFocusedTest": "tests/scripts/test-analyze-reserve-extraction-profile.ps1",
       "requiredGodotVersion": "4.6.2",
       "requiredForPullRequest": false,
       "runModes": [
@@ -234,7 +238,7 @@
       "emptyStoresContractStatus": "validated",
       "atomicContributionEvidenceFile": "planning/active/evidence/v3-w2-02-atomic-contribution-validation.json",
       "atomicContributionStatus": "validated",
-      "note": "The editor route remains Debug characterization. The Windows ExportRelease route is validated from clean commit acf634f. Cache-mode evidence from 5444cc3 proves the short mode contracts. W1-05 clean Release evidence from 227a758 proves exact selector equivalence and an 85.414 percent query reduction. W1-05b characterizes the remaining failure as cache-miss-driven exact A-star fanout. W1-05c adds exact bounded extraction planning and a byte-equivalent indexed A-star representation. W1-05d adds exact topology-only shared-frontier bounds. W1-05e adds bit-exact cached-distance replay for positive general-cache hits and schema-v6 paired evidence while leaving runtime CSV v4. W1-05f adds strict whole-resource-class omission with virtual-count preservation. W1-06 adds the session-owned stable-ID resource ledger, command-result harvesting, strict v5 migration/v6 restore, and exact checkpoint/resume. W2-01 adds the catalog-owned empty_stores contract and session-owned pure crisis evaluator. W2-02 adds atomic raw-resource contribution into the existing central-depot authority. W2-03 adds session-owned directives and causal assignment reasons. W2-04 adds domain-owned terminal outcomes and the procedural crisis HUD. W2-05 advances runtime snapshots and summaries to schema v7, restores crisis/directive/contribution state through prepare-before-commit, requires complete nested v7 contracts, migrates v5 through v6 defaults, appends bounded crisis telemetry to the existing metrics CSV, commits coherent snapshot/event/summary generations only after bounded semantic validation, makes public persistence and world-summary save/load pairs atomic and self-compatible under the same limits, and adds exact real-scenario checkpoint/resume plus Godot input/save/load/corruption coverage. The current diagnostic seam advances only the optional runtime batch CSV to v5 and declares 342 .NET and 23 Godot tests. V3-W2-VIS remains complete by explicit waiver; Weeks 3-4 are inactive after W2-06 Stop Feature Expansion; future activation requires a green performance repair plus explicit continuation."
+      "note": "The editor route remains Debug characterization. The Windows ExportRelease route is validated from clean commit acf634f. Cache-mode evidence from 5444cc3 proves the short mode contracts. W1-05 clean Release evidence from 227a758 proves exact selector equivalence and an 85.414 percent query reduction. W1-05b characterizes the remaining failure as cache-miss-driven exact A-star fanout. W1-05c adds exact bounded extraction planning and a byte-equivalent indexed A-star representation. W1-05d adds exact topology-only shared-frontier bounds. W1-05e adds bit-exact cached-distance replay for positive general-cache hits and schema-v6 paired evidence while leaving runtime CSV v4. W1-05f adds strict whole-resource-class omission with virtual-count preservation. W1-06 adds the session-owned stable-ID resource ledger, command-result harvesting, strict v5 migration/v6 restore, and exact checkpoint/resume. W2-01 adds the catalog-owned empty_stores contract and session-owned pure crisis evaluator. W2-02 adds atomic raw-resource contribution into the existing central-depot authority. W2-03 adds session-owned directives and causal assignment reasons. W2-04 adds domain-owned terminal outcomes and the procedural crisis HUD. W2-05 advances runtime snapshots and summaries to schema v7, restores crisis/directive/contribution state through prepare-before-commit, requires complete nested v7 contracts, migrates v5 through v6 defaults, appends bounded crisis telemetry to the existing metrics CSV, commits coherent snapshot/event/summary generations only after bounded semantic validation, makes public persistence and world-summary save/load pairs atomic and self-compatible under the same limits, and adds exact real-scenario checkpoint/resume plus Godot input/save/load/corruption coverage. The current diagnostic seam advances only the optional runtime batch CSV to v6/44 columns, preserves 342 .NET and 23 Godot test arithmetic, and adds four non-overlapping reserve-extraction timings plus a hardened characterization analyzer. V3-W2-VIS remains complete by explicit waiver; Weeks 3-4 are inactive after W2-06 Stop Feature Expansion; future activation requires a green performance repair plus explicit continuation."
     }
   },
   "history": {

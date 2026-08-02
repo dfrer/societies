@@ -130,6 +130,14 @@ namespace Societies.Tests
 
         public double BuildWorkOrdersFinalizationMilliseconds { get; set; }
 
+        public double ReserveExtractionClassPreparationMilliseconds { get; set; }
+
+        public double ReserveExtractionCandidateEnumerationAndBoundSelectionMilliseconds { get; set; }
+
+        public double ReserveExtractionActiveFrontierAndClaimEvaluationMilliseconds { get; set; }
+
+        public double ReserveExtractionRetainedMaterializationMilliseconds { get; set; }
+
         public double HarvestApplyMilliseconds { get; set; }
 
         public double SceneSyncMilliseconds { get; set; }

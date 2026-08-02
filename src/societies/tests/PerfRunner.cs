@@ -877,7 +877,7 @@ namespace Societies.Tests
                 DeterministicMetricsCsv = persistenceArtifactsAvailable
                     ? Path.Combine(root, "metrics-timeseries-v2.csv")
                     : string.Empty,
-                RuntimeMetricsCsv = Path.Combine(root, "runtime-batch-metrics-v5.csv"),
+                RuntimeMetricsCsv = Path.Combine(root, "runtime-batch-metrics-v6.csv"),
                 PerformanceResults = Path.Combine(root, "perf-results.json"),
                 PerformanceMatrix = Path.Combine(root, "perf-matrix.csv"),
                 PerformanceSummary = Path.Combine(root, "perf-summary.txt"),
@@ -1037,6 +1037,14 @@ namespace Societies.Tests
                         batch => batch.Phases.BuildWorkOrdersReserveExtractionMilliseconds),
                     BuildWorkOrdersFinalizationMilliseconds = batches.Sum(
                         batch => batch.Phases.BuildWorkOrdersFinalizationMilliseconds),
+                    ReserveExtractionClassPreparationMilliseconds = batches.Sum(
+                        batch => batch.Phases.ReserveExtractionClassPreparationMilliseconds),
+                    ReserveExtractionCandidateEnumerationAndBoundSelectionMilliseconds = batches.Sum(
+                        batch => batch.Phases.ReserveExtractionCandidateEnumerationAndBoundSelectionMilliseconds),
+                    ReserveExtractionActiveFrontierAndClaimEvaluationMilliseconds = batches.Sum(
+                        batch => batch.Phases.ReserveExtractionActiveFrontierAndClaimEvaluationMilliseconds),
+                    ReserveExtractionRetainedMaterializationMilliseconds = batches.Sum(
+                        batch => batch.Phases.ReserveExtractionRetainedMaterializationMilliseconds),
                     HarvestApplyMilliseconds = batches.Sum(batch => batch.Phases.HarvestApplyMilliseconds),
                     SceneSyncMilliseconds = batches.Sum(batch => batch.Phases.SceneSyncMilliseconds),
                     UpdateHudMilliseconds = batches.Sum(batch => batch.Phases.UpdateHudMilliseconds),
@@ -1053,7 +1061,7 @@ namespace Societies.Tests
         {
             if (!File.Exists(path))
             {
-                throw new InvalidOperationException("Metrics-enabled run did not export runtime-batch-metrics-v5.csv.");
+                throw new InvalidOperationException("Metrics-enabled run did not export runtime-batch-metrics-v6.csv.");
             }
 
             string[] lines = File.ReadAllLines(path);
@@ -1078,17 +1086,21 @@ namespace Societies.Tests
                 "build_work_orders_input_preparation_ms",
                 "build_work_orders_non_extraction_ms",
                 "build_work_orders_reserve_extraction_ms",
-                "build_work_orders_finalization_ms"
+                "build_work_orders_finalization_ms",
+                "reserve_extraction_class_preparation_ms",
+                "reserve_extraction_candidate_enumeration_and_bound_selection_ms",
+                "reserve_extraction_active_frontier_and_claim_evaluation_ms",
+                "reserve_extraction_retained_materialization_ms"
             };
-            if (header.Length != 40 || requiredHeaders.Any(required => !header.Contains(required, StringComparer.Ordinal)))
+            if (header.Length != 44 || requiredHeaders.Any(required => !header.Contains(required, StringComparer.Ordinal)))
             {
-                throw new InvalidOperationException("Runtime metrics CSV schema is not the expected 40-column V5 schema.");
+                throw new InvalidOperationException("Runtime metrics CSV schema is not the expected 44-column V6 schema.");
             }
 
             for (int index = 1; index < lines.Length; index++)
             {
                 string[] columns = lines[index].Split(',');
-                if (columns.Length != 40 ||
+                if (columns.Length != 44 ||
                     !string.Equals(columns[1], "manual_step", StringComparison.Ordinal) ||
                     !string.Equals(columns[4], "1", StringComparison.Ordinal))
                 {

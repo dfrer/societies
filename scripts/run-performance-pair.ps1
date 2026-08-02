@@ -1129,7 +1129,9 @@ else {
 }
 $artifactContractValid =
     $offRuntimeMetricsAbsent -and
+    -not (Test-Path -LiteralPath (Join-Path $offDirectory "runtime-batch-metrics-v6.csv")) -and
     -not (Test-Path -LiteralPath (Join-Path $offDirectory "runtime-batch-metrics-v5.csv")) -and
+    -not (Test-Path -LiteralPath (Join-Path $offDirectory "runtime-batch-metrics-v4.csv")) -and
     $onRuntimeMetricsValid -and
     $reportArtifactContractValid -and
     $persistenceArtifactContractValid
