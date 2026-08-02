@@ -158,6 +158,8 @@ namespace Societies.Core
             AtomicWrite(paths.MetricsCsvPath, metricsCsvBytes, generationId);
             SaveRuntimeMetricsBestEffort(
                 paths.RuntimeMetricsCsvPath,
+                paths.LegacyRuntimeMetricsCsvPath,
+                paths.OlderLegacyRuntimeMetricsCsvPath,
                 runtimeMetricsCsvBytes,
                 generationId);
 
@@ -904,6 +906,8 @@ namespace Societies.Core
 
         private static void SaveRuntimeMetricsBestEffort(
             string path,
+            string legacyPath,
+            string olderLegacyPath,
             byte[]? runtimeMetricsCsvBytes,
             string generationId)
         {
@@ -912,9 +916,26 @@ namespace Societies.Core
                 if (runtimeMetricsCsvBytes != null)
                 {
                     AtomicWrite(path, runtimeMetricsCsvBytes, generationId);
+                    DeleteFileBestEffort(legacyPath);
+                    DeleteFileBestEffort(olderLegacyPath);
                     return;
                 }
 
+                DeleteFileBestEffort(path);
+                DeleteFileBestEffort(legacyPath);
+                DeleteFileBestEffort(olderLegacyPath);
+            }
+            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+            {
+                Console.Error.WriteLine(
+                    $"WARNING: Optional runtime metrics artifact '{path}' was not updated: {exception.Message}");
+            }
+        }
+
+        private static void DeleteFileBestEffort(string path)
+        {
+            try
+            {
                 if (File.Exists(path))
                 {
                     File.Delete(path);
@@ -923,7 +944,7 @@ namespace Societies.Core
             catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
             {
                 Console.Error.WriteLine(
-                    $"WARNING: Optional runtime metrics artifact '{path}' was not updated: {exception.Message}");
+                    $"WARNING: Optional runtime metrics artifact '{path}' was not removed: {exception.Message}");
             }
         }
 
@@ -954,6 +975,14 @@ namespace Societies.Core
             "artifact-generation-v1.json");
 
         public string RuntimeMetricsCsvPath => Path.Combine(
+            Path.GetDirectoryName(LegacySnapshotPath) ?? string.Empty,
+            "runtime-batch-metrics-v6.csv");
+
+        public string LegacyRuntimeMetricsCsvPath => Path.Combine(
+            Path.GetDirectoryName(LegacySnapshotPath) ?? string.Empty,
+            "runtime-batch-metrics-v5.csv");
+
+        public string OlderLegacyRuntimeMetricsCsvPath => Path.Combine(
             Path.GetDirectoryName(LegacySnapshotPath) ?? string.Empty,
             "runtime-batch-metrics-v4.csv");
     }

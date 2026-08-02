@@ -1,14 +1,14 @@
 {
   "schemaVersion": 3,
-  "updatedUtc": "2026-07-31T16:10:21.9073607Z",
+  "updatedUtc": "2026-08-02T01:17:29.5537939Z",
   "required": {
     "dotnet": {
       "project": "tests/Societies.Core.Tests/Societies.Core.Tests.csproj",
       "command": "dotnet test tests/Societies.Core.Tests/Societies.Core.Tests.csproj --configuration Release",
-      "expectedTestCount": 334,
+      "expectedTestCount": 350,
       "tiers": {
         "fast": {
-          "expectedTestCount": 229,
+          "expectedTestCount": 230,
           "filter": "FullyQualifiedName!~PrototypeRuntimeSessionTests&FullyQualifiedName!~PrototypeSettlementSimulationTests&FullyQualifiedName!~SettlementDiagnosticsTests&FullyQualifiedName!~WorkOrderGenerationDiagnosticsTests&FullyQualifiedName!~OrderSelectionTests&FullyQualifiedName!~ExtractionPlanningTests&FullyQualifiedName!~NavigationRepresentationTests&FullyQualifiedName!~RouteDistanceModeDifferentialTests&FullyQualifiedName!~PrototypeCrisisReferenceTraceTests"
         },
         "integration": {
@@ -19,7 +19,7 @@
           ]
         },
         "soak": {
-          "expectedTestCount": 94,
+          "expectedTestCount": 109,
           "classes": [
             "Societies.Core.Tests.PrototypeRuntimeSessionTests",
             "Societies.Core.Tests.PrototypeSettlementSimulationTests",
@@ -107,7 +107,7 @@
         "1280x720"
       ],
       "status": "complete_by_explicit_exception_performance_failed_visual_readback_waived",
-      "note": "The manifest declares 334 .NET tests: 229 fast, 11 integration, and 94 soak; and 23 Godot tests: six fast, fifteen integration, and two soak. V3-W2-VIS implementation/functional tests are complete by explicit exception: timing-only ReleaseExport p95 55.4529 ms vs 50 ms safety (FAIL), max 142.9547 ms vs 250 ms (PASS), persistence/hash equivalence unavailable; Windows Forward+ PNG readback intermittently clips CanvasLayer glyphs/panels despite passing HUD assertions, so visual acceptance is waived, not passed. W2-05 adds schema-v7 crisis/directive/contribution persistence, bounded telemetry, strict nested-contract presence, migration/replay tests, coherent generation manifests and companion validation, pre-replacement save validation, atomic bounded public persistence and world-summary pairs, overflow guards, and a real Godot save/load/corruption interaction smoke. Weeks 3-4 are inactive after W2-06 Stop Feature Expansion; future activation requires a green performance repair plus explicit continuation."
+      "note": "The manifest declares 350 .NET tests: 230 fast, 11 integration, and 109 soak; and 23 Godot tests: six fast, fifteen integration, and two soak. V3-W2-VIS implementation/functional tests are complete by explicit exception: timing-only ReleaseExport p95 55.4529 ms vs 50 ms safety (FAIL), max 142.9547 ms vs 250 ms (PASS), persistence/hash equivalence unavailable; Windows Forward+ PNG readback intermittently clips CanvasLayer glyphs/panels despite passing HUD assertions, so visual acceptance is waived, not passed. W2-05 adds schema-v7 crisis/directive/contribution persistence, bounded telemetry, strict nested-contract presence, migration/replay tests, coherent generation manifests and companion validation, pre-replacement save validation, atomic bounded public persistence and world-summary pairs, overflow guards, and a real Godot save/load/corruption interaction smoke. W2-06 adds eight stable geometric-distance-field cache lifecycle, exact-identity, invalidation, reset, five-scenario 300-tick differential, and checkpoint-resume tests. Weeks 3-4 are inactive after W2-06 Stop Feature Expansion; future activation requires a green performance repair plus explicit continuation."
     },
     "performancePair": {
       "script": "scripts/run-performance-pair.ps1",
@@ -122,6 +122,14 @@
       "baselineMatrixCanonicalPairCount": 14,
       "baselineMatrixStatus": "passed_contract_safety_passed_target_missed",
       "resultSchemaVersion": 6,
+      "runtimeBatchMetricsSchemaVersion": 6,
+      "runtimeBatchMetricsFile": "runtime-batch-metrics-v6.csv",
+      "buildWorkOrdersProfileAnalyzer": "scripts/analyze-build-work-orders-profile.ps1",
+      "buildWorkOrdersProfileAnalyzerSchemaVersion": 2,
+      "reserveExtractionProfileAnalyzer": "scripts/analyze-reserve-extraction-profile.ps1",
+      "reserveExtractionProfileAnalyzerVersion": "1.1.0",
+      "reserveExtractionProfileAnalyzerSchemaVersion": 1,
+      "reserveExtractionProfileFocusedTest": "tests/scripts/test-analyze-reserve-extraction-profile.ps1",
       "requiredGodotVersion": "4.6.2",
       "requiredForPullRequest": false,
       "runModes": [
@@ -203,6 +211,8 @@
       "postW105BaselineBudgetStatus": "safety_failure",
       "spikeCharacterizationEvidenceFile": "planning/active/evidence/v3-w1-05b-spike-characterization.json",
       "spikeCharacterizationScript": "scripts/analyze-performance-spikes.ps1",
+      "spikeCharacterizationFocusedTestScript": "tests/scripts/test-analyze-performance-spikes.ps1",
+      "spikeCharacterizationAnalyzerSchemaVersion": 3,
       "spikeCharacterizationSourceCommit": "227a7585d921255942c5d81e3e82bc3f91d01102",
       "cacheRepopulationEvidenceFile": "planning/active/evidence/v3-w1-05c-cache-repopulation-validation.json",
       "cacheRepopulationImplementationCommit": "a772d15ffc791da25e52afc9a04cb1a0ae655370",
@@ -228,12 +238,12 @@
       "emptyStoresContractStatus": "validated",
       "atomicContributionEvidenceFile": "planning/active/evidence/v3-w2-02-atomic-contribution-validation.json",
       "atomicContributionStatus": "validated",
-      "note": "The editor route remains Debug characterization. The Windows ExportRelease route is validated from clean commit acf634f. Cache-mode evidence from 5444cc3 proves the short mode contracts. W1-05 clean Release evidence from 227a758 proves exact selector equivalence and an 85.414 percent query reduction. W1-05b characterizes the remaining failure as cache-miss-driven exact A-star fanout. W1-05c adds exact bounded extraction planning and a byte-equivalent indexed A-star representation. W1-05d adds exact topology-only shared-frontier bounds. W1-05e adds bit-exact cached-distance replay for positive general-cache hits and schema-v6 paired evidence while leaving runtime CSV v4. W1-05f adds strict whole-resource-class omission with virtual-count preservation. W1-06 adds the session-owned stable-ID resource ledger, command-result harvesting, strict v5 migration/v6 restore, and exact checkpoint/resume. W2-01 adds the catalog-owned empty_stores contract and session-owned pure crisis evaluator. W2-02 adds atomic raw-resource contribution into the existing central-depot authority. W2-03 adds session-owned directives and causal assignment reasons. W2-04 adds domain-owned terminal outcomes and the procedural crisis HUD. W2-05 advances runtime snapshots and summaries to schema v7, restores crisis/directive/contribution state through prepare-before-commit, requires complete nested v7 contracts, migrates v5 through v6 defaults, appends bounded crisis telemetry to the existing metrics CSV, commits coherent snapshot/event/summary generations only after bounded semantic validation, makes public persistence and world-summary save/load pairs atomic and self-compatible under the same limits, and adds exact real-scenario checkpoint/resume plus Godot input/save/load/corruption coverage. The manifest now declares 334 .NET and 23 Godot tests. V3-W2-VIS remains complete by explicit waiver; Weeks 3-4 are inactive after W2-06 Stop Feature Expansion; future activation requires a green performance repair plus explicit continuation."
+      "note": "The editor route remains Debug characterization. The Windows ExportRelease route is validated from clean commit acf634f. Cache-mode evidence from 5444cc3 proves the short mode contracts. W1-05 clean Release evidence from 227a758 proves exact selector equivalence and an 85.414 percent query reduction. W1-05b characterizes the remaining failure as cache-miss-driven exact A-star fanout. W1-05c adds exact bounded extraction planning and a byte-equivalent indexed A-star representation. W1-05d adds exact topology-only shared-frontier bounds. W1-05e adds bit-exact cached-distance replay for positive general-cache hits and schema-v6 paired evidence while leaving runtime CSV v4. W1-05f adds strict whole-resource-class omission with virtual-count preservation. W1-06 adds the session-owned stable-ID resource ledger, command-result harvesting, strict v5 migration/v6 restore, and exact checkpoint/resume. W2-01 adds the catalog-owned empty_stores contract and session-owned pure crisis evaluator. W2-02 adds atomic raw-resource contribution into the existing central-depot authority. W2-03 adds session-owned directives and causal assignment reasons. W2-04 adds domain-owned terminal outcomes and the procedural crisis HUD. W2-05 advances runtime snapshots and summaries to schema v7, restores crisis/directive/contribution state through prepare-before-commit, requires complete nested v7 contracts, migrates v5 through v6 defaults, appends bounded crisis telemetry to the existing metrics CSV, commits coherent snapshot/event/summary generations only after bounded semantic validation, makes public persistence and world-summary save/load pairs atomic and self-compatible under the same limits, and adds exact real-scenario checkpoint/resume plus Godot input/save/load/corruption coverage. The current diagnostic seam advances only the optional runtime batch CSV to v6/44 columns, preserves 350 .NET and 23 Godot test arithmetic, and adds four non-overlapping reserve-extraction timings plus a hardened characterization analyzer. V3-W2-VIS remains complete by explicit waiver; Weeks 3-4 are inactive after W2-06 Stop Feature Expansion; future activation requires a green performance repair plus explicit continuation."
     }
   },
   "history": {
     "preSyncCommit": "c58e3de",
     "preSyncDotnetTestCount": 64,
-      "note": "The synchronized master adds 12 PrototypeMetricsTracker tests and 3 WorkOrderGenerationDiagnostics tests for a historical 79-test floor. W1-03b adds three cache-probe contract tests, W1-03c adds five natural-invalidation progression cases, W1-04 adds seven navigation, unreachable-assignment, and legacy-resume correctness cases, W1-05 adds nine exact-selector contract and 300-tick differential cases, the extraction-planning slice adds 16 exact-bound, integration, and 300-tick differential cases, and the indexed A-star slices add 16 exact-representation, reuse, wrap, concurrency, bounds, topology, and multiplier-version cases. The shared-frontier slice adds eight geometric lower-bound cases across shipped scenarios, exact endpoints, blocked/disconnected topology, built-path versions, non-binary cell sizes, and origin identity. The cached-distance slice adds nine bit-exact replay cases, four 300-tick mode differentials, and two runtime forwarding cases. The bounded work-order frontier slice adds eleven strict-cutoff, call-site fallback/cache, virtual-count, unreachable, and differential assertions. W1-06 adds thirteen stable-ID ledger, command-result, migration, malformed-state, exact checkpoint/resume, authority, summary, navigation-version, and cached-projection assertions. W2-01 adds twelve fast crisis-contract cases plus one soak reference trace. W2-02 adds fifteen fast contribution cases. W2-03 adds fourteen fast directive cases plus eleven selector differentials. W2-04 and its regression coverage add twelve fast tests; V3-W2-VIS adds three fast tests. W2-05 adds sixty-three fast schema, nested-contract, migration, artifact-integrity, public-boundary, paired-save, bounds, and overflow tests plus one real-scenario checkpoint/resume soak. The current manifest declares 334 required .NET tests."
+      "note": "The synchronized master adds 12 PrototypeMetricsTracker tests and 3 WorkOrderGenerationDiagnostics tests for a historical 79-test floor. W1-03b adds three cache-probe contract tests, W1-03c adds five natural-invalidation progression cases, W1-04 adds seven navigation, unreachable-assignment, and legacy-resume correctness cases, W1-05 adds nine exact-selector contract and 300-tick differential cases, the extraction-planning slice adds 16 exact-bound, integration, and 300-tick differential cases, and the indexed A-star slices add 16 exact-representation, reuse, wrap, concurrency, bounds, topology, multiplier-version cases. The shared-frontier slice adds eight geometric lower-bound cases across shipped scenarios, exact endpoints, blocked/disconnected topology, built-path versions, non-binary cell sizes, and origin identity. The cached-distance slice adds nine bit-exact replay cases, four 300-tick mode differentials, and two runtime forwarding cases. The bounded work-order frontier slice adds eleven strict-cutoff, call-site fallback/cache, virtual-count, unreachable, and differential assertions. W1-06 adds thirteen stable-ID ledger, command-result, migration, malformed-state, exact checkpoint/resume, authority, summary, navigation-version, and cached-projection assertions. W2-01 adds twelve fast crisis-contract cases plus one soak reference trace. W2-02 adds fifteen fast contribution cases. W2-03 adds fourteen fast directive cases plus eleven selector differentials. W2-04 and its regression coverage add twelve fast tests; V3-W2-VIS adds three fast tests. W2-05 adds sixty-three fast schema, nested-contract, migration, artifact-integrity, public-boundary, paired-save, bounds, and overflow tests plus one real-scenario checkpoint/resume soak. The BuildWorkOrders phase reconciliation case raised the manifest to 342 required .NET tests; W2-06 stable geometric-distance-field cache coverage raises it to 350."
   }
 }

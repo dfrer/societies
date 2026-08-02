@@ -2,54 +2,35 @@
 
 ## Outcome
 
-The W2-06 decision is **Closed — Stop Feature Expansion**. The required performance gate is red, and manual/product evidence was not completed, so this is not a Complete/green milestone. The clean ExportRelease matrix is contract-valid (14/14 pairs), but the 16-citizen reference median p95 is 51.5988 ms against the 50 ms safety limit, and both 1,000-tick soak p95 values are also above 50 ms. The next work is a bounded performance characterization/repair; do not activate feature expansion or Weeks 3-4.
+W2-06 is locally accepted at implementation commit `478a4d9`. The clean ExportRelease matrix passes all hard contracts, safety limits, hashes, schemas, and artifact bindings. Its aggregate `budgetStatus=target_missed` reflects stricter aspirational 25 ms reference/soak targets and non-gating c24 characterization, not a hard acceptance failure. The Stop Feature Expansion gate is cleared locally; the next bounded action is W3-01 only. No broader Weeks 3–4 gameplay work has started.
 
 ## Repository truth
 
-- Base and merged master: `f0e88f0` (PR #119 merged).
-- Validation branch: `feature/v3-w2-06-sprint-validation`.
-- Matrix repair source: `7952f37`, independently reviewed with no P0-P3 findings.
-- Technical evidence: [v3-w2-06-technical-validation.json](planning/active/evidence/v3-w2-06-technical-validation.json), schema 2, status `BLOCKED_SAFETY_FAILURE`.
+- Validated implementation source: `478a4d9` on the clean reserve-extraction optimization branch.
+- Canonical matrix: [v3-w2-06-clean-canonical-matrix-validation.json](planning/active/evidence/v3-w2-06-clean-canonical-matrix-validation.json).
+- Implementation validation: [v3-w2-06-geometric-distance-field-cache-implementation-validation.json](planning/active/evidence/v3-w2-06-geometric-distance-field-cache-implementation-validation.json).
+- Matrix/validation context: [v3-w2-06-performance-repair-validation.json](planning/active/evidence/v3-w2-06-performance-repair-validation.json).
+- Git/GitHub remains authoritative for PR and merge state; this report does not claim stale pending-merge status.
 
-W2-05 is merged and locally validated; W2-VIS remains complete only under its documented timing and visual-readback waivers. Neither waiver is reclassified here.
+W2-05 is merged and locally validated. W2-VIS remains complete only under its documented timing and visual-readback waivers; neither waiver is reclassified here.
 
 ## Technical evidence
 
-| Gate | Result | Evidence |
-|---|---|---|
-| Release build | Pass, 0 warnings/errors | f0e88f0 |
-| ExportRelease build | Pass, 0 warnings/errors | f0e88f0 |
-| Full validation at HEAD | Exit 0 in 737.9s; .NET 334/334 (0 failed/skipped, 9m22s), Godot 23/23 | `7952f37`; docs/narrative manifest notes only dirty |
-| Performance contracts | Pass, 14/14 pairs | Clean 7952f37 matrix |
-| 16-citizen reference p95 | **Fail**: median 51.5988 ms vs 50 ms | Trials 54.2747 / 50.1764 / 51.5988 |
-| 16-citizen reference maximum | Pass: median 184.1399 ms vs 250 ms | Clean matrix |
-| 1,000-tick soak p95 | **Fail**: 50.2444 / 52.75 ms vs 50 ms | Deterministic repeat passed |
-| 1,000-tick soak maximum | Pass: 201.8161 / 177.7758 ms vs 250 ms | Clean matrix |
-| Forced invalidation | Pass: 27.8065 ms | Transition and safety contract passed |
-| 24-citizen stress | Characterization red, non-gating | 146.4716 ms p95 / 247.0534 ms max |
+| Gate | Result |
+|---|---|
+| Clean ExportRelease matrix | 14/14 pairs; 354 artifacts; 0 failed checks |
+| 16-citizen reference | Median p95 45.011 ms ≤ 50; median max 172.7039 ms ≤ 250 |
+| 1,000-tick soaks | p95 41.0153 / 41.24 ms; max 175.5645 / 168.2482 ms; deterministic repeat pass |
+| Forced invalidation | Correct at 23.3878 ms |
+| 24-citizen stress | 157.0955 ms p95 / 198.9522 ms max; characterization only, `safetyGateApplied=false` |
+| Final full validation | Wrapper exit 0 in 325.2s; .NET 350/350; Godot 23/23; Debug/Release/ExportRelease 0 warnings/errors; [evidence](planning/active/evidence/v3-w2-06-final-validation.json) |
 
-Compared with the accepted W1-03c baseline, the current reference median improved from 570.6155 ms to 51.5988 ms p95 and from 3694.2534 ms to 184.1399 ms maximum. Improvement does not make the hard safety gate green.
+The aggregate target miss is explained by the stricter aspirational 25 ms reference/soak target and c24 50 ms characterization target. All requested hard-safety limits and contracts pass.
 
-HEAD validation also reports a generated test-build CS0436 warning, plus expected/nonfatal Godot frame-cap and optional runtime-metrics temp-path access-denied warnings. Debug project build completed with 0 warnings/errors. Earlier Release/ExportRelease results at `f0e88f0` are distinct provenance; final current-head builds rerun after the wrapper passed: Release `Societies.csproj` 0 warnings/errors in 1.57s and ExportRelease `Societies.sln` 0 warnings/errors in 4.96s.
+## Product and caveats
 
-The explicit checkpoint/resume filter was not run after the red performance result. The current declared contract remains historical evidence, not a newly reproven W2-06 result.
+Author smoke and external observed playtests were not run after the technical stop; no tester or comprehension evidence is claimed. W2-VIS visual acceptance remains `waived_not_passed`; its timing-only p95 failure and unavailable persistence/hash equivalence remain unchanged. The accepted Demo 1 direction remains accepted concept direction only, not validated runtime scope.
 
-## Product and playtest evidence
+## Decision and next action
 
-The author 20–30 minute smoke and external observed playtests were not run after the technical stop. Product validation is therefore incomplete. No tester count, comprehension result, or observed-session claim is made.
-
-W2-VIS visual acceptance remains `waived_not_passed`; its timing-only p95 failure and unavailable persistence/hash equivalence remain unchanged. A waiver is not a pass and does not upgrade the visual or performance gate.
-
-## Decision mapping
-
-| Decision | Rule | Result |
-|---|---|---|
-| Continue V3 | All required technical gates green and product evidence sufficient | Not eligible |
-| Narrow clarity iteration | Technical gates green but observed clarity misses | Not evaluated; playtests unavailable |
-| Stop Feature Expansion | Required performance/correctness gate red | **Selected** |
-
-Weeks 3-4 remain Draft/Conditional, inactive, and blocked by this stop decision; later activation remains possible after green performance repair and explicit continuation. The accepted concept direction remains accepted concept direction only; it is not validated runtime scope.
-
-## Next single action
-
-Run one bounded 16-citizen performance characterization/repair focused on the residual p95 variance and rerun the clean ExportRelease matrix before any feature or playtest expansion. Preserve deterministic contracts, the non-gating 24-citizen classification, and all W2-VIS waivers.
+The W2-06 Stop Feature Expansion gate is cleared locally. Confirm Git/GitHub delivery truth, then activate W3-01 only. Do not claim broader Weeks 3–4 gameplay has started.

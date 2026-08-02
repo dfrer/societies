@@ -1,0 +1,256 @@
+{
+  "schemaVersion": 1,
+  "workItem": "V3-W2-06 stable geometric-distance-field cache implementation validation",
+  "status": "dirty_implementation_validated_pending_independent_review_and_clean_canonical_gate",
+  "capturedUtc": "2026-08-02T02:06:33.4337952Z",
+  "claimBoundary": "Implementation, deterministic correctness, focused allocation observation, and bounded dirty ExportRelease diagnostics only. This artifact is not clean release evidence, does not complete W2-06, and does not authorize commit, merge, push, delivery, or feature expansion.",
+  "repository": {
+    "branch": "feature/v3-w2-06-reserve-extraction-optimization",
+    "baseHead": "014fec51fcc5e4478a2e65d3d522a924f2edaf33",
+    "sourceDirty": true,
+    "staged": false,
+    "committed": false,
+    "pushed": false
+  },
+  "approvedContract": {
+    "path": "planning/active/evidence/v3-w2-06-geometric-distance-field-cache-contract-amendment.json",
+    "sha256": "82825f9587c0065ec71be6a253fb33b3bb77403f0bc1b3b3ca9de84ee0703f94",
+    "implementationBoundary": "Private stable max-two anchor/depot cache, private lifecycle counters, and an internal pre-use per-tick reference mode; exact grid reference, rules version, Godot Vector3, and resolved-origin-cell identity; arbitrary citizen origins remain per-tick."
+  },
+  "implementation": {
+    "productionBehavior": [
+      "Default mode retains immutable geometric distance fields across ticks only for exact settlement-anchor or central-depot origins.",
+      "Stable identity requires ReferenceEquals on the navigation grid, equal navigation-rules version, exact Godot Vector3 equality, and equal resolved origin grid cell.",
+      "The stable domain is two deterministic named slots: exact settlement anchor and exact central depot. Identical exact positions and resolved cells coalesce to one entry; replacing either distinct slot retains the other valid slot, and arbitrary or moving origins remain per-tick.",
+      "RebuildNavigation, rules invalidation, LoadState restore, fresh simulation construction, and ClearDerivedPathCacheForPerformance clear the relevant derived field caches.",
+      "The internal reference mode is selectable only before first field lookup and clears the stable domain at every tick boundary.",
+      "Stable hit, build, and clear counters and the cache probe are private or internal test-only surfaces."
+    ],
+    "encapsulation": {
+      "publicSurfaceChanged": false,
+      "persistenceSurfaceChanged": false,
+      "runtimeCsvSurfaceChanged": false,
+      "performanceOrEquivalenceJsonSurfaceChanged": false,
+      "summaryOrGeneratedArtifactSurfaceChanged": false,
+      "evidence": "Public declared-member reflection and snapshot serialization assertions exclude geometric-field cache members. The production diff is limited to the two private simulation partials; no startup, persistence, runtime metrics, performance model, summary, CSV, or artifact producer is changed."
+    },
+    "boundFiles": [
+      {
+        "path": "src/societies/scripts/simulation/SettlementSimulation.cs",
+        "sizeBytes": 41658,
+        "sha256": "d00ad8912603904555aa5ead528b0e081d5c8f0002e964caef0f8f96acf8dd8f"
+      },
+      {
+        "path": "src/societies/scripts/simulation/SettlementInfrastructure.cs",
+        "sizeBytes": 40299,
+        "sha256": "92464173367d3f517f9f4a1fd09f13fbf092f0fe49f14ec0f32095b12a2be73c"
+      },
+      {
+        "path": "tests/Societies.Core.Tests/Simulation/ExtractionPlanningTests.cs",
+        "sizeBytes": 91225,
+        "sha256": "8002e862fe58de2f504554944a6f5d6e4807b83b11e876ccc9503eee04b10c50"
+      },
+      {
+        "path": "scripts/analyze-reserve-extraction-profile.ps1",
+        "sizeBytes": 45651,
+        "sha256": "7ec96b81a0f944a80f6c07a2fd3fe7cec46fa8a3d5acb25327720ed791990b00"
+      },
+      {
+        "path": "tests/scripts/test-analyze-reserve-extraction-profile.ps1",
+        "sizeBytes": 24218,
+        "sha256": "d3d4d186cc09c30d56deb5de44531198999d540e808fe8ff4805cab83df4f3fc"
+      },
+      {
+        "path": "tests/test-manifest.json",
+        "sizeBytes": 17264,
+        "sha256": "30d1ee1d0df1d7e3ccb2afd5f41fa238a33bee1cd060b4acee475fc16ac64cfe"
+      }
+    ]
+  },
+  "correctnessEvidence": {
+    "directLifecycle": {
+      "command": "dotnet test tests/Societies.Core.Tests/Societies.Core.Tests.csproj -c Release --no-restore --filter FullyQualifiedName~StableGeometricFieldCache_",
+      "result": "PASS: 8 passed, 0 failed, 0 skipped",
+      "coverage": [
+        "first build, same-tick hit, cross-tick hit, stable capacity two, stable and ephemeral clearing, exact and same-cell-near origin identity",
+        "depot-slot replacement retains the valid anchor entry; reflected anchor-slot replacement retains the valid depot entry; equal anchor/depot position and cell coalesce; no mismatched key clears both slots",
+        "grid and rules invalidation, LoadState restore, performance clear, fresh simulation reset, moving-origin per-tick behavior, and current-grid/current-rules validation",
+        "per-thread allocation observation proves stable cross-tick reuse allocates less than per-tick reference rebuilding",
+        "all five shipped scenarios run optimized and internal per-tick reference for 300 ticks with exact per-tick result, workers, resources, resource counters, depot, public performance probe, snapshot, final state, and trace hash equality",
+        "nonzero checkpoint serialize/deserialize and 60-tick optimized/reference resume equality"
+      ]
+    },
+    "focusedSuite": {
+      "command": "dotnet test tests/Societies.Core.Tests/Societies.Core.Tests.csproj -c Release --no-restore --filter FullyQualifiedName~ExtractionPlanningTests",
+      "result": "PASS: 42 passed, 0 failed, 0 skipped"
+    },
+    "completeManagedSuite": {
+      "command": "dotnet test tests/Societies.Core.Tests/Societies.Core.Tests.csproj -c Release --no-restore",
+      "priorResult": "PASS: 350 passed, 0 failed, 0 skipped",
+      "currentNamedSlotRerun": "Not rerun by explicit review direction; current named-slot production is covered by the passing 8-case direct suite, 42-case focused suite, three zero-warning builds, Godot 23/23, and new dirty three-trial diagnostics.",
+      "note": "The 350-test result predates the P2 named-slot revision and is retained only as prior broader evidence, not represented as a current-tree full-suite run."
+    },
+    "manifestArithmetic": {
+      "method": "dotnet test --list-tests using the manifest fast filter and integration class filter",
+      "total": 350,
+      "fast": 230,
+      "integration": 11,
+      "soak": 109,
+      "identity": "230 + 11 + 109 = 350"
+    },
+    "determinism": {
+      "managedDifferential": "All optimized/reference per-tick and final comparisons passed for balanced_basin, long_haul_quarry, food_poor_highlands, empty_stores, and wetland_builder.",
+      "diagnosticStateAndEventSha256": "7fe45268e67b8dff1da6bbcf785dc996e275fd1d814e713fe83d50873d5cab8e",
+      "hashIdentity": "The same hash was produced by metrics-off and metrics-on runs in all three dirty ExportRelease trials."
+    }
+  },
+  "buildAndToolValidation": {
+    "builds": [
+      {
+        "command": "dotnet build src/societies/Societies.csproj -c Debug --no-restore",
+        "result": "PASS: 0 warnings, 0 errors"
+      },
+      {
+        "command": "dotnet build src/societies/Societies.csproj -c Release --no-restore",
+        "result": "PASS: 0 warnings, 0 errors"
+      },
+      {
+        "command": "dotnet build src/societies/Societies.sln -c ExportRelease --no-restore",
+        "result": "PASS: 0 warnings, 0 errors"
+      }
+    ],
+    "godot": {
+      "version": "4.6.2.stable.mono.official.71f334935",
+      "command": "Godot_v4.6.2-stable_mono_win64_console.exe --headless --path src/societies res://tests/HeadlessTestRunner.tscn",
+      "result": "PASS: 23 passed, 0 failed",
+      "note": "The expected frame-catch-up warning was emitted. An optional headless runtime-metrics artifact reported a denied temporary path but its contract test passed; neither warning changed the exact 23/0 result."
+    },
+    "powershell51AnalyzerSuites": [
+      {
+        "path": "tests/scripts/test-analyze-performance-spikes.ps1",
+        "result": "PASS"
+      },
+      {
+        "path": "tests/scripts/test-analyze-build-work-orders-profile.ps1",
+        "result": "PASS"
+      },
+      {
+        "path": "tests/scripts/test-analyze-reserve-extraction-profile.ps1",
+        "result": "PASS"
+      }
+    ],
+    "diffCheck": "PASS: git diff --check emitted no errors"
+  },
+  "dirtyExportReleaseDiagnostics": {
+    "configuration": {
+      "scenario": "balanced_basin",
+      "seed": 1337,
+      "citizens": 16,
+      "warmupTicks": 2,
+      "measuredTicks": 300,
+      "cacheMode": "cold",
+      "selectorMode": "exact_branch_and_bound",
+      "extractionPlanningMode": "exact_bounded",
+      "routeDistanceMode": "cached_distance_only",
+      "comparisonGroup": "w206-geometric-field-cache-named-slots",
+      "runnerContract": "Trial 1 built one verified ExportRelease bundle; trials 2 and 3 reused its .console.exe wrapper.",
+      "sourceTiming": "The fresh trial-1 runner was built after the P2 named-slot production revision and P3 source-manifest tooling/test revision; trials 2 and 3 reused that exact runner. No bound source file changed before analysis."
+    },
+    "reference": {
+      "path": "planning/active/evidence/v3-w2-06-reserve-extraction-characterization.json",
+      "sha256": "7b3a69eb58b845a6208cc52bb264955b2d7b5c7dba34f62a002079a65d2aabfd"
+    },
+    "trials": [
+      {
+        "trial": 1,
+        "referenceParentTotalMilliseconds": 3718.6554,
+        "implementationParentTotalMilliseconds": 1078.0991,
+        "parentReductionPercent": 71.008362,
+        "referenceParentMedianMilliseconds": 9.21935,
+        "implementationParentMedianMilliseconds": 0.5736,
+        "referenceCandidateTotalMilliseconds": 3485.1151,
+        "implementationCandidateTotalMilliseconds": 852.3983,
+        "metricsOffP95Milliseconds": 46.429,
+        "metricsOnP95Milliseconds": 49.414,
+        "equivalenceSha256": "b93b6558c47d2c6628002fc56cd7ce4266c47ea3dc741752fc26e57201e4f8d1",
+        "runtimeCsvSha256": "e470777951bff13e1b3e1741cf5cb727ea6921066aa520469633921bece3b53e",
+        "perfResultSha256": "046a5f7e34d08a55d2b4dcd0866a4e6522a97a9ed6ba447068dedda30d7c04ca"
+      },
+      {
+        "trial": 2,
+        "referenceParentTotalMilliseconds": 3616.9124,
+        "implementationParentTotalMilliseconds": 1111.5997,
+        "parentReductionPercent": 69.266613,
+        "referenceParentMedianMilliseconds": 9.1527,
+        "implementationParentMedianMilliseconds": 0.5466,
+        "referenceCandidateTotalMilliseconds": 3379.2509,
+        "implementationCandidateTotalMilliseconds": 893.6598,
+        "metricsOffP95Milliseconds": 40.290,
+        "metricsOnP95Milliseconds": 43.140,
+        "equivalenceSha256": "02ade136c665e7ff0fc4e232bbb5e21b46c8023d970409d321307dd60caeb6ae",
+        "runtimeCsvSha256": "6ab98ec2d5e8dfa6ea64f6d90ff63b9cce63b583907681bb33ba65ed3acadbb8",
+        "perfResultSha256": "b2d4e71c0050bf7c5aef830526cf6ddc95054a186502ecc1f720b3f410ebc91e"
+      },
+      {
+        "trial": 3,
+        "referenceParentTotalMilliseconds": 3695.9159,
+        "implementationParentTotalMilliseconds": 1129.0348,
+        "parentReductionPercent": 69.451827,
+        "referenceParentMedianMilliseconds": 9.0746,
+        "implementationParentMedianMilliseconds": 0.54515,
+        "referenceCandidateTotalMilliseconds": 3458.9627,
+        "implementationCandidateTotalMilliseconds": 892.8528,
+        "metricsOffP95Milliseconds": 51.242,
+        "metricsOnP95Milliseconds": 48.187,
+        "equivalenceSha256": "ed5fdabc8aae3f3aaf02d2d1a5cccaba3189d1da28af4020afdaa8eb79458afe",
+        "runtimeCsvSha256": "ea92820313ef19e19c2392891dc076567753466976c3d1f78c730f1bc8363900",
+        "perfResultSha256": "e9cda7e336aa4834c585d088257b82da764be05434d8e00ae7392af42dddc3e3"
+      }
+    ],
+    "medianParentTotal": {
+      "referenceMilliseconds": 3695.9159,
+      "implementationMilliseconds": 1111.5997,
+      "reductionPercent": 69.923566
+    },
+    "assessment": "All three parent totals and medians improved materially, candidate enumeration and bound selection remained the dominant selected phase rather than shifting cost into retained materialization, and all six diagnostic runs retained exact deterministic hashes.",
+    "analysisArtifact": {
+      "path": "artifacts/performance/w206-geometric-field-cache-named-slots-analysis.json",
+      "sizeBytes": 150708,
+      "sha256": "ff17f07ebfc17153a242624f11e34eb3da90f29b7f5133fd2c1ee6d02b513b92",
+      "status": "diagnostic_operation_selected"
+    },
+    "sourceManifest": {
+      "path": "analysis.source.sourceFiles",
+      "principalFiles": [
+        {
+          "path": "src/societies/scripts/simulation/SettlementSimulation.cs",
+          "sha256": "d00ad8912603904555aa5ead528b0e081d5c8f0002e964caef0f8f96acf8dd8f"
+        },
+        {
+          "path": "src/societies/scripts/simulation/SettlementInfrastructure.cs",
+          "sha256": "92464173367d3f517f9f4a1fd09f13fbf092f0fe49f14ec0f32095b12a2be73c"
+        }
+      ],
+      "verification": "The updated PowerShell 5.1 compatibility suite requires exactly one record for each principal file and an exact current SHA-256 match; the fresh analysis contains both and both match."
+    },
+    "safetyBoundary": "Metrics-off p95 varied and trial 3 exceeded 50 ms. These dirty three-trial diagnostics prove the targeted reserve-parent reduction and determinism only; they are not the required clean hard-safety gate."
+  },
+  "requiredNextGate": {
+    "independentReview": "A determinism/performance deep review is mandatory before commit or delivery.",
+    "cleanCanonicalMatrix": "After review and a committed clean source, run the fresh clean 14-pair ExportRelease canonical matrix.",
+    "requiredResults": [
+      "reference median p95 <= 50 ms",
+      "reference median maximum <= 250 ms",
+      "both soak p95 and maximum safety limits pass",
+      "forced-invalidation transition and timing contract passes with the persistent field cache cleared",
+      "all 14 pairs pass equivalence, deterministic hash, schema, artifact binding, metrics-off absence, and cache-mode contracts"
+    ],
+    "failureDisposition": "Any failed required result leaves W2-06 incomplete and undeliverable, keeps Stop Feature Expansion active, and makes the optimization unmergeable."
+  },
+  "limitations": [
+    "The diagnostic bundles are dirty-source artifacts bound to base HEAD 014fec5 plus the complete P2/P3 working diff; the fresh analysis cryptographically binds both principal simulation partials.",
+    "Private lifecycle counters and allocation observations are managed-test evidence only and are intentionally absent from runtime artifacts.",
+    "No complete clean 14-pair performance matrix has been run for this implementation.",
+    "No independent deep review, commit, push, PR, merge, delivery, or release-readiness claim is included."
+  ]
+}

@@ -116,6 +116,64 @@ namespace Societies.Core.Tests
         }
 
         [Fact]
+        public void BuildWorkOrdersProfilePhases_AreSequentialAndReconcileWithInclusiveParent()
+        {
+            var clock = new ManualTimeProvider();
+            var collector = new RuntimeMetricsCollector(clock: clock);
+            collector.BeginBatch(RuntimeMetricsBatchKind.ManualStep, 0);
+
+            RuntimeMetricsPhaseToken parent = collector.BeginPhase(RuntimeMetricsPhase.BuildWorkOrders);
+            RuntimeMetricsPhaseToken input = collector.BeginPhase(RuntimeMetricsPhase.BuildWorkOrdersInputPreparation);
+            clock.AdvanceMilliseconds(1);
+            input.Complete();
+            RuntimeMetricsPhaseToken nonExtraction = collector.BeginPhase(RuntimeMetricsPhase.BuildWorkOrdersNonExtraction);
+            clock.AdvanceMilliseconds(2);
+            nonExtraction.Complete();
+            RuntimeMetricsPhaseToken reserveExtraction = collector.BeginPhase(RuntimeMetricsPhase.BuildWorkOrdersReserveExtraction);
+            RuntimeMetricsPhaseToken classPreparation = collector.BeginPhase(RuntimeMetricsPhase.ReserveExtractionClassPreparation);
+            clock.AdvanceMilliseconds(0.5);
+            classPreparation.Complete();
+            RuntimeMetricsPhaseToken candidateSelection = collector.BeginPhase(RuntimeMetricsPhase.ReserveExtractionCandidateEnumerationAndBoundSelection);
+            clock.AdvanceMilliseconds(1.0);
+            candidateSelection.Complete();
+            RuntimeMetricsPhaseToken frontierEvaluation = collector.BeginPhase(RuntimeMetricsPhase.ReserveExtractionActiveFrontierAndClaimEvaluation);
+            clock.AdvanceMilliseconds(1.0);
+            frontierEvaluation.Complete();
+            RuntimeMetricsPhaseToken retainedMaterialization = collector.BeginPhase(RuntimeMetricsPhase.ReserveExtractionRetainedMaterialization);
+            clock.AdvanceMilliseconds(0.5);
+            retainedMaterialization.Complete();
+            reserveExtraction.Complete();
+            RuntimeMetricsPhaseToken finalization = collector.BeginPhase(RuntimeMetricsPhase.BuildWorkOrdersFinalization);
+            clock.AdvanceMilliseconds(4);
+            finalization.Complete();
+            parent.Complete();
+            collector.EndBatch(0);
+
+            RuntimePhaseTotals phases = Assert.Single(collector.SnapshotBatches()).Phases;
+            Assert.Equal(10.0, phases.BuildWorkOrdersMilliseconds);
+            Assert.Equal(1.0, phases.BuildWorkOrdersInputPreparationMilliseconds);
+            Assert.Equal(2.0, phases.BuildWorkOrdersNonExtractionMilliseconds);
+            Assert.Equal(3.0, phases.BuildWorkOrdersReserveExtractionMilliseconds);
+            Assert.Equal(4.0, phases.BuildWorkOrdersFinalizationMilliseconds);
+            Assert.Equal(0.5, phases.ReserveExtractionClassPreparationMilliseconds);
+            Assert.Equal(1.0, phases.ReserveExtractionCandidateEnumerationAndBoundSelectionMilliseconds);
+            Assert.Equal(1.0, phases.ReserveExtractionActiveFrontierAndClaimEvaluationMilliseconds);
+            Assert.Equal(0.5, phases.ReserveExtractionRetainedMaterializationMilliseconds);
+            Assert.Equal(
+                phases.BuildWorkOrdersReserveExtractionMilliseconds,
+                phases.ReserveExtractionClassPreparationMilliseconds +
+                phases.ReserveExtractionCandidateEnumerationAndBoundSelectionMilliseconds +
+                phases.ReserveExtractionActiveFrontierAndClaimEvaluationMilliseconds +
+                phases.ReserveExtractionRetainedMaterializationMilliseconds);
+            Assert.Equal(
+                phases.BuildWorkOrdersMilliseconds,
+                phases.BuildWorkOrdersInputPreparationMilliseconds +
+                phases.BuildWorkOrdersNonExtractionMilliseconds +
+                phases.BuildWorkOrdersReserveExtractionMilliseconds +
+                phases.BuildWorkOrdersFinalizationMilliseconds);
+        }
+
+        [Fact]
         public void MultipleTicks_AccumulateCountersAndKeepLastGaugeAndMaximum()
         {
             var clock = new ManualTimeProvider();
@@ -262,18 +320,24 @@ namespace Societies.Core.Tests
                     .Split('\n', StringSplitOptions.RemoveEmptyEntries);
 
                 Assert.Equal(3, lines.Length);
-                Assert.Equal(36, lines[0].Split(',').Length);
-                Assert.Equal(36, lines[1].Split(',').Length);
+                Assert.Equal(44, lines[0].Split(',').Length);
+                Assert.Equal(44, lines[1].Split(',').Length);
                 Assert.Equal(string.Empty, lines[1].Split(',')[16]);
                 Assert.Equal(string.Empty, lines[1].Split(',')[21]);
                 Assert.Equal(string.Empty, lines[1].Split(',')[23]);
                 Assert.Equal(string.Empty, lines[1].Split(',')[26]);
-                Assert.Equal(36, lines[2].Split(',').Length);
+                Assert.Equal(44, lines[2].Split(',').Length);
                 Assert.Equal("path_plan_cache_misses_total", lines[0].Split(',')[20]);
                 Assert.Equal("navigation_rebuild_ms", lines[0].Split(',')[27]);
                 Assert.Equal("route_selection_ms", lines[0].Split(',')[28]);
                 Assert.Equal("selector_exact_path_queries_total", lines[0].Split(',')[32]);
                 Assert.Equal("selector_selected_route_reuses_total", lines[0].Split(',')[35]);
+                Assert.Equal("build_work_orders_input_preparation_ms", lines[0].Split(',')[36]);
+                Assert.Equal("build_work_orders_finalization_ms", lines[0].Split(',')[39]);
+                Assert.Equal("reserve_extraction_class_preparation_ms", lines[0].Split(',')[40]);
+                Assert.Equal("reserve_extraction_candidate_enumeration_and_bound_selection_ms", lines[0].Split(',')[41]);
+                Assert.Equal("reserve_extraction_active_frontier_and_claim_evaluation_ms", lines[0].Split(',')[42]);
+                Assert.Equal("reserve_extraction_retained_materialization_ms", lines[0].Split(',')[43]);
                 Assert.Equal("1.5", lines[2].Split(',')[26]);
                 Assert.Equal("0.25", lines[2].Split(',')[27]);
                 Assert.Equal("4", lines[2].Split(',')[32]);

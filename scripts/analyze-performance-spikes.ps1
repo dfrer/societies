@@ -8,6 +8,13 @@ param(
 $ErrorActionPreference = "Stop"
 
 $repoRoot = [System.IO.Path]::GetFullPath((Split-Path -Parent $PSScriptRoot)).TrimEnd('\')
+$analyzerVersion = "2.3.0"
+$negativeResidualToleranceMilliseconds = 0.001
+$maximumJsonBytes = 4MB
+$maximumCsvBytes = 16MB
+$maximumCsvLines = 10001
+$maximumCsvLineCharacters = 65536
+$maximumJsonNestingDepth = 64
 $requiredColumns = @(
     "sequence", "batch_kind", "start_simulation_tick", "end_simulation_tick", "completed_ticks",
     "wall_ms", "max_tick_ms", "simulation_tick_ms", "session_advance_ms", "build_work_orders_ms",
@@ -33,6 +40,10 @@ $nonNegativeDoubleColumns = @(
     "harvest_apply_ms", "scene_sync_ms", "update_hud_ms", "candidate_orders_per_idle_citizen",
     "navigation_rebuild_ms", "route_selection_ms"
 )
+$v5ProfileColumns = @(
+    "build_work_orders_input_preparation_ms", "build_work_orders_non_extraction_ms",
+    "build_work_orders_reserve_extraction_ms", "build_work_orders_finalization_ms"
+)
 
 function Write-Utf8NoBom {
     param([string]$Path, [string]$Content)
@@ -49,6 +60,7 @@ function Read-Json {
     if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) {
         throw "$Label is missing: $Path"
     }
+    Assert-JsonBounds $Path $Label
     try {
         return Get-Content -Raw -LiteralPath $Path | ConvertFrom-Json
     }
@@ -108,6 +120,160 @@ function Get-Percent {
     param([double]$Part, [double]$Whole)
     if ($Whole -le 0.0) { return 0.0 }
     return Round-Value (100.0 * $Part / $Whole)
+}
+
+function Assert-JsonBounds {
+    param([string]$Path, [string]$Label)
+    $item = Get-Item -LiteralPath $Path
+    if ($item.Length -gt $maximumJsonBytes) {
+        throw "$Label exceeds the $maximumJsonBytes-byte JSON limit: $Path"
+    }
+    $reader = New-Object System.IO.StreamReader($item.FullName, $true)
+    try {
+        $depth = 0
+        $inString = $false
+        $escaped = $false
+        while (($value = $reader.Read()) -ne -1) {
+            $character = [char]$value
+            if ($inString) {
+                if ($escaped) { $escaped = $false; continue }
+                if ($character -eq '\') { $escaped = $true; continue }
+                if ($character -eq '"') { $inString = $false }
+                continue
+            }
+            if ($character -eq '"') { $inString = $true; continue }
+            if ($character -eq '{' -or $character -eq '[') {
+                $depth++
+                if ($depth -gt $maximumJsonNestingDepth) {
+                    throw "$Label exceeds the maximum JSON nesting depth $maximumJsonNestingDepth`: $Path"
+                }
+            }
+            elseif ($character -eq '}' -or $character -eq ']') {
+                $depth--
+                if ($depth -lt 0) { throw "$Label has invalid JSON nesting: $Path" }
+            }
+        }
+        if ($inString -or $depth -ne 0) { throw "$Label has invalid JSON nesting: $Path" }
+    }
+    finally { $reader.Dispose() }
+}
+
+function Assert-CsvBounds {
+    param([string]$Path)
+    $item = Get-Item -LiteralPath $Path
+    if ($item.Length -gt $maximumCsvBytes) { throw "Runtime CSV exceeds the $maximumCsvBytes-byte limit: $Path" }
+    $reader = New-Object System.IO.StreamReader($item.FullName, $true)
+    try {
+        $lineCount = 0
+        while (($line = $reader.ReadLine()) -ne $null) {
+            $lineCount++
+            if ($lineCount -gt $maximumCsvLines) { throw "Runtime CSV exceeds the $maximumCsvLines-line limit: $Path" }
+            if ($line.Length -gt $maximumCsvLineCharacters) {
+                throw "Runtime CSV line $lineCount exceeds the $maximumCsvLineCharacters-character limit: $Path"
+            }
+        }
+    }
+    finally { $reader.Dispose() }
+}
+
+function Get-Median {
+    param([double[]]$Values)
+    if ($null -eq $Values -or $Values.Count -eq 0) { return $null }
+    $sorted = @($Values | Sort-Object)
+    $middle = [int][Math]::Floor($sorted.Count / 2.0)
+    if (($sorted.Count % 2) -eq 1) { return [double]$sorted[$middle] }
+    return ([double]$sorted[$middle - 1] + [double]$sorted[$middle]) / 2.0
+}
+
+function Get-PhaseBreakdown {
+    param([object]$Tick, [string]$Label)
+    $measuredLeafPhaseTotal =
+        $Tick.buildWorkOrdersMs + $Tick.routeSelectionMs + $Tick.sceneSyncMs +
+        $Tick.navigationRebuildMs + $Tick.harvestApplyMs + $Tick.updateHudMs
+    $rawResidual = $Tick.wallMs - $measuredLeafPhaseTotal
+    if ($rawResidual -lt -$negativeResidualToleranceMilliseconds) {
+        throw "Runtime CSV leaf phase total exceeds wall time by $([Math]::Abs((Round-Value $rawResidual))) ms: $Label"
+    }
+    $residual = [Math]::Max(0.0, $rawResidual)
+    $instrumentedProductionCosts = [ordered]@{
+        build_work_orders = $Tick.buildWorkOrdersMs
+        route_selection = $Tick.routeSelectionMs
+        scene_sync = $Tick.sceneSyncMs
+        navigation_rebuild = $Tick.navigationRebuildMs
+        harvest_apply = $Tick.harvestApplyMs
+        update_hud = $Tick.updateHudMs
+    }
+    $dominantName = $null
+    $dominantValue = -1.0
+    foreach ($entry in $instrumentedProductionCosts.GetEnumerator()) {
+        if ([double]$entry.Value -gt $dominantValue) {
+            $dominantName = [string]$entry.Key
+            $dominantValue = [double]$entry.Value
+        }
+    }
+    return [ordered]@{
+        wallMilliseconds = Round-Value $Tick.wallMs
+        simulationTickMilliseconds = Round-Value $Tick.simulationTickMs
+        sessionAdvanceMilliseconds = Round-Value $Tick.sessionAdvanceMs
+        buildWorkOrdersMilliseconds = Round-Value $Tick.buildWorkOrdersMs
+        routeSelectionMilliseconds = Round-Value $Tick.routeSelectionMs
+        sceneSyncMilliseconds = Round-Value $Tick.sceneSyncMs
+        navigationRebuildMilliseconds = Round-Value $Tick.navigationRebuildMs
+        harvestApplyMilliseconds = Round-Value $Tick.harvestApplyMs
+        updateHudMilliseconds = Round-Value $Tick.updateHudMs
+        measuredLeafPhaseTotalMilliseconds = Round-Value $measuredLeafPhaseTotal
+        residualUnattributedMilliseconds = Round-Value $residual
+        residualWasToleranceClamped = $rawResidual -lt 0.0
+        dominantExercisedCost = [ordered]@{
+            category = $dominantName
+            milliseconds = Round-Value $dominantValue
+            wallSharePercent = Get-Percent $dominantValue $Tick.wallMs
+        }
+    }
+}
+
+function Get-PhaseSummary {
+    param([object[]]$Ticks)
+    $properties = [ordered]@{
+        build_work_orders = "buildWorkOrdersMilliseconds"
+        route_selection = "routeSelectionMilliseconds"
+        scene_sync = "sceneSyncMilliseconds"
+        navigation_rebuild = "navigationRebuildMilliseconds"
+        harvest_apply = "harvestApplyMilliseconds"
+        update_hud = "updateHudMilliseconds"
+        measured_leaf_phase_total = "measuredLeafPhaseTotalMilliseconds"
+        residual_unattributed = "residualUnattributedMilliseconds"
+        wall = "wallMilliseconds"
+    }
+    $metrics = [ordered]@{}
+    $dominantName = $null
+    $dominantTotal = -1.0
+    foreach ($entry in $properties.GetEnumerator()) {
+        $propertyName = [string]$entry.Value
+        $values = @($Ticks | ForEach-Object {
+            [double]$_.phaseBreakdown.PSObject.Properties[$propertyName].Value
+        })
+        $total = if ($values.Count -eq 0) { 0.0 } else { [double](($values | Measure-Object -Sum).Sum) }
+        $average = if ($values.Count -eq 0) { $null } else { [double](($values | Measure-Object -Average).Average) }
+        $median = Get-Median $values
+        $metrics[[string]$entry.Key] = [ordered]@{
+            totalMilliseconds = Round-Value $total
+            medianMilliseconds = if ($null -eq $median) { $null } else { Round-Value $median }
+            meanMilliseconds = if ($null -eq $average) { $null } else { Round-Value $average }
+        }
+        if ($entry.Key -notin @("measured_leaf_phase_total", "residual_unattributed", "wall") -and $total -gt $dominantTotal) {
+            $dominantName = [string]$entry.Key
+            $dominantTotal = $total
+        }
+    }
+    return [ordered]@{
+        sampleCount = $Ticks.Count
+        metrics = $metrics
+        dominantExercisedCostByTotal = [ordered]@{
+            category = $dominantName
+            totalMilliseconds = Round-Value ([Math]::Max(0.0, $dominantTotal))
+        }
+    }
 }
 
 function Get-DisplayPath {
@@ -204,26 +370,36 @@ foreach ($input in $InputPath) {
     }
     $item = Get-Item -LiteralPath $input
     if (-not $item.PSIsContainer) {
-        if ($item.Name -ne "runtime-batch-metrics-v4.csv") {
-            throw "Input files must be named runtime-batch-metrics-v4.csv: $($item.FullName)"
+        if ($item.Name -notin @("runtime-batch-metrics-v4.csv", "runtime-batch-metrics-v5.csv", "runtime-batch-metrics-v6.csv")) {
+            throw "Input files must be named runtime-batch-metrics-v4.csv, runtime-batch-metrics-v5.csv, or runtime-batch-metrics-v6.csv: $($item.FullName)"
         }
         $runtimePaths.Add($item.FullName)
         continue
     }
-    $direct = Join-Path $item.FullName "runtime-batch-metrics-v4.csv"
-    if (Test-Path -LiteralPath $direct -PathType Leaf) {
-        $runtimePaths.Add((Get-Item -LiteralPath $direct).FullName)
+    $direct = @(
+        "runtime-batch-metrics-v4.csv", "runtime-batch-metrics-v5.csv", "runtime-batch-metrics-v6.csv" |
+            ForEach-Object { Join-Path $item.FullName $_ } |
+            Where-Object { Test-Path -LiteralPath $_ -PathType Leaf }
+    )
+    if ($direct.Count -gt 0) {
+        foreach ($path in $direct) { $runtimePaths.Add((Get-Item -LiteralPath $path).FullName) }
         continue
     }
-    $found = @(Get-ChildItem -LiteralPath $item.FullName -Recurse -File -Filter "runtime-batch-metrics-v4.csv" |
+    $found = @(Get-ChildItem -LiteralPath $item.FullName -Recurse -File |
+        Where-Object { $_.Name -in @("runtime-batch-metrics-v4.csv", "runtime-batch-metrics-v5.csv", "runtime-batch-metrics-v6.csv") } |
         Sort-Object FullName)
     if ($found.Count -eq 0) {
-        throw "No runtime-batch-metrics-v4.csv artifacts were found under: $($item.FullName)"
+        throw "No runtime-batch-metrics-v4.csv, runtime-batch-metrics-v5.csv, or runtime-batch-metrics-v6.csv artifacts were found under: $($item.FullName)"
     }
     foreach ($file in $found) { $runtimePaths.Add($file.FullName) }
 }
 $runtimePaths = @($runtimePaths | Sort-Object -Unique)
 if ($runtimePaths.Count -eq 0) { throw "No runtime metrics artifacts were supplied." }
+foreach ($directoryGroup in @($runtimePaths | Group-Object { Split-Path -Parent $_ })) {
+    if ($directoryGroup.Count -gt 1) {
+        throw "A run directory cannot contain multiple runtime metrics schema artifacts: $($directoryGroup.Name)"
+    }
+}
 
 $runs = New-Object System.Collections.Generic.List[object]
 $internalRuns = New-Object System.Collections.Generic.List[object]
@@ -231,6 +407,11 @@ $compatibilityKey = $null
 $compatibility = $null
 
 foreach ($runtimePath in $runtimePaths) {
+    $runtimeMetricsSchemaVersion = switch (Split-Path -Leaf $runtimePath) {
+        "runtime-batch-metrics-v6.csv" { 6 }
+        "runtime-batch-metrics-v5.csv" { 5 }
+        default { 4 }
+    }
     $runDirectory = Split-Path -Parent $runtimePath
     $resultPath = Join-Path $runDirectory "perf-results.json"
     $caseDirectory = Split-Path -Parent $runDirectory
@@ -309,6 +490,7 @@ foreach ($runtimePath in $runtimePaths) {
         throw "Input evidence is incompatible with the first run: $resultPath"
     }
 
+    Assert-CsvBounds $runtimePath
     $header = Get-Content -LiteralPath $runtimePath -TotalCount 1
     if ([string]::IsNullOrWhiteSpace($header)) { throw "Runtime CSV is empty: $runtimePath" }
     $columns = @($header.Split(','))
@@ -320,6 +502,15 @@ foreach ($runtimePath in $runtimePaths) {
     }
     foreach ($doubleColumn in $nonNegativeDoubleColumns) {
         if ($columns -notcontains $doubleColumn) { throw "Runtime CSV is missing numeric field '$doubleColumn': $runtimePath" }
+    }
+    $expectedColumnCount = if ($runtimeMetricsSchemaVersion -eq 6) { 44 } elseif ($runtimeMetricsSchemaVersion -eq 5) { 40 } else { 36 }
+    if ($columns.Count -ne $expectedColumnCount) {
+        throw "Runtime CSV schema v$runtimeMetricsSchemaVersion must contain exactly $expectedColumnCount columns: $runtimePath"
+    }
+    if ($runtimeMetricsSchemaVersion -ge 5) {
+        foreach ($profileColumn in $v5ProfileColumns) {
+            if ($columns -notcontains $profileColumn) { throw "Runtime CSV schema v$runtimeMetricsSchemaVersion is missing '$profileColumn': $runtimePath" }
+        }
     }
     $rows = @(Import-Csv -LiteralPath $runtimePath)
     $measuredTicks = [int](Require-Property $configuration "measuredTicks" $resultPath)
@@ -378,6 +569,7 @@ foreach ($runtimePath in $runtimePaths) {
             endTick = $endTick
             wallMs = Parse-Double $row.wall_ms "$label wall_ms"
             simulationTickMs = Parse-Double $row.simulation_tick_ms "$label simulation_tick_ms"
+            sessionAdvanceMs = Parse-Double $row.session_advance_ms "$label session_advance_ms"
             buildWorkOrdersMs = Parse-Double $row.build_work_orders_ms "$label build_work_orders_ms"
             routeSelectionMs = Parse-Double $row.route_selection_ms "$label route_selection_ms"
             navigationRebuildMs = Parse-Double $row.navigation_rebuild_ms "$label navigation_rebuild_ms"
@@ -391,9 +583,10 @@ foreach ($runtimePath in $runtimePaths) {
             selectorExactQueries = $selectorQueries
             navigationInvalidations = Parse-Int64 $row.navigation_invalidations_total "$label navigation_invalidations_total"
         }
-        foreach ($timeName in @("wallMs", "simulationTickMs", "buildWorkOrdersMs", "routeSelectionMs", "navigationRebuildMs", "harvestApplyMs", "sceneSyncMs", "updateHudMs")) {
+        foreach ($timeName in @("wallMs", "simulationTickMs", "sessionAdvanceMs", "buildWorkOrdersMs", "routeSelectionMs", "navigationRebuildMs", "harvestApplyMs", "sceneSyncMs", "updateHudMs")) {
             if ([double]$tick.$timeName -lt 0.0) { throw "Runtime CSV contains a negative timing '$timeName': $label" }
         }
+        $tick | Add-Member -MemberType NoteProperty -Name phaseBreakdown -Value ([pscustomobject](Get-PhaseBreakdown $tick $label))
         $ticks.Add($tick)
     }
 
@@ -449,6 +642,17 @@ foreach ($runtimePath in $runtimePaths) {
             endSimulationTick = $tick.endTick
             wallMilliseconds = Round-Value $tick.wallMs
             simulationTickMilliseconds = Round-Value $tick.simulationTickMs
+            sessionAdvanceMilliseconds = Round-Value $tick.sessionAdvanceMs
+            buildWorkOrdersMilliseconds = $tick.phaseBreakdown.buildWorkOrdersMilliseconds
+            routeSelectionMilliseconds = $tick.phaseBreakdown.routeSelectionMilliseconds
+            sceneSyncMilliseconds = $tick.phaseBreakdown.sceneSyncMilliseconds
+            navigationRebuildMilliseconds = $tick.phaseBreakdown.navigationRebuildMilliseconds
+            harvestApplyMilliseconds = $tick.phaseBreakdown.harvestApplyMilliseconds
+            updateHudMilliseconds = $tick.phaseBreakdown.updateHudMilliseconds
+            measuredLeafPhaseTotalMilliseconds = $tick.phaseBreakdown.measuredLeafPhaseTotalMilliseconds
+            residualUnattributedMilliseconds = $tick.phaseBreakdown.residualUnattributedMilliseconds
+            residualWasToleranceClamped = $tick.phaseBreakdown.residualWasToleranceClamped
+            dominantExercisedCost = $tick.phaseBreakdown.dominantExercisedCost
             attribution = $attribution
             priorTickNavigationInvalidations = $priorInvalidations
             currentTickNavigationInvalidations = $tick.navigationInvalidations
@@ -521,6 +725,7 @@ foreach ($runtimePath in $runtimePaths) {
 
     $runRecord = [ordered]@{
         run = $runId
+        runtimeMetricsSchemaVersion = $runtimeMetricsSchemaVersion
         sourceArtifacts = [ordered]@{
             runtimeMetricsCsv = [ordered]@{
                 path = Get-DisplayPath $runtimePath
@@ -553,6 +758,7 @@ foreach ($runtimePath in $runtimePaths) {
             attributionCounts = $attributionCounts
             dominantPhaseCounts = $dominantCounts
             ticks = $spikes.ToArray()
+            phaseSummary = Get-PhaseSummary $spikeTicks
         }
         cacheMisses = [ordered]@{
             all = [long](($ticks | Measure-Object allPathMisses -Sum).Sum)
@@ -575,15 +781,35 @@ foreach ($runtimePath in $runtimePaths) {
     ) -join '|'
     $internalRuns.Add([pscustomobject]@{
         run = $runId
+        trialIndex = $runRecord.configuration.trialIndex
         repeatKey = $repeatKey
+        runtimeMetricsSchemaVersion = $runtimeMetricsSchemaVersion
         spikeTicks = @($spikeTicks | ForEach-Object { [long]$_.endTick } | Sort-Object)
         ticks = $ticks.ToArray()
     })
 }
 
 $repeatability = New-Object System.Collections.Generic.List[object]
+foreach ($candidateGroup in @($internalRuns | Group-Object repeatKey | Where-Object { $_.Count -gt 1 })) {
+    $schemaVersions = @($candidateGroup.Group | ForEach-Object { $_.runtimeMetricsSchemaVersion } | Sort-Object -Unique)
+    if ($schemaVersions.Count -gt 1) {
+        throw "Repeatability groups cannot mix runtime metrics schema versions: $($candidateGroup.Name)"
+    }
+}
 foreach ($group in @($internalRuns | Group-Object repeatKey | Where-Object { $_.Count -gt 1 } | Sort-Object Name)) {
-    $members = @($group.Group | Sort-Object run)
+    $members = @($group.Group | Sort-Object trialIndex, run)
+    $unionSet = New-Object 'System.Collections.Generic.HashSet[long]'
+    foreach ($member in $members) {
+        foreach ($value in $member.spikeTicks) { [void]$unionSet.Add($value) }
+    }
+    $unionTicks = @($unionSet | Sort-Object)
+    $commonTicks = @($members[0].spikeTicks)
+    for ($memberIndex = 1; $memberIndex -lt $members.Count; $memberIndex++) {
+        $memberSet = New-Object 'System.Collections.Generic.HashSet[long]'
+        foreach ($value in $members[$memberIndex].spikeTicks) { [void]$memberSet.Add($value) }
+        $commonTicks = @($commonTicks | Where-Object { $memberSet.Contains($_) })
+    }
+    $commonTicks = @($commonTicks | Sort-Object)
     $pairs = New-Object System.Collections.Generic.List[object]
     for ($leftIndex = 0; $leftIndex -lt $members.Count; $leftIndex++) {
         for ($rightIndex = $leftIndex + 1; $rightIndex -lt $members.Count; $rightIndex++) {
@@ -599,7 +825,9 @@ foreach ($group in @($internalRuns | Group-Object repeatKey | Where-Object { $_.
             $unionCount = $leftSet.Count + $rightSet.Count - $intersection.Count
             $pairs.Add([ordered]@{
                 leftRun = $members[$leftIndex].run
+                leftTrialIndex = $members[$leftIndex].trialIndex
                 rightRun = $members[$rightIndex].run
+                rightTrialIndex = $members[$rightIndex].trialIndex
                 exactTickSetIdentity = $leftOnly.Count -eq 0 -and $rightOnly.Count -eq 0
                 intersectionCount = $intersection.Count
                 unionCount = $unionCount
@@ -609,16 +837,67 @@ foreach ($group in @($internalRuns | Group-Object repeatKey | Where-Object { $_.
             })
         }
     }
+    $perRunTickSets = @($members | ForEach-Object {
+        [ordered]@{
+            run = $_.run
+            trialIndex = $_.trialIndex
+            count = $_.spikeTicks.Count
+            endSimulationTicks = @($_.spikeTicks)
+        }
+    })
+    $unionTickBreakdown = New-Object System.Collections.Generic.List[object]
+    foreach ($endTick in $unionTicks) {
+        $trialRecords = New-Object System.Collections.Generic.List[object]
+        foreach ($member in $members) {
+            $matches = @($member.ticks | Where-Object { $_.endTick -eq $endTick })
+            if ($matches.Count -ne 1) {
+                throw "Repeatability tick $endTick does not map to exactly one row in $($member.run)."
+            }
+            $tick = $matches[0]
+            $trialRecords.Add([ordered]@{
+                run = $member.run
+                trialIndex = $member.trialIndex
+                exceedsSpikeThreshold = $tick.wallMs -gt $ThresholdMilliseconds[0]
+                priorTickNavigationInvalidations = if ($tick.sequence -gt 0) {
+                    [long]$member.ticks[[int]$tick.sequence - 1].navigationInvalidations
+                }
+                else { [long]0 }
+                currentTickNavigationInvalidations = $tick.navigationInvalidations
+                phaseBreakdown = $tick.phaseBreakdown
+            })
+        }
+        $unionTickBreakdown.Add([ordered]@{
+            endSimulationTick = $endTick
+            exceedsThresholdInAllRuns = @($trialRecords | Where-Object { -not $_.exceedsSpikeThreshold }).Count -eq 0
+            trials = $trialRecords.ToArray()
+        })
+    }
+    $allSpikeSamples = @($members | ForEach-Object {
+        $_.ticks | Where-Object { $_.wallMs -gt $ThresholdMilliseconds[0] }
+    })
+    $commonSpikeSamples = @($members | ForEach-Object {
+        $_.ticks | Where-Object { $commonTicks -contains $_.endTick }
+    })
     $repeatability.Add([ordered]@{
         compatibilityKey = $group.Name
+        runtimeMetricsSchemaVersion = [int]$members[0].runtimeMetricsSchemaVersion
         spikeThresholdMilliseconds = [double]$ThresholdMilliseconds[0]
         runCount = $members.Count
         allRunsExactTickSetIdentity = @($pairs | Where-Object { -not $_.exactTickSetIdentity }).Count -eq 0
+        commonSpikeTickCount = $commonTicks.Count
+        commonSpikeEndSimulationTicks = $commonTicks
+        unionSpikeTickCount = $unionTicks.Count
+        unionSpikeEndSimulationTicks = $unionTicks
+        perRunSpikeTickSets = $perRunTickSets
         pairs = $pairs.ToArray()
+        unionTickPerTrialPhaseBreakdown = $unionTickBreakdown.ToArray()
+        allSpikeOccurrencesPhaseSummary = Get-PhaseSummary $allSpikeSamples
+        commonSpikeTicksAcrossRunsPhaseSummary = Get-PhaseSummary $commonSpikeSamples
     })
 }
 
 $allTicks = @($internalRuns | ForEach-Object { $_.ticks })
+$observedRuntimeMetricsSchemaVersions = @($runs | ForEach-Object { $_.runtimeMetricsSchemaVersion } | Sort-Object -Unique)
 $aggregateCorrelations = @(
     Get-PearsonCorrelation $allTicks "buildWorkOrdersMs"
     Get-PearsonCorrelation $allTicks "routeSelectionMs"
@@ -631,15 +910,41 @@ $aggregateCorrelations = @(
 )
 
 $output = [ordered]@{
-    schemaVersion = 1
+    schemaVersion = 3
+    analyzerVersion = $analyzerVersion
     analysis = "performance_spike_characterization"
     diagnosticScope = [ordered]@{
         timingSource = "metrics_on_runtime_batches"
         claimBoundary = "diagnostic_characterization_only_not_a_release_gate"
         sourceContract = "clean_verified_export_release_equivalence_pairs"
-        repeatabilityScope = "tick_set_identity_only_for_configuration-compatible_supplied_runs"
+        repeatabilityScope = "tick_set_identity_only_for_configuration-and-runtime-schema-compatible_supplied_runs; mixed-version groups rejected"
+        parserBounds = [ordered]@{
+            maximumJsonBytes = $maximumJsonBytes
+            maximumCsvBytes = $maximumCsvBytes
+            maximumCsvLines = $maximumCsvLines
+            maximumCsvLineCharacters = $maximumCsvLineCharacters
+            maximumJsonNestingDepth = $maximumJsonNestingDepth
+            enforcement = "preflight_before_ConvertFrom-Json_or_Import-Csv_materialization"
+        }
+        residualContract = [ordered]@{
+            formula = "wall_ms - measured_leaf_phase_total_ms"
+            measuredLeafPhaseFields = @(
+                "build_work_orders_ms", "route_selection_ms", "scene_sync_ms",
+                "navigation_rebuild_ms", "harvest_apply_ms", "update_hud_ms"
+            )
+            excludedInclusiveParentFields = @("simulation_tick_ms", "session_advance_ms")
+            overlapCaveat = "Runtime phases are independently inclusive. The two inclusive parent fields are reported but excluded from the sum; the summed leaf call sites are non-overlapping on the characterized route."
+            negativeResidualToleranceMilliseconds = $negativeResidualToleranceMilliseconds
+            negativeResidualHandling = "fail_below_negative_tolerance_otherwise_clamp_to_zero_and_flag"
+            dominantExercisedCostCandidates = @(
+                "build_work_orders", "route_selection", "scene_sync",
+                "navigation_rebuild", "harvest_apply", "update_hud"
+            )
+            residualSelectionPolicy = "reported_but_excluded_from_dominant_exercised_production_cost"
+        }
     }
-    runtimeMetricsSchemaVersion = 4
+    runtimeMetricsSchemaVersion = if ($observedRuntimeMetricsSchemaVersions.Count -eq 1) { [int]$observedRuntimeMetricsSchemaVersions[0] } else { $null }
+    runtimeMetricsSchemaVersions = $observedRuntimeMetricsSchemaVersions
     thresholdMilliseconds = @($ThresholdMilliseconds)
     compatibility = $compatibility
     runCount = $runs.Count

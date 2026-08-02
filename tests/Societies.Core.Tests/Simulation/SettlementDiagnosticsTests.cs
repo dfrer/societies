@@ -121,6 +121,16 @@ namespace Societies.Core.Tests
             Assert.Equal(1, batch.NavigationInvalidationsTotal);
             Assert.Equal(diagnostics.PathPlanCacheSize, batch.PathPlanCacheSizeLast);
             Assert.True(batch.Phases.NavigationRebuildMilliseconds > 0.0, "Runtime invalidation rebuild time should be measured");
+            Assert.True(batch.Phases.BuildWorkOrdersInputPreparationMilliseconds > 0.0);
+            Assert.True(batch.Phases.BuildWorkOrdersNonExtractionMilliseconds > 0.0);
+            Assert.True(batch.Phases.BuildWorkOrdersReserveExtractionMilliseconds > 0.0);
+            Assert.True(batch.Phases.BuildWorkOrdersFinalizationMilliseconds > 0.0);
+            double buildWorkOrdersChildren =
+                batch.Phases.BuildWorkOrdersInputPreparationMilliseconds +
+                batch.Phases.BuildWorkOrdersNonExtractionMilliseconds +
+                batch.Phases.BuildWorkOrdersReserveExtractionMilliseconds +
+                batch.Phases.BuildWorkOrdersFinalizationMilliseconds;
+            Assert.True(buildWorkOrdersChildren <= batch.Phases.BuildWorkOrdersMilliseconds + 0.001);
         }
 
         [Fact]

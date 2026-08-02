@@ -19,6 +19,7 @@ namespace Societies.Simulation
         private const int HearthBurnIntervalTicks = 80;
         private const int PathBuildTicks = 6;
         private const int MinimumMissingPathsForGeometricDistanceField = 8;
+        private const int StableGeometricDistanceFieldCapacity = 2;
 
         private static readonly IReadOnlyDictionary<string, int> HutCost = new Dictionary<string, int>
         {
@@ -72,6 +73,13 @@ namespace Societies.Simulation
         private readonly PrototypeResourceStoreState _centralDepot;
         private PrototypeNavigationGrid? _navigationGrid;
         private int _navigationRulesVersion = 1;
+        private StableGeometricDistanceFieldCacheEntry? _stableAnchorGeometricDistanceField;
+        private StableGeometricDistanceFieldCacheEntry? _stableDepotGeometricDistanceField;
+        private long _stableGeometricDistanceFieldHitCount;
+        private long _stableGeometricDistanceFieldBuildCount;
+        private long _stableGeometricDistanceFieldClearCount;
+        private bool _geometricDistanceFieldCacheAccessStarted;
+        private bool _usePerTickStableGeometricDistanceFieldReferenceMode;
         private long _totalNavigationInvalidations;
         private int? _lastPathPlanRulesVersion;
         private bool _lastPathPlanLookupWasCacheHit;
@@ -119,6 +127,32 @@ namespace Societies.Simulation
         private readonly PrototypeRouteDistanceMode _routeDistanceMode;
         private PrototypeSettlementDirective _activeDirective = PrototypeSettlementDirective.Neutral;
         private long _cachedRouteDistanceFastPathHits;
+
+        private enum StableGeometricDistanceFieldSlot
+        {
+            Anchor,
+            Depot,
+            Coalesced
+        }
+
+        private sealed record StableGeometricDistanceFieldCacheEntry(
+            PrototypeNavigationGrid Grid,
+            int RulesVersion,
+            Vector3 OriginPosition,
+            int OriginGridX,
+            int OriginGridY,
+            PrototypeNavigationGrid.GeometricDistanceField Field);
+
+        internal readonly record struct GeometricDistanceFieldCacheProbe(
+            int StableEntryCapacity,
+            int StableEntryCount,
+            int EphemeralEntryCount,
+            long StableHitCount,
+            long StableBuildCount,
+            long StableClearCount,
+            bool PerTickReferenceMode,
+            bool AllStableEntriesMatchCurrentGridAndRulesVersion);
+
         public PrototypeSettlementSimulation(
             PrototypeScenarioDefinition scenario,
             IReadOnlyList<PrototypeRoleQuotaDefinition> roleQuotas,
@@ -370,7 +404,7 @@ namespace Societies.Simulation
             _selectorPathCacheMissesThisTick = 0;
             _selectorSelectedRouteReusesThisTick = 0;
             _citizensEvaluatedThisTick = 0;
-            _geometricDistanceFieldsThisTick.Clear();
+            BeginGeometricDistanceFieldTick();
 
             CommitPreparedForcedPathCompletion(result, runtimeMetrics);
 
@@ -395,7 +429,7 @@ namespace Societies.Simulation
             RuntimeMetricsPhaseToken buildWorkOrdersPhase = runtimeMetrics?.BeginPhase(RuntimeMetricsPhase.BuildWorkOrders) ?? default;
             try
             {
-                availableOrders = BuildWorkOrders(resources, currentHour, weather);
+                availableOrders = BuildWorkOrders(resources, currentHour, weather, runtimeMetrics);
             }
             finally
             {

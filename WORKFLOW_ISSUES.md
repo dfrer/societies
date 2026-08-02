@@ -6,6 +6,26 @@ Statuses: **Open**, **Monitoring**, **Resolved**, **Deferred**, **Rejected**.
 
 ## Open entries
 
+### WI-SOCIETIES-2026-007 - Sandboxed Git cannot read the user-global excludes file
+
+- **Tier:** T2
+- **Status:** Monitoring
+- **Scope/project:** `E:\AIExperiments\games\societies`
+- **Category:** tooling and permissions
+- **First seen:** 2026-08-01 (America/Vancouver)
+- **Last seen:** 2026-08-01 (America/Vancouver)
+- **Occurrences:** 1 W2-06 optimization and delivery run
+- **Reporter:** main orchestrator and `performance_worker`
+- **Symptom:** Read-only Git status, diff, and commit-content commands repeatedly emitted `unable to access 'C:\Users\hunte/.config/git/ignore': Permission denied` for the configured user-global excludes file.
+- **Impact:** Repository evidence remained usable, but the warning obscured otherwise clean output throughout the milestone gate.
+- **Evidence:** The warning recurred during W2-06 implementation review, clean-matrix preflight, and final repository-state checks while each Git command otherwise completed successfully.
+- **Workaround:** Judge commands by exit code and explicit repository output; do not change user-global Git configuration or ACLs during project delivery.
+- **Root cause:** The workspace sandbox can read the repository but cannot read the configured user-global excludes path.
+- **Proposed fix:** If consequential, evaluate a narrowly scoped readable excludes path or an approved user-level permission correction outside a release or gameplay slice.
+- **Auto-fix eligibility/rationale:** No - user-global configuration and permissions are excluded from automatic repair.
+- **Resolution/validation:** Monitoring; the warning did not affect W2-06 source, validation, matrix, or commit-content checks.
+- **Linked entry:** WI-GLOBAL-2026-058 in `C:\Users\hunte\Documents\Codex\WORKFLOW_ISSUES.md`.
+
 ### WI-SOCIETIES-2026-006 — PowerShell diagnostic assertion depended on rendered Linux error view
 
 - **Tier:** T1

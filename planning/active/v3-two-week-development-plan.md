@@ -2,11 +2,11 @@
 
 ## Document Control
 
-The July 13-24, 2026 execution window is historical. This document is retained as the Stopped/Closed W2 record with required Definition-of-Done items unmet; W2-06 concluded Stop Feature Expansion and the next bounded action is performance repair.
+The July 13-24, 2026 execution window is historical. This document is retained as the W2 record; clean implementation `478a4d9` clears the W2-06 hard performance gate, while the stricter aspirational aggregate target remains missed. W3-01 is queued after W2-06 delivery; broader Weeks 3-4 activation remains inactive pending an explicit continuation decision.
 
 | Field | Value |
 |---|---|
-| Status | Stopped/Closed — Stop Feature Expansion |
+| Status | Validated — W2-06 hard gate cleared; W3-01 queued after delivery |
 | Prepared | 2026-07-09 |
 | Execution window | Monday 2026-07-13 through Friday 2026-07-24 |
 | Day-zero preparation | Friday 2026-07-10, optional, 30–60 minutes |
@@ -41,6 +41,8 @@ Record only discoveries that may change the long-term vision, architecture, prot
 | 2026-07-13 | Product-direction review clarified the Eco-like ecology/society goal and the role of LLM-enabled citizens alongside human participants. | Preserve deterministic world authority; use LLMs for bounded reasoning and communication; protect meaningful human agency. | Session 2 AI design, Session 6 roadmap, Session 7 master plan | Reconcile after the Day 10 result; no sprint scope change. |
 
 ## Execution Log
+
+Historical execution entries below may mention earlier v4/v5 runtime CSV artifacts; they are tied to their dated profiling evidence. The current runtime batch contract is `runtime-batch-metrics-v6.csv` with 44 columns.
 
 - **2026-07-09, Day 1 started:** refreshed `origin`, fast-forwarded local `master` from `c58e3de` to `379300d`, and created `feature/v3-runtime-hardening`.
 - **Baseline correction:** synchronized master contains 79 required .NET tests. Its first Windows run passed 77 and exposed two CRLF-sensitive CSV test assertions; the runtime CSV was valid.
@@ -83,7 +85,7 @@ At the end of Day 10, record one explicit result:
 - **Narrow iteration:** engineering passes, but playtests show that the crisis, directive, or citizen causality needs refinement.
 - **Stop feature expansion:** correctness, determinism, persistence, or the performance safety gate fails; return to the last green boundary before adding systems.
 
-The canonical product north star and deterministic/LLM boundary are maintained in [PRODUCT-THESIS.md](../PRODUCT-THESIS.md). W2-06 records **Stop Feature Expansion**; evaluate [the Draft/Conditional Weeks 3-4 plan](v3-weeks-3-4-development-plan.md) only after a later explicit continuation decision.
+The canonical product north star and deterministic/LLM boundary are maintained in [PRODUCT-THESIS.md](../PRODUCT-THESIS.md). W2-06 is locally accepted at `478a4d9`; evaluate [the Draft/Conditional Weeks 3-4 plan](v3-weeks-3-4-development-plan.md) only after delivery and an explicit continuation decision.
 
 ### Day 10 long-term planning reconciliation
 
@@ -541,7 +543,7 @@ Acceptance:
 
 The baseline may improve composition, lighting, materials, placeholder readability, and existing UI presentation. Production asset creation and broad visual polish remain deferred until the playtests justify them.
 
-Status: **complete by explicit two-exception waiver; performance safety did not pass and visual acceptance was waived.** W2-04 is merged through PR #117 at master `d519d4d`. W2-05 is merged through PR #119 at master `f0e88f0`, after local validation on `feature/v3-w2-05-schema-v7` at `cea7f8a`. W2-VIS timing-only p95 `55.4529 ms` remains over safety, persistence/hash equivalence is unavailable, and visual acceptance is waived, not passed. See the [W2-06 validation report](../../V3_SPRINT_VALIDATION_REPORT.md). Weeks 3-4 remain Draft/Conditional and inactive after the Stop Feature Expansion decision.
+Status: **complete by explicit two-exception waiver; W2-06 hard performance safety is green at `478a4d9`, while visual acceptance remains waived.** W2-04 is merged through PR #117 at master `d519d4d`. W2-05 is merged through PR #119 at master `f0e88f0`, after local validation on `feature/v3-w2-05-schema-v7` at `cea7f8a`. W2-VIS timing-only p95 `55.4529 ms` remains over safety, persistence/hash equivalence is unavailable, and visual acceptance is waived, not passed. See the [W2-06 validation report](../../V3_SPRINT_VALIDATION_REPORT.md). Queue W3-01 after delivery; broader Weeks 3-4 remain Draft/Conditional and inactive.
 
 #### V3-W2-05 — Schema v7, telemetry, and automated slice tests
 
@@ -578,11 +580,13 @@ Acceptance:
 - Slice tests use commands/domain state rather than brittle UI timing where possible.
 - One Godot smoke test covers the real input-to-HUD path.
 
-Local W2-05 evidence: 333/333 .NET tests and 23/23 Godot tests with zero-warning builds; current W2-06 manifest declares 334 .NET (229 fast, 11 integration, 94 soak) and 23 Godot tests. The W2-06 wrapper exited 0, but child summaries were not independently parsed. The long crisis reference trace passes 2/2. Final `git diff --check` and manifest JSON validation pass.
+Historical W2-05/W2-06 pre-final evidence recorded 333/333 and 334-test manifest counts before the final current-head run. The current final validation is 350/350 .NET and 23/23 Godot with zero-warning Debug/Release/ExportRelease builds; see [v3-w2-06-final-validation.json](evidence/v3-w2-06-final-validation.json). The long crisis reference trace passes 2/2. Final `git diff --check` and manifest JSON validation pass.
 
 #### V3-W2-06 — Release validation, playtests, and decision
 
-Run the release candidate from a clean state. The completed W2-06 report records **Stop Feature Expansion** because the clean matrix is contract-valid but the 16-citizen reference and 1,000-tick soak p95 safety gates remain red:
+Current evidence: [v3-w2-06-clean-canonical-matrix-validation.json](evidence/v3-w2-06-clean-canonical-matrix-validation.json) records implementation `478a4d9`, 14/14 clean pairs, 354 artifacts, and all hard contracts/safety limits passing. W2-06 is locally accepted; the single next bounded action is W3-01. No broader Weeks 3-4 gameplay has started.
+
+Historical execution record reconciled by the final W2-06 evidence: the clean matrix at `478a4d9` passes the 16-citizen reference and soak hard-safety gates; `budgetStatus=target_missed` is the stricter aspirational target result:
 
 - Release build and full .NET/Godot suites;
 - 16-citizen matrix and 1,000-tick determinism/resume;
@@ -602,7 +606,7 @@ Ask afterward:
 6. What caused the result, and did it feel fair?
 7. Would you play another crisis?
 
-Delivered `V3_SPRINT_VALIDATION_REPORT.md` records baseline-versus-RC results, defects/limitations, playtest availability, and the single sprint conclusion. The next action is bounded performance characterization/repair before any expansion.
+Delivered `V3_SPRINT_VALIDATION_REPORT.md` records final matrix results, defects/limitations, playtest availability, and the single sprint conclusion. W2-06 is locally accepted; the next action is W3-01 only.
 
 ## Ten-Day Schedule
 
@@ -811,4 +815,4 @@ Decision rules:
 - Playtest evidence or its availability gap is recorded.
 - `CURRENT_BUILD.md` is updated to describe implemented V3 reality, not intent.
 - The report records Continue V3, Narrow Iteration, or Stop Feature Expansion.
-- This document is Stopped/Closed with Stop Feature Expansion and required Definition-of-Done items unmet; the Weeks 3-4 proposal is Draft/Conditional and inactive.
+- This document records the completed W2 validation boundary at `478a4d9`; W3-01 is queued after delivery, while the Weeks 3-4 proposal remains Draft/Conditional and inactive beyond that bounded action.
