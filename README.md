@@ -21,9 +21,9 @@ Use [CURRENT_BUILD.md](CURRENT_BUILD.md) as the short repo-truth reference.
 ## Current Prototype
 
 See [CURRENT_BUILD.md](CURRENT_BUILD.md) for the up-to-date prototype scope, validation commands, and implementation details.
-Current implemented reality includes W2-04/W2-05, W2-06, merged W3-01 through PR #122 at master `7b747af`, and locally accepted W3-02 at `9706e22` on `feature/v3-w3-02-citizen-interests`. W3-02 docs/evidence publication remains pending; W3-03+ and broader Weeks 3-4 remain inactive pending an explicit **Continue V3** decision to activate wetland quota/shared consequences.
+Current implemented reality includes W2-04/W2-05, W2-06, W3-01 merged through PR #122 at master `7b747af`, W3-02 merged through PR #123 at origin/master `d9e297f`, and W3-03 locally committed at `a513636` on `feature/v3-w3-03-wetland-consequences`. W3-03 docs/evidence publication and GitHub delivery remain pending; W3-04+ remain inactive until another explicit **Continue V3** decision.
 
-W2-04/W2-05 remain historical merged milestones; see [CURRENT_BUILD.md](CURRENT_BUILD.md), [W3-01 validation evidence](planning/active/evidence/v3-w3-01-validation.json), and [W3-02 validation evidence](planning/active/evidence/v3-w3-02-validation.json). W3-02 adds deterministic derived-only citizen preferences/reasons, ordinal capture, relative supports/opposes/uncommitted labels, and an atomic post-selection aggregate summary while preserving schema-v8 compatibility and critical needs. It changes no UI, wetland effects, or LLM integration. Git/GitHub remains authoritative for delivery/merge state.
+W2-04/W2-05 remain historical merged milestones; see [CURRENT_BUILD.md](CURRENT_BUILD.md), [W3-02 validation evidence](planning/active/evidence/v3-w3-02-validation.json), and [W3-03 validation evidence](planning/active/evidence/v3-w3-03-validation.json). W3-03 adds deterministic Protect/DrawDown wetland quotas and health consequences, pre-ledger player+AI enforcement, canonical events, schema-v9 persistence with v5-v8 migration/legacy continuation, and a minimal HUD. It does not add W3-04 LLM/fallback, restoration jobs, general law, markets, or broad UI. Git/GitHub remains authoritative for delivery/merge state.
 
 
 ## Planning vs Code

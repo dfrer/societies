@@ -40,9 +40,9 @@ namespace Societies.Core.Tests
             PrototypeRuntimeSnapshot v7Result = migratedV7.CaptureSnapshot(Vector3.Zero);
             PrototypeRuntimeSnapshot v6Result = migratedV6.CaptureSnapshot(Vector3.Zero);
             PrototypeRuntimeSnapshot v5Result = migratedV5.CaptureSnapshot(Vector3.Zero);
-            Assert.Equal(8, v7Result.SchemaVersion);
-            Assert.Equal(8, v6Result.SchemaVersion);
-            Assert.Equal(8, v5Result.SchemaVersion);
+            Assert.Equal(9, v7Result.SchemaVersion);
+            Assert.Equal(9, v6Result.SchemaVersion);
+            Assert.Equal(9, v5Result.SchemaVersion);
             Assert.Equal("neutral", v7Result.CivicPolicy!.PolicyId);
             Assert.Null(v7Result.CivicPolicy.SelectedTick);
             Assert.Equal(0, v7Result.CivicPolicy.Version);
@@ -145,7 +145,7 @@ namespace Societies.Core.Tests
             AssertRejectedWithoutMutation(session, invalidTelemetry, before, eventsBefore);
 
             JsonObject future = JsonNode.Parse(before)!.AsObject();
-            future[nameof(PrototypeRuntimeSnapshot.SchemaVersion)] = 9;
+            future[nameof(PrototypeRuntimeSnapshot.SchemaVersion)] = 10;
             Assert.Throws<InvalidDataException>(() =>
                 PrototypePersistenceService.DeserializeSnapshot(future.ToJsonString()));
             Assert.Equal(before, PrototypePersistenceService.SerializeSnapshot(session.CaptureSnapshot(Vector3.Zero)));
@@ -469,7 +469,7 @@ namespace Societies.Core.Tests
                 null);
             string csv = session.MetricsTracker.BuildCsv();
 
-            Assert.Equal(8, summary.SchemaVersion);
+            Assert.Equal(9, summary.SchemaVersion);
             Assert.Equal("stable", summary.CrisisOutcome);
             Assert.Equal(string.Empty, summary.CrisisFailureReason);
             Assert.Equal(snapshot.Crisis!.ElapsedTicks, summary.CrisisElapsedTicks);
@@ -552,6 +552,7 @@ namespace Societies.Core.Tests
                 root.Remove(nameof(PrototypeRuntimeSnapshot.Telemetry));
             }
             root.Remove(nameof(PrototypeRuntimeSnapshot.CivicPolicy));
+            root.Remove(nameof(PrototypeRuntimeSnapshot.Wetland));
             if (clearStableResourceIds)
             {
                 foreach (JsonNode? resource in root[nameof(PrototypeRuntimeSnapshot.Resources)]!.AsArray())

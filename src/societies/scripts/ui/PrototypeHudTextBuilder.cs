@@ -383,11 +383,16 @@ namespace Societies.UI
         public static string BuildCompactCrisisText(
             PrototypeCrisisState? crisis,
             PrototypeSettlementDirective directive,
-            IReadOnlyDictionary<string, long>? contributionCountsByResource)
+            IReadOnlyDictionary<string, long>? contributionCountsByResource,
+            PrototypeWetlandSnapshot? wetland = null)
         {
             if (crisis == null)
             {
-                return "Crisis: none";
+                string noCrisisText = "Crisis: none";
+                string noCrisisWetlandText = BuildCompactWetlandText(wetland);
+                return noCrisisWetlandText.Length == 0
+                    ? noCrisisText
+                    : $"{noCrisisText}\n{noCrisisWetlandText}";
             }
 
             PrototypeCrisisDefinition definition = crisis.Definition;
@@ -404,11 +409,10 @@ namespace Societies.UI
             }
             List<string> lines = new()
             {
-                $"Crisis: {definition.DisplayName}",
-                $"Time: {crisis.RemainingTicks}/{crisis.DeadlineTicks} ({crisis.RemainingSeconds:0.0}s)",
+                $"Crisis: {definition.DisplayName} | Time: {crisis.RemainingTicks}/{crisis.DeadlineTicks} ({crisis.RemainingSeconds:0.0}s)",
                 $"Directive: {PrototypeSettlementDirectiveCatalog.GetDisplayName(directive)}",
                 $"Contributed: {contributionCountsByResource?.Values.Sum() ?? 0} ({contributions})",
-                $"Stable conditions: cap {observation.CapableCitizens}/{definition.RequiredCapableCitizens} meal {observation.Meals}/{definition.RequiredMeals} fuel {observation.HearthFuel}/{definition.RequiredHearthFuel} bed {observation.BedCoveragePercent}/{definition.RequiredBedCoveragePercent}%",
+                $"Stable conditions: C{observation.CapableCitizens}/{definition.RequiredCapableCitizens} M{observation.Meals}/{definition.RequiredMeals} F{observation.HearthFuel}/{definition.RequiredHearthFuel} B{observation.BedCoveragePercent}%",
                 $"Hold: stable {crisis.StableHoldTicks}/{definition.StableHoldTicks} | collapse {crisis.CollapseHoldTicks}/{definition.CollapseHoldTicks}"
             };
 
@@ -417,7 +421,40 @@ namespace Societies.UI
                 lines.Add($"Outcome: {crisis.BuildTerminalSummary()}");
             }
 
+            string wetlandText = BuildCompactWetlandText(wetland);
+            if (wetlandText.Length > 0)
+            {
+                lines.Add(wetlandText);
+            }
+
             return string.Join('\n', lines);
+        }
+
+        /// <summary>Read-only civic-policy consequence summary for the existing crisis HUD.</summary>
+        public static string BuildCompactWetlandText(PrototypeWetlandSnapshot? wetland)
+        {
+            if (wetland == null)
+            {
+                return string.Empty;
+            }
+
+            string healthBand = string.IsNullOrWhiteSpace(wetland.WetlandHealthBand)
+                ? "Unknown"
+                : char.ToUpperInvariant(wetland.WetlandHealthBand[0]) + wetland.WetlandHealthBand[1..];
+            if (wetland.PolicyId == "neutral")
+            {
+                return $"Policy: not selected (neutral)\nWetland: {healthBand} {wetland.WetlandHealth}/100";
+            }
+
+            (string policyLabel, string consequence) = wetland.PolicyId switch
+            {
+                "protect_wetland" => ("Protect", "fewer; preserved"),
+                "draw_down_wetland" => ("Drawdown", "more; degrades"),
+                _ => ("unrecognized", "consequence unavailable")
+            };
+            int remaining = wetland.ReedQuotaLimit - wetland.ReedQuotaConsumed;
+            return $"Policy: {policyLabel} | {healthBand} {wetland.WetlandHealth}/100\n" +
+                   $"Reeds: {wetland.ReedQuotaConsumed}/{wetland.ReedQuotaLimit}, {remaining} left | {consequence}";
         }
 
         private static string BuildCompactStoreSummary(IReadOnlyDictionary<string, int> store)

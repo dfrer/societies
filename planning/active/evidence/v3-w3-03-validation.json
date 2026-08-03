@@ -1,0 +1,158 @@
+{
+  "schemaVersion": 1,
+  "scope": "V3-W3-03 final validation evidence",
+  "status": "pass",
+  "evidenceType": "post-commit machine-readable validation record",
+  "source": {
+    "implementationCommit": "a513636",
+    "testedImplementation": "W3-03 implementation at commit a513636",
+    "repositoryPath": "C:\\tmp\\societies-v3-w2-06-perf",
+    "authoritativeScriptPath": "scripts/run-prototype-validation.ps1",
+    "reviewGate": "final staged deep-review GO",
+    "reviewFindings": "no P0-P3 findings",
+    "reviewDiff": {
+      "filesChanged": 23,
+      "insertions": 1809,
+      "deletions": 86
+    }
+  },
+  "scopeAndNonGoals": {
+    "scope": [
+      "Deterministic Protect command: limit 4, health 75, consequence -1 per reed",
+      "Deterministic DrawDown command: limit 12, health 45, consequence -2",
+      "Schema version 9 with strict validation and v5-v8 migration",
+      "Atomic resource ledger quota enforcement",
+      "Crisis HUD consequence presentation",
+      "Record focused, authoritative, and production validation with provenance"
+    ],
+    "nonGoals": [
+      "W3-04 implementation",
+      "LLM integration",
+      "General law-system expansion",
+      "Restoration jobs",
+      "No CURRENT_BUILD.md or other current-state document edits",
+      "No source, runtime, configuration, migration, staging, commit, push, or deployment actions"
+    ]
+  },
+  "authoritativeCommands": [
+    "focused core wetland+artifact suite",
+    "focused core suite",
+    "focused UI suite",
+    "scripts/run-prototype-validation.ps1",
+    "dotnet build src/societies/Societies.csproj --configuration Debug",
+    "dotnet test tests/Societies.Core.Tests/Societies.Core.Tests.csproj --configuration Release --no-build",
+    "Godot 4.6.2-stable.mono --headless --path src/societies res://tests/HeadlessTestRunner.tscn",
+    "dotnet build src/societies/Societies.csproj --configuration Release",
+    "dotnet build src/societies/Societies.sln --configuration ExportRelease"
+  ],
+  "results": [
+    {
+      "command": "focused core wetland+artifact suite",
+      "passed": 37,
+      "failed": 0,
+      "skipped": 0,
+      "total": 37,
+      "exitCode": 0,
+      "result": "pass"
+    },
+    {
+      "command": "focused core suite",
+      "passed": 129,
+      "failed": 0,
+      "skipped": 0,
+      "total": 129,
+      "exitCode": 0,
+      "result": "pass"
+    },
+    {
+      "command": "focused UI suite",
+      "passed": 13,
+      "failed": 0,
+      "skipped": 0,
+      "total": 13,
+      "exitCode": 0,
+      "result": "pass"
+    },
+    {
+      "command": "scripts/run-prototype-validation.ps1",
+      "scriptPath": "C:\\tmp\\societies-v3-w2-06-perf\\scripts\\run-prototype-validation.ps1",
+      "elapsedSeconds": 416.9,
+      "exitCode": 0,
+      "result": "pass",
+      "provenance": "authoritative wrapper final run"
+    },
+    {
+      "command": "dotnet build src/societies/Societies.csproj --configuration Debug",
+      "configuration": "Debug",
+      "warnings": 0,
+      "errors": 0,
+      "exitCode": 0,
+      "result": "pass"
+    },
+    {
+      "command": "dotnet test tests/Societies.Core.Tests/Societies.Core.Tests.csproj --configuration Release --no-build",
+      "configuration": "Release",
+      "passed": 442,
+      "failed": 0,
+      "skipped": 0,
+      "total": 442,
+      "elapsed": "00:05:11",
+      "exitCode": 0,
+      "result": "pass"
+    },
+    {
+      "command": "Godot 4.6.2-stable.mono --headless --path src/societies res://tests/HeadlessTestRunner.tscn",
+      "godotVersion": "4.6.2-stable.mono",
+      "passed": 23,
+      "failed": 0,
+      "skipped": 0,
+      "total": 23,
+      "exitCode": 0,
+      "result": "pass"
+    },
+    {
+      "command": "dotnet build src/societies/Societies.csproj --configuration Release",
+      "configuration": "Release",
+      "elapsedSeconds": 1.29,
+      "warnings": 0,
+      "errors": 0,
+      "exitCode": 0,
+      "result": "pass"
+    },
+    {
+      "command": "dotnet build src/societies/Societies.sln --configuration ExportRelease",
+      "configuration": "ExportRelease",
+      "elapsedSeconds": 1.34,
+      "warnings": 0,
+      "errors": 0,
+      "exitCode": 0,
+      "result": "pass"
+    }
+  ],
+  "diagnostics": {
+    "productionBuildWarnings": 0,
+    "generatedTestProjectWarning": {
+      "observed": false,
+      "note": "If emitted by the test project, the existing generated warning is non-production; production builds remain zero-warning."
+    },
+    "nonFailingWarnings": [
+      "Expected frame-cap warning passed tests.",
+      "Optional runtime metrics temporary-artifact access warning passed tests."
+    ]
+  },
+  "review": {
+    "gate": "GO",
+    "p0": 0,
+    "p1": 0,
+    "p2": 0,
+    "p3": 0,
+    "filesReviewed": 23,
+    "insertions": 1809,
+    "deletions": 86,
+    "summary": "Final staged deep review approved with no P0-P3 findings."
+  },
+  "limitations": [
+    "This record does not claim browser/device certification, remote CI, deployment, or release readiness.",
+    "This evidence file itself was not an input to the implementation validation commands."
+  ]
+}

@@ -53,7 +53,7 @@ namespace Societies.Core.Tests
 
             Assert.Equal("shelter", directive.DirectiveId);
             PrototypeRuntimeSnapshot snapshot = session.CaptureSnapshot(Vector3.Zero);
-            Assert.Equal(8, snapshot.SchemaVersion);
+            Assert.Equal(9, snapshot.SchemaVersion);
             Assert.Equal("shelter", snapshot.Directive!.DirectiveId);
             PrototypeCatalogBundle bundle = LoadCatalogs();
             PrototypeRuntimeSession restored = new(

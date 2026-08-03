@@ -1,3 +1,4 @@
+using Societies.Core;
 using Societies.Simulation;
 using Societies.UI;
 using System.Collections.Generic;
@@ -95,9 +96,11 @@ namespace Societies.Core.Tests
             Assert.Contains("Time:", activeText);
             Assert.Contains("Directive: Food & Fuel", activeText);
             Assert.Contains("Contributed: 5", activeText);
+            Assert.Contains("Stable conditions: C2/2 M3/3 F4/4 B50%", activeText);
             Assert.Contains("Hold: stable 1/2 | collapse 0/3", activeText);
             Assert.DoesNotContain("?", activeText);
             Assert.Contains("Outcome: Stable: all conditions held 2/2 ticks", terminalText);
+            Assert.Contains("Hold: stable 2/2 | collapse 0/3", terminalText);
             Assert.Contains("Why: Shelter hut construction", inspectorText);
             Assert.Contains("Needs: nutrition 64 | fatigue 40", inspectorText);
             Assert.Contains("Route: 0.0 m | 0 ticks", inspectorText);
@@ -128,6 +131,132 @@ namespace Societies.Core.Tests
                 Assert.Equal(1, interactionBudget.EstimatedRenderedLines);
                 Assert.Equal(1, interactionBudget.AvailableLines);
             }
+        }
+
+        [Fact]
+        public void CompactWetlandText_NeutralStateIsConciseAndDoesNotInventASelection()
+        {
+            string text = PrototypeHudTextBuilder.BuildCompactWetlandText(new PrototypeWetlandSnapshot
+            {
+                PolicyId = "neutral",
+                ReedQuotaLimit = 0,
+                ReedQuotaConsumed = 0,
+                WetlandHealth = 60,
+                WetlandHealthBand = "strained"
+            });
+
+            Assert.Equal(
+                "Policy: not selected (neutral)\nWetland: Strained 60/100",
+                text);
+            Assert.DoesNotContain("Reeds:", text);
+            Assert.DoesNotContain("Effect:", text);
+        }
+
+        [Theory]
+        [InlineData("protect_wetland", 4, 0, 75, "healthy", "Protect", "fewer; preserved")]
+        [InlineData("draw_down_wetland", 12, 0, 45, "strained", "Drawdown", "more; degrades")]
+        public void CompactWetlandText_SelectedPoliciesExposeDistinctConsequences(
+            string policyId,
+            int quotaLimit,
+            int quotaConsumed,
+            int health,
+            string band,
+            string policyLabel,
+            string consequence)
+        {
+            string text = PrototypeHudTextBuilder.BuildCompactWetlandText(new PrototypeWetlandSnapshot
+            {
+                PolicyId = policyId,
+                ReedQuotaLimit = quotaLimit,
+                ReedQuotaConsumed = quotaConsumed,
+                WetlandHealth = health,
+                WetlandHealthBand = band
+            });
+
+            Assert.Contains($"Policy: {policyLabel} | {char.ToUpperInvariant(band[0]) + band[1..]} {health}/100", text);
+            Assert.Contains($"Reeds: {quotaConsumed}/{quotaLimit}, {quotaLimit - quotaConsumed} left | {consequence}", text);
+        }
+
+        [Fact]
+        public void CompactWetlandText_PostHarvestReflectsQuotaHealthAndBand()
+        {
+            string text = PrototypeHudTextBuilder.BuildCompactWetlandText(new PrototypeWetlandSnapshot
+            {
+                PolicyId = "draw_down_wetland",
+                ReedQuotaLimit = 12,
+                ReedQuotaConsumed = 5,
+                WetlandHealth = 35,
+                WetlandHealthBand = "degraded"
+            });
+
+            Assert.Contains("Policy: Drawdown | Degraded 35/100", text);
+            Assert.Contains("Reeds: 5/12, 7 left | more; degrades", text);
+        }
+
+        [Fact]
+        public void CompactCrisisText_NullWetlandPreservesLegacyCompatibility()
+        {
+            Assert.Equal(
+                "Crisis: none",
+                PrototypeHudTextBuilder.BuildCompactCrisisText(
+                    null,
+                    PrototypeSettlementDirective.Neutral,
+                    null,
+                    null));
+            Assert.Equal(string.Empty, PrototypeHudTextBuilder.BuildCompactWetlandText(null));
+        }
+
+        [Theory]
+        [InlineData(1920.0f, 1080.0f)]
+        [InlineData(1280.0f, 720.0f)]
+        public void CompactCrisisText_WetlandConsequenceFitsTargetCardBudget(float width, float height)
+        {
+            PrototypeCrisisState crisis = CreateCrisis();
+            crisis.Advance(new PrototypeCrisisObservation(3, 2, 3, 4, 50));
+            string text = PrototypeHudTextBuilder.BuildCompactCrisisText(
+                crisis,
+                PrototypeSettlementDirective.FoodAndFuel,
+                new Dictionary<string, long> { ["berries"] = 3, ["logs"] = 2 },
+                new PrototypeWetlandSnapshot
+                {
+                    PolicyId = "protect_wetland",
+                    ReedQuotaLimit = 4,
+                    ReedQuotaConsumed = 0,
+                    WetlandHealth = 75,
+                    WetlandHealthBand = "healthy"
+                });
+
+            PrototypeHudTextBudget budget = PrototypeHudLayout.Calculate(width, height)
+                .GetTextBudget(PrototypeHudLayout.Crisis, text, 16);
+            Assert.True(budget.Fits, $"Wetland consequence budget: {budget}");
+        }
+
+        [Fact]
+        public void CompactCrisisText_TerminalSelectedWetlandFitsTargetCardBudget()
+        {
+            PrototypeCrisisState terminal = CreateCrisis();
+            terminal.Advance(new PrototypeCrisisObservation(3, 2, 3, 4, 50));
+            terminal.Advance(new PrototypeCrisisObservation(3, 2, 3, 4, 50));
+            string text = PrototypeHudTextBuilder.BuildCompactCrisisText(
+                terminal,
+                PrototypeSettlementDirective.FoodAndFuel,
+                new Dictionary<string, long> { ["berries"] = 3, ["logs"] = 2 },
+                new PrototypeWetlandSnapshot
+                {
+                    PolicyId = "protect_wetland",
+                    ReedQuotaLimit = 4,
+                    ReedQuotaConsumed = 0,
+                    WetlandHealth = 75,
+                    WetlandHealthBand = "healthy"
+                });
+
+            Assert.Contains("Outcome: Stable: all conditions held 2/2 ticks", text);
+            Assert.Contains("Hold: stable 2/2 | collapse 0/3", text);
+            Assert.Contains("Policy: Protect | Healthy 75/100", text);
+            Assert.Contains("Reeds: 0/4, 4 left | fewer; preserved", text);
+            PrototypeHudTextBudget budget = PrototypeHudLayout.Calculate(1280.0f, 720.0f)
+                .GetTextBudget(PrototypeHudLayout.Crisis, text, 16);
+            Assert.True(budget.Fits, $"Terminal wetland consequence budget: {budget}");
         }
 
         private static PrototypeCrisisState CreateCrisis()

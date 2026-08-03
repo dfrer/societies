@@ -129,6 +129,8 @@ namespace Societies.Core.Tests
                     PrototypeEventTypes.SettlementDirectiveChanged,
                     PrototypeEventTypes.CivicPolicySelected,
                     PrototypeEventTypes.CivicPreferenceSummary,
+                    PrototypeEventTypes.CivicWetlandQuotaApplied,
+                    PrototypeEventTypes.CivicWetlandTransition,
                     PrototypeEventTypes.PlayerContributionSucceeded
                 },
                 first.EventLog.Entries.Select(entry => entry.EventType));
@@ -147,6 +149,8 @@ namespace Societies.Core.Tests
                     PrototypeEventTypes.PlayerContributionSucceeded,
                     PrototypeEventTypes.CivicPolicySelected,
                     PrototypeEventTypes.CivicPreferenceSummary,
+                    PrototypeEventTypes.CivicWetlandQuotaApplied,
+                    PrototypeEventTypes.CivicWetlandTransition,
                     PrototypeEventTypes.SettlementDirectiveChanged
                 },
                 second.EventLog.Entries.Select(entry => entry.EventType));

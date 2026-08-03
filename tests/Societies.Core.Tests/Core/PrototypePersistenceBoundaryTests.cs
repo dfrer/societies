@@ -102,7 +102,7 @@ namespace Societies.Core.Tests
             Assert.Throws<InvalidDataException>(() =>
                 PrototypePersistenceService.DeserializeRunSummary(
                     PrototypePersistenceService.SerializeRunSummary(
-                        new PrototypeRunSummary { SchemaVersion = 9 })));
+                        new PrototypeRunSummary { SchemaVersion = 10 })));
             Assert.Throws<InvalidDataException>(() =>
                 PrototypePersistenceService.DeserializeRunSummary(
                     PrototypePersistenceService.SerializeRunSummary(
@@ -203,7 +203,7 @@ namespace Societies.Core.Tests
             Assert.Throws<InvalidDataException>(() =>
                 PrototypePersistenceService.SaveSnapshot(path, oversized));
             Assert.Equal(committed, File.ReadAllBytes(path));
-            Assert.Equal(8, PrototypePersistenceService.LoadSnapshot(path).SchemaVersion);
+            Assert.Equal(9, PrototypePersistenceService.LoadSnapshot(path).SchemaVersion);
         }
 
         [Fact]
@@ -247,7 +247,7 @@ namespace Societies.Core.Tests
             Assert.Throws<InvalidDataException>(() =>
                 PrototypePersistenceService.SaveRunSummary(path, excessiveSummary));
             Assert.Equal(committed, File.ReadAllBytes(path));
-            Assert.Equal(8, PrototypePersistenceService.LoadRunSummary(path).SchemaVersion);
+            Assert.Equal(9, PrototypePersistenceService.LoadRunSummary(path).SchemaVersion);
         }
 
         [Fact]

@@ -31,7 +31,12 @@ namespace Societies.Core
         private readonly Dictionary<string, long> _contributionCountsByResource = new(StringComparer.Ordinal);
         private PrototypeSettlementDirective _activeDirective = PrototypeSettlementDirective.Neutral;
         private PrototypeCivicPolicyState _civicPolicy = new();
+        private PrototypeWetlandState _wetland = new();
         private PrototypeRuntimeTelemetrySnapshot _telemetry = new();
+        private IReadOnlyList<PrototypeResourceSiteState> _cachedPlanningResources =
+            System.Array.Empty<PrototypeResourceSiteState>();
+        private long _cachedPlanningResourceRevision = -1;
+        private bool _cachedPlanningResourcesExcludeReeds;
 
         public PrototypeRuntimeSession(
             PrototypeScenarioDefinition scenario,
@@ -72,6 +77,8 @@ namespace Societies.Core
         public PrototypeSettlementDirective ActiveDirective => _activeDirective;
 
         public PrototypeCivicPolicySnapshot CivicPolicy => _civicPolicy.CaptureSnapshot();
+
+        public PrototypeWetlandSnapshot Wetland => _wetland.CaptureSnapshot();
 
         public IReadOnlyList<PrototypeCitizenInterest> CaptureCitizenInterests()
         {
@@ -268,11 +275,13 @@ namespace Societies.Core
             _contributionCountsByResource.Clear();
             _activeDirective = PrototypeSettlementDirective.Neutral;
             _civicPolicy = new PrototypeCivicPolicyState();
+            _wetland = new PrototypeWetlandState();
             _telemetry = new PrototypeRuntimeTelemetrySnapshot();
             Inventory.ReplaceContents(new Dictionary<string, int>());
             Stockpile.ReplaceContents(new Dictionary<string, int>());
             _world = PrototypeWorldGenerator.Generate(Scenario);
             _resourceLedger = PrototypeResourceLedger.Create(_world);
+            InvalidatePlanningResourceProjection();
             _weatherSimulation = new PrototypeWeatherSimulation(_simulationSeed);
             _settlementSimulation = new PrototypeSettlementSimulation(
                 Scenario,
@@ -331,7 +340,7 @@ namespace Societies.Core
                 RecordEvent(PrototypeEventTypes.WeatherShifted, $"Weather shifted to {CurrentWeatherName}");
             }
 
-            IReadOnlyList<PrototypeResourceSiteState> resources = _resourceLedger?.CaptureActiveSites() ?? System.Array.Empty<PrototypeResourceSiteState>();
+            IReadOnlyList<PrototypeResourceSiteState> resources = CaptureResourceSitesForPlanning();
             PrototypeSettlementTickResult settlementResult = _settlementSimulation?.Advance(
                 resources,
                 CurrentHour,
@@ -407,16 +416,33 @@ namespace Societies.Core
             IReadOnlyList<PrototypeCitizenInterest> interests =
                 PrototypeCitizenInterestEvaluator.Capture(Workers, command.RequestedPolicy);
             string preferenceSummary = PrototypeCitizenInterestEvaluator.BuildAggregateSummary(interests);
+            PrototypeWetlandState selectedWetland = PrototypeWetlandState.CreateForSelection(
+                command.RequestedPolicy,
+                SimulationTick,
+                policyVersion: 1);
             PrototypeCivicPolicyCommandResult result = _civicPolicy.CommitSelection(command, SimulationTick);
             if (!result.Succeeded)
             {
                 return result;
             }
 
+            _wetland = selectedWetland;
+
             RecordEvent(
                 PrototypeEventTypes.CivicPolicySelected,
                 PrototypeCivicPolicyCatalog.BuildSelectionMessage(command.RequestedPolicy));
             RecordEvent(PrototypeEventTypes.CivicPreferenceSummary, preferenceSummary);
+            PrototypeWetlandSnapshot wetland = _wetland.CaptureSnapshot();
+            RecordEvent(
+                PrototypeEventTypes.CivicWetlandQuotaApplied,
+                PrototypeWetlandCatalog.BuildQuotaAppliedMessage(wetland));
+            RecordEvent(
+                PrototypeEventTypes.CivicWetlandTransition,
+                PrototypeWetlandCatalog.BuildTransitionMessage(
+                    "policy_selection",
+                    PrototypeWetlandCatalog.NeutralHealth,
+                    PrototypeWetlandHealthBand.Strained,
+                    wetland));
             return result;
         }
 
@@ -548,11 +574,24 @@ namespace Societies.Core
                 return new PrototypeHarvestResult("player", siteId, site.ResourceId, amount, 0, false, "inventory_overflow");
             }
 
+            if (!_wetland.CanApplyHarvest(site.ResourceId, amount))
+            {
+                return new PrototypeHarvestResult(
+                    "player",
+                    siteId,
+                    site.ResourceId,
+                    amount,
+                    0,
+                    false,
+                    "wetland_quota_exhausted");
+            }
+
             PrototypeHarvestResult result = _resourceLedger.Apply(new PrototypeHarvestCommand("player", siteId, site.ResourceId, amount));
             if (result.Succeeded)
             {
                 Inventory.AddItem(result.ResourceId, result.AppliedQuantity);
                 RecordPlayerHarvest(result.ResourceId, result.AppliedQuantity);
+                ApplyWetlandHarvestConsequence(result.ResourceId, result.AppliedQuantity);
             }
 
             return result;
@@ -727,18 +766,34 @@ namespace Societies.Core
                         request.TargetNodeName,
                         request.ResourceId,
                         request.Amount);
-                    PrototypeHarvestResult result = _resourceLedger?.Apply(command) ?? new PrototypeHarvestResult(
-                        command.ActorId,
-                        command.SiteId,
-                        command.ResourceId,
-                        command.RequestedQuantity,
-                        0,
-                        false,
-                        "ledger_unavailable");
+                    PrototypeHarvestResult result;
+                    if (!_wetland.CanApplyHarvest(command.ResourceId, command.RequestedQuantity))
+                    {
+                        result = new PrototypeHarvestResult(
+                            command.ActorId,
+                            command.SiteId,
+                            command.ResourceId,
+                            command.RequestedQuantity,
+                            0,
+                            false,
+                            "wetland_quota_exhausted");
+                    }
+                    else
+                    {
+                        result = _resourceLedger?.Apply(command) ?? new PrototypeHarvestResult(
+                            command.ActorId,
+                            command.SiteId,
+                            command.ResourceId,
+                            command.RequestedQuantity,
+                            0,
+                            false,
+                            "ledger_unavailable");
+                    }
                     results.Add(result);
                     if (result.Succeeded)
                     {
                         RecordAiHarvestSucceeded(request.WorkerDisplayName, result.ResourceId, result.AppliedQuantity);
+                        ApplyWetlandHarvestConsequence(result.ResourceId, result.AppliedQuantity);
                     }
                     else
                     {
@@ -752,6 +807,94 @@ namespace Societies.Core
             }
 
             return results;
+        }
+
+        internal IReadOnlyList<PrototypeResourceSiteState> CaptureResourceSitesForPlanning()
+        {
+            if (_resourceLedger == null)
+            {
+                return System.Array.Empty<PrototypeResourceSiteState>();
+            }
+
+            IReadOnlyList<PrototypeResourceSiteState> resources = _resourceLedger.CaptureActiveSites();
+            bool excludeReeds = _wetland.Policy != PrototypeCivicPolicy.Neutral &&
+                _wetland.RemainingReedQuota <= 0;
+            if (_cachedPlanningResourceRevision == _resourceLedger.Revision &&
+                _cachedPlanningResourcesExcludeReeds == excludeReeds)
+            {
+                return _cachedPlanningResources;
+            }
+
+            if (!excludeReeds)
+            {
+                _cachedPlanningResources = resources;
+            }
+            else
+            {
+                int filteredCount = 0;
+                for (int index = 0; index < resources.Count; index++)
+                {
+                    if (!string.Equals(
+                        resources[index].ResourceId,
+                        PrototypeWetlandCatalog.ReedResourceId,
+                        StringComparison.Ordinal))
+                    {
+                        filteredCount++;
+                    }
+                }
+
+                PrototypeResourceSiteState[] filtered = new PrototypeResourceSiteState[filteredCount];
+                int writeIndex = 0;
+                for (int index = 0; index < resources.Count; index++)
+                {
+                    PrototypeResourceSiteState resource = resources[index];
+                    if (!string.Equals(
+                        resource.ResourceId,
+                        PrototypeWetlandCatalog.ReedResourceId,
+                        StringComparison.Ordinal))
+                    {
+                        filtered[writeIndex++] = resource;
+                    }
+                }
+
+                _cachedPlanningResources = System.Array.AsReadOnly(filtered);
+            }
+
+            _cachedPlanningResourceRevision = _resourceLedger.Revision;
+            _cachedPlanningResourcesExcludeReeds = excludeReeds;
+            return _cachedPlanningResources;
+        }
+
+        private void ApplyWetlandHarvestConsequence(string resourceId, int amount)
+        {
+            if (!string.Equals(resourceId, PrototypeWetlandCatalog.ReedResourceId, StringComparison.Ordinal))
+            {
+                return;
+            }
+            if (_wetland.Policy == PrototypeCivicPolicy.Neutral)
+            {
+                return;
+            }
+
+            PrototypeWetlandTransition transition = _wetland.CommitSuccessfulReedHarvest(amount);
+            if (_wetland.RemainingReedQuota == 0)
+            {
+                InvalidatePlanningResourceProjection();
+            }
+            PrototypeWetlandSnapshot wetland = _wetland.CaptureSnapshot();
+            RecordEvent(
+                PrototypeEventTypes.CivicWetlandQuotaConsumed,
+                PrototypeWetlandCatalog.BuildQuotaConsumedMessage(wetland, amount));
+            if (transition.BandChanged)
+            {
+                RecordEvent(
+                    PrototypeEventTypes.CivicWetlandTransition,
+                    PrototypeWetlandCatalog.BuildTransitionMessage(
+                        "reed_harvest",
+                        transition.PreviousHealth,
+                        transition.PreviousBand,
+                        wetland));
+            }
         }
 
         public bool SelectNextBuildQueueEntry()
@@ -859,7 +1002,7 @@ namespace Societies.Core
 
             return new PrototypeRuntimeSnapshot
             {
-                SchemaVersion = 8,
+                SchemaVersion = 9,
                 ScenarioId = Scenario.Id,
                 WorldSeed = WorldSeed,
                 WorldGenerationAttempt = WorldGenerationAttempt,
@@ -883,7 +1026,8 @@ namespace Societies.Core
                     .ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal),
                 Crisis = _crisisState?.CaptureSnapshot(),
                 Telemetry = CaptureTelemetrySnapshot(),
-                CivicPolicy = _civicPolicy.CaptureSnapshot()
+                CivicPolicy = _civicPolicy.CaptureSnapshot(),
+                Wetland = _wetland.CaptureSnapshot()
             };
         }
 
@@ -926,6 +1070,7 @@ namespace Societies.Core
             PrototypeCrisisState? candidateCrisis = null;
             PrototypeRuntimeTelemetrySnapshot candidateTelemetry = new();
             PrototypeCivicPolicyState candidateCivicPolicy = new();
+            PrototypeWetlandState candidateWetland = new();
             if (snapshot.SchemaVersion >= 7)
             {
                 candidateDirective = ParseDirectiveStrict(snapshot.Directive!.DirectiveId);
@@ -965,7 +1110,7 @@ namespace Societies.Core
                     }
                 }
 
-                if (snapshot.SchemaVersion == 8)
+                if (snapshot.SchemaVersion >= 8)
                 {
                     candidateCivicPolicy = PrototypeCivicPolicyState.PrepareRestore(snapshot.CivicPolicy!);
                     if (candidateCivicPolicy.SelectedTick > snapshot.SimulationTick)
@@ -974,6 +1119,10 @@ namespace Societies.Core
                             "Runtime snapshot civic policy selection tick exceeds the simulation tick.");
                     }
                 }
+
+                candidateWetland = snapshot.SchemaVersion == 9
+                    ? PrototypeWetlandState.PrepareRestore(snapshot.Wetland!, candidateCivicPolicy)
+                    : PrototypeWetlandState.MigrateFromCivicPolicy(candidateCivicPolicy);
             }
             else
             {
@@ -990,11 +1139,13 @@ namespace Societies.Core
             RunStartHour = snapshot.CurrentHour;
             _world = candidateWorld;
             _resourceLedger = candidateLedger;
+            InvalidatePlanningResourceProjection();
             _weatherSimulation = candidateWeatherSimulation;
             _settlementSimulation = candidateSettlement;
             _crisisState = candidateCrisis;
             _activeDirective = candidateDirective;
             _civicPolicy = candidateCivicPolicy;
+            _wetland = candidateWetland;
             _telemetry = candidateTelemetry;
             Inventory.ReplaceContents(snapshot.Inventory);
             Stockpile.ReplaceContents(snapshot.Stockpile);
@@ -1005,6 +1156,13 @@ namespace Societies.Core
             }
             SyncSettlementViews();
             MetricsTracker.Clear();
+        }
+
+        private void InvalidatePlanningResourceProjection()
+        {
+            _cachedPlanningResources = System.Array.Empty<PrototypeResourceSiteState>();
+            _cachedPlanningResourceRevision = -1;
+            _cachedPlanningResourcesExcludeReeds = false;
         }
 
         public void RestoreArtifacts(
@@ -1027,17 +1185,18 @@ namespace Societies.Core
 
         private static void ValidateSnapshot(PrototypeRuntimeSnapshot snapshot)
         {
-            if (snapshot.SchemaVersion is not (5 or 6 or 7 or 8))
+            if (snapshot.SchemaVersion is not (5 or 6 or 7 or 8 or 9))
             {
                 throw new InvalidDataException(
-                    $"Unsupported runtime snapshot schema {snapshot.SchemaVersion}; expected 5, 6, 7, or 8.");
+                    $"Unsupported runtime snapshot schema {snapshot.SchemaVersion}; expected 5, 6, 7, 8, or 9.");
             }
 
             if (snapshot.Inventory == null || snapshot.Stockpile == null || snapshot.Workers == null ||
                 snapshot.Resources == null || snapshot.Settlement == null ||
                 snapshot.Directive == null || snapshot.ContributionCountsByResource == null ||
                 snapshot.Telemetry == null ||
-                (snapshot.SchemaVersion == 8 && snapshot.CivicPolicy == null))
+                (snapshot.SchemaVersion >= 8 && snapshot.CivicPolicy == null) ||
+                (snapshot.SchemaVersion == 9 && snapshot.Wetland == null))
             {
                 throw new InvalidDataException("Runtime snapshot required collections cannot be null.");
             }

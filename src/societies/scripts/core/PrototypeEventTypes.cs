@@ -18,6 +18,9 @@ namespace Societies.Core
         public const string SettlementDirectiveChanged = "settlement.directive.changed";
         public const string CivicPolicySelected = "civic.policy.selected";
         public const string CivicPreferenceSummary = "civic.preference.summary";
+        public const string CivicWetlandQuotaApplied = "civic.wetland.quota_applied";
+        public const string CivicWetlandTransition = "civic.wetland.transition";
+        public const string CivicWetlandQuotaConsumed = "civic.wetland.quota_consumed";
         public const string CrisisStabilityHoldEntered = "crisis.stability_hold.entered";
         public const string CrisisStabilityHoldBroken = "crisis.stability_hold.broken";
         public const string CrisisCollapseHoldEntered = "crisis.collapse_hold.entered";
