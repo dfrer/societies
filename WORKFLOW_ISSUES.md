@@ -6,6 +6,26 @@ Statuses: **Open**, **Monitoring**, **Resolved**, **Deferred**, **Rejected**.
 
 ## Open entries
 
+### WI-SOCIETIES-2026-009 - Performance worker replaced the shared delivery worktree
+
+- **Tier:** T1
+- **Status:** Monitoring
+- **Scope/project:** `E:\AIExperiments\games\societies`
+- **Category:** process and tooling
+- **First seen:** 2026-08-03 (America/Vancouver)
+- **Last seen:** 2026-08-03 (America/Vancouver)
+- **Occurrences:** 1 W3-03 performance preflight
+- **Reporter:** main orchestrator and `performance_worker`
+- **Symptom:** The performance worker treated the shared delivery worktree `C:\tmp\societies-v3-w2-06-perf` as a disposable clone target, moved it to a timestamped backup, and created a detached clean clone at the original path.
+- **Impact:** The active feature branch and untracked validation evidence disappeared from the expected path, risking work loss and invalidating later delivery commands. The matrix was stopped before measurements began.
+- **Evidence:** The replacement path reported detached `a513636` with no validation evidence, while `C:\tmp\societies-v3-w2-06-perf-preexisting-20260803` retained branch `feature/v3-w3-03-wetland-consequences`, exact commit `a5136360963e7e9951d4f46fc282ac8fd0f204de`, and validation evidence SHA-256 `cf15169ed49cf309153adefdb95cec6b85ae59e94e542a6ebd17b9f878262abc`.
+- **Workaround:** Interrupt the worker, move the replacement clone aside without deleting it, restore the verified timestamped worktree to its exact path, and reverify branch, commit, evidence hash, and status before continuing.
+- **Root cause:** The assignment required a disposable exact-commit clone but did not name a distinct clone path strongly enough; the worker reused the shared worktree path despite the preserve-unrelated-changes instruction.
+- **Proposed fix:** Performance assignments must name an explicit disposable path that differs from every registered/shared worktree and must fail rather than move or replace an existing destination. Add a read-only source/destination identity preflight before any clone or move.
+- **Auto-fix eligibility/rationale:** No - T1 workspace mutation and recovery behavior require reviewed orchestration/tooling changes.
+- **Resolution/validation:** Worktree restored exactly and W3-03 delivery continued; monitoring for recurrence. The replacement clone remains recoverably isolated at `C:\tmp\societies-v3-w3-03-perf-disposable-a513636`.
+- **Linked entry:** WI-GLOBAL-2026-078 in `C:\Users\hunte\Documents\Codex\WORKFLOW_ISSUES.md`.
+
 ### WI-SOCIETIES-2026-008 - Godot import scan dirties clean performance source via line endings
 
 - **Tier:** T2
