@@ -60,6 +60,8 @@ namespace Societies.Core.Tests
             Assert.Equal("protect_wetland", loaded.RunSummary!.CivicPolicy!.PolicyId);
             Assert.Single(loaded.EventLog.Where(entry =>
                 entry.EventType == PrototypeEventTypes.CivicPolicySelected));
+            Assert.Single(loaded.EventLog.Where(entry =>
+                entry.EventType == PrototypeEventTypes.CivicPreferenceSummary));
             PrototypeArtifactGenerationManifest manifest =
                 JsonSerializer.Deserialize<PrototypeArtifactGenerationManifest>(
                     File.ReadAllText(fixture.Paths.GenerationManifestPath))!;
@@ -70,11 +72,12 @@ namespace Societies.Core.Tests
         public void SchemaV8LoadRejectsCivicSummaryOrEventMismatchWithValidBindings()
         {
             using ArtifactFixture fixture = ArtifactFixture.Create();
-            PrototypeRuntimeSession session = fixture.CreateSession();
+            PrototypeRuntimeSession session = fixture.CreateSession(advance: false);
             Assert.True(session.SelectCivicPolicy(new(
                 PrototypeCivicPolicy.ProtectWetland,
                 ExpectedVersion: 0,
                 IssuedTick: session.SimulationTick)).Succeeded);
+            _ = session.Advance(TickIntervalSeconds, DayLengthSeconds);
             fixture.Save(session, session.CaptureSnapshot(Vector3.Zero));
 
             JsonObject summary = JsonNode.Parse(
@@ -95,6 +98,87 @@ namespace Societies.Core.Tests
                 .Single(node => node[nameof(PrototypeEventRecord.EventType)]!.GetValue<string>() ==
                     PrototypeEventTypes.CivicPolicySelected);
             civicEvent[nameof(PrototypeEventRecord.Message)] = "tampered";
+            File.WriteAllText(fixture.Paths.LegacyEventLogPath, eventRows.ToJsonString());
+            fixture.Rebind(
+                fixture.Paths.LegacyEventLogPath,
+                nameof(PrototypeArtifactGenerationManifest.EventLog));
+            Assert.Throws<InvalidDataException>(() => fixture.Manager.LoadLatestArtifacts());
+
+            fixture.Save(session, session.CaptureSnapshot(Vector3.Zero));
+            eventRows = JsonNode.Parse(
+                File.ReadAllText(fixture.Paths.LegacyEventLogPath))!.AsArray();
+            JsonObject preferenceEvent = eventRows
+                .Select(node => node!.AsObject())
+                .Single(node => node[nameof(PrototypeEventRecord.EventType)]!.GetValue<string>() ==
+                    PrototypeEventTypes.CivicPreferenceSummary);
+            eventRows.Remove(preferenceEvent);
+            File.WriteAllText(fixture.Paths.LegacyEventLogPath, eventRows.ToJsonString());
+            summary = JsonNode.Parse(
+                File.ReadAllText(fixture.Paths.LegacyRunSummaryPath))!.AsObject();
+            Assert.True(summary[nameof(PrototypeRunSummary.EventCountsByType)]!
+                .AsObject().Remove(PrototypeEventTypes.CivicPreferenceSummary));
+            File.WriteAllText(fixture.Paths.LegacyRunSummaryPath, summary.ToJsonString());
+            fixture.Rebind(
+                fixture.Paths.LegacyEventLogPath,
+                nameof(PrototypeArtifactGenerationManifest.EventLog),
+                eventCount: eventRows.Count);
+            fixture.Rebind(
+                fixture.Paths.LegacyRunSummaryPath,
+                nameof(PrototypeArtifactGenerationManifest.RunSummary));
+            Assert.NotNull(fixture.Manager.LoadLatestArtifacts());
+
+            JsonObject legacySelection = eventRows
+                .Select(node => node!.AsObject())
+                .Single(node => node[nameof(PrototypeEventRecord.EventType)]!.GetValue<string>() ==
+                    PrototypeEventTypes.CivicPolicySelected);
+            legacySelection[nameof(PrototypeEventRecord.Message)] = "tampered";
+            File.WriteAllText(fixture.Paths.LegacyEventLogPath, eventRows.ToJsonString());
+            fixture.Rebind(
+                fixture.Paths.LegacyEventLogPath,
+                nameof(PrototypeArtifactGenerationManifest.EventLog));
+            Assert.Throws<InvalidDataException>(() => fixture.Manager.LoadLatestArtifacts());
+
+            fixture.Save(session, session.CaptureSnapshot(Vector3.Zero));
+            eventRows = JsonNode.Parse(
+                File.ReadAllText(fixture.Paths.LegacyEventLogPath))!.AsArray();
+            preferenceEvent = eventRows
+                .Select(node => node!.AsObject())
+                .Single(node => node[nameof(PrototypeEventRecord.EventType)]!.GetValue<string>() ==
+                    PrototypeEventTypes.CivicPreferenceSummary);
+            eventRows.Remove(preferenceEvent);
+            File.WriteAllText(fixture.Paths.LegacyEventLogPath, eventRows.ToJsonString());
+            summary = JsonNode.Parse(
+                File.ReadAllText(fixture.Paths.LegacyRunSummaryPath))!.AsObject();
+            Assert.True(summary[nameof(PrototypeRunSummary.EventCountsByType)]!
+                .AsObject().Remove(PrototypeEventTypes.CivicPreferenceSummary));
+            File.WriteAllText(fixture.Paths.LegacyRunSummaryPath, summary.ToJsonString());
+            fixture.Rebind(
+                fixture.Paths.LegacyEventLogPath,
+                nameof(PrototypeArtifactGenerationManifest.EventLog),
+                eventCount: eventRows.Count);
+            fixture.Rebind(
+                fixture.Paths.LegacyRunSummaryPath,
+                nameof(PrototypeArtifactGenerationManifest.RunSummary));
+            legacySelection = eventRows
+                .Select(node => node!.AsObject())
+                .Single(node => node[nameof(PrototypeEventRecord.EventType)]!.GetValue<string>() ==
+                    PrototypeEventTypes.CivicPolicySelected);
+            long selectedTick = legacySelection[nameof(PrototypeEventRecord.Tick)]!.GetValue<long>();
+            legacySelection[nameof(PrototypeEventRecord.Tick)] = selectedTick == 0 ? 1 : 0;
+            File.WriteAllText(fixture.Paths.LegacyEventLogPath, eventRows.ToJsonString());
+            fixture.Rebind(
+                fixture.Paths.LegacyEventLogPath,
+                nameof(PrototypeArtifactGenerationManifest.EventLog));
+            Assert.Throws<InvalidDataException>(() => fixture.Manager.LoadLatestArtifacts());
+
+            fixture.Save(session, session.CaptureSnapshot(Vector3.Zero));
+            eventRows = JsonNode.Parse(
+                File.ReadAllText(fixture.Paths.LegacyEventLogPath))!.AsArray();
+            preferenceEvent = eventRows
+                .Select(node => node!.AsObject())
+                .Single(node => node[nameof(PrototypeEventRecord.EventType)]!.GetValue<string>() ==
+                    PrototypeEventTypes.CivicPreferenceSummary);
+            preferenceEvent[nameof(PrototypeEventRecord.Message)] = "bogus";
             File.WriteAllText(fixture.Paths.LegacyEventLogPath, eventRows.ToJsonString());
             fixture.Rebind(
                 fixture.Paths.LegacyEventLogPath,
@@ -390,7 +474,7 @@ namespace Societies.Core.Tests
                 return new ArtifactFixture(directory);
             }
 
-            public PrototypeRuntimeSession CreateSession()
+            public PrototypeRuntimeSession CreateSession(bool advance = true)
             {
                 PrototypeScenarioDefinition scenario = _bundle.Scenarios.Resolve("balanced_basin");
                 PrototypeRuntimeSession session = new(
@@ -398,7 +482,10 @@ namespace Societies.Core.Tests
                     _bundle.RoleQuotas.Roles,
                     resourceDefinitions: _bundle.Resources.Resources);
                 session.Initialize(8.0f);
-                _ = session.Advance(TickIntervalSeconds, DayLengthSeconds);
+                if (advance)
+                {
+                    _ = session.Advance(TickIntervalSeconds, DayLengthSeconds);
+                }
                 return session;
             }
 
@@ -437,7 +524,10 @@ namespace Societies.Core.Tests
                 _ = Manager.SaveArtifacts(session, snapshot, worldSummary);
             }
 
-            public void Rebind(string artifactPath, string bindingPropertyName)
+            public void Rebind(
+                string artifactPath,
+                string bindingPropertyName,
+                int? eventCount = null)
             {
                 byte[] artifactBytes = File.ReadAllBytes(artifactPath);
                 PrototypeArtifactGenerationManifest manifest =
@@ -453,6 +543,10 @@ namespace Societies.Core.Tests
                 {
                     case nameof(PrototypeArtifactGenerationManifest.EventLog):
                         manifest.EventLog = binding;
+                        if (eventCount.HasValue)
+                        {
+                            manifest.EventCount = eventCount.Value;
+                        }
                         break;
                     case nameof(PrototypeArtifactGenerationManifest.RunSummary):
                         manifest.RunSummary = binding;

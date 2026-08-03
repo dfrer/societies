@@ -73,6 +73,11 @@ namespace Societies.Core
 
         public PrototypeCivicPolicySnapshot CivicPolicy => _civicPolicy.CaptureSnapshot();
 
+        public IReadOnlyList<PrototypeCitizenInterest> CaptureCitizenInterests()
+        {
+            return PrototypeCitizenInterestEvaluator.Capture(Workers, _civicPolicy.Policy);
+        }
+
         public PrototypeDirectiveSnapshot CaptureDirectiveSnapshot()
         {
             return new PrototypeDirectiveSnapshot
@@ -393,14 +398,25 @@ namespace Societies.Core
         public PrototypeCivicPolicyCommandResult SelectCivicPolicy(
             PrototypeCivicPolicyCommand command)
         {
-            PrototypeCivicPolicyCommandResult result = _civicPolicy.TrySelect(command, SimulationTick);
-            if (result.Succeeded)
+            string failureReason = _civicPolicy.ValidateSelection(command, SimulationTick);
+            if (failureReason.Length != 0)
             {
-                RecordEvent(
-                    PrototypeEventTypes.CivicPolicySelected,
-                    PrototypeCivicPolicyCatalog.BuildSelectionMessage(command.RequestedPolicy));
+                return new PrototypeCivicPolicyCommandResult(false, failureReason, _civicPolicy.CaptureSnapshot());
             }
 
+            IReadOnlyList<PrototypeCitizenInterest> interests =
+                PrototypeCitizenInterestEvaluator.Capture(Workers, command.RequestedPolicy);
+            string preferenceSummary = PrototypeCitizenInterestEvaluator.BuildAggregateSummary(interests);
+            PrototypeCivicPolicyCommandResult result = _civicPolicy.CommitSelection(command, SimulationTick);
+            if (!result.Succeeded)
+            {
+                return result;
+            }
+
+            RecordEvent(
+                PrototypeEventTypes.CivicPolicySelected,
+                PrototypeCivicPolicyCatalog.BuildSelectionMessage(command.RequestedPolicy));
+            RecordEvent(PrototypeEventTypes.CivicPreferenceSummary, preferenceSummary);
             return result;
         }
 
