@@ -277,7 +277,7 @@ namespace Societies.Core.Tests
 
             Assert.True(contributed.SupportsRuntimeSnapshotPersistence);
             PrototypeRuntimeSnapshot snapshot = contributed.CaptureSnapshot(Vector3.Zero);
-            Assert.Equal(8, snapshot.SchemaVersion);
+            Assert.Equal(9, snapshot.SchemaVersion);
             Assert.Equal(2, snapshot.ContributionCountsByResource["clay"]);
             PrototypeRuntimeSession restoredContribution = CreateSession(initialize: false);
             restoredContribution.ApplySnapshot(

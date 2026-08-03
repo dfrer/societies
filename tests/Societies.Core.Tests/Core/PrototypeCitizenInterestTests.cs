@@ -255,7 +255,7 @@ namespace Societies.Core.Tests
             restored.ApplySnapshot(PrototypePersistenceService.DeserializeSnapshot(
                 PrototypePersistenceService.SerializeSnapshot(snapshot)));
 
-            Assert.Equal(8, snapshot.SchemaVersion);
+            Assert.Equal(9, snapshot.SchemaVersion);
             Assert.Equal(
                 source.CaptureCitizenInterests().ToArray(),
                 restored.CaptureCitizenInterests().ToArray());
@@ -288,18 +288,18 @@ namespace Societies.Core.Tests
                 IssuedTick: 0)).Succeeded);
 
             PrototypeEventRecord[] civicEvents = session.EventLog.Entries.ToArray();
-            Assert.Equal(PrototypeEventTypes.CivicPolicySelected, civicEvents[^2].EventType);
-            Assert.Equal(PrototypeEventTypes.CivicPreferenceSummary, civicEvents[^1].EventType);
-            Assert.Equal(civicEvents[^2].Tick, civicEvents[^1].Tick);
+            Assert.Equal(PrototypeEventTypes.CivicPolicySelected, civicEvents[0].EventType);
+            Assert.Equal(PrototypeEventTypes.CivicPreferenceSummary, civicEvents[1].EventType);
+            Assert.Equal(civicEvents[0].Tick, civicEvents[1].Tick);
             Assert.Equal(
                 expectedSummary,
-                civicEvents[^1].Message);
-            Assert.True(civicEvents[^1].Message.IndexOf("critical_nutrition=", StringComparison.Ordinal) <
-                civicEvents[^1].Message.IndexOf("critical_fatigue=", StringComparison.Ordinal));
-            Assert.True(civicEvents[^1].Message.IndexOf("future_reed_supply=", StringComparison.Ordinal) <
-                civicEvents[^1].Message.IndexOf("immediate_shelter_supply=", StringComparison.Ordinal));
-            Assert.InRange(civicEvents[^1].Message.Length, 1, PrototypeRunArtifactManager.MaximumMessageLength);
-            Assert.Equal(2, civicEvents.Count(entry => entry.EventType.StartsWith("civic.", StringComparison.Ordinal)));
+                civicEvents[1].Message);
+            Assert.True(civicEvents[1].Message.IndexOf("critical_nutrition=", StringComparison.Ordinal) <
+                civicEvents[1].Message.IndexOf("critical_fatigue=", StringComparison.Ordinal));
+            Assert.True(civicEvents[1].Message.IndexOf("future_reed_supply=", StringComparison.Ordinal) <
+                civicEvents[1].Message.IndexOf("immediate_shelter_supply=", StringComparison.Ordinal));
+            Assert.InRange(civicEvents[1].Message.Length, 1, PrototypeRunArtifactManager.MaximumMessageLength);
+            Assert.Equal(4, civicEvents.Count(entry => entry.EventType.StartsWith("civic.", StringComparison.Ordinal)));
         }
 
         [Fact]

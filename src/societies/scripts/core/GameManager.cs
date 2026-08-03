@@ -1208,7 +1208,8 @@ namespace Societies.Core
                 _lastWorldSummary,
                 _runtimeSession?.ActiveDirective ?? PrototypeSettlementDirective.Neutral,
                 _runtimeSession?.Crisis,
-                _runtimeSession?.ContributionCountsByResource);
+                _runtimeSession?.ContributionCountsByResource,
+                _runtimeSession?.Wetland);
 
             UpdateSettlementPresentationFromSessionOrFallback();
         }

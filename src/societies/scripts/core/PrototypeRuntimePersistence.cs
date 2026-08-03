@@ -14,7 +14,7 @@ namespace Societies.Core
     /// </summary>
     public sealed class PrototypeRuntimeSnapshot
     {
-        public int SchemaVersion { get; set; } = 8;
+        public int SchemaVersion { get; set; } = 9;
 
         public string ScenarioId { get; set; } = string.Empty;
 
@@ -59,6 +59,8 @@ namespace Societies.Core
         public PrototypeRuntimeTelemetrySnapshot? Telemetry { get; set; } = new();
 
         public PrototypeCivicPolicySnapshot? CivicPolicy { get; set; } = new();
+
+        public PrototypeWetlandSnapshot? Wetland { get; set; } = new();
     }
 
     /// <summary>
@@ -243,7 +245,7 @@ namespace Societies.Core
 
     public sealed class PrototypeRunSummary
     {
-        public int SchemaVersion { get; set; } = 8;
+        public int SchemaVersion { get; set; } = 9;
 
         public string ScenarioId { get; set; } = string.Empty;
 
@@ -368,6 +370,8 @@ namespace Societies.Core
         public int CollapseHoldBreaks { get; set; }
 
         public PrototypeCivicPolicySnapshot? CivicPolicy { get; set; } = new();
+
+        public PrototypeWetlandSnapshot? Wetland { get; set; } = new();
     }
 
     public struct PrototypeSerializableVector3
@@ -447,6 +451,33 @@ namespace Societies.Core
             nameof(PrototypeRuntimeSnapshot.Telemetry),
             nameof(PrototypeRuntimeSnapshot.CivicPolicy)
         };
+        private static readonly string[] RequiredSchemaV9SnapshotProperties =
+        {
+            nameof(PrototypeRuntimeSnapshot.SchemaVersion),
+            nameof(PrototypeRuntimeSnapshot.ScenarioId),
+            nameof(PrototypeRuntimeSnapshot.WorldSeed),
+            nameof(PrototypeRuntimeSnapshot.WorldGenerationAttempt),
+            nameof(PrototypeRuntimeSnapshot.WorldHash),
+            nameof(PrototypeRuntimeSnapshot.SimulationSeed),
+            nameof(PrototypeRuntimeSnapshot.SimulationTick),
+            nameof(PrototypeRuntimeSnapshot.CurrentHour),
+            nameof(PrototypeRuntimeSnapshot.CurrentWeather),
+            nameof(PrototypeRuntimeSnapshot.TimeUntilNextWeatherShift),
+            nameof(PrototypeRuntimeSnapshot.WeatherRandomState),
+            nameof(PrototypeRuntimeSnapshot.PlayerPosition),
+            nameof(PrototypeRuntimeSnapshot.SettlementAnchorPosition),
+            nameof(PrototypeRuntimeSnapshot.Inventory),
+            nameof(PrototypeRuntimeSnapshot.Stockpile),
+            nameof(PrototypeRuntimeSnapshot.Workers),
+            nameof(PrototypeRuntimeSnapshot.Resources),
+            nameof(PrototypeRuntimeSnapshot.Settlement),
+            nameof(PrototypeRuntimeSnapshot.Directive),
+            nameof(PrototypeRuntimeSnapshot.ContributionCountsByResource),
+            nameof(PrototypeRuntimeSnapshot.Crisis),
+            nameof(PrototypeRuntimeSnapshot.Telemetry),
+            nameof(PrototypeRuntimeSnapshot.CivicPolicy),
+            nameof(PrototypeRuntimeSnapshot.Wetland)
+        };
         private static readonly string[] RequiredSchemaV7DirectiveProperties =
         {
             nameof(PrototypeDirectiveSnapshot.DirectiveId)
@@ -503,7 +534,17 @@ namespace Societies.Core
             nameof(PrototypeCivicPolicySnapshot.WindowStartTick),
             nameof(PrototypeCivicPolicySnapshot.WindowEndTick)
         };
-        private static readonly string[] RequiredSchemaV8RunSummaryProperties = typeof(PrototypeRunSummary)
+        private static readonly string[] RequiredSchemaV9WetlandProperties =
+        {
+            nameof(PrototypeWetlandSnapshot.PolicyId),
+            nameof(PrototypeWetlandSnapshot.PolicySelectedTick),
+            nameof(PrototypeWetlandSnapshot.PolicyVersion),
+            nameof(PrototypeWetlandSnapshot.ReedQuotaLimit),
+            nameof(PrototypeWetlandSnapshot.ReedQuotaConsumed),
+            nameof(PrototypeWetlandSnapshot.WetlandHealth),
+            nameof(PrototypeWetlandSnapshot.WetlandHealthBand)
+        };
+        private static readonly string[] RequiredSchemaV9RunSummaryProperties = typeof(PrototypeRunSummary)
             .GetProperties()
             .Select(property => property.Name)
             .ToArray();
@@ -536,16 +577,19 @@ namespace Societies.Core
                 throw new InvalidDataException("Runtime snapshot is missing an integral SchemaVersion.");
             }
 
-            if (schemaVersion is not (5 or 6 or 7 or 8))
+            if (schemaVersion is not (5 or 6 or 7 or 8 or 9))
             {
-                throw new InvalidDataException($"Unsupported runtime snapshot schema {schemaVersion}; expected 5, 6, 7, or 8.");
+                throw new InvalidDataException($"Unsupported runtime snapshot schema {schemaVersion}; expected 5, 6, 7, 8, or 9.");
             }
 
-            if (schemaVersion is 7 or 8)
+            if (schemaVersion is 7 or 8 or 9)
             {
-                IReadOnlyList<string> requiredSnapshotProperties = schemaVersion == 7
-                    ? RequiredSchemaV7SnapshotProperties
-                    : RequiredSchemaV8SnapshotProperties;
+                IReadOnlyList<string> requiredSnapshotProperties = schemaVersion switch
+                {
+                    7 => RequiredSchemaV7SnapshotProperties,
+                    8 => RequiredSchemaV8SnapshotProperties,
+                    _ => RequiredSchemaV9SnapshotProperties
+                };
                 foreach (string propertyName in requiredSnapshotProperties)
                 {
                     if (!document.RootElement.TryGetProperty(propertyName, out _))
@@ -595,12 +639,21 @@ namespace Societies.Core
                     }
                 }
 
-                if (schemaVersion == 8)
+                if (schemaVersion >= 8)
                 {
                     _ = RequireObjectWithProperties(
                         document.RootElement,
                         nameof(PrototypeRuntimeSnapshot.CivicPolicy),
                         RequiredSchemaV8CivicPolicyProperties,
+                        schemaVersion);
+                }
+
+                if (schemaVersion == 9)
+                {
+                    _ = RequireObjectWithProperties(
+                        document.RootElement,
+                        nameof(PrototypeRuntimeSnapshot.Wetland),
+                        RequiredSchemaV9WetlandProperties,
                         schemaVersion);
                 }
             }
@@ -611,7 +664,7 @@ namespace Societies.Core
             {
                 throw new InvalidDataException("Runtime snapshot payload is null.");
             }
-            if (schemaVersion == 8)
+            if (schemaVersion >= 8)
             {
                 PrototypeCivicPolicyState civicPolicy =
                     PrototypeCivicPolicyState.PrepareRestore(snapshot.CivicPolicy!);
@@ -619,6 +672,11 @@ namespace Societies.Core
                 {
                     throw new InvalidDataException(
                         "Runtime snapshot civic policy selection tick exceeds the simulation tick.");
+                }
+
+                if (schemaVersion == 9)
+                {
+                    _ = PrototypeWetlandState.PrepareRestore(snapshot.Wetland!, civicPolicy);
                 }
             }
 
@@ -707,14 +765,14 @@ namespace Societies.Core
                 throw new InvalidDataException("Run summary is missing an integral SchemaVersion.");
             }
 
-            if (schemaVersion == 8)
+            if (schemaVersion == 9)
             {
-                foreach (string propertyName in RequiredSchemaV8RunSummaryProperties)
+                foreach (string propertyName in RequiredSchemaV9RunSummaryProperties)
                 {
                     if (!document.RootElement.TryGetProperty(propertyName, out _))
                     {
                         throw new InvalidDataException(
-                            $"Schema-v8 run summary is missing required property '{propertyName}'.");
+                            $"Schema-v9 run summary is missing required property '{propertyName}'.");
                     }
                 }
 
@@ -722,6 +780,11 @@ namespace Societies.Core
                     document.RootElement,
                     nameof(PrototypeRunSummary.CivicPolicy),
                     RequiredSchemaV8CivicPolicyProperties,
+                    schemaVersion);
+                _ = RequireObjectWithProperties(
+                    document.RootElement,
+                    nameof(PrototypeRunSummary.Wetland),
+                    RequiredSchemaV9WetlandProperties,
                     schemaVersion);
             }
 

@@ -31,6 +31,8 @@ namespace Societies.Core
             PrototypeCrisisStateSnapshot? crisis = snapshot.Crisis;
             PrototypeCivicPolicySnapshot civicPolicy =
                 snapshot.CivicPolicy ?? new PrototypeCivicPolicySnapshot();
+            PrototypeWetlandSnapshot wetland =
+                snapshot.Wetland ?? new PrototypeWetlandSnapshot();
 
             return new PrototypeRunSummary
             {
@@ -115,6 +117,16 @@ namespace Societies.Core
                     Version = civicPolicy.Version,
                     WindowStartTick = civicPolicy.WindowStartTick,
                     WindowEndTick = civicPolicy.WindowEndTick
+                },
+                Wetland = new PrototypeWetlandSnapshot
+                {
+                    PolicyId = wetland.PolicyId,
+                    PolicySelectedTick = wetland.PolicySelectedTick,
+                    PolicyVersion = wetland.PolicyVersion,
+                    ReedQuotaLimit = wetland.ReedQuotaLimit,
+                    ReedQuotaConsumed = wetland.ReedQuotaConsumed,
+                    WetlandHealth = wetland.WetlandHealth,
+                    WetlandHealthBand = wetland.WetlandHealthBand
                 }
             };
         }

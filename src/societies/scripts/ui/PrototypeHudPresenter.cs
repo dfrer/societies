@@ -46,7 +46,8 @@ namespace Societies.UI
             PrototypeWorldSummary? worldSummary = null,
             PrototypeSettlementDirective directive = PrototypeSettlementDirective.Neutral,
             PrototypeCrisisState? crisis = null,
-            IReadOnlyDictionary<string, long>? contributionCountsByResource = null)
+            IReadOnlyDictionary<string, long>? contributionCountsByResource = null,
+            PrototypeWetlandSnapshot? wetland = null)
         {
             hud.SetDebugText(
                 PrototypeHudTextBuilder.BuildDebugText(
@@ -80,7 +81,11 @@ namespace Societies.UI
                     cameraMode,
                     overlayMode));
             hud.SetInspectorText(PrototypeHudTextBuilder.BuildCompactInspectorText(selectedCitizen, selectedStructure));
-            hud.SetCrisisText(PrototypeHudTextBuilder.BuildCompactCrisisText(crisis, directive, contributionCountsByResource));
+            hud.SetCrisisText(PrototypeHudTextBuilder.BuildCompactCrisisText(
+                crisis,
+                directive,
+                contributionCountsByResource,
+                wetland));
             hud.SetInteractionText(interactionText);
             hud.SetPresentationState(directive, settlementClassification, crisis);
         }

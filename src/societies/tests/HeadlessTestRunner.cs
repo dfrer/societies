@@ -323,6 +323,10 @@ namespace Societies.Tests
                 PrototypeHud hud = manager.GetNodeOrNull<PrototypeHud>("UI") ?? throw new Exception("PrototypeHud missing");
                 Assert(hud.CrisisText.Contains("Crisis: Empty Stores", StringComparison.Ordinal), "Crisis HUD should present the active catalog crisis");
                 Assert(hud.CrisisText.Contains("Directive: Neutral", StringComparison.Ordinal), "Crisis HUD should present the active directive");
+                Assert(
+                    hud.CrisisText.Contains("Policy: not selected (neutral)", StringComparison.Ordinal) &&
+                    hud.CrisisText.Contains("Wetland: Strained 60/100", StringComparison.Ordinal),
+                    "Game manager HUD refresh should forward the read-only neutral wetland snapshot");
 
                 manager.Inventory.AddItem("logs", 3);
                 player.GlobalPosition = manager.CentralDepotPosition;
@@ -355,10 +359,19 @@ namespace Societies.Tests
                     PrototypeSettlementClassification.Stable, string.Empty, 0, 0, 0, 0.0f, 0.0f, 0.0f,
                     new Dictionary<string, int>(), string.Empty, directive: PrototypeSettlementDirective.Shelter,
                     crisis: terminal, contributionCountsByResource: new Dictionary<string, long> { ["logs"] = 3 });
-                Assert(hud.CrisisText.Contains("Outcome: Stable: all conditions held 2/2 ticks", StringComparison.Ordinal), "Live HUD presenter should show terminal causal summary");
+                Assert(
+                    hud.CrisisText.Contains("Outcome: Stable: all conditions held 2/2 ticks", StringComparison.Ordinal) &&
+                    hud.CrisisText.Contains("Hold: stable 2/2", StringComparison.Ordinal),
+                    "Live compact HUD presenter should show the complete terminal causal outcome and hold progress");
 
                 manager.SetScenario("balanced_basin");
-                Assert(hud.CrisisText == "Crisis: none", "Crisis-absent scenarios should retain their non-crisis HUD behavior");
+                Assert(
+                    hud.CrisisText.Contains("Crisis: none", StringComparison.Ordinal) &&
+                    hud.CrisisText.Contains("Policy: not selected (neutral)", StringComparison.Ordinal) &&
+                    hud.CrisisText.Contains("Wetland: Strained 60/100", StringComparison.Ordinal) &&
+                    !hud.CrisisText.Contains("Reeds:", StringComparison.Ordinal) &&
+                    !hud.CrisisText.Contains("Effect:", StringComparison.Ordinal),
+                    "Crisis-absent scenarios should retain the neutral, not-selected wetland reading without a selected consequence");
                 Pass(nameof(Test_MainScene_CrisisHudPresentationSmoke));
             }
             catch (Exception ex)
@@ -406,10 +419,18 @@ namespace Societies.Tests
                 string snapshotPath = Path.Combine(outputDirectory, "latest-snapshot.json");
                 Assert(File.Exists(snapshotPath), "F6 should persist the crisis snapshot");
                 PrototypeRuntimeSnapshot persisted = PrototypePersistenceService.LoadSnapshot(snapshotPath);
-                Assert(persisted.SchemaVersion == 8, "Godot save route should emit schema v8");
+                Assert(persisted.SchemaVersion == 9, "Godot save route should emit strict schema v9");
                 Assert(persisted.Directive?.DirectiveId == "food_and_fuel", "F6 should persist the input-selected directive");
                 Assert(persisted.ContributionCountsByResource.GetValueOrDefault("logs") == 3, "F6 should persist input contributions");
                 Assert(persisted.Crisis?.ElapsedTicks == 5, "F6 should persist crisis elapsed ticks");
+                Assert(
+                    persisted.CivicPolicy?.PolicyId == "neutral" &&
+                    persisted.Wetland?.PolicyId == "neutral" &&
+                    persisted.Wetland.ReedQuotaLimit == 0 &&
+                    persisted.Wetland.ReedQuotaConsumed == 0 &&
+                    persisted.Wetland.WetlandHealth == 60 &&
+                    persisted.Wetland.WetlandHealthBand == "strained",
+                    "F6 should persist the authoritative neutral civic and wetland state in schema v9");
                 Assert(hud.CrisisText.Contains("Directive: Food & Fuel", StringComparison.Ordinal), "HUD should show the saved directive");
                 Assert(hud.CrisisText.Contains("logs x3", StringComparison.Ordinal), "HUD should show the saved contribution");
 
@@ -442,7 +463,7 @@ namespace Societies.Tests
                     rejectedCorruptGeneration = true;
                 }
 
-                Assert(rejectedCorruptGeneration, "GameManager should reject a tampered schema-v8 companion");
+                Assert(rejectedCorruptGeneration, "GameManager should reject a tampered schema-v9 companion");
                 Assert(
                     PrototypePersistenceService.SerializeSnapshot(manager.CaptureSnapshot()) ==
                     liveBeforeCorruptLoad,
@@ -570,7 +591,16 @@ namespace Societies.Tests
                 Label3D queuedHutLabel = manager.GetNodeOrNull<Label3D>("World/Environment/SettlementHub/StructureMarkers/hut_3/Label") ?? throw new Exception("Queued hut marker missing");
                 Assert(queuedHutLabel.Text == "Hut\nplanned", "Queued hut construction should remain distinct from path-corridor state");
 
-                Assert(hud.CrisisText.Contains("Crisis: Empty Stores", StringComparison.Ordinal) && hud.CrisisText.Contains("Time:", StringComparison.Ordinal) && hud.CrisisText.Contains("Directive: Neutral", StringComparison.Ordinal) && hud.CrisisText.Contains("Contributed:", StringComparison.Ordinal) && hud.CrisisText.Contains("Stable conditions:", StringComparison.Ordinal), "Normal view should expose required crisis state text");
+                Assert(
+                    hud.CrisisText.Contains("Crisis: Empty Stores", StringComparison.Ordinal) &&
+                    hud.CrisisText.Contains("Time:", StringComparison.Ordinal) &&
+                    hud.CrisisText.Contains("Directive: Neutral", StringComparison.Ordinal) &&
+                    hud.CrisisText.Contains("Contributed:", StringComparison.Ordinal) &&
+                    hud.CrisisText.Contains("Stable conditions:", StringComparison.Ordinal) &&
+                    hud.CrisisText.Contains("Hold:", StringComparison.Ordinal) &&
+                    hud.CrisisText.Contains("Policy: not selected (neutral)", StringComparison.Ordinal) &&
+                    hud.CrisisText.Contains("Wetland: Strained 60/100", StringComparison.Ordinal),
+                    "Normal view should expose bounded crisis and neutral civic-wetland state text");
                 Assert(manager.SelectDirective(PrototypeSettlementDirective.FoodAndFuel).Changed, "Visual capture smoke should select Food & Fuel");
                 Assert(hud.PresentationState.DirectiveCue == PrototypeHudCue.FoodAndFuel, "HUD should expose the Food & Fuel state cue");
                 Assert(manager.SelectNextInspectedCitizen(), "Visual capture smoke should select a citizen");
