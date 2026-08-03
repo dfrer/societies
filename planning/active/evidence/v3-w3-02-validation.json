@@ -1,0 +1,116 @@
+{
+  "schemaVersion": 1,
+  "scope": "V3-W3-02 final validation evidence",
+  "status": "pass",
+  "evidenceType": "post-commit machine-readable validation record",
+  "source": {
+    "implementationCommit": "9706e22",
+    "testedImplementation": "W3-02 implementation at commit 9706e22",
+    "reviewGate": "final staged deep-review GO",
+    "reviewFindings": "no P0-P3 findings"
+  },
+  "scopeAndNonGoals": {
+    "scope": [
+      "Record focused and authoritative local validation for W3-02",
+      "Record production build and headless Godot results",
+      "Preserve provenance and known non-failing diagnostics"
+    ],
+    "nonGoals": [
+      "No source, runtime, test, configuration, or migration changes",
+      "No CURRENT_BUILD.md, WORKFLOW_ISSUES.md, README, or planning reconciliation",
+      "No commit, staging, push, or release/deployment action"
+    ]
+  },
+  "authoritativeCommands": [
+    "focused Release combined test suite",
+    "scripts/run-prototype-validation.ps1",
+    "dotnet build src/societies/Societies.csproj --configuration Debug",
+    "dotnet test tests/Societies.Core.Tests/Societies.Core.Tests.csproj --configuration Release --no-build",
+    "Godot 4.6.2-stable.mono --headless --path src/societies res://tests/HeadlessTestRunner.tscn",
+    "dotnet build src/societies/Societies.csproj --configuration Release",
+    "dotnet build src/societies/Societies.sln --configuration ExportRelease"
+  ],
+  "results": [
+    {
+      "command": "focused Release combined test suite",
+      "configuration": "Release",
+      "passed": 112,
+      "failed": 0,
+      "skipped": 0,
+      "total": 112,
+      "exitCode": 0,
+      "result": "pass"
+    },
+    {
+      "command": "scripts/run-prototype-validation.ps1",
+      "exitCode": 0,
+      "elapsedSeconds": 427.4,
+      "result": "pass",
+      "provenance": "authoritative wrapper final run"
+    },
+    {
+      "command": "dotnet build src/societies/Societies.csproj --configuration Debug",
+      "configuration": "Debug",
+      "warnings": 0,
+      "errors": 0,
+      "exitCode": 0,
+      "result": "pass"
+    },
+    {
+      "command": "dotnet test tests/Societies.Core.Tests/Societies.Core.Tests.csproj --configuration Release --no-build",
+      "configuration": "Release",
+      "passed": 410,
+      "failed": 0,
+      "skipped": 0,
+      "total": 410,
+      "elapsed": "00:05:19",
+      "exitCode": 0,
+      "result": "pass"
+    },
+    {
+      "command": "Godot 4.6.2-stable.mono --headless --path src/societies res://tests/HeadlessTestRunner.tscn",
+      "godotVersion": "4.6.2-stable.mono",
+      "passed": 23,
+      "failed": 0,
+      "total": 23,
+      "exitCode": 0,
+      "result": "pass"
+    },
+    {
+      "command": "dotnet build src/societies/Societies.csproj --configuration Release",
+      "configuration": "Release",
+      "elapsedSeconds": 1.46,
+      "warnings": 0,
+      "errors": 0,
+      "exitCode": 0,
+      "result": "pass"
+    },
+    {
+      "command": "dotnet build src/societies/Societies.sln --configuration ExportRelease",
+      "configuration": "ExportRelease",
+      "elapsedSeconds": 1.41,
+      "warnings": 0,
+      "errors": 0,
+      "exitCode": 0,
+      "result": "pass"
+    }
+  ],
+  "diagnostics": {
+    "knownWarnings": [
+      "The test project can emit an existing generated CS0436 Main conflict warning; production configurations remain zero-warning."
+    ],
+    "nonFailingAccessWarning": "Optional runtime metrics temporary-artifact access warning did not fail tests."
+  },
+  "review": {
+    "gate": "GO",
+    "p0": 0,
+    "p1": 0,
+    "p2": 0,
+    "p3": 0,
+    "summary": "Final staged deep review approved with no P0-P3 findings."
+  },
+  "limitations": [
+    "This record does not claim browser/device certification, remote CI, deployment, or release readiness.",
+    "This evidence file itself was not an input to the implementation validation commands."
+  ]
+}

@@ -21,9 +21,9 @@ Use [CURRENT_BUILD.md](CURRENT_BUILD.md) as the short repo-truth reference.
 ## Current Prototype
 
 See [CURRENT_BUILD.md](CURRENT_BUILD.md) for the up-to-date prototype scope, validation commands, and implementation details.
-Current implemented reality includes W2-04/W2-05, W2-06, and the locally accepted W3-01 civic contract at `9d8bff4`. W3-01 is the completed bounded exception; W3-02+ and broader Weeks 3-4 remain inactive pending an explicit **Continue V3** decision.
+Current implemented reality includes W2-04/W2-05, W2-06, merged W3-01 through PR #122 at master `7b747af`, and locally accepted W3-02 at `9706e22` on `feature/v3-w3-02-citizen-interests`. W3-02 docs/evidence publication remains pending; W3-03+ and broader Weeks 3-4 remain inactive pending an explicit **Continue V3** decision to activate wetland quota/shared consequences.
 
-W2-04/W2-05 remain historical merged milestones; see [CURRENT_BUILD.md](CURRENT_BUILD.md) and the [W3-01 validation evidence](planning/active/evidence/v3-w3-01-validation.json) for current status. W3-01 provides one irreversible protect/draw-down policy, typed current-tick/expected-version command validation, inclusive `0..1200` window, exactly-once stable event, and schema-v8 persistence with strict v8 plus neutral v5-v7 migration. Git/GitHub remains authoritative for delivery/merge state. UI, effects, reasons, LLM integration, and W3-02+ are not implemented.
+W2-04/W2-05 remain historical merged milestones; see [CURRENT_BUILD.md](CURRENT_BUILD.md), [W3-01 validation evidence](planning/active/evidence/v3-w3-01-validation.json), and [W3-02 validation evidence](planning/active/evidence/v3-w3-02-validation.json). W3-02 adds deterministic derived-only citizen preferences/reasons, ordinal capture, relative supports/opposes/uncommitted labels, and an atomic post-selection aggregate summary while preserving schema-v8 compatibility and critical needs. It changes no UI, wetland effects, or LLM integration. Git/GitHub remains authoritative for delivery/merge state.
 
 
 ## Planning vs Code
