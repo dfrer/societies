@@ -542,7 +542,7 @@ namespace Societies.Core
             ValidateCrisisConsistency(snapshot.Crisis, summary, actualEventCounts);
             if (snapshot.SchemaVersion == 8)
             {
-                ValidateCivicPolicyConsistency(snapshot.CivicPolicy!, eventLog);
+                ValidateCivicPolicyConsistency(snapshot.CivicPolicy!, snapshot.Workers, eventLog);
             }
         }
 
@@ -709,6 +709,7 @@ namespace Societies.Core
 
         private static void ValidateCivicPolicyConsistency(
             PrototypeCivicPolicySnapshot civicPolicy,
+            IReadOnlyList<PrototypeWorkerSnapshot> workers,
             IReadOnlyList<PrototypeEventRecord> eventLog)
         {
             PrototypeCivicPolicyState restored = PrototypeCivicPolicyState.PrepareRestore(civicPolicy);
@@ -725,6 +726,19 @@ namespace Societies.Core
                     "Civic policy selection event presence does not match the snapshot state.");
             }
 
+            PrototypeEventRecord[] preferenceSummaryEvents = eventLog
+                .Where(entry => string.Equals(
+                    entry.EventType,
+                    PrototypeEventTypes.CivicPreferenceSummary,
+                    StringComparison.Ordinal))
+                .ToArray();
+            if (expectedCount == 0 && preferenceSummaryEvents.Length != 0 || preferenceSummaryEvents.Length > 1)
+            {
+                throw new InvalidDataException(
+                    "Civic preference summary presence does not match the snapshot state.");
+            }
+
+            int selectionIndex = -1;
             if (expectedCount == 1)
             {
                 PrototypeEventRecord selection = selectionEvents[0];
@@ -737,6 +751,100 @@ namespace Societies.Core
                     throw new InvalidDataException(
                         "Civic policy selection event does not match the snapshot state.");
                 }
+
+                for (int index = 0; index < eventLog.Count; index++)
+                {
+                    if (ReferenceEquals(eventLog[index], selection))
+                    {
+                        selectionIndex = index;
+                        break;
+                    }
+                }
+            }
+
+            if (expectedCount == 1 && preferenceSummaryEvents.Length == 1)
+            {
+                PrototypeEventRecord selection = selectionEvents[0];
+                PrototypeEventRecord preferenceSummary = preferenceSummaryEvents[0];
+                if (selectionIndex < 0 || selectionIndex + 1 >= eventLog.Count ||
+                    !ReferenceEquals(eventLog[selectionIndex + 1], preferenceSummary) ||
+                    preferenceSummary.Tick != selection.Tick)
+                {
+                    throw new InvalidDataException(
+                        "Civic policy selection event is missing its ordered preference summary companion.");
+                }
+
+                ValidateCanonicalPreferenceSummary(preferenceSummary.Message, workers.Count);
+            }
+        }
+
+        private static void ValidateCanonicalPreferenceSummary(string message, int workerCount)
+        {
+            string[] prefixes =
+            {
+                "Civic preferences: protect=",
+                "; draw_down=",
+                "; reasons=critical_nutrition=",
+                ",critical_fatigue=",
+                ",food_security=",
+                ",recovery_need=",
+                ",future_reed_supply=",
+                ",balanced_long_term_supply=",
+                ",immediate_shelter_supply=",
+                ",immediate_material_supply=",
+                ",material_throughput="
+            };
+            int[] values = new int[prefixes.Length];
+            int index = 0;
+            for (int valueIndex = 0; valueIndex < prefixes.Length; valueIndex++)
+            {
+                string prefix = prefixes[valueIndex];
+                if (!message.AsSpan(index).StartsWith(prefix, StringComparison.Ordinal))
+                {
+                    throw new InvalidDataException("Civic preference summary is not in the canonical format.");
+                }
+
+                index += prefix.Length;
+                int numberStart = index;
+                while (index < message.Length && message[index] is >= '0' and <= '9')
+                {
+                    index++;
+                }
+
+                if (numberStart == index ||
+                    (index - numberStart > 1 && message[numberStart] == '0') ||
+                    !int.TryParse(
+                        message.AsSpan(numberStart, index - numberStart),
+                        NumberStyles.None,
+                        CultureInfo.InvariantCulture,
+                        out values[valueIndex]))
+                {
+                    throw new InvalidDataException("Civic preference summary contains an invalid count.");
+                }
+            }
+
+            if (index != message.Length)
+            {
+                throw new InvalidDataException("Civic preference summary is not in the canonical format.");
+            }
+
+            long protectCount = values[0];
+            long drawDownCount = values[1];
+            long reasonCount = 0;
+            for (int valueIndex = 2; valueIndex < values.Length; valueIndex++)
+            {
+                reasonCount += values[valueIndex];
+            }
+
+            long expectedWorkerCount = workerCount;
+            long protectReasonCount = values[6] + (long)values[7];
+            long drawDownReasonCount = reasonCount - protectReasonCount;
+            if (protectCount + drawDownCount != expectedWorkerCount ||
+                reasonCount != expectedWorkerCount ||
+                protectCount != protectReasonCount ||
+                drawDownCount != drawDownReasonCount)
+            {
+                throw new InvalidDataException("Civic preference summary counts do not match the snapshot worker count.");
             }
         }
 

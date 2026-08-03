@@ -80,6 +80,24 @@ namespace Societies.Core
             PrototypeCivicPolicyCommand command,
             long simulationTick)
         {
+            string failureReason = ValidateSelection(command, simulationTick);
+            if (failureReason.Length != 0)
+            {
+                return new PrototypeCivicPolicyCommandResult(false, failureReason, CaptureSnapshot());
+            }
+
+            return CommitSelection(command, simulationTick);
+        }
+
+        public string ValidateSelection(PrototypeCivicPolicyCommand command, long simulationTick)
+        {
+            return Validate(command, simulationTick);
+        }
+
+        public PrototypeCivicPolicyCommandResult CommitSelection(
+            PrototypeCivicPolicyCommand command,
+            long simulationTick)
+        {
             string failureReason = Validate(command, simulationTick);
             if (failureReason.Length != 0)
             {

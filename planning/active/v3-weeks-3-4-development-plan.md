@@ -7,12 +7,12 @@
 | Status | **Draft/Conditional** |
 | Execution window | Mon 2026-07-27 to Fri 2026-08-07 |
 | Capacity | One developer, 40-50 hours |
-| Activation | W3-01 is locally accepted at `9d8bff4`; W3-02+ and broader Weeks 3-4 require a later explicit **Continue V3** decision |
+| Activation | W3-01 merged via PR #122 at master `7b747af`; W3-02 is locally accepted at `9706e22`; W3-03+ requires an explicit **Continue V3** decision |
 | Product north star | [PRODUCT-THESIS.md](../PRODUCT-THESIS.md) |
 | Current implementation truth | [CURRENT_BUILD.md](../../CURRENT_BUILD.md) |
 | Predecessor | [V3 two-week development plan](v3-two-week-development-plan.md) |
 
-W3-01 is the completed bounded exception, locally accepted at `9d8bff4`. W3-02+ and broader Weeks 3-4 remain inactive until a later explicit **Continue V3** decision; this document does not authorize another feature.
+W3-01 is merged via PR #122 at master `7b747af`. W3-02 is the completed bounded slice, locally accepted at `9706e22`; docs/evidence publication remains pending. W3-03+ and broader Weeks 3-4 remain inactive until an explicit **Continue V3** decision; this document does not authorize another feature.
 
 ## Entry State and Decision Rule
 
@@ -21,11 +21,11 @@ Known repository truth at drafting:
 - The Week 1 hard performance/correctness gate is green.
 - The formal performance target remains missed, and 24-citizen stress remains characterization-red.
 - W2-02 (`empty_stores` crisis contract plus atomic shared-economy contribution) is validated and merged.
-- W2-02 through W2-05 are validated and merged; W2-06 initially concluded **Stop Feature Expansion**, then the clean `478a4d9` repair cleared the hard performance safety gate. W3-01 is locally accepted at `9d8bff4`; W3-02+ remain inactive pending explicit continuation.
+- W2-02 through W2-05 are validated and merged; W2-06 initially concluded **Stop Feature Expansion**, then the clean `478a4d9` repair cleared the hard performance safety gate. W3-01 merged at `7b747af`; W3-02 is locally accepted at `9706e22`.
 
-W2-06 hard safety gates are green at `478a4d9`, and W3-01 is locally accepted at `9d8bff4`; delivery/merge truth remains in Git/GitHub. Keep W3-02+ and broader Weeks 3-4 inactive pending an explicit **Continue V3** decision. Product clarity was not evaluated because author smoke and external observed playtests were not run.
+W2-06 hard safety gates are green at `478a4d9`, W3-01 merged at `7b747af`, and W3-02 is locally accepted at `9706e22`; delivery truth remains in Git/GitHub. Keep W3-03+ and broader Weeks 3-4 inactive pending an explicit **Continue V3** decision. Product clarity was not evaluated because author smoke and external observed playtests were not run.
 
-The July 27-August 7 dates are historical proposal only, not current authorization. This document remains Draft/Conditional: W3-01 is the completed bounded exception, while W3-02+ and broader Weeks 3-4 remain inactive pending an explicit continuation decision.
+The July 27-August 7 dates are historical proposal only, not current authorization. This document remains Draft/Conditional: W3-01 and W3-02 are completed bounded slices, while W3-03+ and broader Weeks 3-4 remain inactive pending an explicit continuation decision.
 
 ### W3-01 accepted bounded exception
 
@@ -34,6 +34,14 @@ Implementation commit `9d8bff4` adds one irreversible protect/draw-down civic po
 Validation: focused 145/145; full 376/376 .NET (0 failed/skipped); Godot 4.6.2 headless exit 0 with manifest 23 (console count not independently parsed); Debug/Release/ExportRelease zero warnings/errors; deep review GO with no P0-P3 findings. Clean performance matrix is 14/14 pairs and 354/354 hashes; reference median p95/max `47.9643/176.1198 ms`, soaks `38.5737/205.6055` and `38.0676/192.3137`, forced invalidation `22.8738 ms`; c24 `151.4178/198.9147 ms` is non-gating characterization and `target_missed` remains aspirational. A general comparative regression assessment was not performed; hard safety did not regress against unchanged thresholds.
 
 Evidence: [validation](evidence/v3-w3-01-validation.json) (`b256b8edd2a117cde6253e75c80be638e8c17203ebb2f689dc1d992e66fe7d17`) and [performance](evidence/v3-w3-01-performance-validation.json) (`580c98175056cdba1f021d7624434cba70da767ed49fed5a3009654af47ab623`).
+
+### W3-02 accepted bounded slice
+
+Implementation commit `9706e22` adds deterministic derived-only citizen preferences and reasons, ordinal capture, relative supports/opposes/uncommitted labels, and an atomic aggregate summary captured after policy selection. Legacy schema-v8 zero-summary compatibility and strict present-summary validation remain intact; critical Eat/Sleep/recovery behavior is unchanged. No schema/UI/wetland effects/LLM integration was added.
+
+Validation: 410/410 .NET tests; Godot 23/23; Debug/Release/ExportRelease production builds with zero warnings/errors; deep review GO with no P0-P3 findings. Performance is clean 14/14 pairs and 354/354 hashes. The established milestone median gate is green at reference p95/max `47.4881/178.653 ms`; both soaks and forced invalidation are green and deterministic. The raw runner remains `safety_failure` because one t2 reference p95 is `63.5804 ms`; formal target remains missed. This is an isolated variance risk with no A-B causal attribution.
+
+Evidence: [validation](evidence/v3-w3-02-validation.json) and [performance](evidence/v3-w3-02-performance-validation.json).
 
 ### Draft/Conditional Demo 1 foundation direction
 
