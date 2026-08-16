@@ -28,6 +28,10 @@ dotnet build labs/Societies.SnowGlobe/Societies.SnowGlobe.csproj --configuration
 
 The starting target is local-first hardware with roughly 8 GB VRAM: small local experiments, one request at a time, and no hidden model download. Any real provider integration remains a separately approved boundary.
 
+## Resilience experiment
+
+`SnowGlobeResilienceExperiment` is a bounded, offline fixture matrix for 8- and 16-agent shared snapshots. It covers inference timeout, malformed response, adapter crash, queue saturation, and conflicting resource claims. Frozen proposals always commit in ordinal agent-ID order; a failed primary receives exactly one deterministic repair, then an `Idle` fallback only if that repair is rejected. The canonical `snow_globe_resilience_experiment/v1` report records completion/progress, rejection/repair/fallback, dispatch fairness, queue/in-flight bounds, first divergence, and repeat/replay equivalence. It rejects incomplete or incoherent cells before serializing bytes.
+
 ## Later Godot observer-participant shell
 
 A future Godot shell may render `SnowGlobeWorld` snapshots, expose human proposals through the same validated proposal contract, and display canonical events. It must not become a second state authority: the lab world remains the source of facts, validation, and replay.
