@@ -27,10 +27,13 @@ public static class SnowGlobePersistedRun
         ArgumentNullException.ThrowIfNull(store);
         // v1 writes a checkpoint at each completed tick so an interruption is always resumable.
         if (targetTick < world.Tick || checkpointInterval != 1) throw new ArgumentOutOfRangeException(nameof(checkpointInterval));
+        using IDisposable operationLease = await store.AcquireOperationLeaseAsync(cancellationToken);
         SnowGlobeRunMetrics metrics = new();
         while (world.Tick < targetTick)
         {
-            foreach (string agentId in world.Agents.Select(agent => agent.AgentId).OrderBy(agentId => agentId, StringComparer.Ordinal))
+            string[] scheduledAgents = world.Agents.Select(agent => agent.AgentId).OrderBy(agentId => agentId, StringComparer.Ordinal).ToArray();
+            store.BindAndReserveWholeTick(world, scheduledAgents);
+            foreach (string agentId in scheduledAgents)
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 SnowGlobeObservation observation = world.Observe(agentId);
@@ -52,41 +55,44 @@ public static class SnowGlobePersistedRun
             world.AdvanceTick();
             metrics.Ticks++;
             store.AppendCheckpoint(world);
+            store.CompleteWholeTick(world);
         }
         return new SnowGlobePersistedRunResult(world, new SnowGlobeRunResult(world.StateDigest(), world.EventDigest(), metrics));
     }
 
-    public static SnowGlobeWorld ResumeAtLatestCheckpoint(SnowGlobeRunLedger ledger)
+    public static SnowGlobeWorld ResumeAtLatestCheckpoint(SnowGlobeRunLedger ledger, SnowGlobeRunIdentity? expectedIdentity = null)
     {
         ArgumentNullException.ThrowIfNull(ledger);
+        SnowGlobeRunStore.ValidateSupportedIdentity(ledger.Identity);
+        if (expectedIdentity is not null && ledger.Identity != expectedIdentity) throw new InvalidDataException("Recorded run identity does not match the expected provenance.");
         SnowGlobeWorld world = SnowGlobeWorld.Create(ledger.Identity.Seed, ledger.Identity.AgentCount);
         int index = 0;
         while (index < ledger.Records.Count)
         {
-            SnowGlobeLedgerRecord response = Require(ledger.Records, ref index, SnowGlobeLedgerKind.Response, world.Tick);
-            SnowGlobeLedgerRecord proposal = Require(ledger.Records, ref index, SnowGlobeLedgerKind.Proposal, world.Tick);
-            if (!SameAction(response, proposal)) throw new InvalidDataException("Response and proposal diverge.");
-            SnowGlobeLedgerRecord commit = Require(ledger.Records, ref index, SnowGlobeLedgerKind.Commit, world.Tick);
-            if (!SameAction(proposal, commit) || commit.Accepted is null) throw new InvalidDataException("Proposal and commit diverge.");
-            if (commit.Accepted.Value)
+            foreach (string expectedAgentId in world.Agents.Select(agent => agent.AgentId).OrderBy(agentId => agentId, StringComparer.Ordinal))
             {
-                SnowGlobeLedgerRecord entry = Require(ledger.Records, ref index, SnowGlobeLedgerKind.Event, world.Tick);
-                if (!SameAction(commit, entry)) throw new InvalidDataException("Commit and event diverge.");
-                SnowGlobeActionKind action = ParseAction(entry);
-                world.Replay(new SnowGlobeEvent(entry.Tick, world.Events.Count, entry.AgentId, action, entry.Quantity, entry.StructureId));
+                SnowGlobeLedgerRecord response = Require(ledger.Records, ref index, SnowGlobeLedgerKind.Response, world.Tick);
+                if (!string.Equals(response.AgentId, expectedAgentId, StringComparison.Ordinal)) throw new InvalidDataException("Recorded response violates the identity agent ordinal schedule.");
+                SnowGlobeLedgerRecord proposal = Require(ledger.Records, ref index, SnowGlobeLedgerKind.Proposal, world.Tick);
+                if (!SameAction(response, proposal)) throw new InvalidDataException("Response and proposal diverge.");
+                SnowGlobeLedgerRecord commit = Require(ledger.Records, ref index, SnowGlobeLedgerKind.Commit, world.Tick);
+                if (!SameAction(proposal, commit) || commit.Accepted is null) throw new InvalidDataException("Proposal and commit diverge.");
+                if (commit.Accepted.Value)
+                {
+                    SnowGlobeLedgerRecord entry = Require(ledger.Records, ref index, SnowGlobeLedgerKind.Event, world.Tick);
+                    if (!SameAction(commit, entry)) throw new InvalidDataException("Commit and event diverge.");
+                    SnowGlobeActionKind action = ParseAction(entry);
+                    world.Replay(new SnowGlobeEvent(entry.Tick, world.Events.Count, entry.AgentId, action, entry.Quantity, entry.StructureId));
+                }
+                else
+                {
+                    SnowGlobeCommitResult result = world.ValidateAndCommit(ToProposal(commit));
+                    if (result.Accepted || !string.Equals(result.RejectionReason, commit.RejectionReason, StringComparison.Ordinal)) throw new InvalidDataException("Rejected commit does not match deterministic validation.");
+                }
             }
-            else
-            {
-                SnowGlobeCommitResult result = world.ValidateAndCommit(ToProposal(commit));
-                if (result.Accepted || !string.Equals(result.RejectionReason, commit.RejectionReason, StringComparison.Ordinal)) throw new InvalidDataException("Rejected commit does not match deterministic validation.");
-            }
-            bool completedTick = index == ledger.Records.Count || ledger.Records[index].Kind == SnowGlobeLedgerKind.Checkpoint;
-            if (completedTick)
-            {
-                SnowGlobeLedgerRecord checkpoint = Require(ledger.Records, ref index, SnowGlobeLedgerKind.Checkpoint, world.Tick + 1);
-                world.AdvanceTick();
-                if (!string.Equals(checkpoint.StateDigest, world.StateDigest(), StringComparison.Ordinal) || !string.Equals(checkpoint.EventDigest, world.EventDigest(), StringComparison.Ordinal)) throw new InvalidDataException("Checkpoint digest mismatch.");
-            }
+            SnowGlobeLedgerRecord checkpoint = Require(ledger.Records, ref index, SnowGlobeLedgerKind.Checkpoint, world.Tick + 1);
+            world.AdvanceTick();
+            if (!string.Equals(checkpoint.StateDigest, world.StateDigest(), StringComparison.Ordinal) || !string.Equals(checkpoint.EventDigest, world.EventDigest(), StringComparison.Ordinal)) throw new InvalidDataException("Checkpoint digest mismatch.");
         }
         return world;
     }
@@ -101,7 +107,7 @@ public static class SnowGlobePersistedRun
     private static bool SameAction(SnowGlobeLedgerRecord left, SnowGlobeLedgerRecord right) =>
         left.Tick == right.Tick && left.AgentId == right.AgentId && left.Action == right.Action && left.Quantity == right.Quantity;
     private static SnowGlobeActionProposal ToProposal(SnowGlobeLedgerRecord record) => new(record.AgentId, ParseAction(record), record.Quantity);
-    private static SnowGlobeActionKind ParseAction(SnowGlobeLedgerRecord record) => Enum.TryParse(record.Action, out SnowGlobeActionKind action) ? action : throw new InvalidDataException("Ledger contains an unknown action.");
+    private static SnowGlobeActionKind ParseAction(SnowGlobeLedgerRecord record) => SnowGlobeRunStore.TryParseCanonicalAction(record.Action, out SnowGlobeActionKind action) ? action : throw new InvalidDataException("Ledger contains an unknown action.");
 }
 
 /// <summary>Eight-agent recorded resilience fixture: ordinal conflicting claims followed by deterministic idle fallback.</summary>

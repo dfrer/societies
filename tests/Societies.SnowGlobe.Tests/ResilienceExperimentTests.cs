@@ -1,4 +1,5 @@
 using System.Reflection;
+using System.Security.Cryptography;
 using System.Text.Json;
 using Societies.SnowGlobe;
 using Xunit;
@@ -71,12 +72,87 @@ public sealed class ResilienceExperimentTests
         SnowGlobeResilienceExperimentReport first = SnowGlobeResilienceExperimentReportBuilder.Build(experiment);
         SnowGlobeResilienceExperimentReport second = SnowGlobeResilienceExperimentReportBuilder.Build(SnowGlobeResilienceExperiment.RunMatrix());
         Assert.Equal(first.CanonicalUtf8.ToArray(), second.CanonicalUtf8.ToArray());
+        Assert.Equal("2B67C1A72F33B2E109BB45D391A189DE041DBAE4CC36FA3D68366E9C16408E6C", Convert.ToHexString(SHA256.HashData(first.CanonicalUtf8.Span)));
         using JsonDocument document = JsonDocument.Parse(first.CanonicalUtf8);
         Assert.Equal("snow_globe_resilience_experiment/v1", document.RootElement.GetProperty("schema_version").GetString());
         Assert.Equal(10, document.RootElement.GetProperty("cells").GetArrayLength());
         SnowGlobeResilienceMetrics metrics = experiment.Cells[0].Metrics;
         SetMetric(metrics, nameof(SnowGlobeResilienceMetrics.PeakQueuedRequests), metrics.QueueCapacity + 1);
         Assert.Throws<InvalidOperationException>(() => SnowGlobeResilienceExperimentReportBuilder.Build(experiment));
+    }
+
+    [Fact]
+    public void Report_RejectsReflectionFabricatedProgressBeforeCanonicalReportBytes()
+    {
+        SnowGlobeResilienceExperimentResult experiment = SnowGlobeResilienceExperiment.RunMatrix();
+        SnowGlobeResilienceMetrics metrics = experiment.Cells[0].Metrics;
+        SetMetric(metrics, nameof(SnowGlobeResilienceMetrics.ProgressQuantity), 999999);
+
+        Assert.Throws<InvalidOperationException>(() => SnowGlobeResilienceExperimentReportBuilder.Build(experiment));
+    }
+
+    [Fact]
+    public void Report_RejectsEveryReflectionMutatedSerializedMetricBeforeCanonicalReportBytes()
+    {
+        string[] metricProperties =
+        {
+            nameof(SnowGlobeResilienceMetrics.TaskAttempts),
+            nameof(SnowGlobeResilienceMetrics.PrimaryCompletedActions),
+            nameof(SnowGlobeResilienceMetrics.ProgressQuantity),
+            nameof(SnowGlobeResilienceMetrics.RejectedAttempts),
+            nameof(SnowGlobeResilienceMetrics.RepairAttempts),
+            nameof(SnowGlobeResilienceMetrics.RepairSuccesses),
+            nameof(SnowGlobeResilienceMetrics.FallbackActions),
+            nameof(SnowGlobeResilienceMetrics.InferenceFailures),
+            nameof(SnowGlobeResilienceMetrics.QueueSaturatedRequests),
+            nameof(SnowGlobeResilienceMetrics.QueueCapacity),
+            nameof(SnowGlobeResilienceMetrics.PeakQueuedRequests),
+            nameof(SnowGlobeResilienceMetrics.PeakInFlightRequests),
+            nameof(SnowGlobeResilienceMetrics.DispatchCoveragePermille)
+        };
+
+        for (int cellIndex = 0; cellIndex < SnowGlobeResilienceExperiment.CanonicalCells.Count; cellIndex++)
+        {
+            foreach (string propertyName in metricProperties)
+            {
+                SnowGlobeResilienceExperimentResult experiment = SnowGlobeResilienceExperiment.RunMatrix();
+                SnowGlobeResilienceMetrics metrics = experiment.Cells[cellIndex].Metrics;
+                int value = (int)typeof(SnowGlobeResilienceMetrics).GetProperty(propertyName)!.GetValue(metrics)!;
+                SetMetric(metrics, propertyName, value + 1);
+
+                Assert.Throws<InvalidOperationException>(() => SnowGlobeResilienceExperimentReportBuilder.Build(experiment));
+            }
+        }
+    }
+
+    [Fact]
+    public void Report_RejectsFabricatedDispatchTurnsBeforeCanonicalReportBytes()
+    {
+        SnowGlobeResilienceExperimentResult experiment = SnowGlobeResilienceExperiment.RunMatrix();
+        SnowGlobeResilienceMetrics metrics = experiment.Cells[0].Metrics;
+        typeof(SnowGlobeResilienceMetrics).GetProperty(nameof(SnowGlobeResilienceMetrics.TurnsByAgent))!
+            .SetValue(metrics, new Dictionary<string, int> { ["fabricated-agent"] = 1 });
+
+        Assert.Throws<InvalidOperationException>(() => SnowGlobeResilienceExperimentReportBuilder.Build(experiment));
+    }
+
+    [Fact]
+    public void Report_RejectsFabricatedDivergenceAndRepeatReplayEvidenceBeforeCanonicalReportBytes()
+    {
+        SnowGlobeResilienceExperimentResult experiment = SnowGlobeResilienceExperiment.RunMatrix();
+        SnowGlobeResilienceCellResult first = experiment.Cells[0];
+
+        AssertRejected(experiment, first with { FirstDivergenceTick = 0 });
+        AssertRejected(experiment, first with { RepeatStateDigest = "fabricated-repeat" });
+        AssertRejected(experiment, first with { RepeatEventDigest = "fabricated-repeat-event" });
+        AssertRejected(experiment, first with { ReplayStateDigest = "fabricated-replay-state" });
+        AssertRejected(experiment, first with { ReplayEventDigest = "fabricated-replay" });
+    }
+
+    private static void AssertRejected(SnowGlobeResilienceExperimentResult experiment, SnowGlobeResilienceCellResult replacement)
+    {
+        SnowGlobeResilienceExperimentResult incoherent = new(new[] { replacement }.Concat(experiment.Cells.Skip(1)).ToArray());
+        Assert.Throws<InvalidOperationException>(() => SnowGlobeResilienceExperimentReportBuilder.Build(incoherent));
     }
 
     private static void SetMetric(SnowGlobeResilienceMetrics metrics, string propertyName, int value) =>

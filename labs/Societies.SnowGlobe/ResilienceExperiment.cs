@@ -243,23 +243,93 @@ public static class SnowGlobeResilienceExperimentReportBuilder
             throw new InvalidOperationException("Resilience experiment cells must be the complete canonical matrix in order.");
         foreach (SnowGlobeResilienceCellResult cell in experiment.Cells)
         {
-            SnowGlobeResilienceMetrics metrics = cell.Metrics;
-            int expectedQueueCapacity = cell.Cell.Fixture == SnowGlobeResilienceFixtureKind.QueueSaturation ? SnowGlobeResilienceExperiment.QueueCapacity : cell.Cell.AgentCount;
-            if (cell.World.Agents.Count != cell.Cell.AgentCount || cell.World.Tick != 1 || cell.Cell.AgentCount > SnowGlobeResilienceExperiment.MaximumAgents
-                || cell.FirstDivergenceTick is not null || cell.RepeatStateDigest != cell.World.StateDigest() || cell.RepeatEventDigest != cell.World.EventDigest()
-                || cell.ReplayStateDigest != cell.World.StateDigest() || cell.ReplayEventDigest != cell.World.EventDigest() || metrics.TaskAttempts != cell.Cell.AgentCount
-                || metrics.TaskCompletionPermille != metrics.PrimaryCompletedActions * 1000 / metrics.TaskAttempts || metrics.PrimaryCompletedActions < 0 || metrics.ProgressQuantity < 0
-                || metrics.RejectedAttempts < 0 || metrics.RepairAttempts < 0 || metrics.RepairSuccesses < 0 || metrics.RepairSuccesses > metrics.RepairAttempts
-                || metrics.FallbackActions != metrics.RepairAttempts - metrics.RepairSuccesses || metrics.QueueCapacity != expectedQueueCapacity
-                || metrics.PeakQueuedRequests < 1 || metrics.PeakQueuedRequests > metrics.QueueCapacity || metrics.PeakInFlightRequests != 1
-                || metrics.DispatchCoveragePermille != 1000 || metrics.TurnsByAgent.Count != cell.Cell.AgentCount || metrics.TurnsByAgent.Values.Any(turns => turns != 1))
+            CanonicalResilienceEvidence evidence = DeriveCanonicalEvidence(cell.Cell, cell.World.Events);
+            SnowGlobeWorld replay = SnowGlobeResilienceExperiment.Replay(cell.Cell, cell.World.Events);
+            SnowGlobeResilienceCellResult repeated = SnowGlobeResilienceExperiment.RunCell(cell.Cell);
+            if (cell.World.Agents.Count != cell.Cell.AgentCount || cell.World.Tick != 1
+                || cell.World.StateDigest() != replay.StateDigest() || cell.World.EventDigest() != replay.EventDigest()
+                || cell.FirstDivergenceTick != repeated.FirstDivergenceTick
+                || cell.RepeatStateDigest != repeated.RepeatStateDigest || cell.RepeatEventDigest != repeated.RepeatEventDigest
+                || cell.ReplayStateDigest != repeated.ReplayStateDigest || cell.ReplayEventDigest != repeated.ReplayEventDigest
+                || !MetricsMatchCanonicalEvidence(cell.Metrics, evidence))
                 throw new InvalidOperationException("Resilience experiment data is incoherent.");
-            if (cell.Cell.Fixture == SnowGlobeResilienceFixtureKind.QueueSaturation && metrics.QueueSaturatedRequests != cell.Cell.AgentCount - SnowGlobeResilienceExperiment.QueueCapacity)
-                throw new InvalidOperationException("Queue saturation metrics are incoherent.");
-            if (cell.Cell.Fixture != SnowGlobeResilienceFixtureKind.QueueSaturation && metrics.QueueSaturatedRequests != 0)
-                throw new InvalidOperationException("Unexpected queue saturation metric.");
         }
     }
+
+    private static CanonicalResilienceEvidence DeriveCanonicalEvidence(SnowGlobeResilienceCell cell, IReadOnlyList<SnowGlobeEvent> events)
+    {
+        int failures = CellFailureCount(cell);
+        int repairAttempts = cell.Fixture == SnowGlobeResilienceFixtureKind.ConflictingResourceClaims ? cell.AgentCount - 1 : failures;
+        int repairSuccesses = cell.Fixture == SnowGlobeResilienceFixtureKind.ConflictingResourceClaims ? 0 : repairAttempts;
+        int fallbackActions = repairAttempts - repairSuccesses;
+        int rejectedAttempts = cell.Fixture == SnowGlobeResilienceFixtureKind.ConflictingResourceClaims ? repairAttempts * 2 : failures;
+        int queueSaturatedRequests = cell.Fixture == SnowGlobeResilienceFixtureKind.QueueSaturation ? failures : 0;
+        int expectedQueueCapacity = cell.Fixture == SnowGlobeResilienceFixtureKind.QueueSaturation
+            ? SnowGlobeResilienceExperiment.QueueCapacity
+            : cell.AgentCount;
+        if (events.Count != cell.AgentCount || !events.Select(entry => entry.Sequence).SequenceEqual(Enumerable.Range(0, cell.AgentCount)))
+            throw new InvalidOperationException("Resilience event trace is not contiguous.");
+
+        for (int index = 0; index < cell.AgentCount; index++)
+        {
+            bool gathers = IsPrimaryGather(cell, index);
+            SnowGlobeEvent entry = events[index];
+            if (entry.Tick != 0 || entry.AgentId != $"agent-{index:D2}"
+                || entry.Action != (gathers ? SnowGlobeActionKind.GatherWood : SnowGlobeActionKind.Idle)
+                || entry.Quantity != (gathers ? PrimaryQuantity(cell) : 0) || entry.StructureId is not null)
+                throw new InvalidOperationException("Resilience event trace does not match its fixture.");
+        }
+
+        int primaryCompletedActions = events.Count(entry => entry.Action == SnowGlobeActionKind.GatherWood);
+        int progressQuantity = events.Where(entry => entry.Action == SnowGlobeActionKind.GatherWood).Sum(entry => entry.Quantity);
+        return new CanonicalResilienceEvidence(
+            cell.AgentCount, primaryCompletedActions, progressQuantity, rejectedAttempts, repairAttempts, repairSuccesses,
+            fallbackActions, failures, queueSaturatedRequests, expectedQueueCapacity,
+            cell.Fixture == SnowGlobeResilienceFixtureKind.QueueSaturation ? SnowGlobeResilienceExperiment.QueueCapacity : 1);
+    }
+
+    private static bool MetricsMatchCanonicalEvidence(SnowGlobeResilienceMetrics metrics, CanonicalResilienceEvidence evidence) =>
+        metrics.TaskAttempts == evidence.TaskAttempts
+        && metrics.PrimaryCompletedActions == evidence.PrimaryCompletedActions
+        && metrics.TaskCompletionPermille == evidence.PrimaryCompletedActions * 1000 / evidence.TaskAttempts
+        && metrics.ProgressQuantity == evidence.ProgressQuantity
+        && metrics.RejectedAttempts == evidence.RejectedAttempts
+        && metrics.RepairAttempts == evidence.RepairAttempts
+        && metrics.RepairSuccesses == evidence.RepairSuccesses
+        && metrics.FallbackActions == evidence.FallbackActions
+        && metrics.InferenceFailures == evidence.InferenceFailures
+        && metrics.QueueSaturatedRequests == evidence.QueueSaturatedRequests
+        && metrics.QueueCapacity == evidence.QueueCapacity
+        && metrics.PeakQueuedRequests == evidence.PeakQueuedRequests
+        && metrics.PeakInFlightRequests == 1
+        && metrics.DispatchCoveragePermille == 1000
+        && metrics.TurnsByAgent.Count == evidence.TaskAttempts
+        && Enumerable.Range(0, evidence.TaskAttempts).All(index =>
+            metrics.TurnsByAgent.TryGetValue($"agent-{index:D2}", out int turns) && turns == 1);
+
+    private static int CellFailureCount(SnowGlobeResilienceCell cell) => cell.Fixture switch
+    {
+        SnowGlobeResilienceFixtureKind.InferenceTimeout or SnowGlobeResilienceFixtureKind.MalformedResponse or SnowGlobeResilienceFixtureKind.AdapterCrash => 1,
+        SnowGlobeResilienceFixtureKind.QueueSaturation => cell.AgentCount - SnowGlobeResilienceExperiment.QueueCapacity,
+        SnowGlobeResilienceFixtureKind.ConflictingResourceClaims => 0,
+        _ => throw new ArgumentOutOfRangeException(nameof(cell))
+    };
+
+    private static bool IsPrimaryGather(SnowGlobeResilienceCell cell, int agentIndex) => cell.Fixture switch
+    {
+        SnowGlobeResilienceFixtureKind.InferenceTimeout or SnowGlobeResilienceFixtureKind.MalformedResponse or SnowGlobeResilienceFixtureKind.AdapterCrash => agentIndex != 0,
+        SnowGlobeResilienceFixtureKind.QueueSaturation => agentIndex < SnowGlobeResilienceExperiment.QueueCapacity,
+        SnowGlobeResilienceFixtureKind.ConflictingResourceClaims => agentIndex == 0,
+        _ => throw new ArgumentOutOfRangeException(nameof(cell))
+    };
+
+    private static int PrimaryQuantity(SnowGlobeResilienceCell cell) =>
+        cell.Fixture == SnowGlobeResilienceFixtureKind.ConflictingResourceClaims ? 64 : 1;
+
+    private sealed record CanonicalResilienceEvidence(
+        int TaskAttempts, int PrimaryCompletedActions, int ProgressQuantity, int RejectedAttempts, int RepairAttempts,
+        int RepairSuccesses, int FallbackActions, int InferenceFailures, int QueueSaturatedRequests, int QueueCapacity,
+        int PeakQueuedRequests);
     private static string FixtureName(SnowGlobeResilienceFixtureKind fixture) => fixture switch
     {
         SnowGlobeResilienceFixtureKind.InferenceTimeout => "inference_timeout",
