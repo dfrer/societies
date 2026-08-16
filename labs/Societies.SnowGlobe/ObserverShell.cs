@@ -65,7 +65,7 @@ public sealed record SnowGlobeObserverDiagnostics(int FullHistoryDigestRefreshes
 /// exclusively through the existing sequential scheduler, preserving its value-only inference,
 /// validation, ordinal commit, and tick-boundary semantics.
 /// </summary>
-public sealed class SnowGlobeObserverShell
+public sealed partial class SnowGlobeObserverShell
 {
     public const int MaximumStepTicks = 64;
     public const int MaximumInspectionEventWindow = 32;
@@ -77,6 +77,7 @@ public sealed class SnowGlobeObserverShell
     private string _eventDigest;
     private int _knownTick;
     private int _knownEventCount;
+    private long _knownRevision;
     private int _fullHistoryDigestRefreshes;
     private long _projectedEventEntries;
     private bool _isPaused;
@@ -90,10 +91,12 @@ public sealed class SnowGlobeObserverShell
     {
         _world = world ?? throw new ArgumentNullException(nameof(world));
         _scheduler = scheduler ?? throw new ArgumentNullException(nameof(scheduler));
-        _stateDigest = _world.StateDigest();
-        _eventDigest = _world.EventDigest();
-        _knownTick = _world.Tick;
-        _knownEventCount = _world.Events.Count;
+        SnowGlobeWorldIdentity identity = _world.CaptureIdentity();
+        _stateDigest = identity.StateDigest;
+        _eventDigest = identity.EventDigest;
+        _knownTick = identity.Tick;
+        _knownEventCount = identity.EventCount;
+        _knownRevision = identity.Revision;
         _fullHistoryDigestRefreshes = 1;
     }
 
@@ -107,6 +110,12 @@ public sealed class SnowGlobeObserverShell
 
     /// <summary>Internal deterministic seam for injecting post-apply interference in focused tests.</summary>
     internal Action? AfterLiveApplyForTesting { get; set; }
+
+    /// <summary>Internal deterministic seam for injecting interference after a participant candidate applies.</summary>
+    internal Action? AfterParticipantCandidateApplyForTesting { get; set; }
+
+    /// <summary>Internal deterministic seam for injecting interference immediately before the atomic participant commit.</summary>
+    internal Action? BeforeParticipantConditionalCommitForTesting { get; set; }
 
     /// <summary>
     /// The regular scheduler entry point. A paused shell refuses ordinary advances without changing
@@ -204,7 +213,7 @@ public sealed class SnowGlobeObserverShell
                 return new SnowGlobeObserverInspectionResult(false, "world_ownership_lost", null);
             }
 
-            if (eventCursor < 0 || eventCursor > _world.Events.Count)
+            if (eventCursor < 0 || eventCursor > _knownEventCount)
             {
                 return new SnowGlobeObserverInspectionResult(false, "event_cursor_invalid", null);
             }
@@ -290,13 +299,14 @@ public sealed class SnowGlobeObserverShell
                 return OwnershipLost();
             }
 
+            long expectedLiveRevision = checked(_knownRevision + candidateDelta.Length + (candidate.Tick - _knownTick));
             AfterLiveApplyForTesting?.Invoke();
-            if (!LiveWorldMatchesCandidate(candidate, candidateStateDigest, candidateEventDigest))
+            if (!_world.MatchesRevision(expectedLiveRevision))
             {
                 return OwnershipLost();
             }
 
-            CacheCandidateIdentity(candidate.Tick, candidate.Events.Count, candidateStateDigest, candidateEventDigest);
+            CacheCandidateIdentity(candidate.Tick, candidate.Events.Count, candidateStateDigest, candidateEventDigest, expectedLiveRevision);
             return Accept();
         }
         catch (Exception)
@@ -307,26 +317,27 @@ public sealed class SnowGlobeObserverShell
 
     private SnowGlobeWorld ReconstructCandidate()
     {
-        int initialWood = _world.AvailableWood;
-        int initialStone = _world.AvailableStone;
-        for (int index = 0; index < _world.Events.Count; index++)
+        SnowGlobeWorldReplaySnapshot source = _world.CaptureReplaySnapshot();
+        int initialWood = source.AvailableWood;
+        int initialStone = source.AvailableStone;
+        for (int index = 0; index < source.Events.Count; index++)
         {
-            SnowGlobeEvent entry = _world.Events[index];
+            SnowGlobeEvent entry = source.Events[index];
             if (entry.Action == SnowGlobeActionKind.GatherWood) initialWood = checked(initialWood + entry.Quantity);
             if (entry.Action == SnowGlobeActionKind.GatherStone) initialStone = checked(initialStone + entry.Quantity);
         }
-        SnowGlobeWorld candidate = SnowGlobeWorld.Create(_world.Seed, _world.Agents.Count, initialWood, initialStone);
-        for (int index = 0; index < _world.Events.Count; index++)
+        SnowGlobeWorld candidate = SnowGlobeWorld.Create(source.Seed, source.AgentCount, initialWood, initialStone);
+        for (int index = 0; index < source.Events.Count; index++)
         {
-            candidate.Replay(_world.Events[index]);
+            candidate.Replay(source.Events[index]);
         }
 
-        while (candidate.Tick < _world.Tick)
+        while (candidate.Tick < source.Tick)
         {
             candidate.AdvanceTick();
         }
 
-        if (candidate.Tick != _world.Tick
+        if (candidate.Tick != source.Tick
             || !string.Equals(candidate.StateDigest(), _stateDigest, StringComparison.Ordinal)
             || !string.Equals(candidate.EventDigest(), _eventDigest, StringComparison.Ordinal))
         {
@@ -354,20 +365,15 @@ public sealed class SnowGlobeObserverShell
         }
     }
 
-    private bool IsWorldOwned() => !_ownershipLost && _world.Tick == _knownTick && _world.Events.Count == _knownEventCount;
+    private bool IsWorldOwned() => !_ownershipLost && _world.MatchesRevision(_knownRevision);
 
-    private bool LiveWorldMatchesCandidate(SnowGlobeWorld candidate, string expectedStateDigest, string expectedEventDigest) =>
-        _world.Tick == candidate.Tick
-        && _world.Events.Count == candidate.Events.Count
-        && string.Equals(_world.StateDigest(), expectedStateDigest, StringComparison.Ordinal)
-        && string.Equals(_world.EventDigest(), expectedEventDigest, StringComparison.Ordinal);
-
-    private void CacheCandidateIdentity(int tick, int eventCount, string stateDigest, string eventDigest)
+    private void CacheCandidateIdentity(int tick, int eventCount, string stateDigest, string eventDigest, long revision)
     {
         _stateDigest = stateDigest;
         _eventDigest = eventDigest;
         _knownTick = tick;
         _knownEventCount = eventCount;
+        _knownRevision = revision;
         _fullHistoryDigestRefreshes++;
     }
 
@@ -389,21 +395,18 @@ public sealed class SnowGlobeObserverShell
 
     private SnowGlobeObserverSnapshot? CreateSnapshot(int eventCursor = 0)
     {
-        if (!IsWorldOwned()) return null;
-        List<SnowGlobeObserverAgentSnapshot> agents = _world.Agents
-            .OrderBy(agent => agent.AgentId, StringComparer.Ordinal)
+        SnowGlobeWorldObserverProjection? projection = _world.CaptureObserverProjection(_knownRevision, eventCursor, MaximumInspectionEventWindow);
+        if (projection is null) return null;
+        List<SnowGlobeObserverAgentSnapshot> agents = projection.Agents
             .Select(agent => new SnowGlobeObserverAgentSnapshot(agent.AgentId, agent.HomeSlot, agent.CompletedActions))
             .ToList();
-        List<SnowGlobeObserverStructureSnapshot> structures = _world.Structures
-            .OrderBy(structure => structure.StructureId, StringComparer.Ordinal)
+        List<SnowGlobeObserverStructureSnapshot> structures = projection.Structures
             .Select(structure => new SnowGlobeObserverStructureSnapshot(structure.StructureId, structure.Kind, structure.Durability))
             .ToList();
-        int eventHistoryCount = _world.Events.Count;
-        int pageCount = Math.Min(MaximumInspectionEventWindow, eventHistoryCount - eventCursor);
-        List<SnowGlobeObserverEventSnapshot> events = new(pageCount);
-        for (int index = eventCursor; index < eventCursor + pageCount; index++)
+        List<SnowGlobeObserverEventSnapshot> events = new(projection.Events.Count);
+        for (int index = 0; index < projection.Events.Count; index++)
         {
-            SnowGlobeEvent entry = _world.Events[index];
+            SnowGlobeEvent entry = projection.Events[index];
             events.Add(new SnowGlobeObserverEventSnapshot(
                 entry.Tick,
                 entry.Sequence,
@@ -413,21 +416,19 @@ public sealed class SnowGlobeObserverShell
                 entry.StructureId,
                 $"{entry.Tick}|{entry.Sequence}|{entry.AgentId}|{entry.Action}|{entry.Quantity}|{entry.StructureId ?? string.Empty}"));
         }
-        _projectedEventEntries += pageCount;
-
-        if (!IsWorldOwned()) return null;
+        _projectedEventEntries += projection.Events.Count;
         return new SnowGlobeObserverSnapshot(
             _isPaused,
-            _world.Tick,
-            _world.AvailableWood,
-            _world.AvailableStone,
-            _world.StockpileWood,
-            _world.StockpileStone,
+            projection.Tick,
+            projection.AvailableWood,
+            projection.AvailableStone,
+            projection.StockpileWood,
+            projection.StockpileStone,
             new ReadOnlyCollection<SnowGlobeObserverAgentSnapshot>(agents),
             new ReadOnlyCollection<SnowGlobeObserverStructureSnapshot>(structures),
-            eventHistoryCount,
+            projection.EventHistoryCount,
             eventCursor,
-            eventCursor + events.Count < eventHistoryCount ? eventCursor + events.Count : null,
+            eventCursor + events.Count < projection.EventHistoryCount ? eventCursor + events.Count : null,
             new ReadOnlyCollection<SnowGlobeObserverEventSnapshot>(events),
             _stateDigest,
             _eventDigest);

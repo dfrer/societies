@@ -214,6 +214,27 @@ public sealed class ObserverShellTests
     }
 
     [Fact]
+    public async Task InspectionProjection_UsesCachedIdentityWithoutFullHistoryRefreshOrUnboundedEventCopies()
+    {
+        SnowGlobeWorld world = SnowGlobeWorld.Create(seed: 83, agentCount: 64);
+        SnowGlobeObserverShell shell = CreateShell(world, new IdleInferenceAdapter());
+        Assert.True((await shell.AdvanceAsync()).Applied);
+        Assert.True((await shell.AdvanceAsync()).Applied);
+        SnowGlobeObserverDiagnostics before = shell.GetDiagnostics();
+
+        foreach (int cursor in new[] { 0, 32, 64, 96 })
+        {
+            SnowGlobeObserverInspectionResult page = shell.Inspect(cursor);
+            Assert.True(page.Accepted);
+            Assert.Equal(32, page.Snapshot!.CanonicalEvents.Count);
+        }
+
+        SnowGlobeObserverDiagnostics after = shell.GetDiagnostics();
+        Assert.Equal(before.FullHistoryDigestRefreshes, after.FullHistoryDigestRefreshes);
+        Assert.Equal(before.ProjectedEventEntries + 128, after.ProjectedEventEntries);
+    }
+
+    [Fact]
     public async Task ExternalWorldMutation_InvalidatesShellOwnershipWithoutServingStaleCachedDigests()
     {
         SnowGlobeWorld world = SnowGlobeWorld.Create(seed: 80, agentCount: 1);
