@@ -136,6 +136,12 @@ Historical W1 profiling bullets below may mention runtime metrics CSV v4 or earl
 
 ## CI Scope
 
+## Snow Globe scheduling comparison (local-only)
+
+The isolated `labs/Societies.SnowGlobe/` research toy now has its first scheduling experiment. The eight-agent scripted control is captured as identical recorded value responses for both shared-snapshot sequential deliberation and controlled parallel deliberation. Each round freezes observations and proposals before the unchanged deterministic ordinal validation/commit surface; committed events replay to identical event and state digests.
+
+Recorded logical latency units, critical-path latency, throughput, and equal dispatch coverage (minimum scheduled turns divided by maximum scheduled turns) are reported deterministically. A deterministic gate fixture proves eight concurrent in-flight requests and deliberately reverse-order completion; the sequential comparison proves one in flight at a time. Missing, mismatched, null, nonpositive-latency, wrong-agent, explicit-failure, and generic-exception responses fail closed without an action commit; invalid latency is accounted as zero. The focused Release build is zero-warning and the lab tests pass 14/14. This remains offline/provider-neutral and outside `src/societies/`, with no Godot, credential, network, provider, or production-runtime integration.
+
 ## Isolated Snow Globe Lab (local-only)
 
 labs/Societies.SnowGlobe/ is a separate headless .NET 8 research toy, not part of the authoritative Godot runtime under src/societies/. Its initial local slice uses persistent agent records, a value-only provider-neutral inference interface, a deterministic sequential shared inference queue, validated commits, canonical event replay, and an offline scripted adapter. The fixed seed scenario runs eight agents through gathering, shelter/storage construction, and shelter maintenance; repeat and replay digest checks plus invalid-action non-mutation are covered by four focused tests. No provider, model, credential, network, or Godot integration is included. The next decision is whether a later experiment should compare bounded batched planning while preserving the same deterministic commit contract.

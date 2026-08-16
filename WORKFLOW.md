@@ -2,6 +2,25 @@
 
 # Snow Globe Lab first vertical slice handoff
 
+# Snow Globe Lab scheduling comparison handoff
+
+## Outcome
+
+- Added the separate first scheduling experiment under `labs/Societies.SnowGlobe/` with focused tests under `tests/Societies.SnowGlobe.Tests/`; `src/societies/` remains unchanged.
+- Both modes use the same recorded scripted responses and frozen shared per-tick observations. Sequential deliberation awaits them in stable order; controlled parallel deliberation collects them concurrently, then both enter the same ordinal validation/commit path.
+- Canonical state/event replay matches for both modes. A deterministic gate fixture proves eight concurrent in-flight requests and reverse-order completion for controlled parallel versus one request in flight for sequential. Metrics are logical recorded latency units, critical-path latency, throughput, and equal dispatch coverage (not a broader fairness claim); malformed/failing responses are rejected without an action commit, and invalid latency contributes zero units.
+
+## Evidence
+
+- `dotnet build labs/Societies.SnowGlobe/Societies.SnowGlobe.csproj --configuration Release --no-restore` — passed, 0 warnings / 0 errors.
+- `dotnet test tests/Societies.SnowGlobe.Tests/Societies.SnowGlobe.Tests.csproj --configuration Release --no-restore` — passed, 14/14, including deterministic out-of-order completion and missing/mismatch/null/nonpositive-latency/wrong-agent/explicit-failure/generic-exception fail-closed fixtures.
+- `git diff --check` — passed.
+
+## Boundary and next action
+
+- Research-only and offline: no provider/model/network/credential use, Godot integration, runtime change, merge, push, or promotion.
+- A later experiment may vary bounded cohort size or fixture latency while retaining the frozen-snapshot and ordered-commit contract.
+
 ## Outcome
 
 - Added the separate local-only headless lab at labs/Societies.SnowGlobe/ with tests at tests/Societies.SnowGlobe.Tests/; src/societies/ is unchanged.
