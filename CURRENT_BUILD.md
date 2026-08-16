@@ -136,6 +136,10 @@ Historical W1 profiling bullets below may mention runtime metrics CSV v4 or earl
 
 ## CI Scope
 
+## Isolated Snow Globe Lab (local-only)
+
+labs/Societies.SnowGlobe/ is a separate headless .NET 8 research toy, not part of the authoritative Godot runtime under src/societies/. Its initial local slice uses persistent agent records, a value-only provider-neutral inference interface, a deterministic sequential shared inference queue, validated commits, canonical event replay, and an offline scripted adapter. The fixed seed scenario runs eight agents through gathering, shelter/storage construction, and shelter maintenance; repeat and replay digest checks plus invalid-action non-mutation are covered by four focused tests. No provider, model, credential, network, or Godot integration is included. The next decision is whether a later experiment should compare bounded batched planning while preserving the same deterministic commit contract.
+
 - GitHub `master` protection requires an up-to-date `build-test-smoke` check on a pull request, applies to administrators, requires resolved review conversations, and blocks force-pushes and branch deletion.
 - Markdown-only pull requests run `git diff --check` and skip the managed/Godot toolchain.
 - Other pull requests run the Release build and current manifest-owned fast/Godot tiers; superseded runs on the same pull request are cancelled.

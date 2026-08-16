@@ -1,5 +1,24 @@
 # W3-03 milestone handoff
 
+# Snow Globe Lab first vertical slice handoff
+
+## Outcome
+
+- Added the separate local-only headless lab at labs/Societies.SnowGlobe/ with tests at 	ests/Societies.SnowGlobe.Tests/; src/societies/ is unchanged.
+- Persistent agent records and deterministic world state are separate from the value-only, provider-neutral inference interface. The initial scripted adapter is offline only.
+- Eight fixed-seed agents run sequential observe -> deliberate -> validate -> commit turns, gather shared resources, construct one shelter and one storage asset, then maintain the shelter. Committed actions are replayable through canonical event/state digests.
+
+## Evidence
+
+- dotnet build labs/Societies.SnowGlobe/Societies.SnowGlobe.csproj --configuration Release --no-restore - passed, 0 warnings / 0 errors.
+- dotnet test tests/Societies.SnowGlobe.Tests/Societies.SnowGlobe.Tests.csproj --configuration Release --no-restore - passed, 4/4.
+- git diff --check - passed.
+
+## Risks and next action
+
+- This is research infrastructure only: no real model/provider, credential, network, Godot observer shell, or production-runtime integration was added.
+- Next bounded decision: compare a bounded batched-planning scheduler against the sequential baseline without relaxing deterministic validation and commit order.
+
 ## Outcome
 
 - W3-02 merged through PR #123 at origin/master `d9e297f`. W3-03 implementation is committed locally at `a513636` on `feature/v3-w3-03-wetland-consequences`; docs/evidence publication is pending and GitHub delivery remains pending.
