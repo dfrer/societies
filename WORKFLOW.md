@@ -20,7 +20,13 @@
 
 - Added `snow_globe_scheduling_evaluation/v1`, a provider-neutral, file-I/O-free builder of stable UTF-8 JSON for the completed fixed comparison. Its ordered schema contains scenario identity, both mode digests and metrics, state/event/replay verdicts, and `logical_not_wall_clock` timing semantics only.
 - Repeated experiment runs produce byte-identical reports; required fields/order and exact metrics/digests are tested. Before allocation, each world/run must match the fixed tick, digests, mode counters, round shape, and dispatch coverage; advanced worlds, swapped modes, incoherent digests, and coherent non-equivalent results are rejected. The independently frozen v1 golden JSON SHA-256 is `20bde9bd80da960f27ebb892576924a604128d01f2659bbb50cfded53a64103c`, BOM-free and without a trailing newline.
-- Focused Release build remains 0 warnings / 0 errors; focused lab tests pass 22/22.
+- Focused Release build remains 0 warnings / 0 errors; current focused lab tests pass 32/32.
+
+## Parameter experiment outcome
+
+- Added a separate mock-only exact ordered 4/8/16 × every-tick/every-other-tick matrix. It reuses the existing frozen shared-snapshot scheduler for four planning rounds per cell and advances deterministic idle ticks for the slower cadence.
+- A deterministic mock gate measures peak in-flight work per cell: sequential is 1 and controlled parallel is exactly the 4/8/16 cohort, capped at 16. Canonical report input rejects missing, duplicate, and reordered cells; it derives positive matched total logical latency from the immutable fixture, requires sequential critical path to equal it and parallel critical path to equal recorded per-round maxima, and validates recomputed throughput, dispatch coverage/turns, round shape, and related counters before serialization.
+- `snow_globe_parameter_experiment/v1` is file-I/O-free, provider-neutral, and uses `logical_not_wall_clock` semantics; the fixed scheduling v1 contract is unchanged. Focused Release build remains 0 warnings / 0 errors; focused lab tests pass 32/32.
 
 ## Boundary and next action
 
