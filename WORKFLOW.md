@@ -16,6 +16,12 @@
 - `dotnet test tests/Societies.SnowGlobe.Tests/Societies.SnowGlobe.Tests.csproj --configuration Release --no-restore` — passed, 14/14, including deterministic out-of-order completion and missing/mismatch/null/nonpositive-latency/wrong-agent/explicit-failure/generic-exception fail-closed fixtures.
 - `git diff --check` — passed.
 
+## Canonical evaluation report outcome
+
+- Added `snow_globe_scheduling_evaluation/v1`, a provider-neutral, file-I/O-free builder of stable UTF-8 JSON for the completed fixed comparison. Its ordered schema contains scenario identity, both mode digests and metrics, state/event/replay verdicts, and `logical_not_wall_clock` timing semantics only.
+- Repeated experiment runs produce byte-identical reports; required fields/order and exact metrics/digests are tested. Before allocation, each world/run must match the fixed tick, digests, mode counters, round shape, and dispatch coverage; advanced worlds, swapped modes, incoherent digests, and coherent non-equivalent results are rejected. The independently frozen v1 golden JSON SHA-256 is `20bde9bd80da960f27ebb892576924a604128d01f2659bbb50cfded53a64103c`, BOM-free and without a trailing newline.
+- Focused Release build remains 0 warnings / 0 errors; focused lab tests pass 22/22.
+
 ## Boundary and next action
 
 - Research-only and offline: no provider/model/network/credential use, Godot integration, runtime change, merge, push, or promotion.
