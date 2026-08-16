@@ -4,7 +4,7 @@
 
 ## Outcome
 
-- Added the separate local-only headless lab at labs/Societies.SnowGlobe/ with tests at 	ests/Societies.SnowGlobe.Tests/; src/societies/ is unchanged.
+- Added the separate local-only headless lab at labs/Societies.SnowGlobe/ with tests at tests/Societies.SnowGlobe.Tests/; src/societies/ is unchanged.
 - Persistent agent records and deterministic world state are separate from the value-only, provider-neutral inference interface. The initial scripted adapter is offline only.
 - Eight fixed-seed agents run sequential observe -> deliberate -> validate -> commit turns, gather shared resources, construct one shelter and one storage asset, then maintain the shelter. Committed actions are replayable through canonical event/state digests.
 
