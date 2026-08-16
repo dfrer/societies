@@ -21,8 +21,8 @@ dotnet build labs/Societies.SnowGlobe/Societies.SnowGlobe.csproj --configuration
 
 | Question | Fixed control | Comparison later | Metrics |
 | --- | --- | --- | --- |
-| Scheduling | sequential shared queue | bounded batched planning | state/event digest, rejected actions |
-| Inference | scripted offline adapter | provider-neutral local adapter | calls, queue turns, latency recorded externally |
+| Scheduling | sequential shared queue | controlled parallel comparison | state/event digest, rejected actions |
+| Inference | scripted offline adapter | offline loopback preflight only | calls, queue turns, bounded benchmark evidence |
 | Context | current structured observation | bounded memory summary | proposals, accepted actions, replay equality |
 | World pressure | fixed seed / 8 agents | resource scarcity or larger cohorts | structures, maintenance, rejected actions |
 
@@ -34,12 +34,20 @@ The starting target is local-first hardware with roughly 8 GB VRAM: small local 
 
 ## Run-store interruption and replay experiment
 
-`SnowGlobeRunStore` is a local-only, single-writer `snow_globe_run_store/v1` artifact: a small `run.json` identity header and append-only `ledger.jsonl`. Each ordinal turn normalizes and records a response, proposal, validation commit, and accepted event; every completed tick records a checkpoint with state and event digests. The identity includes schema, rules, prompt, and adapter identities plus seed and agent count. It deliberately excludes prompts, participant text, credentials, provider payloads, timestamps, and host data.
+`SnowGlobeRunStore` is a local-only, single-writer `snow_globe_run_store/v2` artifact: a small `run.json` identity header and append-only `ledger.jsonl`. V2 intentionally rejects v1 rather than migrating it because every canonical record checksum is now bound to the strict header. The supported schema/rules/prompt tuple is exact, and response-ledger replay requires the exact expected adapter identity. Each ordinal turn records a response, proposal, validation commit, and accepted event; every complete tick records a checkpoint with state and event digests. The identity includes seed and the exact ordered agent schedule. Prompts, participant text, credentials, provider payloads, timestamps, and host data are excluded.
 
-Reading is side-effect-free and fails closed on incomplete/truncated JSONL, unsupported schema, checksum mismatch, duplicate or out-of-order sequence, out-of-order tick/kind, unknown actions, divergent response/proposal/commit/event records, or mismatched checkpoint digests. A bounded record cap and fixed-size normalized fields prevent unbounded artifacts. Run directories are create-new only and an exclusive writer lock prevents concurrent writers; callers own deleting their exact, disposable experiment directory after inspection.
+Reading is side-effect-free and fails closed on incomplete or unterminated JSONL, unsupported identity, checksum mismatch, duplicate/out-of-order sequence, incomplete/reordered agents, unknown or noncanonical actions, divergent ledger pairs, and mismatched checkpoints. Header, ledger, record, depth, and field bounds are enforced before large allocation. A whole-operation instance lease and a stable exclusive handle lease prevent interleaved writers while allowing stale lock-file recovery. Capacity is reserved for a whole tick, and world seed, agent schedule, tick, state digest, and event digest must match the latest stored checkpoint before any append.
 
 `SnowGlobeReplayAdapter` consumes only normalized recorded responses and has no model/provider path. The deterministic world still validates every replayed proposal, so a response ledger cannot become state authority. Focused Release tests prove exact state and event digest equality for the eight-agent scripted control and an eight-agent conflicting-claim resilience fallback across uninterrupted execution, checkpoint/resume, and recorded-response replay; they also inject the listed corruption failures and verify read/reconstruction never rewrite original artifacts.
 
-## Later Godot observer-participant shell
+## Offline local-model preflight
 
-A future Godot shell may render `SnowGlobeWorld` snapshots, expose human proposals through the same validated proposal contract, and display canonical events. It must not become a second state authority: the lab world remains the source of facts, validation, and replay.
+`SnowGlobeLocalModelAdapterPreflight` defines—but does not execute—the future single shared local-model-server boundary. It accepts only canonical `http://127.0.0.1:<port>/` or `http://[::1]:<port>/` endpoints and rejects credentials, non-loopback hosts, redirects, retries, and execution authority. Request, output, queue, latency, context, and VRAM budgets are explicit.
+
+Future 8 GB benchmark evidence must be bounded canonical metrics-only JSON bytes. Validation derives the exact sample count and SHA-256 plus latency percentiles/maximum, peak/total queue wait, byte peaks, VRAM, throughput, failure, and fallback counts. Raw prompts, responses, provider payloads, credentials, and secrets are forbidden. This contract performs no file/network/GPU/model operation and makes no live-quality or hardware-fit claim.
+
+## Headless observer controls
+
+`SnowGlobeObserverShell` supplies pause, resume, bounded step, and inspect controls without adding a second authority. A candidate world completes the existing scheduler turn first; only a verified successful delta replays through the live world's validator. First/middle/last adapter failures do not mutate the live tick. The shell requires exclusive world-mutation ownership, verifies post-commit tick/count/state/event identity, permanently fails closed on external mutation, and exposes 32-event cursor pages with the cached full-history digest.
+
+This is not a Godot UI and does not yet expose participant commands. Final local evidence is 141/141 Release tests, a Release build with 0 warnings and 0 errors, clean `git diff --check`, and independent deep review with CODE GO/no findings. No provider, model, credential, download, network, GPU probe, Godot runtime, or `src/societies/` change occurred.

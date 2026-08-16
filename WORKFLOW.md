@@ -1,3 +1,27 @@
+# Snow Globe Lab persistence, preflight, and observer handoff
+
+## Outcome and scope
+
+- Hardened the isolated lab's persistence and resilience evidence without changing `src/societies/` or the authoritative Godot runtime. `snow_globe_run_store/v2` is intentionally breaking and rejects v1; exact identity, full-tick schedule, world/checkpoint continuity, strict bounded artifacts, whole-operation locking, corruption rejection, deterministic replay, and non-rewrite behavior are covered.
+- Added a pure offline loopback preflight for one future shared local model server and an 8 GB benchmark contract that derives bounded metrics-only evidence. It opens no socket and performs no download, model call, GPU probe, credential, redirect, retry, or provider action.
+- Added headless pause/resume/bounded-step/inspect controls. Candidate execution and live validator replay are transactional for adapter failures; exclusive world ownership and exact post-commit identity fail closed on external mutation; event inspection is paged and keeps a cached full digest.
+
+## Validation and review
+
+- `dotnet test tests/Societies.SnowGlobe.Tests/Societies.SnowGlobe.Tests.csproj --configuration Release --no-restore` — 141/141 passed.
+- `dotnet build labs/Societies.SnowGlobe/Societies.SnowGlobe.csproj --configuration Release --no-restore` — passed with 0 warnings and 0 errors.
+- `git diff --check` — passed; independent deep review returned CODE GO with no findings after adversarial corruption, identity, concurrency, evidence, and observer-ownership corrections.
+
+## Repository and delivery state
+
+- Code is split into focused local commits on `feature/snowglobe-agent-lab-owner-v1`; this handoff documentation is the remaining local commit. No push, PR, merge, live provider/model, download, network listener, Godot integration, participant command, or full-gameplay change was authorized or performed.
+- The deterministic world and validator remain the only state-change authority. Loopback benchmark evidence and live-model quality remain unverified because no model was invoked.
+
+## Risks and exactly one next action
+
+- V2 has no v1 migration by design; old lab artifacts must remain historical rather than being opened as v2. The observer requires exclusive mutation ownership. The 8 GB budgets are a contract, not measured hardware evidence.
+- Next action: decide whether to authorize one bounded live loopback benchmark against the frozen preflight contract; without that decision, keep the lab offline.
+
 # W3-03 milestone handoff
 
 # Snow Globe Lab first vertical slice handoff
