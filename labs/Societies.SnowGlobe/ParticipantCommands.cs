@@ -178,11 +178,11 @@ public sealed partial class SnowGlobeObserverShell
         return new(false, reason, false, participantId, idempotencyKey, _knownTick, _knownEventCount - 1, _stateDigest, _eventDigest);
     }
 
-    private static (string? ParticipantId, string? IdempotencyKey) SafeReceiptIdentity(SnowGlobeParticipantCommand? command) =>
+    internal static (string? ParticipantId, string? IdempotencyKey) SafeReceiptIdentity(SnowGlobeParticipantCommand? command) =>
         (IsCanonicalOpaqueId(command?.ParticipantId, MaximumParticipantIdLength) ? command!.ParticipantId : null,
          IsCanonicalOpaqueId(command?.IdempotencyKey, MaximumParticipantIdempotencyKeyLength) ? command!.IdempotencyKey : null);
 
-    private static string? ValidateParticipantCommandShape(SnowGlobeParticipantCommand? command)
+    internal static string? ValidateParticipantCommandShape(SnowGlobeParticipantCommand? command)
     {
         if (command is null) return "participant_command_malformed";
         if (!IsCanonicalOpaqueId(command.ParticipantId, MaximumParticipantIdLength)) return "participant_id_invalid";

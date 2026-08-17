@@ -395,8 +395,33 @@ public sealed partial class SnowGlobeObserverShell
 
     private SnowGlobeObserverSnapshot? CreateSnapshot(int eventCursor = 0)
     {
-        SnowGlobeWorldObserverProjection? projection = _world.CaptureObserverProjection(_knownRevision, eventCursor, MaximumInspectionEventWindow);
-        if (projection is null) return null;
+        SnowGlobeObserverSnapshot? snapshot = CreateDetachedSnapshot(
+            _world,
+            _isPaused,
+            eventCursor,
+            _stateDigest,
+            _eventDigest,
+            _knownRevision,
+            out int projectedEventEntries);
+        _projectedEventEntries += projectedEventEntries;
+        return snapshot;
+    }
+
+    internal static SnowGlobeObserverSnapshot? CreateDetachedSnapshot(
+        SnowGlobeWorld world,
+        bool isPaused,
+        int eventCursor,
+        string stateDigest,
+        string eventDigest,
+        long expectedRevision,
+        out int projectedEventEntries)
+    {
+        SnowGlobeWorldObserverProjection? projection = world.CaptureObserverProjection(expectedRevision, eventCursor, MaximumInspectionEventWindow);
+        if (projection is null)
+        {
+            projectedEventEntries = 0;
+            return null;
+        }
         List<SnowGlobeObserverAgentSnapshot> agents = projection.Agents
             .Select(agent => new SnowGlobeObserverAgentSnapshot(agent.AgentId, agent.HomeSlot, agent.CompletedActions))
             .ToList();
@@ -416,9 +441,9 @@ public sealed partial class SnowGlobeObserverShell
                 entry.StructureId,
                 $"{entry.Tick}|{entry.Sequence}|{entry.AgentId}|{entry.Action}|{entry.Quantity}|{entry.StructureId ?? string.Empty}"));
         }
-        _projectedEventEntries += projection.Events.Count;
+        projectedEventEntries = projection.Events.Count;
         return new SnowGlobeObserverSnapshot(
-            _isPaused,
+            isPaused,
             projection.Tick,
             projection.AvailableWood,
             projection.AvailableStone,
@@ -430,7 +455,7 @@ public sealed partial class SnowGlobeObserverShell
             eventCursor,
             eventCursor + events.Count < projection.EventHistoryCount ? eventCursor + events.Count : null,
             new ReadOnlyCollection<SnowGlobeObserverEventSnapshot>(events),
-            _stateDigest,
-            _eventDigest);
+            stateDigest,
+            eventDigest);
     }
 }

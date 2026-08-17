@@ -51,6 +51,7 @@ public static class SnowGlobePersistedRun
                     cancellationToken.ThrowIfCancellationRequested();
                     SnowGlobeObservation observation = world.Observe(agentId);
                     SnowGlobeActionProposal response = await inference.ProposeAsync(observation, cancellationToken);
+                    cancellationToken.ThrowIfCancellationRequested();
                     store.AppendResponse(observation, response);
                     store.AppendProposal(world.Tick, response);
                     SnowGlobeCommitResult commit = world.ValidateAndCommit(response);
@@ -65,6 +66,7 @@ public static class SnowGlobePersistedRun
                     }
                     else metrics.RejectedActions++;
                 }
+                cancellationToken.ThrowIfCancellationRequested();
                 world.AdvanceTick();
                 metrics.Ticks++;
                 store.AppendCheckpoint(world);
@@ -230,9 +232,10 @@ public static class SnowGlobePersistedRun
 }
 
 /// <summary>Eight-agent recorded resilience fixture: ordinal conflicting claims followed by deterministic idle fallback.</summary>
-public sealed class SnowGlobeResilienceFallbackAdapter : ISnowGlobeInferenceAdapter
+public sealed class SnowGlobeResilienceFallbackAdapter : ISnowGlobeIdentifiedInferenceAdapter
 {
     public const string Identity = "snow_globe_resilience_conflicting_claims_fallback/v1";
+    public string AdapterIdentity => Identity;
     public ValueTask<SnowGlobeActionProposal> ProposeAsync(SnowGlobeObservation observation, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();

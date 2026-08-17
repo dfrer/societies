@@ -110,6 +110,7 @@ public sealed class SnowGlobeRunStore : IDisposable
 
     internal Func<Task>? BeforeOperationLeaseReleaseForTesting { get; set; }
     internal Action? BeforeLedgerAppendFlushForTesting { get; set; }
+    internal bool IsPoisoned => Volatile.Read(ref _poisoned);
 
     private SnowGlobeRunStore(string directory, SnowGlobeRunLedger ledger, string headerChecksum, FileStream lockStream, SnowGlobeWorld expectedWorld)
     {
@@ -496,7 +497,7 @@ public sealed class SnowGlobeRunStore : IDisposable
         evaluation.ResultingStateDigest,
         evaluation.ResultingEventDigest);
 
-    private static bool SameParticipantCommand(SnowGlobeParticipantEvaluationRecord existing, SnowGlobeParticipantCommand command) =>
+    internal static bool SameParticipantCommand(SnowGlobeParticipantEvaluationRecord existing, SnowGlobeParticipantCommand command) =>
         existing.ParticipantId == command.ParticipantId
         && existing.IdempotencyKey == command.IdempotencyKey
         && existing.ExpectedTick == command.ExpectedTick
@@ -610,7 +611,7 @@ public sealed class SnowGlobeRunStore : IDisposable
     {
         bool common = identity.RulesIdentity == SnowGlobePersistedRun.RulesIdentity
             && identity.PromptIdentity == SnowGlobePersistedRun.PromptIdentity
-            && !string.IsNullOrWhiteSpace(identity.AdapterIdentity)
+            && SnowGlobeInferenceIdentity.IsCanonical(identity.AdapterIdentity)
             && identity.AgentCount is >= 1 and <= 64
             && IsBounded(identity.RulesIdentity)
             && IsBounded(identity.PromptIdentity)
@@ -741,15 +742,17 @@ public sealed class SnowGlobeRunStore : IDisposable
 }
 
 /// <summary>Recorded normalized responses are replay inputs, not world authority; the scheduler still validates every proposal.</summary>
-public sealed class SnowGlobeReplayAdapter : ISnowGlobeInferenceAdapter
+public sealed class SnowGlobeReplayAdapter : ISnowGlobeIdentifiedInferenceAdapter
 {
     public const string Identity = "snow_globe_recorded_response_adapter/v1";
     private readonly Queue<SnowGlobeLedgerRecord> _responses;
+    public string AdapterIdentity { get; }
     public SnowGlobeReplayAdapter(SnowGlobeRunLedger ledger, string expectedAdapterIdentity, int startTick = 0)
     {
         ArgumentNullException.ThrowIfNull(ledger);
         if (string.IsNullOrWhiteSpace(expectedAdapterIdentity) || !string.Equals(ledger.Identity.AdapterIdentity, expectedAdapterIdentity, StringComparison.Ordinal)) throw new InvalidDataException("Recorded responses require an exact expected adapter identity.");
         SnowGlobeRunStore.ValidateSupportedIdentity(ledger.Identity);
+        AdapterIdentity = ledger.Identity.AdapterIdentity;
         _responses = new Queue<SnowGlobeLedgerRecord>(ledger.Records.Where(record => record.Kind == SnowGlobeLedgerKind.Response && record.Tick >= startTick));
     }
     public ValueTask<SnowGlobeActionProposal> ProposeAsync(SnowGlobeObservation observation, CancellationToken cancellationToken)

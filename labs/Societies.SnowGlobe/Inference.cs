@@ -19,12 +19,39 @@ public interface ISnowGlobeInferenceAdapter
     ValueTask<SnowGlobeActionProposal> ProposeAsync(SnowGlobeObservation observation, CancellationToken cancellationToken);
 }
 
+/// <summary>An adapter whose canonical provenance can be bound exactly to a persisted run header.</summary>
+public interface ISnowGlobeIdentifiedInferenceAdapter : ISnowGlobeInferenceAdapter
+{
+    string AdapterIdentity { get; }
+}
+
+internal static class SnowGlobeInferenceIdentity
+{
+    public const int MaximumLength = 128;
+
+    internal static bool IsCanonical(string? value)
+    {
+        if (string.IsNullOrEmpty(value) || value.Length > MaximumLength || value[0] == '/' || value[^1] == '/') return false;
+        for (int index = 0; index < value.Length; index++)
+        {
+            char current = value[index];
+            if (!((current >= 'a' && current <= 'z')
+                || (current >= '0' && current <= '9')
+                || current is '_' or '-' or '.' or '/')) return false;
+        }
+        return !value.Contains("//", StringComparison.Ordinal);
+    }
+}
+
 /// <summary>
 /// Offline deterministic adapter used by tests and baseline scheduling experiments.
 /// It intentionally is not a model client and has no mutable world reference.
 /// </summary>
-public sealed class ScriptedInferenceAdapter : ISnowGlobeInferenceAdapter
+public sealed class ScriptedInferenceAdapter : ISnowGlobeIdentifiedInferenceAdapter
 {
+    public const string Identity = "snow_globe_scripted_adapter/v1";
+    public string AdapterIdentity => Identity;
+
     public ValueTask<SnowGlobeActionProposal> ProposeAsync(SnowGlobeObservation observation, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
