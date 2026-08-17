@@ -1,3 +1,24 @@
+# Snow Globe Lab blocked authorized model preflight handoff
+
+## Outcome and scope
+
+- The user authorized the exact Ollama `qwen3.5:4b` pull and frozen local-only benchmark. Preflight blocked before model download because the final C: snapshot had only 3,022,385,152 bytes free, below the official 4 GB binary-install minimum. Do not execute the updater until measured free space reaches the conservative `>= 6,442,450,944` bytes (6 GiB) gate. A dedicated empty `E:\AIModels\Ollama` store was prepared and verified with 2,314,474,885,120 bytes free; E: still contains 0 model bytes.
+- Controlled Ollama 0.18.2 on isolated `127.0.0.1:11435`, cloud-off, one-parallel reported GPU bootstrap `initial_count=0` and `total_vram=0`, including forced `cuda_v13` and the exact GPU UUID. `nvidia-smi` confirms RTX 2070 SUPER CC 7.5, driver 581.42, CUDA 13.0, and 8192 MiB. The installed Ollama directory has 7 files/69,826,339 bytes and no GPU libraries. Controlled PIDs were stopped and 11435 is closed.
+- An unexpected Windows app updater created `C:\Users\hunte\AppData\Local\Ollama\updates_v2\0x8DEFBBACBE8DDC4\OllamaSetup.exe` (verified v0.32.14, 1,564,916,544 bytes; SHA-256 `63061ab02eab0644ec8db56807d8f3e79be19ade9e7c5839014bfc01fd6f1a01`, exactly matching the official Ollama GitHub release asset; Authenticode valid/Ollama Inc.). It remains unexecuted. Global issue `WI-GLOBAL-2026-117` is Open T1.
+
+## Validation and review
+
+- No model pull, model/provider inference, credentials, simulation changes, code edits, tests, or `src/societies/` changes occurred. Earlier lab evidence remains 296/296 Release tests, a 0-warning/0-error Release build, and deep-review CODE GO with no P0-P2 findings.
+
+## Repository and delivery state
+
+- This is a local documentation handoff only; no push or PR occurred. The exact model authorization remains valid but paused; after any runtime repair, a fresh runtime-bound single-use capability is required. During review, a task-created default app briefly remained live at 11434 with `OLLAMA_NO_CLOUD:false` and startup-shortcut recurrence risk. Security cleanup stopped the exact app/server; after 10 seconds there was no respawn, and final state had no Ollama processes or listeners on 11434/11435 and no outbound/model traffic. Both model stores remain zero files/bytes/manifests. Cleanup targets are not authorized by this handoff.
+
+## Risks and exactly one next action
+
+- The runtime cannot currently prove CUDA/GPU discovery despite independently verified hardware. The signed updater artifact is retained and unexecuted; no model quality, latency, VRAM-fit, or Societies behavior evidence exists yet.
+- Next action: decide whether to authorize bounded C: space-recovery/runtime-repair preparation to reach `>= 6,442,450,944` bytes free and then execute the already verified v0.32.14 installer; if not, remain offline.
+
 # Snow Globe Lab authorized local-model boundary and research handoff
 
 ## Outcome and scope
