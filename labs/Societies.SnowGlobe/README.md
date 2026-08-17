@@ -1,6 +1,6 @@
 # Societies Snow Globe Lab
 
-A standalone, headless research toy for proving agent-infrastructure choices before they enter the Godot runtime. It is intentionally isolated from `src/societies/` and has no provider, model weight, network, or credential dependency.
+A standalone, headless research toy for proving agent-infrastructure choices before they enter the Godot runtime. It is intentionally isolated from `src/societies/`. The lab now contains a production-capable Ollama benchmark boundary, but it remains offline until a separately approved model download and run.
 
 ## Architecture
 
@@ -42,7 +42,9 @@ Reading is side-effect-free and fails closed on incomplete or unterminated JSONL
 
 ## Offline local-model preflight
 
-`SnowGlobeLocalModelAdapterPreflight` defines—but does not execute—the future single shared local-model-server boundary. It accepts only canonical `http://127.0.0.1:<port>/` or `http://[::1]:<port>/` endpoints and rejects credentials, non-loopback hosts, redirects, retries, and execution authority. Request, output, queue, latency, context, and VRAM budgets are explicit.
+`OllamaBenchmarkRunner` is the bounded single shared local-model-server boundary. Execution requires an explicit immutable single-use authorization capability bound to the exact plan, canonical loopback endpoint, installed artifact digest/size/format/family/quantization, and runtime process identity. It performs strict `/api/tags` and `/api/generate` validation, bounded FIFO admission, in-flight VRAM sampling, response-size/depth limits, and endpoint poisoning when cancellation-ignoring transport is observed. Proposals are parsed and validated only in a disposable scratch world; they never become simulation authority. Evidence is metrics-only.
+
+`SnowGlobeLocalModelAdapterPreflight` remains the pure planning/evidence contract for the future shared local-model boundary. It accepts only canonical `http://127.0.0.1:<port>/` or `http://[::1]:<port>/` endpoints and rejects credentials, non-loopback hosts, redirects, retries, and execution authority. Request, output, queue, latency, context, and VRAM budgets are explicit.
 
 Future 8 GB benchmark evidence must be bounded canonical metrics-only JSON bytes. Validation derives the exact sample count and SHA-256 plus latency percentiles/maximum, peak/total queue wait, byte peaks, VRAM, throughput, failure, and fallback counts. Raw prompts, responses, provider payloads, credentials, and secrets are forbidden. This contract performs no file/network/GPU/model operation and makes no live-quality or hardware-fit claim.
 
@@ -52,4 +54,4 @@ Future 8 GB benchmark evidence must be bounded canonical metrics-only JSON bytes
 
 World collections are detached, ownership checks use a lock-protected mutation revision, and snapshots page at most 32 events without rehashing full history. `SnowGlobePersistedSession` owns the v3 store, world, identified adapter, pause state, and operation gate. It restores the durable world after managed failures, reconstructs receipts across reopen, rejects mutable v2 sessions, fail-closes on poison/coherence loss, and safely handles reentrant/concurrent disposal.
 
-This is not a Godot UI and does not add authentication, networking, or free-form participant communication. Final local evidence is 239/239 Release tests, a Release build with 0 warnings and 0 errors, clean `git diff --check`, and independent FINAL CODE GO with no P0-P3 findings. No provider, model, credential, download, network, GPU probe, Godot runtime, or `src/societies/` change occurred.
+This is not a Godot UI and does not add authentication, networking, or free-form participant communication. Final local evidence is 296/296 Release tests, a lab Release build with 0 warnings and 0 errors, clean `git diff --check`, and independent FINAL CODE GO with no P0-P2 findings. No model weights were downloaded, no Ollama server was started, and no live model/provider/network inference occurred. No credentials, Godot gameplay, or `src/societies/` change occurred, and no live-quality claim is made. See [LOCAL_MODEL_RESEARCH_2026-08-16.md](LOCAL_MODEL_RESEARCH_2026-08-16.md) for the current model and benchmark strategy.

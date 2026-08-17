@@ -1,3 +1,27 @@
+# Snow Globe Lab authorized local-model boundary and research handoff
+
+## Outcome and scope
+
+- Added the isolated production-capable Ollama benchmark boundary and current model research. The runner requires an explicit immutable single-use authorization bound to the exact plan, canonical loopback endpoint, installed artifact identity/digest/quantization, and runtime process identity.
+- The boundary strictly validates `/api/tags` and `/api/generate`, bounds FIFO queueing, response parsing, and VRAM sampling, poisons an endpoint after cancellation-ignoring transport, validates proposals only in a disposable scratch world, and records metrics-only evidence. The deterministic simulation and event ledger remain the only state-change authority.
+- Official Qwen3.8 is documented as a frontier/background option (27B dense and 2.4T-A95B collection), not a practical 8 GB local tactical model. The recommended first separately approved local candidate is Ollama `qwen3.5:4b` at approximately 3.4 GB Q4_K_M, using the frozen 4K-context/96-output benchmark cell. See [LOCAL_MODEL_RESEARCH_2026-08-16.md](labs/Societies.SnowGlobe/LOCAL_MODEL_RESEARCH_2026-08-16.md).
+
+## Validation and review
+
+- `dotnet test tests/Societies.SnowGlobe.Tests/Societies.SnowGlobe.Tests.csproj --configuration Release --no-restore` — 296/296 passed.
+- `dotnet build labs/Societies.SnowGlobe/Societies.SnowGlobe.csproj --configuration Release --no-restore` — 0 warnings, 0 errors.
+- `git diff --check` — passed. Independent final deep review returned CODE GO with no P0-P2 findings.
+
+## Repository and delivery state
+
+- Focused local commits are `98231bf` (authorized Ollama benchmark boundary) and `26c1d65` (current local model research strategy), with this documentation reconciliation remaining local. No push or PR occurred.
+- No model weights were downloaded, no Ollama server was started, and no live model/provider/network inference occurred. No credentials, Godot/src gameplay, or authoritative runtime change occurred. Live quality remains unmeasured.
+
+## Risks and exactly one next action
+
+- Qwen3.8 does not fit the 8 GB local tactical envelope; any background or remote evaluation requires a separate hardware/network/credential decision. The exact local artifact digest, runtime behavior, latency, VRAM fit, and Societies quality remain unmeasured until a real run.
+- Next action: decide whether to authorize downloading the exact Ollama `qwen3.5:4b` artifact for one local-only benchmark under the frozen contract, or keep the lab offline.
+
 # Snow Globe Lab durable participant-session handoff
 
 ## Outcome and scope
