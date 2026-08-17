@@ -1,3 +1,27 @@
+# Snow Globe Lab durable participant-session handoff
+
+## Outcome and scope
+
+- Added paused, bounded structured participant commands through the same atomic expected-identity world validator. Durable accepted/stale/domain-rejected receipts are idempotent; transient admission failures do not consume keys. No free-form participant text, authentication, provider, network, Godot, or gameplay permission system was added.
+- Advanced create-new persistence to `snow_globe_run_store/v3` with one compound participant-evaluation record, tick-boundary grammar, contiguous participant/scheduled events, bounded receipt reconstruction, framed scheduled ticks, strict record shapes, and writer poison semantics. V2 remains strict read-only compatibility and is never upgraded in place.
+- Added `SnowGlobePersistedSession` as the single owner of v3 world/store/identified-adapter/pause/operation state. It restores durable state after managed failures, binds adapter provenance before artifacts, rejects mutable v2 sessions, fail-closes on poison or reconstruction mismatch, and supports bounded snapshots plus safe reentrant/concurrent disposal.
+
+## Validation and review
+
+- `dotnet test tests/Societies.SnowGlobe.Tests/Societies.SnowGlobe.Tests.csproj --configuration Release --no-restore` — 239/239 passed.
+- `dotnet build labs/Societies.SnowGlobe/Societies.SnowGlobe.csproj --configuration Release --no-restore` — 0 warnings, 0 errors.
+- `git diff --check` — passed. Independent architecture, migration, integration, and adversarial deep-review cycles concluded FINAL CODE GO with no P0-P3 findings.
+
+## Repository and delivery state
+
+- Focused local commits on `feature/snowglobe-agent-lab-owner-v1`: `67fa265` participant/world authority, `52bafb2` v3 persistence, and `03602af` persisted session. This documentation update is the remaining local commit. No push, PR, merge, provider/model call, download, network listener, GPU probe, Godot integration, or `src/societies/` change occurred.
+- The deterministic world validator and canonical event ledger remain the only state-change authority. Participant identity is an opaque lab token, not real authentication or authorization.
+
+## Risks and exactly one next action
+
+- V3 has no v2 migration; old v2 artifacts remain historical/read-only. Observed low-level I/O poisons the live writer, and process-crash atomicity is not claimed. The 8 GB local-model budgets remain an unmeasured contract.
+- Next action: decide whether to authorize one bounded live loopback benchmark under the frozen preflight contract; otherwise keep the lab offline.
+
 # Snow Globe Lab persistence, preflight, and observer handoff
 
 ## Outcome and scope
