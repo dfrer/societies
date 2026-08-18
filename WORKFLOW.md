@@ -1,20 +1,20 @@
 # Snow Globe provider preflight, Ollama repair, and qwen3.5 smoke handoff
 
-## Frozen benchmark CLI: blocked latest capability
+## Frozen benchmark CLI: qwen3.5:4b frozen cell
 
 ### Outcome and scope
 
 - Added the Windows-pinned `Societies.SnowGlobe.BenchmarkCli` boundary and its tests without changing `src/societies/` or the authoritative runtime.
-- Fresh explicit authority was consumed by one one-shot attempt. The corrected evidence lease passed. `GET /api/tags` completed 1/1 with HTTP 200 in 538.1 us. Warmup `POST /api/generate` was attempted once but completed 0 and ended HTTP 500 after approximately 5.69 s because an external ad-hoc monitor stopped the CLI; measured requests remained 0.
+- Fresh committed-monitor authority completed the frozen qwen3.5:4b cell. Tags passed 1/1 HTTP 200; warmup passed 1/1; measured requests passed 10/10 with failures=0 and fallbacks=0. Outer wall time was 15.709 s; p50 887.0709 ms; p95=p99=max 1,036.6006 ms; throughput 57.637718 tok/s.
 
 ### Validation and evidence
 
-- No canonical evidence JSON, model-quality/intelligence result, retry, or raw output exists. Maximum observed VRAM was 6,302/8,192 MiB, below the 6,963.2 MiB threshold. No actual non-loopback connection was observed; cleanup reported zero Ollama/llama-server/live rows.
-- Root cause was wrapper misclassification of transient unconnected `Bound 0.0.0.0:61081 -> 0.0.0.0:0` as outbound. The offline fix adds a repo-owned `WindowsTcpExposureMonitor` contract, Program pre/post use, and deterministic tests: reject non-loopback LISTEN or ESTABLISHED real peers, ignore Bound wildcard-zero. The monitor strictly queries bounded AF_INET and AF_INET6 owner tables, accepts only a native 0..8 alignment tail, passes the native read-only dual-family smoke, samples concurrently across the run, and cancels on observed non-loopback LISTEN or ESTABLISHED real-peer violations. Exact transport PID/loopback checks remain; bounded samples cannot guarantee absence during unsampled transients. CLI tests: 56/56; build: clean; final independent review: CODE GO with no P0-P2 findings.
+- Queue bound/peak was 1/1; total/peak wait 0.5206 ms; maximum request/output sizes 801/873 B. Static VRAM was 6,351 MiB; sampled peak 6,432/8,192 MiB against 6,963.2 MiB across 179 samples. The TCP monitor recorded 482 clean bounded samples and explicitly reports `bounded_samples_do_not_guarantee_unsampled_transient_exposure`; this is not proof between samples. `external_server_startup_configuration_verified=false` remains explicit.
+- Canonical evidence: `artifacts/snowglobe/local-model/qwen3.5-4b-frozen-benchmark-v1.json`, 3,618 B, SHA-256 `961B54B7D8CFB2AEAD566579499ADB3AA21F1D85BFBE0B7C6FC504A8ADC40E0D`. Cleanup found zero model processes/live attributable rows; no raw output was retained. Offline validation accepted the canonical artifact with 0 errors, and it was unchanged during review. Final independent evidence review is FINAL EVIDENCE GO with no P0-P2 findings. This proves local compatibility/fit/latency for this frozen cell only, not general intelligence, quality, or production readiness.
 
 ### Delivery boundary and exactly one next action
 
-- There is no current live authority. After final independent review, request fresh explicit authority for a new one-shot benchmark capability; a future attempt is not a retry. Keep the default PATH Ollama 0.18.2 unchanged and use only the pinned E: runtime/model.
+- Compare this measured local cell against the premium fixed-provider offline/live boundary only after separate provider, credential, and payment authorization. No additional fresh benchmark authority is needed for this completed cell.
 
 ## Prior durable Financial Journal milestone handoff
 
