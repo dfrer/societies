@@ -49,6 +49,12 @@ The journal has an in-memory adapter and a strict file adapter. The file adapter
 
 No model weights, credentials, external endpoint, payment account, or live provider are required or touched by this acceptance boundary.
 
+## Provider preflight vocabulary and current evidence
+
+The offline preflight uses a **Credential Lease**, a **Fixed Provider Profile**, and a **Provider Execution Capability** as separate concepts. A Credential Lease owns and zeroes its transferred secret buffer; a Fixed Provider Profile is registry-owned and fixes endpoint, authentication, retry, proxy, model, and billing policy; a Provider Execution Capability is single-use and binds the exact profile, policy, journal, job, BYOK identity, bounds, source identity, clock, and nonce. These are fixture-only contracts. The source/probe does not make network, HTTP, DNS, payment, or provider calls, and no production profile or authenticated adapter exists.
+
+Evidence is 6/6 focused tests, 348/348 full lab tests, a Release build with 0 warnings and 0 errors, and independent deep-review CODE GO. The evidence does not prove that an arbitrary trusted callback cannot retain a copied secret; it proves only the owned lease-buffer cleanup and the reviewed fixture behavior. Live parser/status/charge evidence, live credentials, and provider quality remain unimplemented.
+
 ## Gates before live work
 
 The following are future gates, not claims satisfied by this document:
@@ -64,3 +70,5 @@ The following are future gates, not claims satisfied by this document:
 - an explicit deployment and operator runbook.
 
 Until those gates pass, this is a local research contract with an offline fake, not a hosted offering.
+
+The isolated Ollama repair is infrastructure preflight, not premium-lane evidence. Portable v0.32.14 at `E:\AIModels\OllamaRuntimeRepair\runtime-v0.32.14` passed official asset hash verification and discovered the RTX 2070 SUPER via CUDA (compute 7.5; 8 GiB total, 7 GiB available) on loopback `127.0.0.1:11435` with cloud disabled. The default PATH Ollama 0.18.2 installation remains unchanged. One bounded qwen3.5:4b smoke completed against the pinned runtime: official digest `2A654D98E6FBA55D452B7043684E9B57A947E393BBFFA62485A7AAC05EE4EEFD`, Q4_K_M, 4,659,865,088 parameters, 34/34 layers GPU-offloaded, 3,128,038,521-byte `size_vram`, and 6,357/8,192 MiB observed loaded-state GPU use. It used one loopback call with no retry, stream/think disabled, temperature 0, context 4096, and output cap 96; wall time was 51,056 ms and output was 20 tokens. This is smoke/artifact evidence only, not a benchmark, intelligence, or quality result; the production benchmark runner remains uninvoked. The next action is the frozen benchmark contract.

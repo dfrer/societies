@@ -1,4 +1,34 @@
-# Snow Globe Lab durable Financial Journal milestone handoff
+# Snow Globe provider preflight, Ollama repair, and qwen3.5 smoke handoff
+
+## Prior durable Financial Journal milestone handoff
+
+## Outcome and scope
+
+- Added the offline Credential Lease / Fixed Provider Profile / Provider Execution Capability evidence contract without changing the authoritative runtime or enabling authenticated transport.
+- Repaired and verified an isolated portable Ollama v0.32.14 runtime/GPU-discovery path. The default PATH installation remains unchanged.
+
+## Validation and evidence
+
+- Provider preflight: 6/6 focused tests, 348/348 full lab tests, Release build 0 warnings/errors, independent deep-review CODE GO.
+- Ollama runtime: official asset SHA-256 `5AE5BCA5F0D297F5E35665E01DB399A69A8EAC3F8FAD89CD9D2531FD495C9457`; RTX 2070 SUPER, CUDA compute 7.5, 8 GiB total/7 GiB available; loopback-only `127.0.0.1:11435`, cloud disabled, process stopped. One bounded qwen3.5:4b local smoke completed; it is not benchmark or quality evidence.
+
+## Boundary and risks
+
+- No production provider profile, live credential, authenticated HTTP/parser/status/charge evidence, payment action, model benchmark, or live-quality claim exists. The production benchmark runner remains uninvoked.
+- The lease evidence covers owned-buffer cleanup and reviewed fixture behavior; it does not promise arbitrary trusted callback non-retention.
+
+## Exactly one next action
+
+Run the frozen benchmark contract with the pinned portable runtime; keep the default PATH installation untouched.
+
+## qwen3.5:4b bounded local smoke evidence
+
+- Official Ollama model: `qwen3.5:4b`; manifest/full model digest `2A654D98E6FBA55D452B7043684E9B57A947E393BBFFA62485A7AAC05EE4EEFD`.
+- Store evidence: 5 files / 3,389,984,444 bytes; family `qwen35`; exact 4,659,865,088 parameters (4.66B official; 4.7B API rounding); Q4_K_M.
+- One local loopback smoke only, with no retry: `stream=false`, `think=false`, temperature 0, `num_ctx=4096`, `num_predict=96`. Wall time 51,056 ms; API total 50,958,399,400 ns; load 29,253,514,900 ns; prompt 82 tokens / 21,438,342,000 ns; output 20 tokens / 262,642,000 ns (~76.149 tok/s output metric).
+- Structured output was 63 bytes, thinking output 0 bytes, raw text was not retained, and the structured-output SHA-256 was `B9E223C20EA06E2D48FD96C151B095A8A7494527CD9D6AAD69B24F98FF97D4AD`.
+- All 34/34 layers were GPU-offloaded; `/api/ps` reported `size_vram=3,128,038,521` bytes and observed loaded-state GPU use was 6,357/8,192 MiB. Transport remained loopback-only with no outbound traffic; the server stopped cleanly with no listeners. The model is retained on E:.
+- This is a smoke and artifact/runtime evidence only, not a benchmark, intelligence result, or quality result. The production benchmark runner remains uninvoked.
 
 ## Outcome and scope
 
@@ -59,29 +89,29 @@
 
 ## Risks and exactly one next action
 
-- This slice has no durable financial journal, authenticated provider adapter, credential lifecycle, commercial billing/account controls, live quality evidence, or deployment. The earlier Ollama runtime preflight remains blocked by the reviewed C: free-space gate and is preserved below.
+- This slice has no durable financial journal, authenticated provider adapter, credential lifecycle, commercial billing/account controls, live quality evidence, or deployment. The earlier Ollama runtime preflight/free-space note is historical and superseded by the repaired pinned runtime and qwen3.5:4b smoke handoff above.
 - Next action: choose the next separately authorized lane: (A) design durable database-backed financial journal/BYOK integration without paid calls, or (B) resume local Ollama runtime repair after the 6 GiB C: gate. Neither lane is authorized by this handoff.
 
 # Snow Globe Lab blocked authorized model preflight handoff
 
 ## Outcome and scope
 
-- The user authorized the exact Ollama `qwen3.5:4b` pull and frozen local-only benchmark. Preflight remains blocked: the current reviewed C: snapshot has 4,571,758,592 bytes free, which is 1,870,692,352 bytes below the conservative `>= 6,442,450,944` bytes (6 GiB) gate. Values fluctuate and must be remeasured before any repair execution. A dedicated empty `E:\AIModels\Ollama` store remains available; it contains 0 model bytes.
+- Historical pre-repair checkpoint: the user had authorized the exact Ollama `qwen3.5:4b` pull and frozen local-only benchmark, but the reviewed C: snapshot was below the conservative free-space gate and the dedicated E: model store was empty. This checkpoint is superseded by the repaired pinned runtime, retained model, and smoke evidence above.
 - Controlled Ollama 0.18.2 on isolated `127.0.0.1:11435`, cloud-off, one-parallel reported GPU bootstrap `initial_count=0` and `total_vram=0`, including forced `cuda_v13` and the exact GPU UUID. `nvidia-smi` confirms RTX 2070 SUPER CC 7.5, driver 581.42, CUDA 13.0, and 8192 MiB. The installed Ollama directory has 7 files/69,826,339 bytes and no GPU libraries. Controlled PIDs were stopped and 11435 is closed.
 - The official v0.32.14 updater was relocated to `E:\AIModels\OllamaRuntimeRepair\updater\OllamaSetup-v0.32.14.exe` (1,564,916,544 bytes; SHA-256 `63061ab02eab0644ec8db56807d8f3e79be19ade9e7c5839014bfc01fd6f1a01`; same valid Ollama Inc. signature/version). Six attributable temporary artifacts totaling 247,012 bytes were moved under the repair tree; no unrelated data was moved. Deep review corrected unsafe inherited/explicit ACLs: the final tree has 3 directories, 7 files, no reparse points, owner/group `hunte`, protected directories, and files inheriting exactly FullControl for `hunte`, `SYSTEM`, and `Administrators` only. The source updater is absent. Final relocation-containment review is GO with no P0-P2 findings. Global issue `WI-GLOBAL-2026-117` remains Open T1 because runtime repair is blocked.
 
 ## Validation and review
 
-- No model pull, model/provider inference, credentials, simulation changes, code edits, tests, or `src/societies/` changes occurred. Earlier lab evidence remains 296/296 Release tests, a 0-warning/0-error Release build, and deep-review CODE GO with no P0-P2 findings.
+- Historical pre-repair checkpoint: no model pull, model/provider inference, credentials, simulation changes, code edits, tests, or `src/societies/` changes had occurred. Earlier lab evidence remained 296/296 Release tests, a 0-warning/0-error Release build, and deep-review CODE GO with no P0-P2 findings.
 
 ## Repository and delivery state
 
-- This is a local documentation handoff only; no push or PR occurred. No installer execution, Ollama server, model pull, inference, or benchmark occurred. Final state has no Ollama processes/listeners, both model stores are empty, and Git/src are untouched. The exact model authorization remains paused; after runtime repair, a fresh runtime-bound single-use capability is required. The exploratory two-tier paid architecture discussion is not durably recorded here and remains pending user direction.
+- Historical pre-repair handoff: this was a local documentation handoff only; no push or PR occurred, and no installer execution, Ollama server, model pull, inference, or benchmark had occurred at that checkpoint. It is superseded by the qwen3.5:4b smoke handoff above.
 
 ## Risks and exactly one next action
 
 - The runtime cannot currently prove CUDA/GPU discovery despite independently verified hardware. The contained signed updater tree is ready but unexecuted; no model quality, latency, VRAM-fit, or Societies behavior evidence exists yet.
-- Next action: decide whether to free or authorize the exact additional C: cleanup needed to reach `>= 6,442,450,944` bytes free, or keep the local lane paused.
+- Historical next action, superseded: decide whether to free or authorize the exact additional C: cleanup needed to reach `>= 6,442,450,944` bytes free, or keep the local lane paused.
 
 # Snow Globe Lab authorized local-model boundary and research handoff
 
@@ -100,12 +130,12 @@
 ## Repository and delivery state
 
 - Focused local commits are `98231bf` (authorized Ollama benchmark boundary) and `26c1d65` (current local model research strategy), with this documentation reconciliation remaining local. No push or PR occurred.
-- No model weights were downloaded, no Ollama server was started, and no live model/provider/network inference occurred. No credentials, Godot/src gameplay, or authoritative runtime change occurred. Live quality remains unmeasured.
+- Historical pre-repair checkpoint: no model weights had been downloaded, no Ollama server had been started, and no live model/provider/network inference had occurred. No credentials, Godot/src gameplay, or authoritative runtime change occurred. Live quality remained unmeasured.
 
 ## Risks and exactly one next action
 
 - Qwen3.8 does not fit the 8 GB local tactical envelope; any background or remote evaluation requires a separate hardware/network/credential decision. The exact local artifact digest, runtime behavior, latency, VRAM fit, and Societies quality remain unmeasured until a real run.
-- Next action: decide whether to authorize downloading the exact Ollama `qwen3.5:4b` artifact for one local-only benchmark under the frozen contract, or keep the lab offline.
+- Historical next action, superseded: decide whether to authorize downloading the exact Ollama `qwen3.5:4b` artifact for one local-only benchmark under the frozen contract, or keep the lab offline.
 
 # Snow Globe Lab durable participant-session handoff
 
@@ -129,7 +159,7 @@
 ## Risks and exactly one next action
 
 - V3 has no v2 migration; old v2 artifacts remain historical/read-only. Observed low-level I/O poisons the live writer, and process-crash atomicity is not claimed. The 8 GB local-model budgets remain an unmeasured contract.
-- Next action: decide whether to authorize one bounded live loopback benchmark under the frozen preflight contract; otherwise keep the lab offline.
+- Historical next action, superseded: decide whether to authorize one bounded live loopback benchmark under the frozen preflight contract; otherwise keep the lab offline.
 
 # Snow Globe Lab persistence, preflight, and observer handoff
 
@@ -153,7 +183,7 @@
 ## Risks and exactly one next action
 
 - V2 has no v1 migration by design; old lab artifacts must remain historical rather than being opened as v2. The observer requires exclusive mutation ownership. The 8 GB budgets are a contract, not measured hardware evidence.
-- Next action: decide whether to authorize one bounded live loopback benchmark against the frozen preflight contract; without that decision, keep the lab offline.
+- Historical next action, superseded: decide whether to authorize one bounded live loopback benchmark against the frozen preflight contract; without that decision, keep the lab offline.
 
 # W3-03 milestone handoff
 
