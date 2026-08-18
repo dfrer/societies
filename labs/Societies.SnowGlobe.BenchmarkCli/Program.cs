@@ -32,16 +32,21 @@ internal static class BenchmarkProgram
             PinnedNvidiaSmiVramProbe probe = PinnedNvidiaSmiVramProbe.Create(processId);
             WindowsOllamaLoopbackConnectionOwnerResolver ownerResolver =
                 WindowsOllamaLoopbackConnectionOwnerResolver.Create(processId);
+            WindowsTcpExposureMonitor exposureMonitor = WindowsTcpExposureMonitor.Create(processId);
             await using OllamaLoopbackHttpTransport transport = new(plan.Endpoint, processId, ownerResolver);
             LocalModelBenchmarkExecutionCapability capability =
                 LocalModelBenchmarkExecutionCapability.AuthorizeSingleUse(plan, runtime);
-            OllamaBenchmarkRunResult result = await new OllamaBenchmarkRunner(transport, probe)
-                .RunAsync(plan, capability).ConfigureAwait(false);
+            OllamaBenchmarkRunner runner = new(transport, probe);
+            WindowsTcpExposureSampledRun<OllamaBenchmarkRunResult> monitoredRun =
+                await exposureMonitor.RunWhileMonitoringAsync(
+                    cancellationToken => runner.RunAsync(plan, capability, cancellationToken),
+                    CancellationToken.None).ConfigureAwait(false);
+            OllamaBenchmarkRunResult result = monitoredRun.Result;
             completedEvidence = result.Evidence;
             CanonicalBenchmarkEvidenceWriter.WriteNew(evidencePath, plan, result);
             Console.WriteLine(string.Create(
                 CultureInfo.InvariantCulture,
-                $"BENCHMARK_ACCEPTED evidence={PinnedBenchmarkContract.RelativeEvidencePath} samples={result.Evidence.MeasuredRequestCount} p50_ms={result.Evidence.P50LatencyMilliseconds:F3} p95_ms={result.Evidence.P95LatencyMilliseconds:F3} p99_ms={result.Evidence.P99LatencyMilliseconds:F3} throughput_tok_s={result.Evidence.ThroughputTokensPerSecond:F3} peak_vram_mib={result.ObservedSampledPeakVramMiB:F0}"));
+                $"BENCHMARK_ACCEPTED evidence={PinnedBenchmarkContract.RelativeEvidencePath} samples={result.Evidence.MeasuredRequestCount} p50_ms={result.Evidence.P50LatencyMilliseconds:F3} p95_ms={result.Evidence.P95LatencyMilliseconds:F3} p99_ms={result.Evidence.P99LatencyMilliseconds:F3} throughput_tok_s={result.Evidence.ThroughputTokensPerSecond:F3} peak_vram_mib={result.ObservedSampledPeakVramMiB:F0} tcp_exposure_sample_count={monitoredRun.SampleCount} tcp_exposure_measurement_limit={monitoredRun.MeasurementLimit}"));
             return 0;
         }
         catch (LocalModelBenchmarkException exception)

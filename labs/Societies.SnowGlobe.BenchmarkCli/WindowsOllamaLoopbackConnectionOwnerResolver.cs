@@ -1,3 +1,4 @@
+using System.Buffers.Binary;
 using System.Net;
 using System.Net.Sockets;
 using System.Runtime.InteropServices;
@@ -16,6 +17,17 @@ internal sealed record WindowsTcpOwnerRow(
 internal interface IWindowsTcpOwnerTable
 {
     ValueTask<IReadOnlyList<WindowsTcpOwnerRow>> ReadRowsAsync(CancellationToken cancellationToken);
+}
+
+internal interface IWindowsExtendedTcpTableApi
+{
+    int GetExtendedTcpTable(
+        IntPtr tcpTable,
+        ref int size,
+        bool order,
+        int addressFamily,
+        int tableClass,
+        int reserved);
 }
 
 internal sealed class WindowsOllamaLoopbackConnectionOwnerResolver : IOllamaLoopbackConnectionOwnerResolver
@@ -188,74 +200,114 @@ internal sealed class WindowsOllamaLoopbackConnectionOwnerResolver : IOllamaLoop
 internal sealed class SystemWindowsTcpOwnerTable : IWindowsTcpOwnerTable
 {
     private const int AddressFamilyInterNetwork = 2;
+    private const int AddressFamilyInterNetworkV6 = 23;
     private const int ErrorInsufficientBuffer = 122;
-    private const int MaximumTableBytes = 2 * 1024 * 1024;
+    private const int MaximumAggregateTableBytes = 2 * 1024 * 1024;
+    private const int MaximumAggregateRows = 16_384;
+    private const int MaximumNativeAlignmentTailBytes = 8;
     private const int TcpTableOwnerPidAll = 5;
+    private static readonly int Ipv4RowsOffset = CheckedOffsetOf<MibTcpTableOwnerPidLayout>(
+        nameof(MibTcpTableOwnerPidLayout.FirstRow));
+    private static readonly int Ipv4RowBytes = Marshal.SizeOf<MibTcpRowOwnerPidLayout>();
+    private static readonly int Ipv6RowsOffset = CheckedOffsetOf<MibTcp6TableOwnerPidLayout>(
+        nameof(MibTcp6TableOwnerPidLayout.FirstRow));
+    private static readonly int Ipv6RowBytes = Marshal.SizeOf<MibTcp6RowOwnerPidLayout>();
+    private readonly IWindowsExtendedTcpTableApi _api;
+
+    internal SystemWindowsTcpOwnerTable()
+        : this(new SystemWindowsExtendedTcpTableApi())
+    {
+    }
+
+    private SystemWindowsTcpOwnerTable(IWindowsExtendedTcpTableApi api) =>
+        _api = api ?? throw new ArgumentNullException(nameof(api));
+
+    internal static SystemWindowsTcpOwnerTable CreateForTesting(IWindowsExtendedTcpTableApi api) =>
+        new(api);
 
     public ValueTask<IReadOnlyList<WindowsTcpOwnerRow>> ReadRowsAsync(CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
+        List<WindowsTcpOwnerRow> rows = new();
+        int aggregateBytes = 0;
+        ReadFamily(
+            AddressFamilyInterNetwork,
+            Ipv4RowsOffset,
+            Ipv4RowBytes,
+            rows,
+            ref aggregateBytes,
+            cancellationToken);
+        ReadFamily(
+            AddressFamilyInterNetworkV6,
+            Ipv6RowsOffset,
+            Ipv6RowBytes,
+            rows,
+            ref aggregateBytes,
+            cancellationToken);
+        return ValueTask.FromResult<IReadOnlyList<WindowsTcpOwnerRow>>(rows);
+    }
+
+    private void ReadFamily(
+        int addressFamily,
+        int rowsOffset,
+        int rowSize,
+        List<WindowsTcpOwnerRow> aggregateRows,
+        ref int aggregateBytes,
+        CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
         int tableSize = 0;
-        int firstResult = GetExtendedTcpTable(
+        int firstResult = _api.GetExtendedTcpTable(
             IntPtr.Zero,
             ref tableSize,
             order: false,
-            AddressFamilyInterNetwork,
+            addressFamily,
             TcpTableOwnerPidAll,
             reserved: 0);
         if (firstResult != ErrorInsufficientBuffer
-            || tableSize < sizeof(uint)
-            || tableSize > MaximumTableBytes)
+            || tableSize < rowsOffset
+            || tableSize > MaximumAggregateTableBytes - aggregateBytes)
         {
             throw new LocalModelBenchmarkException("tcp_owner_table_query_failed");
         }
 
         cancellationToken.ThrowIfCancellationRequested();
-        IntPtr table = Marshal.AllocHGlobal(tableSize);
+        int allocatedSize = tableSize;
+        IntPtr table = Marshal.AllocHGlobal(allocatedSize);
         try
         {
-            int secondResult = GetExtendedTcpTable(
+            int secondResult = _api.GetExtendedTcpTable(
                 table,
                 ref tableSize,
                 order: false,
-                AddressFamilyInterNetwork,
+                addressFamily,
                 TcpTableOwnerPidAll,
                 reserved: 0);
             if (secondResult != 0
-                || tableSize < sizeof(uint)
-                || tableSize > MaximumTableBytes)
+                || tableSize < rowsOffset
+                || tableSize > allocatedSize
+                || tableSize > MaximumAggregateTableBytes - aggregateBytes)
             {
                 throw new LocalModelBenchmarkException("tcp_owner_table_query_failed");
             }
 
             cancellationToken.ThrowIfCancellationRequested();
-            int rowCount = Marshal.ReadInt32(table);
-            int rowSize = Marshal.SizeOf<MibTcpRowOwnerPid>();
-            long requiredBytes = sizeof(uint) + (long)rowCount * rowSize;
-            if (rowCount < 0
-                || rowCount > 16_384
-                || requiredBytes > tableSize)
+            byte[] tableBytes = new byte[tableSize];
+            Marshal.Copy(table, tableBytes, 0, tableBytes.Length);
+            int remainingRows = MaximumAggregateRows - aggregateRows.Count;
+            IReadOnlyList<WindowsTcpOwnerRow> familyRows = ParseFamily(
+                tableBytes,
+                addressFamily,
+                rowsOffset,
+                rowSize,
+                remainingRows,
+                cancellationToken);
+            if (familyRows.Count > remainingRows)
             {
                 throw new LocalModelBenchmarkException("tcp_owner_table_query_failed");
             }
-
-            List<WindowsTcpOwnerRow> rows = new(rowCount);
-            IntPtr rowPointer = IntPtr.Add(table, sizeof(uint));
-            for (int index = 0; index < rowCount; index++)
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                MibTcpRowOwnerPid row = Marshal.PtrToStructure<MibTcpRowOwnerPid>(rowPointer);
-                rows.Add(new WindowsTcpOwnerRow(
-                    new IPAddress(row.LocalAddress),
-                    ConvertPort(row.LocalPort),
-                    new IPAddress(row.RemoteAddress),
-                    ConvertPort(row.RemotePort),
-                    checked((int)row.State),
-                    checked((int)row.OwningProcessId)));
-                rowPointer = IntPtr.Add(rowPointer, rowSize);
-            }
-
-            return ValueTask.FromResult<IReadOnlyList<WindowsTcpOwnerRow>>(rows);
+            aggregateBytes = checked(aggregateBytes + tableSize);
+            aggregateRows.AddRange(familyRows);
         }
         catch (OverflowException exception)
         {
@@ -267,20 +319,121 @@ internal sealed class SystemWindowsTcpOwnerTable : IWindowsTcpOwnerTable
         }
     }
 
-    private static int ConvertPort(uint networkOrderPort) =>
-        unchecked((ushort)IPAddress.NetworkToHostOrder((short)(networkOrderPort & ushort.MaxValue)));
-
-    [DllImport("iphlpapi.dll", SetLastError = false)]
-    private static extern int GetExtendedTcpTable(
-        IntPtr tcpTable,
-        ref int size,
-        bool order,
+    private static IReadOnlyList<WindowsTcpOwnerRow> ParseFamily(
+        byte[] tableBytes,
         int addressFamily,
-        int tableClass,
-        int reserved);
+        int rowsOffset,
+        int rowSize,
+        int maximumRows,
+        CancellationToken cancellationToken)
+    {
+        if (rowsOffset < sizeof(uint)
+            || rowSize <= 0
+            || tableBytes.Length < rowsOffset
+            || maximumRows < 0)
+        {
+            throw new LocalModelBenchmarkException("tcp_owner_table_query_failed");
+        }
+
+        uint unsignedRowCount = BinaryPrimitives.ReadUInt32LittleEndian(tableBytes);
+        if (unsignedRowCount > (uint)maximumRows)
+        {
+            throw new LocalModelBenchmarkException("tcp_owner_table_query_failed");
+        }
+        int rowCount = checked((int)unsignedRowCount);
+        long requiredBytes = rowsOffset + (long)rowCount * rowSize;
+        long trailingBytes = tableBytes.Length - requiredBytes;
+        if (trailingBytes < 0 || trailingBytes > MaximumNativeAlignmentTailBytes)
+        {
+            throw new LocalModelBenchmarkException("tcp_owner_table_query_failed");
+        }
+
+        List<WindowsTcpOwnerRow> rows = new(rowCount);
+        int offset = rowsOffset;
+        for (int index = 0; index < rowCount; index++)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            ReadOnlySpan<byte> row = tableBytes.AsSpan(offset, rowSize);
+            rows.Add(addressFamily switch
+            {
+                AddressFamilyInterNetwork => ParseIpv4Row(row),
+                AddressFamilyInterNetworkV6 => ParseIpv6Row(row),
+                _ => throw new LocalModelBenchmarkException("tcp_owner_table_query_failed")
+            });
+            offset = checked(offset + rowSize);
+        }
+        return rows;
+    }
+
+    private static WindowsTcpOwnerRow ParseIpv4Row(ReadOnlySpan<byte> row)
+    {
+        int state = ParseState(BinaryPrimitives.ReadUInt32LittleEndian(row));
+        IPAddress localAddress = new(row.Slice(4, 4));
+        int localPort = ParsePort(BinaryPrimitives.ReadUInt32LittleEndian(row.Slice(8, 4)));
+        IPAddress remoteAddress = new(row.Slice(12, 4));
+        int remotePort = ParsePort(BinaryPrimitives.ReadUInt32LittleEndian(row.Slice(16, 4)));
+        int owningProcessId = ParseProcessId(BinaryPrimitives.ReadUInt32LittleEndian(row.Slice(20, 4)));
+        return new WindowsTcpOwnerRow(
+            localAddress,
+            localPort,
+            remoteAddress,
+            remotePort,
+            state,
+            owningProcessId);
+    }
+
+    private static WindowsTcpOwnerRow ParseIpv6Row(ReadOnlySpan<byte> row)
+    {
+        IPAddress localAddress = new(
+            row[..16],
+            ParseScopeId(BinaryPrimitives.ReadUInt32LittleEndian(row.Slice(16, 4))));
+        int localPort = ParsePort(BinaryPrimitives.ReadUInt32LittleEndian(row.Slice(20, 4)));
+        IPAddress remoteAddress = new(
+            row.Slice(24, 16),
+            ParseScopeId(BinaryPrimitives.ReadUInt32LittleEndian(row.Slice(40, 4))));
+        int remotePort = ParsePort(BinaryPrimitives.ReadUInt32LittleEndian(row.Slice(44, 4)));
+        int state = ParseState(BinaryPrimitives.ReadUInt32LittleEndian(row.Slice(48, 4)));
+        int owningProcessId = ParseProcessId(BinaryPrimitives.ReadUInt32LittleEndian(row.Slice(52, 4)));
+        return new WindowsTcpOwnerRow(
+            localAddress,
+            localPort,
+            remoteAddress,
+            remotePort,
+            state,
+            owningProcessId);
+    }
+
+    // IP Helper defines only the low 16 bits of each DWORD port; the high bits may be uninitialized.
+    private static int ParsePort(uint networkOrderPort) =>
+        unchecked((ushort)IPAddress.NetworkToHostOrder(
+            (short)(networkOrderPort & ushort.MaxValue)));
+
+    private static long ParseScopeId(uint networkOrderScopeId) =>
+        unchecked((uint)IPAddress.NetworkToHostOrder((int)networkOrderScopeId));
+
+    private static int ParseState(uint state)
+    {
+        if (state is not (>= 1 and <= 12) and not 100)
+        {
+            throw new LocalModelBenchmarkException("tcp_owner_table_query_failed");
+        }
+        return checked((int)state);
+    }
+
+    private static int ParseProcessId(uint processId)
+    {
+        if (processId > int.MaxValue)
+        {
+            throw new LocalModelBenchmarkException("tcp_owner_table_query_failed");
+        }
+        return (int)processId;
+    }
+
+    private static int CheckedOffsetOf<T>(string fieldName) where T : struct =>
+        checked((int)Marshal.OffsetOf<T>(fieldName).ToInt64());
 
     [StructLayout(LayoutKind.Sequential)]
-    private struct MibTcpRowOwnerPid
+    private struct MibTcpRowOwnerPidLayout
     {
         internal uint State;
         internal uint LocalAddress;
@@ -289,4 +442,63 @@ internal sealed class SystemWindowsTcpOwnerTable : IWindowsTcpOwnerTable
         internal uint RemotePort;
         internal uint OwningProcessId;
     }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct MibTcpTableOwnerPidLayout
+    {
+        internal uint EntryCount;
+        internal MibTcpRowOwnerPidLayout FirstRow;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct MibTcp6RowOwnerPidLayout
+    {
+        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 16)]
+        internal byte[] LocalAddress;
+        internal uint LocalScopeId;
+        internal uint LocalPort;
+        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 16)]
+        internal byte[] RemoteAddress;
+        internal uint RemoteScopeId;
+        internal uint RemotePort;
+        internal uint State;
+        internal uint OwningProcessId;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct MibTcp6TableOwnerPidLayout
+    {
+        internal uint EntryCount;
+        internal MibTcp6RowOwnerPidLayout FirstRow;
+    }
+}
+
+internal sealed class SystemWindowsExtendedTcpTableApi : IWindowsExtendedTcpTableApi
+{
+    public int GetExtendedTcpTable(
+        IntPtr tcpTable,
+        ref int size,
+        bool order,
+        int addressFamily,
+        int tableClass,
+        int reserved) =>
+        GetExtendedTcpTableNative(
+            tcpTable,
+            ref size,
+            order,
+            addressFamily,
+            tableClass,
+            reserved);
+
+    [DllImport(
+        "iphlpapi.dll",
+        EntryPoint = "GetExtendedTcpTable",
+        SetLastError = false)]
+    private static extern int GetExtendedTcpTableNative(
+        IntPtr tcpTable,
+        ref int size,
+        bool order,
+        int addressFamily,
+        int tableClass,
+        int reserved);
 }

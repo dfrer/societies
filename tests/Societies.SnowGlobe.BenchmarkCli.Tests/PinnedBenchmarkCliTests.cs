@@ -1,3 +1,4 @@
+using System.Buffers.Binary;
 using System.Diagnostics;
 using System.Net;
 using System.Runtime.InteropServices;
@@ -304,6 +305,369 @@ public sealed class PinnedBenchmarkCliTests : IDisposable
 
         Assert.Equal(1, table.ReadCount);
         Assert.Equal(1, inspector.ReadCount);
+    }
+
+    [Theory]
+    [InlineData("0.0.0.0")]
+    [InlineData("::")]
+    public async Task ExposureMonitor_IgnoresBoundWildcardTupleWithoutAConnectedPeer(
+        string wildcardAddress)
+    {
+        const int processId = 22920;
+        IPAddress wildcard = IPAddress.Parse(wildcardAddress);
+        WindowsTcpOwnerRow boundWildcard = new(
+            wildcard,
+            61081,
+            wildcard,
+            0,
+            State: 100,
+            processId);
+        WindowsTcpExposureMonitor monitor = WindowsTcpExposureMonitor.CreateForTesting(
+            processId,
+            new FakeWindowsTcpOwnerTable(boundWildcard));
+
+        await monitor.VerifyNoNonLoopbackExposureAsync(CancellationToken.None);
+    }
+
+    [Theory]
+    [InlineData(2, "0.0.0.0", 61081, "0.0.0.0", 0, "non_loopback_listener_detected")]
+    [InlineData(5, "127.0.0.1", 61081, "203.0.113.42", 443, "non_loopback_peer_detected")]
+    [InlineData(2, "::", 61081, "::", 0, "non_loopback_listener_detected")]
+    [InlineData(5, "::1", 61081, "2001:db8::42", 443, "non_loopback_peer_detected")]
+    public async Task ExposureMonitor_FailsClosedForActualNonLoopbackListenerOrPeer(
+        int state,
+        string localAddress,
+        int localPort,
+        string remoteAddress,
+        int remotePort,
+        string expectedCode)
+    {
+        const int processId = 22920;
+        WindowsTcpExposureMonitor monitor = WindowsTcpExposureMonitor.CreateForTesting(
+            processId,
+            new FakeWindowsTcpOwnerTable(new WindowsTcpOwnerRow(
+                IPAddress.Parse(localAddress),
+                localPort,
+                IPAddress.Parse(remoteAddress),
+                remotePort,
+                state,
+                processId)));
+
+        LocalModelBenchmarkException exception = await Assert.ThrowsAsync<LocalModelBenchmarkException>(() =>
+            monitor.VerifyNoNonLoopbackExposureAsync(CancellationToken.None).AsTask());
+
+        Assert.Equal(expectedCode, exception.Code);
+    }
+
+    [Fact]
+    public async Task ExposureMonitor_IgnoresLoopbackListenerAndOtherProcessRows()
+    {
+        const int processId = 22920;
+        WindowsTcpExposureMonitor monitor = WindowsTcpExposureMonitor.CreateForTesting(
+            processId,
+            new FakeWindowsTcpOwnerTable(
+                new WindowsTcpOwnerRow(IPAddress.Loopback, 11435, IPAddress.Any, 0, 2, processId),
+                // IP Helper documents a LISTEN row's remote tuple as having no meaning.
+                new WindowsTcpOwnerRow(IPAddress.IPv6Loopback, 11435, IPAddress.Parse("2001:db8::42"), 443, 2, processId),
+                new WindowsTcpOwnerRow(IPAddress.IPv6Loopback, 50000, IPAddress.IPv6Loopback, 11435, 5, processId),
+                new WindowsTcpOwnerRow(IPAddress.Loopback, 50000, IPAddress.Parse("203.0.113.42"), 443, 5, processId + 1)));
+
+        await monitor.VerifyNoNonLoopbackExposureAsync(CancellationToken.None);
+    }
+
+    [Theory]
+    [InlineData(5, "127.0.0.1", 50000, "0.0.0.0", 0)]
+    [InlineData(100, "0.0.0.0", 0, "0.0.0.0", 0)]
+    [InlineData(101, "0.0.0.0", 61081, "0.0.0.0", 0)]
+    public async Task ExposureMonitor_FailsClosedForMalformedStateTuple(
+        int state,
+        string localAddress,
+        int localPort,
+        string remoteAddress,
+        int remotePort)
+    {
+        const int processId = 22920;
+        WindowsTcpExposureMonitor monitor = WindowsTcpExposureMonitor.CreateForTesting(
+            processId,
+            new FakeWindowsTcpOwnerTable(new WindowsTcpOwnerRow(
+                IPAddress.Parse(localAddress),
+                localPort,
+                IPAddress.Parse(remoteAddress),
+                remotePort,
+                state,
+                processId)));
+
+        LocalModelBenchmarkException exception = await Assert.ThrowsAsync<LocalModelBenchmarkException>(() =>
+            monitor.VerifyNoNonLoopbackExposureAsync(CancellationToken.None).AsTask());
+
+        Assert.Equal("tcp_exposure_row_invalid", exception.Code);
+    }
+
+    [Fact]
+    public async Task ExposureMonitor_ConcurrentSamplerCancelsRunOnObservedViolation()
+    {
+        const int processId = 22920;
+        SequenceWindowsTcpOwnerTable table = new(
+            Array.Empty<WindowsTcpOwnerRow>(),
+            new[]
+            {
+                new WindowsTcpOwnerRow(
+                    IPAddress.IPv6Loopback,
+                    61081,
+                    IPAddress.Parse("2001:db8::42"),
+                    443,
+                    5,
+                    processId)
+            });
+        WindowsTcpExposureMonitor monitor = WindowsTcpExposureMonitor.CreateForTesting(
+            processId,
+            table,
+            TimeSpan.FromMilliseconds(1),
+            maximumSamples: 20,
+            cleanupTimeout: TimeSpan.FromSeconds(1));
+        TaskCompletionSource operationCancelled = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        LocalModelBenchmarkException exception = await Assert.ThrowsAsync<LocalModelBenchmarkException>(() =>
+            monitor.RunWhileMonitoringAsync(
+                async cancellationToken =>
+                {
+                    try
+                    {
+                        await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
+                        return 0;
+                    }
+                    finally
+                    {
+                        operationCancelled.TrySetResult();
+                    }
+                },
+                CancellationToken.None));
+
+        Assert.Equal("non_loopback_peer_detected", exception.Code);
+        await operationCancelled.Task.WaitAsync(TimeSpan.FromSeconds(1));
+        Assert.Equal(2, table.ReadCount);
+    }
+
+    [Fact]
+    public async Task ExposureMonitor_ConcurrentSamplerReturnsHonestBoundedSampleLabel()
+    {
+        const int processId = 22920;
+        CountingWindowsTcpOwnerTable table = new();
+        WindowsTcpExposureMonitor monitor = WindowsTcpExposureMonitor.CreateForTesting(
+            processId,
+            table,
+            TimeSpan.FromMilliseconds(1),
+            maximumSamples: 20,
+            cleanupTimeout: TimeSpan.FromSeconds(1));
+
+        WindowsTcpExposureSampledRun<string> result = await monitor.RunWhileMonitoringAsync(
+            async cancellationToken =>
+            {
+                await table.WaitForReadCountAsync(2, cancellationToken);
+                return "accepted";
+            },
+            CancellationToken.None);
+
+        Assert.Equal("accepted", result.Result);
+        Assert.True(result.SampleCount >= 3);
+        Assert.Equal(result.SampleCount, table.ReadCount);
+        Assert.Equal(
+            "bounded_samples_do_not_guarantee_unsampled_transient_exposure",
+            result.MeasurementLimit);
+    }
+
+    [Fact]
+    public async Task ExposureMonitor_OperationCleanupTimeoutFailsClosed()
+    {
+        const int processId = 22920;
+        SequenceWindowsTcpOwnerTable table = new(
+            Array.Empty<WindowsTcpOwnerRow>(),
+            new[]
+            {
+                new WindowsTcpOwnerRow(
+                    IPAddress.Loopback,
+                    61081,
+                    IPAddress.Parse("203.0.113.42"),
+                    443,
+                    5,
+                    processId)
+            });
+        WindowsTcpExposureMonitor monitor = WindowsTcpExposureMonitor.CreateForTesting(
+            processId,
+            table,
+            TimeSpan.FromMilliseconds(1),
+            maximumSamples: 20,
+            cleanupTimeout: TimeSpan.FromMilliseconds(25));
+        TaskCompletionSource<int> releaseOperation = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        LocalModelBenchmarkException exception;
+        try
+        {
+            exception = await Assert.ThrowsAsync<LocalModelBenchmarkException>(() =>
+                monitor.RunWhileMonitoringAsync(
+                    _ => releaseOperation.Task,
+                    CancellationToken.None));
+        }
+        finally
+        {
+            releaseOperation.TrySetResult(0);
+        }
+
+        Assert.Equal("tcp_exposure_operation_cleanup_timeout", exception.Code);
+    }
+
+    [Fact]
+    public async Task SystemTcpOwnerTable_StrictlyParsesAndAggregatesIpv4AndIpv6()
+    {
+        const int processId = 22920;
+        IPAddress scopedLocal = new(IPAddress.Parse("fe80::1").GetAddressBytes(), 7);
+        FakeWindowsExtendedTcpTableApi api = new(
+            BuildIpv4OwnerTable(new WindowsTcpOwnerRow(
+                IPAddress.Loopback, 11435, IPAddress.Any, 0, 2, processId)),
+            BuildIpv6OwnerTable(new WindowsTcpOwnerRow(
+                scopedLocal, 61081, IPAddress.Parse("2001:db8::42"), 443, 5, processId)));
+        SystemWindowsTcpOwnerTable table = SystemWindowsTcpOwnerTable.CreateForTesting(api);
+
+        IReadOnlyList<WindowsTcpOwnerRow> rows = await table.ReadRowsAsync(CancellationToken.None);
+
+        Assert.Equal(2, rows.Count);
+        Assert.Equal(IPAddress.Loopback, rows[0].LocalAddress);
+        Assert.Equal(11435, rows[0].LocalPort);
+        Assert.Equal(IPAddress.Any, rows[0].RemoteAddress);
+        Assert.Equal(0, rows[0].RemotePort);
+        Assert.Equal(scopedLocal, rows[1].LocalAddress);
+        Assert.Equal(IPAddress.Parse("2001:db8::42"), rows[1].RemoteAddress);
+        Assert.Equal(443, rows[1].RemotePort);
+        Assert.Equal(new[] { 2, 2, 23, 23 }, api.AddressFamilies);
+    }
+
+    [Theory]
+    [InlineData(2)]
+    [InlineData(23)]
+    public async Task SystemTcpOwnerTable_FailsClosedWhenEitherFamilyQueryFails(int failingFamily)
+    {
+        FakeWindowsExtendedTcpTableApi api = new(
+            BuildIpv4OwnerTable(),
+            BuildIpv6OwnerTable(),
+            failingFamily);
+        SystemWindowsTcpOwnerTable table = SystemWindowsTcpOwnerTable.CreateForTesting(api);
+
+        LocalModelBenchmarkException exception = await Assert.ThrowsAsync<LocalModelBenchmarkException>(() =>
+            table.ReadRowsAsync(CancellationToken.None).AsTask());
+
+        Assert.Equal("tcp_owner_table_query_failed", exception.Code);
+        Assert.Contains(failingFamily, api.AddressFamilies);
+    }
+
+    [Fact]
+    public async Task SystemTcpOwnerTable_WindowsSmokeReadsBothCurrentTablesWithoutOpeningSockets()
+    {
+        if (!OperatingSystem.IsWindows()) return;
+
+        SystemWindowsTcpOwnerTable table = new();
+        IReadOnlyList<WindowsTcpOwnerRow> rows =
+            await table.ReadRowsAsync(CancellationToken.None);
+
+        Assert.NotNull(rows);
+        Assert.All(rows, row => Assert.True(
+            row.LocalAddress.AddressFamily is
+                System.Net.Sockets.AddressFamily.InterNetwork or
+                System.Net.Sockets.AddressFamily.InterNetworkV6));
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(8)]
+    public async Task SystemTcpOwnerTable_AcceptsOnlyBoundedNativeAlignmentTail(int tailBytes)
+    {
+        SystemWindowsTcpOwnerTable table = SystemWindowsTcpOwnerTable.CreateForTesting(
+            new FakeWindowsExtendedTcpTableApi(
+                BuildIpv4OwnerTableWithTail(tailBytes),
+                BuildIpv6OwnerTableWithTail(tailBytes)));
+
+        IReadOnlyList<WindowsTcpOwnerRow> rows =
+            await table.ReadRowsAsync(CancellationToken.None);
+
+        Assert.Empty(rows);
+    }
+
+    [Fact]
+    public async Task SystemTcpOwnerTable_EnforcesAggregateRowBoundAcrossBothFamilies()
+    {
+        WindowsTcpOwnerRow ipv4Bound = new(
+            IPAddress.Any, 61081, IPAddress.Any, 0, 100, 22920);
+        WindowsTcpOwnerRow ipv6Bound = new(
+            IPAddress.IPv6Any, 61081, IPAddress.IPv6Any, 0, 100, 22920);
+        SystemWindowsTcpOwnerTable table = SystemWindowsTcpOwnerTable.CreateForTesting(
+            new FakeWindowsExtendedTcpTableApi(
+                BuildIpv4OwnerTable(Enumerable.Repeat(ipv4Bound, 16_384).ToArray()),
+                BuildIpv6OwnerTable(ipv6Bound)));
+
+        LocalModelBenchmarkException exception = await Assert.ThrowsAsync<LocalModelBenchmarkException>(() =>
+            table.ReadRowsAsync(CancellationToken.None).AsTask());
+
+        Assert.Equal("tcp_owner_table_query_failed", exception.Code);
+    }
+
+    [Fact]
+    public async Task SystemTcpOwnerTable_RejectsOversizedFamilyBeforeAllocation()
+    {
+        byte[] oversized = new byte[2 * 1024 * 1024 + 1];
+        BinaryPrimitives.WriteUInt32LittleEndian(oversized, 0u);
+        SystemWindowsTcpOwnerTable table = SystemWindowsTcpOwnerTable.CreateForTesting(
+            new FakeWindowsExtendedTcpTableApi(oversized, BuildIpv6OwnerTable()));
+
+        LocalModelBenchmarkException exception = await Assert.ThrowsAsync<LocalModelBenchmarkException>(() =>
+            table.ReadRowsAsync(CancellationToken.None).AsTask());
+
+        Assert.Equal("tcp_owner_table_query_failed", exception.Code);
+    }
+
+    [Theory]
+    [InlineData("truncated-row")]
+    [InlineData("excess-tail")]
+    [InlineData("ignored-port-high-bits")]
+    [InlineData("invalid-state")]
+    [InlineData("invalid-pid")]
+    public async Task SystemTcpOwnerTable_HandlesDocumentedPortBitsAndRejectsMalformedNativeRows(
+        string mode)
+    {
+        byte[] ipv4 = BuildIpv4OwnerTable(new WindowsTcpOwnerRow(
+            IPAddress.Loopback, 11435, IPAddress.Any, 0, 2, 22920));
+        switch (mode)
+        {
+            case "truncated-row":
+                Array.Resize(ref ipv4, ipv4.Length - 9);
+                break;
+            case "excess-tail":
+                Array.Resize(ref ipv4, ipv4.Length + 1);
+                break;
+            case "ignored-port-high-bits":
+                BinaryPrimitives.WriteUInt32LittleEndian(
+                    ipv4.AsSpan(12, 4),
+                    BinaryPrimitives.ReadUInt32LittleEndian(ipv4.AsSpan(12, 4)) | 0xabcd_0000u);
+                SystemWindowsTcpOwnerTable highBitsTable = SystemWindowsTcpOwnerTable.CreateForTesting(
+                    new FakeWindowsExtendedTcpTableApi(ipv4, BuildIpv6OwnerTable()));
+                IReadOnlyList<WindowsTcpOwnerRow> highBitsRows =
+                    await highBitsTable.ReadRowsAsync(CancellationToken.None);
+                Assert.Equal(11435, Assert.Single(highBitsRows).LocalPort);
+                return;
+            case "invalid-state":
+                BinaryPrimitives.WriteUInt32LittleEndian(ipv4.AsSpan(4, 4), 99u);
+                break;
+            case "invalid-pid":
+                BinaryPrimitives.WriteUInt32LittleEndian(ipv4.AsSpan(24, 4), uint.MaxValue);
+                break;
+            default:
+                throw new InvalidOperationException("Unexpected malformed-row mode.");
+        }
+        SystemWindowsTcpOwnerTable table = SystemWindowsTcpOwnerTable.CreateForTesting(
+            new FakeWindowsExtendedTcpTableApi(ipv4, BuildIpv6OwnerTable()));
+
+        LocalModelBenchmarkException exception = await Assert.ThrowsAsync<LocalModelBenchmarkException>(() =>
+            table.ReadRowsAsync(CancellationToken.None).AsTask());
+
+        Assert.Equal("tcp_owner_table_query_failed", exception.Code);
     }
 
     [Fact]
@@ -757,6 +1121,96 @@ public sealed class PinnedBenchmarkCliTests : IDisposable
         return false;
     }
 
+    private static byte[] BuildIpv4OwnerTable(params WindowsTcpOwnerRow[] rows) =>
+        BuildIpv4OwnerTableWithTail(8, rows);
+
+    private static byte[] BuildIpv4OwnerTableWithTail(
+        int alignmentTailBytes,
+        params WindowsTcpOwnerRow[] rows)
+    {
+        const int rowBytes = 24;
+        if (alignmentTailBytes is < 0 or > 9)
+        {
+            throw new ArgumentOutOfRangeException(nameof(alignmentTailBytes));
+        }
+        byte[] table = new byte[sizeof(uint) + rows.Length * rowBytes + alignmentTailBytes];
+        BinaryPrimitives.WriteUInt32LittleEndian(table, checked((uint)rows.Length));
+        for (int index = 0; index < rows.Length; index++)
+        {
+            WindowsTcpOwnerRow row = rows[index];
+            byte[] localAddress = row.LocalAddress.GetAddressBytes();
+            byte[] remoteAddress = row.RemoteAddress.GetAddressBytes();
+            if (localAddress.Length != 4 || remoteAddress.Length != 4)
+            {
+                throw new ArgumentException("IPv4 table rows must contain only IPv4 addresses.");
+            }
+
+            Span<byte> destination = table.AsSpan(sizeof(uint) + index * rowBytes, rowBytes);
+            BinaryPrimitives.WriteUInt32LittleEndian(destination, checked((uint)row.State));
+            localAddress.CopyTo(destination.Slice(4, 4));
+            BinaryPrimitives.WriteUInt32LittleEndian(destination.Slice(8, 4), EncodeNetworkPort(row.LocalPort));
+            remoteAddress.CopyTo(destination.Slice(12, 4));
+            BinaryPrimitives.WriteUInt32LittleEndian(destination.Slice(16, 4), EncodeNetworkPort(row.RemotePort));
+            BinaryPrimitives.WriteUInt32LittleEndian(destination.Slice(20, 4), checked((uint)row.OwningProcessId));
+        }
+        return table;
+    }
+
+    private static byte[] BuildIpv6OwnerTable(params WindowsTcpOwnerRow[] rows) =>
+        BuildIpv6OwnerTableWithTail(8, rows);
+
+    private static byte[] BuildIpv6OwnerTableWithTail(
+        int alignmentTailBytes,
+        params WindowsTcpOwnerRow[] rows)
+    {
+        const int rowBytes = 56;
+        if (alignmentTailBytes is < 0 or > 9)
+        {
+            throw new ArgumentOutOfRangeException(nameof(alignmentTailBytes));
+        }
+        byte[] table = new byte[sizeof(uint) + rows.Length * rowBytes + alignmentTailBytes];
+        BinaryPrimitives.WriteUInt32LittleEndian(table, checked((uint)rows.Length));
+        for (int index = 0; index < rows.Length; index++)
+        {
+            WindowsTcpOwnerRow row = rows[index];
+            byte[] localAddress = row.LocalAddress.GetAddressBytes();
+            byte[] remoteAddress = row.RemoteAddress.GetAddressBytes();
+            if (localAddress.Length != 16 || remoteAddress.Length != 16)
+            {
+                throw new ArgumentException("IPv6 table rows must contain only IPv6 addresses.");
+            }
+
+            Span<byte> destination = table.AsSpan(sizeof(uint) + index * rowBytes, rowBytes);
+            localAddress.CopyTo(destination[..16]);
+            BinaryPrimitives.WriteUInt32LittleEndian(destination.Slice(16, 4), EncodeNetworkScopeId(row.LocalAddress.ScopeId));
+            BinaryPrimitives.WriteUInt32LittleEndian(destination.Slice(20, 4), EncodeNetworkPort(row.LocalPort));
+            remoteAddress.CopyTo(destination.Slice(24, 16));
+            BinaryPrimitives.WriteUInt32LittleEndian(destination.Slice(40, 4), EncodeNetworkScopeId(row.RemoteAddress.ScopeId));
+            BinaryPrimitives.WriteUInt32LittleEndian(destination.Slice(44, 4), EncodeNetworkPort(row.RemotePort));
+            BinaryPrimitives.WriteUInt32LittleEndian(destination.Slice(48, 4), checked((uint)row.State));
+            BinaryPrimitives.WriteUInt32LittleEndian(destination.Slice(52, 4), checked((uint)row.OwningProcessId));
+        }
+        return table;
+    }
+
+    private static uint EncodeNetworkPort(int port)
+    {
+        if (port is < IPEndPoint.MinPort or > IPEndPoint.MaxPort)
+        {
+            throw new ArgumentOutOfRangeException(nameof(port));
+        }
+        return unchecked((ushort)IPAddress.HostToNetworkOrder((short)port));
+    }
+
+    private static uint EncodeNetworkScopeId(long scopeId)
+    {
+        if (scopeId is < 0 or > uint.MaxValue)
+        {
+            throw new ArgumentOutOfRangeException(nameof(scopeId));
+        }
+        return unchecked((uint)IPAddress.HostToNetworkOrder((int)(uint)scopeId));
+    }
+
     private sealed class FakeInspector(PinnedProcessSnapshot snapshot) : IPinnedProcessInspector
     {
         public PinnedProcessSnapshot Read(int processId) => snapshot;
@@ -807,6 +1261,104 @@ public sealed class PinnedBenchmarkCliTests : IDisposable
             cancellationToken.ThrowIfCancellationRequested();
             Interlocked.Increment(ref _readCount);
             return ValueTask.FromResult<IReadOnlyList<WindowsTcpOwnerRow>>(rows);
+        }
+    }
+
+    private sealed class SequenceWindowsTcpOwnerTable(params WindowsTcpOwnerRow[][] snapshots) : IWindowsTcpOwnerTable
+    {
+        private int _readCount;
+
+        internal int ReadCount => Volatile.Read(ref _readCount);
+
+        public ValueTask<IReadOnlyList<WindowsTcpOwnerRow>> ReadRowsAsync(
+            CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            int index = Interlocked.Increment(ref _readCount) - 1;
+            WindowsTcpOwnerRow[] rows = snapshots[Math.Min(index, snapshots.Length - 1)];
+            return ValueTask.FromResult<IReadOnlyList<WindowsTcpOwnerRow>>(rows);
+        }
+    }
+
+    private sealed class CountingWindowsTcpOwnerTable : IWindowsTcpOwnerTable
+    {
+        private int _readCount;
+
+        internal int ReadCount => Volatile.Read(ref _readCount);
+
+        public ValueTask<IReadOnlyList<WindowsTcpOwnerRow>> ReadRowsAsync(
+            CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            Interlocked.Increment(ref _readCount);
+            return ValueTask.FromResult<IReadOnlyList<WindowsTcpOwnerRow>>(
+                Array.Empty<WindowsTcpOwnerRow>());
+        }
+
+        internal async Task WaitForReadCountAsync(int expectedCount, CancellationToken cancellationToken)
+        {
+            while (ReadCount < expectedCount)
+            {
+                await Task.Delay(1, cancellationToken);
+            }
+        }
+    }
+
+    private sealed class FakeWindowsExtendedTcpTableApi : IWindowsExtendedTcpTableApi
+    {
+        private const int ErrorAccessDenied = 5;
+        private const int ErrorInsufficientBuffer = 122;
+        private readonly byte[] _ipv4Table;
+        private readonly byte[] _ipv6Table;
+        private readonly int? _failingFamily;
+        private readonly List<int> _addressFamilies = new();
+
+        internal FakeWindowsExtendedTcpTableApi(
+            byte[] ipv4Table,
+            byte[] ipv6Table,
+            int? failingFamily = null)
+        {
+            _ipv4Table = ipv4Table;
+            _ipv6Table = ipv6Table;
+            _failingFamily = failingFamily;
+        }
+
+        internal IReadOnlyList<int> AddressFamilies => _addressFamilies.ToArray();
+
+        public int GetExtendedTcpTable(
+            IntPtr tcpTable,
+            ref int size,
+            bool order,
+            int addressFamily,
+            int tableClass,
+            int reserved)
+        {
+            _addressFamilies.Add(addressFamily);
+            if (order || tableClass != 5 || reserved != 0 || _failingFamily == addressFamily)
+            {
+                return ErrorAccessDenied;
+            }
+
+            byte[] table = addressFamily switch
+            {
+                2 => _ipv4Table,
+                23 => _ipv6Table,
+                _ => throw new InvalidOperationException("Unexpected address family.")
+            };
+            if (tcpTable == IntPtr.Zero)
+            {
+                size = table.Length;
+                return ErrorInsufficientBuffer;
+            }
+            if (size < table.Length)
+            {
+                size = table.Length;
+                return ErrorInsufficientBuffer;
+            }
+
+            Marshal.Copy(table, 0, tcpTable, table.Length);
+            size = table.Length;
+            return 0;
         }
     }
 
