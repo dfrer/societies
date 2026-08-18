@@ -1,20 +1,20 @@
 # Snow Globe provider preflight, Ollama repair, and qwen3.5 smoke handoff
 
-## Frozen benchmark CLI: qwen3.5:4b frozen cell
+## Offline local-premium comparison milestone
 
 ### Outcome and scope
 
-- Added the Windows-pinned `Societies.SnowGlobe.BenchmarkCli` boundary and its tests without changing `src/societies/` or the authoritative runtime.
-- Fresh committed-monitor authority completed the frozen qwen3.5:4b cell. Tags passed 1/1 HTTP 200; warmup passed 1/1; measured requests passed 10/10 with failures=0 and fallbacks=0. Outer wall time was 15.709 s; p50 887.0709 ms; p95=p99=max 1,036.6006 ms; throughput 57.637718 tok/s.
+- Added the one-entry deep `LocalPremiumComparison.Evaluate(ReadOnlyMemory<byte>)` Module over the completed local evidence. A registry binds exact local artifact SHA-256 `961B54B7D8CFB2AEAD566579499ADB3AA21F1D85BFBE0B7C6FC504A8ADC40E0D` plus frozen plan/workload/prompt/schema/context/output/sample identities.
+- The strict 16 KiB/depth-8 parser reuses `ValidateBenchmarkEvidence`; internal absent/offline fixture premium Adapters cannot count as live. Current status is `insufficient_live_premium_evidence`; premium, premium_cost, and performance_delta are null.
 
 ### Validation and evidence
 
-- Queue bound/peak was 1/1; total/peak wait 0.5206 ms; maximum request/output sizes 801/873 B. Static VRAM was 6,351 MiB; sampled peak 6,432/8,192 MiB against 6,963.2 MiB across 179 samples. The TCP monitor recorded 482 clean bounded samples and explicitly reports `bounded_samples_do_not_guarantee_unsampled_transient_exposure`; this is not proof between samples. `external_server_startup_configuration_verified=false` remains explicit.
-- Canonical evidence: `artifacts/snowglobe/local-model/qwen3.5-4b-frozen-benchmark-v1.json`, 3,618 B, SHA-256 `961B54B7D8CFB2AEAD566579499ADB3AA21F1D85BFBE0B7C6FC504A8ADC40E0D`. Cleanup found zero model processes/live attributable rows; no raw output was retained. Offline validation accepted the canonical artifact with 0 errors, and it was unchanged during review. Final independent evidence review is FINAL EVIDENCE GO with no P0-P2 findings. This proves local compatibility/fit/latency for this frozen cell only, not general intelligence, quality, or production readiness.
+- The canonical local report remains `artifacts/snowglobe/local-model/qwen3.5-4b-frozen-benchmark-v1.json`, 3,618 B, SHA-256 `961B54B7D8CFB2AEAD566579499ADB3AA21F1D85BFBE0B7C6FC504A8ADC40E0D`. The comparison report is 2,015 B, SHA-256 `845c429f3d1f90da13111affb2adf5480e6bbb72aa8a95e04de07730080dadce`; contract hash `5ca8f57d8dd4fb5de18a1179c1a8acf25eef944ac7350f30514f097932d95227`.
+- No winner, quality/intelligence result, or local-cost-zero claim is made. No file/network/provider/credential/payment/model/journal Apply/world mutation occurred. Focused validation 7/7; full lab 374/374; build 0 warnings/errors; independent CODE GO with no P0-P2 findings.
 
 ### Delivery boundary and exactly one next action
 
-- Compare this measured local cell against the premium fixed-provider offline/live boundary only after separate provider, credential, and payment authorization. No additional fresh benchmark authority is needed for this completed cell.
+- Define a versioned audited cognition-quality corpus/score contract offline before any separately authorized live premium provider/credential/payment run, because operational metrics alone cannot choose highest intelligence/price.
 
 ## Prior durable Financial Journal milestone handoff
 
@@ -30,12 +30,12 @@
 
 ## Boundary and risks
 
-- No production provider profile, live credential, authenticated HTTP/parser/status/charge evidence, completed model benchmark, or live-quality claim exists. The latest capability reached tags and one interrupted warmup only.
+- No production provider profile, live credential, authenticated HTTP/parser/status/charge evidence, or live premium result exists. The local qwen3.5:4b cell and offline comparison are complete; live premium evidence and quality remain unavailable.
 - The lease evidence covers owned-buffer cleanup and reviewed fixture behavior; it does not promise arbitrary trusted callback non-retention.
 
 ## Exactly one next action
 
-Run the frozen benchmark contract with the pinned portable runtime; keep the default PATH installation untouched.
+Define the versioned audited cognition-quality corpus/score contract offline before any separately authorized live premium run.
 
 ## qwen3.5:4b bounded local smoke evidence
 
@@ -44,7 +44,7 @@ Run the frozen benchmark contract with the pinned portable runtime; keep the def
 - One local loopback smoke only, with no retry: `stream=false`, `think=false`, temperature 0, `num_ctx=4096`, `num_predict=96`. Wall time 51,056 ms; API total 50,958,399,400 ns; load 29,253,514,900 ns; prompt 82 tokens / 21,438,342,000 ns; output 20 tokens / 262,642,000 ns (~76.149 tok/s output metric).
 - Structured output was 63 bytes, thinking output 0 bytes, raw text was not retained, and the structured-output SHA-256 was `B9E223C20EA06E2D48FD96C151B095A8A7494527CD9D6AAD69B24F98FF97D4AD`.
 - All 34/34 layers were GPU-offloaded; `/api/ps` reported `size_vram=3,128,038,521` bytes and observed loaded-state GPU use was 6,357/8,192 MiB. Transport remained loopback-only with no outbound traffic; the server stopped cleanly with no listeners. The model is retained on E:.
-- This is a smoke and artifact/runtime evidence only, not a benchmark, intelligence result, or quality result. The later capability attempt produced no benchmark result.
+- The smoke remains artifact/runtime evidence only; the later frozen benchmark and offline comparison supersede it for local compatibility metrics. Neither establishes intelligence, quality, or production readiness.
 
 ## Outcome and scope
 
