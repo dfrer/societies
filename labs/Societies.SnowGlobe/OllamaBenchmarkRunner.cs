@@ -757,8 +757,31 @@ public sealed class LocalModelBenchmarkTransportResponse : IAsyncDisposable
 /// </summary>
 public interface ILocalModelBenchmarkTransport
 {
+    int BoundOllamaProcessId { get; }
+
     ValueTask<LocalModelBenchmarkTransportResponse> SendAsync(
         LocalModelBenchmarkTransportRequest request,
+        CancellationToken cancellationToken);
+}
+
+/// <summary>
+/// The exact established TCP tuple whose server-side owner must be resolved. The resolver must bind this
+/// connected tuple, not merely inspect a listener before connection.
+/// </summary>
+public sealed record OllamaLoopbackConnection(
+    IPAddress ClientAddress,
+    int ClientPort,
+    IPAddress ServerAddress,
+    int ServerPort);
+
+/// <summary>
+/// Resolves the process owning the server side of an established loopback connection. Production adapters
+/// should additionally pin the expected process start time and executable and fail if either changes.
+/// </summary>
+public interface IOllamaLoopbackConnectionOwnerResolver
+{
+    ValueTask<int> ResolveServerProcessIdAsync(
+        OllamaLoopbackConnection connection,
         CancellationToken cancellationToken);
 }
 
@@ -772,12 +795,22 @@ public sealed class OllamaLoopbackHttpTransport : ILocalModelBenchmarkTransport,
     private readonly Uri _generateUri;
     private readonly IPAddress _expectedAddress;
     private readonly int _expectedPort;
+    private readonly int _expectedOllamaProcessId;
+    private readonly IOllamaLoopbackConnectionOwnerResolver _ownerResolver;
     private readonly SocketsHttpHandler _handler;
     private readonly HttpClient _client;
     private IPAddress? _connectedAddress;
 
-    public OllamaLoopbackHttpTransport(string canonicalEndpoint)
+    public OllamaLoopbackHttpTransport(
+        string canonicalEndpoint,
+        int expectedOllamaProcessId,
+        IOllamaLoopbackConnectionOwnerResolver ownerResolver)
     {
+        if (expectedOllamaProcessId <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(expectedOllamaProcessId));
+        }
+        _ownerResolver = ownerResolver ?? throw new ArgumentNullException(nameof(ownerResolver));
         if (!Uri.TryCreate(canonicalEndpoint, UriKind.Absolute, out Uri? endpoint)
             || endpoint.Scheme != Uri.UriSchemeHttp
             || endpoint.AbsolutePath != "/"
@@ -800,6 +833,7 @@ public sealed class OllamaLoopbackHttpTransport : ILocalModelBenchmarkTransport,
 
         _expectedAddress = address;
         _expectedPort = endpoint.Port;
+        _expectedOllamaProcessId = expectedOllamaProcessId;
         _tagsUri = new Uri(endpoint, "api/tags");
         _generateUri = new Uri(endpoint, "api/generate");
         _handler = new SocketsHttpHandler
@@ -816,6 +850,8 @@ public sealed class OllamaLoopbackHttpTransport : ILocalModelBenchmarkTransport,
         };
         _client = new HttpClient(_handler, disposeHandler: false) { Timeout = Timeout.InfiniteTimeSpan };
     }
+
+    public int BoundOllamaProcessId => _expectedOllamaProcessId;
 
     public async ValueTask<LocalModelBenchmarkTransportResponse> SendAsync(
         LocalModelBenchmarkTransportRequest request,
@@ -845,10 +881,23 @@ public sealed class OllamaLoopbackHttpTransport : ILocalModelBenchmarkTransport,
         }
         message.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
 
-        HttpResponseMessage response = await _client.SendAsync(
-            message,
-            HttpCompletionOption.ResponseHeadersRead,
-            cancellationToken).ConfigureAwait(false);
+        HttpResponseMessage response;
+        try
+        {
+            response = await _client.SendAsync(
+                message,
+                HttpCompletionOption.ResponseHeadersRead,
+                cancellationToken).ConfigureAwait(false);
+        }
+        catch (HttpRequestException exception)
+        {
+            LocalModelBenchmarkException? benchmarkException = FindBenchmarkException(exception);
+            if (benchmarkException is not null)
+            {
+                throw new LocalModelBenchmarkException(benchmarkException.Code, exception);
+            }
+            throw;
+        }
         try
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -884,6 +933,15 @@ public sealed class OllamaLoopbackHttpTransport : ILocalModelBenchmarkTransport,
         return ValueTask.CompletedTask;
     }
 
+    private static LocalModelBenchmarkException? FindBenchmarkException(Exception exception)
+    {
+        for (Exception? current = exception; current is not null; current = current.InnerException)
+        {
+            if (current is LocalModelBenchmarkException benchmarkException) return benchmarkException;
+        }
+        return null;
+    }
+
     private async ValueTask<Stream> ConnectLoopbackAsync(
         SocketsHttpConnectionContext context,
         CancellationToken cancellationToken)
@@ -898,12 +956,46 @@ public sealed class OllamaLoopbackHttpTransport : ILocalModelBenchmarkTransport,
         try
         {
             await socket.ConnectAsync(new IPEndPoint(_expectedAddress, _expectedPort), cancellationToken).ConfigureAwait(false);
-            if (socket.RemoteEndPoint is not IPEndPoint remote
+            if (socket.LocalEndPoint is not IPEndPoint local
+                || socket.RemoteEndPoint is not IPEndPoint remote
+                || !IPAddress.IsLoopback(local.Address)
+                || local.Port is < IPEndPoint.MinPort or > IPEndPoint.MaxPort
                 || remote.Port != _expectedPort
                 || !remote.Address.Equals(_expectedAddress)
                 || !IPAddress.IsLoopback(remote.Address))
             {
                 throw new LocalModelBenchmarkException("actual_connection_not_exact_loopback");
+            }
+
+            OllamaLoopbackConnection connection = new(
+                local.Address,
+                local.Port,
+                remote.Address,
+                remote.Port);
+            int actualOwnerProcessId;
+            try
+            {
+                actualOwnerProcessId = await _ownerResolver
+                    .ResolveServerProcessIdAsync(connection, cancellationToken)
+                    .AsTask()
+                    .WaitAsync(cancellationToken)
+                    .ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (LocalModelBenchmarkException)
+            {
+                throw;
+            }
+            catch (Exception exception)
+            {
+                throw new LocalModelBenchmarkException("ollama_connection_owner_resolution_failed", exception);
+            }
+            if (actualOwnerProcessId != _expectedOllamaProcessId)
+            {
+                throw new LocalModelBenchmarkException("ollama_connection_owner_mismatch");
             }
 
             Volatile.Write(ref _connectedAddress, remote.Address);
@@ -977,6 +1069,11 @@ public sealed class OllamaBenchmarkRunner
         OllamaBenchmarkContract.ValidateExactPlan(plan);
         ArgumentNullException.ThrowIfNull(executionCapability);
         executionCapability.ValidateForAdmission(plan);
+        OllamaRuntimeAuthorization runtime = executionCapability.Runtime;
+        if (_transport.BoundOllamaProcessId != runtime.OllamaProcessId)
+        {
+            throw new LocalModelBenchmarkException("transport_runtime_process_binding_mismatch");
+        }
         using OllamaEndpointAdmissionRegistry.AdmissionLease admission = await OllamaEndpointAdmissionRegistry.AcquireAsync(
             plan.Endpoint,
             plan.ContractId,
@@ -986,7 +1083,6 @@ public sealed class OllamaBenchmarkRunner
             cancellationToken).ConfigureAwait(false);
 
         executionCapability.Consume(plan);
-        OllamaRuntimeAuthorization runtime = executionCapability.Runtime;
         if (!string.Equals(runtime.QuantizationLevel.ToLowerInvariant(), plan.QuantizationIdentity, StringComparison.Ordinal))
         {
             throw new LocalModelBenchmarkException("runtime_quantization_not_bound_to_plan");
@@ -1154,7 +1250,10 @@ public sealed class OllamaBenchmarkRunner
                 {
                     throw new LocalModelBenchmarkException("runtime_model_alias_rejected");
                 }
-                ValidateTagShape(model);
+                ValidateTagShape(
+                    model,
+                    plan,
+                    string.Equals(model?.Name, runtime.RuntimeModelReference, StringComparison.Ordinal));
                 if (string.Equals(model!.Digest, runtime.ArtifactDigestSha256, StringComparison.Ordinal)
                     && !string.Equals(model.Name, runtime.RuntimeModelReference, StringComparison.Ordinal))
                 {
@@ -1206,7 +1305,10 @@ public sealed class OllamaBenchmarkRunner
         }
     }
 
-    private static void ValidateTagShape(OllamaTagModel? model)
+    private static void ValidateTagShape(
+        OllamaTagModel? model,
+        LocalModelBenchmarkPlan plan,
+        bool isSelectedModel)
     {
         if (model is null
             || !OllamaBenchmarkContract.IsRuntimeReference(model.Name)
@@ -1217,11 +1319,22 @@ public sealed class OllamaBenchmarkRunner
             || !DateTimeOffset.TryParse(model.ModifiedAt, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out _)
             || model.Size <= 0
             || !OllamaBenchmarkContract.IsDigest(model.Digest)
+            || model.Capabilities is null
+            || model.Capabilities.Count == 0
+            || model.Capabilities.Count > 16
+            || model.Capabilities.Distinct(StringComparer.Ordinal).Count() != model.Capabilities.Count
+            || model.Capabilities.Any(capability =>
+                !OllamaBenchmarkContract.IsSubstantiveMetadata(capability, allowUppercase: false))
+            || isSelectedModel && !model.Capabilities.Contains("completion", StringComparer.Ordinal)
             || model.Details is null
+            || !string.Equals(model.Details.ParentModel, string.Empty, StringComparison.Ordinal)
             || !string.Equals(model.Details.Format, "gguf", StringComparison.Ordinal)
             || !OllamaBenchmarkContract.IsSubstantiveMetadata(model.Details.Family, allowUppercase: false)
             || !OllamaBenchmarkContract.IsSubstantiveMetadata(model.Details.ParameterSize, allowUppercase: true)
             || !OllamaBenchmarkContract.IsSubstantiveMetadata(model.Details.QuantizationLevel, allowUppercase: true)
+            || model.Details.ContextLength <= 0
+            || isSelectedModel && model.Details.ContextLength < plan.ContextWindowTokens
+            || model.Details.EmbeddingLength <= 0
             || model.Details.Families is null
             || model.Details.Families.Count == 0
             || model.Details.Families.Any(family =>
@@ -1795,15 +1908,19 @@ public sealed class OllamaBenchmarkRunner
         [JsonRequired] public long Size { get; init; }
         [JsonRequired] public string? Digest { get; init; }
         [JsonRequired] public OllamaTagDetails? Details { get; init; }
+        [JsonRequired] public IReadOnlyList<string>? Capabilities { get; init; }
     }
 
     private sealed record OllamaTagDetails
     {
+        [JsonRequired] public string? ParentModel { get; init; }
         [JsonRequired] public string? Format { get; init; }
         [JsonRequired] public string? Family { get; init; }
         [JsonRequired] public IReadOnlyList<string>? Families { get; init; }
         [JsonRequired] public string? ParameterSize { get; init; }
         [JsonRequired] public string? QuantizationLevel { get; init; }
+        [JsonRequired] public long ContextLength { get; init; }
+        [JsonRequired] public long EmbeddingLength { get; init; }
     }
 
     private sealed record OllamaGenerateResponse

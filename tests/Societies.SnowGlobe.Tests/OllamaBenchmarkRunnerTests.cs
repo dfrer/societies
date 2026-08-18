@@ -67,6 +67,29 @@ public sealed class OllamaBenchmarkRunnerTests
     }
 
     [Fact]
+    public async Task V03214TagsParentModelField_IsAcceptedWithoutRelaxingUnknownMembers()
+    {
+        LocalModelBenchmarkPlan plan = ValidPlan();
+        OllamaRuntimeAuthorization runtime = ValidRuntime();
+        string tagsJson = ValidTags(runtime);
+        FakeTransport transport = new(async (request, cancellationToken) =>
+        {
+            await Task.Yield();
+            return request.Method == HttpMethod.Get
+                ? JsonResponse(request.RequestUri, tagsJson)
+                : JsonResponse(request.RequestUri, ValidGenerate(runtime.RuntimeModelReference));
+        });
+
+        OllamaBenchmarkRunResult result = await new OllamaBenchmarkRunner(
+            transport,
+            new SequenceVramProbe(_ => 1000),
+            new FixedStepClock()).RunAsync(plan, Capability(plan, runtime));
+
+        Assert.Equal(runtime.RuntimeModelReference, result.Provenance.RuntimeModelReference);
+        Assert.Equal(1, transport.Requests.Count(request => request.RequestUri.AbsolutePath == "/api/tags"));
+    }
+
+    [Fact]
     public async Task Capability_IsRequiredPlanBoundSingleUse_AndQueueRejectionDoesNotConsume()
     {
         LocalModelBenchmarkPlan plan = ValidPlan();
@@ -100,6 +123,25 @@ public sealed class OllamaBenchmarkRunnerTests
             runner.RunAsync(plan, cancelledCapability, alreadyCancelled.Token));
         Assert.False(cancelledCapability.IsConsumed);
         Assert.Equal(completedCalls, transport.CallCount);
+    }
+
+    [Fact]
+    public async Task TransportProcessBindingMismatch_IsRejectedBeforeCapabilityConsumptionOrTransport()
+    {
+        LocalModelBenchmarkPlan plan = ValidPlan();
+        OllamaRuntimeAuthorization runtime = ValidRuntime();
+        FakeTransport transport = new(
+            (_, _) => throw new InvalidOperationException("transport must not be called"),
+            runtime.OllamaProcessId + 1);
+        LocalModelBenchmarkExecutionCapability capability = Capability(plan, runtime);
+
+        LocalModelBenchmarkException exception = await Assert.ThrowsAsync<LocalModelBenchmarkException>(() =>
+            new OllamaBenchmarkRunner(transport, new SequenceVramProbe(_ => 1000), new FixedStepClock())
+                .RunAsync(plan, capability));
+
+        Assert.Equal("transport_runtime_process_binding_mismatch", exception.Code);
+        Assert.False(capability.IsConsumed);
+        Assert.Equal(0, transport.CallCount);
     }
 
     [Theory]
@@ -201,7 +243,17 @@ public sealed class OllamaBenchmarkRunnerTests
         yield return new object[] { "{\"models\":[" + modelObject + "," + digestAlias + "]}", "runtime_digest_alias_rejected" };
         yield return new object[] { valid[..^1], "tags_json_invalid" };
         yield return new object[] { valid.Replace("{\"models\"", "{\"cloud\":true,\"models\"", StringComparison.Ordinal), "tags_json_invalid" };
+        yield return new object[] { valid.Replace("\"modified_at\":", "\"remote_model\":\"qwen3.5:4b\",\"modified_at\":", StringComparison.Ordinal), "tags_json_invalid" };
+        yield return new object[] { valid.Replace("\"details\":", "\"unexpected\":true,\"details\":", StringComparison.Ordinal), "tags_json_invalid" };
+        yield return new object[] { valid.Replace("\"parent_model\":", "\"unexpected\":true,\"parent_model\":", StringComparison.Ordinal), "tags_json_invalid" };
         yield return new object[] { valid.Replace("\"digest\":\"DIGEST\"", "\"digest\":\"DIGEST\",\"digest\":\"DIGEST\"", StringComparison.Ordinal), "tags_json_duplicate_property" };
+        yield return new object[] { valid.Replace("\"parent_model\":\"\",", string.Empty, StringComparison.Ordinal), "tags_json_invalid" };
+        yield return new object[] { valid.Replace("\"parent_model\":\"\"", "\"parent_model\":\"derived:4b\"", StringComparison.Ordinal), "tags_model_invalid" };
+        yield return new object[] { valid.Replace("\"capabilities\":[\"completion\"]", "\"capabilities\":\"completion\"", StringComparison.Ordinal), "tags_json_invalid" };
+        yield return new object[] { valid.Replace("\"capabilities\":[\"completion\"]", "\"capabilities\":[\"completion\",\"completion\"]", StringComparison.Ordinal), "tags_model_invalid" };
+        yield return new object[] { valid.Replace("\"context_length\":262144", "\"context_length\":\"262144\"", StringComparison.Ordinal), "tags_json_invalid" };
+        yield return new object[] { valid.Replace("\"context_length\":262144", "\"context_length\":0", StringComparison.Ordinal), "tags_model_invalid" };
+        yield return new object[] { valid.Replace("\"embedding_length\":2560", "\"embedding_length\":0", StringComparison.Ordinal), "tags_model_invalid" };
         yield return new object[] { valid.Replace("3400000000", "3400000001", StringComparison.Ordinal), "runtime_provenance_mismatch" };
         yield return new object[] { valid.Replace("DIGEST", new string('b', 64), StringComparison.Ordinal), "runtime_provenance_mismatch" };
         yield return new object[] { valid.Replace("\"format\":\"gguf\"", "\"format\":\"safetensors\"", StringComparison.Ordinal), "tags_model_invalid" };
@@ -211,6 +263,32 @@ public sealed class OllamaBenchmarkRunnerTests
         yield return new object[] { valid.Replace("\"family\":\"qwen35\"", "\"family\":\"qwen3\"", StringComparison.Ordinal), "runtime_provenance_mismatch" };
         yield return new object[] { valid.Replace("4.66B", "4.67B", StringComparison.Ordinal), "runtime_provenance_mismatch" };
         yield return new object[] { valid.Replace("Q4_K_M", "Q8_0", StringComparison.Ordinal), "runtime_provenance_mismatch" };
+    }
+
+    [Theory]
+    [InlineData("\"capabilities\":[\"completion\"]", "\"capabilities\":[\"embedding\"]")]
+    [InlineData("\"context_length\":262144", "\"context_length\":2048")]
+    public async Task SelectedTagsModelRequiresCompletionCapabilityAndPlanContext(
+        string expected,
+        string replacement)
+    {
+        LocalModelBenchmarkPlan plan = ValidPlan();
+        OllamaRuntimeAuthorization runtime = ValidRuntime();
+        string tagsJson = ValidTags(runtime).Replace(expected, replacement, StringComparison.Ordinal);
+        FakeTransport transport = new(async (request, cancellationToken) =>
+        {
+            await Task.Yield();
+            return request.Method == HttpMethod.Get
+                ? JsonResponse(request.RequestUri, tagsJson)
+                : JsonResponse(request.RequestUri, ValidGenerate(runtime.RuntimeModelReference));
+        });
+
+        LocalModelBenchmarkException exception = await Assert.ThrowsAsync<LocalModelBenchmarkException>(() =>
+            new OllamaBenchmarkRunner(transport, new SequenceVramProbe(_ => 1000), new FixedStepClock())
+                .RunAsync(plan, Capability(plan, runtime)));
+
+        Assert.Equal("tags_model_invalid", exception.Code);
+        Assert.Equal(1, transport.CallCount);
     }
 
     [Theory]
@@ -916,7 +994,16 @@ public sealed class OllamaBenchmarkRunnerTests
     [InlineData("http://127.0.0.1:11434")]
     [InlineData("http://127.0.0.1:11434/?x=1")]
     public void ProductionTransport_RejectsNoncanonicalOrigins(string endpoint) =>
-        Assert.Throws<ArgumentException>(() => new OllamaLoopbackHttpTransport(endpoint));
+        Assert.Throws<ArgumentException>(() => new OllamaLoopbackHttpTransport(
+            endpoint,
+            ValidRuntime().OllamaProcessId,
+            ExactOwnerResolver()));
+
+    [Fact]
+    public void ProductionTransport_DoesNotExposeUnboundConstructor() =>
+        Assert.DoesNotContain(
+            typeof(OllamaLoopbackHttpTransport).GetConstructors(),
+            constructor => constructor.GetParameters().Length == 1);
 
     [Theory]
     [InlineData(false)]
@@ -930,7 +1017,11 @@ public sealed class OllamaBenchmarkRunnerTests
             string json = request.Path == "/api/tags" ? "{\"models\":[]}" : "{}";
             return new ServerReply(200, json);
         });
-        await using OllamaLoopbackHttpTransport transport = new(server.Endpoint);
+        FakeConnectionOwnerResolver ownerResolver = ExactOwnerResolver();
+        await using OllamaLoopbackHttpTransport transport = new(
+            server.Endpoint,
+            ValidRuntime().OllamaProcessId,
+            ownerResolver);
         Uri origin = new(server.Endpoint);
 
         await using (LocalModelBenchmarkTransportResponse tags = await transport.SendAsync(
@@ -949,6 +1040,14 @@ public sealed class OllamaBenchmarkRunnerTests
         }
 
         await server.WaitForRequestsAsync(2);
+        Assert.Equal(2, ownerResolver.CallCount);
+        Assert.All(ownerResolver.Connections, connection =>
+        {
+            Assert.True(IPAddress.IsLoopback(connection.ClientAddress));
+            Assert.True(connection.ClientPort > 0);
+            Assert.Equal(address, connection.ServerAddress);
+            Assert.Equal(new Uri(server.Endpoint).Port, connection.ServerPort);
+        });
         Assert.Collection(server.Requests,
             tags =>
             {
@@ -973,12 +1072,138 @@ public sealed class OllamaBenchmarkRunnerTests
     }
 
     [Fact]
+    public async Task ProductionTransport_RejectsWrongConnectedOwnerBeforeSendingRequest()
+    {
+        await using LoopbackTestServer server = await LoopbackTestServer.StartAsync(
+            IPAddress.Loopback,
+            _ => new ServerReply(200, "{\"models\":[]}"));
+        int expectedProcessId = ValidRuntime().OllamaProcessId;
+        FakeConnectionOwnerResolver ownerResolver = ExactOwnerResolver(expectedProcessId + 1);
+        await using OllamaLoopbackHttpTransport transport = new(
+            server.Endpoint,
+            expectedProcessId,
+            ownerResolver);
+        Uri tagsUri = new(new Uri(server.Endpoint), "api/tags");
+
+        LocalModelBenchmarkException exception = await Assert.ThrowsAsync<LocalModelBenchmarkException>(() =>
+            transport.SendAsync(
+                new LocalModelBenchmarkTransportRequest(HttpMethod.Get, tagsUri, Array.Empty<byte>()),
+                CancellationToken.None).AsTask());
+
+        Assert.Equal("ollama_connection_owner_mismatch", exception.Code);
+        Assert.Equal(1, ownerResolver.CallCount);
+        Assert.Empty(server.Requests);
+    }
+
+    [Fact]
+    public async Task ProductionTransport_RejectsOwnerChangeAcrossConnections()
+    {
+        await using LoopbackTestServer server = await LoopbackTestServer.StartAsync(
+            IPAddress.Loopback,
+            request => new ServerReply(200, request.Path == "/api/tags" ? "{\"models\":[]}" : "{}"));
+        int expectedProcessId = ValidRuntime().OllamaProcessId;
+        FakeConnectionOwnerResolver ownerResolver = new((index, _, _) =>
+            ValueTask.FromResult(index == 0 ? expectedProcessId : expectedProcessId + 1));
+        await using OllamaLoopbackHttpTransport transport = new(
+            server.Endpoint,
+            expectedProcessId,
+            ownerResolver);
+        Uri origin = new(server.Endpoint);
+
+        await using (LocalModelBenchmarkTransportResponse response = await transport.SendAsync(
+            new LocalModelBenchmarkTransportRequest(
+                HttpMethod.Get,
+                new Uri(origin, "api/tags"),
+                Array.Empty<byte>()),
+            CancellationToken.None))
+        {
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        }
+        LocalModelBenchmarkException exception = await Assert.ThrowsAsync<LocalModelBenchmarkException>(() =>
+            transport.SendAsync(
+                new LocalModelBenchmarkTransportRequest(
+                    HttpMethod.Post,
+                    new Uri(origin, "api/generate"),
+                    "{}"u8.ToArray()),
+                CancellationToken.None).AsTask());
+
+        Assert.Equal("ollama_connection_owner_mismatch", exception.Code);
+        Assert.Equal(2, ownerResolver.CallCount);
+        Assert.Single(server.Requests);
+    }
+
+    [Fact]
+    public async Task ProductionTransport_PropagatesResolverPidReuseRejectionAcrossConnections()
+    {
+        await using LoopbackTestServer server = await LoopbackTestServer.StartAsync(
+            IPAddress.Loopback,
+            request => new ServerReply(200, request.Path == "/api/tags" ? "{\"models\":[]}" : "{}"));
+        int expectedProcessId = ValidRuntime().OllamaProcessId;
+        FakeConnectionOwnerResolver ownerResolver = new((index, _, _) => index == 0
+            ? ValueTask.FromResult(expectedProcessId)
+            : ValueTask.FromException<int>(new LocalModelBenchmarkException("ollama_process_identity_changed")));
+        await using OllamaLoopbackHttpTransport transport = new(
+            server.Endpoint,
+            expectedProcessId,
+            ownerResolver);
+        Uri origin = new(server.Endpoint);
+
+        await using (LocalModelBenchmarkTransportResponse response = await transport.SendAsync(
+            new LocalModelBenchmarkTransportRequest(
+                HttpMethod.Get,
+                new Uri(origin, "api/tags"),
+                Array.Empty<byte>()),
+            CancellationToken.None))
+        {
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        }
+        LocalModelBenchmarkException exception = await Assert.ThrowsAsync<LocalModelBenchmarkException>(() =>
+            transport.SendAsync(
+                new LocalModelBenchmarkTransportRequest(
+                    HttpMethod.Post,
+                    new Uri(origin, "api/generate"),
+                    "{}"u8.ToArray()),
+                CancellationToken.None).AsTask());
+
+        Assert.Equal("ollama_process_identity_changed", exception.Code);
+        Assert.Equal(2, ownerResolver.CallCount);
+        Assert.Single(server.Requests);
+    }
+
+    [Fact]
+    public async Task ProductionTransport_BoundsNoncooperativeOwnerResolutionByCancellation()
+    {
+        await using LoopbackTestServer server = await LoopbackTestServer.StartAsync(
+            IPAddress.Loopback,
+            _ => new ServerReply(200, "{\"models\":[]}"));
+        TaskCompletionSource<int> unresolvedOwner = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        FakeConnectionOwnerResolver ownerResolver = new((_, _, _) => new ValueTask<int>(unresolvedOwner.Task));
+        await using OllamaLoopbackHttpTransport transport = new(
+            server.Endpoint,
+            ValidRuntime().OllamaProcessId,
+            ownerResolver);
+        Uri tagsUri = new(new Uri(server.Endpoint), "api/tags");
+        using CancellationTokenSource cancellation = new(TimeSpan.FromMilliseconds(50));
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => transport.SendAsync(
+            new LocalModelBenchmarkTransportRequest(HttpMethod.Get, tagsUri, Array.Empty<byte>()),
+            cancellation.Token).AsTask());
+
+        Assert.Equal(1, ownerResolver.CallCount);
+        Assert.False(unresolvedOwner.Task.IsCompleted);
+        Assert.Empty(server.Requests);
+    }
+
+    [Fact]
     public async Task ProductionTransport_RejectsWrongMethodPathAndBodyBeforeNetwork()
     {
         await using LoopbackTestServer server = await LoopbackTestServer.StartAsync(
             IPAddress.Loopback,
             request => new ServerReply(200, "{}"));
-        await using OllamaLoopbackHttpTransport transport = new(server.Endpoint);
+        await using OllamaLoopbackHttpTransport transport = new(
+            server.Endpoint,
+            ValidRuntime().OllamaProcessId,
+            ExactOwnerResolver());
         Uri origin = new(server.Endpoint);
 
         LocalModelBenchmarkException wrongPath = await Assert.ThrowsAsync<LocalModelBenchmarkException>(() =>
@@ -1009,7 +1234,10 @@ public sealed class OllamaBenchmarkRunnerTests
         await using LoopbackTestServer originServer = await LoopbackTestServer.StartAsync(
             IPAddress.Loopback,
             request => new ServerReply(302, "{}", redirectTarget.Endpoint + "api/tags"));
-        OllamaLoopbackHttpTransport transport = new(originServer.Endpoint);
+        OllamaLoopbackHttpTransport transport = new(
+            originServer.Endpoint,
+            ValidRuntime().OllamaProcessId,
+            ExactOwnerResolver());
         Uri tagsUri = new(new Uri(originServer.Endpoint), "api/tags");
 
         await using (LocalModelBenchmarkTransportResponse response = await transport.SendAsync(
@@ -1034,6 +1262,9 @@ public sealed class OllamaBenchmarkRunnerTests
         Assert.DoesNotContain("proxy-authorization", request.Headers.Keys);
         Assert.DoesNotContain("cookie", request.Headers.Keys);
     }
+
+    private static FakeConnectionOwnerResolver ExactOwnerResolver(int? processId = null) =>
+        new((_, _, _) => ValueTask.FromResult(processId ?? ValidRuntime().OllamaProcessId));
 
     private static LocalModelBenchmarkPlan ValidPlan(
         string endpoint = "http://127.0.0.1:11434/",
@@ -1128,13 +1359,17 @@ public sealed class OllamaBenchmarkRunnerTests
                     ["modified_at"] = "2026-08-16T12:00:00Z",
                     ["size"] = runtime.ArtifactSizeBytes,
                     ["digest"] = runtime.ArtifactDigestSha256,
+                    ["capabilities"] = new[] { "completion" },
                     ["details"] = new Dictionary<string, object?>
                     {
+                        ["parent_model"] = string.Empty,
                         ["format"] = runtime.ArtifactFormat,
                         ["family"] = runtime.ModelFamily,
                         ["families"] = new[] { runtime.ModelFamily },
                         ["parameter_size"] = runtime.ParameterSize,
-                        ["quantization_level"] = runtime.QuantizationLevel
+                        ["quantization_level"] = runtime.QuantizationLevel,
+                        ["context_length"] = 262144,
+                        ["embedding_length"] = 2560
                     }
                 }
             }
@@ -1172,8 +1407,14 @@ public sealed class OllamaBenchmarkRunnerTests
         private readonly List<LocalModelBenchmarkTransportRequest> _requests = new();
 
         internal FakeTransport(
-            Func<LocalModelBenchmarkTransportRequest, CancellationToken, Task<LocalModelBenchmarkTransportResponse>> handler) =>
+            Func<LocalModelBenchmarkTransportRequest, CancellationToken, Task<LocalModelBenchmarkTransportResponse>> handler,
+            int boundOllamaProcessId = 4242)
+        {
             _handler = handler;
+            BoundOllamaProcessId = boundOllamaProcessId;
+        }
+
+        public int BoundOllamaProcessId { get; }
 
         internal int CallCount
         {
@@ -1201,6 +1442,37 @@ public sealed class OllamaBenchmarkRunnerTests
                 request.BodyUtf8.ToArray());
             lock (_gate) _requests.Add(captured);
             return new ValueTask<LocalModelBenchmarkTransportResponse>(_handler(request, cancellationToken));
+        }
+    }
+
+    private sealed class FakeConnectionOwnerResolver : IOllamaLoopbackConnectionOwnerResolver
+    {
+        private readonly object _gate = new();
+        private readonly Func<int, OllamaLoopbackConnection, CancellationToken, ValueTask<int>> _handler;
+        private readonly List<OllamaLoopbackConnection> _connections = new();
+        private int _callCount;
+
+        internal FakeConnectionOwnerResolver(
+            Func<int, OllamaLoopbackConnection, CancellationToken, ValueTask<int>> handler) =>
+            _handler = handler;
+
+        internal int CallCount => Volatile.Read(ref _callCount);
+
+        internal IReadOnlyList<OllamaLoopbackConnection> Connections
+        {
+            get
+            {
+                lock (_gate) return _connections.ToArray();
+            }
+        }
+
+        public ValueTask<int> ResolveServerProcessIdAsync(
+            OllamaLoopbackConnection connection,
+            CancellationToken cancellationToken)
+        {
+            int index = Interlocked.Increment(ref _callCount) - 1;
+            lock (_gate) _connections.Add(connection);
+            return _handler(index, connection, cancellationToken);
         }
     }
 
@@ -1454,7 +1726,17 @@ public sealed class OllamaBenchmarkRunnerTests
             {
                 using TcpClient client = await _listener.AcceptTcpClientAsync(_shutdown.Token);
                 using NetworkStream stream = client.GetStream();
-                ServerRequest request = await ReadRequestAsync(stream, _shutdown.Token);
+                ServerRequest request;
+                try
+                {
+                    request = await ReadRequestAsync(stream, _shutdown.Token);
+                }
+                catch (InvalidDataException) when (!_shutdown.IsCancellationRequested)
+                {
+                    // The production transport deliberately closes a connected socket before HTTP when
+                    // post-connect owner verification fails. That is the behavior under test here.
+                    continue;
+                }
                 lock (_gate) _requests.Add(request);
                 _requestArrived.Release();
                 ServerReply reply = _handler(request);
