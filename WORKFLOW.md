@@ -1,21 +1,20 @@
 # Snow Globe provider preflight, Ollama repair, and qwen3.5 smoke handoff
 
-## Frozen benchmark CLI: blocked first capability
+## Frozen benchmark CLI: blocked second capability
 
 ### Outcome and scope
 
 - Added the Windows-pinned `Societies.SnowGlobe.BenchmarkCli` boundary and its tests without changing `src/societies/` or the authoritative runtime.
-- The first authorized capability made exactly one `GET /api/tags` request and received HTTP 200, then failed closed as `tags_json_invalid`. It made zero `/api/generate`, warmup, measured, retry, fallback, or evidence-write requests.
+- Fresh explicit authority was consumed by one one-shot attempt. All live preflight gates were green, then the CLI failed closed in approximately 330 ms with `evidence_directory_lease_failed` before plan/runtime/GPU-probe/transport/capability construction. Requests were tags=0, generate=0, warmup=0, measured=0.
 
 ### Validation and evidence
 
-- CLI tests: 28/28; runner tests: 76/76; last independent full Snow Globe validation before the final CLI-only share change: 367/367.
-- CLI and lab builds: 0 warnings / 0 errors. Cleanup and listener shutdown were green. No canonical benchmark evidence JSON exists, and no benchmark or quality claim is made.
-- The contract now freezes exact v0.32.14 `capabilities`, `parent_model`, `context_length`, and `embedding_length` fields; completion and `>=4096` context semantics; exact TCP tuple owner-PID binding and capability-PID comparison; aggregate `nvidia-smi` PID/start/path evidence; Windows handle containment; bounded child cleanup; and the distinct exact `/api/tags` size `3,389,983,735` versus model layer/store size.
+- CLI tests: 30/30; CLI/lab build: clean; final independent review: CODE GO with no P0-P2 findings. No model load, benchmark/evidence/intelligence result, or canonical evidence JSON exists. Zero non-loopback traffic occurred and process/port cleanup was complete.
+- Offline red-team testing proved DELETE access on the actual worktree root caused sharing violation 32. The smallest correction uses `GENERIC_READ` plus `FileShare.Read`, retaining no-write/no-delete/no-reparse containment and adding actual-worktree regression coverage.
 
 ### Delivery boundary and exactly one next action
 
-- The consumed capability cannot be retried or reused. Obtain fresh explicit authority for a new one-shot benchmark capability. Keep the default PATH Ollama 0.18.2 unchanged and use only the pinned E: runtime/model.
+- There is no current live authority. Request fresh explicit authority for a new one-shot benchmark capability; a future attempt is not a retry. Keep the default PATH Ollama 0.18.2 unchanged and use only the pinned E: runtime/model.
 
 ## Prior durable Financial Journal milestone handoff
 

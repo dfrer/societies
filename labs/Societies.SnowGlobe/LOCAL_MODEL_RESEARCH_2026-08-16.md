@@ -5,7 +5,7 @@ Scope: local, loopback-only model assistance for a deterministic Snow Globe simu
 
 ## Executive decision
 
-The first separately authorized live compatibility candidate is **Ollama `qwen3.5:4b`**. The artifact is retained and its exact identity was established by the earlier bounded smoke. The frozen benchmark CLI then consumed its first capability on exactly one successful `GET /api/tags` and failed closed as `tags_json_invalid`; it issued no generate, warmup, measured, retry, fallback, or evidence-write request. Therefore neither benchmark fit, latency, response quality, nor canonical evidence has been measured. These are publisher/runtime claims, not acceptance results ([Ollama model page](https://ollama.com/library/qwen3.5:4b)).
+The first separately authorized live compatibility candidate is **Ollama `qwen3.5:4b`**. The artifact is retained and its exact identity was established by the earlier bounded smoke. A fresh benchmark capability was consumed by one attempt that failed closed in approximately 330 ms with `evidence_directory_lease_failed` before plan/runtime/GPU-probe/transport/capability construction; tags=0, generate=0, warmup=0, measured=0. Therefore no model load, benchmark fit, latency, response quality, or canonical evidence has been measured. These are publisher/runtime claims, not acceptance results ([Ollama model page](https://ollama.com/library/qwen3.5:4b)).
 
 The current machine is an RTX 2070 SUPER with 8,192 MiB VRAM and the pinned E: Ollama v0.32.14 runtime; the default PATH Ollama 0.18.2 remains unchanged. The lab preflight remains: literal loopback, no credentials, redirects, retries, or proxy; one shared server; bounded bytes, depth, queue, and time; an 8,192 MiB maximum; metrics-only evidence.
 
