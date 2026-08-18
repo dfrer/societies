@@ -250,10 +250,10 @@ Implement an offline provider-neutral cognition-quality execution-evidence contr
 
 - Code is committed locally at `c7926d3`; documentation is delivered in a separate focused local documentation commit. No push, PR, network, live model/provider call, credential/payment action, or `src/societies/` change occurred.
 
-### Risks and exactly one current next action
+### Historical/superseded risks and next action
 
 - Recorded provenance and fixture bindings are caller-attested and cannot prove model execution. This remains fixed-corpus single-step utility evidence, not a live-quality or commercial-comparison result.
-- Exactly one current next action: implement an entirely offline canonical prompt-envelope builder for the same 12 frozen observations, publishing exact bounded prompt bytes and response slots bound to a caller-supplied prompt revision and the existing runner, parser, and proposal-schema identities before any separately authorized live local or premium corpus recording.
+- Historical/superseded next action: implement an entirely offline canonical prompt-envelope builder for the same 12 frozen observations, publishing exact bounded prompt bytes and response slots bound to a caller-supplied prompt revision and the existing runner, parser, and proposal-schema identities before any separately authorized live local or premium corpus recording. Completed in code commit `bcba42a`; the current recording-evidence action is recorded below.
 
 # W3-03 milestone handoff
 
@@ -332,3 +332,29 @@ The offline Cognition Quality Corpus v1 is implemented in the isolated Snow Glob
 - Implementation: W3-03 production/test changes are committed in `a513636` and are not modified by this reconciliation.
 - Evidence added: `planning/active/evidence/v3-w3-03-validation.json` and `planning/active/evidence/v3-w3-03-performance-validation.json`.
 - Documentation modified: `CURRENT_BUILD.md`, `README.md`, `WORKFLOW.md`, `planning/active/v3-weeks-3-4-development-plan.md`, and `planning/active/v3-two-week-development-plan.md`.
+
+# Current cognition-quality prompt-envelope handoff
+
+### Outcome and scope
+
+- Added the offline `snow_globe_cognition_quality_prompt_envelope_publication/v1` boundary in code commit `bcba42a`. The pure synchronous builder publishes exactly 12 corpus-ordered compact UTF-8 prompts under `snow_globe_cognition_quality_prompt/v1`, with the canonical caller-supplied prompt revision embedded in each prompt.
+- Each slot binds scenario ID and observation SHA-256 and publishes prompt byte count/digest/base64 bytes plus empty response fields. Prompts contain survival order, costs, rules, observation, and strict response grammar; they exclude scenario/category, score, preferred answer, setup/state/event, model/provider, credential, and financial data.
+- Prompt limits are 1..2,048 bytes each, 24,576 aggregate, and 64 KiB publication. The canonical publication binds corpus/scoring/validator, runner/parser/proposal identities, prompt bytes/digests, prompt-set/payload/final digests, and claim limitations. `BindRecordedResponses` validates exact provenance revision/schema/count and returns detached fixtures for the existing runner.
+
+### Changed files
+
+- Implementation/test commit: `bcba42a` (the builder and focused tests).
+- Documentation: `docs/adr/0007-offline-cognition-quality-prompt-envelope.md`, `labs/Societies.SnowGlobe/COGNITION_QUALITY_PROMPT_ENVELOPE.md`, `labs/Societies.SnowGlobe/README.md`, `README.md`, `CONTEXT.md`, `CURRENT_BUILD.md`, and `WORKFLOW.md`.
+
+### Validation and evidence
+
+- Focused prompt-envelope tests: 6/6 passed.
+- Full Snow Globe Release tests: 410/410 passed.
+- Release build: 0 warnings / 0 errors.
+- Independent deep review: FINAL CODE GO.
+- Payload `d879faa5af02e5b95108d7b9355a763acee1e120a1c68986c62c0e3b8907ce87`; canonical publication `966727433db3095e804148bba18e23da368d5fbbf58e7b0e2e58de349b47e9ae`; prompt set `f9baf35ff43fbd4977d050488f0bb1ebfb37bb9b1fb98ddbd2fa83384e9bbcbb`.
+
+### Delivery boundary and exactly one next action
+
+- Caller attestation is not prompt transport or model execution attestation. No model/provider/network/credential/payment/journal/file/authoritative-world action occurred; no quality, intelligence, winner, or price claim is made. `src/societies/` remains untouched.
+- Exactly one current next action: implement an entirely offline recording-evidence envelope that atomically binds this prompt publication and prompt-set digest, provenance, exact ordered response digests, and existing runner evidence before any separately authorized live local or premium corpus recording. This must not claim transport delivery or model execution.
