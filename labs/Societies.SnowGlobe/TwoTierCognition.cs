@@ -1,4 +1,3 @@
-using System.Collections.ObjectModel;
 using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
@@ -163,78 +162,6 @@ public sealed class FakePremiumCognitionProvider : IPremiumCognitionProvider
     private static PremiumCognitionJob CloneJob(PremiumCognitionJob job) => job with { Observation = job.Observation with { } };
 }
 
-/// <summary>In-memory, lock-protected journal. It intentionally has no persistence or file I/O.</summary>
-public sealed class InMemoryCognitionJobJournal : ICognitionReceiptInspector
-{
-    private readonly object _gate = new();
-    private readonly int _premiumCapacity;
-    private readonly Dictionary<string, Entry> _entries = new(StringComparer.Ordinal);
-    private readonly List<string> _trace = new();
-    public InMemoryCognitionJobJournal(int premiumCapacity = 64)
-    {
-        if (premiumCapacity < 0) throw new ArgumentOutOfRangeException(nameof(premiumCapacity));
-        _premiumCapacity = premiumCapacity;
-    }
-
-    internal JournalAdmission Admit(string key, string digest, CognitionLane lane, PremiumCognitionJob? job, long ceiling)
-    {
-        lock (_gate)
-        {
-            if (_entries.TryGetValue(key, out Entry? existing))
-            {
-                if (!string.Equals(existing.Digest, digest, StringComparison.Ordinal)) return JournalAdmission.Conflict;
-                return JournalAdmission.Replay(existing.Completion.Task);
-            }
-            if (lane == CognitionLane.Premium && _entries.Values.Count(entry => entry.Lane == CognitionLane.Premium && !entry.Completion.Task.IsCompleted) >= _premiumCapacity)
-            {
-                Entry denied = new(key, digest, lane, job, new TaskCompletionSource<InferenceReceipt>(TaskCreationOptions.RunContinuationsAsynchronously));
-                _entries.Add(key, denied); _trace.Add("capacity_denied");
-                return JournalAdmission.Capacity(denied);
-            }
-            Entry entry = new(key, digest, lane, job, new TaskCompletionSource<InferenceReceipt>(TaskCreationOptions.RunContinuationsAsynchronously));
-            _entries.Add(key, entry);
-            if (lane == CognitionLane.Premium) { entry.Reserved = ceiling; entry.Charge = ChargeState.Reserved; entry.Submission = SubmissionState.SubmissionUnknown; _trace.Add("reserved"); _trace.Add("submission_unknown"); }
-            else _trace.Add("local_admitted");
-            return JournalAdmission.Owner(entry);
-        }
-    }
-
-    internal void Complete(Entry entry, InferenceReceipt receipt)
-    {
-        lock (_gate)
-        {
-            entry.Submission = receipt.SubmissionState; entry.Charge = receipt.ChargeState; entry.Settled = receipt.Reservation.SettledMicrousd;
-            _trace.Add("completed/" + receipt.ReasonCode);
-            entry.Completion.TrySetResult(CloneReceipt(receipt));
-        }
-    }
-    public IReadOnlyList<InferenceReceipt> SnapshotReceipts()
-    {
-        lock (_gate) return _entries.Values.Where(entry => entry.Completion.Task.IsCompletedSuccessfully).Select(entry => CloneReceipt(entry.Completion.Task.Result)).ToArray();
-    }
-    public IReadOnlyList<PremiumCognitionJob> SnapshotPremiumJobs()
-    {
-        lock (_gate) return _entries.Values.Where(entry => entry.Job is not null).Select(entry => CloneJob(entry.Job!)).ToArray();
-    }
-    public IReadOnlyList<string> SnapshotTrace() { lock (_gate) return new ReadOnlyCollection<string>(_trace.ToArray()); }
-    internal sealed class Entry
-    {
-        public Entry(string key, string digest, CognitionLane lane, PremiumCognitionJob? job, TaskCompletionSource<InferenceReceipt> completion) { Key = key; Digest = digest; Lane = lane; Job = job; Completion = completion; }
-        public string Key { get; } public string Digest { get; } public CognitionLane Lane { get; } public PremiumCognitionJob? Job { get; }
-        public TaskCompletionSource<InferenceReceipt> Completion { get; } public long Reserved { get; set; } public long Settled { get; set; }
-        public SubmissionState Submission { get; set; } public ChargeState Charge { get; set; }
-    }
-    internal readonly record struct JournalAdmission(Entry? Entry, Task<InferenceReceipt>? ReplayTask, bool IsConflict, bool IsCapacity)
-    {
-        public static JournalAdmission Owner(Entry entry) => new(entry, null, false, false);
-        public static JournalAdmission Replay(Task<InferenceReceipt> receipt) => new(null, receipt, false, false);
-        public static JournalAdmission Capacity(Entry entry) => new(entry, null, false, true);
-        public static JournalAdmission Conflict => new(null, null, true, false);
-    }
-    internal static InferenceReceipt CloneReceipt(InferenceReceipt value) => value with { Reservation = value.Reservation with { }, Proposal = value.Proposal with { } };
-    internal static PremiumCognitionJob CloneJob(PremiumCognitionJob value) => value with { Observation = value.Observation with { } };
-}
-
 /// <summary>
 /// Deep module behind the existing simulation adapter interface. It never validates or mutates a world;
 /// successful and fallback proposals still go through the existing deterministic world validator.
@@ -242,25 +169,36 @@ public sealed class InMemoryCognitionJobJournal : ICognitionReceiptInspector
 public sealed class SnowGlobeTwoTierCognitionModule : ISnowGlobeIdentifiedInferenceAdapter, ICognitionReceiptInspector
 {
     private static readonly HashSet<string> AllowlistedReasons = new(StringComparer.Ordinal)
-    { "premium_success", "local_success", "local_fallback", "local_invalid", "local_error", "deterministic_idle", "capacity_denied", "provider_rejected", "provider_timeout", "provider_malformed", "provider_unknown", "policy_rejected" };
+    { "premium_success", "local_success", "local_fallback", "local_invalid", "local_error", "deterministic_idle", "capacity_denied", "job_cap_denied", "run_ceiling_denied", "account_ceiling_denied", "open_reservation_cap_denied", "record_headroom_denied", "provider_rejected", "provider_timeout", "provider_malformed", "provider_unknown", "policy_rejected" };
     private readonly CognitionLane _lane;
     private readonly ModelPolicySnapshot _policy;
     private readonly ISnowGlobeIdentifiedInferenceAdapter _local;
     private readonly IPremiumCognitionProvider? _premium;
-    private readonly InMemoryCognitionJobJournal _journal;
-    private readonly string _financialRunIdentity;
+    private readonly IFinancialJournal _journal;
+    private readonly string _financialJournalIdentity;
+    private readonly object _flightGate = new();
+    private readonly Dictionary<string, Flight> _flights = new(StringComparer.Ordinal);
+    private readonly AsyncLocal<bool> _executing = new();
 
     public SnowGlobeTwoTierCognitionModule(CognitionLane lane, string financialRunIdentity, ModelPolicySnapshot policy, ISnowGlobeIdentifiedInferenceAdapter localFallback, InMemoryCognitionJobJournal journal, IPremiumCognitionProvider? premiumProvider = null)
+        : this(lane, BindLegacyJournal(lane, financialRunIdentity, policy, journal), policy, localFallback, (IFinancialJournal)journal, premiumProvider) { }
+
+    public SnowGlobeTwoTierCognitionModule(CognitionLane lane, FinancialJournalHeader expectedJournalHeader, ModelPolicySnapshot policy, ISnowGlobeIdentifiedInferenceAdapter localFallback, IFinancialJournal journal, IPremiumCognitionProvider? premiumProvider = null)
     {
         if (!Enum.IsDefined(lane)) throw new ArgumentOutOfRangeException(nameof(lane));
-        if (!SnowGlobeInferenceIdentity.IsCanonical(financialRunIdentity)) throw new ArgumentException("Financial run identity is not canonical.", nameof(financialRunIdentity));
+        ArgumentNullException.ThrowIfNull(expectedJournalHeader); expectedJournalHeader.Validate();
         ArgumentNullException.ThrowIfNull(policy); policy.Validate();
         ArgumentNullException.ThrowIfNull(localFallback); ArgumentNullException.ThrowIfNull(journal);
         if (!SnowGlobeInferenceIdentity.IsCanonical(localFallback.AdapterIdentity)) throw new ArgumentException("Local adapter identity is not canonical.", nameof(localFallback));
         if (!string.Equals(policy.LocalAdapterIdentity, localFallback.AdapterIdentity, StringComparison.Ordinal)) throw new ArgumentException("Policy must bind the exact local fallback adapter.", nameof(policy));
         if (lane == CognitionLane.Premium && premiumProvider is null) throw new ArgumentNullException(nameof(premiumProvider));
-        _lane = lane; _financialRunIdentity = financialRunIdentity; _policy = policy; _local = localFallback; _journal = journal; _premium = premiumProvider;
-        AdapterIdentity = $"snow_globe_two_tier/{LaneName(lane)}/{policy.Digest}/{financialRunIdentity}";
+        FinancialJournalHeader header = journal.Read(new FinancialJournalPageQuery(0, 0)).Header;
+        if (!header.Equals(expectedJournalHeader) || header.Lane != lane
+            || !string.Equals(header.PolicyDigest, policy.Digest, StringComparison.Ordinal)
+            || !string.Equals(header.PremiumModelRevisionIdentity, policy.PremiumModelRevisionIdentity, StringComparison.Ordinal))
+            throw new ArgumentException("Financial Journal immutable header does not match the cognition module.", nameof(journal));
+        _lane = lane; _financialJournalIdentity = header.FinancialJournalIdentity; _policy = policy; _local = localFallback; _journal = journal; _premium = premiumProvider;
+        AdapterIdentity = $"snow_globe_two_tier/{LaneName(lane)}/{policy.Digest}/{header.FinancialJournalIdentity}";
         if (!SnowGlobeInferenceIdentity.IsCanonical(AdapterIdentity)) throw new InvalidOperationException("Derived adapter identity is not canonical.");
     }
     public string AdapterIdentity { get; }
@@ -269,24 +207,107 @@ public sealed class SnowGlobeTwoTierCognitionModule : ISnowGlobeIdentifiedInfere
     {
         ArgumentNullException.ThrowIfNull(observation);
         ValidateObservation(observation);
+        if (_executing.Value) throw new InvalidOperationException("Reentrant cognition execution is not allowed.");
         cancellationToken.ThrowIfCancellationRequested();
         string key = CognitionCanonical.Digest($"{AdapterIdentity}|{observation.Tick}|{observation.AgentId}");
         string digest = CognitionCanonical.Digest($"{AdapterIdentity}|{CognitionCanonical.Observation(observation)}");
+        Flight flight;
+        bool owner = false;
+        lock (_flightGate)
+        {
+            if (_flights.TryGetValue(key, out flight!))
+            {
+                if (!string.Equals(flight.JobDigest, digest, StringComparison.Ordinal)) throw new InvalidOperationException("Cognition idempotency key was reused with different observations.");
+            }
+            else { flight = new Flight(digest); _flights.Add(key, flight); owner = true; }
+        }
+        if (owner) _ = RunFlightAsync(flight, observation with { }, key, digest, cancellationToken);
+        return (await flight.Completion.Task.ConfigureAwait(false)) with { };
+    }
+
+    private async Task RunFlightAsync(Flight flight, SnowGlobeObservation observation, string key, string digest, CancellationToken cancellationToken)
+    {
+        _executing.Value = true;
+        try { flight.Completion.TrySetResult(await ExecuteAsync(observation, key, digest, cancellationToken).ConfigureAwait(false)); }
+        catch (OperationCanceledException exception)
+        {
+            flight.Completion.TrySetCanceled(exception.CancellationToken);
+        }
+        catch (Exception exception) { flight.Completion.TrySetException(exception); }
+        finally { _executing.Value = false; }
+    }
+
+    private static FinancialJournalHeader BindLegacyJournal(CognitionLane lane, string financialRunIdentity, ModelPolicySnapshot policy, InMemoryCognitionJobJournal journal)
+    {
+        ArgumentNullException.ThrowIfNull(policy); ArgumentNullException.ThrowIfNull(journal);
+        if (!Enum.IsDefined(lane)) throw new ArgumentOutOfRangeException(nameof(lane));
+        if (!SnowGlobeInferenceIdentity.IsCanonical(financialRunIdentity)) throw new ArgumentException("Financial run identity is not canonical.", nameof(financialRunIdentity));
+        policy.Validate();
+        string opaqueBinding = "byok-account-sha256-" + CognitionCanonical.Digest("legacy-in-memory|" + financialRunIdentity);
+        FinancialJournalHeader header = FinancialJournalHeader.Create(financialRunIdentity, financialRunIdentity, lane, policy.Digest,
+            policy.PremiumModelRevisionIdentity, lane == CognitionLane.Premium ? new ByokAccountBindingIdentity(opaqueBinding) : null,
+            long.MaxValue, long.MaxValue, FinancialJournalBounds.MaximumRecords, journal.LegacyPremiumCapacity);
+        journal.BindLegacy(header);
+        return header;
+    }
+
+    private async ValueTask<SnowGlobeActionProposal> ExecuteAsync(SnowGlobeObservation observation, string key, string digest, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
         PremiumCognitionJob? job = _lane == CognitionLane.Premium
             ? new PremiumCognitionJob(key, digest, _policy.Digest, _policy.PremiumModelIdentity, _policy.PremiumModelRevisionIdentity, observation with { })
             : null;
-        InMemoryCognitionJobJournal.JournalAdmission admission = _journal.Admit(key, digest, _lane, job, _policy.CostCeilingMicrousd);
-        if (admission.IsConflict) throw new InvalidOperationException("Cognition idempotency key was reused with different observations.");
-        if (admission.ReplayTask is not null) return (await admission.ReplayTask.ConfigureAwait(false)).Proposal with { };
-        InMemoryCognitionJobJournal.Entry entry = admission.Entry!;
-        InferenceReceipt receipt = _lane == CognitionLane.Local
-            ? await LocalOnlyAsync(observation, key, digest, cancellationToken).ConfigureAwait(false)
-            : admission.IsCapacity
-                ? await FallbackAsync(observation, key, digest, SubmissionState.DefinitelyNotSubmitted, ChargeState.NotApplicable, 0, "capacity_denied").ConfigureAwait(false)
-                : await PremiumAsync(job!, observation, key, digest, cancellationToken).ConfigureAwait(false);
-        _journal.Complete(entry, receipt);
-        return receipt.Proposal with { };
+        FinancialJournalApplyResult admission = _journal.Apply(new AdmitAndReserveFinancialJournalCommand(key, digest, job, _lane == CognitionLane.Premium ? _policy.CostCeilingMicrousd : 0));
+        if (admission.Status == FinancialJournalApplyStatus.Conflict) throw new InvalidOperationException("Cognition idempotency key was reused with different observations.");
+        if (admission.Status == FinancialJournalApplyStatus.Replay) return admission.Receipt!.Proposal with { };
+        if (admission.Status == FinancialJournalApplyStatus.Pending) return await AwaitPendingAsync(key, digest).ConfigureAwait(false);
+
+        InferenceReceipt receipt;
+        if (admission.Status == FinancialJournalApplyStatus.SubmissionUnknown)
+            receipt = await FallbackAsync(observation, key, digest, SubmissionState.SubmissionUnknown, ChargeState.Unknown, _policy.CostCeilingMicrousd, "provider_unknown").ConfigureAwait(false);
+        else if (admission.Status == FinancialJournalApplyStatus.RecordCapacityExhausted)
+        {
+            // No durable idempotency key can be created once even a denial+completion pair cannot fit.
+            // This module instance still caches the deterministic Idle flight and performs no provider/local call.
+            return new SnowGlobeActionProposal(observation.AgentId, SnowGlobeActionKind.Idle);
+        }
+        else if (IsDenial(admission.Status))
+        {
+            string primary = admission.Status == FinancialJournalApplyStatus.OpenReservationCapDenied ? "capacity_denied" : admission.OutcomeCode;
+            receipt = _lane == CognitionLane.Local
+                ? Idle(observation.AgentId, key, digest, SubmissionState.NotApplicable, ChargeState.NotApplicable, 0, "deterministic_idle", primary)
+                : await FallbackAsync(observation, key, digest, SubmissionState.DefinitelyNotSubmitted, ChargeState.NotApplicable, 0, primary).ConfigureAwait(false);
+        }
+        else if (_lane == CognitionLane.Local)
+            receipt = await LocalOnlyAsync(observation, key, digest, cancellationToken).ConfigureAwait(false);
+        else
+        {
+            FinancialJournalApplyResult marked = _journal.Apply(new MarkDispatchUnknownFinancialJournalCommand(key, digest, admission.Version));
+            if (marked.Status != FinancialJournalApplyStatus.DispatchMarked) throw new InvalidOperationException("Premium dispatch marker was not durably accepted.");
+            receipt = await PremiumAsync(job!, observation, key, digest, cancellationToken).ConfigureAwait(false);
+            admission = marked;
+        }
+
+        FinancialJournalApplyResult completed = _journal.Apply(new CompleteFinancialJournalCommand(key, digest, admission.Version, receipt));
+        if (completed.Status is not (FinancialJournalApplyStatus.Completed or FinancialJournalApplyStatus.Replay))
+            throw new InvalidOperationException("Financial Journal completion was not accepted.");
+        return (completed.Receipt ?? receipt).Proposal with { };
     }
+
+    private async ValueTask<SnowGlobeActionProposal> AwaitPendingAsync(string key, string digest)
+    {
+        while (true)
+        {
+            FinancialJournalEntrySnapshot? entry = ReadAllEntries().FirstOrDefault(value => string.Equals(value.IdempotencyKey, key, StringComparison.Ordinal));
+            if (entry is null || !string.Equals(entry.JobDigest, digest, StringComparison.Ordinal)) throw new InvalidOperationException("Pending Financial Journal entry disappeared or changed.");
+            if (entry.Receipt is not null) return entry.Receipt.Proposal with { };
+            await Task.Delay(1).ConfigureAwait(false);
+        }
+    }
+
+    private static bool IsDenial(FinancialJournalApplyStatus status) => status is FinancialJournalApplyStatus.JobCapDenied
+        or FinancialJournalApplyStatus.RunCeilingDenied or FinancialJournalApplyStatus.AccountCeilingDenied
+        or FinancialJournalApplyStatus.OpenReservationCapDenied or FinancialJournalApplyStatus.RecordHeadroomDenied;
 
     private async ValueTask<InferenceReceipt> LocalOnlyAsync(SnowGlobeObservation observation, string key, string digest, CancellationToken cancellationToken)
     {
@@ -387,7 +408,7 @@ public sealed class SnowGlobeTwoTierCognitionModule : ISnowGlobeIdentifiedInfere
             key,
             digest,
             _policy.Digest,
-            _financialRunIdentity,
+            _financialJournalIdentity,
             _lane,
             _policy.PremiumModelIdentity,
             _policy.PremiumModelRevisionIdentity,
@@ -400,9 +421,16 @@ public sealed class SnowGlobeTwoTierCognitionModule : ISnowGlobeIdentifiedInfere
     }
     private InferenceReceipt Idle(string agentId, string key, string digest, SubmissionState submission, ChargeState charge, long reserved, string reason, string primaryOutcome) =>
         Receipt(key, digest, submission, charge, reserved, 0, reason, primaryOutcome, new SnowGlobeActionProposal(agentId, SnowGlobeActionKind.Idle));
-    public IReadOnlyList<InferenceReceipt> SnapshotReceipts() => _journal.SnapshotReceipts();
-    public IReadOnlyList<PremiumCognitionJob> SnapshotPremiumJobs() => _journal.SnapshotPremiumJobs();
-    public IReadOnlyList<string> SnapshotTrace() => _journal.SnapshotTrace();
+    public IReadOnlyList<InferenceReceipt> SnapshotReceipts() => ReadAllEntries().Where(entry => entry.Receipt is not null).Select(entry => FinancialJournalState.CloneReceipt(entry.Receipt!)).ToArray();
+    public IReadOnlyList<PremiumCognitionJob> SnapshotPremiumJobs() => ReadAllEntries().Where(entry => entry.PremiumJob is not null).Select(entry => FinancialJournalState.CloneJob(entry.PremiumJob!)).ToArray();
+    public IReadOnlyList<string> SnapshotTrace() => _journal.Read(new FinancialJournalPageQuery(0, 0)).Trace;
+    private IReadOnlyList<FinancialJournalEntrySnapshot> ReadAllEntries() => _journal.Read(new FinancialJournalSnapshotQuery()).Entries;
+    private sealed class Flight
+    {
+        internal Flight(string jobDigest) { JobDigest = jobDigest; }
+        internal string JobDigest { get; }
+        internal TaskCompletionSource<SnowGlobeActionProposal> Completion { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    }
     private static string LaneName(CognitionLane lane) => lane switch
     {
         CognitionLane.Local => "local",
