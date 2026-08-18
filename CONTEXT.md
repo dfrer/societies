@@ -19,7 +19,12 @@ This glossary is the vocabulary for the Snow Globe two-tier cognition contract. 
 - **BYOK Account Binding Identity** — An opaque canonical binding in the form `byok-account-sha256-<64 lowercase hex>` that identifies the customer-owned billing account without containing a key, token, credential locator, email, provider account, or secret.
 - **Reconciliation Evidence** — The bounded, immutable evidence tuple used to reconcile one admitted request's reservation, dispatch certainty, completion, charge outcome, and BYOK Account Binding Identity without copying provider text or secrets.
 - **Financial Journal Identity** — The bounded canonical identity of the Financial Journal associated with an Inference Receipt.
+- **Cognition Quality Corpus** — The versioned collection of structured Quality Scenarios and closed observation-only scoring rules used to compare bounded cognition proposals; it grants no model or provider authority.
+- **Quality Scenario** — One bounded observation, candidate proposal, declared goal and constraints, expected feasibility outcome, and Action Utility Rubric case in the Cognition Quality Corpus.
+- **Action Utility Rubric** — The closed integer rubric that scores a proposal's observable utility against a scenario's declared goal, constraints, and consequences after feasibility is established.
+- **Cognition Quality Score** — The corpus-versioned aggregate of rubric points and Proposal Dispositions; it is a bounded research measure, not a measure of general intelligence.
+- **Proposal Disposition** — The one recorded operational outcome of a candidate proposal: `no_proposal`, `contract_invalid`, `domain_rejected`, `feasible_suboptimal`, or `maximum_utility`.
 
 ## Avoid
 
-Do not use “AI gateway,” “generic proxy,” “billing event,” “provider response event,” or “retry” as domain terms. Do not describe the premium lane as raw API resale, and do not imply that a model, a provider, a financial journal, or an inference receipt can write simulation state directly.
+Do not use “AI gateway,” “generic proxy,” “billing event,” “provider response event,” or “retry” as domain terms. Do not describe the premium lane as raw API resale, and do not imply that a model, a provider, a financial journal, or an inference receipt can write simulation state directly. Avoid “model IQ,” “smartest model,” “quality winner,” and “best intelligence per dollar”; the corpus measures bounded proposal utility, not general intelligence or commercial superiority.
