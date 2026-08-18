@@ -1,3 +1,34 @@
+# Snow Globe Lab offline two-tier cognition milestone handoff
+
+## Outcome and scope
+
+- Completed the offline two-tier cognition slice in the isolated Snow Globe lab. One deep `SnowGlobeTwoTierCognitionModule` sits behind the existing `ISnowGlobeIdentifiedInferenceAdapter`; local and premium lanes share the same deterministic simulation, and the deterministic world remains the sole state authority. `src/societies/` is untouched.
+- The immutable policy carries an exact content-addressed premium model revision and binds a financial run/journal. The module reserves before submission, marks submission unknown before calling the fake provider, allows at most one premium attempt, retains an unknown reservation without resubmission, and chooses explicit local fallback followed by deterministic `Idle`. Detached receipts record policy, financial, requested-lane, model/revision, and primary-outcome evidence.
+- Only an in-memory journal and offline fake exist. No HTTP, credentials, provider/model/payment call, network, model download, production durability, live-quality, deployment, raw API resale, Stripe/billing/account integration, or run-store schema change occurred. Existing v3 normalized recorded-response replay remains provider/financial-call-free and digest-equal.
+
+## Changed files
+
+- Implementation/tests: `labs/Societies.SnowGlobe/TwoTierCognition.cs`, `tests/Societies.SnowGlobe.Tests/TwoTierCognitionTests.cs`.
+- Domain/design: `CONTEXT.md`, `docs/adr/0001-two-tier-cognition.md`, `labs/Societies.SnowGlobe/TWO_TIER_COGNITION.md`.
+- Milestone handoff: `CURRENT_BUILD.md`, `WORKFLOW.md`, `labs/Societies.SnowGlobe/README.md`.
+
+## Validation and review
+
+- Focused two-tier tests: 22/22 passed.
+- Full Snow Globe Release tests: 318/318 passed.
+- Snow Globe Release build: 0 warnings / 0 errors.
+- `git diff --check`: clean.
+- Independent deep reviewer: FINAL CODE GO with no P0-P2 findings.
+
+## Repository and delivery state
+
+- Local-only work on `feature/snowglobe-agent-lab-owner-v1`; no push, PR, live provider/model call, download, payment action, network listener, or Godot/full-gameplay change occurred. The implementation and documentation remain uncommitted for the parent task's focused local delivery.
+
+## Risks and exactly one next action
+
+- This slice has no durable financial journal, authenticated provider adapter, credential lifecycle, commercial billing/account controls, live quality evidence, or deployment. The earlier Ollama runtime preflight remains blocked by the reviewed C: free-space gate and is preserved below.
+- Next action: choose the next separately authorized lane: (A) design durable database-backed financial journal/BYOK integration without paid calls, or (B) resume local Ollama runtime repair after the 6 GiB C: gate. Neither lane is authorized by this handoff.
+
 # Snow Globe Lab blocked authorized model preflight handoff
 
 ## Outcome and scope
