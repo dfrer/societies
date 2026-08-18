@@ -24,6 +24,7 @@ This glossary is the vocabulary for the Snow Globe two-tier cognition contract. 
 - **Action Utility Rubric** — The closed integer rubric that scores a proposal's observable utility against a scenario's declared goal, constraints, and consequences after feasibility is established.
 - **Cognition Quality Score** — The corpus-versioned aggregate of rubric points and Proposal Dispositions; it is a bounded research measure, not a measure of general intelligence.
 - **Proposal Disposition** — The one recorded operational outcome of a candidate proposal: `no_proposal`, `contract_invalid`, `domain_rejected`, `feasible_suboptimal`, or `maximum_utility`.
+- **Cognition Quality Execution Evidence** — A standalone, content-addressed offline record that binds one caller-attested model/policy provenance value and one exact ordered twelve-proposal submission to the frozen Cognition Quality Corpus v1, its scoring rules, and its canonical report. It is not execution attestation, provider evidence, or a general intelligence measure.
 
 ## Avoid
 

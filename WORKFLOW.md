@@ -14,7 +14,7 @@
 
 ### Delivery boundary
 
-- The cognition-quality corpus milestone is now recorded in the current handoff below; the file's current next action is maintained under the existing `## Exactly one next action` heading.
+- The cognition-quality corpus milestone is historical; its former action is superseded by the later current cognition-quality execution-evidence handoff.
 
 ## Prior durable Financial Journal milestone handoff
 
@@ -33,9 +33,9 @@
 - No production provider profile, live credential, authenticated HTTP/parser/status/charge evidence, or live premium result exists. The local qwen3.5:4b cell and offline comparison are complete; live premium evidence and quality remain unavailable.
 - The lease evidence covers owned-buffer cleanup and reviewed fixture behavior; it does not promise arbitrary trusted callback non-retention.
 
-## Exactly one next action
+## Historical/superseded next action
 
-Implement an offline provider-neutral cognition-quality execution-evidence contract that binds an exact model/policy revision and recorded 12-proposal submission to the corpus, scoring, submission, and report digests before any separately authorized live corpus run.
+Implement an offline provider-neutral cognition-quality execution-evidence contract that binds an exact model/policy revision and recorded 12-proposal submission to the corpus, scoring, submission, and report digests before any separately authorized live corpus run. This action is complete and superseded by the current execution-evidence handoff below.
 
 ## qwen3.5:4b bounded local smoke evidence
 
@@ -72,10 +72,10 @@ Implement an offline provider-neutral cognition-quality execution-evidence contr
 
 - Local-only work on `feature/snowglobe-agent-lab-owner-v1`; no stage, commit, push, PR, external action, provider/model/payment call, network listener, or Godot/full-gameplay change occurred.
 
-## Risks and exactly one next action
+## Historical/superseded risks and next action
 
 - The file journal is not a commercial transactional database. Credential leases, fixed-host provider security, live BYOK, billing/accounting/legal, power-loss certification, and multi-process/multi-host guarantees remain open gates. Local Ollama repair remains a separate blocked lane.
-- Next action: separately authorize an offline credential-lease/fixed-host provider Adapter preflight and durable DB replacement criteria, with no key and no live call.
+- Historical/superseded next action: separately authorize an offline credential-lease/fixed-host provider Adapter preflight and durable DB replacement criteria, with no key and no live call.
 
 # Snow Globe Lab offline two-tier cognition milestone handoff
 
@@ -103,10 +103,10 @@ Implement an offline provider-neutral cognition-quality execution-evidence contr
 
 - Local-only work on `feature/snowglobe-agent-lab-owner-v1`; no push, PR, live provider/model call, download, payment action, network listener, or Godot/full-gameplay change occurred. The implementation and documentation remain uncommitted for the parent task's focused local delivery.
 
-## Risks and exactly one next action
+## Historical/superseded risks and next action
 
 - This slice has no durable financial journal, authenticated provider adapter, credential lifecycle, commercial billing/account controls, live quality evidence, or deployment. The earlier Ollama runtime preflight/free-space note is historical and superseded by the repaired pinned runtime and qwen3.5:4b smoke handoff above.
-- Next action: choose the next separately authorized lane: (A) design durable database-backed financial journal/BYOK integration without paid calls, or (B) resume local Ollama runtime repair after the 6 GiB C: gate. Neither lane is authorized by this handoff.
+- Historical/superseded next action: choose the next separately authorized lane: (A) design durable database-backed financial journal/BYOK integration without paid calls, or (B) resume local Ollama runtime repair after the 6 GiB C: gate. Neither lane is authorized by this handoff.
 
 # Snow Globe Lab blocked authorized model preflight handoff
 
@@ -200,6 +200,29 @@ Implement an offline provider-neutral cognition-quality execution-evidence contr
 
 - V2 has no v1 migration by design; old lab artifacts must remain historical rather than being opened as v2. The observer requires exclusive mutation ownership. The 8 GB budgets are a contract, not measured hardware evidence.
 - Historical next action, superseded: decide whether to authorize one bounded live loopback benchmark against the frozen preflight contract; without that decision, keep the lab offline.
+
+# Current cognition-quality execution-evidence handoff
+
+### Outcome and scope
+
+- Added offline `snow_globe_cognition_quality_execution_evidence/v1` to the isolated Snow Globe lab. Its one pure synchronous `Create(provenance, exact ordered 12 submissions)` operation snapshots once, scores through the frozen corpus, and emits standalone evidence embedding the exact recorded submission and quality report.
+- The envelope binds provenance, corpus, scoring, submission, report, payload, and final evidence digests and is bounded to 64 KiB. Local provenance binds canonical model identity, SHA-256 revision, exact execution-policy/contract digest, prompt revision, proposal schema, and adapter identity. Premium provenance derives and binds the execution-policy digest plus model, prompt, and schema identities from one validated `ModelPolicySnapshot`; it does not retain the snapshot object or emit raw host, route, or cost fields.
+- Provenance is caller-attested identity, not execution attestation. No provider, network, credential, payment, journal, file, live action, or world authority exists in this slice, and no general-intelligence, model-quality, winner, or cost claim is made.
+
+### Validation and evidence
+
+- Local digests: provenance `8fb647f1f9e8a515ad490ccaec1372c4d2c110efa5599c33f93bf087a8821cfc`, submission `9473f2021caffd85586d32ea550f46ee717d082b6d1dcba50ab979c8832a2757`, report `7d7d918caa0f11f2367fabf1cc538c38d014b97c53acd8b32f94acbb0678652c`, payload `353c266be57dce3b4e3f15bc67920ac3325df75cae0eca00529ffa348014b9dd`, evidence `7130deb0945697a14631ddea9bdc29e699b4b1217ae948a729e39ec827f3272a`.
+- Premium digests: provenance `e5fb33c1246784b3ff70165ea531297b2fe069d6425d002a770db62b82f32540`, payload `551a06855ee776ea03e8d27e1546806b9308a0517fbe1861e4d3180908ec9261`, evidence `5a4efa252c84feadfb5ce878e0b6d50f2ceef6f51f2818667865475db666408c`.
+- Focused execution-evidence tests passed 7/7; full SnowGlobe Release passed 393/393; Release build passed with 0 warnings/errors; and deep review returned GO. No live model/provider call, download, network, credential, payment, or `src/societies/` change occurred.
+
+### Repository and delivery state
+
+- Code, tests, ADR, contract, and milestone documentation are being delivered as focused local commits. No push or PR occurred.
+
+### Risks and exactly one current next action
+
+- The envelope binds declared recorded provenance and cannot prove that a model actually executed. It remains fixed-corpus single-step utility evidence, not general quality or commercial comparison.
+- Exactly one current next action: implement an offline no-network recorded-response corpus runner contract that converts 12 bounded response fixtures into the exact proposal batch under pinned prompt/schema/model identity, before any separately authorized live corpus run.
 
 # W3-03 milestone handoff
 
