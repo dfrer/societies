@@ -31,7 +31,7 @@ The initial contract carries structured, typed cognition inputs only. Raw chat a
 
 ## Offline acceptance boundary
 
-This slice is accepted only when an offline fake premium port and in-memory journal can demonstrate, without network access:
+This slice is accepted only when the offline fake premium port and `snow_globe_financial_journal/v1` module can demonstrate, without network access:
 
 - local and premium lanes behind `ISnowGlobeIdentifiedInferenceAdapter`;
 - immutable policy identity, content-addressed premium revision, requested-lane binding, and Financial Journal Identity;
@@ -39,10 +39,13 @@ This slice is accepted only when an offline fake premium port and in-memory jour
 - cost arithmetic with a checked maximum and reserve-before-submit ordering;
 - one-shot submission classification, including an unknown outcome that cannot resubmit;
 - explicit local fallback and deterministic Idle fallback;
-- separate read-only financial evidence cross-linked to, but unable to mutate, the unchanged v3 simulation ledger; and
+- separate read-only financial evidence cross-linked to, but unable to mutate, the unchanged v3 simulation ledger;
+- immutable checksum-bound file artifacts, strict bounded canonical validation, live-writer poisoning on append uncertainty, and ordinary restart recovery for successfully flushed records under one host/one writer;
+- opaque `byok-account-sha256-<64 lowercase hex>` binding with no key, token, credential locator, email, raw provider account, or secret;
+- admit/reserve flush before dispatch-unknown flush, one reserved reopen dispatch, Unknown retention without dispatch, strict idempotency/conflict and completion/reconciliation evidence; and
 - normalized-proposal replay with zero model/provider/billing calls.
 
-The current journal and receipt index are in-memory and process-local. They demonstrate bounded admission and duplicate suppression only within one live module instance; they do not claim durable exactly-once behavior, restart reconciliation, or live billing correctness.
+The journal has an in-memory adapter and a strict file adapter. The file adapter provides ordinary restart recovery only for successfully flushed records under a single host and single writer. It is not power-loss certified, multi-process/multi-host or account-wide transactional state, commercial accounting, cross-ledger atomic, or exactly-once charging. At absolute capacity, four-record premium-admission and two-record persisted-denial headroom are protected; the module returns deterministic cached `Idle` with no provider/local call and intentionally cannot create a durable idempotency key.
 
 No model weights, credentials, external endpoint, payment account, or live provider are required or touched by this acceptance boundary.
 
@@ -50,7 +53,7 @@ No model weights, credentials, external endpoint, payment account, or live provi
 
 The following are future gates, not claims satisfied by this document:
 
-- durable database-backed Financial Journal with restart and reconciliation semantics;
+- SQLite or another transactional database replacing the file journal before commercial durability, cross-process coordination, or exactly-once/accounting claims;
 - authenticated fixed-host provider adapter and security review, including bounded I/O and secret cleanup;
 - credential issuance, rotation, revocation, and tenant isolation;
 - provider terms, age restrictions, retention, and data-policy confirmation for each chosen model;

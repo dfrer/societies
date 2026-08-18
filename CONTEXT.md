@@ -15,6 +15,9 @@ This glossary is the vocabulary for the Snow Globe two-tier cognition contract. 
 - **Local Fallback** — An explicitly selected local proposal path used after a premium attempt cannot safely provide a usable proposal; it is not a hidden paid retry.
 - **Simulation Ledger** — The ordered, deterministic record of validated world proposals and committed simulation events. It is the authority for simulation state.
 - **Financial Journal** — The separate record of reservations, releases, settlements, and unknown financial outcomes, cross-linked to Inference Receipts but never used as simulation authority.
+- **Durable Financial Journal** — The append-only, checksum-bound financial record that can reopen successfully flushed journal facts under its single-host, single-writer contract; it is not a commercial accounting database or an exactly-once charging guarantee.
+- **BYOK Account Binding Identity** — An opaque canonical binding in the form `byok-account-sha256-<64 lowercase hex>` that identifies the customer-owned billing account without containing a key, token, credential locator, email, provider account, or secret.
+- **Reconciliation Evidence** — The bounded, immutable evidence tuple used to reconcile one admitted request's reservation, dispatch certainty, completion, charge outcome, and BYOK Account Binding Identity without copying provider text or secrets.
 - **Financial Journal Identity** — The bounded canonical identity of the Financial Journal associated with an Inference Receipt.
 
 ## Avoid

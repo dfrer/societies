@@ -23,7 +23,7 @@ Premium work also has a financial safety boundary. A bounded request must be tie
 - Make each Inference Receipt directly carry the policy digest, Financial Journal Identity, requested lane, premium model identity and exact revision, final outcome, and allowlisted primary-attempt outcome. Provider text is not evidence and is never copied into a receipt.
 - Normalized-proposal replay reads recorded responses and makes no model, provider, or billing calls.
 - Add fixed provider-specific adapters only after their contracts are separately reviewed. Do not build an arbitrary-origin OpenAI-compatible proxy.
-- This slice uses only an offline fake premium port and an in-memory journal. It performs no network, credential, payment, provider, or model operation.
+- The cognition module uses the separate `snow_globe_financial_journal/v1` module through its small command/query interface. Its in-memory and strict-file adapters are offline research implementations; they perform no network, credential, payment, provider, or model operation. The journal's file durability and limits are decided in [ADR 0002](0002-durable-financial-journal.md).
 
 ## Alternatives Considered
 
@@ -49,4 +49,4 @@ Rejected. The v3 store is the deterministic simulation ledger and its replay con
 
 ## Consequences
 
-The simulation keeps one small interface and one state authority while the cognition module absorbs premium complexity. Local fallback and deterministic Idle preserve progress without a paid failover. The cost is a second evidence model and a future durability boundary: the current process-local in-memory journal proves one-shot behavior only while that process lives. It does not provide durable exactly-once delivery, crash recovery, or commercial accounting. Before any live use, the provider adapter, credential lifecycle, durable financial journal, terms/data policy, authorized paid sandbox, and accounting/legal controls must be reviewed independently.
+The simulation keeps one small interface and one state authority while the cognition module absorbs premium complexity. Local fallback and deterministic Idle preserve progress without a paid failover. Financial evidence now has a separate BCL-only file-backed module with strict recovery semantics, but it remains a research journal: ordinary restart recovery is claimed only for successfully flushed records under one host and one writer. It is not power-loss certified, multi-process or multi-host safe, an account-wide transactional database, commercial accounting, cross-ledger atomicity, or exactly-once charging. SQLite or another transactional database remains required before those claims or live use. Provider adapters, credential lifecycle, terms/data policy, authorized paid sandbox, and accounting/legal controls still require independent review.

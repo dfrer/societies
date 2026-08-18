@@ -1,3 +1,36 @@
+# Snow Globe Lab durable Financial Journal milestone handoff
+
+## Outcome and scope
+
+- Added the BCL-only `snow_globe_financial_journal/v1` module with a small command/query interface and in-memory plus strict-file adapters. The existing proposal caller seam and run-store v3 are unchanged; the deterministic world remains sole authority.
+- File artifacts are immutable checksum-bound headers plus mandatory checksummed LF JSONL under a live-writer lease. Strict bounded UTF-8/canonical/per-kind/checksum/sequence validation, complete archive or explicit paging, fail-closed corrupt/torn input, append-uncertainty poisoning, and ordinary restart recovery for successfully flushed records under one host/one writer are implemented.
+- The only account binding is opaque canonical `byok-account-sha256-<64 lowercase hex>`; no key, token, credential locator, email, raw provider account, or secret is accepted. Header exact-binds journal/run/lane/policy/revision/BYOK/caps/checksum. Admission/reservation flush precedes dispatch-unknown flush and the offline fake provider; reopen may dispatch one reserved job once, while Unknown never dispatches and retains allowance. Strict idempotency/conflict, cap math, reentrancy/concurrency, completion tuples, reconciliation CAS/evidence/account binding, and immutable receipts are covered.
+- Four records of premium-admission headroom and two records of persisted-denial headroom are protected. At absolute capacity the module returns deterministic cached `Idle` with no provider/local call and intentionally cannot create a durable idempotency key.
+- No HTTP/auth credential/payment/model/network/provider call, live BYOK secret, payment account, `src/societies/`, or run-store schema change occurred. This is a research journal, not a commercial database; it does not claim power-loss certification, multi-process/multi-host/account-wide transactional state, commercial accounting, cross-ledger atomicity, or exactly-once charging. SQLite/transactional DB remains required for those claims.
+
+## Changed files
+
+- Implementation/tests: `labs/Societies.SnowGlobe/FinancialJournal.cs`, `labs/Societies.SnowGlobe/TwoTierCognition.cs`, `tests/Societies.SnowGlobe.Tests/FinancialJournalTests.cs`, `tests/Societies.SnowGlobe.Tests/TwoTierCognitionTests.cs`.
+- Domain/design: `CONTEXT.md`, `docs/adr/0001-two-tier-cognition.md`, `docs/adr/0002-durable-financial-journal.md`, `labs/Societies.SnowGlobe/TWO_TIER_COGNITION.md`.
+- Handoff: `labs/Societies.SnowGlobe/README.md`, `CURRENT_BUILD.md`, `WORKFLOW.md`.
+
+## Validation and review
+
+- Focused Financial Journal + TwoTier tests: 46/46 passed.
+- Full Snow Globe Release tests: 342/342 passed.
+- Snow Globe Release build: 0 warnings / 0 errors.
+- `git diff --check`: clean.
+- Runtime deep review: CODE GO with no runtime P0-P2 findings. Documentation P2 is closed by this reconciliation.
+
+## Repository and delivery state
+
+- Local-only work on `feature/snowglobe-agent-lab-owner-v1`; no stage, commit, push, PR, external action, provider/model/payment call, network listener, or Godot/full-gameplay change occurred.
+
+## Risks and exactly one next action
+
+- The file journal is not a commercial transactional database. Credential leases, fixed-host provider security, live BYOK, billing/accounting/legal, power-loss certification, and multi-process/multi-host guarantees remain open gates. Local Ollama repair remains a separate blocked lane.
+- Next action: separately authorize an offline credential-lease/fixed-host provider Adapter preflight and durable DB replacement criteria, with no key and no live call.
+
 # Snow Globe Lab offline two-tier cognition milestone handoff
 
 ## Outcome and scope
