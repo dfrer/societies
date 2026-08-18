@@ -1,6 +1,6 @@
 # Societies Snow Globe Lab
 
-A standalone, headless research toy for proving agent-infrastructure choices before they enter the Godot runtime. It is intentionally isolated from `src/societies/`. The lab contains a production-capable Ollama benchmark boundary; one separately approved qwen3.5:4b pull and bounded local smoke have completed, while the production benchmark runner remains uninvoked.
+A standalone, headless research toy for proving agent-infrastructure choices before they enter the Godot runtime. It is intentionally isolated from `src/societies/`. The lab contains a production-capable Ollama benchmark boundary; one separately approved qwen3.5:4b pull and bounded local smoke have completed, while the first benchmark capability was consumed by a tags-only parse failure and no benchmark evidence exists.
 
 ## Architecture
 
@@ -57,6 +57,10 @@ This is ordinary restart recovery for successfully flushed records under one hos
 ## Offline local-model preflight
 
 `OllamaBenchmarkRunner` is the bounded single shared local-model-server boundary. Execution requires an explicit immutable single-use authorization capability bound to the exact plan, canonical loopback endpoint, installed artifact digest/size/format/family/quantization, and runtime process identity. It performs strict `/api/tags` and `/api/generate` validation, bounded FIFO admission, in-flight VRAM sampling, response-size/depth limits, and endpoint poisoning when cancellation-ignoring transport is observed. Proposals are parsed and validated only in a disposable scratch world; they never become simulation authority. Evidence is metrics-only.
+
+`Societies.SnowGlobe.BenchmarkCli` is the Windows-pinned process boundary for the frozen first compatibility cell. Its first authorized capability made exactly one successful `GET /api/tags`, then failed closed as `tags_json_invalid`; it made zero `/api/generate`, warmup, measured, retry, fallback, or evidence-write requests. Server/listener cleanup was green, but the canonical evidence JSON is absent and no benchmark or quality result exists. The contract now validates exact v0.32.14 tag fields (`capabilities`, `parent_model`, `context_length`, `embedding_length`), completion and `>=4096` context semantics, exact TCP tuple owner-PID binding with capability-PID comparison, aggregate `nvidia-smi` PID/start/path evidence, Windows directory-handle containment, bounded child cleanup, and the distinct exact `/api/tags` size `3,389,983,735` versus model layer/store size. CLI tests pass 28/28 and runner tests 76/76; the last independent full lab gate before the final CLI-only share change was 367/367, with 0-warning/0-error builds.
+
+The consumed capability is not retryable. The next action is exactly one fresh explicit authorization for a new one-shot benchmark capability. The default PATH Ollama 0.18.2 remains untouched; the pinned E: runtime/model remains the only local target.
 
 `SnowGlobeLocalModelAdapterPreflight` remains the pure planning/evidence contract for the future shared local-model boundary. It accepts only canonical `http://127.0.0.1:<port>/` or `http://[::1]:<port>/` endpoints and rejects credentials, non-loopback hosts, redirects, retries, and execution authority. Request, output, queue, latency, context, and VRAM budgets are explicit.
 

@@ -1,5 +1,22 @@
 # Snow Globe provider preflight, Ollama repair, and qwen3.5 smoke handoff
 
+## Frozen benchmark CLI: blocked first capability
+
+### Outcome and scope
+
+- Added the Windows-pinned `Societies.SnowGlobe.BenchmarkCli` boundary and its tests without changing `src/societies/` or the authoritative runtime.
+- The first authorized capability made exactly one `GET /api/tags` request and received HTTP 200, then failed closed as `tags_json_invalid`. It made zero `/api/generate`, warmup, measured, retry, fallback, or evidence-write requests.
+
+### Validation and evidence
+
+- CLI tests: 28/28; runner tests: 76/76; last independent full Snow Globe validation before the final CLI-only share change: 367/367.
+- CLI and lab builds: 0 warnings / 0 errors. Cleanup and listener shutdown were green. No canonical benchmark evidence JSON exists, and no benchmark or quality claim is made.
+- The contract now freezes exact v0.32.14 `capabilities`, `parent_model`, `context_length`, and `embedding_length` fields; completion and `>=4096` context semantics; exact TCP tuple owner-PID binding and capability-PID comparison; aggregate `nvidia-smi` PID/start/path evidence; Windows handle containment; bounded child cleanup; and the distinct exact `/api/tags` size `3,389,983,735` versus model layer/store size.
+
+### Delivery boundary and exactly one next action
+
+- The consumed capability cannot be retried or reused. Obtain fresh explicit authority for a new one-shot benchmark capability. Keep the default PATH Ollama 0.18.2 unchanged and use only the pinned E: runtime/model.
+
 ## Prior durable Financial Journal milestone handoff
 
 ## Outcome and scope
