@@ -14,8 +14,7 @@ internal sealed class PinnedEvidenceDirectoryLease : IDisposable
 {
     private const uint FileFlagBackupSemantics = 0x02000000;
     private const uint FileFlagOpenReparsePoint = 0x00200000;
-    private const uint FileReadAttributes = 0x00000080;
-    private const uint DeleteAccess = 0x00010000;
+    private const uint GenericRead = 0x80000000;
     private const uint OpenExisting = 3;
     private const int MaximumFinalPathCharacters = 32_768;
     private static readonly string[] DirectorySegments = { "artifacts", "snowglobe", "local-model" };
@@ -143,7 +142,10 @@ internal sealed class PinnedEvidenceDirectoryLease : IDisposable
     {
         SafeFileHandle handle = CreateFile(
             expectedPath,
-            FileReadAttributes | DeleteAccess,
+            // FILE_SHARE_DELETE is deliberately omitted below. Generic read is enough to deny
+            // concurrent directory writes while remaining compatible with ordinary worktree
+            // readers that do not share DELETE access.
+            GenericRead,
             FileShare.Read,
             IntPtr.Zero,
             OpenExisting,

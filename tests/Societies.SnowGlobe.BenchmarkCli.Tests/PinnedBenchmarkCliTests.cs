@@ -416,6 +416,41 @@ public sealed class PinnedBenchmarkCliTests : IDisposable
     }
 
     [Fact]
+    public void EvidenceLease_OpensWhenAnExistingReaderDeniesDeleteSharing()
+    {
+        string root = CreateTestRepositoryRoot();
+        string path = Path.Combine(root, PinnedBenchmarkContract.RelativeEvidencePath);
+
+        using SafeFileHandle existingReader = CreateFileForMutationAttempt(
+            root,
+            0x00000080u, // FILE_READ_ATTRIBUTES
+            FileShare.Read,
+            IntPtr.Zero,
+            3,
+            0x02000000u | 0x00200000u,
+            IntPtr.Zero);
+        Assert.False(existingReader.IsInvalid);
+
+        string resolved = PinnedBenchmarkContract.ResolveEvidencePath(root);
+
+        Assert.Equal(Path.GetFullPath(path), resolved, ignoreCase: true);
+        Assert.True(Directory.Exists(Path.GetDirectoryName(resolved)!));
+    }
+
+    [Fact]
+    public void EvidenceLease_ResolvesTheActualWorktreeBeforeModelPreflight()
+    {
+        string root = FindRepositoryRoot(Directory.GetCurrentDirectory());
+
+        string resolved = PinnedBenchmarkContract.ResolveEvidencePath(root);
+
+        Assert.Equal(
+            Path.GetFullPath(Path.Combine(root, PinnedBenchmarkContract.RelativeEvidencePath)),
+            resolved,
+            ignoreCase: true);
+    }
+
+    [Fact]
     public async Task SystemBoundedProcessRunner_ReturnsExactBoundedStdoutStderrAndNonzeroExit()
     {
         SystemBoundedProcessRunner runner = new();
@@ -598,6 +633,22 @@ public sealed class PinnedBenchmarkCliTests : IDisposable
             Path.Combine(projectDirectory, "Societies.SnowGlobe.csproj"),
             "<Project Sdk=\"Microsoft.NET.Sdk\" />");
         return root;
+    }
+
+    private static string FindRepositoryRoot(string startingDirectory)
+    {
+        for (DirectoryInfo? candidate = new(Path.GetFullPath(startingDirectory)); candidate is not null; candidate = candidate.Parent)
+        {
+            if (File.Exists(Path.Combine(candidate.FullName, "CURRENT_BUILD.md"))
+                && (Directory.Exists(Path.Combine(candidate.FullName, ".git"))
+                    || File.Exists(Path.Combine(candidate.FullName, ".git")))
+                && File.Exists(Path.Combine(candidate.FullName, "labs", "Societies.SnowGlobe", "Societies.SnowGlobe.csproj")))
+            {
+                return candidate.FullName;
+            }
+        }
+
+        throw new InvalidOperationException("The test process did not start beneath the Societies worktree.");
     }
 
     private string CreateTestScratchDirectory(string purpose)
