@@ -219,10 +219,41 @@ Implement an offline provider-neutral cognition-quality execution-evidence contr
 
 - Code, tests, ADR, contract, and milestone documentation are being delivered as focused local commits. No push or PR occurred.
 
-### Risks and exactly one current next action
+### Historical/superseded risks and next action
 
 - The envelope binds declared recorded provenance and cannot prove that a model actually executed. It remains fixed-corpus single-step utility evidence, not general quality or commercial comparison.
-- Exactly one current next action: implement an offline no-network recorded-response corpus runner contract that converts 12 bounded response fixtures into the exact proposal batch under pinned prompt/schema/model identity, before any separately authorized live corpus run.
+- Historical/superseded next action: implement an offline no-network recorded-response corpus runner contract that converts 12 bounded response fixtures into the exact proposal batch under pinned prompt/schema/model identity. Completed in `c7926d3`; current truth follows.
+
+# Current cognition-quality recorded-response runner handoff
+
+### Outcome and scope
+
+- Added `snow_globe_cognition_quality_recorded_response_run/v1` in code commit `c7926d3`: one pure synchronous conversion of exactly 12 ordered, already-recorded response fixtures bound to the frozen scenario IDs and observation digests.
+- Responses are bounded to 1..1,024 raw response bytes each and 12,288 bytes aggregate; invalid UTF-8 maps to `response_utf8_invalid`, and canonical output is bounded to 96 KiB. Envelope corruption aborts. Correctly bound malformed content becomes null/`no_proposal` with a closed outcome, while representable invalid proposals remain typed input for scorer and deterministic feasibility authority.
+- The output is detached and raw-free. It binds distinct runner, parser, and proposal-schema identities, the caller-supplied prompt revision, caller-attested provenance, per-response byte counts/digests/outcomes, and nested execution evidence. Caller attestation is not execution attestation.
+- This is not v3 normalized replay. It has no network, model, provider, credential, payment, journal, file, world, or live-call authority and makes no quality, intelligence, winner, or cost claim. `src/societies/` remains unchanged.
+
+### Changed files
+
+- Code/test commit: `labs/Societies.SnowGlobe/CognitionQualityRecordedResponseRunner.cs` and `tests/Societies.SnowGlobe.Tests/CognitionQualityRecordedResponseRunnerTests.cs` at `c7926d3`.
+- Contract records: `docs/adr/0006-offline-cognition-quality-recorded-response-runner.md` and `labs/Societies.SnowGlobe/COGNITION_QUALITY_RECORDED_RESPONSE_RUNNER.md`.
+- Milestone reconciliation: `labs/Societies.SnowGlobe/README.md`, `README.md`, `CONTEXT.md`, `CURRENT_BUILD.md`, and `WORKFLOW.md`.
+
+### Validation and evidence
+
+- Focused runner tests passed 11/11; full Snow Globe Release tests passed 404/404; Release build passed with 0 warnings/errors; independent deep review returned GO.
+- Preferred payload digest: `61cacfd4ad26512c1100a9235ee0ab534ec5945527a4da9252486ebf26675e43`.
+- Preferred canonical-run digest: `f03577c7d6d34f18c8a6c25c61bb3f1ac8f5d0a90ab3c1c208745fd11cb61ffd`.
+- Nested execution-evidence digest: `2700886cef55abea3aba76f0789993cd6ad7283fa22d303dac5bbbd302e1ffe8`.
+
+### Repository and delivery state
+
+- Code is committed locally at `c7926d3`; documentation is delivered in a separate focused local documentation commit. No push, PR, network, live model/provider call, credential/payment action, or `src/societies/` change occurred.
+
+### Risks and exactly one current next action
+
+- Recorded provenance and fixture bindings are caller-attested and cannot prove model execution. This remains fixed-corpus single-step utility evidence, not a live-quality or commercial-comparison result.
+- Exactly one current next action: implement an entirely offline canonical prompt-envelope builder for the same 12 frozen observations, publishing exact bounded prompt bytes and response slots bound to a caller-supplied prompt revision and the existing runner, parser, and proposal-schema identities before any separately authorized live local or premium corpus recording.
 
 # W3-03 milestone handoff
 

@@ -25,6 +25,9 @@ This glossary is the vocabulary for the Snow Globe two-tier cognition contract. 
 - **Cognition Quality Score** — The corpus-versioned aggregate of rubric points and Proposal Dispositions; it is a bounded research measure, not a measure of general intelligence.
 - **Proposal Disposition** — The one recorded operational outcome of a candidate proposal: `no_proposal`, `contract_invalid`, `domain_rejected`, `feasible_suboptimal`, or `maximum_utility`.
 - **Cognition Quality Execution Evidence** — A standalone, content-addressed offline record that binds one caller-attested model/policy provenance value and one exact ordered twelve-proposal submission to the frozen Cognition Quality Corpus v1, its scoring rules, and its canonical report. It is not execution attestation, provider evidence, or a general intelligence measure.
+- **Recorded Response Fixture** — One bounded, already-recorded raw response-byte sequence paired with the exact frozen Quality Scenario identity and observation digest. It is caller-supplied evidence, not proof that a model executed; invalid UTF-8 remains a closed parse outcome.
+- **Cognition Quality Recorded-Response Run** — The detached, raw-free canonical result of converting exactly twelve ordered Recorded Response Fixtures into a Cognition Quality Corpus proposal batch under distinct runner, parser, proposal-schema, and prompt identities. It is not v3 normalized simulation replay and grants no provider, file, network, financial, or world authority.
+- **Canonical Prompt Envelope** — A future offline, bounded publication of the exact prompt bytes and response slot for one frozen Quality Scenario. It defines reproducible recorder input without invoking a model or authorizing a local or premium call.
 
 ## Avoid
 
