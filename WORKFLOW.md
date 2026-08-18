@@ -12,9 +12,9 @@
 - The canonical local report remains `artifacts/snowglobe/local-model/qwen3.5-4b-frozen-benchmark-v1.json`, 3,618 B, SHA-256 `961B54B7D8CFB2AEAD566579499ADB3AA21F1D85BFBE0B7C6FC504A8ADC40E0D`. The comparison report is 2,015 B, SHA-256 `845c429f3d1f90da13111affb2adf5480e6bbb72aa8a95e04de07730080dadce`; contract hash `5ca8f57d8dd4fb5de18a1179c1a8acf25eef944ac7350f30514f097932d95227`.
 - No winner, quality/intelligence result, or local-cost-zero claim is made. No file/network/provider/credential/payment/model/journal Apply/world mutation occurred. Focused validation 7/7; full lab 374/374; build 0 warnings/errors; independent CODE GO with no P0-P2 findings.
 
-### Delivery boundary and exactly one next action
+### Delivery boundary
 
-- Define a versioned audited cognition-quality corpus/score contract offline before any separately authorized live premium provider/credential/payment run, because operational metrics alone cannot choose highest intelligence/price.
+- The cognition-quality corpus milestone is now recorded in the current handoff below; the file's current next action is maintained under the existing `## Exactly one next action` heading.
 
 ## Prior durable Financial Journal milestone handoff
 
@@ -35,7 +35,7 @@
 
 ## Exactly one next action
 
-Define the versioned audited cognition-quality corpus/score contract offline before any separately authorized live premium run.
+Implement an offline provider-neutral cognition-quality execution-evidence contract that binds an exact model/policy revision and recorded 12-proposal submission to the corpus, scoring, submission, and report digests before any separately authorized live corpus run.
 
 ## qwen3.5:4b bounded local smoke evidence
 
@@ -269,9 +269,9 @@ Define the versioned audited cognition-quality corpus/score contract offline bef
 
 W2-VIS timing/visual-readback waivers, W2-06 history, Demo 1 concept classification, and historical schema/timing facts remain unchanged. Author/external clarity smoke and browser/device certification were not performed. Raw `target_missed`, no A/B causality, and recovered performance-worker workspace replacement are residual risks; issue records are WI-SOCIETIES-2026-009 and WI-GLOBAL-2026-078.
 
-## Exactly one recommended next action
+## Current cognition-quality corpus handoff
 
-Pursue GitHub delivery of local implementation commit `a513636` together with reconciliation commits for these docs and evidence files.
+The offline Cognition Quality Corpus v1 is implemented in the isolated Snow Globe lab: exactly 12 survival-progression scenarios across `shelter_acquisition`, `shelter_construction`, `storage_progression`, and `safe_restraint`; legitimate scratch-world reconstruction; and `ValidateAndCommit` as feasibility authority. The closed integer rubric has 1,200 maximum raw points and exactly five dispositions: `no_proposal`, `contract_invalid`, `domain_rejected`, `feasible_suboptimal`, and `maximum_utility`. Canonical content-addressed corpus/scoring/submission/report binding is published with corpus digest `4de8c4a993b58875f27c5867c29a54679de789dacb03d2b4d8099e26340f1f8f`, scoring digest `043dc7f01ae544d4698e9c8b44c0f2c27b9f0a66fdba3a1e2249b868a64c35b0`, and all-optimal 1200/1200 report digest `7d7d918caa0f11f2367fabf1cc538c38d014b97c53acd8b32f94acbb0678652c`. AgentId is strictly 1..64 ASCII lowercase letters, digits, or hyphen; the submission envelope is bounded to 16 KiB. Validation is focused 12/12, full SnowGlobe Release 386/386, Release build 0 warnings/errors, and independent deep review FINAL CODE/DOC GO with no P0-P2 findings. This is fixed-corpus single-step utility evidence, not general intelligence, model quality, provider-winner, or price evidence. No live model/provider/credential/payment action occurred; no provider/model/file/network/world authority exists in this corpus.
 
 ## Changed files
 
