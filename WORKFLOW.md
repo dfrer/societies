@@ -1,20 +1,20 @@
 # Snow Globe provider preflight, Ollama repair, and qwen3.5 smoke handoff
 
-## Frozen benchmark CLI: blocked second capability
+## Frozen benchmark CLI: blocked latest capability
 
 ### Outcome and scope
 
 - Added the Windows-pinned `Societies.SnowGlobe.BenchmarkCli` boundary and its tests without changing `src/societies/` or the authoritative runtime.
-- Fresh explicit authority was consumed by one one-shot attempt. All live preflight gates were green, then the CLI failed closed in approximately 330 ms with `evidence_directory_lease_failed` before plan/runtime/GPU-probe/transport/capability construction. Requests were tags=0, generate=0, warmup=0, measured=0.
+- Fresh explicit authority was consumed by one one-shot attempt. The corrected evidence lease passed. `GET /api/tags` completed 1/1 with HTTP 200 in 538.1 us. Warmup `POST /api/generate` was attempted once but completed 0 and ended HTTP 500 after approximately 5.69 s because an external ad-hoc monitor stopped the CLI; measured requests remained 0.
 
 ### Validation and evidence
 
-- CLI tests: 30/30; CLI/lab build: clean; final independent review: CODE GO with no P0-P2 findings. No model load, benchmark/evidence/intelligence result, or canonical evidence JSON exists. Zero non-loopback traffic occurred and process/port cleanup was complete.
-- Offline red-team testing proved DELETE access on the actual worktree root caused sharing violation 32. The smallest correction uses `GENERIC_READ` plus `FileShare.Read`, retaining no-write/no-delete/no-reparse containment and adding actual-worktree regression coverage.
+- No canonical evidence JSON, model-quality/intelligence result, retry, or raw output exists. Maximum observed VRAM was 6,302/8,192 MiB, below the 6,963.2 MiB threshold. No actual non-loopback connection was observed; cleanup reported zero Ollama/llama-server/live rows.
+- Root cause was wrapper misclassification of transient unconnected `Bound 0.0.0.0:61081 -> 0.0.0.0:0` as outbound. The offline fix adds a repo-owned `WindowsTcpExposureMonitor` contract, Program pre/post use, and deterministic tests: reject non-loopback LISTEN or ESTABLISHED real peers, ignore Bound wildcard-zero. The monitor strictly queries bounded AF_INET and AF_INET6 owner tables, accepts only a native 0..8 alignment tail, passes the native read-only dual-family smoke, samples concurrently across the run, and cancels on observed non-loopback LISTEN or ESTABLISHED real-peer violations. Exact transport PID/loopback checks remain; bounded samples cannot guarantee absence during unsampled transients. CLI tests: 56/56; build: clean; final independent review: CODE GO with no P0-P2 findings.
 
 ### Delivery boundary and exactly one next action
 
-- There is no current live authority. Request fresh explicit authority for a new one-shot benchmark capability; a future attempt is not a retry. Keep the default PATH Ollama 0.18.2 unchanged and use only the pinned E: runtime/model.
+- There is no current live authority. After final independent review, request fresh explicit authority for a new one-shot benchmark capability; a future attempt is not a retry. Keep the default PATH Ollama 0.18.2 unchanged and use only the pinned E: runtime/model.
 
 ## Prior durable Financial Journal milestone handoff
 
@@ -30,7 +30,7 @@
 
 ## Boundary and risks
 
-- No production provider profile, live credential, authenticated HTTP/parser/status/charge evidence, payment action, model benchmark, or live-quality claim exists. The production benchmark runner remains uninvoked.
+- No production provider profile, live credential, authenticated HTTP/parser/status/charge evidence, completed model benchmark, or live-quality claim exists. The latest capability reached tags and one interrupted warmup only.
 - The lease evidence covers owned-buffer cleanup and reviewed fixture behavior; it does not promise arbitrary trusted callback non-retention.
 
 ## Exactly one next action
@@ -44,7 +44,7 @@ Run the frozen benchmark contract with the pinned portable runtime; keep the def
 - One local loopback smoke only, with no retry: `stream=false`, `think=false`, temperature 0, `num_ctx=4096`, `num_predict=96`. Wall time 51,056 ms; API total 50,958,399,400 ns; load 29,253,514,900 ns; prompt 82 tokens / 21,438,342,000 ns; output 20 tokens / 262,642,000 ns (~76.149 tok/s output metric).
 - Structured output was 63 bytes, thinking output 0 bytes, raw text was not retained, and the structured-output SHA-256 was `B9E223C20EA06E2D48FD96C151B095A8A7494527CD9D6AAD69B24F98FF97D4AD`.
 - All 34/34 layers were GPU-offloaded; `/api/ps` reported `size_vram=3,128,038,521` bytes and observed loaded-state GPU use was 6,357/8,192 MiB. Transport remained loopback-only with no outbound traffic; the server stopped cleanly with no listeners. The model is retained on E:.
-- This is a smoke and artifact/runtime evidence only, not a benchmark, intelligence result, or quality result. The production benchmark runner remains uninvoked.
+- This is a smoke and artifact/runtime evidence only, not a benchmark, intelligence result, or quality result. The later capability attempt produced no benchmark result.
 
 ## Outcome and scope
 
