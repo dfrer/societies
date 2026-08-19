@@ -181,7 +181,9 @@ internal static class OllamaRecordingCliApplication
         return result.FailureCode switch
         {
             "RuntimeBindingInvalid" => result.CompletedSlotCount == 0 && result.TerminalSubmissionState == "DefinitelyNotSubmitted" && result.TerminalStatusCode is null,
-            "RuntimeChanged" or "TransportPoisoned" => result.TerminalSubmissionState == "DefinitelyNotSubmitted" && result.TerminalStatusCode is null,
+            "RuntimeChanged" => (result.TerminalSubmissionState == "DefinitelyNotSubmitted" && result.TerminalStatusCode is null)
+                || (result.TerminalSubmissionState == "ResponseReceived" && result.TerminalStatusCode is >= 100 and <= 599),
+            "TransportPoisoned" => result.TerminalSubmissionState == "DefinitelyNotSubmitted" && result.TerminalStatusCode is null,
             "TransportFailure" => result.TerminalSubmissionState == "SubmissionUnknown" && result.TerminalStatusCode is null,
             "HttpResponseRejected" => result.TerminalSubmissionState == "ResponseReceived" && result.TerminalStatusCode is not null and not 200,
             "ResponseBodyRejected" or "WrapperRejected" => result.TerminalSubmissionState == "ResponseReceived" && result.TerminalStatusCode == 200,

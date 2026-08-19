@@ -87,6 +87,25 @@ public sealed class OllamaRecordingCliTests : IDisposable
         Assert.True(line.Length < 768);
     }
 
+    [Theory]
+    [InlineData(200)]
+    [InlineData(429)]
+    public async Task RuntimeChangedResponseReceivedPublishedSummaryMapsTerminalOnce(int status)
+    {
+        CountingModule module = new()
+        {
+            Summary = Summary("Failed", "RuntimeChanged", 2, "ResponseReceived", status, "NotApplicable", artifactPublished: true, receiptPresent: true)
+        };
+        CountingFactory factory = new(module); StringWriter output = new(); StringWriter error = new();
+
+        int exit = await OllamaRecordingCliApplication.RunAsync(RecordArgs(PlanDigest), factory, output, error, CancellationToken.None);
+
+        Assert.Equal(3, exit); Assert.Equal(1, factory.CreateCount); Assert.Equal(1, module.PrepareCount); Assert.Equal(1, module.ExecuteCount);
+        Assert.Empty(error.ToString()); string line = Assert.Single(ReadLines(output.ToString()));
+        Assert.Contains($"outcome=Failed failure=RuntimeChanged completed=2 submission=ResponseReceived status={status}", line, StringComparison.Ordinal);
+        Assert.Contains("additional_attempt_authorized=false", line, StringComparison.Ordinal); Assert.True(line.Length < 768);
+    }
+
     [Fact]
     public async Task PreCancelledTokenStopsBeforeExecution()
     {
@@ -155,6 +174,10 @@ public sealed class OllamaRecordingCliTests : IDisposable
             Summary("AuthorizationRejected", "AuthorizationRejected", 0, null, null, null, true, false),
             Summary("CompositionFailed", "CompositionFailed", null, null, null, null, true, true),
             Summary("Failed", "TransportFailure", 1, "SubmissionUnknown", null, "Charged", true, true),
+            Summary("Failed", "RuntimeChanged", 1, "SubmissionUnknown", null, "NotApplicable", true, true),
+            Summary("Failed", "RuntimeChanged", 1, "DefinitelyNotSubmitted", 200, "NotApplicable", true, true),
+            Summary("Failed", "RuntimeChanged", 1, "ResponseReceived", null, "NotApplicable", true, true),
+            Summary("Failed", "TransportPoisoned", 1, "ResponseReceived", 200, "NotApplicable", true, true),
             new("Complete", "None", 12, "ResponseReceived", 200, "NotApplicable", true, new string('A', 64), ReceiptDigest)
         ];
         foreach (OllamaRecordingCliExecutionSummary summary in invalid)
