@@ -1,5 +1,23 @@
 # Snow Globe provider preflight, Ollama repair, and qwen3.5 smoke handoff
 
+## Offline Ollama recording codec milestone (completed)
+
+### Outcome and scope
+
+- Code commit `016551c` adds exactly four code/test files: `OfflineOllamaRecordingCodec.cs`, `OfflinePinnedOllamaRecordingFixture.cs`, `OfflineOllamaRecordingCodecTests.cs`, and `OfflinePinnedOllamaRecordingFixtureTests.cs`.
+- The internal pure codec freezes the canonical qwen3.5:4b generate request; the internal one-method port has only an in-memory fake. The v2 public fixture accepts exactly 12 full Ollama generate wrapper UTF-8 byte sequences, not raw proposal response buffers. Optional context is strict/bounded nonnegative Int32 tokens, at most 4,096 entries.
+- Direct new evidence covers held caller cancellation => public `Cancelled` with no evidence, and fixture/transport disposal => public `AdapterFailure`; both paths prove no retry and owned-buffer zeroing. Generic session timeout behavior remains predecessor recording-session evidence, not codec-specific evidence.
+
+### Validation and delivery state
+
+- Focused codec-plus-fixture validation 39/39, full SnowGlobe Release 477/477, Benchmark CLI 56/56, lab Release build 0 warnings/0 errors; independent deep review FINAL CODE GO.
+- Code is committed locally at `016551c`; these exact seven documentation files are uncommitted pending a focused local documentation commit: `README.md`, `CONTEXT.md`, `CURRENT_BUILD.md`, `WORKFLOW.md`, `labs/Societies.SnowGlobe/README.md`, `labs/Societies.SnowGlobe/OFFLINE_OLLAMA_RECORDING_CODEC.md`, and `docs/adr/0012-offline-ollama-recording-codec.md`. No push, PR, live transport, network, model, provider, or payment action occurred.
+
+### Risks, limits, and next action
+
+- This is offline evidence only: no current Ollama behavior, delivery, model-execution, quality, winner, cost, or production-readiness claim. The public recording-session Interface is unchanged; loopback transport/provider use remains separately gated. See [the codec contract](labs/Societies.SnowGlobe/OFFLINE_OLLAMA_RECORDING_CODEC.md) and [ADR 0012](docs/adr/0012-offline-ollama-recording-codec.md).
+- The sole current next action is: implement and security-review an offline-tested loopback recording transport Adapter/preflight behind the existing internal port, but do not start Ollama, open sockets, send model requests, or claim delivery until a separate fresh live authorization.
+
 ## Offline cognition-quality recording Adapter conformance milestone (completed)
 
 ### Outcome and scope
@@ -17,7 +35,8 @@
 
 - This is test-only offline evidence. It performs no I/O, network, live/provider/model call, credential, payment, Ollama, journal, file, or world-authority action and does not change production live/provider authority. It does not certify future provider Adapters, hidden retries, copied buffers outside the exercised path, or security.
 - The pinned fixture action is historical and complete at `8f95875`: registry-closed, entirely in-memory, exactly twelve caller-supplied response buffers, frozen qwen3.5:4b provenance, and contract-digest binding. The candidate-neutral harness proves its exact eleven ordered checks and full offline result; `OfflinePinnedOllamaRecordingFixtureTests` prove exact count/index read-once behavior, fixture-owned response/request zeroing, caller preservation, concurrent capability safety, and cancellation. Generic session timeout semantics are predecessor evidence, not pinned-fixture timeout evidence. No path/PID/file/env/socket/process/provider/model/credential/payment/live authority or transport/model attestation exists. Validation is 12/12 focused, 445/445 full Release, 0 warnings/errors, and 56/56 benchmark CLI before the final narrow correction; deep review CODE GO.
-- Exactly one current next action: design and implement an entirely **OFFLINE** bounded Ollama recording request/response codec plus fake transport port against this fixture, with no sockets, server/model calls, credentials, or live authority; actual loopback transport remains separately authorized and security-reviewed.
+- The former codec/fake-port action is historical and complete in `016551c`; see [the codec contract](labs/Societies.SnowGlobe/OFFLINE_OLLAMA_RECORDING_CODEC.md) and [ADR 0012](docs/adr/0012-offline-ollama-recording-codec.md).
+- The current loopback transport Adapter/preflight action is recorded in the codec milestone above; this older conformance handoff is historical.
 
 See [the conformance contract](labs/Societies.SnowGlobe/COGNITION_QUALITY_RECORDING_ADAPTER_CONFORMANCE.md) and [ADR 0010](docs/adr/0010-offline-cognition-quality-recording-adapter-conformance.md).
 
@@ -42,7 +61,7 @@ See [the conformance contract](labs/Societies.SnowGlobe/COGNITION_QUALITY_RECORD
 
 ### Historical next action (superseded)
 
-The former next actions to add the Adapter conformance harness (`8a5d339`) and pinned fixture (`8f95875`) are complete and historical; the bounded offline codec/fake transport port above is the only current action.
+The former next actions to add the Adapter conformance harness (`8a5d339`), pinned fixture (`8f95875`), and bounded offline codec/fake transport port (`016551c`) are complete and historical; the loopback transport Adapter/preflight above is the only current action.
 
 ## Offline local-premium comparison milestone
 
