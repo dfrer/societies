@@ -354,7 +354,36 @@ The offline Cognition Quality Corpus v1 is implemented in the isolated Snow Glob
 - Independent deep review: FINAL CODE GO.
 - Payload `d879faa5af02e5b95108d7b9355a763acee1e120a1c68986c62c0e3b8907ce87`; canonical publication `966727433db3095e804148bba18e23da368d5fbbf58e7b0e2e58de349b47e9ae`; prompt set `f9baf35ff43fbd4977d050488f0bb1ebfb37bb9b1fb98ddbd2fa83384e9bbcbb`.
 
-### Delivery boundary and exactly one next action
+### Historical delivery boundary and completed action
 
 - Caller attestation is not prompt transport or model execution attestation. No model/provider/network/credential/payment/journal/file/authoritative-world action occurred; no quality, intelligence, winner, or price claim is made. `src/societies/` remains untouched.
-- Exactly one current next action: implement an entirely offline recording-evidence envelope that atomically binds this prompt publication and prompt-set digest, provenance, exact ordered response digests, and existing runner evidence before any separately authorized live local or premium corpus recording. This must not claim transport delivery or model execution.
+- Historical/completed next action: implement an entirely offline recording-evidence envelope that atomically binds this prompt publication and prompt-set digest, provenance, exact ordered response digests, and existing runner evidence. Completed in code commit `bf756ed`; current truth follows.
+
+# Current cognition-quality recording-evidence handoff
+
+### Outcome and scope
+
+- Added `snow_globe_cognition_quality_recording_evidence/v1` with semantics `offline_recording_evidence_binding_only` in code commit `bf756ed` (`Add offline cognition recording evidence`). Its one pure synchronous `Create(publication, provenance, exact ordered responses)` operation is a dependency-category-1/in-process Module with no Adapter or port.
+- The Module validates and embeds the exact existing prompt publication, caller-attested provenance, exact existing recorded-response run, and nested execution evidence. It adds an ordered response-set digest over scenario ID, observation digest, response byte count, and response digest.
+- Exactly 12 responses are required, each 1..1,024 bytes, with a 12,288-byte aggregate response limit and a 192 KiB final canonical-artifact limit. All-or-error means in-memory atomicity only.
+- The result is raw-free. Module-owned temporary snapshots and detached fixtures are cleared; caller-owned input bytes are never cleared. Correctly bound malformed content remains `no_proposal`, while publication, provenance, envelope, and coherence corruption abort the operation.
+
+### Changed files
+
+- Implementation: `labs/Societies.SnowGlobe/CognitionQualityRecordingEvidence.cs` and the supporting temporary-fixture clearing hook in `labs/Societies.SnowGlobe/CognitionQualityRecordedResponseRunner.cs`.
+- Tests: `tests/Societies.SnowGlobe.Tests/CognitionQualityRecordingEvidenceTests.cs`.
+- Contract records: `docs/adr/0008-offline-cognition-quality-recording-evidence.md` and `labs/Societies.SnowGlobe/COGNITION_QUALITY_RECORDING_EVIDENCE.md`.
+- Reconciled truth documentation: `README.md`, `CONTEXT.md`, `CURRENT_BUILD.md`, `WORKFLOW.md`, and `labs/Societies.SnowGlobe/README.md`.
+
+### Validation and evidence
+
+- Focused new-plus-predecessor validation: 30/30 passed.
+- Full Snow Globe Release validation: 416/416 passed.
+- Release build: 0 warnings / 0 errors.
+- Goldens: response-set `0c9ce26bf5f078e3cdcb85a2115f59f9a3e8d191736e8ab8e87c0c113b67e80c`; payload `069aa258c0a6870aa6d8c60f14aed800cbb46923564d3b62f36a41ba3159a7fd`; final `61d0f7150b4b1cde5fba3f693e1a60eec6410deb83b6a371b62189f59a2115a4`.
+- Independent deep review: FINAL CODE GO after four adversarial identity/digest fixes covering split-brain publication, false serialized digest, provenance canonical mismatch, and undefined lane-99 regressions.
+
+### Delivery boundary and exactly one next action
+
+- Response association and identity are caller-attested. This envelope proves neither prompt delivery nor model execution and records no provider status, retry, or charge evidence. It makes no model-quality, general-intelligence, winner, or cost claim and grants no network, provider, credential, payment, journal, file, authoritative-world, or live-action authority. `src/societies/` is unchanged.
+- The previous recording-evidence action is historical/completed. Exactly one current next action: design and implement an entirely offline, provider-neutral cognition recording-session Interface with an offline fake Adapter and one-shot/no-retry authorization that can later feed pinned local Ollama or premium provider lanes into this evidence Module. No live calls, real credentials, or delivery/execution claims are authorized without separate authority and evidence.

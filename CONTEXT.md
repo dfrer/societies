@@ -30,7 +30,8 @@ This glossary is the vocabulary for the Snow Globe two-tier cognition contract. 
 - **Canonical Prompt Envelope** - The completed offline, bounded publication of exact prompt bytes and response slots for the twelve frozen Quality Scenarios. It defines reproducible recorder input, binds caller-supplied prompt identity and observation digests, and proves neither prompt delivery nor model execution.
 
 - **Prompt Set Digest** - The SHA-256 identity of the ordered prompt-slot metadata, including scenario, observation, byte count, and prompt digest for each slot.
-- **Recording-Evidence Envelope** - The next offline evidence boundary intended to bind prompt publication, provenance, ordered response digests, and recorded-response runner evidence without claiming model transport or execution.
+- **Recording-Evidence Envelope** - The completed raw-free, content-addressed offline record that atomically binds one exact Canonical Prompt Envelope and Prompt Set Digest, caller-attested provenance, twelve ordered response identities, the exact Cognition Quality Recorded-Response Run, and its nested execution evidence. Its all-or-error guarantee is in-memory only; it proves neither prompt delivery nor model execution and grants no provider, network, credential, payment, journal, file, or world authority.
+- **Cognition Recording Session** - A future provider-neutral Interface boundary that may accept one-shot/no-retry authorization and feed caller-attested recorded responses from an offline fake, pinned local Ollama, or premium provider lane into the Recording-Evidence Envelope. No live implementation, real credential, delivery proof, or execution proof exists in the current slice.
 
 ## Avoid
 
