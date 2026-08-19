@@ -1,5 +1,28 @@
 # Snow Globe provider preflight, Ollama repair, and qwen3.5 smoke handoff
 
+## Offline cognition-quality recording-session milestone (completed)
+
+### Outcome and scope
+
+- Commit `8256512` adds the offline `CognitionQualityRecordingSessionModule` with public instance operations `Authorize` and `RecordOnceAsync`; `OfflineFixedResponseCognitionQualityRecordingAdapter` is the sole public runtime Adapter.
+- Exact process-local authorization binds publication/prompt-set/provenance/Adapter identity and contract digest, canonical nonce, lifetime, and timeout. Nonce tombstones are bounded/non-evicting at 1,024; `OfflineFixedResponseCognitionQualityRecordingAdapter` capability tracking is capped at 4,096; any call atomically consumes exact module/Adapter-bound capability authority.
+- Exactly 12 sequential slots run one attempt each with no retry/fallback/alternate/thirteenth call. Response bounds are 1..1,024 bytes each and 12,288 aggregate with exact binding echoes; evidence is created only after all 12. Failure paths are raw-free/no-evidence. Disposed fixture/prompt copies are zeroed; caller inputs are preserved.
+
+### Validation and results
+
+- Source/test hashes: `3354932C1BF170C495A59CCA607A8F84F77D64C9E724E9B17AE92B96502190B1` and `BCFFEE0DF340AC1E98C0C089B58F1BDB7A04F4B66F56356BA18CCC0DB400214D`.
+- Focused 17/17, full Snow Globe Release 433/433, Release build 0 warnings/errors.
+- Independent deep review: FINAL CODE GO after five corrections (nonce replay, multi-capability indexing, pre-copy bounds, zeroing lifecycle, mutable-indexer TOCTOU). `src/societies/` unchanged.
+
+### Risks, blockers, and delivery state
+
+- Offline fixture only. No Ollama/premium/network/provider/credential/payment/file/journal/world/live authority, delivery attestation, or model-execution attestation exists. Process-local authorization is not restart-durable; future Adapters require separate registry/source change and deep security review.
+- No push, PR, live call, credential, or payment action was performed.
+
+### Next action
+
+Exactly one current next action: add an offline Adapter conformance harness for the exact 12-slot/no-retry/binding/cancellation/buffer-ownership contract, without adding Ollama/premium implementation or live authority.
+
 ## Offline local-premium comparison milestone
 
 ### Outcome and scope
@@ -386,4 +409,4 @@ The offline Cognition Quality Corpus v1 is implemented in the isolated Snow Glob
 ### Delivery boundary and exactly one next action
 
 - Response association and identity are caller-attested. This envelope proves neither prompt delivery nor model execution and records no provider status, retry, or charge evidence. It makes no model-quality, general-intelligence, winner, or cost claim and grants no network, provider, credential, payment, journal, file, authoritative-world, or live-action authority. `src/societies/` is unchanged.
-- The previous recording-evidence action is historical/completed. Exactly one current next action: design and implement an entirely offline, provider-neutral cognition recording-session Interface with an offline fake Adapter and one-shot/no-retry authorization that can later feed pinned local Ollama or premium provider lanes into this evidence Module. No live calls, real credentials, or delivery/execution claims are authorized without separate authority and evidence.
+- The previous recording-evidence action is historical/completed. The recording-session action is now also complete in `8256512`; current truth and the sole next action are recorded in the milestone handoff above.

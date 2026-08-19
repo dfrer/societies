@@ -1,5 +1,13 @@
 # Societies Snow Globe Lab
 
+## Offline cognition-quality recording session
+
+Commit `8256512` implements the provider-neutral `CognitionQualityRecordingSessionModule` with public instance operations `Authorize` and `RecordOnceAsync`. The sole public runtime Adapter is `OfflineFixedResponseCognitionQualityRecordingAdapter`. Exact process-local authorization binds publication/prompt-set/provenance/Adapter identity and contract digest, canonical nonce, capability lifetime, and session timeout; nonce tombstones are bounded/non-evicting at 1,024 and `OfflineFixedResponseCognitionQualityRecordingAdapter` capability tracking is capped at 4,096. A capability binds exact module and Adapter references and is consumed atomically by any call, including pre-cancel, expiry, wrong-module, or binding failure.
+
+Exactly twelve slots execute sequentially, one attempt each, with no retry/fallback/alternate/thirteenth call. Responses are 1..1,024 bytes each and 12,288 aggregate with exact binding echoes. Evidence is emitted only after all twelve; partial/unknown/cancel/timeout/exception/binding/evidence-failure paths are raw-free and evidence-free. Disposed fixtures and prompt copies are zeroed while caller inputs are preserved. Results claim an offline fixture only, not delivery/model execution or another attempt. There is no network, provider, credential, payment, file, journal, world, Ollama, or premium authority. Process-local authorization is not restart-durable. See [the full recording-session contract](COGNITION_QUALITY_RECORDING_SESSION.md) and [ADR 0009](../../docs/adr/0009-offline-cognition-quality-recording-session.md).
+
+Validation: focused 17/17, full Snow Globe Release 433/433, Release build 0 warnings/errors, independent deep review FINAL CODE GO after five corrections. Current next action: add an offline Adapter conformance harness for this exact contract, without Ollama/premium implementation or live authority.
+
 A standalone, headless research toy for proving agent-infrastructure choices before they enter the Godot runtime. It is intentionally isolated from `src/societies/`. The lab contains a production-capable Ollama benchmark boundary; the frozen qwen3.5:4b compatibility cell completed with canonical metrics evidence, while general intelligence, quality, and production readiness remain unproven.
 
 ## Architecture
@@ -92,7 +100,7 @@ Exactly 12 responses are required, each 1..1,024 bytes, with a 12,288-byte aggre
 
 Response association and identity are caller-attested. The envelope proves neither prompt delivery nor model execution, records no provider status/retry/charge evidence, and makes no quality, intelligence, winner, or cost claim. It grants no network, provider, credential, payment, journal, file, authoritative-world, or live-action authority; `src/societies/` remains unchanged. Goldens are response-set `0c9ce26bf5f078e3cdcb85a2115f59f9a3e8d191736e8ab8e87c0c113b67e80c`, payload `069aa258c0a6870aa6d8c60f14aed800cbb46923564d3b62f36a41ba3159a7fd`, and final `61d0f7150b4b1cde5fba3f693e1a60eec6410deb83b6a371b62189f59a2115a4`. Focused new-plus-predecessor validation passed 30/30, full Snow Globe Release passed 416/416, and the Release build passed with 0 warnings/errors. Independent deep review returned FINAL CODE GO after four adversarial identity/digest fixes.
 
-The previous recording-evidence action is historical/completed. Exactly one current next action: design and implement an entirely offline, provider-neutral cognition recording-session Interface with an offline fake Adapter and one-shot/no-retry authorization that can later feed pinned local Ollama or premium provider lanes into this evidence Module. No live calls, real credentials, or delivery/execution claims are authorized without separate authority and evidence.
+The previous recording-evidence action is historical/completed. The recording-session action is now complete in `8256512`; current truth and the sole next action are recorded above and in [the recording-session contract](COGNITION_QUALITY_RECORDING_SESSION.md).
 
 `SnowGlobeLocalModelAdapterPreflight` remains the pure planning/evidence contract for the future shared local-model boundary. It accepts only canonical `http://127.0.0.1:<port>/` or `http://[::1]:<port>/` endpoints and rejects credentials, non-loopback hosts, redirects, retries, and execution authority. Request, output, queue, latency, context, and VRAM budgets are explicit.
 

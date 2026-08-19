@@ -1,5 +1,13 @@
 # Societies Domain Context
 
+## Offline cognition-quality recording session
+
+Commit `8256512` implements the offline `CognitionQualityRecordingSessionModule`. Its public instance API is `Authorize` and `RecordOnceAsync`; the sole public runtime adapter is `OfflineFixedResponseCognitionQualityRecordingAdapter`. Process-local authorization binds publication, prompt-set, provenance, exact adapter identity/contract digest, canonical nonce, capability lifetime, and session timeout. Nonce tombstones are bounded and non-evicting at 1,024, and `OfflineFixedResponseCognitionQualityRecordingAdapter` tracks at most 4,096 capabilities. Exact module/adapter reference binding and one atomic use apply even when a call is pre-cancelled, expired, misbound, or made through the wrong module.
+
+The session executes twelve canonical slots sequentially, one attempt each, with no retry/fallback/alternate/thirteenth call. Responses are bounded to 1..1,024 bytes each and 12,288 aggregate, and exact binding echoes are checked before evidence creation. Evidence is emitted only after all twelve; partial, unknown, cancelled, timed-out, exception, binding, or evidence-failure paths are raw-free and evidence-free. Fixtures and prompt copies are disposed and zeroed; caller inputs are preserved. Results claim an offline fixture only, not delivery or model execution. No network/provider/credential/payment/file/journal/world/live authority, Ollama, or premium call is present. This is not restart-durable; fresh authorization with a new nonce is possible. Future adapters require separate registry/source change and deep security review.
+
+Focused validation is 17/17, full Snow Globe Release is 433/433, Release build is 0 warnings/errors, and independent deep review is FINAL CODE GO after five corrections. See [the recording-session contract](labs/Societies.SnowGlobe/COGNITION_QUALITY_RECORDING_SESSION.md) and [ADR 0009](docs/adr/0009-offline-cognition-quality-recording-session.md). Current next action: add an offline Adapter conformance harness for the exact 12-slot/no-retry/binding/cancellation/buffer-ownership contract, without Ollama/premium implementation or live authority.
+
 This glossary is the vocabulary for the Snow Globe two-tier cognition contract. It is intentionally domain-only; code, transport, persistence schemas, and provider products do not belong here.
 
 ## Terms
@@ -31,7 +39,7 @@ This glossary is the vocabulary for the Snow Globe two-tier cognition contract. 
 
 - **Prompt Set Digest** - The SHA-256 identity of the ordered prompt-slot metadata, including scenario, observation, byte count, and prompt digest for each slot.
 - **Recording-Evidence Envelope** - The completed raw-free, content-addressed offline record that atomically binds one exact Canonical Prompt Envelope and Prompt Set Digest, caller-attested provenance, twelve ordered response identities, the exact Cognition Quality Recorded-Response Run, and its nested execution evidence. Its all-or-error guarantee is in-memory only; it proves neither prompt delivery nor model execution and grants no provider, network, credential, payment, journal, file, or world authority.
-- **Cognition Recording Session** - A future provider-neutral Interface boundary that may accept one-shot/no-retry authorization and feed caller-attested recorded responses from an offline fake, pinned local Ollama, or premium provider lane into the Recording-Evidence Envelope. No live implementation, real credential, delivery proof, or execution proof exists in the current slice.
+- **Cognition Recording Session** - The implemented offline provider-neutral Interface boundary with one-shot/no-retry authorization, feeding caller-attested recorded responses from the fixed offline adapter into the Recording-Evidence Envelope. Only pinned local Ollama and premium adapters remain unimplemented; no real credential, delivery proof, or execution proof exists in the current slice.
 
 ## Avoid
 
