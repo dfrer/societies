@@ -5,7 +5,7 @@
 ### Outcome and scope
 
 - Code commit `016551c` adds exactly four code/test files: `OfflineOllamaRecordingCodec.cs`, `OfflinePinnedOllamaRecordingFixture.cs`, `OfflineOllamaRecordingCodecTests.cs`, and `OfflinePinnedOllamaRecordingFixtureTests.cs`.
-- The internal pure codec freezes the canonical qwen3.5:4b generate request; the internal one-method port has only an in-memory fake. The v2 public fixture accepts exactly 12 full Ollama generate wrapper UTF-8 byte sequences, not raw proposal response buffers. Optional context is strict/bounded nonnegative Int32 tokens, at most 4,096 entries.
+- The internal pure codec freezes the canonical qwen3.5:4b generate request. Before `a713267`, the one-method port had only an in-memory fake; current state adds that fake plus the source-closed production loopback Adapter. The v2 public fixture accepts exactly 12 full Ollama generate wrapper UTF-8 byte sequences, not raw proposal response buffers. Optional context is strict/bounded nonnegative Int32 tokens, at most 4,096 entries.
 - Direct new evidence covers held caller cancellation => public `Cancelled` with no evidence, and fixture/transport disposal => public `AdapterFailure`; both paths prove no retry and owned-buffer zeroing. Generic session timeout behavior remains predecessor recording-session evidence, not codec-specific evidence.
 
 ### Validation and delivery state
@@ -13,10 +13,15 @@
 - Focused codec-plus-fixture validation 39/39, full SnowGlobe Release 477/477, Benchmark CLI 56/56, lab Release build 0 warnings/0 errors; independent deep review FINAL CODE GO.
 - Code is committed locally at `016551c`; these exact seven documentation files are uncommitted pending a focused local documentation commit: `README.md`, `CONTEXT.md`, `CURRENT_BUILD.md`, `WORKFLOW.md`, `labs/Societies.SnowGlobe/README.md`, `labs/Societies.SnowGlobe/OFFLINE_OLLAMA_RECORDING_CODEC.md`, and `docs/adr/0012-offline-ollama-recording-codec.md`. No push, PR, live transport, network, model, provider, or payment action occurred.
 
-### Risks, limits, and next action
+### Historical risks, limits, and superseded next action
 
 - This is offline evidence only: no current Ollama behavior, delivery, model-execution, quality, winner, cost, or production-readiness claim. The public recording-session Interface is unchanged; loopback transport/provider use remains separately gated. See [the codec contract](labs/Societies.SnowGlobe/OFFLINE_OLLAMA_RECORDING_CODEC.md) and [ADR 0012](docs/adr/0012-offline-ollama-recording-codec.md).
-- The sole current next action is: implement and security-review an offline-tested loopback recording transport Adapter/preflight behind the existing internal port, but do not start Ollama, open sockets, send model requests, or claim delivery until a separate fresh live authorization.
+- The former loopback transport implementation action is historical; it completed in `a713267`.
+
+### Current commit and documentation delivery boundary
+
+- `a713267` changes exactly six code/test files: `labs/Societies.SnowGlobe/OfflineOllamaRecordingCodec.cs` (codec/profile and internal port), `labs/Societies.SnowGlobe/OllamaLoopbackRecording.cs` (facade/session), `labs/Societies.SnowGlobe/OllamaLoopbackRecordingTransport.cs` (transport/verifier), `tests/Societies.SnowGlobe.Tests/OfflineOllamaRecordingCodecTests.cs`, `tests/Societies.SnowGlobe.Tests/OllamaLoopbackRecordingTests.cs`, and `tests/Societies.SnowGlobe.Tests/OllamaLoopbackRecordingTransportTests.cs`.
+- Code is committed locally at `a713267`; it is not pushed, in a PR, or deployed. The seven assigned documentation files are pending a local documentation commit: `README.md`, `CONTEXT.md`, `CURRENT_BUILD.md`, `WORKFLOW.md`, `labs/Societies.SnowGlobe/README.md`, `labs/Societies.SnowGlobe/OLLAMA_LOOPBACK_RECORDING.md`, and `docs/adr/0013-offline-tested-ollama-loopback-recording.md`.
 
 ## Offline cognition-quality recording Adapter conformance milestone (completed)
 
@@ -31,12 +36,23 @@
 - Source hashes: harness `1DF7E16ABA14AEAEC7B7397A2561A5158180C462A3815DC56146037A177FB23F`; tests `D1CDBCA028781EE192A9697E0FA80FDC620300243A0B0DEEE83F77D5AE8E22FD`.
 - Focused conformance validation 5/5, full Snow Globe Release 438/438, Release build 0 warnings/errors, independent deep review CODE GO.
 
-### Boundary and sole current next action
+### Historical boundary and superseded next action
 
 - This is test-only offline evidence. It performs no I/O, network, live/provider/model call, credential, payment, Ollama, journal, file, or world-authority action and does not change production live/provider authority. It does not certify future provider Adapters, hidden retries, copied buffers outside the exercised path, or security.
 - The pinned fixture action is historical and complete at `8f95875`: registry-closed, entirely in-memory, exactly twelve caller-supplied response buffers, frozen qwen3.5:4b provenance, and contract-digest binding. The candidate-neutral harness proves its exact eleven ordered checks and full offline result; `OfflinePinnedOllamaRecordingFixtureTests` prove exact count/index read-once behavior, fixture-owned response/request zeroing, caller preservation, concurrent capability safety, and cancellation. Generic session timeout semantics are predecessor evidence, not pinned-fixture timeout evidence. No path/PID/file/env/socket/process/provider/model/credential/payment/live authority or transport/model attestation exists. Validation is 12/12 focused, 445/445 full Release, 0 warnings/errors, and 56/56 benchmark CLI before the final narrow correction; deep review CODE GO.
 - The former codec/fake-port action is historical and complete in `016551c`; see [the codec contract](labs/Societies.SnowGlobe/OFFLINE_OLLAMA_RECORDING_CODEC.md) and [ADR 0012](docs/adr/0012-offline-ollama-recording-codec.md).
-- The current loopback transport Adapter/preflight action is recorded in the codec milestone above; this older conformance handoff is historical.
+- The loopback transport Adapter/preflight action was completed in `a713267`; this older conformance handoff and its former action are historical/superseded.
+
+## Offline-tested Ollama loopback recording (current)
+
+- Commit `a713267` adds the source-closed exact `qwen3.5:4b` facade/transport behind the existing codec port. Authorization is pure zero-I/O, process-local, object-bound, atomically single-use, with 1,024 non-evicting nonce capacity.
+- The fixed identity is `http://127.0.0.1:11435/`, `POST /api/generate`, runtime `qwen3.5:4b`, and the registered runtime/artifact hashes and profile are documented in [the loopback contract](labs/Societies.SnowGlobe/OLLAMA_LOOPBACK_RECORDING.md). Exactly 12 sequential slots are allowed: no tags, warmup, retry, fallback, alternate, or thirteenth attempt. HTTP/1.1, Windows process/path/hash/listener/connected-owner checks, conservative submission, 250 ms drain/poison, and one late observer are enforced.
+- The unchanged public fixture and recording session remain no-I/O; the live adapter has distinct identity. Evidence appears only after all 12 exchanges; receipt and summary are raw-free, with optional detached prompts/proposals for offline scoring. Charge is `NotApplicable` and additional attempts are never authorized. Golden receipt digest: `da913180079fc534543748bc53198f7d10de527137f038812fa5f735b90c62ee`.
+- Validation: security 90/90, full 529/529, BenchmarkCli 56/56, Release 0 warnings/errors; independent deep review 114/114 focused, 529/529 full, CLI 56/56, build 0/0, CODE GO, no P0-P2. No live Ollama/listener/socket/HTTP/process/file hash/model/GPU/provider/credential/payment action occurred. This is offline code evidence only.
+
+### Sole current next action
+
+Implement and security-review an offline-only one-shot recording composition/CLI plus canonical evidence writer/validator around the committed adapter, without starting Ollama or sending requests. A later live recording remains separately freshly authorized.
 
 See [the conformance contract](labs/Societies.SnowGlobe/COGNITION_QUALITY_RECORDING_ADAPTER_CONFORMANCE.md) and [ADR 0010](docs/adr/0010-offline-cognition-quality-recording-adapter-conformance.md).
 
@@ -61,7 +77,7 @@ See [the conformance contract](labs/Societies.SnowGlobe/COGNITION_QUALITY_RECORD
 
 ### Historical next action (superseded)
 
-The former next actions to add the Adapter conformance harness (`8a5d339`), pinned fixture (`8f95875`), and bounded offline codec/fake transport port (`016551c`) are complete and historical; the loopback transport Adapter/preflight above is the only current action.
+The former next actions to add the Adapter conformance harness (`8a5d339`), pinned fixture (`8f95875`), and bounded offline codec/fake transport port (`016551c`) are complete and historical; the loopback transport Adapter/preflight above is also historical. The active action is listed in the dedicated current section above.
 
 ## Offline local-premium comparison milestone
 
@@ -187,7 +203,7 @@ Implement an offline provider-neutral cognition-quality execution-evidence contr
 
 - Historical pre-repair handoff: this was a local documentation handoff only; no push or PR occurred, and no installer execution, Ollama server, model pull, inference, or benchmark had occurred at that checkpoint. It is superseded by the qwen3.5:4b smoke handoff above.
 
-## Risks and exactly one next action
+## Historical risks and superseded next action
 
 - The runtime cannot currently prove CUDA/GPU discovery despite independently verified hardware. The contained signed updater tree is ready but unexecuted; no model quality, latency, VRAM-fit, or Societies behavior evidence exists yet.
 - Historical next action, superseded: decide whether to free or authorize the exact additional C: cleanup needed to reach `>= 6,442,450,944` bytes free, or keep the local lane paused.
@@ -211,7 +227,7 @@ Implement an offline provider-neutral cognition-quality execution-evidence contr
 - Focused local commits are `98231bf` (authorized Ollama benchmark boundary) and `26c1d65` (current local model research strategy), with this documentation reconciliation remaining local. No push or PR occurred.
 - Historical pre-repair checkpoint: no model weights had been downloaded, no Ollama server had been started, and no live model/provider/network inference had occurred. No credentials, Godot/src gameplay, or authoritative runtime change occurred. Live quality remained unmeasured.
 
-## Risks and exactly one next action
+## Historical risks and superseded next action
 
 - Qwen3.8 does not fit the 8 GB local tactical envelope; any background or remote evaluation requires a separate hardware/network/credential decision. The exact local artifact digest, runtime behavior, latency, VRAM fit, and Societies quality remain unmeasured until a real run.
 - Historical next action, superseded: decide whether to authorize downloading the exact Ollama `qwen3.5:4b` artifact for one local-only benchmark under the frozen contract, or keep the lab offline.
@@ -235,7 +251,7 @@ Implement an offline provider-neutral cognition-quality execution-evidence contr
 - Focused local commits on `feature/snowglobe-agent-lab-owner-v1`: `67fa265` participant/world authority, `52bafb2` v3 persistence, and `03602af` persisted session. This documentation update is the remaining local commit. No push, PR, merge, provider/model call, download, network listener, GPU probe, Godot integration, or `src/societies/` change occurred.
 - The deterministic world validator and canonical event ledger remain the only state-change authority. Participant identity is an opaque lab token, not real authentication or authorization.
 
-## Risks and exactly one next action
+## Historical risks and superseded next action
 
 - V3 has no v2 migration; old v2 artifacts remain historical/read-only. Observed low-level I/O poisons the live writer, and process-crash atomicity is not claimed. The 8 GB local-model budgets remain an unmeasured contract.
 - Historical next action, superseded: decide whether to authorize one bounded live loopback benchmark under the frozen preflight contract; otherwise keep the lab offline.
@@ -259,7 +275,7 @@ Implement an offline provider-neutral cognition-quality execution-evidence contr
 - Code is split into focused local commits on `feature/snowglobe-agent-lab-owner-v1`; this handoff documentation is the remaining local commit. No push, PR, merge, live provider/model, download, network listener, Godot integration, participant command, or full-gameplay change was authorized or performed.
 - The deterministic world and validator remain the only state-change authority. Loopback benchmark evidence and live-model quality remain unverified because no model was invoked.
 
-## Risks and exactly one next action
+## Historical risks and superseded next action
 
 - V2 has no v1 migration by design; old lab artifacts must remain historical rather than being opened as v2. The observer requires exclusive mutation ownership. The 8 GB budgets are a contract, not measured hardware evidence.
 - Historical next action, superseded: decide whether to authorize one bounded live loopback benchmark against the frozen preflight contract; without that decision, keep the lab offline.
@@ -348,7 +364,7 @@ Implement an offline provider-neutral cognition-quality execution-evidence contr
 - A deterministic mock gate measures peak in-flight work per cell: sequential is 1 and controlled parallel is exactly the 4/8/16 cohort, capped at 16. Canonical report input rejects missing, duplicate, and reordered cells; it derives positive matched total logical latency from the immutable fixture, requires sequential critical path to equal it and parallel critical path to equal recorded per-round maxima, and validates recomputed throughput, dispatch coverage/turns, round shape, and related counters before serialization.
 - `snow_globe_parameter_experiment/v1` is file-I/O-free, provider-neutral, and uses `logical_not_wall_clock` semantics; the fixed scheduling v1 contract is unchanged. Focused Release build remains 0 warnings / 0 errors; focused lab tests pass 32/32.
 
-## Boundary and next action
+## Historical boundary and superseded next action
 
 - Research-only and offline: no provider/model/network/credential use, Godot integration, runtime change, merge, push, or promotion.
 - A later experiment may vary bounded cohort size or fixture latency while retaining the frozen-snapshot and ordered-commit contract.
@@ -365,10 +381,10 @@ Implement an offline provider-neutral cognition-quality execution-evidence contr
 - dotnet test tests/Societies.SnowGlobe.Tests/Societies.SnowGlobe.Tests.csproj --configuration Release --no-restore - passed, 4/4.
 - git diff --check - passed.
 
-## Risks and next action
+## Historical risks and superseded next action
 
 - This is research infrastructure only: no real model/provider, credential, network, Godot observer shell, or production-runtime integration was added.
-- Next bounded decision: compare a bounded batched-planning scheduler against the sequential baseline without relaxing deterministic validation and commit order.
+- Historical/superseded next bounded decision: compare a bounded batched-planning scheduler against the sequential baseline without relaxing deterministic validation and commit order.
 
 ## Outcome
 
@@ -446,7 +462,7 @@ The offline Cognition Quality Corpus v1 is implemented in the isolated Snow Glob
 - Goldens: response-set `0c9ce26bf5f078e3cdcb85a2115f59f9a3e8d191736e8ab8e87c0c113b67e80c`; payload `069aa258c0a6870aa6d8c60f14aed800cbb46923564d3b62f36a41ba3159a7fd`; final `61d0f7150b4b1cde5fba3f693e1a60eec6410deb83b6a371b62189f59a2115a4`.
 - Independent deep review: FINAL CODE GO after four adversarial identity/digest fixes covering split-brain publication, false serialized digest, provenance canonical mismatch, and undefined lane-99 regressions.
 
-### Delivery boundary and exactly one next action
+### Historical delivery boundary and superseded next action
 
 - Response association and identity are caller-attested. This envelope proves neither prompt delivery nor model execution and records no provider status, retry, or charge evidence. It makes no model-quality, general-intelligence, winner, or cost claim and grants no network, provider, credential, payment, journal, file, authoritative-world, or live-action authority. `src/societies/` is unchanged.
-- The previous recording-evidence action is historical/completed. The recording-session action is now also complete in `8256512`; current truth and the sole next action are recorded in the milestone handoff above.
+- The previous recording-evidence action is historical/completed. The recording-session action is now also complete in `8256512`; its historical next action is superseded by the dedicated current section above.

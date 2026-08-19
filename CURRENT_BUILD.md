@@ -25,6 +25,12 @@ That statement is future intent. Current implementation facts remain limited to 
 
 Current milestone truth: W2-02 through W2-05 are validated and merged. W2-06 is locally accepted at `478a4d9`. W3-01 merged through PR #122 at master `7b747af`. W3-02 merged through PR #123 at origin/master `d9e297f`. W3-03 implementation is committed locally at `a513636` on `feature/v3-w3-03-wetland-consequences`; docs/evidence publication and GitHub delivery remain pending. W3-04+ remain inactive; another explicit **Continue V3** decision is required before activation.
 
+### a713267 documentation handoff (authoritative local state)
+
+Commit `a713267` is locally committed and not pushed, in a PR, or deployed. It changes exactly six code/test files: `labs/Societies.SnowGlobe/OfflineOllamaRecordingCodec.cs` (codec/profile and internal port), `labs/Societies.SnowGlobe/OllamaLoopbackRecording.cs` (facade/session), `labs/Societies.SnowGlobe/OllamaLoopbackRecordingTransport.cs` (transport/verifier), `tests/Societies.SnowGlobe.Tests/OfflineOllamaRecordingCodecTests.cs`, `tests/Societies.SnowGlobe.Tests/OllamaLoopbackRecordingTests.cs`, and `tests/Societies.SnowGlobe.Tests/OllamaLoopbackRecordingTransportTests.cs`.
+
+Offline validation recorded for this committed slice is security-focused 90/90, full lab 529/529, BenchmarkCli 56/56, Release 0 warnings/errors; independent deep review focused 114/114, full 529/529, CLI 56/56, build 0/0, CODE GO, no P0-P2. No live Ollama/listener/socket/HTTP/process/file hash/model/GPU/provider/credential/payment action occurred. The implementation is not live compatibility, artifact-loaded, model-execution, quality, cost, world-authority, production-readiness, or commercial proof. See [the loopback contract](labs/Societies.SnowGlobe/OLLAMA_LOOPBACK_RECORDING.md) and [ADR 0013](docs/adr/0013-offline-tested-ollama-loopback-recording.md). These seven documentation files remain pending a local documentation commit; no tests are rerun for prose-only reconciliation.
+
 
 ## Current Prototype Scope
 
@@ -254,4 +260,4 @@ The pinned fixture action is complete and historical at `8f95875`. `OfflinePinne
 
 The former codec/fake-port action is historical and complete in `016551c`; see [the offline Ollama recording codec contract](labs/Societies.SnowGlobe/OFFLINE_OLLAMA_RECORDING_CODEC.md) and [ADR 0012](docs/adr/0012-offline-ollama-recording-codec.md). It remains offline evidence only: no current Ollama behavior, delivery, or model-execution claim is made.
 
-Exactly one current next action remains: implement and security-review an offline-tested loopback recording transport Adapter/preflight behind the existing internal port, but do not start Ollama, open sockets, send model requests, or claim delivery until a separate fresh live authorization.
+The former loopback transport implementation action is complete in local commit `a713267` and its documentation is pending. The one current next action is: implement and security-review an offline-only one-shot recording composition/CLI plus canonical evidence writer/validator around the committed adapter, without starting Ollama or sending requests; a later live recording remains separately freshly authorized.
