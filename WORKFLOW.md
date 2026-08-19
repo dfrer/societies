@@ -65,14 +65,14 @@ The prior dry-run-only gate is historical and superseded by the authorized attem
 
 ## Authorized live record-once attempt and offline correction
 
-- Local code commit `be7c691` added the record-once surface; a later authorized invocation consumed one fresh authority. Exactly one preflight invocation exited 0 with plan `a9e7a10b973c7114d01361cbbeaa5705bd782385664d5a5ef923e0df3b5df39d`; exactly one record-once invocation exited 5 after 7,881 ms with `composition_execution_indeterminate`; exactly one validate invocation exited 1 with `artifact_size_invalid`.
-- Exactly one HTTP 200 POST occurred in 7.0314715 s. No second POST/retry/fallback/alternate/download. The fixed artifact remains a preserved 0-byte tombstone (SHA-256 `e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855`); no valid artifact/evidence exists. Cleanup found no Ollama/llama-server, 11434/11435 rows, or attributable GPU process.
-- Post-response `RuntimeChanged` is the strongest source-consistent inference, not confirmed because the checkpoint was not retained. Offline correction `959bea5` accepts the exact RuntimeChanged receipt matrix and removes the consumed-TCP-row requirement at AfterExchange; earlier PID/start/path/hash/listener and exact tuple checks remain.
-- Validation after correction: SnowGlobe 588/588, RecordingCli 45/45, both Release builds 0 warnings/errors, deep CODE GO. Ignored tombstone/logs are preserved outside this documentation boundary.
+- Local code commit `be7c691` is historical command enablement. The second bounded attempt ran from HEAD `af0925d`; local code fix commit `98b3ec5` admits the offline-proven transport outcome. Exactly one preflight invocation exited 0 with plan `ed35264777d6b6022708db092abd24e771d520b4d6b530937a72867d774decba`; exactly one record-once invocation emitted `RECORDING_FAILED` / `composition_execution_indeterminate` (exit-5 class; numeric exit was lost by the outer null-output parser); exactly one validate invocation exited 1 `artifact_size_invalid`.
+- Exactly one `POST /api/generate` returned HTTP 200 in 41.625569 s; GET and other POST counts were zero, with no retry/alternate/fallback/download/update. The prior tombstone was recoverably moved in the same directory to `qwen3.5-4b-recording-execution-v1.failed-20260819-001.empty`; archive and new fixed artifact are each 0-byte, non-reparse, single-link files with SHA-256 `e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855`; no valid artifact/evidence exists.
+- The retained cause is only the strongest source-consistent `HttpResponseRejected` inference, unconfirmed because headers/checkpoint were not retained. Offline fix `98b3ec5` admits `HttpResponseRejected` / `ResponseReceived` / status 100..599 / null wrapper / mandatory terminal row; adjacent `ResponseBodyRejected` closes to status 200 / null wrapper / mandatory row; `WrapperRejected` remains status 200 / non-null wrapper. Cleanup found zero processes, ports, or GPU apps; request logging was false/raw marker 0; CUDA was exact RTX2070S with 34/34 offload.
+- Validation after fix: focused owner 92/92, focused correction+artifact 50/50, transport+session 52/52, full SnowGlobe 594/594, RecordingCli 47/47, lab+CLI builds 0 warnings/errors, deep review FINAL CODE GO. Both one-shot authorities are consumed; do not retry.
 
 ### Sole current next action
 
-No retry now. The next action is a separately reviewed decision on tombstone disposition, followed by fresh one-shot authority only if the user later wants a new live attempt.
+No retry now. The next action is a bounded offline diagnostic/observability decision before any separately authorized future attempt.
 
 See [the conformance contract](labs/Societies.SnowGlobe/COGNITION_QUALITY_RECORDING_ADAPTER_CONFORMANCE.md) and [ADR 0010](docs/adr/0010-offline-cognition-quality-recording-adapter-conformance.md).
 
