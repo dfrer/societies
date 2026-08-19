@@ -22,6 +22,8 @@ public sealed class CognitionQualityRecordedResponseFixture
     /// <summary>A detached copy is returned so the fixture cannot expose its retained backing array.</summary>
     public ReadOnlyMemory<byte> ResponseUtf8 => _responseUtf8.ToArray();
     internal byte[] CopyResponseUtf8() => _responseUtf8.ToArray();
+    /// <summary>Clears a temporary module-owned fixture once its detached run has been produced.</summary>
+    internal void ClearResponseUtf8() => CryptographicOperations.ZeroMemory(_responseUtf8);
 }
 
 /// <summary>Detached, raw-response-free binding and parse result for one frozen scenario.</summary>
