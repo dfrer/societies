@@ -20,7 +20,26 @@ internal interface ICognitionQualityRecordingAdapterConformanceFixture : IDispos
     int CallCount { get; }
     IReadOnlyList<CognitionQualityRecordingAdapterRequest> SnapshotRequests();
     void DisposeAdapter();
+    CognitionQualityExecutionProvenance CreateExecutionProvenance(string promptRevision) =>
+        CognitionQualityRecordingAdapterConformanceFixtureProvenance.CreateGeneric(Adapter, promptRevision);
     ICognitionQualityRecordingAdapterMidflightCancellationFixture? MidflightCancellationFixture { get; }
+}
+
+/// <summary>Test-only default provenance for legacy fixed fixtures; candidate fixtures may replace it.</summary>
+internal static class CognitionQualityRecordingAdapterConformanceFixtureProvenance
+{
+    private const string Revision = "sha256-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
+    private const string PolicyDigest = "abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789";
+
+    internal static CognitionQualityExecutionProvenance CreateGeneric(
+        CognitionQualityRecordingAdapter adapter,
+        string promptRevision) => CognitionQualityExecutionProvenance.ForLocal(
+            "fixture-model-v1",
+            Revision,
+            PolicyDigest,
+            promptRevision,
+            CognitionQualityRecordedResponseRunnerModule.ProposalSchemaVersion,
+            adapter.AdapterIdentity);
 }
 
 /// <summary>Optional real cancellation exercise seam for a future asynchronous offline fixture.</summary>
@@ -182,7 +201,7 @@ internal static class CognitionQualityRecordingAdapterConformanceHarness
                 return;
             }
             CognitionQualityPromptEnvelopePublication publication = Publication();
-            CognitionQualityExecutionProvenance provenance = Provenance(fixture.Adapter);
+            CognitionQualityExecutionProvenance provenance = Provenance(fixture);
             CognitionQualityRecordingSessionModule module = new(fixture.Adapter, new CognitionQualityRecordingAdapterConformanceClock(9000));
             CognitionQualityRecordingSessionResult result = await fixture.MidflightCancellationFixture.RecordWithMidflightCancellationAsync(module, publication, provenance, Authorization(publication, provenance, fixture.Adapter, "conformance-midflight-v1"));
             if (result.OutcomeCode != CognitionQualityRecordingSessionOutcomeCode.Cancelled || result.Evidence is not null || result.CompletedSlotCount != 0) throw new InvalidOperationException();
@@ -210,7 +229,7 @@ internal static class CognitionQualityRecordingAdapterConformanceHarness
     {
         using ICognitionQualityRecordingAdapterConformanceFixture fixture = Create(factory, binding, out ReadOnlyMemory<byte>[] callerResponses);
         CognitionQualityPromptEnvelopePublication publication = Publication();
-        CognitionQualityExecutionProvenance provenance = Provenance(fixture.Adapter);
+        CognitionQualityExecutionProvenance provenance = Provenance(fixture);
         CognitionQualityRecordingSessionModule module = new(fixture.Adapter, new CognitionQualityRecordingAdapterConformanceClock(1000));
         CognitionQualityRecordingSessionResult result = await module.RecordOnceAsync(module.Authorize(publication, provenance, Authorization(publication, provenance, fixture.Adapter, "conformance-complete-v1")));
         CognitionQualityRecordingEvidence direct = CognitionQualityRecordingEvidenceModule.Create(publication, provenance, CanonicalResponses());
@@ -229,7 +248,7 @@ internal static class CognitionQualityRecordingAdapterConformanceHarness
     {
         using ICognitionQualityRecordingAdapterConformanceFixture fixture = Create(factory, binding, out _);
         CognitionQualityPromptEnvelopePublication publication = Publication();
-        CognitionQualityExecutionProvenance provenance = Provenance(fixture.Adapter);
+        CognitionQualityExecutionProvenance provenance = Provenance(fixture);
         CognitionQualityRecordingSessionModule module = new(fixture.Adapter, new CognitionQualityRecordingAdapterConformanceClock(2000));
         CognitionQualityRecordingSessionCapability capability = module.Authorize(publication, provenance, Authorization(publication, provenance, fixture.Adapter, "conformance-sequence-v1"));
         CognitionQualityRecordingSessionResult complete = await module.RecordOnceAsync(capability);
@@ -263,7 +282,7 @@ internal static class CognitionQualityRecordingAdapterConformanceHarness
     {
         using ICognitionQualityRecordingAdapterConformanceFixture fixture = Create(factory, binding, out _);
         CognitionQualityPromptEnvelopePublication publication = Publication();
-        CognitionQualityExecutionProvenance provenance = Provenance(fixture.Adapter);
+        CognitionQualityExecutionProvenance provenance = Provenance(fixture);
         CognitionQualityRecordingSessionModule module = new(fixture.Adapter, new CognitionQualityRecordingAdapterConformanceClock(3000));
         CognitionQualityRecordingSessionAuthorization authorization = Authorization(publication, provenance, fixture.Adapter, "conformance-nonce-v1");
         _ = module.Authorize(publication, provenance, authorization);
@@ -283,7 +302,7 @@ internal static class CognitionQualityRecordingAdapterConformanceHarness
     {
         using ICognitionQualityRecordingAdapterConformanceFixture fixture = Create(factory, binding, out _);
         CognitionQualityPromptEnvelopePublication publication = Publication();
-        CognitionQualityExecutionProvenance provenance = Provenance(fixture.Adapter);
+        CognitionQualityExecutionProvenance provenance = Provenance(fixture);
         CognitionQualityRecordingSessionModule module = new(fixture.Adapter, new CognitionQualityRecordingAdapterConformanceClock(4000));
         CognitionQualityRecordingSessionCapability capability = module.Authorize(publication, provenance, Authorization(publication, provenance, fixture.Adapter, "conformance-cancel-v1"));
         using CancellationTokenSource cancellation = new();
@@ -299,7 +318,7 @@ internal static class CognitionQualityRecordingAdapterConformanceHarness
     {
         using ICognitionQualityRecordingAdapterConformanceFixture fixture = Create(factory, binding, out _);
         CognitionQualityPromptEnvelopePublication publication = Publication();
-        CognitionQualityExecutionProvenance provenance = Provenance(fixture.Adapter);
+        CognitionQualityExecutionProvenance provenance = Provenance(fixture);
         CognitionQualityRecordingAdapterConformanceClock clock = new(5000);
         CognitionQualityRecordingSessionModule module = new(fixture.Adapter, clock);
         CognitionQualityRecordingSessionCapability capability = module.Authorize(publication, provenance, Authorization(publication, provenance, fixture.Adapter, "conformance-expiry-v1", 10));
@@ -315,7 +334,7 @@ internal static class CognitionQualityRecordingAdapterConformanceHarness
     {
         using ICognitionQualityRecordingAdapterConformanceFixture fixture = Create(factory, binding, out _);
         CognitionQualityPromptEnvelopePublication publication = Publication();
-        CognitionQualityExecutionProvenance provenance = Provenance(fixture.Adapter);
+        CognitionQualityExecutionProvenance provenance = Provenance(fixture);
         CognitionQualityRecordingSessionModule module = new(fixture.Adapter, new CognitionQualityRecordingAdapterConformanceClock(6000));
         CognitionQualityRecordingSessionCapability first = module.Authorize(publication, provenance, Authorization(publication, provenance, fixture.Adapter, "conformance-distinct-a-v1"));
         CognitionQualityRecordingSessionCapability second = module.Authorize(publication, provenance, Authorization(publication, provenance, fixture.Adapter, "conformance-distinct-b-v1"));
@@ -346,7 +365,7 @@ internal static class CognitionQualityRecordingAdapterConformanceHarness
         for (int index = 0; index < mutable.Length; index++) mutable[index][0] ^= 0x5a;
         byte[][] changedCaller = mutable.Select(value => value.ToArray()).ToArray();
         CognitionQualityPromptEnvelopePublication publication = Publication();
-        CognitionQualityExecutionProvenance provenance = Provenance(fixture.Adapter);
+        CognitionQualityExecutionProvenance provenance = Provenance(fixture);
         CognitionQualityRecordingSessionModule module = new(fixture.Adapter, new CognitionQualityRecordingAdapterConformanceClock(7000));
         CognitionQualityRecordingSessionResult result = await module.RecordOnceAsync(module.Authorize(publication, provenance, Authorization(publication, provenance, fixture.Adapter, "conformance-detach-v1")));
         Assert.Equal(CognitionQualityRecordingSessionOutcomeCode.Complete, result.OutcomeCode);
@@ -358,7 +377,7 @@ internal static class CognitionQualityRecordingAdapterConformanceHarness
     {
         using ICognitionQualityRecordingAdapterConformanceFixture fixture = Create(factory, binding, out _);
         CognitionQualityPromptEnvelopePublication publication = Publication();
-        CognitionQualityExecutionProvenance provenance = Provenance(fixture.Adapter);
+        CognitionQualityExecutionProvenance provenance = Provenance(fixture);
         CognitionQualityRecordingSessionModule module = new(fixture.Adapter, new CognitionQualityRecordingAdapterConformanceClock(8000));
         fixture.DisposeAdapter();
         CognitionQualityRecordingSessionResult result = await module.RecordOnceAsync(module.Authorize(publication, provenance, Authorization(publication, provenance, fixture.Adapter, "conformance-dispose-v1")));
@@ -375,7 +394,7 @@ internal static class CognitionQualityRecordingAdapterConformanceHarness
             using ICognitionQualityRecordingAdapterConformanceFixture fixture = factory.Create(CanonicalResponses());
             if (fixture is null || !SnowGlobeInferenceIdentity.IsCanonical(fixture.Adapter.AdapterIdentity) || !IsDigest(fixture.Adapter.AdapterContractDigestSha256)) return null;
             CognitionQualityPromptEnvelopePublication publication = Publication();
-            CognitionQualityExecutionProvenance provenance = Provenance(fixture.Adapter);
+            CognitionQualityExecutionProvenance provenance = Provenance(fixture);
             CognitionQualityRecordingEvidence expected = CognitionQualityRecordingEvidenceModule.Create(publication, provenance, CanonicalResponses());
             return new ConformanceBinding(DigestIdentity(fixture.Adapter.AdapterIdentity), fixture.Adapter.AdapterContractDigestSha256, expected.CanonicalDigestSha256);
         }
@@ -406,7 +425,16 @@ internal static class CognitionQualityRecordingAdapterConformanceHarness
     }
 
     private static CognitionQualityPromptEnvelopePublication Publication() => CognitionQualityPromptEnvelopeBuilderModule.Create("prompt-v1");
-    private static CognitionQualityExecutionProvenance Provenance(CognitionQualityRecordingAdapter adapter) => CognitionQualityExecutionProvenance.ForLocal("fixture-model-v1", Revision, PolicyDigest, "prompt-v1", CognitionQualityRecordedResponseRunnerModule.ProposalSchemaVersion, adapter.AdapterIdentity);
+    private static CognitionQualityExecutionProvenance Provenance(ICognitionQualityRecordingAdapterConformanceFixture fixture)
+    {
+        CognitionQualityExecutionProvenance provenance = fixture.CreateExecutionProvenance("prompt-v1");
+        if (provenance.Lane != CognitionLane.Local
+            || !string.Equals(provenance.PromptRevision, "prompt-v1", StringComparison.Ordinal)
+            || !string.Equals(provenance.ProposalSchemaVersion, CognitionQualityRecordedResponseRunnerModule.ProposalSchemaVersion, StringComparison.Ordinal)
+            || !string.Equals(provenance.LocalAdapterIdentity, fixture.Adapter.AdapterIdentity, StringComparison.Ordinal))
+            throw new InvalidOperationException();
+        return provenance;
+    }
     private static CognitionQualityRecordingSessionAuthorization Authorization(CognitionQualityPromptEnvelopePublication publication, CognitionQualityExecutionProvenance provenance, CognitionQualityRecordingAdapter adapter, string nonce, int lifetimeMilliseconds = 500) => new(publication.CanonicalDigestSha256, publication.PromptSetDigestSha256, provenance.ProvenanceDigestSha256, adapter.AdapterIdentity, adapter.AdapterContractDigestSha256, nonce, lifetimeMilliseconds, 5000);
     private static ReadOnlyMemory<byte>[] CanonicalResponses() => Enumerable.Range(1, 12).Select(index => (ReadOnlyMemory<byte>)Encoding.UTF8.GetBytes($"{{\"agent_id\":\"agent-00\",\"action\":\"{Action(index)}\",\"quantity\":{Quantity(index)}}}")).ToArray();
     private static string Action(int index) => index switch { 1 or 7 => "GatherWood", 2 or 3 => "GatherStone", 4 or 5 or 6 => "BuildShelter", 8 or 9 => "BuildStorage", _ => "Idle" };
