@@ -23,14 +23,22 @@ internal static class OfflineOllamaRecordingCodecModule
     private static readonly byte[] RequestPrefix = "{\"model\":\"qwen3.5:4b\",\"prompt\":"u8.ToArray();
     private static readonly byte[] RequestSuffix = Encoding.UTF8.GetBytes(",\"stream\":false,\"think\":false,\"raw\":false,\"format\":{\"type\":\"object\",\"additionalProperties\":false,\"properties\":{\"agent_id\":{\"type\":\"string\",\"enum\":[\"agent-00\"]},\"action\":{\"type\":\"string\",\"enum\":[" + string.Join(',', Enum.GetNames<SnowGlobeActionKind>().Select(static value => "\"" + value + "\"")) + "]},\"quantity\":{\"type\":\"integer\",\"minimum\":0,\"maximum\":64}},\"required\":[\"agent_id\",\"action\",\"quantity\"]},\"options\":{\"num_ctx\":4096,\"num_predict\":96,\"seed\":0,\"temperature\":0}}" );
 
-    internal static OfflineOllamaRecordingTransportRequest Encode(CognitionQualityRecordingAdapterRequest request)
+    internal static OfflineOllamaRecordingCodecProfile FixtureProfile { get; } = new(
+        "snow-globe-offline-ollama-recording-profile/v1",
+        OfflinePinnedOllamaRecordingFixture.RegistryAdapterIdentity,
+        CognitionQualityRecordingSessionCanonical.Digest(OfflinePinnedOllamaRecordingFixture.ContractDescriptor),
+        Model);
+
+    internal static OfflineOllamaRecordingTransportRequest Encode(CognitionQualityRecordingAdapterRequest request) => Encode(request, FixtureProfile);
+
+    internal static OfflineOllamaRecordingTransportRequest Encode(CognitionQualityRecordingAdapterRequest request, OfflineOllamaRecordingCodecProfile profile)
     {
-        ArgumentNullException.ThrowIfNull(request);
+        ArgumentNullException.ThrowIfNull(request); ArgumentNullException.ThrowIfNull(profile);
         ReadOnlyMemory<byte> prompt = request.PromptUtf8;
         byte[] scratch = new byte[MaximumRequestBytes];
         try
         {
-            ValidateRequest(request, prompt.Span);
+            ValidateRequest(request, prompt.Span, profile);
             int written = 0; Append(scratch, ref written, RequestPrefix); AppendEscapedUtf8(scratch, ref written, prompt.Span); Append(scratch, ref written, RequestSuffix);
             byte[] body = scratch.AsSpan(0, written).ToArray();
             if (body.Length is < 1 or > MaximumRequestBytes) { CryptographicOperations.ZeroMemory(body); throw new InvalidOperationException("offline_ollama_request_size_invalid"); }
@@ -39,15 +47,17 @@ internal static class OfflineOllamaRecordingCodecModule
         finally { CryptographicOperations.ZeroMemory(scratch); if (MemoryMarshal.TryGetArray(prompt, out ArraySegment<byte> segment) && segment.Array is not null) CryptographicOperations.ZeroMemory(segment.AsSpan()); }
     }
 
-    internal static CognitionQualityRecordingResponseBuffer Decode(OfflineOllamaRecordingTransportResponse transportResponse, CognitionQualityRecordingAdapterRequest request)
+    internal static CognitionQualityRecordingResponseBuffer Decode(OfflineOllamaRecordingTransportResponse transportResponse, CognitionQualityRecordingAdapterRequest request) => Decode(transportResponse, request, FixtureProfile);
+
+    internal static CognitionQualityRecordingResponseBuffer Decode(OfflineOllamaRecordingTransportResponse transportResponse, CognitionQualityRecordingAdapterRequest request, OfflineOllamaRecordingCodecProfile profile)
     {
-        ArgumentNullException.ThrowIfNull(transportResponse); ArgumentNullException.ThrowIfNull(request);
+        ArgumentNullException.ThrowIfNull(transportResponse); ArgumentNullException.ThrowIfNull(request); ArgumentNullException.ThrowIfNull(profile);
         try
         {
             transportResponse.ValidateBinding(request);
             if (transportResponse.StatusCode != 200 || transportResponse.IsRedirect || !string.Equals(transportResponse.MediaType, "application/json", StringComparison.Ordinal) || !string.IsNullOrEmpty(transportResponse.ContentEncoding) || transportResponse.DeclaredBodyLength != transportResponse.BodyUtf8.Length || transportResponse.BodyUtf8.Length is < 1 or > MaximumWrapperBytes) throw new InvalidOperationException("offline_ollama_wrapper_envelope_invalid");
             byte[] wrapper = transportResponse.TakeBody(); byte[]? extracted = null;
-            try { ValidateStrictUtf8(wrapper); extracted = ExtractResponse(wrapper, request.RemainingSessionMilliseconds); CognitionQualityRecordingResponseBuffer result = new(extracted); extracted = null; return result; }
+            try { ValidateStrictUtf8(wrapper); extracted = ExtractResponse(wrapper, request.RemainingSessionMilliseconds, profile.Model); CognitionQualityRecordingResponseBuffer result = new(extracted); extracted = null; return result; }
             finally { CryptographicOperations.ZeroMemory(wrapper); if (extracted is not null) CryptographicOperations.ZeroMemory(extracted); }
         }
         finally { transportResponse.Dispose(); }
@@ -56,17 +66,17 @@ internal static class OfflineOllamaRecordingCodecModule
     internal static void ValidateFixtureWrapper(byte[] wrapper)
     {
         if (wrapper.Length is < 1 or > MaximumWrapperBytes) throw new ArgumentOutOfRangeException(nameof(wrapper));
-        try { byte[] extracted = ExtractResponse(wrapper, 10 * 60 * 1000); CryptographicOperations.ZeroMemory(extracted); }
+        try { byte[] extracted = ExtractResponse(wrapper, 10 * 60 * 1000, FixtureProfile.Model); CryptographicOperations.ZeroMemory(extracted); }
         catch (Exception exception) when (exception is InvalidOperationException or JsonException or DecoderFallbackException) { throw new ArgumentException("A full Ollama generate wrapper is required.", nameof(wrapper), exception); }
     }
 
-    private static void ValidateRequest(CognitionQualityRecordingAdapterRequest request, ReadOnlySpan<byte> prompt)
+    private static void ValidateRequest(CognitionQualityRecordingAdapterRequest request, ReadOnlySpan<byte> prompt, OfflineOllamaRecordingCodecProfile profile)
     {
-        if (request.AttemptNumber != 1 || request.SlotOrdinal is < 1 or > CognitionQualityCorpusV1.ScenarioCount || !string.Equals(request.AdapterIdentity, OfflinePinnedOllamaRecordingFixture.RegistryAdapterIdentity, StringComparison.Ordinal) || !string.Equals(request.AdapterContractDigestSha256, CognitionQualityRecordingSessionCanonical.Digest(OfflinePinnedOllamaRecordingFixture.ContractDescriptor), StringComparison.Ordinal) || request.PromptByteCount != prompt.Length || prompt.Length is < 1 or > 2048 || !CognitionQualityRecordingSessionCanonical.IsDigest(request.CapabilityDigestSha256) || !CognitionQualityRecordingSessionCanonical.IsDigest(request.ProvenanceDigestSha256) || !CognitionQualityRecordingSessionCanonical.IsDigest(request.PromptDigestSha256) || !string.Equals(Digest(prompt), request.PromptDigestSha256, StringComparison.Ordinal) || request.RemainingSessionMilliseconds <= 0) throw new InvalidOperationException("offline_ollama_request_invalid");
+        if (request.AttemptNumber != 1 || request.SlotOrdinal is < 1 or > CognitionQualityCorpusV1.ScenarioCount || !string.Equals(request.AdapterIdentity, profile.AdapterIdentity, StringComparison.Ordinal) || !string.Equals(request.AdapterContractDigestSha256, profile.AdapterContractDigestSha256, StringComparison.Ordinal) || request.PromptByteCount != prompt.Length || prompt.Length is < 1 or > 2048 || !CognitionQualityRecordingSessionCanonical.IsDigest(request.CapabilityDigestSha256) || !CognitionQualityRecordingSessionCanonical.IsDigest(request.ProvenanceDigestSha256) || !CognitionQualityRecordingSessionCanonical.IsDigest(request.PromptDigestSha256) || !string.Equals(Digest(prompt), request.PromptDigestSha256, StringComparison.Ordinal) || request.RemainingSessionMilliseconds <= 0) throw new InvalidOperationException("offline_ollama_request_invalid");
         ValidateStrictUtf8(prompt);
     }
 
-    private static byte[] ExtractResponse(byte[] wrapper, int remainingSessionMilliseconds)
+    private static byte[] ExtractResponse(byte[] wrapper, int remainingSessionMilliseconds, string modelIdentity)
     {
         Utf8JsonReader reader = new(wrapper, new JsonReaderOptions { AllowTrailingCommas = false, CommentHandling = JsonCommentHandling.Disallow, MaxDepth = 4 });
         if (!reader.Read() || reader.TokenType != JsonTokenType.StartObject) throw new InvalidOperationException("offline_ollama_wrapper_json_invalid");
@@ -80,7 +90,7 @@ internal static class OfflineOllamaRecordingCodecModule
                 string name = reader.GetString()!; if (!seen.Add(name) || !reader.Read()) throw new InvalidOperationException("offline_ollama_wrapper_shape_invalid");
                 switch (name)
                 {
-                    case "model": RequireString(ref reader, Model); model = true; break;
+                    case "model": RequireString(ref reader, modelIdentity); model = true; break;
                     case "created_at": ValidateTimestamp(ref reader); created = true; break;
                     case "response": if (reader.TokenType != JsonTokenType.String || extracted is not null) throw new InvalidOperationException("offline_ollama_wrapper_shape_invalid"); extracted = CopyStringUtf8(ref reader); if (extracted.Length is < 1 or > MaximumExtractedResponseBytes) throw new InvalidOperationException("offline_ollama_response_size_invalid"); response = true; break;
                     case "done": if (reader.TokenType != JsonTokenType.True) throw new InvalidOperationException("offline_ollama_wrapper_shape_invalid"); done = true; break;
@@ -115,14 +125,17 @@ internal static class OfflineOllamaRecordingCodecModule
     private static char Hex(int value) => (char)(value < 10 ? '0' + value : 'A' + value - 10);
 }
 
-internal interface IOfflineOllamaRecordingTransportPort { ValueTask<OfflineOllamaRecordingTransportResponse> ExchangeOnceAsync(OfflineOllamaRecordingTransportRequest request, CancellationToken cancellationToken); }
+internal sealed record OfflineOllamaRecordingCodecProfile(string Identity, string AdapterIdentity, string AdapterContractDigestSha256, string Model);
+
+internal interface IOfflineOllamaRecordingTransportPort : IDisposable, IAsyncDisposable { ValueTask<OfflineOllamaRecordingTransportResponse> ExchangeOnceAsync(OfflineOllamaRecordingTransportRequest request, CancellationToken cancellationToken); }
 
 internal sealed class OfflineOllamaRecordingTransportRequest : IDisposable
 {
     private byte[] _bodyUtf8;
-    internal OfflineOllamaRecordingTransportRequest(CognitionQualityRecordingAdapterRequest request, byte[] bodyUtf8) { CapabilityDigestSha256 = request.CapabilityDigestSha256; RequestDigestSha256 = request.RequestDigestSha256; AdapterIdentity = request.AdapterIdentity; AdapterContractDigestSha256 = request.AdapterContractDigestSha256; ProvenanceDigestSha256 = request.ProvenanceDigestSha256; SlotOrdinal = request.SlotOrdinal; ScenarioId = request.ScenarioId; ObservationDigestSha256 = request.ObservationDigestSha256; PromptByteCount = request.PromptByteCount; PromptDigestSha256 = request.PromptDigestSha256; RemainingSessionMilliseconds = request.RemainingSessionMilliseconds; _bodyUtf8 = bodyUtf8; }
+    internal OfflineOllamaRecordingTransportRequest(CognitionQualityRecordingAdapterRequest request, byte[] bodyUtf8) { CapabilityDigestSha256 = request.CapabilityDigestSha256; RequestDigestSha256 = request.RequestDigestSha256; AdapterIdentity = request.AdapterIdentity; AdapterContractDigestSha256 = request.AdapterContractDigestSha256; ProvenanceDigestSha256 = request.ProvenanceDigestSha256; SlotOrdinal = request.SlotOrdinal; ScenarioId = request.ScenarioId; ObservationDigestSha256 = request.ObservationDigestSha256; PromptByteCount = request.PromptByteCount; PromptDigestSha256 = request.PromptDigestSha256; RemainingSessionMilliseconds = request.RemainingSessionMilliseconds; BodyDigestSha256 = CognitionQualityHash.Sha256(bodyUtf8); _bodyUtf8 = bodyUtf8; }
     internal string Method => "POST"; internal string EndpointIdentity => OfflineOllamaRecordingCodecModule.CanonicalEndpointIdentity; internal string Path => OfflineOllamaRecordingCodecModule.GeneratePath;
-    internal string CapabilityDigestSha256 { get; } internal string RequestDigestSha256 { get; } internal string AdapterIdentity { get; } internal string AdapterContractDigestSha256 { get; } internal string ProvenanceDigestSha256 { get; } internal int SlotOrdinal { get; } internal string ScenarioId { get; } internal string ObservationDigestSha256 { get; } internal int PromptByteCount { get; } internal string PromptDigestSha256 { get; } internal int RemainingSessionMilliseconds { get; } internal ReadOnlyMemory<byte> BodyUtf8 => _bodyUtf8;
+    internal string CapabilityDigestSha256 { get; } internal string RequestDigestSha256 { get; } internal string BodyDigestSha256 { get; } internal string AdapterIdentity { get; } internal string AdapterContractDigestSha256 { get; } internal string ProvenanceDigestSha256 { get; } internal int SlotOrdinal { get; } internal string ScenarioId { get; } internal string ObservationDigestSha256 { get; } internal int PromptByteCount { get; } internal string PromptDigestSha256 { get; } internal int RemainingSessionMilliseconds { get; } internal ReadOnlyMemory<byte> BodyUtf8 => _bodyUtf8;
+    internal byte[] TakeBody() { byte[] body = _bodyUtf8; _bodyUtf8 = Array.Empty<byte>(); return body; }
     public void Dispose() { if (_bodyUtf8.Length != 0) CryptographicOperations.ZeroMemory(_bodyUtf8); _bodyUtf8 = Array.Empty<byte>(); }
 }
 
@@ -152,5 +165,6 @@ internal sealed class InMemoryOfflineOllamaRecordingTransportAdapter : IOfflineO
         finally { request.Dispose(); if (wrapper is not null) CryptographicOperations.ZeroMemory(wrapper); }
     }
     public void Dispose() { TaskCompletionSource<bool>? held; lock (_gate) { if (_disposed) return; _disposed = true; ZeroWrappers(); _nextByCapability.Clear(); held = _held; _held = null; } _disposeCancellation.Cancel(); held?.TrySetCanceled(); }
+    public ValueTask DisposeAsync() { Dispose(); return ValueTask.CompletedTask; }
     private void ZeroWrappers() { foreach (byte[]? wrapper in _wrappers) if (wrapper is not null) CryptographicOperations.ZeroMemory(wrapper); }
 }

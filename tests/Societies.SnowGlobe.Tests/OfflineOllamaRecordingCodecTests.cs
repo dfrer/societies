@@ -10,6 +10,20 @@ namespace Societies.SnowGlobe.Tests;
 public sealed class OfflineOllamaRecordingCodecTests
 {
     [Fact]
+    public void RegisteredLiveProfile_PreservesCanonicalBodyBytesButCannotImpersonateFixtureV2()
+    {
+        using CognitionQualityRecordingAdapterRequest fixtureRequest = Request(1, "same-prompt");
+        using CognitionQualityRecordingAdapterRequest liveRequest = Request(1, "same-prompt", adapterIdentity: SnowGlobePinnedOllamaRecordingModule.AdapterIdentity, adapterContractDigest: SnowGlobePinnedOllamaRecordingModule.AdapterContractDigestSha256);
+        using OfflineOllamaRecordingTransportRequest fixtureEncoded = OfflineOllamaRecordingCodecModule.Encode(fixtureRequest);
+        using OfflineOllamaRecordingTransportRequest liveEncoded = OfflineOllamaRecordingCodecModule.Encode(liveRequest, SnowGlobePinnedOllamaRecordingModule.LiveCodecProfile);
+        Assert.Equal(fixtureEncoded.BodyUtf8.ToArray(), liveEncoded.BodyUtf8.ToArray());
+        Assert.NotEqual(fixtureEncoded.AdapterIdentity, liveEncoded.AdapterIdentity);
+        Assert.NotEqual(fixtureEncoded.AdapterContractDigestSha256, liveEncoded.AdapterContractDigestSha256);
+        Assert.Throws<InvalidOperationException>(() => OfflineOllamaRecordingCodecModule.Encode(fixtureRequest, SnowGlobePinnedOllamaRecordingModule.LiveCodecProfile));
+        Assert.Throws<InvalidOperationException>(() => OfflineOllamaRecordingCodecModule.Encode(liveRequest));
+    }
+
+    [Fact]
     public void Encode_IsCanonicalBoundAndStableForAllTwelveSlots()
     {
         string[] digests = Enumerable.Range(1, 12).Select(index =>
