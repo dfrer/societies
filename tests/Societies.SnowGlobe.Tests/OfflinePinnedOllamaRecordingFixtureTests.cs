@@ -12,10 +12,10 @@ public sealed class OfflinePinnedOllamaRecordingFixtureTests
     [Fact]
     public void PinnedMetadataAndExecutionProvenance_AreExactAndMetadataOnly()
     {
-        using OfflinePinnedOllamaRecordingFixture fixture = new(Responses());
+        using OfflinePinnedOllamaRecordingFixture fixture = new(Wrappers());
         OfflinePinnedOllamaRecordingFixtureProvenance pin = fixture.PinnedProvenance;
 
-        Assert.Equal("offline-pinned-ollama-qwen35-4b-recording-fixture-v1", fixture.AdapterIdentity);
+        Assert.Equal("offline-pinned-ollama-qwen35-4b-recording-fixture-v2", fixture.AdapterIdentity);
         Assert.Equal("qwen3.5-4b", pin.NormalizedModelIdentity);
         Assert.Equal("qwen3.5:4b", pin.RuntimeModelReference);
         Assert.Equal("2a654d98e6fba55d452b7043684e9b57a947e393bbffa62485a7aac05ee4eefd", pin.ArtifactDigestSha256);
@@ -86,13 +86,44 @@ public sealed class OfflinePinnedOllamaRecordingFixtureTests
     [Fact]
     public void Constructor_CapturesCountAndEachResponseExactlyOnceBeforeCopying()
     {
-        HostileReadOnceResponseList responses = new(Responses());
+        HostileReadOnceResponseList responses = new(Wrappers());
         using OfflinePinnedOllamaRecordingFixture fixture = new(responses);
 
         Assert.Equal(1, responses.CountReadCount);
         Assert.Equal(Enumerable.Repeat(1, 12), responses.IndexReadCounts);
-        byte[][] owned = (byte[][])typeof(OfflinePinnedOllamaRecordingFixture).GetField("_responses", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(fixture)!;
+        byte[][] owned = OwnedWrappers(fixture);
         Assert.Equal(12, owned.Length);
+    }
+
+    [Theory]
+    [MemberData(nameof(ConstructorRejectedWrapperCases))]
+    public void Constructor_RejectsHostileWrappersWithoutMutatingCallerBuffers(byte[] rejectedWrapper)
+    {
+        ReadOnlyMemory<byte>[] caller = Wrappers();
+        caller[0] = rejectedWrapper;
+        byte[][] callerSnapshot = caller.Select(memory => memory.ToArray()).ToArray();
+
+        Assert.ThrowsAny<ArgumentException>(() => new OfflinePinnedOllamaRecordingFixture(caller));
+
+        Assert.Equal(callerSnapshot.Length, caller.Length);
+        for (int index = 0; index < caller.Length; index++) Assert.Equal(callerSnapshot[index], caller[index].ToArray());
+    }
+
+    [Fact]
+    public void Constructor_CopiesMutableCallerBuffersBeforeTheyCanChange()
+    {
+        ReadOnlyMemory<byte>[] caller = Wrappers();
+        using OfflinePinnedOllamaRecordingFixture fixture = new(caller);
+        byte[][] expectedOwned = OwnedWrappers(fixture).Select(wrapper => wrapper.ToArray()).ToArray();
+        foreach (ReadOnlyMemory<byte> memory in caller)
+        {
+            Assert.True(MemoryMarshal.TryGetArray(memory, out ArraySegment<byte> segment));
+            CryptographicOperations.ZeroMemory(segment.AsSpan());
+        }
+
+        byte[][] owned = OwnedWrappers(fixture);
+        Assert.Equal(expectedOwned.Length, owned.Length);
+        for (int index = 0; index < owned.Length; index++) Assert.Equal(expectedOwned[index], owned[index]);
     }
 
     [Fact]
@@ -106,7 +137,7 @@ public sealed class OfflinePinnedOllamaRecordingFixtureTests
         Assert.True(report.IsConformant);
         Assert.Equal("bound", report.BindingStatus);
 
-        using OfflinePinnedOllamaRecordingFixture fixture = new(Responses());
+        using OfflinePinnedOllamaRecordingFixture fixture = new(Wrappers());
         CognitionQualityPromptEnvelopePublication publication = CognitionQualityPromptEnvelopeBuilderModule.Create("prompt-v1");
         CognitionQualityRecordingEvidence expected = CognitionQualityRecordingEvidenceModule.Create(publication, fixture.CreatePinnedExecutionProvenance("prompt-v1"), Responses());
         Assert.Equal(expected.CanonicalDigestSha256, report.ExpectedEvidenceCanonicalDigestSha256);
@@ -118,7 +149,7 @@ public sealed class OfflinePinnedOllamaRecordingFixtureTests
     [Fact]
     public async Task Session_UsesTwelveDetachedBuffersOnceAndClearsOwnedStateOnDispose()
     {
-        ReadOnlyMemory<byte>[] callerResponses = Responses();
+        ReadOnlyMemory<byte>[] callerResponses = Wrappers();
         byte[][] callerArrays = callerResponses.Select(memory =>
         {
             Assert.True(MemoryMarshal.TryGetArray(memory, out ArraySegment<byte> segment));
@@ -159,7 +190,7 @@ public sealed class OfflinePinnedOllamaRecordingFixtureTests
             .GetField("_requests", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(fixture)!).ToArray();
         fixture.Dispose();
         Assert.True(fixture.IsDisposed);
-        byte[][] owned = (byte[][])typeof(OfflinePinnedOllamaRecordingFixture).GetField("_responses", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(fixture)!;
+        byte[][] owned = OwnedWrappers(fixture);
         Assert.All(owned, response => Assert.All(response, value => Assert.Equal(0, value)));
         Assert.All(ownedRequests, request => Assert.All(request.PromptUtf8.ToArray(), value => Assert.Equal(0, value)));
     }
@@ -167,12 +198,12 @@ public sealed class OfflinePinnedOllamaRecordingFixtureTests
     [Fact]
     public async Task ConstructorAndCancellation_RejectMalformedInputsAndNeverRetry()
     {
-        Assert.Throws<ArgumentException>(() => new OfflinePinnedOllamaRecordingFixture(Responses()[..^1]));
-        ReadOnlyMemory<byte>[] oversized = Responses();
-        oversized[0] = new byte[CognitionQualityRecordedResponseRunnerModule.MaximumResponseBytes + 1];
+        Assert.Throws<ArgumentException>(() => new OfflinePinnedOllamaRecordingFixture(Wrappers()[..^1]));
+        ReadOnlyMemory<byte>[] oversized = Wrappers();
+        oversized[0] = new byte[OfflineOllamaRecordingCodecModule.MaximumWrapperBytes + 1];
         Assert.Throws<ArgumentOutOfRangeException>(() => new OfflinePinnedOllamaRecordingFixture(oversized));
 
-        using (OfflinePinnedOllamaRecordingFixture malformedFixture = new(MalformedResponses()))
+        using (OfflinePinnedOllamaRecordingFixture malformedFixture = new(MalformedWrappers()))
         {
             CognitionQualityPromptEnvelopePublication malformedPublication = CognitionQualityPromptEnvelopeBuilderModule.Create("prompt-v1");
             CognitionQualityExecutionProvenance malformedProvenance = malformedFixture.CreatePinnedExecutionProvenance("prompt-v1");
@@ -180,9 +211,11 @@ public sealed class OfflinePinnedOllamaRecordingFixtureTests
             CognitionQualityRecordingSessionResult malformed = await malformedModule.RecordOnceAsync(malformedModule.Authorize(malformedPublication, malformedProvenance, Authorization(malformedPublication, malformedProvenance, malformedFixture, "pinned-malformed-v1")));
             Assert.Equal(CognitionQualityRecordingSessionOutcomeCode.Complete, malformed.OutcomeCode);
             Assert.Equal(12, malformedFixture.CallCount);
+            Assert.Equal("response_json_invalid", malformed.Evidence!.RecordedResponseRun.ResponseBindings[0].ParseOutcome);
+            Assert.Null(malformed.Evidence.RecordedResponseRun.ProposalBatch[0].Proposal);
         }
 
-        using OfflinePinnedOllamaRecordingFixture fixture = new(Responses());
+        using OfflinePinnedOllamaRecordingFixture fixture = new(Wrappers());
         CognitionQualityPromptEnvelopePublication publication = CognitionQualityPromptEnvelopeBuilderModule.Create("prompt-v1");
         CognitionQualityExecutionProvenance provenance = fixture.CreatePinnedExecutionProvenance("prompt-v1");
         CognitionQualityRecordingSessionModule module = new(fixture, new CognitionQualityRecordingAdapterConformanceClock(2_000));
@@ -207,7 +240,7 @@ public sealed class OfflinePinnedOllamaRecordingFixtureTests
     [Fact]
     public async Task DisposeDuringHeldAcquisition_CancelsAndZerosWithoutCallerCancellation()
     {
-        using OfflinePinnedOllamaRecordingFixture fixture = new(Responses());
+        using OfflinePinnedOllamaRecordingFixture fixture = new(Wrappers());
         CognitionQualityPromptEnvelopePublication publication = CognitionQualityPromptEnvelopeBuilderModule.Create("prompt-v1");
         CognitionQualityExecutionProvenance provenance = fixture.CreatePinnedExecutionProvenance("prompt-v1");
         CognitionQualityRecordingSessionModule module = new(fixture, new CognitionQualityRecordingAdapterConformanceClock(2_500));
@@ -232,9 +265,27 @@ public sealed class OfflinePinnedOllamaRecordingFixtureTests
         Assert.Equal(1, fixture.CallCount);
         Assert.True(fixture.IsDisposed);
         Assert.Throws<ObjectDisposedException>(() => fixture.SnapshotRequests());
-        byte[][] owned = (byte[][])typeof(OfflinePinnedOllamaRecordingFixture).GetField("_responses", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(fixture)!;
+        byte[][] owned = OwnedWrappers(fixture);
         Assert.All(owned, response => Assert.All(response, value => Assert.Equal(0, value)));
         Assert.All(ownedRequests, request => Assert.All(request.PromptUtf8.ToArray(), value => Assert.Equal(0, value)));
+    }
+
+    [Fact]
+    public async Task DisposeDuringHeldTransportExchange_IsAdapterFailureNotTimeout()
+    {
+        using OfflinePinnedOllamaRecordingFixture fixture = new(Wrappers());
+        CognitionQualityPromptEnvelopePublication publication = CognitionQualityPromptEnvelopeBuilderModule.Create("prompt-v1");
+        CognitionQualityExecutionProvenance provenance = fixture.CreatePinnedExecutionProvenance("prompt-v1");
+        CognitionQualityRecordingSessionModule module = new(fixture, new CognitionQualityRecordingAdapterConformanceClock(2_500));
+        Task held = fixture.HoldNextTransportExchangeForTesting();
+        CognitionQualityRecordingSessionCapability capability = module.Authorize(publication, provenance, Authorization(publication, provenance, fixture, "pinned-transport-dispose-v1"));
+        Task<CognitionQualityRecordingSessionResult> pending = module.RecordOnceAsync(capability).AsTask();
+        await held.WaitAsync(TimeSpan.FromSeconds(2));
+        fixture.Dispose();
+        CognitionQualityRecordingSessionResult result = await pending.WaitAsync(TimeSpan.FromSeconds(2));
+        Assert.Equal(CognitionQualityRecordingSessionOutcomeCode.AdapterFailure, result.OutcomeCode);
+        Assert.NotEqual(CognitionQualityRecordingSessionOutcomeCode.TimedOut, result.OutcomeCode);
+        Assert.Equal(1, fixture.CallCount);
     }
 
     private static void AssertSafeType(Type type, bool allowRawInput)
@@ -266,11 +317,39 @@ public sealed class OfflinePinnedOllamaRecordingFixtureTests
 
     private static CognitionQualityRecordingSessionAuthorization Authorization(CognitionQualityPromptEnvelopePublication publication, CognitionQualityExecutionProvenance provenance, OfflinePinnedOllamaRecordingFixture fixture, string nonce) => new(publication.CanonicalDigestSha256, publication.PromptSetDigestSha256, provenance.ProvenanceDigestSha256, fixture.AdapterIdentity, fixture.AdapterContractDigestSha256, nonce, 500, 5_000);
     private static ReadOnlyMemory<byte>[] Responses() => Enumerable.Range(1, 12).Select(index => (ReadOnlyMemory<byte>)Encoding.UTF8.GetBytes($"{{\"agent_id\":\"agent-00\",\"action\":\"{Action(index)}\",\"quantity\":{Quantity(index)}}}")).ToArray();
-    private static ReadOnlyMemory<byte>[] MalformedResponses()
+    private static ReadOnlyMemory<byte>[] Wrappers() => Wrappers(Responses());
+    private static ReadOnlyMemory<byte>[] Wrappers(IReadOnlyList<ReadOnlyMemory<byte>> responses) => Enumerable.Range(0, responses.Count).Select(index => (ReadOnlyMemory<byte>)Encoding.UTF8.GetBytes($"{{\"model\":\"qwen3.5:4b\",\"created_at\":\"2026-08-18T12:00:00Z\",\"response\":{System.Text.Json.JsonSerializer.Serialize(Encoding.UTF8.GetString(responses[index].Span))},\"done\":true,\"done_reason\":\"stop\",\"context\":[1,2],\"total_duration\":1000000,\"load_duration\":0,\"prompt_eval_count\":10,\"prompt_eval_duration\":500000,\"eval_count\":20,\"eval_duration\":500000}}")).ToArray();
+    private static ReadOnlyMemory<byte>[] MalformedWrappers()
     {
-        ReadOnlyMemory<byte>[] responses = Responses();
-        responses[0] = new byte[] { 0xff };
-        return responses;
+        ReadOnlyMemory<byte>[] wrappers = Wrappers();
+        wrappers[0] = Encoding.UTF8.GetBytes("{\"model\":\"qwen3.5:4b\",\"created_at\":\"2026-08-18T12:00:00Z\",\"response\":\"not-json\",\"done\":true,\"done_reason\":\"stop\",\"total_duration\":1000000,\"load_duration\":0,\"prompt_eval_count\":10,\"prompt_eval_duration\":500000,\"eval_count\":20,\"eval_duration\":500000}");
+        return wrappers;
+    }
+
+    public static IEnumerable<object[]> ConstructorRejectedWrapperCases()
+    {
+        byte[] valid = Wrappers()[0].ToArray();
+        string text = Encoding.UTF8.GetString(valid);
+        yield return [Encoding.UTF8.GetBytes(text.Replace("\"model\":\"qwen3.5:4b\"", "\"model\":\"qwen3.5:4b\",\"model\":\"qwen3.5:4b\"", StringComparison.Ordinal))];
+        yield return [Encoding.UTF8.GetBytes(text[..^1] + ",\"unknown\":1}")];
+        yield return [Encoding.UTF8.GetBytes(text.Replace("qwen3.5:4b", "wrong-model", StringComparison.Ordinal))];
+        yield return [Encoding.UTF8.GetBytes(text.Replace("\"done\":true", "\"done\":false", StringComparison.Ordinal))];
+        yield return [Encoding.UTF8.GetBytes(text.Replace("\"done_reason\":\"stop\"", "\"done_reason\":\"length\"", StringComparison.Ordinal))];
+        yield return [Encoding.UTF8.GetBytes(text.Replace(",\"eval_duration\":500000", string.Empty, StringComparison.Ordinal))];
+        yield return [Encoding.UTF8.GetBytes(text.Replace("\"prompt_eval_count\":10", "\"prompt_eval_count\":-1", StringComparison.Ordinal))];
+        yield return [Encoding.UTF8.GetBytes(text.Replace("[1,2]", "[-1]", StringComparison.Ordinal))];
+        yield return [Encoding.UTF8.GetBytes(text.Replace("2026-08-18T12:00:00Z", "not-a-timestamp", StringComparison.Ordinal))];
+        yield return [Encoding.UTF8.GetBytes(text + "{}")];
+        yield return [Encoding.UTF8.GetBytes(text.Replace("[1,2]", "[[[[[0]]]]]", StringComparison.Ordinal))];
+        yield return [new byte[] { 0xff }];
+        yield return [new byte[] { 0xef, 0xbb, 0xbf }.Concat(valid).ToArray()];
+        yield return [Array.Empty<byte>()];
+        yield return [new byte[OfflineOllamaRecordingCodecModule.MaximumWrapperBytes + 1]];
+    }
+    private static byte[][] OwnedWrappers(OfflinePinnedOllamaRecordingFixture fixture)
+    {
+        InMemoryOfflineOllamaRecordingTransportAdapter transport = (InMemoryOfflineOllamaRecordingTransportAdapter)typeof(OfflinePinnedOllamaRecordingFixture).GetField("_transport", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(fixture)!;
+        return (byte[][])typeof(InMemoryOfflineOllamaRecordingTransportAdapter).GetField("_wrappers", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(transport)!;
     }
     private static string Action(int index) => index switch { 1 or 7 => "GatherWood", 2 or 3 => "GatherStone", 4 or 5 or 6 => "BuildShelter", 8 or 9 => "BuildStorage", _ => "Idle" };
     private static int Quantity(int index) => index switch { 1 => 12, 2 => 6, 3 => 2, 7 => 8, _ => 0 };
@@ -314,7 +393,7 @@ public sealed class OfflinePinnedOllamaRecordingFixtureTests
     private sealed class PinnedFixture : ICognitionQualityRecordingAdapterConformanceFixture, ICognitionQualityRecordingAdapterMidflightCancellationFixture
     {
         private readonly OfflinePinnedOllamaRecordingFixture _adapter;
-        internal PinnedFixture(IReadOnlyList<ReadOnlyMemory<byte>> callerResponses) => _adapter = new OfflinePinnedOllamaRecordingFixture(callerResponses);
+        internal PinnedFixture(IReadOnlyList<ReadOnlyMemory<byte>> callerResponses) => _adapter = new OfflinePinnedOllamaRecordingFixture(Wrappers(callerResponses));
         public CognitionQualityRecordingAdapter Adapter => _adapter;
         public int CallCount => _adapter.CallCount;
         public IReadOnlyList<CognitionQualityRecordingAdapterRequest> SnapshotRequests() => _adapter.SnapshotRequests();

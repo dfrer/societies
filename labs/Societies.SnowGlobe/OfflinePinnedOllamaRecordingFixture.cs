@@ -37,17 +37,17 @@ public sealed class OfflinePinnedOllamaRecordingFixtureProvenance
 }
 
 /// <summary>
-/// Registry-closed, entirely in-memory replay of exactly twelve previously caller-supplied response
-/// buffers for the pinned qwen3.5:4b cell. It is not an Ollama client and has no path, environment,
+/// Registry-closed, entirely in-memory replay of exactly twelve caller-supplied full Ollama generate
+/// wrapper buffers for the pinned qwen3.5:4b cell. It is not an Ollama client and has no path, environment,
 /// socket, process, provider, credential, payment, retry, or model-execution authority.
 /// </summary>
 public sealed class OfflinePinnedOllamaRecordingFixture : CognitionQualityRecordingAdapter, IDisposable, IAsyncDisposable
 {
-    public const string RegistryAdapterIdentity = "offline-pinned-ollama-qwen35-4b-recording-fixture-v1";
-    public const string ContractDescriptor = "snow-globe-offline-pinned-ollama-recording-fixture/v1|qwen3.5-4b|qwen3.5:4b|2a654d98e6fba55d452b7043684e9b57a947e393bbffa62485a7aac05ee4eefd|3389983735|gguf|qwen35|4659865088|Q4_K_M|snow-globe-ollama-loopback-v1|http://127.0.0.1:11435/|ollama-v0.32.14-sha11d7729c|ollama-generate-v1|snow-globe-proposal-v1|9f0e0988984d70e6448615517c7dab1c607c5604520e1b26a5933680ebcd57b0|961b54b7d8cfb2aead566579499adb3aa21f1d85bfbe0b7c6fc504a8adc40e0d|4096|96|11d7729cb18bb4876ad91a14fbe9ba3b6985eaabc3475a62d47d874be24a9b54|one-call-per-slot|no-retry|owned-response-buffer|no-io|no-delivery-attestation|no-model-execution-attestation";
+    public const string RegistryAdapterIdentity = "offline-pinned-ollama-qwen35-4b-recording-fixture-v2";
+    public const string ContractDescriptor = "snow-globe-offline-pinned-ollama-recording-fixture/v2|qwen3.5-4b|qwen3.5:4b|2a654d98e6fba55d452b7043684e9b57a947e393bbffa62485a7aac05ee4eefd|3389983735|gguf|qwen35|4659865088|Q4_K_M|snow-globe-ollama-loopback-v1|http://127.0.0.1:11435/|ollama-v0.32.14-sha11d7729c|ollama-generate-v1|snow-globe-proposal-v1|9f0e0988984d70e6448615517c7dab1c607c5604520e1b26a5933680ebcd57b0|961b54b7d8cfb2aead566579499adb3aa21f1d85bfbe0b7c6fc504a8adc40e0d|4096|96|11d7729cb18bb4876ad91a14fbe9ba3b6985eaabc3475a62d47d874be24a9b54|snow-globe-offline-ollama-recording-codec/v1|snow-globe-offline-ollama-recording-transport-port/v1|request-16384|wrapper-8192|wrapper-aggregate-98304|response-1024|full-ollama-wrapper|owned-transfer|one-call-per-slot|no-retry|owned-response-buffer|no-io|no-delivery-attestation|no-model-execution-attestation";
     public const int MaximumTrackedCapabilities = 4096;
 
-    private readonly byte[][] _responses;
+    private readonly InMemoryOfflineOllamaRecordingTransportAdapter _transport;
     private readonly object _gate = new();
     private readonly List<CognitionQualityRecordingAdapterRequest> _requests = new();
     private readonly Dictionary<string, int> _nextSlotByCapability = new(StringComparer.Ordinal);
@@ -57,33 +57,25 @@ public sealed class OfflinePinnedOllamaRecordingFixture : CognitionQualityRecord
     private int _callCount;
     private bool _disposed;
 
-    public OfflinePinnedOllamaRecordingFixture(IReadOnlyList<ReadOnlyMemory<byte>> recordedResponses)
+    public OfflinePinnedOllamaRecordingFixture(IReadOnlyList<ReadOnlyMemory<byte>> recordedOllamaWrapperUtf8)
         : base(RegistryAdapterIdentity, CognitionQualityRecordingSessionCanonical.Digest(ContractDescriptor))
     {
-        ArgumentNullException.ThrowIfNull(recordedResponses);
-        int count = recordedResponses.Count;
+        ArgumentNullException.ThrowIfNull(recordedOllamaWrapperUtf8);
+        int count = recordedOllamaWrapperUtf8.Count;
         if (count != CognitionQualityCorpusV1.ScenarioCount)
-            throw new ArgumentException("Exactly twelve recorded responses are required.", nameof(recordedResponses));
+            throw new ArgumentException("Exactly twelve full Ollama wrappers are required.", nameof(recordedOllamaWrapperUtf8));
 
-        _responses = new byte[count][];
+        byte[][]? prepared = new byte[count][];
         try
         {
             int aggregate = 0;
-            for (int index = 0; index < count; index++)
-            {
-                ReadOnlyMemory<byte> response = recordedResponses[index];
-                if (response.Length is < 1 or > CognitionQualityRecordedResponseRunnerModule.MaximumResponseBytes)
-                    throw new ArgumentOutOfRangeException(nameof(recordedResponses));
-                aggregate = checked(aggregate + response.Length);
-                if (aggregate > CognitionQualityRecordedResponseRunnerModule.MaximumAggregateResponseBytes)
-                    throw new ArgumentOutOfRangeException(nameof(recordedResponses));
-                _responses[index] = response.ToArray();
-            }
+            for (int index = 0; index < count; index++) { ReadOnlyMemory<byte> wrapper = recordedOllamaWrapperUtf8[index]; if (wrapper.Length is < 1 or > OfflineOllamaRecordingCodecModule.MaximumWrapperBytes) throw new ArgumentOutOfRangeException(nameof(recordedOllamaWrapperUtf8)); aggregate = checked(aggregate + wrapper.Length); if (aggregate > OfflineOllamaRecordingCodecModule.MaximumAggregateWrapperBytes) throw new ArgumentOutOfRangeException(nameof(recordedOllamaWrapperUtf8)); prepared[index] = wrapper.Span.ToArray(); OfflineOllamaRecordingCodecModule.ValidateFixtureWrapper(prepared[index]); }
+            _transport = new InMemoryOfflineOllamaRecordingTransportAdapter(prepared);
+            prepared = null;
         }
-        catch
+        finally
         {
-            ZeroResponses();
-            throw;
+            if (prepared is not null) foreach (byte[]? wrapper in prepared) if (wrapper is not null) CryptographicOperations.ZeroMemory(wrapper);
         }
     }
 
@@ -134,12 +126,13 @@ public sealed class OfflinePinnedOllamaRecordingFixture : CognitionQualityRecord
         }
     }
 
+    internal Task HoldNextTransportExchangeForTesting() => _transport.HoldNextExchangeForTesting();
+
     internal override async ValueTask<CognitionQualityRecordingAdapterResponse> AcquireOnceAsync(
         CognitionQualityRecordingAdapterRequest request,
         CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        byte[]? owned = null;
         CognitionQualityRecordingAdapterRequest? detached = null;
         TaskCompletionSource<bool>? held = null;
         try
@@ -159,7 +152,6 @@ public sealed class OfflinePinnedOllamaRecordingFixture : CognitionQualityRecord
                 if (request.SlotOrdinal != expectedSlot)
                     throw new InvalidOperationException("offline_recording_slot_attempt_invalid");
 
-                owned = _responses[request.SlotOrdinal - 1].ToArray();
                 detached = request.Detach();
                 _nextSlotByCapability[request.CapabilityDigestSha256] = expectedSlot + 1;
                 _requests.Add(detached);
@@ -185,17 +177,18 @@ public sealed class OfflinePinnedOllamaRecordingFixture : CognitionQualityRecord
                 }
             }
 
+            using OfflineOllamaRecordingTransportRequest encoded = OfflineOllamaRecordingCodecModule.Encode(request);
+            OfflineOllamaRecordingTransportResponse raw = await _transport.ExchangeOnceAsync(encoded, cancellationToken).ConfigureAwait(false);
+            CognitionQualityRecordingResponseBuffer buffer = OfflineOllamaRecordingCodecModule.Decode(raw, request);
             CognitionQualityRecordingAdapterResponse response = CognitionQualityRecordingAdapterResponse.ForOfflineSuccess(
                 request,
                 RegistryAdapterIdentity,
                 AdapterContractDigestSha256,
-                new CognitionQualityRecordingResponseBuffer(owned));
-            owned = null;
+                buffer);
             return response;
         }
         finally
         {
-            if (owned is not null) CryptographicOperations.ZeroMemory(owned);
             detached?.Dispose();
         }
     }
@@ -206,7 +199,7 @@ public sealed class OfflinePinnedOllamaRecordingFixture : CognitionQualityRecord
         {
             if (_disposed) return;
             _disposed = true;
-            ZeroResponses();
+            _transport.Dispose();
             foreach (CognitionQualityRecordingAdapterRequest request in _requests) request.ZeroPrompt();
             _requests.Clear();
             _nextSlotByCapability.Clear();
@@ -222,9 +215,4 @@ public sealed class OfflinePinnedOllamaRecordingFixture : CognitionQualityRecord
         return ValueTask.CompletedTask;
     }
 
-    private void ZeroResponses()
-    {
-        foreach (byte[]? response in _responses)
-            if (response is not null) CryptographicOperations.ZeroMemory(response);
-    }
 }
