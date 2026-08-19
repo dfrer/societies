@@ -443,6 +443,10 @@ public static class OllamaRecordingExecutionArtifactModule
                 {
                     if (failure == SnowGlobeOllamaLoopbackRecordingFailureCode.WrapperRejected.ToString() && wrapper is null)
                         throw Failure("artifact_receipt_terminal_slot_invalid");
+                    if (failure == SnowGlobeOllamaLoopbackRecordingFailureCode.HttpResponseRejected.ToString() && wrapper is not null)
+                        throw Failure("artifact_receipt_terminal_slot_invalid");
+                    if (failure == SnowGlobeOllamaLoopbackRecordingFailureCode.ResponseBodyRejected.ToString() && wrapper is not null)
+                        throw Failure("artifact_receipt_terminal_slot_invalid");
                 }
                 else if (wrapper is not null || slotStatus is not null)
                     throw Failure("artifact_receipt_terminal_slot_invalid");
@@ -614,7 +618,7 @@ public static class OllamaRecordingExecutionArtifactModule
             && (submission != SubmissionState.SubmissionUnknown.ToString() || statusCode is not null))
             throw Failure("artifact_failed_result_invalid");
         if (mappedFailure == OllamaRecordingCompositionFailureCode.HttpResponseRejected
-            && (submission != SubmissionState.ResponseReceived.ToString() || statusCode is null or 200))
+            && (submission != SubmissionState.ResponseReceived.ToString() || statusCode is null or < 100 or > 599))
             throw Failure("artifact_failed_result_invalid");
         if (mappedFailure is OllamaRecordingCompositionFailureCode.ResponseBodyRejected or OllamaRecordingCompositionFailureCode.WrapperRejected
             && (submission != SubmissionState.ResponseReceived.ToString() || statusCode != 200))

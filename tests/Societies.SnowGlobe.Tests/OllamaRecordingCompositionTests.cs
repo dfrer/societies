@@ -110,6 +110,29 @@ public sealed class OllamaRecordingCompositionTests
         Assert.Equal(1, factory.Transport!.CallCount); Assert.Equal(1, store.ReserveCount); Assert.Equal(1, store.PublishCount);
     }
 
+    [Fact]
+    public async Task OneSlotHttp200HeaderRejected_PersistsTerminalArtifactInsteadOfGenericIndeterminate()
+    {
+        InMemoryOllamaRecordingArtifactStore store = new();
+        ThrowingFactory factory = new(
+            OllamaLoopbackTransportFailureCode.HttpResponseRejected,
+            SubmissionState.ResponseReceived,
+            200);
+        SnowGlobeOllamaRecordingCompositionModule module = new(
+            Root, new SnowGlobePinnedOllamaRecordingModule(new FixedClock(1), factory), store);
+
+        OllamaRecordingCompositionResult result = await module.ExecuteAndPublishOnceAsync(
+            module.Prepare(new(777, StartTicks), "one-slot-http200-header-rejected-v1"));
+
+        Assert.Equal("Failed", result.OutcomeCode); Assert.Equal("HttpResponseRejected", result.FailureCode);
+        Assert.True(result.ArtifactPublished); Assert.NotNull(result.Artifact);
+        Assert.Equal(0, result.Artifact!.CompletedSlotCount); Assert.Equal(1, result.Artifact.TerminalSlotOrdinal);
+        Assert.Equal(SubmissionState.ResponseReceived.ToString(), result.Artifact.TerminalSubmissionState);
+        Assert.Equal(ChargeState.NotApplicable, result.Artifact.TerminalChargeState); Assert.Equal(200, result.Artifact.TerminalStatusCode);
+        Assert.True(result.Artifact.ReceiptPresent); Assert.Null(result.Artifact.NestedRecordingEvidenceDigestSha256);
+        Assert.Equal(1, factory.Transport!.CallCount); Assert.Equal(1, store.ReserveCount); Assert.Equal(1, store.PublishCount);
+    }
+
     [Theory]
     [InlineData(null)]
     [InlineData("dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd")]

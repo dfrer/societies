@@ -127,7 +127,7 @@ public sealed class OllamaRecordingExecutionArtifactTests
         }
         foreach (string failure in Enum.GetNames<SnowGlobeOllamaLoopbackRecordingFailureCode>())
         {
-            if (failure is "WrapperRejected" or "ResponseBodyRejected" or "RuntimeChanged") continue;
+            if (failure is "WrapperRejected" or "RuntimeChanged") continue;
             AssertIntegrityValidForgeryRejected(failed, (_, result, receipt) =>
             {
                 result["composition_failure_code"] = failure;
@@ -135,6 +135,31 @@ public sealed class OllamaRecordingExecutionArtifactTests
                 receipt!["failure_code"] = failure;
             });
         }
+    }
+
+    [Fact]
+    public async Task IntegrityValidResponseBodyRejectedReceiptAcceptsExactNullWrapperTerminalProvenance()
+    {
+        OllamaRecordingExecutionArtifact failed = await CreateTerminalArtifact();
+        byte[] bodyRejected = ForgeIntegrityValid(failed, (_, result, receipt) =>
+        {
+            SetResponseBodyRejected(result, receipt!, wrapperDigest: null);
+        });
+
+        OllamaRecordingExecutionArtifact validated = OllamaRecordingExecutionArtifactModule.Validate(bodyRejected);
+        Assert.Equal("ResponseBodyRejected", validated.FailureCode);
+        Assert.Equal(SubmissionState.ResponseReceived.ToString(), validated.TerminalSubmissionState);
+        Assert.Equal(200, validated.TerminalStatusCode);
+    }
+
+    [Fact]
+    public async Task IntegrityValidResponseBodyRejectedReceiptRejectsNonNullWrapperDigest()
+    {
+        OllamaRecordingExecutionArtifact failed = await CreateTerminalArtifact();
+        AssertIntegrityValidForgeryRejected(failed, (_, result, receipt) =>
+        {
+            SetResponseBodyRejected(result, receipt!, new string('d', 64));
+        });
     }
 
     [Fact]
@@ -183,6 +208,58 @@ public sealed class OllamaRecordingExecutionArtifactTests
 
         OllamaRecordingExecutionArtifact validated = OllamaRecordingExecutionArtifactModule.Validate(runtimeChanged);
         Assert.Equal("RuntimeChanged", validated.FailureCode); Assert.Equal(submission.ToString(), validated.TerminalSubmissionState); Assert.Equal(status, validated.TerminalStatusCode);
+    }
+
+    [Theory]
+    [InlineData(200)]
+    [InlineData(429)]
+    public async Task IntegrityValidHttpResponseRejectedReceiptAcceptsExactTransportEmittableTerminalProvenance(int status)
+    {
+        OllamaRecordingExecutionArtifact failed = await CreateTerminalArtifact();
+        byte[] headerRejected = ForgeIntegrityValid(failed, (_, result, receipt) =>
+        {
+            SetHttpResponseRejected(result, receipt!, status);
+        });
+
+        OllamaRecordingExecutionArtifact validated = OllamaRecordingExecutionArtifactModule.Validate(headerRejected);
+        Assert.Equal("HttpResponseRejected", validated.FailureCode);
+        Assert.Equal(SubmissionState.ResponseReceived.ToString(), validated.TerminalSubmissionState);
+        Assert.Equal(status, validated.TerminalStatusCode);
+    }
+
+    [Fact]
+    public async Task IntegrityValidHttpResponseRejectedReceiptRejectsImpossibleTerminalProvenance()
+    {
+        OllamaRecordingExecutionArtifact failed = await CreateTerminalArtifact();
+        AssertIntegrityValidForgeryRejected(failed, (_, result, receipt) =>
+        {
+            SetHttpResponseRejected(result, receipt!, 200);
+            receipt!["slots"]!.AsArray().RemoveAt(2);
+        });
+        AssertIntegrityValidForgeryRejected(failed, (_, result, receipt) =>
+        {
+            SetHttpResponseRejected(result, receipt!, 200);
+            receipt!["slots"]![2]!["wrapper_digest_sha256"] = new string('d', 64);
+        });
+        AssertIntegrityValidForgeryRejected(failed, (_, result, receipt) =>
+        {
+            SetHttpResponseRejected(result, receipt!, 200);
+            result["terminal_submission_state"] = SubmissionState.SubmissionUnknown.ToString();
+            receipt!["slots"]![2]!["submission_state"] = SubmissionState.SubmissionUnknown.ToString();
+        });
+        AssertIntegrityValidForgeryRejected(failed, (_, result, receipt) =>
+        {
+            SetHttpResponseRejected(result, receipt!, 200);
+            result["terminal_status_code"] = null;
+            receipt!["slots"]![2]!["status_code"] = null;
+        });
+        foreach (int status in new[] { 99, 600 })
+        {
+            AssertIntegrityValidForgeryRejected(failed, (_, result, receipt) =>
+            {
+                SetHttpResponseRejected(result, receipt!, status);
+            });
+        }
     }
 
     [Fact]
@@ -407,6 +484,30 @@ public sealed class OllamaRecordingExecutionArtifactTests
         }
         RecomputeLastDigest(root, "artifact_payload_digest_sha256");
         return JsonSerializer.SerializeToUtf8Bytes(root);
+    }
+
+    private static void SetHttpResponseRejected(JsonObject result, JsonObject receipt, int status)
+    {
+        result["composition_failure_code"] = "HttpResponseRejected";
+        result["recording_failure_code"] = "HttpResponseRejected";
+        result["terminal_submission_state"] = SubmissionState.ResponseReceived.ToString();
+        result["terminal_status_code"] = status;
+        receipt["failure_code"] = "HttpResponseRejected";
+        receipt["slots"]![2]!["wrapper_digest_sha256"] = null;
+        receipt["slots"]![2]!["status_code"] = status;
+        receipt["slots"]![2]!["submission_state"] = SubmissionState.ResponseReceived.ToString();
+    }
+
+    private static void SetResponseBodyRejected(JsonObject result, JsonObject receipt, string? wrapperDigest)
+    {
+        result["composition_failure_code"] = "ResponseBodyRejected";
+        result["recording_failure_code"] = "ResponseBodyRejected";
+        result["terminal_submission_state"] = SubmissionState.ResponseReceived.ToString();
+        result["terminal_status_code"] = 200;
+        receipt["failure_code"] = "ResponseBodyRejected";
+        receipt["slots"]![2]!["wrapper_digest_sha256"] = wrapperDigest;
+        receipt["slots"]![2]!["status_code"] = 200;
+        receipt["slots"]![2]!["submission_state"] = SubmissionState.ResponseReceived.ToString();
     }
 
     private static string ReplaceFirstDigestCharacter(string json, string prefix)
