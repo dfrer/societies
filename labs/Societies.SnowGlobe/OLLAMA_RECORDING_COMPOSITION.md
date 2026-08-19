@@ -1,6 +1,6 @@
 # Offline Ollama recording composition contract
 
-Commit `bd89187` adds a fixed qwen3.5:4b composition Module and isolated CLI. This is offline code proof; no live execution occurred.
+Commit `bd89187` adds a fixed qwen3.5:4b composition Module and isolated CLI. The prior dry-run-only state is historical: local code commit `be7c691` added the record-once surface; a later authorized invocation consumed one fresh authority, producing no valid artifact/evidence.
 
 ## Public surface and binding
 
@@ -16,10 +16,10 @@ Artifact schema is `snow_globe_ollama_recording_execution_artifact/v1`, maximum 
 
 ## CLI and evidence
 
-`RecordingCli` exposes only preflight and validate. Preflight performs zero I/O; validate performs only a bounded local read. Record/live/execute commands fail closed before production construction, and no live command exists. Validation was focused 46/46, full SnowGlobe 575/575, RecordingCli 8/8, BenchmarkCli 56/56, lab/CLI builds 0 warnings/errors; independent deep review FINAL CODE GO with no P0-P2. Earlier transient benchmark theory was isolated 5/5 and final full green.
+`RecordingCli` exposes preflight, validate, and separately gated record-once. A later authorized invocation used plan `a9e7a10b973c7114d01361cbbeaa5705bd782385664d5a5ef923e0df3b5df39d`: exactly one preflight invocation exited 0; exactly one record-once invocation exited 5 after 7,881 ms; exactly one validate invocation exited 1 `artifact_size_invalid`; exactly one HTTP 200 POST occurred in 7.0314715 s, with no retry/fallback/alternate/download. RuntimeChanged receipt forms are exact, and all require the terminal receipt row: before dispatch `DefinitelyNotSubmitted`/null status/null wrapper; after headers `ResponseReceived`/status 100..599/null wrapper; after exchange `ResponseReceived`/status 200/non-null wrapper. Validation after offline correction `959bea5` was focused correction+artifact 50/50, transport+session 52/52, SnowGlobe 588/588, RecordingCli 45/45, both Release builds 0 warnings/errors, deep CODE GO. Earlier transient benchmark theory was isolated 5/5 and final full green.
 
-No live Ollama/listener/socket/HTTP/process inspection/file hash/model/GPU/provider/credential/payment action occurred. The actual Windows/store/live path remains uninvoked. Rollback is exact removal/revert of the 11 files in `bd89187`.
+No valid artifact/evidence exists: the fixed artifact is a preserved 0-byte tombstone (`e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855`). Cleanup found no Ollama/llama-server, 11434/11435 rows, or attributable GPU process. Post-response `RuntimeChanged` is the strongest source-consistent inference, unconfirmed because the checkpoint was not retained. Offline correction `959bea5` accepts the exact RuntimeChanged receipt matrix and removes the consumed-TCP-row requirement at AfterExchange; earlier PID/start/path/hash/listener and exact tuple checks remain. Ignored tombstone/logs are preserved outside this documentation slice. Rollback is exact removal/revert of the 11 files in `bd89187`.
 
 ## Design-It-Twice decision and next gate
 
-A flexible public cell/launcher/sink registry was rejected because it widens identity and authority. Benchmark identity/type reuse was rejected because benchmark sequencing and evidence semantics differ. The chosen fixed-cell Module plus dry-run/validate CLI keeps the boundary closed. The next gate is a separately security-reviewed `record-once` command requiring exact preflight plan digest and explicit live-local acknowledgement, followed by the user’s 2026-08-19 fresh authorization for one bounded qwen3.5:4b attempt with no retry, alternate, or download.
+A flexible public cell/launcher/sink registry was rejected because it widens identity and authority. Benchmark identity/type reuse was rejected because benchmark sequencing and evidence semantics differ. The chosen fixed-cell Module plus dry-run/validate CLI keeps the boundary closed. The next gate is no retry now: a separately reviewed decision on tombstone disposition, followed by fresh one-shot authority only if the user later wants a new live attempt.

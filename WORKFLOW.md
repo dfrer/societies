@@ -43,16 +43,16 @@
 - The former codec/fake-port action is historical and complete in `016551c`; see [the codec contract](labs/Societies.SnowGlobe/OFFLINE_OLLAMA_RECORDING_CODEC.md) and [ADR 0012](docs/adr/0012-offline-ollama-recording-codec.md).
 - The loopback transport Adapter/preflight action was completed in `a713267`; this older conformance handoff and its former action are historical/superseded.
 
-## Offline-tested Ollama loopback recording (current)
+## Offline-tested Ollama loopback recording (historical at a713267)
 
 - Commit `a713267` adds the source-closed exact `qwen3.5:4b` facade/transport behind the existing codec port. Authorization is pure zero-I/O, process-local, object-bound, atomically single-use, with 1,024 non-evicting nonce capacity.
 - The fixed identity is `http://127.0.0.1:11435/`, `POST /api/generate`, runtime `qwen3.5:4b`, and the registered runtime/artifact hashes and profile are documented in [the loopback contract](labs/Societies.SnowGlobe/OLLAMA_LOOPBACK_RECORDING.md). Exactly 12 sequential slots are allowed: no tags, warmup, retry, fallback, alternate, or thirteenth attempt. HTTP/1.1, Windows process/path/hash/listener/connected-owner checks, conservative submission, 250 ms drain/poison, and one late observer are enforced.
 - The unchanged public fixture and recording session remain no-I/O; the live adapter has distinct identity. Evidence appears only after all 12 exchanges; receipt and summary are raw-free, with optional detached prompts/proposals for offline scoring. Charge is `NotApplicable` and additional attempts are never authorized. Golden receipt digest: `da913180079fc534543748bc53198f7d10de527137f038812fa5f735b90c62ee`.
-- Validation: security 90/90, full 529/529, BenchmarkCli 56/56, Release 0 warnings/errors; independent deep review 114/114 focused, 529/529 full, CLI 56/56, build 0/0, CODE GO, no P0-P2. No live Ollama/listener/socket/HTTP/process/file hash/model/GPU/provider/credential/payment action occurred. This is offline code evidence only.
+- Validation: security 90/90, full 529/529, BenchmarkCli 56/56, Release 0 warnings/errors; independent deep review 114/114 focused, 529/529 full, CLI 56/56, build 0/0, CODE GO, no P0-P2. No live Ollama/listener/socket/HTTP/process/file hash/model/GPU/provider/credential/payment action occurred at the a713267 milestone; that sentence is historical. This was offline code evidence only.
 
-### Sole current next action
+### Historical dry-run gate and superseded next action
 
-Security-review a narrowly gated `record-once` CLI command requiring the exact preflight plan digest plus explicit live-local acknowledgement, then use the user’s 2026-08-19 fresh authorization for one bounded local qwen3.5:4b recording attempt. No retry, alternate, download, or action after identity/path/store/runtime mismatch.
+The prior dry-run-only gate is historical and superseded by the authorized attempt below.
 
 ## Offline Ollama recording composition milestone (completed)
 
@@ -60,8 +60,19 @@ Security-review a narrowly gated `record-once` CLI command requiring the exact p
 - Exact 11-file inventory: `labs/Societies.SnowGlobe.RecordingCli/AssemblyInfo.cs`, `labs/Societies.SnowGlobe.RecordingCli/Program.cs`, `labs/Societies.SnowGlobe.RecordingCli/Societies.SnowGlobe.RecordingCli.csproj`, `labs/Societies.SnowGlobe/OllamaRecordingArtifactStore.cs`, `labs/Societies.SnowGlobe/OllamaRecordingComposition.cs`, `labs/Societies.SnowGlobe/OllamaRecordingExecutionArtifact.cs`, `tests/Societies.SnowGlobe.RecordingCli.Tests/OllamaRecordingCliTests.cs`, `tests/Societies.SnowGlobe.RecordingCli.Tests/Societies.SnowGlobe.RecordingCli.Tests.csproj`, `tests/Societies.SnowGlobe.Tests/OllamaRecordingArtifactStoreTests.cs`, `tests/Societies.SnowGlobe.Tests/OllamaRecordingCompositionTests.cs`, and `tests/Societies.SnowGlobe.Tests/OllamaRecordingExecutionArtifactTests.cs`.
 - The fixed Module exposes only zero-I/O deterministic `Prepare`, atomic single-use `ExecuteAndPublishOnceAsync`, and bounded `ValidateArtifact`. Inputs are repository root, observed PID/start ticks, and nonce only; endpoint/model/path/hash/header/timeout/retry/delegate/Adapter/store selectors are not public inputs. Plans bind repository-root and nonce digests, are object/module-bound, and consume on foreign/cancelled/reused execution.
 - Execution reserves/pins a safe CreateNew target before inner authorization/recording, performs exactly one attempt, and publishes/readbacks the fixed artifact path. Writer failure leaves an indeterminate tombstone with no delete/retry. Windows final reads use a no-follow pinned verified single-link handle and reject ancestor/final swaps, reparse points, hardlinks, or outside-root reads.
-- Artifact schema is `snow_globe_ollama_recording_execution_artifact/v1`, capped at 128 KiB, strict canonical/digest validated, receipt raw-free, and nested-evidence-digest-only. The legitimate completed-12 `Failed`/`EvidenceRejected` row is accepted; impossible tuples reject. `RecordingCli` exposes only preflight/validate; record/live/execute fail closed before production construction.
-- Validation: focused 46/46, full SnowGlobe 575/575, RecordingCli 8/8, BenchmarkCli 56/56, lab/CLI builds 0 warnings/errors; independent deep review FINAL CODE GO with no P0-P2. No live Ollama/listener/socket/HTTP/process inspection/file hash/model/GPU/provider/credential/payment action occurred. This is offline code proof only.
+- Artifact schema is `snow_globe_ollama_recording_execution_artifact/v1`, capped at 128 KiB, strict canonical/digest validated, receipt raw-free, and nested-evidence-digest-only. The legitimate completed-12 `Failed`/`EvidenceRejected` row is accepted; impossible tuples reject. At bd89187, `RecordingCli` exposed only preflight/validate; that surface statement is historical. Record/live/execute failed closed before production construction.
+- Validation: focused 46/46, full SnowGlobe 575/575, RecordingCli 8/8, BenchmarkCli 56/56, lab/CLI builds 0 warnings/errors; independent deep review FINAL CODE GO with no P0-P2. No live Ollama/listener/socket/HTTP/process inspection/file hash/model/GPU/provider/credential/payment action occurred in that bd89187 offline milestone. This is historical offline code proof only.
+
+## Authorized live record-once attempt and offline correction
+
+- Local code commit `be7c691` added the record-once surface; a later authorized invocation consumed one fresh authority. Exactly one preflight invocation exited 0 with plan `a9e7a10b973c7114d01361cbbeaa5705bd782385664d5a5ef923e0df3b5df39d`; exactly one record-once invocation exited 5 after 7,881 ms with `composition_execution_indeterminate`; exactly one validate invocation exited 1 with `artifact_size_invalid`.
+- Exactly one HTTP 200 POST occurred in 7.0314715 s. No second POST/retry/fallback/alternate/download. The fixed artifact remains a preserved 0-byte tombstone (SHA-256 `e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855`); no valid artifact/evidence exists. Cleanup found no Ollama/llama-server, 11434/11435 rows, or attributable GPU process.
+- Post-response `RuntimeChanged` is the strongest source-consistent inference, not confirmed because the checkpoint was not retained. Offline correction `959bea5` accepts the exact RuntimeChanged receipt matrix and removes the consumed-TCP-row requirement at AfterExchange; earlier PID/start/path/hash/listener and exact tuple checks remain.
+- Validation after correction: SnowGlobe 588/588, RecordingCli 45/45, both Release builds 0 warnings/errors, deep CODE GO. Ignored tombstone/logs are preserved outside this documentation boundary.
+
+### Sole current next action
+
+No retry now. The next action is a separately reviewed decision on tombstone disposition, followed by fresh one-shot authority only if the user later wants a new live attempt.
 
 See [the conformance contract](labs/Societies.SnowGlobe/COGNITION_QUALITY_RECORDING_ADAPTER_CONFORMANCE.md) and [ADR 0010](docs/adr/0010-offline-cognition-quality-recording-adapter-conformance.md).
 
