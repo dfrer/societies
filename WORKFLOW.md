@@ -11,7 +11,7 @@
 ### Validation and delivery state
 
 - Focused codec-plus-fixture validation 39/39, full SnowGlobe Release 477/477, Benchmark CLI 56/56, lab Release build 0 warnings/0 errors; independent deep review FINAL CODE GO.
-- Code is committed locally at `016551c`; these exact seven documentation files are uncommitted pending a focused local documentation commit: `README.md`, `CONTEXT.md`, `CURRENT_BUILD.md`, `WORKFLOW.md`, `labs/Societies.SnowGlobe/README.md`, `labs/Societies.SnowGlobe/OFFLINE_OLLAMA_RECORDING_CODEC.md`, and `docs/adr/0012-offline-ollama-recording-codec.md`. No push, PR, live transport, network, model, provider, or payment action occurred.
+- Historical handoff for `016551c`: its seven documentation files were subsequently committed in the prior docs milestone. No push, PR, live transport, network, model, provider, or payment action occurred.
 
 ### Historical risks, limits, and superseded next action
 
@@ -21,7 +21,7 @@
 ### Current commit and documentation delivery boundary
 
 - `a713267` changes exactly six code/test files: `labs/Societies.SnowGlobe/OfflineOllamaRecordingCodec.cs` (codec/profile and internal port), `labs/Societies.SnowGlobe/OllamaLoopbackRecording.cs` (facade/session), `labs/Societies.SnowGlobe/OllamaLoopbackRecordingTransport.cs` (transport/verifier), `tests/Societies.SnowGlobe.Tests/OfflineOllamaRecordingCodecTests.cs`, `tests/Societies.SnowGlobe.Tests/OllamaLoopbackRecordingTests.cs`, and `tests/Societies.SnowGlobe.Tests/OllamaLoopbackRecordingTransportTests.cs`.
-- Code is committed locally at `a713267`; it is not pushed, in a PR, or deployed. The seven assigned documentation files are pending a local documentation commit: `README.md`, `CONTEXT.md`, `CURRENT_BUILD.md`, `WORKFLOW.md`, `labs/Societies.SnowGlobe/README.md`, `labs/Societies.SnowGlobe/OLLAMA_LOOPBACK_RECORDING.md`, and `docs/adr/0013-offline-tested-ollama-loopback-recording.md`.
+- Historical `a713267` delivery state: its seven documentation files are already committed in the prior docs milestone; code was not pushed, placed in a PR, or deployed.
 
 ## Offline cognition-quality recording Adapter conformance milestone (completed)
 
@@ -52,7 +52,16 @@
 
 ### Sole current next action
 
-Implement and security-review an offline-only one-shot recording composition/CLI plus canonical evidence writer/validator around the committed adapter, without starting Ollama or sending requests. A later live recording remains separately freshly authorized.
+Security-review a narrowly gated `record-once` CLI command requiring the exact preflight plan digest plus explicit live-local acknowledgement, then use the user’s 2026-08-19 fresh authorization for one bounded local qwen3.5:4b recording attempt. No retry, alternate, download, or action after identity/path/store/runtime mismatch.
+
+## Offline Ollama recording composition milestone (completed)
+
+- Commit `bd89187` is locally committed, not pushed, in a PR, or deployed; the prior seven docs are already committed, not pending.
+- Exact 11-file inventory: `labs/Societies.SnowGlobe.RecordingCli/AssemblyInfo.cs`, `labs/Societies.SnowGlobe.RecordingCli/Program.cs`, `labs/Societies.SnowGlobe.RecordingCli/Societies.SnowGlobe.RecordingCli.csproj`, `labs/Societies.SnowGlobe/OllamaRecordingArtifactStore.cs`, `labs/Societies.SnowGlobe/OllamaRecordingComposition.cs`, `labs/Societies.SnowGlobe/OllamaRecordingExecutionArtifact.cs`, `tests/Societies.SnowGlobe.RecordingCli.Tests/OllamaRecordingCliTests.cs`, `tests/Societies.SnowGlobe.RecordingCli.Tests/Societies.SnowGlobe.RecordingCli.Tests.csproj`, `tests/Societies.SnowGlobe.Tests/OllamaRecordingArtifactStoreTests.cs`, `tests/Societies.SnowGlobe.Tests/OllamaRecordingCompositionTests.cs`, and `tests/Societies.SnowGlobe.Tests/OllamaRecordingExecutionArtifactTests.cs`.
+- The fixed Module exposes only zero-I/O deterministic `Prepare`, atomic single-use `ExecuteAndPublishOnceAsync`, and bounded `ValidateArtifact`. Inputs are repository root, observed PID/start ticks, and nonce only; endpoint/model/path/hash/header/timeout/retry/delegate/Adapter/store selectors are not public inputs. Plans bind repository-root and nonce digests, are object/module-bound, and consume on foreign/cancelled/reused execution.
+- Execution reserves/pins a safe CreateNew target before inner authorization/recording, performs exactly one attempt, and publishes/readbacks the fixed artifact path. Writer failure leaves an indeterminate tombstone with no delete/retry. Windows final reads use a no-follow pinned verified single-link handle and reject ancestor/final swaps, reparse points, hardlinks, or outside-root reads.
+- Artifact schema is `snow_globe_ollama_recording_execution_artifact/v1`, capped at 128 KiB, strict canonical/digest validated, receipt raw-free, and nested-evidence-digest-only. The legitimate completed-12 `Failed`/`EvidenceRejected` row is accepted; impossible tuples reject. `RecordingCli` exposes only preflight/validate; record/live/execute fail closed before production construction.
+- Validation: focused 46/46, full SnowGlobe 575/575, RecordingCli 8/8, BenchmarkCli 56/56, lab/CLI builds 0 warnings/errors; independent deep review FINAL CODE GO with no P0-P2. No live Ollama/listener/socket/HTTP/process inspection/file hash/model/GPU/provider/credential/payment action occurred. This is offline code proof only.
 
 See [the conformance contract](labs/Societies.SnowGlobe/COGNITION_QUALITY_RECORDING_ADAPTER_CONFORMANCE.md) and [ADR 0010](docs/adr/0010-offline-cognition-quality-recording-adapter-conformance.md).
 
