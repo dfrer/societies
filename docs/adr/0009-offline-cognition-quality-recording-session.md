@@ -22,4 +22,4 @@ Source/test hashes are `3354932C1BF170C495A59CCA607A8F84F77D64C9E724E9B17AE92B96
 
 ## Status and next action
 
-The recording-session action is complete and historical. Exactly one current next action remains: add an offline Adapter conformance harness for the exact 12-slot/no-retry/binding/cancellation/buffer-ownership contract, without adding Ollama, premium implementation, or live authority.
+The recording-session action and its former conformance-harness action are complete and historical at `8a5d339`. Current milestone truth and the sole next action are recorded in [CURRENT_BUILD.md](../../CURRENT_BUILD.md), [the conformance contract](../../labs/Societies.SnowGlobe/COGNITION_QUALITY_RECORDING_ADAPTER_CONFORMANCE.md), and [ADR 0010](0010-offline-cognition-quality-recording-adapter-conformance.md): design and implement an entirely **OFFLINE** pinned local Ollama recording Adapter fixture against the harness, without starting Ollama, making model calls, using network, or changing production live/provider authority.

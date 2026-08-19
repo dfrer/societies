@@ -1,5 +1,25 @@
 # Snow Globe provider preflight, Ollama repair, and qwen3.5 smoke handoff
 
+## Offline cognition-quality recording Adapter conformance milestone (completed)
+
+### Outcome and scope
+
+- Commit `8a5d339` adds the test-only `CognitionQualityRecordingAdapterConformanceHarness` and five-test fixture suite. It runs through the real public recording-session Module, binds the exact candidate identity SHA-256 digest, Adapter contract digest, expected evidence canonical digest, and ordered checks/results, and returns a bounded raw-free report.
+- The harness enforces twelve sequential one-shot slots with no retry, fallback, alternate, or thirteenth call. Snapshot requests and retained fixture buffers are disposed and zeroed; caller inputs remain intact.
+- The fixed `OfflineFixedResponseCognitionQualityRecordingAdapter` fixture is core-conformant but not fully conformant: ten checks pass and `midflight_cancellation` is `not_exercised_by_fixed_fixture`. The async fixture exercises that optional seam and is fully conformant.
+
+### Validation and evidence
+
+- Source hashes: harness `1DF7E16ABA14AEAEC7B7397A2561A5158180C462A3815DC56146037A177FB23F`; tests `D1CDBCA028781EE192A9697E0FA80FDC620300243A0B0DEEE83F77D5AE8E22FD`.
+- Focused conformance validation 5/5, full Snow Globe Release 438/438, Release build 0 warnings/errors, independent deep review CODE GO.
+
+### Boundary and sole current next action
+
+- This is test-only offline evidence. It performs no I/O, network, live/provider/model call, credential, payment, Ollama, journal, file, or world-authority action and does not change production live/provider authority. It does not certify future provider Adapters, hidden retries, copied buffers outside the exercised path, or security.
+- Exactly one current next action: design and implement an entirely **OFFLINE** pinned local Ollama recording Adapter fixture against this harness, without starting Ollama, making model calls, using network, or changing production live/provider authority.
+
+See [the conformance contract](labs/Societies.SnowGlobe/COGNITION_QUALITY_RECORDING_ADAPTER_CONFORMANCE.md) and [ADR 0010](docs/adr/0010-offline-cognition-quality-recording-adapter-conformance.md).
+
 ## Offline cognition-quality recording-session milestone (completed)
 
 ### Outcome and scope
@@ -19,9 +39,9 @@
 - Offline fixture only. No Ollama/premium/network/provider/credential/payment/file/journal/world/live authority, delivery attestation, or model-execution attestation exists. Process-local authorization is not restart-durable; future Adapters require separate registry/source change and deep security review.
 - No push, PR, live call, credential, or payment action was performed.
 
-### Next action
+### Historical next action (superseded)
 
-Exactly one current next action: add an offline Adapter conformance harness for the exact 12-slot/no-retry/binding/cancellation/buffer-ownership contract, without adding Ollama/premium implementation or live authority.
+The former next action to add the Adapter conformance harness is complete at `8a5d339` and is superseded by the current action above.
 
 ## Offline local-premium comparison milestone
 
