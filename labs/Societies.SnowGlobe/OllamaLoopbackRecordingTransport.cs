@@ -339,6 +339,7 @@ internal sealed class WindowsOllamaLoopbackRuntimeVerifier : IOllamaLoopbackRunt
         if (listeners.Length != 1 || !IsExactIpv4Loopback(listeners[0].LocalAddress) || listeners[0].ProcessId != binding.EndpointOwnerProcessId) return OllamaLoopbackRuntimeVerification.Reject("listener_owner_changed");
         if (checkPoint == OllamaLoopbackRuntimeCheckPoint.BeforeDispatch) return OllamaLoopbackRuntimeVerification.Pass;
         if (connection is null || connection.ServerProcessId != binding.ProcessId || connection.ServerPort != 11435 || connection.ClientProcessId != currentProcessId || connection.ClientPort is < 1 or > 65535) return OllamaLoopbackRuntimeVerification.Reject("connection_identity_missing");
+        if (checkPoint == OllamaLoopbackRuntimeCheckPoint.AfterExchange) return OllamaLoopbackRuntimeVerification.Pass;
         bool server = rows.Any(row => row.State == StateEstablished && row.ProcessId == binding.ProcessId && row.LocalPort == 11435 && row.RemotePort == connection.ClientPort && IsExactIpv4Loopback(row.LocalAddress) && IsExactIpv4Loopback(row.RemoteAddress));
         bool client = rows.Any(row => row.State == StateEstablished && row.ProcessId == currentProcessId && row.LocalPort == connection.ClientPort && row.RemotePort == 11435 && IsExactIpv4Loopback(row.LocalAddress) && IsExactIpv4Loopback(row.RemoteAddress));
         return server && client ? OllamaLoopbackRuntimeVerification.Pass : OllamaLoopbackRuntimeVerification.Reject("connection_owner_changed");

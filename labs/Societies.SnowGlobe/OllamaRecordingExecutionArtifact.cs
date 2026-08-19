@@ -412,6 +412,7 @@ public static class OllamaRecordingExecutionArtifactModule
         if (slots.ValueKind != JsonValueKind.Array || slots.GetArrayLength() > CognitionQualityCorpusV1.ScenarioCount) throw Failure("artifact_receipt_slots_invalid");
         JsonElement[] slotValues = slots.EnumerateArray().ToArray();
         int expectedOrdinal = 1;
+        string? terminalWrapper = null;
         for (int index = 0; index < slotValues.Length; index++)
         {
             JsonElement slot = slotValues[index];
@@ -433,6 +434,7 @@ public static class OllamaRecordingExecutionArtifactModule
             }
             else
             {
+                terminalWrapper = wrapper;
                 if (index != completed || terminalSlot != completed + 1 || slotValues.Length != completed + 1)
                     throw Failure("artifact_receipt_terminal_slot_invalid");
                 if (slotSubmission != terminalSubmission || slotStatus != terminalStatus)
@@ -473,6 +475,17 @@ public static class OllamaRecordingExecutionArtifactModule
             if (slotValues.Length == completed
                 && (terminalSubmission != SubmissionState.DefinitelyNotSubmitted.ToString() || terminalStatus is not null))
                 throw Failure("artifact_receipt_result_binding_invalid");
+            if (failure == SnowGlobeOllamaLoopbackRecordingFailureCode.RuntimeChanged.ToString())
+            {
+                bool beforeDispatch = terminalSubmission == SubmissionState.DefinitelyNotSubmitted.ToString()
+                    && terminalStatus is null && terminalWrapper is null;
+                bool afterResponseHeaders = terminalSubmission == SubmissionState.ResponseReceived.ToString()
+                    && terminalStatus is >= 100 and <= 599 && terminalWrapper is null;
+                bool afterExchange = terminalSubmission == SubmissionState.ResponseReceived.ToString()
+                    && terminalStatus == 200 && terminalWrapper is not null;
+                if (slotValues.Length != completed + 1 || !(beforeDispatch || afterResponseHeaders || afterExchange))
+                    throw Failure("artifact_receipt_result_binding_invalid");
+            }
         }
         RequireInt32(receipt, "automatic_retry_count", 0); RequireInt32(receipt, "fallback_count", 0); RequireInt32(receipt, "alternate_endpoint_or_model_count", 0);
         if (!string.Equals(RequireNullableDigest(receipt, "nested_recording_evidence_digest_sha256"), nestedDigest, StringComparison.Ordinal)) throw Failure("artifact_receipt_binding_invalid");
@@ -590,7 +603,11 @@ public static class OllamaRecordingExecutionArtifactModule
         if (mappedFailure == OllamaRecordingCompositionFailureCode.RuntimeBindingInvalid
             && (completed != 0 || terminalSlot != 1 || submission != SubmissionState.DefinitelyNotSubmitted.ToString() || statusCode is not null))
             throw Failure("artifact_failed_result_invalid");
-        if ((mappedFailure is OllamaRecordingCompositionFailureCode.RuntimeChanged or OllamaRecordingCompositionFailureCode.TransportPoisoned)
+        if (mappedFailure == OllamaRecordingCompositionFailureCode.RuntimeChanged
+            && !((submission == SubmissionState.DefinitelyNotSubmitted.ToString() && statusCode is null)
+                || (submission == SubmissionState.ResponseReceived.ToString() && statusCode is >= 100 and <= 599)))
+            throw Failure("artifact_failed_result_invalid");
+        if (mappedFailure == OllamaRecordingCompositionFailureCode.TransportPoisoned
             && (submission != SubmissionState.DefinitelyNotSubmitted.ToString() || statusCode is not null))
             throw Failure("artifact_failed_result_invalid");
         if (mappedFailure == OllamaRecordingCompositionFailureCode.TransportFailure

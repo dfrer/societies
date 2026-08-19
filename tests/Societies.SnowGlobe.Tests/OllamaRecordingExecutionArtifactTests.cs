@@ -127,7 +127,7 @@ public sealed class OllamaRecordingExecutionArtifactTests
         }
         foreach (string failure in Enum.GetNames<SnowGlobeOllamaLoopbackRecordingFailureCode>())
         {
-            if (failure is "WrapperRejected" or "ResponseBodyRejected") continue;
+            if (failure is "WrapperRejected" or "ResponseBodyRejected" or "RuntimeChanged") continue;
             AssertIntegrityValidForgeryRejected(failed, (_, result, receipt) =>
             {
                 result["composition_failure_code"] = failure;
@@ -135,6 +135,54 @@ public sealed class OllamaRecordingExecutionArtifactTests
                 receipt!["failure_code"] = failure;
             });
         }
+    }
+
+    [Fact]
+    public async Task IntegrityValidRuntimeChangedReceiptRejectsImpossibleTerminalProvenance()
+    {
+        OllamaRecordingExecutionArtifact failed = await CreateTerminalArtifact();
+        AssertIntegrityValidForgeryRejected(failed, (_, result, receipt) =>
+        {
+            result["composition_failure_code"] = "RuntimeChanged";
+            result["recording_failure_code"] = "RuntimeChanged";
+            result["terminal_submission_state"] = "DefinitelyNotSubmitted";
+            result["terminal_status_code"] = null;
+            receipt!["failure_code"] = "RuntimeChanged";
+            receipt["slots"]!.AsArray().RemoveAt(2);
+        });
+        AssertIntegrityValidForgeryRejected(failed, (_, result, receipt) =>
+        {
+            result["composition_failure_code"] = "RuntimeChanged";
+            result["recording_failure_code"] = "RuntimeChanged";
+            result["terminal_status_code"] = 429;
+            receipt!["failure_code"] = "RuntimeChanged";
+            receipt["slots"]![2]!["status_code"] = 429;
+        });
+    }
+
+    [Theory]
+    [InlineData((int)SubmissionState.DefinitelyNotSubmitted, null, false)]
+    [InlineData((int)SubmissionState.ResponseReceived, 429, false)]
+    [InlineData((int)SubmissionState.ResponseReceived, 200, false)]
+    [InlineData((int)SubmissionState.ResponseReceived, 200, true)]
+    public async Task IntegrityValidRuntimeChangedReceiptAcceptsExactTransportEmittableTerminalProvenance(int submissionValue, int? status, bool wrapperPresent)
+    {
+        SubmissionState submission = (SubmissionState)submissionValue;
+        OllamaRecordingExecutionArtifact failed = await CreateTerminalArtifact();
+        byte[] runtimeChanged = ForgeIntegrityValid(failed, (_, result, receipt) =>
+        {
+            result["composition_failure_code"] = "RuntimeChanged";
+            result["recording_failure_code"] = "RuntimeChanged";
+            result["terminal_submission_state"] = submission.ToString();
+            result["terminal_status_code"] = status;
+            receipt!["failure_code"] = "RuntimeChanged";
+            receipt["slots"]![2]!["wrapper_digest_sha256"] = wrapperPresent ? new string('d', 64) : null;
+            receipt["slots"]![2]!["status_code"] = status;
+            receipt["slots"]![2]!["submission_state"] = submission.ToString();
+        });
+
+        OllamaRecordingExecutionArtifact validated = OllamaRecordingExecutionArtifactModule.Validate(runtimeChanged);
+        Assert.Equal("RuntimeChanged", validated.FailureCode); Assert.Equal(submission.ToString(), validated.TerminalSubmissionState); Assert.Equal(status, validated.TerminalStatusCode);
     }
 
     [Fact]

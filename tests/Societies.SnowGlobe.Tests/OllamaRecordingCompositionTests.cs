@@ -92,6 +92,67 @@ public sealed class OllamaRecordingCompositionTests
     }
 
     [Fact]
+    public async Task OneSlotHttp200WrapperRejected_PersistsTerminalArtifactInsteadOfGenericIndeterminate()
+    {
+        byte[][] wrappers = TestWrappers.Valid(); wrappers[0] = "{}"u8.ToArray();
+        InMemoryOllamaRecordingArtifactStore store = new(); TestTransportFactory factory = new(wrappers);
+        SnowGlobeOllamaRecordingCompositionModule module = new(Root, new SnowGlobePinnedOllamaRecordingModule(new FixedClock(1), factory), store);
+
+        OllamaRecordingCompositionResult result = await module.ExecuteAndPublishOnceAsync(
+            module.Prepare(new(777, StartTicks), "one-slot-wrapper-rejected-v1"));
+
+        Assert.Equal("Failed", result.OutcomeCode); Assert.Equal("WrapperRejected", result.FailureCode);
+        Assert.True(result.ArtifactPublished); Assert.NotNull(result.Artifact);
+        Assert.Equal(0, result.Artifact!.CompletedSlotCount); Assert.Equal(1, result.Artifact.TerminalSlotOrdinal);
+        Assert.Equal(SubmissionState.ResponseReceived.ToString(), result.Artifact.TerminalSubmissionState);
+        Assert.Equal(ChargeState.NotApplicable, result.Artifact.TerminalChargeState); Assert.Equal(200, result.Artifact.TerminalStatusCode);
+        Assert.True(result.Artifact.ReceiptPresent); Assert.Null(result.Artifact.NestedRecordingEvidenceDigestSha256);
+        Assert.Equal(1, factory.Transport!.CallCount); Assert.Equal(1, store.ReserveCount); Assert.Equal(1, store.PublishCount);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd")]
+    public async Task OneSlotHttp200RuntimeChangedAfterResponse_PersistsExactTerminalArtifactInsteadOfGenericIndeterminate(string? wrapperDigest)
+    {
+        InMemoryOllamaRecordingArtifactStore store = new();
+        ThrowingFactory factory = new(OllamaLoopbackTransportFailureCode.RuntimeChanged, SubmissionState.ResponseReceived, 200, wrapperDigest);
+        SnowGlobeOllamaRecordingCompositionModule module = new(
+            Root, new SnowGlobePinnedOllamaRecordingModule(new FixedClock(1), factory), store);
+
+        OllamaRecordingCompositionResult result = await module.ExecuteAndPublishOnceAsync(
+            module.Prepare(new(777, StartTicks), "one-slot-http200-runtime-changed-v1"));
+
+        Assert.Equal("Failed", result.OutcomeCode); Assert.Equal("RuntimeChanged", result.FailureCode);
+        Assert.True(result.ArtifactPublished); Assert.NotNull(result.Artifact);
+        Assert.Equal(0, result.Artifact!.CompletedSlotCount); Assert.Equal(1, result.Artifact.TerminalSlotOrdinal);
+        Assert.Equal(SubmissionState.ResponseReceived.ToString(), result.Artifact.TerminalSubmissionState);
+        Assert.Equal(ChargeState.NotApplicable, result.Artifact.TerminalChargeState); Assert.Equal(200, result.Artifact.TerminalStatusCode);
+        Assert.True(result.Artifact.ReceiptPresent); Assert.Null(result.Artifact.NestedRecordingEvidenceDigestSha256);
+        Assert.Equal(1, factory.Transport!.CallCount); Assert.Equal(1, store.ReserveCount); Assert.Equal(1, store.PublishCount);
+    }
+
+    [Theory]
+    [InlineData((int)OllamaLoopbackTransportFailureCode.RuntimeChanged, (int)SubmissionState.SubmissionUnknown, null)]
+    [InlineData((int)OllamaLoopbackTransportFailureCode.RuntimeChanged, (int)SubmissionState.DefinitelyNotSubmitted, 200)]
+    [InlineData((int)OllamaLoopbackTransportFailureCode.RuntimeChanged, (int)SubmissionState.ResponseReceived, null)]
+    [InlineData((int)OllamaLoopbackTransportFailureCode.Poisoned, (int)SubmissionState.ResponseReceived, 200)]
+    public async Task NonTransportEmittableRuntimeTerminalTuplesRemainClosed(int codeValue, int submissionValue, int? status)
+    {
+        OllamaLoopbackTransportFailureCode code = (OllamaLoopbackTransportFailureCode)codeValue;
+        SubmissionState submission = (SubmissionState)submissionValue;
+        InMemoryOllamaRecordingArtifactStore store = new(); ThrowingFactory factory = new(code, submission, status);
+        SnowGlobeOllamaRecordingCompositionModule module = new(
+            Root, new SnowGlobePinnedOllamaRecordingModule(new FixedClock(1), factory), store);
+
+        OllamaRecordingCompositionException failure = await Assert.ThrowsAsync<OllamaRecordingCompositionException>(() =>
+            module.ExecuteAndPublishOnceAsync(module.Prepare(new(777, StartTicks), $"invalid-runtime-terminal-{codeValue}-{submissionValue}-{status?.ToString() ?? "null"}")).AsTask());
+
+        Assert.Equal("composition_execution_indeterminate", failure.Code); Assert.Null(failure.InnerException);
+        Assert.Equal(1, factory.Transport!.CallCount); Assert.Equal(1, store.ReserveCount); Assert.Equal(0, store.PublishCount);
+    }
+
+    [Fact]
     public async Task AuthorizationRejectionAfterReservationPersistsExactCompositionOnlyArtifact()
     {
         TestTransportFactory factory = new(TestWrappers.Valid()); SnowGlobePinnedOllamaRecordingModule inner = new(new FixedClock(1), factory);
@@ -254,19 +315,19 @@ public sealed class OllamaRecordingCompositionTests
 
     private sealed class ThrowingFactory : IOllamaLoopbackRecordingTransportFactory
     {
-        private readonly OllamaLoopbackTransportFailureCode _code; private readonly SubmissionState _submission; private readonly int? _status; private int _count;
-        internal ThrowingFactory(OllamaLoopbackTransportFailureCode code, SubmissionState submission, int? status) { _code = code; _submission = submission; _status = status; }
+        private readonly OllamaLoopbackTransportFailureCode _code; private readonly SubmissionState _submission; private readonly int? _status; private readonly string? _wrapperDigest; private int _count;
+        internal ThrowingFactory(OllamaLoopbackTransportFailureCode code, SubmissionState submission, int? status, string? wrapperDigest = null) { _code = code; _submission = submission; _status = status; _wrapperDigest = wrapperDigest; }
         internal int CreateCount => Volatile.Read(ref _count); internal ThrowingTransport? Transport { get; private set; }
-        public IOfflineOllamaRecordingTransportPort Create(OllamaLoopbackRuntimeBinding binding) { Interlocked.Increment(ref _count); Transport = new(_code, _submission, _status); return Transport; }
+        public IOfflineOllamaRecordingTransportPort Create(OllamaLoopbackRuntimeBinding binding) { Interlocked.Increment(ref _count); Transport = new(_code, _submission, _status, _wrapperDigest); return Transport; }
     }
 
     private sealed class ThrowingTransport : IOfflineOllamaRecordingTransportPort
     {
-        private readonly OllamaLoopbackTransportFailureCode _code; private readonly SubmissionState _submission; private readonly int? _status; private int _count;
-        internal ThrowingTransport(OllamaLoopbackTransportFailureCode code, SubmissionState submission, int? status) { _code = code; _submission = submission; _status = status; }
+        private readonly OllamaLoopbackTransportFailureCode _code; private readonly SubmissionState _submission; private readonly int? _status; private readonly string? _wrapperDigest; private int _count;
+        internal ThrowingTransport(OllamaLoopbackTransportFailureCode code, SubmissionState submission, int? status, string? wrapperDigest) { _code = code; _submission = submission; _status = status; _wrapperDigest = wrapperDigest; }
         internal int CallCount => Volatile.Read(ref _count);
         public ValueTask<OfflineOllamaRecordingTransportResponse> ExchangeOnceAsync(OfflineOllamaRecordingTransportRequest request, CancellationToken cancellationToken)
-        { Interlocked.Increment(ref _count); request.Dispose(); return ValueTask.FromException<OfflineOllamaRecordingTransportResponse>(new OllamaLoopbackTransportException(_code, _submission, _status)); }
+        { Interlocked.Increment(ref _count); request.Dispose(); return ValueTask.FromException<OfflineOllamaRecordingTransportResponse>(new OllamaLoopbackTransportException(_code, _submission, _status, _wrapperDigest)); }
         public void Dispose() { }
         public ValueTask DisposeAsync() => ValueTask.CompletedTask;
     }
