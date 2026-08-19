@@ -186,8 +186,9 @@ public abstract class CognitionQualityRecordingAdapter
 }
 
 /// <summary>
-/// The sole public runtime Adapter in this slice: a deterministic in-memory fixed-response fake.
-/// It performs no I/O and returns NotApplicable submission and charge states.
+/// The generic public offline runtime Adapter: a deterministic in-memory fixed-response fake.
+/// The separately pinned Ollama recording fixture is also public; neither has live authority.
+/// This Adapter performs no I/O and returns NotApplicable submission and charge states.
 /// </summary>
 public sealed class OfflineFixedResponseCognitionQualityRecordingAdapter : CognitionQualityRecordingAdapter, IDisposable, IAsyncDisposable
 {

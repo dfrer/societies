@@ -16,7 +16,8 @@
 ### Boundary and sole current next action
 
 - This is test-only offline evidence. It performs no I/O, network, live/provider/model call, credential, payment, Ollama, journal, file, or world-authority action and does not change production live/provider authority. It does not certify future provider Adapters, hidden retries, copied buffers outside the exercised path, or security.
-- Exactly one current next action: design and implement an entirely **OFFLINE** pinned local Ollama recording Adapter fixture against this harness, without starting Ollama, making model calls, using network, or changing production live/provider authority.
+- The pinned fixture action is historical and complete at `8f95875`: registry-closed, entirely in-memory, exactly twelve caller-supplied response buffers, frozen qwen3.5:4b provenance, and contract-digest binding. The candidate-neutral harness proves its exact eleven ordered checks and full offline result; `OfflinePinnedOllamaRecordingFixtureTests` prove exact count/index read-once behavior, fixture-owned response/request zeroing, caller preservation, concurrent capability safety, and cancellation. Generic session timeout semantics are predecessor evidence, not pinned-fixture timeout evidence. No path/PID/file/env/socket/process/provider/model/credential/payment/live authority or transport/model attestation exists. Validation is 12/12 focused, 445/445 full Release, 0 warnings/errors, and 56/56 benchmark CLI before the final narrow correction; deep review CODE GO.
+- Exactly one current next action: design and implement an entirely **OFFLINE** bounded Ollama recording request/response codec plus fake transport port against this fixture, with no sockets, server/model calls, credentials, or live authority; actual loopback transport remains separately authorized and security-reviewed.
 
 See [the conformance contract](labs/Societies.SnowGlobe/COGNITION_QUALITY_RECORDING_ADAPTER_CONFORMANCE.md) and [ADR 0010](docs/adr/0010-offline-cognition-quality-recording-adapter-conformance.md).
 
@@ -24,7 +25,7 @@ See [the conformance contract](labs/Societies.SnowGlobe/COGNITION_QUALITY_RECORD
 
 ### Outcome and scope
 
-- Commit `8256512` adds the offline `CognitionQualityRecordingSessionModule` with public instance operations `Authorize` and `RecordOnceAsync`; `OfflineFixedResponseCognitionQualityRecordingAdapter` is the sole public runtime Adapter.
+- Commit `8256512` historically added the offline `CognitionQualityRecordingSessionModule` with public instance operations `Authorize` and `RecordOnceAsync`; `OfflineFixedResponseCognitionQualityRecordingAdapter` was the sole public runtime Adapter at that commit. Current offline fixture inventory is the generic fixed-response fixture plus registry-closed `OfflinePinnedOllamaRecordingFixture`; neither is live.
 - Exact process-local authorization binds publication/prompt-set/provenance/Adapter identity and contract digest, canonical nonce, lifetime, and timeout. Nonce tombstones are bounded/non-evicting at 1,024; `OfflineFixedResponseCognitionQualityRecordingAdapter` capability tracking is capped at 4,096; any call atomically consumes exact module/Adapter-bound capability authority.
 - Exactly 12 sequential slots run one attempt each with no retry/fallback/alternate/thirteenth call. Response bounds are 1..1,024 bytes each and 12,288 aggregate with exact binding echoes; evidence is created only after all 12. Failure paths are raw-free/no-evidence. Disposed fixture/prompt copies are zeroed; caller inputs are preserved.
 
@@ -41,7 +42,7 @@ See [the conformance contract](labs/Societies.SnowGlobe/COGNITION_QUALITY_RECORD
 
 ### Historical next action (superseded)
 
-The former next action to add the Adapter conformance harness is complete at `8a5d339` and is superseded by the current action above.
+The former next actions to add the Adapter conformance harness (`8a5d339`) and pinned fixture (`8f95875`) are complete and historical; the bounded offline codec/fake transport port above is the only current action.
 
 ## Offline local-premium comparison milestone
 

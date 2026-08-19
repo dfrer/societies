@@ -2,7 +2,7 @@
 
 ## Contract
 
-Commit `8256512` adds `CognitionQualityRecordingSessionModule`, an offline, provider-neutral orchestration boundary. The public instance module has exactly two operations: `Authorize` and `RecordOnceAsync`. The sole public runtime adapter is `OfflineFixedResponseCognitionQualityRecordingAdapter`; it is a deterministic in-memory fixture with no I/O.
+Commit `8256512` historically added `CognitionQualityRecordingSessionModule`, an offline, provider-neutral orchestration boundary. The public instance module had exactly two operations: `Authorize` and `RecordOnceAsync`. The sole public runtime adapter at that commit was `OfflineFixedResponseCognitionQualityRecordingAdapter`; current offline fixture inventory is that generic fixed-response fixture plus registry-closed `OfflinePinnedOllamaRecordingFixture`, neither live.
 
 Authorization is process-local and binds the publication canonical digest, prompt-set digest, provenance digest, adapter identity and contract digest, a canonical nonce, capability lifetime, and session timeout. Nonce tombstones are bounded and non-evicting at 1,024 entries; `OfflineFixedResponseCognitionQualityRecordingAdapter` tracks at most 4,096 capabilities. A capability binds the exact module and exact adapter object and is consumed atomically. Any call, including pre-cancellation, expiry, wrong-module use, or binding failure, spends the capability.
 
@@ -21,4 +21,4 @@ This slice performs no network, provider, credential, payment, file, journal, wo
 - Release build: 0 warnings/errors. `src/societies/` unchanged.
 - Independent deep review: FINAL CODE GO after five corrections covering nonce replay, multi-capability slot indexing, pre-copy bounds, explicit zeroing lifecycle, and mutable-indexer TOCTOU.
 
-The former next action to add an Adapter conformance harness is complete and historical at `8a5d339`. Current milestone truth and the sole next action are recorded in [CURRENT_BUILD.md](../../CURRENT_BUILD.md), [the conformance contract](COGNITION_QUALITY_RECORDING_ADAPTER_CONFORMANCE.md), and [ADR 0010](../../docs/adr/0010-offline-cognition-quality-recording-adapter-conformance.md): design and implement an entirely **OFFLINE** pinned local Ollama recording Adapter fixture against the harness, without starting Ollama, making model calls, using network, or changing production live/provider authority.
+The former conformance-harness and pinned-fixture actions are complete and historical at `8a5d339` and `8f95875`. Current milestone truth and the sole next action are recorded in [CURRENT_BUILD.md](../../CURRENT_BUILD.md), [the conformance contract](COGNITION_QUALITY_RECORDING_ADAPTER_CONFORMANCE.md), and [ADR 0011](../../docs/adr/0011-offline-pinned-ollama-recording-fixture.md): design and implement an entirely **OFFLINE** bounded Ollama recording request/response codec plus fake transport port against the completed fixture, without sockets, server/model calls, credentials, or live authority.

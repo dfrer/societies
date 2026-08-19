@@ -16,4 +16,4 @@ Source hashes are harness `1DF7E16ABA14AEAEC7B7397A2561A5158180C462A3815DC561460
 
 ## Status and sole current next action
 
-The conformance harness action is complete at `8a5d339`. Exactly one current next action remains: design and implement an entirely **OFFLINE** pinned local Ollama recording Adapter fixture against this harness, without starting Ollama, making model calls, using network, or changing production live/provider authority.
+The conformance harness action is complete at `8a5d339`. The former pinned-fixture action is historical and completed at `8f95875`; the fixture is documented in [ADR 0011](0011-offline-pinned-ollama-recording-fixture.md). Exactly one current next action remains: design and implement an entirely **OFFLINE** bounded Ollama recording request/response codec plus fake transport port against that fixture, with no sockets, server/model calls, credentials, or live authority. Actual loopback transport requires separate authorization and security review.
