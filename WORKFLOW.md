@@ -1,5 +1,13 @@
 # Snow Globe provider preflight, Ollama repair, and qwen3.5 smoke handoff
 
+## Current v3 bounded chunked framing handoff (offline CODE GO)
+
+Clean code commit `9f0336f4a744162be12c996c62c2d4a857dc3ef7` completes the exact `HttpClient`-exposed singleton boundary with canonical `Transfer-Encoding: chunked`, absent `Content-Length`, rejected declared/surfaced trailers, decoded 1..8192 body bounds, explicit `BodyBounds`/`Trailer` policies, handler header/drain settings, exactly-once observed cancellation tasks, and body zeroing. Public operations and CLI args are unchanged; there is no retry/fallback/alternate.
+
+Identities are plan `snow_globe_ollama_recording_composition_plan/v3`, receipt `snow_globe_ollama_loopback_recording_receipt/v3`, artifact `snow_globe_ollama_recording_execution_artifact/v3`, transport `snow-globe-ollama-loopback-recording-transport-adapter/v3`; path `artifacts/snowglobe/local-model/qwen3.5-4b-recording-execution-v3.json`. Goldens: transport `17ccc1f0c1da7084c08cf37d1d80e11bf16ffed06e196bbba373d7a33a9b3f27`; plan `534f26d41f11b23024aab95db7714e16cc374673170e3f9c71711d6fe23c1fd5`; receipt `93328d8b9bf1ca27b07a66063bdc90f5d9877ddb4b2eb3395ff72539e914e6da` / payload `85c8484a960652d6bb0ae91a0470452f281e3a34296886ec4c603240c1e14e3b`; artifact `2635667e36fb8800f21ecded4ac90d4e5840dafe48b669b518556b38eb60aae2` / payload `a79c3a0a31e9911038b9264c52f05d8eedec6785e81e32e33d5aca1bec124111`.
+
+Drain 8/8, focused 164/164, CLI 59/59, full 650/650, builds 0/0, and deep review FINAL CODE GO with no P0-P2 findings. This is offline CODE GO only: no raw-wire header/chunk-extension/trailer-absence proof, live compatibility, model execution, quality, cost, or production claim. The previous offline framing action is historical. Current next action is one clean committed v3 preflight and, only with separate fresh authority, exactly one v3 session then one validate, no retry; no current authority is implied.
+
 ## Offline Ollama recording codec milestone (completed)
 
 ### Outcome and scope
@@ -70,11 +78,11 @@ The prior dry-run-only gate is historical and superseded by the authorized attem
 - The retained cause is only the strongest source-consistent `HttpResponseRejected` inference, unconfirmed because headers/checkpoint were not retained. Offline fix `98b3ec5` admits `HttpResponseRejected` / `ResponseReceived` / status 100..599 / null wrapper / mandatory terminal row; adjacent `ResponseBodyRejected` closes to status 200 / null wrapper / mandatory row; `WrapperRejected` remains status 200 / non-null wrapper. Cleanup found zero processes, ports, or GPU apps; request logging was false/raw marker 0; CUDA was exact RTX2070S with 34/34 offload.
 - Validation after fix: focused owner 92/92, focused correction+artifact 50/50, transport+session 52/52, full SnowGlobe 594/594, RecordingCli 47/47, lab+CLI builds 0 warnings/errors, deep review FINAL CODE GO. Both one-shot authorities are consumed; do not retry.
 
-### Sole current next action
+### Historical next action
 
 Attempt-003 is complete with EVIDENCE GO: preflight plan `40cad2ba2c4ae568d7db8968b4547dff3b96da46c7386377fc447fa833ee82c5`, record exit 3 after 8,621 ms, terminal `Failed` / `HttpResponseRejected` / completed 0 / terminal slot 1 / `ResponseReceived` / 200 / `NotApplicable` / `ResponseHeaders` / `TransferEncoding` / additional=false, and validate exit 0 structurally complete. Artifact v2 is 5,822 B with canonical SHA-256 `4e358d3dc7bb578debaad8edb6578984c6f7f9ac8ec558013e2ef8ae59c00038`; exactly one HTTP200 POST took 7.8811713 s, with no GET/retry/alternate/download, body logging off, GPU 34/34, cleanup zero. Claims exclude accepted body/wrapper/nested evidence/12 slots/quality/compatibility; TransferEncoding is typed code-path evidence, not independent wire capture.
 
-The sole current next action is an offline Design-It-Twice decision and security tests for bounded transfer framing (accept exact chunked versus retain rejection); no fresh live attempt unless separately authorized after code/review.
+The offline Design-It-Twice decision and security tests for bounded transfer framing are complete in v3 above.
 
 The v2 code milestone is `a5a0823`: public operations and CLI arguments are unchanged; typed raw-free terminal checkpoint/policy coherence is shared by artifact and CLI. Final validation is v2 110/110, focused review 129/129, SnowGlobe 615/615, RecordingCli 49/49, builds 0/0, deep CODE GO. Compatibility is offline-supported, not live-proven.
 
