@@ -207,7 +207,7 @@ public sealed class AuthorizedOllamaLoopbackRecordingSession : IAsyncDisposable
 /// </summary>
 public sealed class SnowGlobePinnedOllamaRecordingModule
 {
-    public const string ReceiptSchemaVersion = "snow_globe_ollama_loopback_recording_receipt/v2";
+    public const string ReceiptSchemaVersion = "snow_globe_ollama_loopback_recording_receipt/v3";
     public const string AdapterIdentity = "snow-globe-pinned-ollama-loopback-recording-adapter/v1";
     public const string NormalizedModelIdentity = "qwen3.5-4b";
     public const string RuntimeModelReference = "qwen3.5:4b";
@@ -233,7 +233,7 @@ public sealed class SnowGlobePinnedOllamaRecordingModule
     public const string ProfileDescriptor = "snow-globe-pinned-ollama-loopback-live-profile/v1|request-16384|wrapper-8192|wrapper-aggregate-98304|response-min-1|max-1024|response-aggregate-12288|one-ordered-12-slot-session|no-retry|no-fallback|no-alternate|no-tags|observed-response-only";
     public const string CodecContractDescriptor = "snow-globe-ollama-loopback-live-codec/v1|snow-globe-offline-ollama-recording-codec/v1|qwen3.5:4b|canonical-body|strict-wrapper|depth-4|duplicate-reject|trailing-reject|invalid-utf8-reject";
     public const string AdapterContractDescriptor = "snow-globe-pinned-ollama-loopback-recording-adapter/v1|registered-cell|profile-bound-codec|runtime-owner-before-between-after|one-use|one-call-per-slot|no-retry|no-fallback|no-alternate|no-credentials|no-payment|no-world-authority";
-    internal static readonly string[] ClaimLimitations = ["process_local_observation_only", "returned_model_field_only", "no_independent_artifact_loaded_proof", "no_benchmark_quality_intelligence_winner_or_cost_claim", "no_world_or_simulation_authority", "no_retry_authority"];
+    internal static readonly string[] ClaimLimitations = ["process_local_observation_only", "returned_model_field_only", "httpclient_exposed_framing_only_no_raw_wire_proof", "no_independent_artifact_loaded_proof", "no_benchmark_quality_intelligence_winner_or_cost_claim", "no_world_or_simulation_authority", "no_retry_authority"];
     private readonly ICognitionQualityRecordingSessionClock _clock;
     private readonly IOllamaLoopbackRecordingTransportFactory _transportFactory;
     private readonly object _nonceGate = new();

@@ -104,9 +104,21 @@ public sealed class OllamaLoopbackRecordingTests
         Assert.DoesNotContain(Encoding.UTF8.GetString(result.Evidence.PromptPublication.Slots[0].PromptUtf8.Span), json, StringComparison.Ordinal);
         Assert.False(result.HasBenchmarkOrQualityClaim); Assert.False(result.HasIndependentArtifactLoadedProof); Assert.False(result.HasWorldOrSimulationAuthority); Assert.False(result.HasRetryAuthority);
         Assert.Equal(callerPublication, publication.CanonicalUtf8.ToArray()); Assert.Equal(callerPrompts, publication.Slots.Select(static slot => slot.PromptUtf8.ToArray()).ToArray());
-        JsonDocument.Parse(result.Receipt.CanonicalUtf8); Assert.Equal(result.Receipt.CanonicalDigestSha256, CognitionQualityHash.Sha256(result.Receipt.CanonicalUtf8.Span));
-        Assert.Equal("62dc56e0c6372611c5dad258f7f3ad095f2c7f182fe0ca8c5a382b3851600715", result.Receipt.CanonicalDigestSha256);
-        Assert.Equal("snow_globe_ollama_loopback_recording_receipt/v2", result.Receipt.SchemaVersion);
+        using JsonDocument receiptDocument = JsonDocument.Parse(result.Receipt.CanonicalUtf8);
+        Assert.Equal(
+        [
+            "process_local_observation_only",
+            "returned_model_field_only",
+            "httpclient_exposed_framing_only_no_raw_wire_proof",
+            "no_independent_artifact_loaded_proof",
+            "no_benchmark_quality_intelligence_winner_or_cost_claim",
+            "no_world_or_simulation_authority",
+            "no_retry_authority"
+        ], receiptDocument.RootElement.GetProperty("claim_limitation_codes").EnumerateArray().Select(static value => value.GetString()));
+        Assert.Equal(result.Receipt.CanonicalDigestSha256, CognitionQualityHash.Sha256(result.Receipt.CanonicalUtf8.Span));
+        Assert.Equal("93328d8b9bf1ca27b07a66063bdc90f5d9877ddb4b2eb3395ff72539e914e6da", result.Receipt.CanonicalDigestSha256);
+        Assert.Equal("85c8484a960652d6bb0ae91a0470452f281e3a34296886ec4c603240c1e14e3b", result.Receipt.PayloadDigestSha256);
+        Assert.Equal("snow_globe_ollama_loopback_recording_receipt/v3", result.Receipt.SchemaVersion);
         Assert.Equal("None", result.TerminalCheckpointCode); Assert.Equal("None", result.TerminalPolicyCode);
         Assert.Equal(result.TerminalCheckpointCode, result.Receipt.TerminalCheckpointCode);
         Assert.Equal(result.TerminalPolicyCode, result.Receipt.TerminalPolicyCode);
@@ -234,7 +246,7 @@ public sealed class OllamaLoopbackRecordingTests
             {
                 int slot = Interlocked.Increment(ref _calls); Assert.Equal(HttpMethod.Post, request.Method); Assert.Equal("http://127.0.0.1:11435/api/generate", request.RequestUri!.AbsoluteUri); Assert.Equal(HttpVersion.Version11, request.Version); Assert.Equal(HttpVersionPolicy.RequestVersionExact, request.VersionPolicy); Assert.Null(request.Headers.Authorization); Assert.False(request.Headers.Contains("Cookie")); Assert.False(request.Headers.Contains("Proxy-Authorization"));
                 byte[] body = await request.Content!.ReadAsByteArrayAsync(cancellationToken); Assert.InRange(body.Length, 1, OfflineOllamaRecordingCodecModule.MaximumRequestBytes); Assert.Contains("\"stream\":false", Encoding.UTF8.GetString(body), StringComparison.Ordinal); Assert.Contains("\"num_ctx\":4096", Encoding.UTF8.GetString(body), StringComparison.Ordinal);
-                byte[] responseBody = _failureSlot == slot ? "{}"u8.ToArray() : _wrapperMutation(Wrapper(slot)); HttpResponseMessage response = new(_failureSlot == slot ? _failureStatus : HttpStatusCode.OK) { Version = HttpVersion.Version11, Content = new ByteArrayContent(responseBody) }; response.Content.Headers.ContentType = new("application/json"); response.Content.Headers.ContentLength = responseBody.Length; return response;
+                byte[] responseBody = _failureSlot == slot ? "{}"u8.ToArray() : _wrapperMutation(Wrapper(slot)); HttpResponseMessage response = new(_failureSlot == slot ? _failureStatus : HttpStatusCode.OK) { Version = HttpVersion.Version11, Content = new ByteArrayContent(responseBody) }; response.Content.Headers.ContentType = new("application/json"); response.Content.Headers.ContentLength = null; response.Headers.TransferEncodingChunked = true; return response;
             }
             finally { Interlocked.Decrement(ref _concurrent); }
         }
@@ -249,12 +261,12 @@ public sealed class OllamaLoopbackRecordingTests
     private sealed class UncausedBodyCancellationHandler : HttpMessageHandler
     {
         private int _calls; internal int CallCount => Volatile.Read(ref _calls);
-        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) { Interlocked.Increment(ref _calls); _ = await request.Content!.ReadAsByteArrayAsync(CancellationToken.None); return new HttpResponseMessage(HttpStatusCode.OK) { Version = HttpVersion.Version11, Content = new UncausedCancellationBodyContent() }; }
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) { Interlocked.Increment(ref _calls); _ = await request.Content!.ReadAsByteArrayAsync(CancellationToken.None); HttpResponseMessage response = new(HttpStatusCode.OK) { Version = HttpVersion.Version11, Content = new UncausedCancellationBodyContent() }; response.Headers.TransferEncodingChunked = true; return response; }
     }
 
     private sealed class UncausedCancellationBodyContent : HttpContent
     {
-        internal UncausedCancellationBodyContent() { Headers.ContentType = new("application/json"); Headers.ContentLength = 1; }
+        internal UncausedCancellationBodyContent() { Headers.ContentType = new("application/json"); }
         protected override bool TryComputeLength(out long length) { length = 1; return true; }
         protected override Task SerializeToStreamAsync(Stream stream, TransportContext? context) => Task.FromException(new OperationCanceledException("attacker-controlled-body-oce"));
     }

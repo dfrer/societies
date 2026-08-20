@@ -14,17 +14,37 @@ public sealed class OllamaRecordingExecutionArtifactTests
     public async Task CanonicalArtifact_GoldenRoundTripsAndIsDetached()
     {
         OllamaRecordingExecutionArtifact artifact = await CreateArtifact();
-        Assert.Equal("df98538e35aa6ed26e5587022c880d8347dd40283f00b51268ca6b479c2435bf", artifact.CanonicalDigestSha256);
-        Assert.Equal("cee6a6629b7ac5706b4e047d79b951d37aef32ec3a2544f42d6fbea79fea2a7d", artifact.PayloadDigestSha256);
+        Assert.Equal("2635667e36fb8800f21ecded4ac90d4e5840dafe48b669b518556b38eb60aae2", artifact.CanonicalDigestSha256);
+        Assert.Equal("a79c3a0a31e9911038b9264c52f05d8eedec6785e81e32e33d5aca1bec124111", artifact.PayloadDigestSha256);
         OllamaRecordingExecutionArtifact validated = OllamaRecordingExecutionArtifactModule.Validate(artifact.CanonicalUtf8);
         Assert.Equal(artifact.CanonicalDigestSha256, validated.CanonicalDigestSha256);
         Assert.Equal(artifact.PayloadDigestSha256, validated.PayloadDigestSha256);
         Assert.InRange(artifact.CanonicalUtf8.Length, 1, OllamaRecordingExecutionArtifactModule.MaximumArtifactBytes);
         byte[] detached = artifact.CanonicalUtf8.ToArray(); detached[0] ^= 0xff;
         Assert.Equal((byte)'{', artifact.CanonicalUtf8.Span[0]);
-        Assert.Equal("snow_globe_ollama_recording_execution_artifact/v2", artifact.SchemaVersion);
+        Assert.Equal("snow_globe_ollama_recording_execution_artifact/v3", artifact.SchemaVersion);
         Assert.Equal("None", artifact.TerminalCheckpointCode); Assert.Equal("None", artifact.TerminalPolicyCode);
         Assert.Equal("raw_free_local_loopback_recording_execution_binding_only", artifact.Semantics);
+        using JsonDocument document = JsonDocument.Parse(artifact.CanonicalUtf8);
+        Assert.Equal(
+        [
+            "process_local_observation_and_nonce_only",
+            "repository_root_digest_only",
+            "returned_model_field_only",
+            "httpclient_exposed_framing_only_no_raw_wire_proof",
+            "no_independent_artifact_loaded_proof",
+            "no_independent_model_execution_proof",
+            "no_live_compatibility_proof",
+            "digests_provide_integrity_not_authenticity",
+            "nested_scoring_evidence_not_embedded_or_revalidated",
+            "no_benchmark_quality_intelligence_winner_cost_or_commercial_claim",
+            "no_world_or_simulation_authority",
+            "no_retry_fallback_or_alternate_authority",
+            "model_execution_and_file_publication_are_not_transactional"
+        ], document.RootElement.GetProperty("claim_limitation_codes").EnumerateArray().Select(static value => value.GetString()));
+        Assert.Contains("httpclient_exposed_framing_only_no_raw_wire_proof",
+            document.RootElement.GetProperty("receipt").GetProperty("claim_limitation_codes").EnumerateArray().Select(static value => value.GetString()),
+            StringComparer.Ordinal);
     }
 
     [Fact]
@@ -98,7 +118,7 @@ public sealed class OllamaRecordingExecutionArtifactTests
         byte[] changed = mutation switch
         {
             "unknown" => Encoding.UTF8.GetBytes(json.Replace("{\"schema_version\"", "{\"unknown\":0,\"schema_version\"", StringComparison.Ordinal)),
-            "duplicate" => Encoding.UTF8.GetBytes(json.Replace("{\"schema_version\":", "{\"schema_version\":\"snow_globe_ollama_recording_execution_artifact/v2\",\"schema_version\":", StringComparison.Ordinal)),
+            "duplicate" => Encoding.UTF8.GetBytes(json.Replace("{\"schema_version\":", "{\"schema_version\":\"snow_globe_ollama_recording_execution_artifact/v3\",\"schema_version\":", StringComparison.Ordinal)),
             "missing" => Encoding.UTF8.GetBytes(json.Replace("\"semantics\":\"raw_free_local_loopback_recording_execution_binding_only\",", string.Empty, StringComparison.Ordinal)),
             "noncanonical" => Encoding.UTF8.GetBytes(json + " "),
             "digest" => Encoding.UTF8.GetBytes(ReplaceFirstDigestCharacter(json, "\"plan_digest_sha256\":\"")),
@@ -208,14 +228,133 @@ public sealed class OllamaRecordingExecutionArtifactTests
         Assert.Equal(200, validated.TerminalStatusCode);
     }
 
+    [Theory]
+    [InlineData("BodyBounds")]
+    [InlineData("Trailer")]
+    public async Task IntegrityValidV3ResponseBodyPoliciesAcceptOnlyNullWrapperTerminalProvenance(string policy)
+    {
+        OllamaRecordingExecutionArtifact failed = await CreateTerminalArtifact();
+        byte[] forged = ForgeIntegrityValid(failed, (_, result, receipt) =>
+            SetResponseBodyRejected(result, receipt!, wrapperDigest: null, policy));
+
+        OllamaRecordingExecutionArtifact validated = OllamaRecordingExecutionArtifactModule.Validate(forged);
+
+        Assert.Equal("ResponseBodyRejected", validated.FailureCode);
+        Assert.Equal("ResponseBody", validated.TerminalCheckpointCode); Assert.Equal(policy, validated.TerminalPolicyCode);
+        Assert.Equal(SubmissionState.ResponseReceived.ToString(), validated.TerminalSubmissionState); Assert.Equal(200, validated.TerminalStatusCode);
+    }
+
     [Fact]
-    public async Task IntegrityValidResponseBodyRejectedReceiptRejectsNonNullWrapperDigest()
+    public async Task IntegrityValidV3TrailerDeclarationPolicyIsAcceptedOnlyAsHeaderTerminal()
+    {
+        OllamaRecordingExecutionArtifact failed = await CreateTerminalArtifact();
+        byte[] forged = ForgeIntegrityValid(failed, (_, result, receipt) =>
+            SetHttpResponseRejected(result, receipt!, 200, "Trailer"));
+
+        OllamaRecordingExecutionArtifact validated = OllamaRecordingExecutionArtifactModule.Validate(forged);
+
+        Assert.Equal("HttpResponseRejected", validated.FailureCode);
+        Assert.Equal("ResponseHeaders", validated.TerminalCheckpointCode); Assert.Equal("Trailer", validated.TerminalPolicyCode);
+    }
+
+    [Theory]
+    [InlineData("BodyRead")]
+    [InlineData("BodyBounds")]
+    [InlineData("Trailer")]
+    public async Task IntegrityValidResponseBodyRejectedReceiptRejectsNonNullWrapperDigest(string policy)
     {
         OllamaRecordingExecutionArtifact failed = await CreateTerminalArtifact();
         AssertIntegrityValidForgeryRejected(failed, (_, result, receipt) =>
         {
-            SetResponseBodyRejected(result, receipt!, new string('d', 64));
+            SetResponseBodyRejected(result, receipt!, new string('d', 64), policy);
         });
+    }
+
+    [Theory]
+    [InlineData("HttpResponseRejected", "ResponseHeaders", "BodyBounds")]
+    [InlineData("ResponseBodyRejected", "ResponseBody", "ContentLength")]
+    [InlineData("HttpResponseRejected", "ResponseBody", "Trailer")]
+    [InlineData("ResponseBodyRejected", "ResponseHeaders", "Trailer")]
+    public async Task IntegrityValidFramingFailureCheckpointPolicyCrossProductsRejectImpossibleTuples(
+        string failure,
+        string checkpoint,
+        string policy)
+    {
+        OllamaRecordingExecutionArtifact failed = await CreateTerminalArtifact();
+        AssertIntegrityValidForgeryRejected(failed, (_, result, receipt) =>
+        {
+            if (failure == "HttpResponseRejected") SetHttpResponseRejected(result, receipt!, 200, policy);
+            else SetResponseBodyRejected(result, receipt!, wrapperDigest: null, policy: policy);
+            result["terminal_checkpoint_code"] = checkpoint;
+            receipt!["terminal_checkpoint_code"] = checkpoint;
+        });
+    }
+
+    [Fact]
+    public async Task IntegrityValidTrailerResultReceiptMismatchesAreRejected()
+    {
+        OllamaRecordingExecutionArtifact failed = await CreateTerminalArtifact();
+        Action<JsonObject, JsonObject, JsonObject?>[] mismatches =
+        [
+            (_, result, receipt) =>
+            {
+                SetHttpResponseRejected(result, receipt!, 200, "Trailer");
+                receipt!["failure_code"] = "ResponseBodyRejected";
+            },
+            (_, result, receipt) =>
+            {
+                SetHttpResponseRejected(result, receipt!, 200, "Trailer");
+                receipt!["terminal_policy_code"] = "BodyBounds";
+            },
+            (_, result, receipt) =>
+            {
+                SetResponseBodyRejected(result, receipt!, wrapperDigest: null, policy: "Trailer");
+                result["terminal_checkpoint_code"] = "ResponseHeaders";
+            },
+            (_, result, receipt) =>
+            {
+                SetResponseBodyRejected(result, receipt!, wrapperDigest: null, policy: "Trailer");
+                result["recording_failure_code"] = "HttpResponseRejected";
+                result["composition_failure_code"] = "HttpResponseRejected";
+            }
+        ];
+
+        foreach (Action<JsonObject, JsonObject, JsonObject?> mismatch in mismatches)
+            AssertIntegrityValidForgeryRejected(failed, mismatch);
+    }
+
+    [Theory]
+    [InlineData("outer_schema")]
+    [InlineData("receipt_schema")]
+    [InlineData("artifact_path")]
+    [InlineData("transport_contract")]
+    public async Task IntegrityValidHistoricalV2IdentitiesRemainRejectedAfterAllDigestsAreRecomputed(string identity)
+    {
+        OllamaRecordingExecutionArtifact artifact = await CreateArtifact();
+        byte[] forged = ForgeIntegrityValid(artifact, (root, _, receipt) =>
+        {
+            switch (identity)
+            {
+                case "outer_schema":
+                    root["schema_version"] = "snow_globe_ollama_recording_execution_artifact/v2";
+                    break;
+                case "receipt_schema":
+                    receipt!["schema_version"] = "snow_globe_ollama_loopback_recording_receipt/v2";
+                    break;
+                case "artifact_path":
+                    root["relative_artifact_path"] = "artifacts/snowglobe/local-model/qwen3.5-4b-recording-execution-v2.json";
+                    break;
+                case "transport_contract":
+                    string v2Digest = CognitionQualityRecordingSessionCanonical.Digest(V2TransportContractDescriptor);
+                    root["transport_contract_digest_sha256"] = v2Digest;
+                    receipt!["transport_contract_digest_sha256"] = v2Digest;
+                    break;
+                default:
+                    throw new InvalidOperationException();
+            }
+        });
+
+        Assert.Throws<OllamaRecordingExecutionArtifactException>(() => OllamaRecordingExecutionArtifactModule.Validate(forged));
     }
 
     [Fact]
@@ -558,33 +697,33 @@ public sealed class OllamaRecordingExecutionArtifactTests
         return JsonSerializer.SerializeToUtf8Bytes(root);
     }
 
-    private static void SetHttpResponseRejected(JsonObject result, JsonObject receipt, int status)
+    private static void SetHttpResponseRejected(JsonObject result, JsonObject receipt, int status, string? policy = null)
     {
         result["composition_failure_code"] = "HttpResponseRejected";
         result["recording_failure_code"] = "HttpResponseRejected";
         result["terminal_submission_state"] = SubmissionState.ResponseReceived.ToString();
         result["terminal_status_code"] = status;
         result["terminal_checkpoint_code"] = "ResponseHeaders";
-        result["terminal_policy_code"] = status == 200 ? "ContentType" : "HttpStatus";
+        result["terminal_policy_code"] = policy ?? (status == 200 ? "ContentType" : "HttpStatus");
         receipt["failure_code"] = "HttpResponseRejected";
         receipt["terminal_checkpoint_code"] = "ResponseHeaders";
-        receipt["terminal_policy_code"] = status == 200 ? "ContentType" : "HttpStatus";
+        receipt["terminal_policy_code"] = policy ?? (status == 200 ? "ContentType" : "HttpStatus");
         receipt["slots"]![2]!["wrapper_digest_sha256"] = null;
         receipt["slots"]![2]!["status_code"] = status;
         receipt["slots"]![2]!["submission_state"] = SubmissionState.ResponseReceived.ToString();
     }
 
-    private static void SetResponseBodyRejected(JsonObject result, JsonObject receipt, string? wrapperDigest)
+    private static void SetResponseBodyRejected(JsonObject result, JsonObject receipt, string? wrapperDigest, string policy = "BodyRead")
     {
         result["composition_failure_code"] = "ResponseBodyRejected";
         result["recording_failure_code"] = "ResponseBodyRejected";
         result["terminal_submission_state"] = SubmissionState.ResponseReceived.ToString();
         result["terminal_status_code"] = 200;
         result["terminal_checkpoint_code"] = "ResponseBody";
-        result["terminal_policy_code"] = "BodyRead";
+        result["terminal_policy_code"] = policy;
         receipt["failure_code"] = "ResponseBodyRejected";
         receipt["terminal_checkpoint_code"] = "ResponseBody";
-        receipt["terminal_policy_code"] = "BodyRead";
+        receipt["terminal_policy_code"] = policy;
         receipt["slots"]![2]!["wrapper_digest_sha256"] = wrapperDigest;
         receipt["slots"]![2]!["status_code"] = 200;
         receipt["slots"]![2]!["submission_state"] = SubmissionState.ResponseReceived.ToString();
@@ -630,4 +769,6 @@ public sealed class OllamaRecordingExecutionArtifactTests
     {
         string path = Path.Combine(root, OllamaRecordingExecutionArtifactModule.RelativeArtifactPath.Replace('/', Path.DirectorySeparatorChar)); Directory.CreateDirectory(Path.GetDirectoryName(path)!); File.WriteAllBytes(path, artifact.CanonicalUtf8.ToArray());
     }
+
+    private const string V2TransportContractDescriptor = "snow-globe-ollama-loopback-recording-transport-adapter/v2|http-1.1-exact|post-generate|redirect-off|decompression-off|proxy-off|cookies-off|credentials-off|max-connection-1|response-headers-read|content-type-application-json-none-or-one-charset-utf-8|content-length-required|body-8192|typed-terminal-checkpoint-policy|single-serialization|runtime-owner-before-between-after|explicit-cancellation-cause|cancel-drain-250ms|one-late-observer|poison-on-indeterminate|no-retry";
 }

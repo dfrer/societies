@@ -19,12 +19,13 @@ public sealed class OllamaRecordingCompositionTests
         SnowGlobeOllamaRecordingCompositionModule first = new(Root); SnowGlobeOllamaRecordingCompositionModule second = new(Root);
         OllamaRecordingCompositionPlan a = first.Prepare(new(777, StartTicks), "composition-nonce-v1");
         OllamaRecordingCompositionPlan b = second.Prepare(new(777, StartTicks), "composition-nonce-v1");
-        Assert.Equal("db77fb419a681dc6768c49ef79d92b6cc4ef8c893aef46101e913029e80dbfdd", a.PlanDigestSha256);
-        Assert.Equal("snow_globe_ollama_recording_composition_plan/v2", a.SchemaVersion);
+        Assert.Equal("534f26d41f11b23024aab95db7714e16cc374673170e3f9c71711d6fe23c1fd5", a.PlanDigestSha256);
+        Assert.Equal("snow_globe_ollama_recording_composition_plan/v3", a.SchemaVersion);
         Assert.Equal(a.PlanDigestSha256, b.PlanDigestSha256);
         Assert.Equal(OllamaRecordingExecutionArtifactModule.RelativeArtifactPath, a.RelativeArtifactPath);
-        Assert.Equal("artifacts/snowglobe/local-model/qwen3.5-4b-recording-execution-v2.json", a.RelativeArtifactPath);
+        Assert.Equal("artifacts/snowglobe/local-model/qwen3.5-4b-recording-execution-v3.json", a.RelativeArtifactPath);
         Assert.DoesNotContain("recording-execution-v1", a.RelativeArtifactPath, StringComparison.Ordinal);
+        Assert.DoesNotContain("recording-execution-v2", a.RelativeArtifactPath, StringComparison.Ordinal);
         Assert.Equal(SnowGlobePinnedOllamaRecordingModule.RegisteredCellDigestSha256, a.RegisteredCellDigestSha256);
         Assert.False(a.IsConsumed); Assert.False(a.AdditionalAttemptAuthorized);
         string publicValues = string.Join('|', typeof(OllamaRecordingCompositionPlan).GetProperties(BindingFlags.Instance | BindingFlags.Public).Select(property => property.GetValue(a)?.ToString()));
@@ -262,6 +263,27 @@ public sealed class OllamaRecordingCompositionTests
         Assert.Equal(1, factory.CreateCount); Assert.Equal(1, factory.Transport!.CallCount); Assert.Equal(1, store.ReserveCount); Assert.Equal(1, store.PublishCount);
     }
 
+    [Theory]
+    [InlineData((int)OllamaLoopbackTransportFailureCode.HttpResponseRejected, (int)OllamaRecordingTerminalCheckpointCode.ResponseHeaders, (int)OllamaRecordingTerminalPolicyCode.Trailer)]
+    [InlineData((int)OllamaLoopbackTransportFailureCode.ResponseBodyRejected, (int)OllamaRecordingTerminalCheckpointCode.ResponseBody, (int)OllamaRecordingTerminalPolicyCode.BodyBounds)]
+    [InlineData((int)OllamaLoopbackTransportFailureCode.ResponseBodyRejected, (int)OllamaRecordingTerminalCheckpointCode.ResponseBody, (int)OllamaRecordingTerminalPolicyCode.Trailer)]
+    public async Task V3FramingTerminalsPersistExactResultReceiptArtifactEvidenceOnce(int codeValue, int checkpointValue, int policyValue)
+    {
+        OllamaLoopbackTransportFailureCode code = (OllamaLoopbackTransportFailureCode)codeValue;
+        OllamaRecordingTerminalCheckpointCode checkpoint = (OllamaRecordingTerminalCheckpointCode)checkpointValue;
+        OllamaRecordingTerminalPolicyCode policy = (OllamaRecordingTerminalPolicyCode)policyValue;
+        InMemoryOllamaRecordingArtifactStore store = new(); ThrowingFactory factory = new(code, SubmissionState.ResponseReceived, 200, checkpoint: checkpoint, policy: policy);
+        SnowGlobeOllamaRecordingCompositionModule module = new(Root, new SnowGlobePinnedOllamaRecordingModule(new FixedClock(1), factory), store);
+
+        OllamaRecordingCompositionResult result = await module.ExecuteAndPublishOnceAsync(module.Prepare(new(777, StartTicks), $"v3-framing-{policy.ToString().ToLowerInvariant()}"));
+
+        Assert.Equal("Failed", result.OutcomeCode); Assert.Equal(code.ToString(), result.FailureCode); Assert.NotNull(result.Artifact);
+        Assert.Equal(checkpoint.ToString(), result.Artifact!.TerminalCheckpointCode); Assert.Equal(policy.ToString(), result.Artifact.TerminalPolicyCode);
+        Assert.Equal(SubmissionState.ResponseReceived.ToString(), result.Artifact.TerminalSubmissionState); Assert.Equal(200, result.Artifact.TerminalStatusCode);
+        Assert.True(result.Artifact.ReceiptPresent); Assert.Null(result.Artifact.NestedRecordingEvidenceDigestSha256);
+        Assert.Equal(1, factory.CreateCount); Assert.Equal(1, factory.Transport!.CallCount); Assert.Equal(1, store.ReserveCount); Assert.Equal(1, store.PublishCount);
+    }
+
     [Fact]
     public async Task PreCancellationConsumesPlanWithoutStoreOrTransportAndReuseStaysClosed()
     {
@@ -391,19 +413,19 @@ public sealed class OllamaRecordingCompositionTests
 
     private sealed class ThrowingFactory : IOllamaLoopbackRecordingTransportFactory
     {
-        private readonly OllamaLoopbackTransportFailureCode _code; private readonly SubmissionState _submission; private readonly int? _status; private readonly string? _wrapperDigest; private int _count;
-        internal ThrowingFactory(OllamaLoopbackTransportFailureCode code, SubmissionState submission, int? status, string? wrapperDigest = null) { _code = code; _submission = submission; _status = status; _wrapperDigest = wrapperDigest; }
+        private readonly OllamaLoopbackTransportFailureCode _code; private readonly SubmissionState _submission; private readonly int? _status; private readonly string? _wrapperDigest; private readonly OllamaRecordingTerminalCheckpointCode? _checkpoint; private readonly OllamaRecordingTerminalPolicyCode? _policy; private int _count;
+        internal ThrowingFactory(OllamaLoopbackTransportFailureCode code, SubmissionState submission, int? status, string? wrapperDigest = null, OllamaRecordingTerminalCheckpointCode? checkpoint = null, OllamaRecordingTerminalPolicyCode? policy = null) { _code = code; _submission = submission; _status = status; _wrapperDigest = wrapperDigest; _checkpoint = checkpoint; _policy = policy; }
         internal int CreateCount => Volatile.Read(ref _count); internal ThrowingTransport? Transport { get; private set; }
-        public IOfflineOllamaRecordingTransportPort Create(OllamaLoopbackRuntimeBinding binding) { Interlocked.Increment(ref _count); Transport = new(_code, _submission, _status, _wrapperDigest); return Transport; }
+        public IOfflineOllamaRecordingTransportPort Create(OllamaLoopbackRuntimeBinding binding) { Interlocked.Increment(ref _count); Transport = new(_code, _submission, _status, _wrapperDigest, _checkpoint, _policy); return Transport; }
     }
 
     private sealed class ThrowingTransport : IOfflineOllamaRecordingTransportPort
     {
-        private readonly OllamaLoopbackTransportFailureCode _code; private readonly SubmissionState _submission; private readonly int? _status; private readonly string? _wrapperDigest; private int _count;
-        internal ThrowingTransport(OllamaLoopbackTransportFailureCode code, SubmissionState submission, int? status, string? wrapperDigest) { _code = code; _submission = submission; _status = status; _wrapperDigest = wrapperDigest; }
+        private readonly OllamaLoopbackTransportFailureCode _code; private readonly SubmissionState _submission; private readonly int? _status; private readonly string? _wrapperDigest; private readonly OllamaRecordingTerminalCheckpointCode? _checkpoint; private readonly OllamaRecordingTerminalPolicyCode? _policy; private int _count;
+        internal ThrowingTransport(OllamaLoopbackTransportFailureCode code, SubmissionState submission, int? status, string? wrapperDigest, OllamaRecordingTerminalCheckpointCode? checkpoint, OllamaRecordingTerminalPolicyCode? policy) { _code = code; _submission = submission; _status = status; _wrapperDigest = wrapperDigest; _checkpoint = checkpoint; _policy = policy; }
         internal int CallCount => Volatile.Read(ref _count);
         public ValueTask<OfflineOllamaRecordingTransportResponse> ExchangeOnceAsync(OfflineOllamaRecordingTransportRequest request, CancellationToken cancellationToken)
-        { Interlocked.Increment(ref _count); request.Dispose(); return ValueTask.FromException<OfflineOllamaRecordingTransportResponse>(new OllamaLoopbackTransportException(_code, _submission, _status, _wrapperDigest)); }
+        { Interlocked.Increment(ref _count); request.Dispose(); return ValueTask.FromException<OfflineOllamaRecordingTransportResponse>(new OllamaLoopbackTransportException(_code, _submission, _status, _wrapperDigest, _checkpoint, _policy)); }
         public void Dispose() { }
         public ValueTask DisposeAsync() => ValueTask.CompletedTask;
     }

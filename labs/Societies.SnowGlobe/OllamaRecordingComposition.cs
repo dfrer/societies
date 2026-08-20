@@ -71,7 +71,7 @@ public sealed class OllamaRecordingCompositionPlan
         return ReferenceEquals(_owner, owner) ? PlanConsumeResult.Consumed : PlanConsumeResult.BindingMismatch;
     }
 
-    public string SchemaVersion => "snow_globe_ollama_recording_composition_plan/v2";
+    public string SchemaVersion => "snow_globe_ollama_recording_composition_plan/v3";
     public string RelativeArtifactPath => OllamaRecordingExecutionArtifactModule.RelativeArtifactPath;
     public string RegisteredCellDigestSha256 => SnowGlobePinnedOllamaRecordingModule.RegisteredCellDigestSha256;
     public string ProfileDigestSha256 => SnowGlobePinnedOllamaRecordingModule.ProfileDigestSha256;
@@ -177,7 +177,7 @@ public sealed class SnowGlobeOllamaRecordingCompositionModule
 
     internal static string ComputePlanDigest(CognitionQualityPromptEnvelopePublication publication, CognitionQualityExecutionProvenance provenance, OllamaLoopbackRuntimeBinding binding, string repositoryRootDigestSha256, string nonceDigest) =>
         CognitionQualityRecordingSessionCanonical.Digest(string.Join('|',
-            "snow_globe_ollama_recording_composition_plan/v2",
+            "snow_globe_ollama_recording_composition_plan/v3",
             OllamaRecordingExecutionArtifactModule.RelativeArtifactPath,
             SnowGlobePinnedOllamaRecordingModule.RegisteredCellDigestSha256,
             SnowGlobePinnedOllamaRecordingModule.ProfileDigestSha256,

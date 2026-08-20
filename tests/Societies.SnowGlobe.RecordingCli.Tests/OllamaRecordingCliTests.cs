@@ -128,6 +128,61 @@ public sealed class OllamaRecordingCliTests : IDisposable
         Assert.Contains("additional_attempt_authorized=false", line, StringComparison.Ordinal); Assert.True(line.Length < 768);
     }
 
+    [Theory]
+    [InlineData("HttpResponseRejected", "ResponseHeaders", "Trailer")]
+    [InlineData("ResponseBodyRejected", "ResponseBody", "BodyBounds")]
+    [InlineData("ResponseBodyRejected", "ResponseBody", "Trailer")]
+    public async Task V3FramingTerminalPoliciesMapPublishedSummaryOnce(string failure, string checkpoint, string policy)
+    {
+        CountingModule module = new()
+        {
+            Summary = Summary("Failed", failure, 0, "ResponseReceived", 200, "NotApplicable", artifactPublished: true, receiptPresent: true)
+                with { TerminalCheckpointCode = checkpoint, TerminalPolicyCode = policy }
+        };
+        CountingFactory factory = new(module); StringWriter output = new(); StringWriter error = new();
+
+        int exit = await OllamaRecordingCliApplication.RunAsync(RecordArgs(PlanDigest), factory, output, error, CancellationToken.None);
+
+        Assert.Equal(3, exit); Assert.Equal(1, module.ExecuteCount); Assert.Empty(error.ToString());
+        string line = Assert.Single(ReadLines(output.ToString()));
+        Assert.Contains($"failure={failure}", line, StringComparison.Ordinal);
+        Assert.Contains($"checkpoint={checkpoint}", line, StringComparison.Ordinal);
+        Assert.Contains($"policy={policy}", line, StringComparison.Ordinal);
+        Assert.Contains("additional_attempt_authorized=false", line, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("HttpResponseRejected", "ResponseHeaders", "BodyBounds", false)]
+    [InlineData("ResponseBodyRejected", "ResponseBody", "ContentLength", false)]
+    [InlineData("HttpResponseRejected", "ResponseBody", "Trailer", false)]
+    [InlineData("ResponseBodyRejected", "ResponseHeaders", "Trailer", false)]
+    [InlineData("ResponseBodyRejected", "ResponseBody", "BodyRead", true)]
+    [InlineData("ResponseBodyRejected", "ResponseBody", "BodyBounds", true)]
+    [InlineData("ResponseBodyRejected", "ResponseBody", "Trailer", true)]
+    public async Task V3FramingInvalidTerminalMatrixFailsClosed(
+        string failure,
+        string checkpoint,
+        string policy,
+        bool wrapperPresent)
+    {
+        OllamaRecordingCliExecutionSummary invalid = Summary(
+            "Failed", failure, 0, "ResponseReceived", 200, "NotApplicable", artifactPublished: true, receiptPresent: true)
+            with
+            {
+                TerminalCheckpointCode = checkpoint,
+                TerminalPolicyCode = policy,
+                TerminalWrapperDigestPresent = wrapperPresent
+            };
+        CountingModule module = new() { Summary = invalid };
+        CountingFactory factory = new(module); StringWriter output = new(); StringWriter error = new();
+
+        int exit = await OllamaRecordingCliApplication.RunAsync(
+            RecordArgs(PlanDigest), factory, output, error, CancellationToken.None);
+
+        Assert.Equal(5, exit); Assert.Equal(1, module.ExecuteCount); Assert.Empty(output.ToString());
+        Assert.Equal("RECORDING_FAILED code=recording_result_invalid" + Environment.NewLine, error.ToString());
+    }
+
     [Fact]
     public async Task PreCancelledTokenStopsBeforeExecution()
     {

@@ -134,9 +134,9 @@ internal sealed record OllamaRecordingArtifactSnapshot(
 /// <summary>Pure canonical writer/validator for the fixed raw-free recording artifact.</summary>
 public static class OllamaRecordingExecutionArtifactModule
 {
-    public const string SchemaVersion = "snow_globe_ollama_recording_execution_artifact/v2";
+    public const string SchemaVersion = "snow_globe_ollama_recording_execution_artifact/v3";
     public const string Semantics = "raw_free_local_loopback_recording_execution_binding_only";
-    public const string RelativeArtifactPath = "artifacts/snowglobe/local-model/qwen3.5-4b-recording-execution-v2.json";
+    public const string RelativeArtifactPath = "artifacts/snowglobe/local-model/qwen3.5-4b-recording-execution-v3.json";
     public const int MaximumArtifactBytes = 128 * 1024;
     public const int MaximumJsonDepth = 8;
 
@@ -190,6 +190,7 @@ public static class OllamaRecordingExecutionArtifactModule
         "process_local_observation_and_nonce_only",
         "repository_root_digest_only",
         "returned_model_field_only",
+        "httpclient_exposed_framing_only_no_raw_wire_proof",
         "no_independent_artifact_loaded_proof",
         "no_independent_model_execution_proof",
         "no_live_compatibility_proof",

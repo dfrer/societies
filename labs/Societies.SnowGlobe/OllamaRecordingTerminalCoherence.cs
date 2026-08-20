@@ -32,7 +32,9 @@ internal enum OllamaRecordingTerminalPolicyCode
     ContentType,
     ContentEncoding,
     ContentLength,
+    BodyBounds,
     BodyRead,
+    Trailer,
     WrapperShape,
     EvidenceShape,
     Authorization,
@@ -137,9 +139,7 @@ internal static class OllamaRecordingTerminalCoherenceModule
                     OllamaRecordingTerminalCheckpointCode.BeforeDispatch, OllamaRecordingTerminalPolicyCode.TransportState),
             SnowGlobeOllamaLoopbackRecordingFailureCode.TransportFailure => IsTransportFailure(facts),
             SnowGlobeOllamaLoopbackRecordingFailureCode.HttpResponseRejected => IsHttpResponseRejected(facts),
-            SnowGlobeOllamaLoopbackRecordingFailureCode.ResponseBodyRejected =>
-                IsExact(facts, SubmissionState.ResponseReceived, 200, receipt: true, row: true, wrapper: false,
-                    OllamaRecordingTerminalCheckpointCode.ResponseBody, OllamaRecordingTerminalPolicyCode.BodyRead),
+            SnowGlobeOllamaLoopbackRecordingFailureCode.ResponseBodyRejected => IsResponseBodyRejected(facts),
             SnowGlobeOllamaLoopbackRecordingFailureCode.WrapperRejected =>
                 IsExact(facts, SubmissionState.ResponseReceived, 200, receipt: true, row: true, wrapper: true,
                     OllamaRecordingTerminalCheckpointCode.WrapperDecode, OllamaRecordingTerminalPolicyCode.WrapperShape),
@@ -253,8 +253,17 @@ internal static class OllamaRecordingTerminalCoherenceModule
             or OllamaRecordingTerminalPolicyCode.TransferEncoding
             or OllamaRecordingTerminalPolicyCode.ContentType
             or OllamaRecordingTerminalPolicyCode.ContentEncoding
-            or OllamaRecordingTerminalPolicyCode.ContentLength;
+            or OllamaRecordingTerminalPolicyCode.ContentLength
+            or OllamaRecordingTerminalPolicyCode.Trailer;
     }
+
+    private static bool IsResponseBodyRejected(OllamaRecordingTerminalFacts facts) =>
+        facts.SubmissionState == SubmissionState.ResponseReceived && facts.StatusCode == 200
+        && facts.ReceiptPresent && facts.TerminalReceiptRowPresent && !facts.TerminalWrapperDigestPresent
+        && facts.Checkpoint == OllamaRecordingTerminalCheckpointCode.ResponseBody
+        && facts.Policy is OllamaRecordingTerminalPolicyCode.BodyRead
+            or OllamaRecordingTerminalPolicyCode.BodyBounds
+            or OllamaRecordingTerminalPolicyCode.Trailer;
 
     private static bool IsExact(
         OllamaRecordingTerminalFacts facts,
