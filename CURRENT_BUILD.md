@@ -17,6 +17,16 @@ This is the only in-repo implementation that currently has:
 - a buildable C# project
 - a runnable automated validation path
 
+## Current offline cognition score-summary milestone (v4)
+
+The authoritative documentation state is commit `9bb4027`, **Add bounded cognition score summary**, atop v3 evidence commit `38c9bdb`. The internal fixed raw-free codec embeds the canonical quality report once and retains no prompts, responses, proposals, submissions, or model text. It enforces exact scoring tuple checks, including scenario-specific lower-utility reachability, bounded dispositions, and detached results. For a complete result, only the score summary is populated; terminal and `EvidenceRejected` are null. This is structure/integrity evidence, not authenticity, premium quality/cost/winner, or general-intelligence evidence. No historical backfill has occurred.
+
+The v4 schema identities are plan `snow_globe_ollama_recording_composition_plan/v4`, receipt `snow_globe_ollama_loopback_recording_receipt/v4`, and artifact `snow_globe_ollama_recording_execution_artifact/v4`; the artifact filename/path is `artifacts/snowglobe/local-model/qwen3.5-4b-recording-execution-v4.json`. Transport remains v3 and the high-level adapter/profile remains v2. The receipt is canonical digest-only and the artifact embeds the summary once. `LocalPremiumComparison`'s two-input overload emits local cognition facts only (`premium`, `premium_cost`, `performance_delta`, and `quality_delta` are null; status `insufficient_live_premium_evidence`); the one-input golden is unchanged. No live v4 artifact exists.
+
+Validation evidence: red phases `10/23/33`, then `6/92/98`; final targeted `98/98`, owned `157/157`, full SnowGlobe `706/706`, Recording CLI `59/59`, Benchmark CLI `56/56`, and three Release builds with 0 warnings/errors. Independent deep review was FINAL CODE GO with no P0-P2 findings. Snapshot `21c3f18942072aaa6954a6f95dd86528c33b94386d6263938b906565a66032e8`.
+
+Attempt-001 through Attempt-004 chronology and v1-v3 artifacts remain preserved; older actions are historical/superseded. Exactly one current authorized next action: execute one bounded local v4 preflight/record-once/validate against retained `qwen3.5:4b`, with no retry, alternate, or download, preserving v1-v3. This has not occurred.
+
 ## Product Direction and Current Status
 
 The product north star is: "A deterministic civilization/ecology simulation where humans and AI citizens work, trade, negotiate, govern, and experience shared consequences."
@@ -260,17 +270,17 @@ The pinned fixture action is complete and historical at `8f95875`. `OfflinePinne
 
 The former codec/fake-port action is historical and complete in `016551c`; see [the offline Ollama recording codec contract](labs/Societies.SnowGlobe/OFFLINE_OLLAMA_RECORDING_CODEC.md) and [ADR 0012](docs/adr/0012-offline-ollama-recording-codec.md). It remains offline evidence only: no current Ollama behavior, delivery, or model-execution claim is made.
 
-The former loopback transport and v1 composition attempts are historical. The pre-attempt v2 implementation from `a5a0823` and attempt-003 from `6e47510` are historical completed evidence; the current v3 section below is authoritative. V1 tombstones remain untouched. No accepted body/wrapper/nested evidence/12-slot/quality/compatibility claim is carried forward.
+The former loopback transport and v1 composition attempts are historical. The pre-attempt v2 implementation from `a5a0823` and attempt-003 from `6e47510` are historical completed evidence; the v3 section below is historical/superseded. V1 tombstones remain untouched. No accepted body/wrapper/nested evidence/12-slot/quality/compatibility claim is carried forward.
 
-Attempt-003 is historical EVIDENCE GO: one preflight, one record, one validate, and one HTTP200 POST. TransferEncoding was typed code-path evidence, not independent wire capture. The current v3 section below supersedes its offline framing action.
+Attempt-003 is historical EVIDENCE GO: one preflight, one record, one validate, and one HTTP200 POST. TransferEncoding was typed code-path evidence, not independent wire capture. The historical v3 section below records its superseded offline framing action.
 
-## Current Snow Globe v3 live settlement (Attempt-004; historical completed action)
+## Historical Snow Globe v3 live settlement (Attempt-004; completed action)
 
 Clean HEAD `18f2dc622ce27f14dd9f5d4126176a944244ae8d` is FINAL EVIDENCE GO with no P0-P2 findings. Static preflight was accepted after correctly scoping the GPU gate to non-Ollama WDDM apps. Server `server1`; CLI preflight 1 succeeded with plan `13788130a3573ba8205cf833495e877ca26fb0daecab421bcab27880d4cb4e31`; record 1 succeeded in 28,609 ms; validate 1 succeeded in 148 ms. Exactly 12 ordered `POST /api/generate` requests returned 200 in 20.2868581 s; no retry/fallback/alternate/pull/update/cloud/credential/payment action occurred.
 
 Exact identities are plan `snow_globe_ollama_recording_composition_plan/v3`, receipt `snow_globe_ollama_loopback_recording_receipt/v3`, artifact `snow_globe_ollama_recording_execution_artifact/v3`, and transport `snow-globe-ollama-loopback-recording-transport-adapter/v3`; path `artifacts/snowglobe/local-model/qwen3.5-4b-recording-execution-v3.json`. Artifact is 9,621 B, SHA/canonical `12c3e0f9b8fe13f8eaf2525642e130e4298e18c37f2fff58c2a316d2292f7b67`, payload `da3797cfe041ec949083eaf6e5ec9fecd22df4564ff767b176d94e2da10a50a1`; receipt is 6,169 B, SHA `e1a43bc8b7c44dfde6d71e372f1c6237239efe4ffd60716b869be72bf9dcb6b1`, payload `4d3541fff307a3f7dcd5aea1958c51ba0cc49f7b62df01ee07b086868dfb97fc`; nested digest `cd846a45a85085d1943ce8eb0c8b10ad489a802c1727f58d9d1ca04328e594e7`.
 
-All 12 slots completed with `ResponseReceived`/200, `NotApplicable`, checkpoint/policy `None`, zero counters, and `additional=false`; validator accepted. CUDA RTX2070S was 34/34. Operator cleanup was zero but not independently retained or re-observed; raw-free/cloud/body-log were false. Limits: HttpClient-exposed framing only, no raw-wire proof, nested scoring digest not embedded/revalidated, retained captures cannot prove absence of overwritten invocations, HEAD is provenance not artifact field, and cleanup is operator observation. No quality/intelligence/winner/cost/commercial/general-compatibility/world-authority claim. The v3 action is complete/historical. Exactly one next action is offline Design-It-Twice for a bounded raw-free nested score-summary projection or an explicit decision not to retain it, before local-premium quality comparison; no fresh live authority/action implied.
+All 12 slots completed with `ResponseReceived`/200, `NotApplicable`, checkpoint/policy `None`, zero counters, and `additional=false`; validator accepted. CUDA RTX2070S was 34/34. Operator cleanup was zero but not independently retained or re-observed; raw-free/cloud/body-log were false. Limits: HttpClient-exposed framing only, no raw-wire proof, nested scoring digest not embedded/revalidated, retained captures cannot prove absence of overwritten invocations, HEAD is provenance not artifact field, and cleanup is operator observation. No quality/intelligence/winner/cost/commercial/general-compatibility/world-authority claim. The v3 action is complete/historical. Historical/superseded next action: offline Design-It-Twice for a bounded raw-free nested score-summary projection or an explicit decision not to retain it, before local-premium quality comparison; it does not replace the current authorized v4 action above.
 
 ### bd89187 composition milestone (historical as-of bd89187)
 
