@@ -72,7 +72,9 @@ The prior dry-run-only gate is historical and superseded by the authorized attem
 
 ### Sole current next action
 
-The sole current next action is one clean committed v2 preflight, then one fresh authorized qwen3.5:4b attempt with exactly one preflight/record/validate and no retry/alternate/fallback/download/update; preserve any v2 artifact/tombstone and all v1 files.
+Attempt-003 is complete with EVIDENCE GO: preflight plan `40cad2ba2c4ae568d7db8968b4547dff3b96da46c7386377fc447fa833ee82c5`, record exit 3 after 8,621 ms, terminal `Failed` / `HttpResponseRejected` / completed 0 / terminal slot 1 / `ResponseReceived` / 200 / `NotApplicable` / `ResponseHeaders` / `TransferEncoding` / additional=false, and validate exit 0 structurally complete. Artifact v2 is 5,822 B with canonical SHA-256 `4e358d3dc7bb578debaad8edb6578984c6f7f9ac8ec558013e2ef8ae59c00038`; exactly one HTTP200 POST took 7.8811713 s, with no GET/retry/alternate/download, body logging off, GPU 34/34, cleanup zero. Claims exclude accepted body/wrapper/nested evidence/12 slots/quality/compatibility; TransferEncoding is typed code-path evidence, not independent wire capture.
+
+The sole current next action is an offline Design-It-Twice decision and security tests for bounded transfer framing (accept exact chunked versus retain rejection); no fresh live attempt unless separately authorized after code/review.
 
 The v2 code milestone is `a5a0823`: public operations and CLI arguments are unchanged; typed raw-free terminal checkpoint/policy coherence is shared by artifact and CLI. Final validation is v2 110/110, focused review 129/129, SnowGlobe 615/615, RecordingCli 49/49, builds 0/0, deep CODE GO. Compatibility is offline-supported, not live-proven.
 

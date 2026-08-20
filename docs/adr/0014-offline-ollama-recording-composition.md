@@ -16,6 +16,10 @@ The v1 artifact schema/path and writer rules in the historical composition imple
 
 Rejected: flexible public cell/launcher/sink registry, because it widens authority and substitution. Rejected: benchmark identity/type reuse, because benchmark sequencing and evidence semantics differ. Chosen: fixed-cell Module and preflight/validate CLI with explicit live gate.
 
+## Attempt-003 v2 evidence (current)
+
+Commit `6e47510` produced EVIDENCE GO: preflight plan `40cad2ba2c4ae568d7db8968b4547dff3b96da46c7386377fc447fa833ee82c5`, record exit 3 after 8,621 ms with typed `Failed` / `HttpResponseRejected` / `ResponseReceived` / 200 / `NotApplicable` / `TransferEncoding`, validate exit 0 structurally complete, and exactly one HTTP200 POST in 7.8811713 s. Artifact v2 is 5,822 B, canonical SHA-256 `4e358d3dc7bb578debaad8edb6578984c6f7f9ac8ec558013e2ef8ae59c00038`. No accepted body/wrapper/nested evidence/12-slot/quality/compatibility claim is made. Current action is offline transfer-framing decision/security tests; no fresh live attempt absent separate authorization.
+
 ## Evidence and rollback
 
-The v1 second-attempt evidence is historical/superseded: it ran from HEAD `af0925d`, consumed its authority, and produced no valid v1 artifact/evidence. The active v2 decision and sole current action are defined above: one clean committed v2 preflight, then one fresh authorized v2 attempt with exactly one preflight/record/validate and no retry/alternate/fallback/download/update.
+The v1 second-attempt evidence is historical/superseded: it ran from HEAD `af0925d`, consumed its authority, and produced no valid v1 artifact/evidence. Attempt-003 is the current completed evidence; the sole current action is offline transfer-framing decision/security tests, with no fresh live attempt absent separate authorization.

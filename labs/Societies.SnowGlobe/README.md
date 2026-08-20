@@ -22,9 +22,13 @@ Before `a713267`, the internal category-1 pure codec and category-3 one-method p
 
 The former loopback transport implementation action is complete in local commit `a713267`; its documentation is committed. Commit `bd89187` completed the composition milestone; the prior dry-run-only wording is historical. Local code commit `be7c691` added the record-once surface; a later authorized invocation consumed one fresh authority: exactly one preflight invocation exited 0 with plan `a9e7a10b973c7114d01361cbbeaa5705bd782385664d5a5ef923e0df3b5df39d`, exactly one record-once invocation exited 5 after 7,881 ms, exactly one validate invocation exited 1 `artifact_size_invalid`, and exactly one HTTP 200 POST in 7.0314715 s, with no retry/fallback/alternate/download. The fixed artifact remains a preserved 0-byte tombstone (SHA-256 `e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855`), with no valid artifact/evidence. See [the composition contract](OLLAMA_RECORDING_COMPOSITION.md) and [ADR 0014](../../docs/adr/0014-offline-ollama-recording-composition.md).
 
-The preceding v1 attempt paragraphs are historical and superseded; their 0-byte tombstones remain preserved. The current v2 settlement below records no v2 artifact/evidence yet; the current action is the clean v2 preflight followed by one fresh authorized v2 attempt.
+The preceding v1 attempt paragraphs are historical and superseded; their 0-byte tombstones remain preserved. Attempt-003 v2 is complete with EVIDENCE GO: one preflight/record/validate sequence, one `ResponseHeaders` checkpoint / `TransferEncoding` policy, and no accepted body/wrapper/nested evidence/12-slot/quality/compatibility claim. The sole current action is offline transfer-framing Design-It-Twice/security tests; no fresh live attempt absent separate authorization.
 
 V2 milestone `a5a0823` keeps public composition operations and CLI arguments unchanged, adds shared typed raw-free checkpoint/policy coherence, and writes only the fixed v2 artifact path; both v1 zero-byte tombstones remain untouched. Offline validation is v2 110/110, review 129/129, SnowGlobe 615/615, RecordingCli 49/49, builds 0/0, deep CODE GO. Compatibility is offline-supported, not live-proven.
+
+### Attempt-003 v2 evidence (current)
+
+Commit `6e47510` is EVIDENCE GO: exactly one preflight exit 0, exactly one record exit 3 with typed `Failed` / `HttpResponseRejected` / `ResponseReceived` / 200 / `NotApplicable` / `TransferEncoding`, exactly one validate exit 0 structurally complete, and exactly one HTTP200 POST in 7.8811713 s. The v2 artifact is 5,822 B; no accepted body/wrapper/nested evidence/12-slot/quality/compatibility claim is made. The sole current action is offline transfer-framing decision/security tests; no fresh live attempt absent separate authorization.
 
 ## Offline Ollama recording composition (v1 historical)
 
