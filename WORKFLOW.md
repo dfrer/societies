@@ -72,7 +72,9 @@ The prior dry-run-only gate is historical and superseded by the authorized attem
 
 ### Sole current next action
 
-No retry now. The next action is a bounded offline diagnostic/observability decision before any separately authorized future attempt.
+The sole current next action is one clean committed v2 preflight, then one fresh authorized qwen3.5:4b attempt with exactly one preflight/record/validate and no retry/alternate/fallback/download/update; preserve any v2 artifact/tombstone and all v1 files.
+
+The v2 code milestone is `a5a0823`: public operations and CLI arguments are unchanged; typed raw-free terminal checkpoint/policy coherence is shared by artifact and CLI. Final validation is v2 110/110, focused review 129/129, SnowGlobe 615/615, RecordingCli 49/49, builds 0/0, deep CODE GO. Compatibility is offline-supported, not live-proven.
 
 See [the conformance contract](labs/Societies.SnowGlobe/COGNITION_QUALITY_RECORDING_ADAPTER_CONFORMANCE.md) and [ADR 0010](docs/adr/0010-offline-cognition-quality-recording-adapter-conformance.md).
 
