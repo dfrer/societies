@@ -71,7 +71,7 @@ public sealed class OllamaRecordingCompositionPlan
         return ReferenceEquals(_owner, owner) ? PlanConsumeResult.Consumed : PlanConsumeResult.BindingMismatch;
     }
 
-    public string SchemaVersion => "snow_globe_ollama_recording_composition_plan/v3";
+    public string SchemaVersion => "snow_globe_ollama_recording_composition_plan/v4";
     public string RelativeArtifactPath => OllamaRecordingExecutionArtifactModule.RelativeArtifactPath;
     public string RegisteredCellDigestSha256 => SnowGlobePinnedOllamaRecordingModule.RegisteredCellDigestSha256;
     public string ProfileDigestSha256 => SnowGlobePinnedOllamaRecordingModule.ProfileDigestSha256;
@@ -113,6 +113,8 @@ public sealed class OllamaRecordingCompositionResult
     public string OutcomeCode { get; }
     public string FailureCode { get; }
     public OllamaRecordingExecutionArtifact? Artifact { get; }
+    public CognitionQualityScoreSummary? ScoreSummary => Artifact?.ScoreSummary;
+    public string? ScoreSummaryDigestSha256 => Artifact?.ScoreSummaryDigestSha256;
     public bool AdditionalAttemptAuthorized => false;
     public bool ArtifactPublished => Artifact is not null;
     public bool HasRawRecordingEvidence => false;
@@ -177,7 +179,7 @@ public sealed class SnowGlobeOllamaRecordingCompositionModule
 
     internal static string ComputePlanDigest(CognitionQualityPromptEnvelopePublication publication, CognitionQualityExecutionProvenance provenance, OllamaLoopbackRuntimeBinding binding, string repositoryRootDigestSha256, string nonceDigest) =>
         CognitionQualityRecordingSessionCanonical.Digest(string.Join('|',
-            "snow_globe_ollama_recording_composition_plan/v3",
+            "snow_globe_ollama_recording_composition_plan/v4",
             OllamaRecordingExecutionArtifactModule.RelativeArtifactPath,
             SnowGlobePinnedOllamaRecordingModule.RegisteredCellDigestSha256,
             SnowGlobePinnedOllamaRecordingModule.ProfileDigestSha256,
@@ -262,7 +264,8 @@ public sealed class SnowGlobeOllamaRecordingCompositionModule
                         result.OutcomeCode.ToString(), result.FailureCode.ToString(), result.CompletedSlotCount,
                         result.TerminalSlotOrdinal, result.TerminalSubmissionState.ToString(), ChargeState.NotApplicable.ToString(), result.TerminalStatusCode,
                         result.TerminalCheckpointCode, result.TerminalPolicyCode,
-                        receiptBytes, result.Receipt?.CanonicalDigestSha256, result.Receipt?.NestedRecordingEvidenceDigestSha256);
+                        receiptBytes, result.Receipt?.CanonicalDigestSha256, result.Receipt?.NestedRecordingEvidenceDigestSha256,
+                        result.ScoreSummary?.CanonicalUtf8, result.ScoreSummaryDigestSha256);
                 }
             }
         }
@@ -323,7 +326,7 @@ public sealed class SnowGlobeOllamaRecordingCompositionModule
         outcome == OllamaRecordingCompositionOutcomeCode.AuthorizationRejected
             ? OllamaRecordingTerminalPolicyCode.Authorization.ToString()
             : OllamaRecordingTerminalPolicyCode.UnexpectedException.ToString(),
-        null, null, null);
+        null, null, null, null, null);
     private static OllamaRecordingCompositionResult ClosedResult(string outcome, string failure) => new(outcome, failure, null);
 
     private static (string Path, string DigestSha256) CanonicalizeLexicalRepositoryRoot(string value)

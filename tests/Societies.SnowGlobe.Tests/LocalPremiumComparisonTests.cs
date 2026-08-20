@@ -168,12 +168,18 @@ public sealed class LocalPremiumComparisonTests
     [Fact]
     public void PublicAndEvidenceSeamSurfacesExposeNoTransportCredentialJournalOrProviderCapability()
     {
-        MethodInfo method = Assert.Single(typeof(LocalPremiumComparison).GetMethods(
-            BindingFlags.Public | BindingFlags.Static | BindingFlags.DeclaredOnly));
-        Assert.Equal("Evaluate", method.Name);
-        Assert.Equal(typeof(LocalPremiumComparisonReport), method.ReturnType);
-        ParameterInfo parameter = Assert.Single(method.GetParameters());
-        Assert.Equal(typeof(ReadOnlyMemory<byte>), parameter.ParameterType);
+        MethodInfo[] methods = typeof(LocalPremiumComparison).GetMethods(
+            BindingFlags.Public | BindingFlags.Static | BindingFlags.DeclaredOnly);
+        Assert.Equal(2, methods.Length);
+        Assert.All(methods, method =>
+        {
+            Assert.Equal("Evaluate", method.Name);
+            Assert.Equal(typeof(LocalPremiumComparisonReport), method.ReturnType);
+            Assert.All(method.GetParameters(), parameter => Assert.Equal(typeof(ReadOnlyMemory<byte>), parameter.ParameterType));
+            Assert.DoesNotContain(method.GetParameters(), parameter => typeof(Delegate).IsAssignableFrom(parameter.ParameterType));
+            Assert.False(typeof(Task).IsAssignableFrom(method.ReturnType));
+        });
+        Assert.Equal(new[] { 1, 2 }, methods.Select(static method => method.GetParameters().Length).Order());
 
         Type[] ownedTypes =
         {
@@ -227,6 +233,61 @@ public sealed class LocalPremiumComparisonTests
         Assert.DoesNotContain("agent_id=", report.CanonicalJson, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public async Task TwoRunOverloadPublishesValidatedLocalCognitionQualityButNoPremiumDeltaOrConclusion()
+    {
+        OllamaRecordingExecutionArtifact recording = await RecordingArtifact();
+        LocalPremiumComparisonReport report = LocalPremiumComparison.Evaluate(ArtifactBytes(), recording.CanonicalUtf8);
+        Assert.Equal("3047e38591262587d343f58a0d3e8d378678276d727ad1e98ea08d8dc6a502af", report.CanonicalDigestSha256);
+
+        Assert.Equal("insufficient_live_premium_evidence", report.Status);
+        Assert.InRange(report.CanonicalUtf8.Length, 1, LocalPremiumComparison.MaximumReportBytes);
+        Assert.Equal(report.CanonicalDigestSha256, Sha256(report.CanonicalUtf8.Span));
+        using JsonDocument document = JsonDocument.Parse(report.CanonicalUtf8);
+        JsonElement root = document.RootElement;
+        Assert.Equal("snow_globe_local_premium_comparison/v2", root.GetProperty("schema_version").GetString());
+        Assert.Equal(JsonValueKind.Null, root.GetProperty("premium").ValueKind);
+        Assert.Equal(JsonValueKind.Null, root.GetProperty("premium_cost").ValueKind);
+        Assert.Equal(JsonValueKind.Null, root.GetProperty("performance_delta").ValueKind);
+        Assert.Equal(JsonValueKind.Null, root.GetProperty("quality_delta").ValueKind);
+        JsonElement local = root.GetProperty("local");
+        Assert.True(local.TryGetProperty("benchmark_run", out JsonElement benchmarkRun));
+        Assert.True(local.TryGetProperty("recording_run", out JsonElement recordingRun));
+        Assert.True(local.TryGetProperty("cognition_quality", out JsonElement cognitionQuality));
+        Assert.Equal(ExpectedArtifactDigest, benchmarkRun.GetProperty("evidence_digest_sha256").GetString());
+        Assert.False(recordingRun.GetProperty("same_run_as_benchmark").GetBoolean());
+        Assert.Equal(recording.CanonicalDigestSha256, recordingRun.GetProperty("artifact_digest_sha256").GetString());
+        Assert.Equal(recording.ScoreSummaryDigestSha256, recordingRun.GetProperty("score_summary_digest_sha256").GetString());
+        Assert.Equal(recording.ScoreSummary!.CanonicalJson, cognitionQuality.GetRawText());
+        Assert.Contains("local_benchmark_and_recording_are_separate_runs", root.GetProperty("claim_limitations").EnumerateArray().Select(static item => item.GetString()));
+        Assert.Contains("no_cross_run_latency_per_quality_or_price_conclusion", root.GetProperty("claim_limitations").EnumerateArray().Select(static item => item.GetString()));
+        Assert.DoesNotContain("winner\"", report.CanonicalJson, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task TwoRunOverloadRejectsV1ThroughV3TerminalMalformedOversizedAndDetachedMutations()
+    {
+        OllamaRecordingExecutionArtifact recording = await RecordingArtifact();
+        byte[] benchmark = ArtifactBytes();
+        byte[] stableRecording = recording.CanonicalUtf8.ToArray();
+        LocalPremiumComparisonReport report = LocalPremiumComparison.Evaluate(benchmark, stableRecording);
+        benchmark[0] = 0; stableRecording[0] = 0;
+        Assert.Equal((byte)'{', report.CanonicalUtf8.Span[0]);
+
+        foreach (int version in new[] { 1, 2, 3 })
+        {
+            string recordingJson = Encoding.UTF8.GetString(recording.CanonicalUtf8.Span);
+            byte[] historical = Encoding.UTF8.GetBytes(recordingJson.Replace(
+                "snow_globe_ollama_recording_execution_artifact/v4",
+                $"snow_globe_ollama_recording_execution_artifact/v{version}", StringComparison.Ordinal));
+            Assert.Equal("local_recording_artifact_rejected", Assert.Throws<LocalPremiumComparisonException>(() => LocalPremiumComparison.Evaluate(ArtifactBytes(), historical)).Code);
+        }
+
+        Assert.Equal("local_recording_artifact_required", Assert.Throws<LocalPremiumComparisonException>(() => LocalPremiumComparison.Evaluate(ArtifactBytes(), ReadOnlyMemory<byte>.Empty)).Code);
+        Assert.Equal("local_recording_artifact_too_large", Assert.Throws<LocalPremiumComparisonException>(() => LocalPremiumComparison.Evaluate(ArtifactBytes(), new byte[OllamaRecordingExecutionArtifactModule.MaximumArtifactBytes + 1])).Code);
+        Assert.Equal("local_recording_artifact_rejected", Assert.Throws<LocalPremiumComparisonException>(() => LocalPremiumComparison.Evaluate(ArtifactBytes(), "{}"u8.ToArray())).Code);
+    }
+
     private static void CollectPropertyNames(JsonElement value, ISet<string> names)
     {
         if (value.ValueKind == JsonValueKind.Object)
@@ -259,6 +320,19 @@ public sealed class LocalPremiumComparisonTests
     }
 
     private static byte[] ArtifactBytes() => Encoding.UTF8.GetBytes(FrozenArtifact);
+
+    private static async Task<OllamaRecordingExecutionArtifact> RecordingArtifact()
+    {
+        const string root = @"C:\offline-local-premium-comparison-recording";
+        long startTicks = new DateTime(2026, 8, 19, 12, 0, 0, DateTimeKind.Utc).Ticks;
+        InMemoryOllamaRecordingArtifactStore store = new();
+        OllamaRecordingCompositionTests.TestTransportFactory factory = new(TestWrappers.Valid());
+        SnowGlobePinnedOllamaRecordingModule inner = new(new ComparisonClock(), factory);
+        SnowGlobeOllamaRecordingCompositionModule module = new(root, inner, store);
+        return (await module.ExecuteAndPublishOnceAsync(module.Prepare(new(777, startTicks), "comparison-recording-v1"))).Artifact!;
+    }
+
+    private sealed class ComparisonClock : ICognitionQualityRecordingSessionClock { public long NowMilliseconds => 1; }
 
     private static string Sha256(ReadOnlySpan<byte> value) =>
         Convert.ToHexString(SHA256.HashData(value)).ToLowerInvariant();

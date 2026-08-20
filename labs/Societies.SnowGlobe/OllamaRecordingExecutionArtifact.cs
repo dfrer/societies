@@ -26,6 +26,8 @@ public sealed class OllamaRecordingExecutionArtifactException : Exception
         "artifact_receipt_slots_invalid" or "artifact_receipt_slot_status_invalid" or
         "artifact_receipt_completed_slot_invalid" or "artifact_receipt_terminal_slot_invalid" or
         "artifact_receipt_result_binding_invalid" or "artifact_receipt_payload_digest_invalid" or
+        "artifact_score_summary_nullability_invalid" or "artifact_score_summary_shape_invalid" or
+        "artifact_score_summary_invalid" or "artifact_score_summary_binding_invalid" or "artifact_score_summary_terminal_invalid" or
         "artifact_claims_invalid" or "artifact_receipt_claims_invalid" or "artifact_payload_digest_invalid" => code,
         _ => "artifact_validation_failed"
     };
@@ -56,7 +58,8 @@ public sealed class OllamaRecordingExecutionArtifact
         bool terminalReceiptRowPresent,
         bool terminalWrapperDigestPresent,
         string? receiptDigestSha256,
-        string? nestedRecordingEvidenceDigestSha256)
+        string? nestedRecordingEvidenceDigestSha256,
+        CognitionQualityScoreSummary? scoreSummary)
     {
         _canonicalUtf8 = canonicalUtf8.ToArray();
         PayloadDigestSha256 = payloadDigestSha256;
@@ -79,6 +82,8 @@ public sealed class OllamaRecordingExecutionArtifact
         TerminalWrapperDigestPresent = terminalWrapperDigestPresent;
         ReceiptDigestSha256 = receiptDigestSha256;
         NestedRecordingEvidenceDigestSha256 = nestedRecordingEvidenceDigestSha256;
+        ScoreSummary = scoreSummary is null ? null : CognitionQualityScoreSummaryCodec.Validate(scoreSummary.CanonicalUtf8);
+        ScoreSummaryDigestSha256 = ScoreSummary?.CanonicalDigestSha256;
     }
 
     public string SchemaVersion => OllamaRecordingExecutionArtifactModule.SchemaVersion;
@@ -103,6 +108,8 @@ public sealed class OllamaRecordingExecutionArtifact
     public bool ReceiptPresent { get; }
     public string? ReceiptDigestSha256 { get; }
     public string? NestedRecordingEvidenceDigestSha256 { get; }
+    public CognitionQualityScoreSummary? ScoreSummary { get; }
+    public string? ScoreSummaryDigestSha256 { get; }
     public bool AdditionalAttemptAuthorized => false;
     public bool HasIndependentArtifactLoadedProof => false;
     public bool HasIndependentModelExecutionProof => false;
@@ -129,14 +136,16 @@ internal sealed record OllamaRecordingArtifactSnapshot(
     string? TerminalPolicyCode,
     ReadOnlyMemory<byte>? ReceiptCanonicalUtf8,
     string? ReceiptDigestSha256,
-    string? NestedRecordingEvidenceDigestSha256);
+    string? NestedRecordingEvidenceDigestSha256,
+    ReadOnlyMemory<byte>? ScoreSummaryCanonicalUtf8 = null,
+    string? ScoreSummaryDigestSha256 = null);
 
 /// <summary>Pure canonical writer/validator for the fixed raw-free recording artifact.</summary>
 public static class OllamaRecordingExecutionArtifactModule
 {
-    public const string SchemaVersion = "snow_globe_ollama_recording_execution_artifact/v3";
+    public const string SchemaVersion = "snow_globe_ollama_recording_execution_artifact/v4";
     public const string Semantics = "raw_free_local_loopback_recording_execution_binding_only";
-    public const string RelativeArtifactPath = "artifacts/snowglobe/local-model/qwen3.5-4b-recording-execution-v3.json";
+    public const string RelativeArtifactPath = "artifacts/snowglobe/local-model/qwen3.5-4b-recording-execution-v4.json";
     public const int MaximumArtifactBytes = 128 * 1024;
     public const int MaximumJsonDepth = 8;
 
@@ -151,7 +160,7 @@ public static class OllamaRecordingExecutionArtifactModule
         "plan_digest_sha256", "runtime_binding_digest_sha256", "runtime_process_id",
         "runtime_process_start_utc_ticks", "endpoint_owner_process_id", "runtime_executable_path_digest_sha256",
         "runtime_executable_sha256", "endpoint_identity", "authorization_nonce_digest_sha256",
-        "result", "receipt", "claim_limitation_codes", "artifact_payload_digest_sha256"
+        "result", "receipt", "score_summary", "claim_limitation_codes", "artifact_payload_digest_sha256"
     ];
 
     private static readonly string[] ResultNames =
@@ -163,7 +172,7 @@ public static class OllamaRecordingExecutionArtifactModule
         "terminal_checkpoint_code", "terminal_policy_code",
         "additional_attempt_authorized", "automatic_retry_count", "fallback_count",
         "alternate_endpoint_or_model_count", "receipt_present", "receipt_digest_sha256",
-        "nested_recording_evidence_digest_sha256"
+        "nested_recording_evidence_digest_sha256", "score_summary_digest_sha256"
     ];
 
     private static readonly string[] ReceiptNames =
@@ -176,7 +185,7 @@ public static class OllamaRecordingExecutionArtifactModule
         "prompt_set_digest_sha256", "provenance_digest_sha256", "capability_digest_sha256",
         "runtime_binding_digest_sha256", "slots", "completed_slot_count", "terminal_slot_ordinal",
         "automatic_retry_count", "fallback_count", "alternate_endpoint_or_model_count",
-        "nested_recording_evidence_digest_sha256", "claim_limitation_codes", "receipt_payload_digest_sha256"
+        "nested_recording_evidence_digest_sha256", "score_summary_digest_sha256", "claim_limitation_codes", "receipt_payload_digest_sha256"
     ];
 
     private static readonly string[] ReceiptSlotNames =
@@ -195,8 +204,9 @@ public static class OllamaRecordingExecutionArtifactModule
         "no_independent_model_execution_proof",
         "no_live_compatibility_proof",
         "digests_provide_integrity_not_authenticity",
-        "nested_scoring_evidence_not_embedded_or_revalidated",
-        "no_benchmark_quality_intelligence_winner_cost_or_commercial_claim",
+        "raw_free_score_summary_embedded_and_revalidated_only_after_complete_evidence",
+        "bounded_offline_corpus_score_not_general_quality_or_intelligence",
+        "no_cost_latency_price_winner_or_commercial_claim",
         "no_world_or_simulation_authority",
         "no_retry_fallback_or_alternate_authority",
         "model_execution_and_file_publication_are_not_transactional"
@@ -294,6 +304,7 @@ public static class OllamaRecordingExecutionArtifactModule
             bool receiptPresent = RequireBoolean(result, "receipt_present");
             string? receiptDigest = RequireNullableDigest(result, "receipt_digest_sha256");
             string? nestedDigest = RequireNullableDigest(result, "nested_recording_evidence_digest_sha256");
+            string? scoreSummaryDigest = RequireNullableDigest(result, "score_summary_digest_sha256");
             if (receiptPresent != (receiptDigest is not null)) throw Failure("artifact_receipt_nullability_invalid");
             if (recordingResultPresent ? charge != ChargeState.NotApplicable.ToString() : charge is not null)
                 throw Failure("artifact_result_coherence_invalid");
@@ -314,17 +325,45 @@ public static class OllamaRecordingExecutionArtifactModule
                         root.GetProperty("prompt_publication_digest_sha256").GetString()!,
                         root.GetProperty("prompt_set_digest_sha256").GetString()!,
                         root.GetProperty("provenance_digest_sha256").GetString()!,
-                        root.GetProperty("runtime_binding_digest_sha256").GetString()!, nestedDigest);
+                        root.GetProperty("runtime_binding_digest_sha256").GetString()!, nestedDigest, scoreSummaryDigest);
                 }
                 finally { CryptographicOperations.ZeroMemory(receiptBytes); }
             }
             else if (receipt.ValueKind != JsonValueKind.Null) throw Failure("artifact_receipt_nullability_invalid");
+
+            JsonElement scoreSummaryValue = root.GetProperty("score_summary");
+            CognitionQualityScoreSummary? scoreSummary = null;
+            if (scoreSummaryDigest is null)
+            {
+                if (scoreSummaryValue.ValueKind != JsonValueKind.Null) throw Failure("artifact_score_summary_nullability_invalid");
+            }
+            else
+            {
+                if (scoreSummaryValue.ValueKind != JsonValueKind.Object) throw Failure("artifact_score_summary_shape_invalid");
+                byte[] scoreSummaryBytes = Canonicalize(scoreSummaryValue);
+                try
+                {
+                    scoreSummary = CognitionQualityScoreSummaryCodec.Validate(scoreSummaryBytes);
+                    if (!string.Equals(scoreSummary.CanonicalDigestSha256, scoreSummaryDigest, StringComparison.Ordinal)
+                        || !string.Equals(scoreSummary.RecordingEvidenceDigestSha256, nestedDigest, StringComparison.Ordinal)
+                        || !string.Equals(scoreSummary.ProvenanceDigestSha256, root.GetProperty("provenance_digest_sha256").GetString(), StringComparison.Ordinal))
+                        throw Failure("artifact_score_summary_binding_invalid");
+                }
+                catch (CognitionQualityScoreSummaryException) { throw Failure("artifact_score_summary_invalid"); }
+                finally { CryptographicOperations.ZeroMemory(scoreSummaryBytes); }
+            }
 
             if (!OllamaRecordingTerminalCoherenceModule.TryParseAndValidate(
                 compositionOutcome, compositionFailure, recordingResultPresent, recordingOutcome, recordingFailure,
                 completed, terminalSlot, submission, statusCode, receiptPresent, receiptFacts.RowPresent,
                 receiptFacts.WrapperPresent, nestedDigest is not null, checkpoint, policy))
                 throw Failure("artifact_result_coherence_invalid");
+            bool complete = compositionOutcome == OllamaRecordingCompositionOutcomeCode.Complete.ToString()
+                && compositionFailure == OllamaRecordingCompositionFailureCode.None.ToString()
+                && recordingOutcome == SnowGlobeOllamaLoopbackRecordingOutcomeCode.Complete.ToString()
+                && recordingFailure == SnowGlobeOllamaLoopbackRecordingFailureCode.None.ToString();
+            if (complete != (scoreSummary is not null) || complete != (scoreSummaryDigest is not null))
+                throw Failure("artifact_score_summary_terminal_invalid");
 
             RequireExactStringArray(root.GetProperty("claim_limitation_codes"), Claims, "artifact_claims_invalid");
             JsonElement payloadDigestValue = root.GetProperty("artifact_payload_digest_sha256");
@@ -340,7 +379,7 @@ public static class OllamaRecordingExecutionArtifactModule
             return new OllamaRecordingExecutionArtifact(canonical, payloadDigest, repositoryRootDigest,
                 compositionOutcome, compositionFailure, recordingResultPresent, recordingOutcome, recordingFailure,
                 completed, terminalSlot, submission, charge, statusCode, checkpoint, policy, receiptPresent,
-                receiptFacts.RowPresent, receiptFacts.WrapperPresent, receiptDigest, nestedDigest);
+                receiptFacts.RowPresent, receiptFacts.WrapperPresent, receiptDigest, nestedDigest, scoreSummary);
         }
     }
 
@@ -407,9 +446,12 @@ public static class OllamaRecordingExecutionArtifactModule
         writer.WriteBoolean("receipt_present", receiptPresent);
         WriteNullableString(writer, "receipt_digest_sha256", snapshot.ReceiptDigestSha256);
         WriteNullableString(writer, "nested_recording_evidence_digest_sha256", snapshot.NestedRecordingEvidenceDigestSha256);
+        WriteNullableString(writer, "score_summary_digest_sha256", snapshot.ScoreSummaryDigestSha256);
         writer.WriteEndObject();
         writer.WritePropertyName("receipt");
         if (snapshot.ReceiptCanonicalUtf8 is { } receipt) writer.WriteRawValue(receipt.Span, skipInputValidation: false); else writer.WriteNullValue();
+        writer.WritePropertyName("score_summary");
+        if (snapshot.ScoreSummaryCanonicalUtf8 is { } summary) writer.WriteRawValue(summary.Span, skipInputValidation: false); else writer.WriteNullValue();
         writer.WritePropertyName("claim_limitation_codes"); writer.WriteStartArray(); foreach (string claim in Claims) writer.WriteStringValue(claim); writer.WriteEndArray();
         if (payloadDigest is not null) writer.WriteString("artifact_payload_digest_sha256", payloadDigest);
         writer.WriteEndObject(); writer.Flush();
@@ -418,7 +460,7 @@ public static class OllamaRecordingExecutionArtifactModule
 
     private readonly record struct ReceiptTerminalFacts(bool RowPresent, bool WrapperPresent);
 
-    private static ReceiptTerminalFacts ValidateReceipt(JsonElement receipt, string outcome, string failure, int completed, int? terminalSlot, string terminalSubmission, int? terminalStatus, string checkpoint, string policy, int processId, long startTicks, string pathDigest, string publicationDigest, string promptSetDigest, string provenanceDigest, string runtimeBindingDigest, string? nestedDigest)
+    private static ReceiptTerminalFacts ValidateReceipt(JsonElement receipt, string outcome, string failure, int completed, int? terminalSlot, string terminalSubmission, int? terminalStatus, string checkpoint, string policy, int processId, long startTicks, string pathDigest, string publicationDigest, string promptSetDigest, string provenanceDigest, string runtimeBindingDigest, string? nestedDigest, string? scoreSummaryDigest)
     {
         RequireObjectAndOrder(receipt, ReceiptNames, "artifact_receipt_shape_invalid");
         RequireString(receipt, "schema_version", SnowGlobePinnedOllamaRecordingModule.ReceiptSchemaVersion);
@@ -512,6 +554,7 @@ public static class OllamaRecordingExecutionArtifactModule
         }
         RequireInt32(receipt, "automatic_retry_count", 0); RequireInt32(receipt, "fallback_count", 0); RequireInt32(receipt, "alternate_endpoint_or_model_count", 0);
         if (!string.Equals(RequireNullableDigest(receipt, "nested_recording_evidence_digest_sha256"), nestedDigest, StringComparison.Ordinal)) throw Failure("artifact_receipt_binding_invalid");
+        if (!string.Equals(RequireNullableDigest(receipt, "score_summary_digest_sha256"), scoreSummaryDigest, StringComparison.Ordinal)) throw Failure("artifact_receipt_binding_invalid");
         RequireExactStringArray(receipt.GetProperty("claim_limitation_codes"), SnowGlobePinnedOllamaRecordingModule.ClaimLimitations, "artifact_receipt_claims_invalid");
         JsonElement receiptPayloadValue = receipt.GetProperty("receipt_payload_digest_sha256");
         if (receiptPayloadValue.ValueKind != JsonValueKind.String) throw Failure("artifact_receipt_payload_digest_invalid");

@@ -95,9 +95,12 @@ public sealed class OllamaLoopbackRecordingTests
         CountingFactory factory = SuccessFactory(); SnowGlobePinnedOllamaRecordingModule module = new(new FixedClock(1), factory); CognitionQualityPromptEnvelopePublication publication = Publication();
         byte[] callerPublication = publication.CanonicalUtf8.ToArray(); byte[][] callerPrompts = publication.Slots.Select(static slot => slot.PromptUtf8.ToArray()).ToArray();
         AuthorizedOllamaLoopbackRecordingSession session = module.Authorize(publication, Binding(), new("complete-recording-v1")); SnowGlobeOllamaLoopbackRecordingResult result = await session.RecordOnceAsync();
-        Assert.Equal(SnowGlobeOllamaLoopbackRecordingOutcomeCode.Complete, result.OutcomeCode); Assert.Equal(12, result.CompletedSlotCount); Assert.Null(result.TerminalSlotOrdinal); Assert.NotNull(result.Evidence); Assert.NotNull(result.Receipt); Assert.Equal(12, result.Receipt!.Slots.Count);
+        Assert.Equal(SnowGlobeOllamaLoopbackRecordingOutcomeCode.Complete, result.OutcomeCode); Assert.Equal(12, result.CompletedSlotCount); Assert.Null(result.TerminalSlotOrdinal); Assert.NotNull(result.Evidence); Assert.NotNull(result.ScoreSummary); Assert.NotNull(result.Receipt); Assert.Equal(12, result.Receipt!.Slots.Count);
         Assert.Equal(Enumerable.Range(1, 12), result.Receipt.Slots.Select(static slot => slot.SlotOrdinal)); Assert.All(result.Receipt.Slots, static slot => { Assert.Equal(200, slot.StatusCode); Assert.Equal(SubmissionState.ResponseReceived, slot.SubmissionState); Assert.False(slot.AdditionalAttemptAuthorized); });
         Assert.Equal(result.Evidence!.CanonicalDigestSha256, result.Receipt.NestedRecordingEvidenceDigestSha256); Assert.NotEqual(result.Evidence.CanonicalDigestSha256, result.Receipt.CanonicalDigestSha256);
+        Assert.Equal(result.ScoreSummary!.CanonicalDigestSha256, result.ScoreSummaryDigestSha256);
+        Assert.Equal(result.ScoreSummaryDigestSha256, result.Receipt.ScoreSummaryDigestSha256);
+        Assert.Equal(result.ScoreSummary.CanonicalJson, result.Receipt.ScoreSummary!.CanonicalJson);
         PropertyInfo evidenceProperty = Assert.Single(typeof(SnowGlobeOllamaLoopbackRecordingResult).GetProperties(BindingFlags.Instance | BindingFlags.Public).Where(static property => property.Name == nameof(SnowGlobeOllamaLoopbackRecordingResult.Evidence))); Assert.Equal(typeof(CognitionQualityRecordingEvidence), evidenceProperty.PropertyType);
         Assert.NotEmpty(result.Evidence.PromptPublication.Slots[0].PromptUtf8.ToArray()); Assert.NotNull(result.Evidence.RecordedResponseRun.ProposalBatch[0].Proposal);
         string json = result.Receipt.CanonicalJson; Assert.DoesNotContain("complete-recording-v1", json, StringComparison.Ordinal); Assert.DoesNotContain(SnowGlobePinnedOllamaRecordingModule.RuntimeExecutablePath, json, StringComparison.Ordinal); Assert.DoesNotContain("agent-00", json, StringComparison.Ordinal); Assert.DoesNotContain("GatherWood", json, StringComparison.Ordinal); Assert.Contains(result.ExecutablePathDigestSha256, json, StringComparison.Ordinal);
@@ -111,18 +114,44 @@ public sealed class OllamaLoopbackRecordingTests
             "returned_model_field_only",
             "httpclient_exposed_framing_only_no_raw_wire_proof",
             "no_independent_artifact_loaded_proof",
-            "no_benchmark_quality_intelligence_winner_or_cost_claim",
+            "score_summary_digest_only_quality_report_not_embedded_in_receipt",
+            "bounded_offline_corpus_score_not_general_quality_or_intelligence",
+            "no_cost_latency_price_or_winner_claim",
             "no_world_or_simulation_authority",
             "no_retry_authority"
         ], receiptDocument.RootElement.GetProperty("claim_limitation_codes").EnumerateArray().Select(static value => value.GetString()));
         Assert.Equal(result.Receipt.CanonicalDigestSha256, CognitionQualityHash.Sha256(result.Receipt.CanonicalUtf8.Span));
-        Assert.Equal("93328d8b9bf1ca27b07a66063bdc90f5d9877ddb4b2eb3395ff72539e914e6da", result.Receipt.CanonicalDigestSha256);
-        Assert.Equal("85c8484a960652d6bb0ae91a0470452f281e3a34296886ec4c603240c1e14e3b", result.Receipt.PayloadDigestSha256);
-        Assert.Equal("snow_globe_ollama_loopback_recording_receipt/v3", result.Receipt.SchemaVersion);
+        Assert.Equal("e124cc4d2384194fb29197d6fdd4b392f3fe3ade4d00d50a754589e9af29c179", result.Receipt.CanonicalDigestSha256);
+        Assert.Equal("82606412ca2aea4768f4d58f80a30ef70ac987fe168bc2161aca66d6b534d9ab", result.Receipt.PayloadDigestSha256);
+        Assert.Equal("snow_globe_ollama_loopback_recording_receipt/v4", result.Receipt.SchemaVersion);
         Assert.Equal("None", result.TerminalCheckpointCode); Assert.Equal("None", result.TerminalPolicyCode);
         Assert.Equal(result.TerminalCheckpointCode, result.Receipt.TerminalCheckpointCode);
         Assert.Equal(result.TerminalPolicyCode, result.Receipt.TerminalPolicyCode);
         AssertReceiptPayloadDigest(result.Receipt); Assert.InRange(result.Receipt.CanonicalUtf8.Length, 1, SnowGlobePinnedOllamaRecordingModule.MaximumReceiptBytes); byte[] detached = result.Receipt.CanonicalUtf8.ToArray(); detached[0] ^= 0xff; Assert.Equal((byte)'{', result.Receipt.CanonicalUtf8.Span[0]);
+    }
+
+    [Fact]
+    public async Task ScoreProjectionFailureAfterTwelfthResponseIsExactEvidenceRejectedWithNoRetryOrSummary()
+    {
+        WrapperHandler handler = new();
+        CountingFactory factory = new(binding => new OllamaLoopbackRecordingTransportAdapter(binding, new ScriptedVerifier(), handler));
+        SnowGlobePinnedOllamaRecordingModule module = new(new FixedClock(1), factory, static _ => throw new InvalidOperationException("projection_failed"));
+        SnowGlobeOllamaLoopbackRecordingResult result = await module.Authorize(Publication(), Binding(), new("projection-failure-v1")).RecordOnceAsync();
+
+        Assert.Equal(SnowGlobeOllamaLoopbackRecordingOutcomeCode.Failed, result.OutcomeCode);
+        Assert.Equal(SnowGlobeOllamaLoopbackRecordingFailureCode.EvidenceRejected, result.FailureCode);
+        Assert.Equal(12, result.CompletedSlotCount);
+        Assert.Equal(12, result.TerminalSlotOrdinal);
+        Assert.Equal(12, handler.CallCount);
+        Assert.Equal(1, handler.MaximumConcurrentCalls);
+        Assert.Null(result.Evidence);
+        Assert.Null(result.ScoreSummary);
+        Assert.Null(result.ScoreSummaryDigestSha256);
+        Assert.NotNull(result.Receipt);
+        Assert.Null(result.Receipt!.NestedRecordingEvidenceDigestSha256);
+        Assert.Null(result.Receipt.ScoreSummary);
+        Assert.Null(result.Receipt.ScoreSummaryDigestSha256);
+        Assert.False(result.AdditionalAttemptAuthorized);
     }
 
     [Fact]

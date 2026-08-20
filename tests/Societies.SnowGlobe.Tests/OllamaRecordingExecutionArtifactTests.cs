@@ -14,15 +14,18 @@ public sealed class OllamaRecordingExecutionArtifactTests
     public async Task CanonicalArtifact_GoldenRoundTripsAndIsDetached()
     {
         OllamaRecordingExecutionArtifact artifact = await CreateArtifact();
-        Assert.Equal("2635667e36fb8800f21ecded4ac90d4e5840dafe48b669b518556b38eb60aae2", artifact.CanonicalDigestSha256);
-        Assert.Equal("a79c3a0a31e9911038b9264c52f05d8eedec6785e81e32e33d5aca1bec124111", artifact.PayloadDigestSha256);
+        Assert.Equal("a1c202dd2303c3fd9229ef24e21ae1c7de2099e1dc9ed767d42f06493fd32bee", artifact.CanonicalDigestSha256);
+        Assert.Equal("4175d668069dab1b224859060628b622c8b61924e8da3740ad74a97289062d50", artifact.PayloadDigestSha256);
         OllamaRecordingExecutionArtifact validated = OllamaRecordingExecutionArtifactModule.Validate(artifact.CanonicalUtf8);
         Assert.Equal(artifact.CanonicalDigestSha256, validated.CanonicalDigestSha256);
         Assert.Equal(artifact.PayloadDigestSha256, validated.PayloadDigestSha256);
         Assert.InRange(artifact.CanonicalUtf8.Length, 1, OllamaRecordingExecutionArtifactModule.MaximumArtifactBytes);
         byte[] detached = artifact.CanonicalUtf8.ToArray(); detached[0] ^= 0xff;
         Assert.Equal((byte)'{', artifact.CanonicalUtf8.Span[0]);
-        Assert.Equal("snow_globe_ollama_recording_execution_artifact/v3", artifact.SchemaVersion);
+        Assert.Equal("snow_globe_ollama_recording_execution_artifact/v4", artifact.SchemaVersion);
+        Assert.NotNull(artifact.ScoreSummary);
+        Assert.Equal(artifact.ScoreSummary!.CanonicalDigestSha256, artifact.ScoreSummaryDigestSha256);
+        Assert.Equal(artifact.NestedRecordingEvidenceDigestSha256, artifact.ScoreSummary.RecordingEvidenceDigestSha256);
         Assert.Equal("None", artifact.TerminalCheckpointCode); Assert.Equal("None", artifact.TerminalPolicyCode);
         Assert.Equal("raw_free_local_loopback_recording_execution_binding_only", artifact.Semantics);
         using JsonDocument document = JsonDocument.Parse(artifact.CanonicalUtf8);
@@ -36,8 +39,9 @@ public sealed class OllamaRecordingExecutionArtifactTests
             "no_independent_model_execution_proof",
             "no_live_compatibility_proof",
             "digests_provide_integrity_not_authenticity",
-            "nested_scoring_evidence_not_embedded_or_revalidated",
-            "no_benchmark_quality_intelligence_winner_cost_or_commercial_claim",
+            "raw_free_score_summary_embedded_and_revalidated_only_after_complete_evidence",
+            "bounded_offline_corpus_score_not_general_quality_or_intelligence",
+            "no_cost_latency_price_winner_or_commercial_claim",
             "no_world_or_simulation_authority",
             "no_retry_fallback_or_alternate_authority",
             "model_execution_and_file_publication_are_not_transactional"
@@ -45,6 +49,98 @@ public sealed class OllamaRecordingExecutionArtifactTests
         Assert.Contains("httpclient_exposed_framing_only_no_raw_wire_proof",
             document.RootElement.GetProperty("receipt").GetProperty("claim_limitation_codes").EnumerateArray().Select(static value => value.GetString()),
             StringComparer.Ordinal);
+    }
+
+    [Fact]
+    public async Task ScoreSummaryIsSingleEmbeddedCrossBoundAndEveryTerminalPathRequiresNull()
+    {
+        OllamaRecordingExecutionArtifact complete = await CreateArtifact();
+        using JsonDocument document = JsonDocument.Parse(complete.CanonicalUtf8);
+        JsonElement root = document.RootElement;
+        Assert.Equal(1, root.EnumerateObject().Count(static property => property.NameEquals("score_summary")));
+        Assert.Equal(complete.ScoreSummary!.CanonicalJson, root.GetProperty("score_summary").GetRawText());
+        Assert.Equal(complete.ScoreSummaryDigestSha256, root.GetProperty("result").GetProperty("score_summary_digest_sha256").GetString());
+        Assert.Equal(complete.ScoreSummaryDigestSha256, root.GetProperty("receipt").GetProperty("score_summary_digest_sha256").GetString());
+
+        AssertIntegrityValidForgeryRejected(complete, (_, result, _) => result["score_summary_digest_sha256"] = new string('a', 64));
+        AssertIntegrityValidForgeryRejected(complete, (_, _, receipt) => receipt!["score_summary_digest_sha256"] = new string('a', 64));
+        AssertIntegrityValidForgeryRejected(complete, (outer, _, _) => outer["score_summary"]!["recording_evidence_digest_sha256"] = new string('a', 64));
+        AssertIntegrityValidForgeryRejected(complete, (outer, _, _) => outer["score_summary"]!["provenance_digest_sha256"] = new string('a', 64));
+        AssertIntegrityValidForgeryRejected(complete, (outer, _, _) => outer["score_summary"]!["categories"]![0]!["raw_points"] = 1);
+
+        OllamaRecordingExecutionArtifact terminal = await CreateTerminalArtifact();
+        Assert.Null(terminal.ScoreSummary); Assert.Null(terminal.ScoreSummaryDigestSha256);
+        using JsonDocument terminalDocument = JsonDocument.Parse(terminal.CanonicalUtf8);
+        Assert.Equal(JsonValueKind.Null, terminalDocument.RootElement.GetProperty("score_summary").ValueKind);
+        Assert.Equal(JsonValueKind.Null, terminalDocument.RootElement.GetProperty("result").GetProperty("score_summary_digest_sha256").ValueKind);
+        Assert.Equal(JsonValueKind.Null, terminalDocument.RootElement.GetProperty("receipt").GetProperty("score_summary_digest_sha256").ValueKind);
+    }
+
+    [Fact]
+    public async Task PublicArtifactValidatorRejectsFullyRedigestedMaximumUtilityRelabelledAsNoProposal()
+    {
+        OllamaRecordingExecutionArtifact artifact = await CreateArtifact();
+        byte[] forged = ForgeScoreSummaryIntegrityValid(artifact, summary =>
+        {
+            JsonObject scenario = summary["quality_report"]!["categories"]![0]!["scenarios"]![0]!.AsObject();
+            Assert.Equal(100, scenario["raw_points"]!.GetValue<int>());
+            Assert.Equal("maximum_utility", scenario["disposition"]!.GetValue<string>());
+            Assert.Equal("observable_target_met", scenario["limitation_codes"]![0]!.GetValue<string>());
+            scenario["disposition"] = "no_proposal";
+            scenario["limitation_codes"] = new JsonArray("proposal_missing");
+            CognitionQualityScoreSummaryTests.RecomputeReportAndSummary(summary);
+        });
+
+        OllamaRecordingExecutionArtifactException error = Assert.Throws<OllamaRecordingExecutionArtifactException>(
+            () => OllamaRecordingExecutionArtifactModule.Validate(forged));
+        Assert.Equal("artifact_score_summary_invalid", error.Code);
+        Assert.Null(error.InnerException);
+    }
+
+    [Theory]
+    [InlineData(7)]
+    [InlineData(10)]
+    [InlineData(11)]
+    public async Task PublicArtifactValidatorRejectsFullyRedigestedImpossibleLowerUtilityScenario(int scenarioOrdinal)
+    {
+        OllamaRecordingExecutionArtifact artifact = await CreateArtifact();
+        byte[] forged = ForgeScoreSummaryIntegrityValid(artifact, summary =>
+        {
+            JsonObject scenario = summary["quality_report"]!["categories"]![(scenarioOrdinal - 1) / 3]!["scenarios"]![(scenarioOrdinal - 1) % 3]!.AsObject();
+            scenario["raw_points"] = 10;
+            scenario["basis_points"] = 1_000;
+            scenario["disposition"] = "feasible_suboptimal";
+            scenario["limitation_codes"] = new JsonArray("lower_observable_utility");
+            CognitionQualityScoreSummaryTests.RecomputeReportAndSummary(summary);
+        });
+
+        OllamaRecordingExecutionArtifactException error = Assert.Throws<OllamaRecordingExecutionArtifactException>(
+            () => OllamaRecordingExecutionArtifactModule.Validate(forged));
+        Assert.Equal("artifact_score_summary_invalid", error.Code);
+        Assert.Null(error.InnerException);
+    }
+
+    [Theory]
+    [InlineData(int.MaxValue)]
+    [InlineData(int.MinValue)]
+    [InlineData(-1)]
+    [InlineData(13)]
+    public async Task PublicArtifactValidatorClosesExtremeDispositionCounts(int count)
+    {
+        OllamaRecordingExecutionArtifact artifact = await CreateArtifact();
+        byte[] forged = ForgeScoreSummaryIntegrityValid(artifact, summary =>
+        {
+            JsonObject report = summary["quality_report"]!.AsObject();
+            report["disposition_counts"]!["no_proposal"] = count;
+            CognitionQualityScoreSummaryTests.RecomputeLastDigest(report, "report_payload_digest_sha256");
+            summary["quality_contract"]!["report_digest_sha256"] = CognitionQualityHash.Sha256(JsonSerializer.SerializeToUtf8Bytes(report));
+            CognitionQualityScoreSummaryTests.RecomputeLastDigest(summary);
+        });
+
+        OllamaRecordingExecutionArtifactException error = Assert.Throws<OllamaRecordingExecutionArtifactException>(
+            () => OllamaRecordingExecutionArtifactModule.Validate(forged));
+        Assert.Equal("artifact_score_summary_invalid", error.Code);
+        Assert.Null(error.InnerException);
     }
 
     [Fact]
@@ -118,7 +214,7 @@ public sealed class OllamaRecordingExecutionArtifactTests
         byte[] changed = mutation switch
         {
             "unknown" => Encoding.UTF8.GetBytes(json.Replace("{\"schema_version\"", "{\"unknown\":0,\"schema_version\"", StringComparison.Ordinal)),
-            "duplicate" => Encoding.UTF8.GetBytes(json.Replace("{\"schema_version\":", "{\"schema_version\":\"snow_globe_ollama_recording_execution_artifact/v3\",\"schema_version\":", StringComparison.Ordinal)),
+            "duplicate" => Encoding.UTF8.GetBytes(json.Replace("{\"schema_version\":", "{\"schema_version\":\"snow_globe_ollama_recording_execution_artifact/v4\",\"schema_version\":", StringComparison.Ordinal)),
             "missing" => Encoding.UTF8.GetBytes(json.Replace("\"semantics\":\"raw_free_local_loopback_recording_execution_binding_only\",", string.Empty, StringComparison.Ordinal)),
             "noncanonical" => Encoding.UTF8.GetBytes(json + " "),
             "digest" => Encoding.UTF8.GetBytes(ReplaceFirstDigestCharacter(json, "\"plan_digest_sha256\":\"")),
@@ -550,7 +646,7 @@ public sealed class OllamaRecordingExecutionArtifactTests
     public async Task IntegrityValidEvidenceRejectedRowIsAccepted()
     {
         OllamaRecordingExecutionArtifact complete = await CreateArtifact();
-        byte[] evidenceRejected = ForgeIntegrityValid(complete, (_, result, receipt) =>
+        byte[] evidenceRejected = ForgeIntegrityValid(complete, (root, result, receipt) =>
         {
             result["composition_outcome_code"] = "Failed";
             result["composition_failure_code"] = "EvidenceRejected";
@@ -558,6 +654,7 @@ public sealed class OllamaRecordingExecutionArtifactTests
             result["recording_failure_code"] = "EvidenceRejected";
             result["terminal_slot_ordinal"] = 12;
             result["nested_recording_evidence_digest_sha256"] = null;
+            result["score_summary_digest_sha256"] = null;
             result["terminal_checkpoint_code"] = "EvidenceConstruction";
             result["terminal_policy_code"] = "EvidenceShape";
             receipt!["status"] = "terminal";
@@ -567,12 +664,15 @@ public sealed class OllamaRecordingExecutionArtifactTests
             receipt["terminal_policy_code"] = "EvidenceShape";
             receipt["terminal_slot_ordinal"] = 12;
             receipt["nested_recording_evidence_digest_sha256"] = null;
+            receipt["score_summary_digest_sha256"] = null;
+            root["score_summary"] = null;
         });
 
         OllamaRecordingExecutionArtifact validated = OllamaRecordingExecutionArtifactModule.Validate(evidenceRejected);
         Assert.Equal("Failed", validated.OutcomeCode); Assert.Equal("EvidenceRejected", validated.FailureCode);
         Assert.Equal(12, validated.CompletedSlotCount); Assert.Equal(12, validated.TerminalSlotOrdinal);
         Assert.True(validated.ReceiptPresent); Assert.Null(validated.NestedRecordingEvidenceDigestSha256);
+        Assert.Null(validated.ScoreSummary); Assert.Null(validated.ScoreSummaryDigestSha256);
 
         Action<JsonObject, JsonObject, JsonObject?>[] resultMutations =
         [
@@ -693,6 +793,24 @@ public sealed class OllamaRecordingExecutionArtifactTests
             RecomputeLastDigest(receipt, "receipt_payload_digest_sha256");
             if (!preserveNullDigest) result["receipt_digest_sha256"] = CognitionQualityHash.Sha256(JsonSerializer.SerializeToUtf8Bytes(receipt));
         }
+        RecomputeLastDigest(root, "artifact_payload_digest_sha256");
+        return JsonSerializer.SerializeToUtf8Bytes(root);
+    }
+
+    private static byte[] ForgeScoreSummaryIntegrityValid(
+        OllamaRecordingExecutionArtifact artifact,
+        Action<JsonObject> mutateSummary)
+    {
+        JsonObject root = JsonNode.Parse(artifact.CanonicalUtf8.Span)!.AsObject();
+        JsonObject result = root["result"]!.AsObject();
+        JsonObject receipt = root["receipt"]!.AsObject();
+        JsonObject summary = root["score_summary"]!.AsObject();
+        mutateSummary(summary);
+        string summaryDigest = CognitionQualityHash.Sha256(JsonSerializer.SerializeToUtf8Bytes(summary));
+        result["score_summary_digest_sha256"] = summaryDigest;
+        receipt["score_summary_digest_sha256"] = summaryDigest;
+        RecomputeLastDigest(receipt, "receipt_payload_digest_sha256");
+        result["receipt_digest_sha256"] = CognitionQualityHash.Sha256(JsonSerializer.SerializeToUtf8Bytes(receipt));
         RecomputeLastDigest(root, "artifact_payload_digest_sha256");
         return JsonSerializer.SerializeToUtf8Bytes(root);
     }

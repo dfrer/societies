@@ -19,11 +19,11 @@ public sealed class OllamaRecordingCompositionTests
         SnowGlobeOllamaRecordingCompositionModule first = new(Root); SnowGlobeOllamaRecordingCompositionModule second = new(Root);
         OllamaRecordingCompositionPlan a = first.Prepare(new(777, StartTicks), "composition-nonce-v1");
         OllamaRecordingCompositionPlan b = second.Prepare(new(777, StartTicks), "composition-nonce-v1");
-        Assert.Equal("534f26d41f11b23024aab95db7714e16cc374673170e3f9c71711d6fe23c1fd5", a.PlanDigestSha256);
-        Assert.Equal("snow_globe_ollama_recording_composition_plan/v3", a.SchemaVersion);
+        Assert.Equal("a2eb8e5a0eeb9254fead81b0b9f31c6eaf71affab6e3491395355c54c637c802", a.PlanDigestSha256);
+        Assert.Equal("snow_globe_ollama_recording_composition_plan/v4", a.SchemaVersion);
         Assert.Equal(a.PlanDigestSha256, b.PlanDigestSha256);
         Assert.Equal(OllamaRecordingExecutionArtifactModule.RelativeArtifactPath, a.RelativeArtifactPath);
-        Assert.Equal("artifacts/snowglobe/local-model/qwen3.5-4b-recording-execution-v3.json", a.RelativeArtifactPath);
+        Assert.Equal("artifacts/snowglobe/local-model/qwen3.5-4b-recording-execution-v4.json", a.RelativeArtifactPath);
         Assert.DoesNotContain("recording-execution-v1", a.RelativeArtifactPath, StringComparison.Ordinal);
         Assert.DoesNotContain("recording-execution-v2", a.RelativeArtifactPath, StringComparison.Ordinal);
         Assert.Equal(SnowGlobePinnedOllamaRecordingModule.RegisteredCellDigestSha256, a.RegisteredCellDigestSha256);
@@ -72,6 +72,9 @@ public sealed class OllamaRecordingCompositionTests
         Assert.Equal(1, factory.CreateCount); Assert.Equal(12, factory.Transport!.CallCount);
         Assert.Equal(1, store.ReserveCount); Assert.Equal(1, store.PublishCount); Assert.Equal(0, store.ReadCount);
         Assert.NotNull(result.Artifact); Assert.Equal(12, result.Artifact!.CompletedSlotCount); Assert.True(result.Artifact.ReceiptPresent); Assert.NotNull(result.Artifact.NestedRecordingEvidenceDigestSha256);
+        Assert.NotNull(result.ScoreSummary); Assert.NotNull(result.Artifact.ScoreSummary);
+        Assert.Equal(result.ScoreSummaryDigestSha256, result.Artifact.ScoreSummaryDigestSha256);
+        Assert.Equal(result.Artifact.ScoreSummary!.RecordingEvidenceDigestSha256, result.Artifact.NestedRecordingEvidenceDigestSha256);
         Assert.Equal("None", result.Artifact.TerminalCheckpointCode); Assert.Equal("None", result.Artifact.TerminalPolicyCode);
         Assert.Equal(result.Artifact.CanonicalDigestSha256, module.ValidateArtifact().CanonicalDigestSha256); Assert.Equal(1, store.ReadCount);
         string json = Encoding.UTF8.GetString(result.Artifact.CanonicalUtf8.Span);
@@ -90,7 +93,7 @@ public sealed class OllamaRecordingCompositionTests
         OllamaRecordingCompositionResult result = await module.ExecuteAndPublishOnceAsync(module.Prepare(new(777, StartTicks), "terminal-composition-v1"));
         Assert.Equal("Failed", result.OutcomeCode); Assert.Equal("WrapperRejected", result.FailureCode);
         Assert.Equal(2, result.Artifact!.CompletedSlotCount); Assert.Equal(3, result.Artifact.TerminalSlotOrdinal);
-        Assert.Null(result.Artifact.NestedRecordingEvidenceDigestSha256); Assert.True(result.Artifact.ReceiptPresent);
+        Assert.Null(result.Artifact.NestedRecordingEvidenceDigestSha256); Assert.Null(result.ScoreSummary); Assert.Null(result.Artifact.ScoreSummary); Assert.True(result.Artifact.ReceiptPresent);
         Assert.Equal(3, factory.Transport!.CallCount); Assert.Equal(1, store.ReserveCount); Assert.Equal(1, store.PublishCount);
         using JsonDocument document = JsonDocument.Parse(result.Artifact.CanonicalUtf8); JsonElement summary = document.RootElement.GetProperty("result");
         Assert.Equal(0, summary.GetProperty("automatic_retry_count").GetInt32()); Assert.Equal(0, summary.GetProperty("fallback_count").GetInt32()); Assert.False(summary.GetProperty("additional_attempt_authorized").GetBoolean());
@@ -391,7 +394,7 @@ public sealed class OllamaRecordingCompositionTests
         JsonObject receipt = JsonNode.Parse(complete.CanonicalUtf8.Span)!.AsObject();
         receipt["status"] = "terminal"; receipt["outcome"] = "Failed"; receipt["failure_code"] = "EvidenceRejected";
         receipt["terminal_checkpoint_code"] = "EvidenceConstruction"; receipt["terminal_policy_code"] = "EvidenceShape";
-        receipt["terminal_slot_ordinal"] = 12; receipt["nested_recording_evidence_digest_sha256"] = null;
+        receipt["terminal_slot_ordinal"] = 12; receipt["nested_recording_evidence_digest_sha256"] = null; receipt["score_summary_digest_sha256"] = null;
         receipt.Remove("receipt_payload_digest_sha256"); byte[] payload = JsonSerializer.SerializeToUtf8Bytes(receipt);
         string payloadDigest = CognitionQualityHash.Sha256(payload); Array.Clear(payload);
         receipt["receipt_payload_digest_sha256"] = payloadDigest; byte[] canonical = JsonSerializer.SerializeToUtf8Bytes(receipt);

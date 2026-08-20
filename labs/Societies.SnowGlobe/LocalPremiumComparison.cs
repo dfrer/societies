@@ -55,9 +55,78 @@ public static class LocalPremiumComparison
     public const int MaximumLocalCellBytes = 16 * 1024;
     public const int MaximumLocalCellDepth = 8;
     public const int MaximumReportBytes = 32 * 1024;
+    private const string ComparisonV2SchemaVersion = "snow_globe_local_premium_comparison/v2";
+    private static readonly string ComparisonV2ContractId = LocalPremiumComparisonHash.Sha256(Encoding.UTF8.GetBytes(string.Join('|',
+        ComparisonV2SchemaVersion,
+        FrozenLocalBenchmarkRegistry.ComparisonContractId,
+        OllamaRecordingExecutionArtifactModule.SchemaVersion,
+        CognitionQualityScoreSummaryCodec.SchemaVersion,
+        "separate-benchmark-and-recording-runs",
+        "premium-null|premium-cost-null|performance-delta-null|quality-delta-null")));
+    private static readonly string[] ComparisonV2MissingGateCodes =
+    [
+        "live_premium_profile_not_approved", "live_premium_evidence_absent",
+        "live_premium_operational_metrics_absent", "live_premium_quality_evidence_absent",
+        "live_premium_cost_evidence_absent"
+    ];
+    private static readonly string[] ComparisonV2ClaimLimitations =
+    [
+        "frozen_local_benchmark_cell_only", "validated_local_recording_artifact_v4_only",
+        "local_benchmark_and_recording_are_separate_runs", "sampled_vram_does_not_prove_unsampled_transient_peak",
+        "bounded_offline_corpus_score_not_general_quality_or_intelligence", "no_live_premium_evidence",
+        "no_cross_run_latency_per_quality_or_price_conclusion", "no_cost_conclusion", "no_winner_selection"
+    ];
 
     public static LocalPremiumComparisonReport Evaluate(ReadOnlyMemory<byte> canonicalLocalCellUtf8) =>
         Evaluate(canonicalLocalCellUtf8, AbsentPremiumComparisonEvidenceAdapter.Instance);
+
+    /// <summary>
+    /// Validates one frozen benchmark run and one distinct v4 recording run without treating them as
+    /// a joined latency/quality sample or inspecting any live premium evidence.
+    /// </summary>
+    public static LocalPremiumComparisonReport Evaluate(
+        ReadOnlyMemory<byte> canonicalLocalCellUtf8,
+        ReadOnlyMemory<byte> canonicalRecordingArtifactUtf8)
+    {
+        LocalPremiumComparisonReport benchmark = Evaluate(canonicalLocalCellUtf8);
+        if (canonicalRecordingArtifactUtf8.IsEmpty)
+            throw new LocalPremiumComparisonException(LocalPremiumComparisonErrors.LocalRecordingArtifactRequired);
+        if (canonicalRecordingArtifactUtf8.Length > OllamaRecordingExecutionArtifactModule.MaximumArtifactBytes)
+            throw new LocalPremiumComparisonException(LocalPremiumComparisonErrors.LocalRecordingArtifactTooLarge);
+
+        byte[] snapshot = canonicalRecordingArtifactUtf8.ToArray();
+        try
+        {
+            OllamaRecordingExecutionArtifact recording;
+            try { recording = OllamaRecordingExecutionArtifactModule.Validate(snapshot); }
+            catch (OllamaRecordingExecutionArtifactException exception)
+            { throw new LocalPremiumComparisonException(LocalPremiumComparisonErrors.LocalRecordingArtifactRejected, exception); }
+
+            if (!string.Equals(recording.SchemaVersion, OllamaRecordingExecutionArtifactModule.SchemaVersion, StringComparison.Ordinal)
+                || !string.Equals(recording.OutcomeCode, "Complete", StringComparison.Ordinal)
+                || !string.Equals(recording.FailureCode, "None", StringComparison.Ordinal)
+                || !string.Equals(recording.RecordingOutcomeCode, "Complete", StringComparison.Ordinal)
+                || !string.Equals(recording.RecordingFailureCode, "None", StringComparison.Ordinal)
+                || recording.CompletedSlotCount != CognitionQualityCorpusV1.ScenarioCount
+                || recording.ScoreSummary is null
+                || !string.Equals(recording.ScoreSummaryDigestSha256, recording.ScoreSummary.CanonicalDigestSha256, StringComparison.Ordinal))
+                throw new LocalPremiumComparisonException(LocalPremiumComparisonErrors.LocalRecordingArtifactRejected);
+
+            using JsonDocument benchmarkDocument = JsonDocument.Parse(benchmark.CanonicalUtf8);
+            JsonElement benchmarkRun = benchmarkDocument.RootElement.GetProperty("local");
+            byte[] payload = WriteV2Report(benchmarkRun, recording, null);
+            string payloadDigest = LocalPremiumComparisonHash.Sha256(payload);
+            CryptographicOperations.ZeroMemory(payload);
+            byte[] report = WriteV2Report(benchmarkRun, recording, payloadDigest);
+            if (report.Length is < 1 or > MaximumReportBytes)
+            {
+                CryptographicOperations.ZeroMemory(report);
+                throw new LocalPremiumComparisonException(LocalPremiumComparisonErrors.ReportSizeInvalid);
+            }
+            return new LocalPremiumComparisonReport(report, FrozenLocalBenchmarkRegistry.Status);
+        }
+        finally { CryptographicOperations.ZeroMemory(snapshot); }
+    }
 
     internal static LocalPremiumComparisonReport Evaluate(
         ReadOnlyMemory<byte> canonicalLocalCellUtf8,
@@ -255,6 +324,46 @@ public static class LocalPremiumComparison
             writer.WriteEndObject();
         }
 
+        return buffer.WrittenSpan.ToArray();
+    }
+
+    private static byte[] WriteV2Report(JsonElement benchmarkRun, OllamaRecordingExecutionArtifact recording, string? payloadDigestSha256)
+    {
+        CognitionQualityScoreSummary summary = recording.ScoreSummary
+            ?? throw new LocalPremiumComparisonException(LocalPremiumComparisonErrors.LocalRecordingArtifactRejected);
+        ArrayBufferWriter<byte> buffer = new();
+        using (Utf8JsonWriter writer = new(buffer, new JsonWriterOptions { Indented = false, SkipValidation = false }))
+        {
+            writer.WriteStartObject();
+            writer.WriteString("schema_version", ComparisonV2SchemaVersion);
+            writer.WriteString("comparison_contract_id", ComparisonV2ContractId);
+            writer.WriteString("status", FrozenLocalBenchmarkRegistry.Status);
+            writer.WritePropertyName("local"); writer.WriteStartObject();
+            writer.WritePropertyName("benchmark_run"); benchmarkRun.WriteTo(writer);
+            writer.WritePropertyName("recording_run"); writer.WriteStartObject();
+            writer.WriteString("artifact_schema_version", recording.SchemaVersion);
+            writer.WriteString("artifact_digest_sha256", recording.CanonicalDigestSha256);
+            writer.WriteString("receipt_digest_sha256", recording.ReceiptDigestSha256);
+            writer.WriteString("recording_evidence_digest_sha256", recording.NestedRecordingEvidenceDigestSha256);
+            writer.WriteString("score_summary_digest_sha256", summary.CanonicalDigestSha256);
+            writer.WriteNumber("completed_slot_count", recording.CompletedSlotCount!.Value);
+            writer.WriteBoolean("same_run_as_benchmark", false);
+            writer.WriteEndObject();
+            writer.WritePropertyName("cognition_quality"); writer.WriteRawValue(summary.CanonicalUtf8.Span, skipInputValidation: false);
+            writer.WriteEndObject();
+            writer.WriteNull("premium");
+            writer.WriteNull("premium_cost");
+            writer.WriteNull("performance_delta");
+            writer.WriteNull("quality_delta");
+            writer.WritePropertyName("missing_gate_codes"); writer.WriteStartArray();
+            foreach (string code in ComparisonV2MissingGateCodes) writer.WriteStringValue(code);
+            writer.WriteEndArray();
+            writer.WritePropertyName("claim_limitations"); writer.WriteStartArray();
+            foreach (string code in ComparisonV2ClaimLimitations) writer.WriteStringValue(code);
+            writer.WriteEndArray();
+            if (payloadDigestSha256 is not null) writer.WriteString("report_payload_digest_sha256", payloadDigestSha256);
+            writer.WriteEndObject();
+        }
         return buffer.WrittenSpan.ToArray();
     }
 
@@ -711,6 +820,9 @@ internal static class LocalPremiumComparisonErrors
     internal const string LocalCellBindingMismatch = "local_cell_binding_mismatch";
     internal const string LocalBenchmarkEvidenceRejected = "local_benchmark_evidence_rejected";
     internal const string LocalArtifactDigestMismatch = "local_artifact_digest_mismatch";
+    internal const string LocalRecordingArtifactRequired = "local_recording_artifact_required";
+    internal const string LocalRecordingArtifactTooLarge = "local_recording_artifact_too_large";
+    internal const string LocalRecordingArtifactRejected = "local_recording_artifact_rejected";
     internal const string RegistryContractInvalid = "registry_contract_invalid";
     internal const string PremiumEvidenceAdapterInvalid = "premium_evidence_adapter_invalid";
     internal const string ReportSizeInvalid = "report_size_invalid";
@@ -726,6 +838,9 @@ internal static class LocalPremiumComparisonErrors
         or LocalCellBindingMismatch
         or LocalBenchmarkEvidenceRejected
         or LocalArtifactDigestMismatch
+        or LocalRecordingArtifactRequired
+        or LocalRecordingArtifactTooLarge
+        or LocalRecordingArtifactRejected
         or RegistryContractInvalid
         or PremiumEvidenceAdapterInvalid
         or ReportSizeInvalid;
