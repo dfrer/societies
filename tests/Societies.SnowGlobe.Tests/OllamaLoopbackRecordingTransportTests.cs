@@ -15,6 +15,9 @@ public sealed class OllamaLoopbackRecordingTransportTests
         using OllamaLoopbackRecordingTransportAdapter adapter = new(Binding(), new PassVerifier());
         SocketsHttpHandler handler = Assert.IsType<SocketsHttpHandler>(adapter.ProductionHandler);
         Assert.False(handler.AllowAutoRedirect); Assert.Equal(DecompressionMethods.None, handler.AutomaticDecompression); Assert.False(handler.UseProxy); Assert.Null(handler.Proxy); Assert.False(handler.UseCookies); Assert.Null(handler.Credentials); Assert.False(handler.PreAuthenticate); Assert.Equal(1, handler.MaxConnectionsPerServer); Assert.NotNull(handler.ConnectCallback);
+        Assert.StartsWith("snow-globe-ollama-loopback-recording-transport-adapter/v2|", OllamaLoopbackRecordingTransportAdapter.ContractDescriptor, StringComparison.Ordinal);
+        Assert.Contains("content-type-application-json-none-or-one-charset-utf-8", OllamaLoopbackRecordingTransportAdapter.ContractDescriptor, StringComparison.Ordinal);
+        Assert.Contains("typed-terminal-checkpoint-policy", OllamaLoopbackRecordingTransportAdapter.ContractDescriptor, StringComparison.Ordinal);
         Assert.Equal(0, adapter.CallCount); Assert.Equal(0, adapter.LateObserverCount); Assert.False(adapter.IsPoisoned);
         await adapter.DisposeAsync();
     }
@@ -62,7 +65,7 @@ public sealed class OllamaLoopbackRecordingTransportTests
         InspectingHandler handler = new(_ => Response((HttpStatusCode)status, Wrapper())); await using OllamaLoopbackRecordingTransportAdapter adapter = new(Binding(), new PassVerifier(), handler);
         using CognitionQualityRecordingAdapterRequest source = Request(1); using OfflineOllamaRecordingTransportRequest encoded = OfflineOllamaRecordingCodecModule.Encode(source, SnowGlobePinnedOllamaRecordingModule.LiveCodecProfile);
         OllamaLoopbackTransportException exception = await Assert.ThrowsAsync<OllamaLoopbackTransportException>(() => adapter.ExchangeOnceAsync(encoded, CancellationToken.None).AsTask());
-        Assert.Equal(OllamaLoopbackTransportFailureCode.HttpResponseRejected, exception.Code); Assert.Equal(SubmissionState.ResponseReceived, exception.SubmissionState); Assert.Equal(ChargeState.NotApplicable, exception.ChargeState); Assert.Equal(status, exception.StatusCode); Assert.False(exception.AdditionalAttemptAuthorized); Assert.Equal(exception.Code.ToString(), exception.Message); Assert.Equal(1, handler.CallCount); Assert.Equal(1, adapter.CallCount);
+        Assert.Equal(OllamaLoopbackTransportFailureCode.HttpResponseRejected, exception.Code); Assert.Equal(SubmissionState.ResponseReceived, exception.SubmissionState); Assert.Equal(ChargeState.NotApplicable, exception.ChargeState); Assert.Equal(status, exception.StatusCode); Assert.Equal(OllamaRecordingTerminalCheckpointCode.ResponseHeaders, exception.Checkpoint); Assert.Equal(OllamaRecordingTerminalPolicyCode.HttpStatus, exception.Policy); Assert.False(exception.AdditionalAttemptAuthorized); Assert.Equal(exception.Code.ToString(), exception.Message); Assert.Equal(1, handler.CallCount); Assert.Equal(1, adapter.CallCount);
     }
 
     public static IEnumerable<object[]> RejectedStatuses()
@@ -84,6 +87,141 @@ public sealed class OllamaLoopbackRecordingTransportTests
     }
 
     [Fact]
+    public async Task PinnedRuntimeOfficialJsonUtf8ContentType_IsAccepted()
+    {
+        byte[] callerWrapper = Wrapper(); InspectingHandler handler = new(_ =>
+        {
+            HttpResponseMessage response = Response(HttpStatusCode.OK, callerWrapper.ToArray());
+            response.Content.Headers.ContentType!.CharSet = "utf-8";
+            return response;
+        });
+        await using OllamaLoopbackRecordingTransportAdapter adapter = new(Binding(), new PassVerifier(), handler);
+        using CognitionQualityRecordingAdapterRequest source = Request(1);
+        using OfflineOllamaRecordingTransportRequest encoded = OfflineOllamaRecordingCodecModule.Encode(source, SnowGlobePinnedOllamaRecordingModule.LiveCodecProfile);
+
+        using OfflineOllamaRecordingTransportResponse response = await adapter.ExchangeOnceAsync(encoded, CancellationToken.None);
+
+        Assert.Equal(200, response.StatusCode); Assert.Equal(callerWrapper, response.BodyUtf8.ToArray());
+        Assert.Equal(1, handler.CallCount); Assert.Equal(1, adapter.CallCount);
+    }
+
+    [Theory]
+    [InlineData("application/json")]
+    [InlineData("application/json;charset=utf-8")]
+    [InlineData("application/json;CHARSET=UTF-8")]
+    [InlineData("application/json;charset=\"utf-8\"")]
+    [InlineData("APPLICATION/JSON;Charset=\"UTF-8\"")]
+    public void PinnedRuntimeContentType_ExactAcceptedParsedShapes(string value) =>
+        Assert.True(OllamaLoopbackRecordingTransportAdapter.IsPinnedRuntimeApplicationJson(MediaTypeHeaderValue.Parse(value)));
+
+    [Theory]
+    [InlineData("text/plain")]
+    [InlineData("application/problem+json")]
+    [InlineData("application/json;charset=utf-16")]
+    [InlineData("application/json;profile=unexpected")]
+    [InlineData("application/json;charset=utf-8;profile=unexpected")]
+    [InlineData("application/json;charset=utf-8;charset=utf-8")]
+    public void PinnedRuntimeContentType_RejectsEveryOtherOrAdditionalParsedShape(string value) =>
+        Assert.False(OllamaLoopbackRecordingTransportAdapter.IsPinnedRuntimeApplicationJson(MediaTypeHeaderValue.Parse(value)));
+
+    [Fact]
+    public async Task ResponseHeaderPolicy_UsesDeterministicFirstFailureOrder()
+    {
+        foreach ((Func<HttpResponseMessage> Create, OllamaRecordingTerminalPolicyCode Expected) value in new[]
+        {
+            ((Func<HttpResponseMessage>)(() => Mutate(Response(HttpStatusCode.OK, Wrapper()), response =>
+            {
+                response.Version = HttpVersion.Version20;
+                response.Content.Headers.ContentType = new MediaTypeHeaderValue("text/plain");
+            })), OllamaRecordingTerminalPolicyCode.HttpVersion),
+            ((Func<HttpResponseMessage>)(() => Mutate(Response(HttpStatusCode.OK, Wrapper()), response =>
+            {
+                response.Headers.TransferEncodingChunked = true;
+                response.Content.Headers.ContentType = new MediaTypeHeaderValue("text/plain");
+            })), OllamaRecordingTerminalPolicyCode.TransferEncoding)
+        })
+        {
+            InspectingHandler handler = new(_ => value.Create());
+            await using OllamaLoopbackRecordingTransportAdapter adapter = new(Binding(), new PassVerifier(), handler);
+            using CognitionQualityRecordingAdapterRequest source = Request(1);
+            using OfflineOllamaRecordingTransportRequest encoded = OfflineOllamaRecordingCodecModule.Encode(source, SnowGlobePinnedOllamaRecordingModule.LiveCodecProfile);
+            OllamaLoopbackTransportException exception = await Assert.ThrowsAsync<OllamaLoopbackTransportException>(() => adapter.ExchangeOnceAsync(encoded, CancellationToken.None).AsTask());
+            Assert.Equal(OllamaRecordingTerminalCheckpointCode.ResponseHeaders, exception.Checkpoint);
+            Assert.Equal(value.Expected, exception.Policy);
+        }
+    }
+
+    [Fact]
+    public async Task MalformedOrDuplicateRawContentType_IsClosedAsTypedContentPolicy()
+    {
+        foreach (string[] rawValues in new[]
+        {
+            new[] { "application/json;charset=\"" },
+            new[] { "application/json", "application/json;charset=utf-8" }
+        })
+        {
+            InspectingHandler handler = new(_ => Mutate(Response(HttpStatusCode.OK, Wrapper()), response =>
+            {
+                response.Content.Headers.Remove("Content-Type");
+                Assert.True(response.Content.Headers.TryAddWithoutValidation("Content-Type", rawValues));
+            }));
+            await using OllamaLoopbackRecordingTransportAdapter adapter = new(Binding(), new PassVerifier(), handler);
+            using CognitionQualityRecordingAdapterRequest source = Request(1);
+            using OfflineOllamaRecordingTransportRequest encoded = OfflineOllamaRecordingCodecModule.Encode(source, SnowGlobePinnedOllamaRecordingModule.LiveCodecProfile);
+
+            OllamaLoopbackTransportException exception = await Assert.ThrowsAsync<OllamaLoopbackTransportException>(() => adapter.ExchangeOnceAsync(encoded, CancellationToken.None).AsTask());
+
+            Assert.Equal(OllamaLoopbackTransportFailureCode.HttpResponseRejected, exception.Code);
+            Assert.Equal(SubmissionState.ResponseReceived, exception.SubmissionState); Assert.Equal(200, exception.StatusCode);
+            Assert.Equal(OllamaRecordingTerminalCheckpointCode.ResponseHeaders, exception.Checkpoint);
+            Assert.Equal(OllamaRecordingTerminalPolicyCode.ContentType, exception.Policy);
+            Assert.Null(exception.InnerException); Assert.Equal(exception.Code.ToString(), exception.Message);
+        }
+    }
+
+    [Fact]
+    public async Task RawHeaderParserAbuse_IsRejectedWithExactFirstPolicy()
+    {
+        (string Name, string[] Values, OllamaRecordingTerminalPolicyCode Policy, byte[] Body)[] cases =
+        [
+            ("Location", ["http://["], OllamaRecordingTerminalPolicyCode.Redirect, Wrapper()),
+            ("Transfer-Encoding", ["@@@"], OllamaRecordingTerminalPolicyCode.TransferEncoding, Wrapper()),
+            ("Transfer-Encoding", [string.Empty], OllamaRecordingTerminalPolicyCode.TransferEncoding, Wrapper()),
+            ("Content-Encoding", ["@@@"], OllamaRecordingTerminalPolicyCode.ContentEncoding, Wrapper()),
+            ("Content-Encoding", [string.Empty], OllamaRecordingTerminalPolicyCode.ContentEncoding, Wrapper()),
+            ("Content-Length", ["3", "4"], OllamaRecordingTerminalPolicyCode.ContentLength, "abc"u8.ToArray()),
+            ("Content-Length", ["3", "3"], OllamaRecordingTerminalPolicyCode.ContentLength, "abc"u8.ToArray()),
+            ("Content-Length", ["003"], OllamaRecordingTerminalPolicyCode.ContentLength, "abc"u8.ToArray()),
+            ("Content-Length", ["+3"], OllamaRecordingTerminalPolicyCode.ContentLength, "abc"u8.ToArray()),
+            ("Content-Length", ["-3"], OllamaRecordingTerminalPolicyCode.ContentLength, "abc"u8.ToArray()),
+            ("Content-Length", [string.Empty], OllamaRecordingTerminalPolicyCode.ContentLength, "abc"u8.ToArray()),
+            ("Content-Length", [" 3 "], OllamaRecordingTerminalPolicyCode.ContentLength, "abc"u8.ToArray())
+        ];
+
+        foreach ((string name, string[] values, OllamaRecordingTerminalPolicyCode policy, byte[] body) in cases)
+        {
+            InspectingHandler handler = new(_ => Mutate(Response(HttpStatusCode.OK, body), response =>
+            {
+                HttpHeaders headers = name is "Location" or "Transfer-Encoding" ? response.Headers : response.Content.Headers;
+                headers.Remove(name);
+                Assert.True(headers.TryAddWithoutValidation(name, values));
+            }));
+            await using OllamaLoopbackRecordingTransportAdapter adapter = new(Binding(), new PassVerifier(), handler);
+            using CognitionQualityRecordingAdapterRequest source = Request(1);
+            using OfflineOllamaRecordingTransportRequest encoded = OfflineOllamaRecordingCodecModule.Encode(source, SnowGlobePinnedOllamaRecordingModule.LiveCodecProfile);
+
+            OllamaLoopbackTransportException exception = await Assert.ThrowsAsync<OllamaLoopbackTransportException>(() => adapter.ExchangeOnceAsync(encoded, CancellationToken.None).AsTask());
+
+            Assert.Equal(OllamaLoopbackTransportFailureCode.HttpResponseRejected, exception.Code);
+            Assert.Equal(OllamaRecordingTerminalCheckpointCode.ResponseHeaders, exception.Checkpoint);
+            Assert.Equal(policy, exception.Policy); Assert.Equal(SubmissionState.ResponseReceived, exception.SubmissionState);
+            Assert.Equal(200, exception.StatusCode); Assert.Equal(exception.Code.ToString(), exception.Message); Assert.Null(exception.InnerException);
+            string rawSentinel = string.Join('|', values);
+            if (rawSentinel.Length != 0) Assert.DoesNotContain(rawSentinel, exception.ToString(), StringComparison.Ordinal);
+        }
+    }
+
+    [Fact]
     public async Task RequestContent_SerializesExactlyOnceAndZerosOwnedBytes()
     {
         byte[] owned = "secret-request-body"u8.ToArray(); using SingleUseOllamaJsonContent content = new(owned); await content.CopyToAsync(Stream.Null); await Assert.ThrowsAsync<InvalidOperationException>(() => content.CopyToAsync(Stream.Null)); Assert.True(content.HasSerializationBegun); Assert.Equal(1, content.SecondSerializationAttemptCount); content.Dispose(); Assert.All(owned, static value => Assert.Equal(0, value));
@@ -95,7 +233,7 @@ public sealed class OllamaLoopbackRecordingTransportTests
         List<Func<HttpResponseMessage>> cases =
         [
             () => Mutate(Response(HttpStatusCode.OK, Wrapper()), response => response.Content.Headers.ContentType = new("text/plain")),
-            () => Mutate(Response(HttpStatusCode.OK, Wrapper()), response => response.Content.Headers.ContentType!.CharSet = "utf-8"),
+            () => Mutate(Response(HttpStatusCode.OK, Wrapper()), response => response.Content.Headers.ContentType!.CharSet = "utf-16"),
             () => WithContentTypeParameters(Response(HttpStatusCode.OK, Wrapper()), new NameValueHeaderValue("profile", "\"unexpected\"")),
             () => WithContentTypeParameters(Response(HttpStatusCode.OK, Wrapper()), new NameValueHeaderValue("profile", "\"one\""), new NameValueHeaderValue("profile", "\"two\"")),
             () => WithContentTypeParameters(Response(HttpStatusCode.OK, Wrapper()), new NameValueHeaderValue("unexpected", "value")),
@@ -122,7 +260,7 @@ public sealed class OllamaLoopbackRecordingTransportTests
     {
         UncausedCancellationHandler handler = new(serializeBody); await using OllamaLoopbackRecordingTransportAdapter adapter = new(Binding(), new PassVerifier(), handler); using CognitionQualityRecordingAdapterRequest source = Request(1); using OfflineOllamaRecordingTransportRequest encoded = OfflineOllamaRecordingCodecModule.Encode(source, SnowGlobePinnedOllamaRecordingModule.LiveCodecProfile);
         OllamaLoopbackTransportException exception = await Assert.ThrowsAsync<OllamaLoopbackTransportException>(() => adapter.ExchangeOnceAsync(encoded, CancellationToken.None).AsTask());
-        Assert.Equal(OllamaLoopbackTransportFailureCode.TransportFailure, exception.Code); Assert.Equal(expected, exception.SubmissionState); Assert.Equal(ChargeState.NotApplicable, exception.ChargeState); Assert.False(exception.AdditionalAttemptAuthorized); Assert.Equal("TransportFailure", exception.Message); Assert.Equal(1, handler.CallCount); Assert.True(adapter.IsPoisoned);
+        Assert.Equal(OllamaLoopbackTransportFailureCode.TransportFailure, exception.Code); Assert.Equal(expected, exception.SubmissionState); Assert.Equal(OllamaRecordingTerminalCheckpointCode.RequestDispatch, exception.Checkpoint); Assert.Equal(OllamaRecordingTerminalPolicyCode.TransportIo, exception.Policy); Assert.Equal(ChargeState.NotApplicable, exception.ChargeState); Assert.False(exception.AdditionalAttemptAuthorized); Assert.Equal("TransportFailure", exception.Message); Assert.Equal(1, handler.CallCount); Assert.True(adapter.IsPoisoned);
     }
 
     [Fact]
@@ -130,7 +268,27 @@ public sealed class OllamaLoopbackRecordingTransportTests
     {
         InspectingHandler handler = new(_ => new HttpResponseMessage(HttpStatusCode.OK) { Version = HttpVersion.Version11, Content = new UncausedCancellationBodyContent() }); await using OllamaLoopbackRecordingTransportAdapter adapter = new(Binding(), new PassVerifier(), handler); using CognitionQualityRecordingAdapterRequest source = Request(1); using OfflineOllamaRecordingTransportRequest encoded = OfflineOllamaRecordingCodecModule.Encode(source, SnowGlobePinnedOllamaRecordingModule.LiveCodecProfile);
         OllamaLoopbackTransportException exception = await Assert.ThrowsAsync<OllamaLoopbackTransportException>(() => adapter.ExchangeOnceAsync(encoded, CancellationToken.None).AsTask());
-        Assert.Equal(OllamaLoopbackTransportFailureCode.TransportFailure, exception.Code); Assert.Equal(SubmissionState.ResponseReceived, exception.SubmissionState); Assert.Equal(200, exception.StatusCode); Assert.Equal(ChargeState.NotApplicable, exception.ChargeState); Assert.False(exception.AdditionalAttemptAuthorized); Assert.Equal("TransportFailure", exception.Message); Assert.True(adapter.IsPoisoned);
+        Assert.Equal(OllamaLoopbackTransportFailureCode.TransportFailure, exception.Code); Assert.Equal(SubmissionState.ResponseReceived, exception.SubmissionState); Assert.Equal(200, exception.StatusCode); Assert.Equal(OllamaRecordingTerminalCheckpointCode.ResponseBody, exception.Checkpoint); Assert.Equal(OllamaRecordingTerminalPolicyCode.BodyRead, exception.Policy); Assert.Equal(ChargeState.NotApplicable, exception.ChargeState); Assert.False(exception.AdditionalAttemptAuthorized); Assert.Equal("TransportFailure", exception.Message); Assert.True(adapter.IsPoisoned);
+    }
+
+    [Fact]
+    public async Task PostBodyRuntimeRejection_ExposesDigestOnlyAndRetainsNoResponseObject()
+    {
+        byte[] wrapper = Wrapper(); InspectingHandler handler = new(_ => Response(HttpStatusCode.OK, wrapper.ToArray()));
+        RejectAfterExchangeVerifier verifier = new();
+        await using OllamaLoopbackRecordingTransportAdapter adapter = new(Binding(), verifier, handler);
+        using CognitionQualityRecordingAdapterRequest source = Request(1);
+        using OfflineOllamaRecordingTransportRequest encoded = OfflineOllamaRecordingCodecModule.Encode(source, SnowGlobePinnedOllamaRecordingModule.LiveCodecProfile);
+
+        OllamaLoopbackTransportException exception = await Assert.ThrowsAsync<OllamaLoopbackTransportException>(() => adapter.ExchangeOnceAsync(encoded, CancellationToken.None).AsTask());
+
+        Assert.Equal(OllamaLoopbackTransportFailureCode.RuntimeChanged, exception.Code);
+        Assert.Equal(OllamaRecordingTerminalCheckpointCode.AfterExchange, exception.Checkpoint);
+        Assert.Equal(OllamaRecordingTerminalPolicyCode.RuntimeOwnership, exception.Policy);
+        Assert.Equal(CognitionQualityHash.Sha256(wrapper), exception.WrapperDigestSha256);
+        Assert.Equal(exception.Code.ToString(), exception.Message); Assert.Null(exception.InnerException);
+        Assert.DoesNotContain(Encoding.UTF8.GetString(wrapper), exception.ToString(), StringComparison.Ordinal);
+        Assert.Equal(1, handler.CallCount); Assert.Equal(1, adapter.CallCount); Assert.True(adapter.IsPoisoned);
     }
 
     [Theory]
@@ -191,7 +349,7 @@ public sealed class OllamaLoopbackRecordingTransportTests
     }
 
     private static HttpResponseMessage Response(HttpStatusCode status, byte[] body)
-    { HttpResponseMessage response = new(status) { Version = HttpVersion.Version11, Content = new ByteArrayContent(body) }; response.Content.Headers.ContentType = new("application/json"); return response; }
+    { HttpResponseMessage response = new(status) { Version = HttpVersion.Version11, Content = new ByteArrayContent(body) }; response.Content.Headers.ContentType = new("application/json"); response.Content.Headers.ContentLength = body.Length; return response; }
     private static HttpResponseMessage Mutate(HttpResponseMessage response, Action<HttpResponseMessage> mutate) { mutate(response); return response; }
     private static HttpResponseMessage WithContentTypeParameters(HttpResponseMessage response, params NameValueHeaderValue[] parameters) { foreach (NameValueHeaderValue parameter in parameters) response.Content.Headers.ContentType!.Parameters.Add(parameter); return response; }
     private static OllamaLoopbackRuntimeBinding Binding() => new(777, new DateTime(2026, 8, 19, 12, 0, 0, DateTimeKind.Utc).Ticks, SnowGlobePinnedOllamaRecordingModule.RuntimeExecutablePath, SnowGlobePinnedOllamaRecordingModule.RuntimeExecutableSha256, SnowGlobePinnedOllamaRecordingModule.CanonicalEndpointIdentity, 777);
@@ -204,6 +362,14 @@ public sealed class OllamaLoopbackRecordingTransportTests
 
     private sealed class PassVerifier : IOllamaLoopbackRuntimeVerifier
     { public OllamaLoopbackRuntimeVerification Verify(OllamaLoopbackRuntimeBinding binding, OllamaLoopbackRuntimeCheckPoint checkPoint, OllamaLoopbackConnectionIdentity? connection) => OllamaLoopbackRuntimeVerification.Pass; }
+
+    private sealed class RejectAfterExchangeVerifier : IOllamaLoopbackRuntimeVerifier
+    {
+        public OllamaLoopbackRuntimeVerification Verify(OllamaLoopbackRuntimeBinding binding, OllamaLoopbackRuntimeCheckPoint checkPoint, OllamaLoopbackConnectionIdentity? connection) =>
+            checkPoint == OllamaLoopbackRuntimeCheckPoint.AfterExchange
+                ? OllamaLoopbackRuntimeVerification.Reject("raw-sentinel-C:/outside/nonce")
+                : OllamaLoopbackRuntimeVerification.Pass;
+    }
 
     private sealed class InspectingHandler : HttpMessageHandler
     {
@@ -235,7 +401,7 @@ public sealed class OllamaLoopbackRecordingTransportTests
 
     private sealed class HangingBodyContent : HttpContent
     {
-        internal HangingBodyContent() { Headers.ContentType = new("application/json"); }
+        internal HangingBodyContent() { Headers.ContentType = new("application/json"); Headers.ContentLength = 1; }
         internal TaskCompletionSource<bool> Started { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously); internal TaskCompletionSource<bool> Release { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously); internal bool IsDisposed { get; private set; }
         protected override bool TryComputeLength(out long length) { length = 1; return true; }
         protected override Task SerializeToStreamAsync(Stream stream, TransportContext? context) => SerializeToStreamAsync(stream, context, CancellationToken.None);
@@ -245,7 +411,7 @@ public sealed class OllamaLoopbackRecordingTransportTests
 
     private sealed class UncausedCancellationBodyContent : HttpContent
     {
-        internal UncausedCancellationBodyContent() => Headers.ContentType = new("application/json");
+        internal UncausedCancellationBodyContent() { Headers.ContentType = new("application/json"); Headers.ContentLength = 1; }
         protected override bool TryComputeLength(out long length) { length = 1; return true; }
         protected override Task SerializeToStreamAsync(Stream stream, TransportContext? context) => Task.FromException(new OperationCanceledException("attacker-controlled-body-oce"));
     }

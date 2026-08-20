@@ -84,7 +84,7 @@ internal static class OllamaRecordingCliApplication
         if (!IsClosedExecutionSummary(result)) return Fail(error, ExitCompositionIndeterminate, "recording_result_invalid");
         if (!result.ArtifactPublished) return Fail(error, result.OutcomeCode is "Cancelled" or "AuthorizationRejected" ? ExitPreExecutionRejected : ExitCompositionIndeterminate, "recording_artifact_not_published");
         output.WriteLine(string.Create(CultureInfo.InvariantCulture,
-            $"RECORD_ONCE_RESULT outcome={result.OutcomeCode} failure={result.FailureCode} completed={FormatNullable(result.CompletedSlotCount)} submission={result.TerminalSubmissionState ?? "none"} status={FormatNullable(result.TerminalStatusCode)} charge={result.TerminalChargeState ?? "none"} additional_attempt_authorized=false artifact_digest_sha256={result.ArtifactDigestSha256} receipt_digest_sha256={result.ReceiptDigestSha256 ?? "none"}"));
+            $"RECORD_ONCE_RESULT outcome={result.OutcomeCode} failure={result.FailureCode} completed={FormatNullable(result.CompletedSlotCount)} submission={result.TerminalSubmissionState ?? "none"} status={FormatNullable(result.TerminalStatusCode)} charge={result.TerminalChargeState ?? "none"} checkpoint={result.TerminalCheckpointCode ?? "none"} policy={result.TerminalPolicyCode ?? "none"} additional_attempt_authorized=false artifact_digest_sha256={result.ArtifactDigestSha256} receipt_digest_sha256={result.ReceiptDigestSha256 ?? "none"}"));
         return result.OutcomeCode switch { "Complete" => ExitAccepted, "Failed" or "Cancelled" or "TimedOut" => ExitTerminalArtifact, "AuthorizationRejected" => ExitPreExecutionRejected, _ => ExitCompositionIndeterminate };
     }
 
@@ -131,72 +131,29 @@ internal static class OllamaRecordingCliApplication
         if (result is null
             || result.ArtifactPublished != (result.ArtifactDigestSha256 is not null)
             || result.ArtifactDigestSha256 is not null && !IsLowerDigest(result.ArtifactDigestSha256)
+            || result.ReceiptPresent != (result.ReceiptDigestSha256 is not null)
             || result.ReceiptDigestSha256 is not null && !IsLowerDigest(result.ReceiptDigestSha256)) return false;
 
         if (!result.ArtifactPublished)
         {
             return result.OutcomeCode == "Cancelled" && result.FailureCode == "Cancelled"
-                && result.CompletedSlotCount is null && result.TerminalSubmissionState is null
+                && !result.RecordingResultPresent && result.RecordingOutcomeCode is null && result.RecordingFailureCode is null
+                && result.CompletedSlotCount is null && result.TerminalSlotOrdinal is null && result.TerminalSubmissionState is null
                 && result.TerminalStatusCode is null && result.TerminalChargeState is null
-                && result.ReceiptDigestSha256 is null;
+                && !result.ReceiptPresent && result.ReceiptDigestSha256 is null
+                && !result.TerminalReceiptRowPresent && !result.TerminalWrapperDigestPresent
+                && !result.NestedEvidenceDigestPresent && result.TerminalCheckpointCode is null && result.TerminalPolicyCode is null;
         }
 
-        if (result.OutcomeCode is "AuthorizationRejected" or "CompositionFailed")
-        {
-            return result.FailureCode == result.OutcomeCode
-                && result.CompletedSlotCount is null && result.TerminalSubmissionState is null
-                && result.TerminalStatusCode is null && result.TerminalChargeState is null
-                && result.ReceiptDigestSha256 is null;
-        }
-
-        if (result.TerminalChargeState != "NotApplicable") return false;
-        if (result.OutcomeCode == "Complete")
-        {
-            return result.FailureCode == "None" && result.CompletedSlotCount == 12
-                && result.TerminalSubmissionState == "ResponseReceived" && result.TerminalStatusCode == 200
-                && result.ReceiptDigestSha256 is not null;
-        }
-
-        if (result.OutcomeCode == "Failed" && result.FailureCode == "CapabilityExpired")
-        {
-            return result.CompletedSlotCount == 0 && result.TerminalSubmissionState == "DefinitelyNotSubmitted"
-                && result.TerminalStatusCode is null && result.ReceiptDigestSha256 is null;
-        }
-
-        if (result.OutcomeCode == "Failed" && result.FailureCode == "EvidenceRejected")
-        {
-            return result.CompletedSlotCount == 12 && result.TerminalSubmissionState == "ResponseReceived"
-                && result.TerminalStatusCode == 200 && result.ReceiptDigestSha256 is not null;
-        }
-
-        if (result.CompletedSlotCount is not (>= 0 and <= 11) || !IsTerminalSubmission(result.TerminalSubmissionState, result.TerminalStatusCode)) return false;
-        if (result.OutcomeCode == "Cancelled")
-        {
-            return result.FailureCode == "Cancelled"
-                && (result.ReceiptDigestSha256 is not null
-                    || result.CompletedSlotCount == 0 && result.TerminalSubmissionState == "DefinitelyNotSubmitted" && result.TerminalStatusCode is null);
-        }
-        if (result.OutcomeCode == "TimedOut") return result.FailureCode == "TimedOut" && result.ReceiptDigestSha256 is not null;
-        if (result.OutcomeCode != "Failed" || result.ReceiptDigestSha256 is null) return false;
-        return result.FailureCode switch
-        {
-            "RuntimeBindingInvalid" => result.CompletedSlotCount == 0 && result.TerminalSubmissionState == "DefinitelyNotSubmitted" && result.TerminalStatusCode is null,
-            "RuntimeChanged" => (result.TerminalSubmissionState == "DefinitelyNotSubmitted" && result.TerminalStatusCode is null)
-                || (result.TerminalSubmissionState == "ResponseReceived" && result.TerminalStatusCode is >= 100 and <= 599),
-            "TransportPoisoned" => result.TerminalSubmissionState == "DefinitelyNotSubmitted" && result.TerminalStatusCode is null,
-            "TransportFailure" => result.TerminalSubmissionState == "SubmissionUnknown" && result.TerminalStatusCode is null,
-            "HttpResponseRejected" => result.TerminalSubmissionState == "ResponseReceived" && result.TerminalStatusCode is not null and not 200,
-            "ResponseBodyRejected" or "WrapperRejected" => result.TerminalSubmissionState == "ResponseReceived" && result.TerminalStatusCode == 200,
-            _ => false
-        };
+        if (result.RecordingResultPresent ? result.TerminalChargeState != "NotApplicable" : result.TerminalChargeState is not null)
+            return false;
+        return OllamaRecordingTerminalCoherenceModule.TryParseAndValidate(
+            result.OutcomeCode, result.FailureCode, result.RecordingResultPresent,
+            result.RecordingOutcomeCode, result.RecordingFailureCode, result.CompletedSlotCount,
+            result.TerminalSlotOrdinal, result.TerminalSubmissionState, result.TerminalStatusCode,
+            result.ReceiptPresent, result.TerminalReceiptRowPresent, result.TerminalWrapperDigestPresent,
+            result.NestedEvidenceDigestPresent, result.TerminalCheckpointCode, result.TerminalPolicyCode);
     }
-
-    private static bool IsTerminalSubmission(string? submission, int? statusCode) => submission switch
-    {
-        "ResponseReceived" => statusCode is >= 100 and <= 599,
-        "DefinitelyNotSubmitted" or "SubmissionUnknown" => statusCode is null,
-        _ => false
-    };
 
     private static bool FixedTimeDigestEquals(string actual, string confirmation)
     {
@@ -247,7 +204,26 @@ internal interface IOllamaRecordingCliModule
 }
 internal sealed record OllamaRecordingCliPreparedPlan(string PlanDigestSha256, string RelativeArtifactPath);
 internal sealed record OllamaRecordingCliValidationSummary(string ArtifactDigestSha256, string OutcomeCode);
-internal sealed record OllamaRecordingCliExecutionSummary(string OutcomeCode, string FailureCode, int? CompletedSlotCount, string? TerminalSubmissionState, int? TerminalStatusCode, string? TerminalChargeState, bool ArtifactPublished, string? ArtifactDigestSha256, string? ReceiptDigestSha256);
+internal sealed record OllamaRecordingCliExecutionSummary(
+    string OutcomeCode,
+    string FailureCode,
+    bool RecordingResultPresent,
+    string? RecordingOutcomeCode,
+    string? RecordingFailureCode,
+    int? CompletedSlotCount,
+    int? TerminalSlotOrdinal,
+    string? TerminalSubmissionState,
+    int? TerminalStatusCode,
+    string? TerminalChargeState,
+    bool ArtifactPublished,
+    string? ArtifactDigestSha256,
+    bool ReceiptPresent,
+    string? ReceiptDigestSha256,
+    bool TerminalReceiptRowPresent,
+    bool TerminalWrapperDigestPresent,
+    bool NestedEvidenceDigestPresent,
+    string? TerminalCheckpointCode,
+    string? TerminalPolicyCode);
 
 internal sealed class ProductionOllamaRecordingCliModuleFactory : IOllamaRecordingCliModuleFactory
 {
@@ -271,8 +247,14 @@ internal sealed class ProductionOllamaRecordingCliModule : IOllamaRecordingCliMo
     {
         if (_plan is null || Interlocked.Exchange(ref _executed, 1) != 0) throw new InvalidOperationException("cli_execution_not_available");
         OllamaRecordingCompositionResult result = await _module.ExecuteAndPublishOnceAsync(_plan, cancellationToken).ConfigureAwait(false); OllamaRecordingExecutionArtifact? artifact = result.Artifact;
-        return new OllamaRecordingCliExecutionSummary(result.OutcomeCode, result.FailureCode, artifact?.CompletedSlotCount, artifact?.TerminalSubmissionState, artifact?.TerminalStatusCode,
-            artifact?.TerminalChargeState?.ToString(), result.ArtifactPublished, artifact?.CanonicalDigestSha256, artifact?.ReceiptDigestSha256);
+        return new OllamaRecordingCliExecutionSummary(
+            result.OutcomeCode, result.FailureCode, artifact?.RecordingResultPresent ?? false,
+            artifact?.RecordingOutcomeCode, artifact?.RecordingFailureCode, artifact?.CompletedSlotCount,
+            artifact?.TerminalSlotOrdinal, artifact?.TerminalSubmissionState, artifact?.TerminalStatusCode,
+            artifact?.TerminalChargeState?.ToString(), result.ArtifactPublished, artifact?.CanonicalDigestSha256,
+            artifact?.ReceiptPresent ?? false, artifact?.ReceiptDigestSha256,
+            artifact?.TerminalReceiptRowPresent ?? false, artifact?.TerminalWrapperDigestPresent ?? false,
+            artifact?.NestedRecordingEvidenceDigestSha256 is not null, artifact?.TerminalCheckpointCode, artifact?.TerminalPolicyCode);
     }
     public OllamaRecordingCliValidationSummary ValidateArtifact()
     {

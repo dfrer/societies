@@ -47,11 +47,18 @@ public sealed class SnowGlobeOllamaLoopbackRecordingReceipt
 {
     private readonly byte[] _canonicalUtf8;
     private readonly SnowGlobeOllamaLoopbackSlotReceipt[] _slots;
-    internal SnowGlobeOllamaLoopbackRecordingReceipt(byte[] canonicalUtf8, string payloadDigestSha256, IReadOnlyList<SnowGlobeOllamaLoopbackSlotReceipt> slots, string? nestedEvidenceDigestSha256)
+    internal SnowGlobeOllamaLoopbackRecordingReceipt(
+        byte[] canonicalUtf8,
+        string payloadDigestSha256,
+        IReadOnlyList<SnowGlobeOllamaLoopbackSlotReceipt> slots,
+        string? nestedEvidenceDigestSha256,
+        OllamaRecordingTerminalCheckpointCode terminalCheckpoint,
+        OllamaRecordingTerminalPolicyCode terminalPolicy)
     {
         _canonicalUtf8 = canonicalUtf8.ToArray(); PayloadDigestSha256 = payloadDigestSha256; CanonicalDigestSha256 = CognitionQualityHash.Sha256(_canonicalUtf8);
         _slots = slots.Select(static slot => new SnowGlobeOllamaLoopbackSlotReceipt(slot.SlotOrdinal, slot.RequestDigestSha256, slot.WrapperDigestSha256, slot.StatusCode, slot.SubmissionState)).ToArray();
         NestedRecordingEvidenceDigestSha256 = nestedEvidenceDigestSha256;
+        TerminalCheckpointCode = terminalCheckpoint.ToString(); TerminalPolicyCode = terminalPolicy.ToString();
     }
     public string SchemaVersion => SnowGlobePinnedOllamaRecordingModule.ReceiptSchemaVersion;
     public string PayloadDigestSha256 { get; }
@@ -60,14 +67,28 @@ public sealed class SnowGlobeOllamaLoopbackRecordingReceipt
     public string CanonicalJson => Encoding.UTF8.GetString(_canonicalUtf8);
     public IReadOnlyList<SnowGlobeOllamaLoopbackSlotReceipt> Slots => Array.AsReadOnly(_slots.Select(static slot => new SnowGlobeOllamaLoopbackSlotReceipt(slot.SlotOrdinal, slot.RequestDigestSha256, slot.WrapperDigestSha256, slot.StatusCode, slot.SubmissionState)).ToArray());
     public string? NestedRecordingEvidenceDigestSha256 { get; }
+    public string TerminalCheckpointCode { get; }
+    public string TerminalPolicyCode { get; }
 }
 
 /// <summary>Detached terminal result whose summary fields and optional receipt are raw-free. Optional nested evidence intentionally exposes a detached prompt publication and proposal batch for offline scoring.</summary>
 public sealed class SnowGlobeOllamaLoopbackRecordingResult
 {
-    internal SnowGlobeOllamaLoopbackRecordingResult(SnowGlobeOllamaLoopbackRecordingOutcomeCode outcomeCode, SnowGlobeOllamaLoopbackRecordingFailureCode failureCode, AuthorizedOllamaLoopbackRecordingSession session, int completedSlotCount, int? terminalSlotOrdinal, SubmissionState terminalSubmissionState, int? terminalStatusCode, SnowGlobeOllamaLoopbackRecordingReceipt? receipt, CognitionQualityRecordingEvidence? evidence)
+    internal SnowGlobeOllamaLoopbackRecordingResult(
+        SnowGlobeOllamaLoopbackRecordingOutcomeCode outcomeCode,
+        SnowGlobeOllamaLoopbackRecordingFailureCode failureCode,
+        AuthorizedOllamaLoopbackRecordingSession session,
+        int completedSlotCount,
+        int? terminalSlotOrdinal,
+        SubmissionState terminalSubmissionState,
+        int? terminalStatusCode,
+        SnowGlobeOllamaLoopbackRecordingReceipt? receipt,
+        CognitionQualityRecordingEvidence? evidence,
+        OllamaRecordingTerminalCheckpointCode terminalCheckpoint,
+        OllamaRecordingTerminalPolicyCode terminalPolicy)
     {
         OutcomeCode = outcomeCode; FailureCode = failureCode; CompletedSlotCount = completedSlotCount; TerminalSlotOrdinal = terminalSlotOrdinal; TerminalSubmissionState = terminalSubmissionState; TerminalStatusCode = terminalStatusCode; Receipt = receipt; Evidence = evidence;
+        TerminalCheckpointCode = terminalCheckpoint.ToString(); TerminalPolicyCode = terminalPolicy.ToString();
         RegisteredCellDigestSha256 = SnowGlobePinnedOllamaRecordingModule.RegisteredCellDigestSha256; ProfileDigestSha256 = SnowGlobePinnedOllamaRecordingModule.ProfileDigestSha256; AdapterContractDigestSha256 = SnowGlobePinnedOllamaRecordingModule.AdapterContractDigestSha256; CodecContractDigestSha256 = SnowGlobePinnedOllamaRecordingModule.CodecContractDigestSha256; TransportContractDigestSha256 = OllamaLoopbackRecordingTransportAdapter.ContractDigestSha256;
         RuntimeBindingDigestSha256 = session.RuntimeBindingDigestSha256; CapabilityDigestSha256 = session.CapabilityDigestSha256; PromptPublicationDigestSha256 = session.PromptPublicationDigestSha256; PromptSetDigestSha256 = session.PromptSetDigestSha256; ProvenanceDigestSha256 = session.ProvenanceDigestSha256; ExecutablePathDigestSha256 = session.ExecutablePathDigestSha256;
         ExecutableSha256 = SnowGlobePinnedOllamaRecordingModule.RuntimeExecutableSha256; EndpointIdentity = SnowGlobePinnedOllamaRecordingModule.CanonicalEndpointIdentity; RuntimeProcessId = session.RuntimeProcessId; RuntimeProcessStartUtcTicks = session.RuntimeProcessStartUtcTicks; EndpointOwnerProcessId = session.EndpointOwnerProcessId;
@@ -97,6 +118,8 @@ public sealed class SnowGlobeOllamaLoopbackRecordingResult
     public long RuntimeProcessStartUtcTicks { get; }
     public int EndpointOwnerProcessId { get; }
     public SnowGlobeOllamaLoopbackRecordingReceipt? Receipt { get; }
+    public string TerminalCheckpointCode { get; }
+    public string TerminalPolicyCode { get; }
     /// <summary>Optional detached evidence containing the prompt publication and proposal batch used for offline scoring; it is present only after all twelve slots complete.</summary>
     public CognitionQualityRecordingEvidence? Evidence { get; }
     public bool HasIndependentArtifactLoadedProof => false;
@@ -184,7 +207,7 @@ public sealed class AuthorizedOllamaLoopbackRecordingSession : IAsyncDisposable
 /// </summary>
 public sealed class SnowGlobePinnedOllamaRecordingModule
 {
-    public const string ReceiptSchemaVersion = "snow_globe_ollama_loopback_recording_receipt/v1";
+    public const string ReceiptSchemaVersion = "snow_globe_ollama_loopback_recording_receipt/v2";
     public const string AdapterIdentity = "snow-globe-pinned-ollama-loopback-recording-adapter/v1";
     public const string NormalizedModelIdentity = "qwen3.5-4b";
     public const string RuntimeModelReference = "qwen3.5:4b";
@@ -278,12 +301,12 @@ public sealed class SnowGlobePinnedOllamaRecordingModule
                     slots.Add(new SnowGlobeOllamaLoopbackSlotReceipt(ordinal, requestDigest, exception.WrapperDigestSha256, exception.StatusCode, exception.SubmissionState));
                     SnowGlobeOllamaLoopbackRecordingOutcomeCode outcome = callerCancellation.IsCancellationRequested || session.DisposalToken.IsCancellationRequested ? SnowGlobeOllamaLoopbackRecordingOutcomeCode.Cancelled : timeout.IsCancellationRequested || exception.Code == OllamaLoopbackTransportFailureCode.TimedOut ? SnowGlobeOllamaLoopbackRecordingOutcomeCode.TimedOut : exception.Code == OllamaLoopbackTransportFailureCode.Cancelled ? SnowGlobeOllamaLoopbackRecordingOutcomeCode.Cancelled : SnowGlobeOllamaLoopbackRecordingOutcomeCode.Failed;
                     SnowGlobeOllamaLoopbackRecordingFailureCode failure = outcome == SnowGlobeOllamaLoopbackRecordingOutcomeCode.Failed ? MapTransportFailure(exception.Code) : SnowGlobeOllamaLoopbackRecordingFailureCode.None;
-                    return Terminal(outcome, failure, session, completed, ordinal, exception.SubmissionState, exception.StatusCode, slots, null, null);
+                    return Terminal(outcome, failure, session, completed, ordinal, exception.SubmissionState, exception.StatusCode, slots, null, null, exception.Checkpoint, exception.Policy);
                 }
                 catch
                 {
                     slots.Add(new SnowGlobeOllamaLoopbackSlotReceipt(ordinal, requestDigest, null, null, SubmissionState.SubmissionUnknown));
-                    return Terminal(SnowGlobeOllamaLoopbackRecordingOutcomeCode.Failed, SnowGlobeOllamaLoopbackRecordingFailureCode.TransportFailure, session, completed, ordinal, SubmissionState.SubmissionUnknown, null, slots, null, null);
+                    return Terminal(SnowGlobeOllamaLoopbackRecordingOutcomeCode.Failed, SnowGlobeOllamaLoopbackRecordingFailureCode.TransportFailure, session, completed, ordinal, SubmissionState.SubmissionUnknown, null, slots, null, null, OllamaRecordingTerminalCheckpointCode.RequestDispatch, OllamaRecordingTerminalPolicyCode.TransportIo);
                 }
 
                 string wrapperDigest = CognitionQualityHash.Sha256(raw.BodyUtf8.Span);
@@ -313,26 +336,79 @@ public sealed class SnowGlobePinnedOllamaRecordingModule
         }
     }
 
-    internal SnowGlobeOllamaLoopbackRecordingResult CreateResult(SnowGlobeOllamaLoopbackRecordingOutcomeCode outcome, SnowGlobeOllamaLoopbackRecordingFailureCode failure, AuthorizedOllamaLoopbackRecordingSession session, int completed, int? terminalSlot, SubmissionState submission, int? status, SnowGlobeOllamaLoopbackRecordingReceipt? receipt, CognitionQualityRecordingEvidence? evidence) => new(outcome, failure, session, completed, terminalSlot, submission, status, receipt, evidence);
-
-    private SnowGlobeOllamaLoopbackRecordingResult Terminal(SnowGlobeOllamaLoopbackRecordingOutcomeCode outcome, SnowGlobeOllamaLoopbackRecordingFailureCode failure, AuthorizedOllamaLoopbackRecordingSession session, int completed, int? terminalSlot, SubmissionState submission, int? status, IReadOnlyList<SnowGlobeOllamaLoopbackSlotReceipt> slots, CognitionQualityRecordingEvidence? evidence, string? nestedEvidenceDigest)
+    internal SnowGlobeOllamaLoopbackRecordingResult CreateResult(
+        SnowGlobeOllamaLoopbackRecordingOutcomeCode outcome,
+        SnowGlobeOllamaLoopbackRecordingFailureCode failure,
+        AuthorizedOllamaLoopbackRecordingSession session,
+        int completed,
+        int? terminalSlot,
+        SubmissionState submission,
+        int? status,
+        SnowGlobeOllamaLoopbackRecordingReceipt? receipt,
+        CognitionQualityRecordingEvidence? evidence,
+        OllamaRecordingTerminalCheckpointCode? checkpoint = null,
+        OllamaRecordingTerminalPolicyCode? policy = null)
     {
-        SnowGlobeOllamaLoopbackRecordingReceipt receipt = CreateReceipt(outcome, failure, session, completed, terminalSlot, slots, nestedEvidenceDigest);
-        return CreateResult(outcome, failure, session, completed, terminalSlot, submission, status, receipt, evidence);
+        (OllamaRecordingTerminalCheckpointCode resolvedCheckpoint, OllamaRecordingTerminalPolicyCode resolvedPolicy) =
+            checkpoint is not null && policy is not null
+                ? (checkpoint.Value, policy.Value)
+                : InferTerminalEvidence(outcome, failure, submission, status, receipt);
+        return new(outcome, failure, session, completed, terminalSlot, submission, status, receipt, evidence, resolvedCheckpoint, resolvedPolicy);
     }
 
-    private static SnowGlobeOllamaLoopbackRecordingReceipt CreateReceipt(SnowGlobeOllamaLoopbackRecordingOutcomeCode outcome, SnowGlobeOllamaLoopbackRecordingFailureCode failure, AuthorizedOllamaLoopbackRecordingSession session, int completed, int? terminalSlot, IReadOnlyList<SnowGlobeOllamaLoopbackSlotReceipt> slots, string? nestedEvidenceDigest)
+    private SnowGlobeOllamaLoopbackRecordingResult Terminal(
+        SnowGlobeOllamaLoopbackRecordingOutcomeCode outcome,
+        SnowGlobeOllamaLoopbackRecordingFailureCode failure,
+        AuthorizedOllamaLoopbackRecordingSession session,
+        int completed,
+        int? terminalSlot,
+        SubmissionState submission,
+        int? status,
+        IReadOnlyList<SnowGlobeOllamaLoopbackSlotReceipt> slots,
+        CognitionQualityRecordingEvidence? evidence,
+        string? nestedEvidenceDigest,
+        OllamaRecordingTerminalCheckpointCode? checkpoint = null,
+        OllamaRecordingTerminalPolicyCode? policy = null)
     {
-        byte[] payload = WriteReceipt(outcome, failure, session, completed, terminalSlot, slots, nestedEvidenceDigest, null); string payloadDigest = CognitionQualityHash.Sha256(payload); CryptographicOperations.ZeroMemory(payload);
-        byte[] canonical = WriteReceipt(outcome, failure, session, completed, terminalSlot, slots, nestedEvidenceDigest, payloadDigest);
+        (OllamaRecordingTerminalCheckpointCode resolvedCheckpoint, OllamaRecordingTerminalPolicyCode resolvedPolicy) =
+            checkpoint is not null && policy is not null
+                ? (checkpoint.Value, policy.Value)
+                : InferTerminalEvidence(outcome, failure, submission, status, null);
+        SnowGlobeOllamaLoopbackRecordingReceipt receipt = CreateReceipt(outcome, failure, session, completed, terminalSlot, slots, nestedEvidenceDigest, resolvedCheckpoint, resolvedPolicy);
+        return CreateResult(outcome, failure, session, completed, terminalSlot, submission, status, receipt, evidence, resolvedCheckpoint, resolvedPolicy);
+    }
+
+    private static SnowGlobeOllamaLoopbackRecordingReceipt CreateReceipt(
+        SnowGlobeOllamaLoopbackRecordingOutcomeCode outcome,
+        SnowGlobeOllamaLoopbackRecordingFailureCode failure,
+        AuthorizedOllamaLoopbackRecordingSession session,
+        int completed,
+        int? terminalSlot,
+        IReadOnlyList<SnowGlobeOllamaLoopbackSlotReceipt> slots,
+        string? nestedEvidenceDigest,
+        OllamaRecordingTerminalCheckpointCode checkpoint,
+        OllamaRecordingTerminalPolicyCode policy)
+    {
+        byte[] payload = WriteReceipt(outcome, failure, session, completed, terminalSlot, slots, nestedEvidenceDigest, checkpoint, policy, null); string payloadDigest = CognitionQualityHash.Sha256(payload); CryptographicOperations.ZeroMemory(payload);
+        byte[] canonical = WriteReceipt(outcome, failure, session, completed, terminalSlot, slots, nestedEvidenceDigest, checkpoint, policy, payloadDigest);
         if (canonical.Length is < 1 or > MaximumReceiptBytes) { CryptographicOperations.ZeroMemory(canonical); throw new InvalidOperationException("live_ollama_receipt_size_invalid"); }
-        return new SnowGlobeOllamaLoopbackRecordingReceipt(canonical, payloadDigest, slots, nestedEvidenceDigest);
+        return new SnowGlobeOllamaLoopbackRecordingReceipt(canonical, payloadDigest, slots, nestedEvidenceDigest, checkpoint, policy);
     }
 
-    private static byte[] WriteReceipt(SnowGlobeOllamaLoopbackRecordingOutcomeCode outcome, SnowGlobeOllamaLoopbackRecordingFailureCode failure, AuthorizedOllamaLoopbackRecordingSession session, int completed, int? terminalSlot, IReadOnlyList<SnowGlobeOllamaLoopbackSlotReceipt> slots, string? nestedEvidenceDigest, string? payloadDigest)
+    private static byte[] WriteReceipt(
+        SnowGlobeOllamaLoopbackRecordingOutcomeCode outcome,
+        SnowGlobeOllamaLoopbackRecordingFailureCode failure,
+        AuthorizedOllamaLoopbackRecordingSession session,
+        int completed,
+        int? terminalSlot,
+        IReadOnlyList<SnowGlobeOllamaLoopbackSlotReceipt> slots,
+        string? nestedEvidenceDigest,
+        OllamaRecordingTerminalCheckpointCode checkpoint,
+        OllamaRecordingTerminalPolicyCode policy,
+        string? payloadDigest)
     {
         ArrayBufferWriter<byte> buffer = new(); using Utf8JsonWriter writer = new(buffer, new JsonWriterOptions { Indented = false, SkipValidation = false }); writer.WriteStartObject();
-        writer.WriteString("schema_version", ReceiptSchemaVersion); writer.WriteString("status", outcome == SnowGlobeOllamaLoopbackRecordingOutcomeCode.Complete ? "complete" : "terminal"); writer.WriteString("outcome", outcome.ToString()); writer.WriteString("failure_code", failure.ToString());
+        writer.WriteString("schema_version", ReceiptSchemaVersion); writer.WriteString("status", outcome == SnowGlobeOllamaLoopbackRecordingOutcomeCode.Complete ? "complete" : "terminal"); writer.WriteString("outcome", outcome.ToString()); writer.WriteString("failure_code", failure.ToString()); writer.WriteString("terminal_checkpoint_code", checkpoint.ToString()); writer.WriteString("terminal_policy_code", policy.ToString());
         writer.WriteString("registered_cell_digest_sha256", RegisteredCellDigestSha256); writer.WriteString("profile_digest_sha256", ProfileDigestSha256); writer.WriteString("adapter_identity", AdapterIdentity); writer.WriteString("adapter_contract_digest_sha256", AdapterContractDigestSha256); writer.WriteString("codec_contract_digest_sha256", CodecContractDigestSha256); writer.WriteString("transport_contract_digest_sha256", OllamaLoopbackRecordingTransportAdapter.ContractDigestSha256);
         writer.WriteNumber("runtime_process_id", session.RuntimeProcessId); writer.WriteNumber("runtime_process_start_utc_ticks", session.RuntimeProcessStartUtcTicks); writer.WriteString("runtime_executable_path_digest_sha256", session.ExecutablePathDigestSha256); writer.WriteString("runtime_executable_sha256", RuntimeExecutableSha256); writer.WriteString("endpoint_identity", CanonicalEndpointIdentity); writer.WriteNumber("endpoint_owner_process_id", session.EndpointOwnerProcessId);
         writer.WriteString("prompt_publication_digest_sha256", session.PromptPublicationDigestSha256); writer.WriteString("prompt_set_digest_sha256", session.PromptSetDigestSha256); writer.WriteString("provenance_digest_sha256", session.ProvenanceDigestSha256); writer.WriteString("capability_digest_sha256", session.CapabilityDigestSha256); writer.WriteString("runtime_binding_digest_sha256", session.RuntimeBindingDigestSha256);
@@ -357,4 +433,45 @@ public sealed class SnowGlobePinnedOllamaRecordingModule
     private static bool BindingsMatch(AuthorizedOllamaLoopbackRecordingSession session) => string.Equals(session.PromptPublicationDigestSha256, session.Publication.CanonicalDigestSha256, StringComparison.Ordinal) && string.Equals(session.PromptSetDigestSha256, session.Publication.PromptSetDigestSha256, StringComparison.Ordinal) && string.Equals(session.ProvenanceDigestSha256, session.Provenance.ProvenanceDigestSha256, StringComparison.Ordinal) && string.Equals(session.Provenance.LocalAdapterIdentity, AdapterIdentity, StringComparison.Ordinal) && string.Equals(session.RuntimeBindingDigestSha256, DigestRuntimeBinding(session.RuntimeBinding), StringComparison.Ordinal);
     private int RemainingMilliseconds(long deadline) { long remaining = deadline - _clock.NowMilliseconds; return remaining <= 0 ? 0 : remaining > int.MaxValue ? int.MaxValue : (int)remaining; }
     private static SnowGlobeOllamaLoopbackRecordingFailureCode MapTransportFailure(OllamaLoopbackTransportFailureCode code) => code switch { OllamaLoopbackTransportFailureCode.RuntimeChanged => SnowGlobeOllamaLoopbackRecordingFailureCode.RuntimeChanged, OllamaLoopbackTransportFailureCode.Poisoned => SnowGlobeOllamaLoopbackRecordingFailureCode.TransportPoisoned, OllamaLoopbackTransportFailureCode.HttpResponseRejected => SnowGlobeOllamaLoopbackRecordingFailureCode.HttpResponseRejected, OllamaLoopbackTransportFailureCode.ResponseBodyRejected => SnowGlobeOllamaLoopbackRecordingFailureCode.ResponseBodyRejected, _ => SnowGlobeOllamaLoopbackRecordingFailureCode.TransportFailure };
+
+    private static (OllamaRecordingTerminalCheckpointCode, OllamaRecordingTerminalPolicyCode) InferTerminalEvidence(
+        SnowGlobeOllamaLoopbackRecordingOutcomeCode outcome,
+        SnowGlobeOllamaLoopbackRecordingFailureCode failure,
+        SubmissionState submission,
+        int? status,
+        SnowGlobeOllamaLoopbackRecordingReceipt? receipt)
+    {
+        if (outcome == SnowGlobeOllamaLoopbackRecordingOutcomeCode.Complete)
+            return (OllamaRecordingTerminalCheckpointCode.None, OllamaRecordingTerminalPolicyCode.None);
+        if (outcome == SnowGlobeOllamaLoopbackRecordingOutcomeCode.Cancelled)
+            return (OllamaRecordingTerminalCheckpointCode.BeforeDispatch, OllamaRecordingTerminalPolicyCode.Cancellation);
+        if (outcome == SnowGlobeOllamaLoopbackRecordingOutcomeCode.TimedOut)
+            return (OllamaRecordingTerminalCheckpointCode.BeforeDispatch, OllamaRecordingTerminalPolicyCode.Timeout);
+        return failure switch
+        {
+            SnowGlobeOllamaLoopbackRecordingFailureCode.CapabilityExpired =>
+                (OllamaRecordingTerminalCheckpointCode.BeforeDispatch, OllamaRecordingTerminalPolicyCode.Capability),
+            SnowGlobeOllamaLoopbackRecordingFailureCode.RuntimeBindingInvalid =>
+                (OllamaRecordingTerminalCheckpointCode.BeforeDispatch, OllamaRecordingTerminalPolicyCode.RuntimeBinding),
+            SnowGlobeOllamaLoopbackRecordingFailureCode.RuntimeChanged =>
+                (submission == SubmissionState.ResponseReceived
+                    ? (receipt?.Slots.LastOrDefault()?.WrapperDigestSha256 is null ? OllamaRecordingTerminalCheckpointCode.ResponseHeaders : OllamaRecordingTerminalCheckpointCode.AfterExchange)
+                    : OllamaRecordingTerminalCheckpointCode.BeforeDispatch,
+                    OllamaRecordingTerminalPolicyCode.RuntimeOwnership),
+            SnowGlobeOllamaLoopbackRecordingFailureCode.TransportPoisoned =>
+                (OllamaRecordingTerminalCheckpointCode.BeforeDispatch, OllamaRecordingTerminalPolicyCode.TransportState),
+            SnowGlobeOllamaLoopbackRecordingFailureCode.TransportFailure =>
+                (submission == SubmissionState.ResponseReceived && status == 200 ? OllamaRecordingTerminalCheckpointCode.ResponseBody : OllamaRecordingTerminalCheckpointCode.RequestDispatch,
+                    submission == SubmissionState.ResponseReceived && status == 200 ? OllamaRecordingTerminalPolicyCode.BodyRead : OllamaRecordingTerminalPolicyCode.TransportIo),
+            SnowGlobeOllamaLoopbackRecordingFailureCode.HttpResponseRejected =>
+                (OllamaRecordingTerminalCheckpointCode.ResponseHeaders, status == 200 ? OllamaRecordingTerminalPolicyCode.ContentType : OllamaRecordingTerminalPolicyCode.HttpStatus),
+            SnowGlobeOllamaLoopbackRecordingFailureCode.ResponseBodyRejected =>
+                (OllamaRecordingTerminalCheckpointCode.ResponseBody, OllamaRecordingTerminalPolicyCode.BodyRead),
+            SnowGlobeOllamaLoopbackRecordingFailureCode.WrapperRejected =>
+                (OllamaRecordingTerminalCheckpointCode.WrapperDecode, OllamaRecordingTerminalPolicyCode.WrapperShape),
+            SnowGlobeOllamaLoopbackRecordingFailureCode.EvidenceRejected =>
+                (OllamaRecordingTerminalCheckpointCode.EvidenceConstruction, OllamaRecordingTerminalPolicyCode.EvidenceShape),
+            _ => (OllamaRecordingTerminalCheckpointCode.BeforeDispatch, OllamaRecordingTerminalPolicyCode.RequestPolicy)
+        };
+    }
 }

@@ -50,7 +50,11 @@ public sealed class OllamaRecordingExecutionArtifact
         string? terminalSubmissionState,
         string? terminalChargeState,
         int? terminalStatusCode,
+        string terminalCheckpointCode,
+        string terminalPolicyCode,
         bool receiptPresent,
+        bool terminalReceiptRowPresent,
+        bool terminalWrapperDigestPresent,
         string? receiptDigestSha256,
         string? nestedRecordingEvidenceDigestSha256)
     {
@@ -68,7 +72,11 @@ public sealed class OllamaRecordingExecutionArtifact
         TerminalSubmissionState = terminalSubmissionState;
         TerminalChargeState = terminalChargeState is null ? null : Enum.Parse<ChargeState>(terminalChargeState, ignoreCase: false);
         TerminalStatusCode = terminalStatusCode;
+        TerminalCheckpointCode = terminalCheckpointCode;
+        TerminalPolicyCode = terminalPolicyCode;
         ReceiptPresent = receiptPresent;
+        TerminalReceiptRowPresent = terminalReceiptRowPresent;
+        TerminalWrapperDigestPresent = terminalWrapperDigestPresent;
         ReceiptDigestSha256 = receiptDigestSha256;
         NestedRecordingEvidenceDigestSha256 = nestedRecordingEvidenceDigestSha256;
     }
@@ -90,6 +98,8 @@ public sealed class OllamaRecordingExecutionArtifact
     public string? TerminalSubmissionState { get; }
     public ChargeState? TerminalChargeState { get; }
     public int? TerminalStatusCode { get; }
+    public string TerminalCheckpointCode { get; }
+    public string TerminalPolicyCode { get; }
     public bool ReceiptPresent { get; }
     public string? ReceiptDigestSha256 { get; }
     public string? NestedRecordingEvidenceDigestSha256 { get; }
@@ -100,6 +110,8 @@ public sealed class OllamaRecordingExecutionArtifact
     public bool HasBenchmarkOrQualityClaim => false;
     public bool HasWorldOrSimulationAuthority => false;
     public bool HasRetryAuthority => false;
+    internal bool TerminalReceiptRowPresent { get; }
+    internal bool TerminalWrapperDigestPresent { get; }
 }
 
 internal sealed record OllamaRecordingArtifactSnapshot(
@@ -113,6 +125,8 @@ internal sealed record OllamaRecordingArtifactSnapshot(
     string? TerminalSubmissionState,
     string? TerminalChargeState,
     int? TerminalStatusCode,
+    string? TerminalCheckpointCode,
+    string? TerminalPolicyCode,
     ReadOnlyMemory<byte>? ReceiptCanonicalUtf8,
     string? ReceiptDigestSha256,
     string? NestedRecordingEvidenceDigestSha256);
@@ -120,9 +134,9 @@ internal sealed record OllamaRecordingArtifactSnapshot(
 /// <summary>Pure canonical writer/validator for the fixed raw-free recording artifact.</summary>
 public static class OllamaRecordingExecutionArtifactModule
 {
-    public const string SchemaVersion = "snow_globe_ollama_recording_execution_artifact/v1";
+    public const string SchemaVersion = "snow_globe_ollama_recording_execution_artifact/v2";
     public const string Semantics = "raw_free_local_loopback_recording_execution_binding_only";
-    public const string RelativeArtifactPath = "artifacts/snowglobe/local-model/qwen3.5-4b-recording-execution-v1.json";
+    public const string RelativeArtifactPath = "artifacts/snowglobe/local-model/qwen3.5-4b-recording-execution-v2.json";
     public const int MaximumArtifactBytes = 128 * 1024;
     public const int MaximumJsonDepth = 8;
 
@@ -146,6 +160,7 @@ public static class OllamaRecordingExecutionArtifactModule
         "repository_root_digest_sha256", "recording_outcome_code", "recording_failure_code",
         "completed_slot_count", "terminal_slot_ordinal",
         "terminal_submission_state", "terminal_charge_state", "terminal_status_code",
+        "terminal_checkpoint_code", "terminal_policy_code",
         "additional_attempt_authorized", "automatic_retry_count", "fallback_count",
         "alternate_endpoint_or_model_count", "receipt_present", "receipt_digest_sha256",
         "nested_recording_evidence_digest_sha256"
@@ -153,7 +168,7 @@ public static class OllamaRecordingExecutionArtifactModule
 
     private static readonly string[] ReceiptNames =
     [
-        "schema_version", "status", "outcome", "failure_code", "registered_cell_digest_sha256",
+        "schema_version", "status", "outcome", "failure_code", "terminal_checkpoint_code", "terminal_policy_code", "registered_cell_digest_sha256",
         "profile_digest_sha256", "adapter_identity", "adapter_contract_digest_sha256",
         "codec_contract_digest_sha256", "transport_contract_digest_sha256", "runtime_process_id",
         "runtime_process_start_utc_ticks", "runtime_executable_path_digest_sha256", "runtime_executable_sha256",
@@ -269,6 +284,8 @@ public static class OllamaRecordingExecutionArtifactModule
             string? submission = RequireNullableEnum<SubmissionState>(result, "terminal_submission_state");
             string? charge = RequireNullableEnum<ChargeState>(result, "terminal_charge_state");
             int? statusCode = RequireNullableInt32(result, "terminal_status_code");
+            string checkpoint = RequireEnum<OllamaRecordingTerminalCheckpointCode>(result, "terminal_checkpoint_code");
+            string policy = RequireEnum<OllamaRecordingTerminalPolicyCode>(result, "terminal_policy_code");
             RequireBoolean(result, "additional_attempt_authorized", false);
             RequireInt32(result, "automatic_retry_count", 0);
             RequireInt32(result, "fallback_count", 0);
@@ -276,19 +293,22 @@ public static class OllamaRecordingExecutionArtifactModule
             bool receiptPresent = RequireBoolean(result, "receipt_present");
             string? receiptDigest = RequireNullableDigest(result, "receipt_digest_sha256");
             string? nestedDigest = RequireNullableDigest(result, "nested_recording_evidence_digest_sha256");
-            ValidateResultCoherence(compositionOutcome, compositionFailure, recordingResultPresent, recordingOutcome,
-                recordingFailure, completed, terminalSlot, submission, charge, statusCode,
-                receiptPresent, receiptDigest, nestedDigest);
+            if (receiptPresent != (receiptDigest is not null)) throw Failure("artifact_receipt_nullability_invalid");
+            if (recordingResultPresent ? charge != ChargeState.NotApplicable.ToString() : charge is not null)
+                throw Failure("artifact_result_coherence_invalid");
 
             JsonElement receipt = root.GetProperty("receipt");
+            ReceiptTerminalFacts receiptFacts = default;
             if (receiptPresent)
             {
+                if (recordingOutcome is null || recordingFailure is null || completed is null || submission is null)
+                    throw Failure("artifact_result_coherence_invalid");
                 if (receipt.ValueKind != JsonValueKind.Object) throw Failure("artifact_receipt_shape_invalid");
                 byte[] receiptBytes = Canonicalize(receipt);
                 try
                 {
                     if (!string.Equals(CognitionQualityHash.Sha256(receiptBytes), receiptDigest, StringComparison.Ordinal)) throw Failure("artifact_receipt_digest_invalid");
-                    ValidateReceipt(receipt, recordingOutcome!, recordingFailure!, completed!.Value, terminalSlot, submission!, statusCode, processId, startTicks,
+                    receiptFacts = ValidateReceipt(receipt, recordingOutcome, recordingFailure, completed.Value, terminalSlot, submission, statusCode, checkpoint, policy, processId, startTicks,
                         root.GetProperty("runtime_executable_path_digest_sha256").GetString()!,
                         root.GetProperty("prompt_publication_digest_sha256").GetString()!,
                         root.GetProperty("prompt_set_digest_sha256").GetString()!,
@@ -299,8 +319,16 @@ public static class OllamaRecordingExecutionArtifactModule
             }
             else if (receipt.ValueKind != JsonValueKind.Null) throw Failure("artifact_receipt_nullability_invalid");
 
+            if (!OllamaRecordingTerminalCoherenceModule.TryParseAndValidate(
+                compositionOutcome, compositionFailure, recordingResultPresent, recordingOutcome, recordingFailure,
+                completed, terminalSlot, submission, statusCode, receiptPresent, receiptFacts.RowPresent,
+                receiptFacts.WrapperPresent, nestedDigest is not null, checkpoint, policy))
+                throw Failure("artifact_result_coherence_invalid");
+
             RequireExactStringArray(root.GetProperty("claim_limitation_codes"), Claims, "artifact_claims_invalid");
-            string payloadDigest = root.GetProperty("artifact_payload_digest_sha256").GetString() ?? string.Empty;
+            JsonElement payloadDigestValue = root.GetProperty("artifact_payload_digest_sha256");
+            if (payloadDigestValue.ValueKind != JsonValueKind.String) throw Failure("artifact_payload_digest_invalid");
+            string payloadDigest = payloadDigestValue.GetString() ?? string.Empty;
             if (!IsDigest(payloadDigest)) throw Failure("artifact_payload_digest_invalid");
             byte[] payload = CanonicalizeWithoutLast(root, OuterNames[^1]);
             try { if (!string.Equals(CognitionQualityHash.Sha256(payload), payloadDigest, StringComparison.Ordinal)) throw Failure("artifact_payload_digest_invalid"); }
@@ -310,7 +338,8 @@ public static class OllamaRecordingExecutionArtifactModule
             catch { CryptographicOperations.ZeroMemory(canonical); throw; }
             return new OllamaRecordingExecutionArtifact(canonical, payloadDigest, repositoryRootDigest,
                 compositionOutcome, compositionFailure, recordingResultPresent, recordingOutcome, recordingFailure,
-                completed, terminalSlot, submission, charge, statusCode, receiptPresent, receiptDigest, nestedDigest);
+                completed, terminalSlot, submission, charge, statusCode, checkpoint, policy, receiptPresent,
+                receiptFacts.RowPresent, receiptFacts.WrapperPresent, receiptDigest, nestedDigest);
         }
     }
 
@@ -367,6 +396,8 @@ public static class OllamaRecordingExecutionArtifactModule
         WriteNullableString(writer, "terminal_submission_state", snapshot.TerminalSubmissionState);
         WriteNullableString(writer, "terminal_charge_state", snapshot.TerminalChargeState);
         WriteNullableNumber(writer, "terminal_status_code", snapshot.TerminalStatusCode);
+        WriteNullableString(writer, "terminal_checkpoint_code", snapshot.TerminalCheckpointCode);
+        WriteNullableString(writer, "terminal_policy_code", snapshot.TerminalPolicyCode);
         writer.WriteBoolean("additional_attempt_authorized", false);
         writer.WriteNumber("automatic_retry_count", 0);
         writer.WriteNumber("fallback_count", 0);
@@ -384,13 +415,17 @@ public static class OllamaRecordingExecutionArtifactModule
         return buffer.WrittenSpan.ToArray();
     }
 
-    private static void ValidateReceipt(JsonElement receipt, string outcome, string failure, int completed, int? terminalSlot, string terminalSubmission, int? terminalStatus, int processId, long startTicks, string pathDigest, string publicationDigest, string promptSetDigest, string provenanceDigest, string runtimeBindingDigest, string? nestedDigest)
+    private readonly record struct ReceiptTerminalFacts(bool RowPresent, bool WrapperPresent);
+
+    private static ReceiptTerminalFacts ValidateReceipt(JsonElement receipt, string outcome, string failure, int completed, int? terminalSlot, string terminalSubmission, int? terminalStatus, string checkpoint, string policy, int processId, long startTicks, string pathDigest, string publicationDigest, string promptSetDigest, string provenanceDigest, string runtimeBindingDigest, string? nestedDigest)
     {
         RequireObjectAndOrder(receipt, ReceiptNames, "artifact_receipt_shape_invalid");
         RequireString(receipt, "schema_version", SnowGlobePinnedOllamaRecordingModule.ReceiptSchemaVersion);
         RequireString(receipt, "status", outcome == SnowGlobeOllamaLoopbackRecordingOutcomeCode.Complete.ToString() ? "complete" : "terminal");
         RequireString(receipt, "outcome", outcome);
         RequireString(receipt, "failure_code", failure);
+        RequireString(receipt, "terminal_checkpoint_code", checkpoint);
+        RequireString(receipt, "terminal_policy_code", policy);
         RequireString(receipt, "registered_cell_digest_sha256", SnowGlobePinnedOllamaRecordingModule.RegisteredCellDigestSha256);
         RequireString(receipt, "profile_digest_sha256", SnowGlobePinnedOllamaRecordingModule.ProfileDigestSha256);
         RequireString(receipt, "adapter_identity", SnowGlobePinnedOllamaRecordingModule.AdapterIdentity);
@@ -413,6 +448,7 @@ public static class OllamaRecordingExecutionArtifactModule
         JsonElement[] slotValues = slots.EnumerateArray().ToArray();
         int expectedOrdinal = 1;
         string? terminalWrapper = null;
+        bool terminalRowPresent = false;
         for (int index = 0; index < slotValues.Length; index++)
         {
             JsonElement slot = slotValues[index];
@@ -434,21 +470,14 @@ public static class OllamaRecordingExecutionArtifactModule
             }
             else
             {
+                terminalRowPresent = true;
                 terminalWrapper = wrapper;
                 if (index != completed || terminalSlot != completed + 1 || slotValues.Length != completed + 1)
                     throw Failure("artifact_receipt_terminal_slot_invalid");
                 if (slotSubmission != terminalSubmission || slotStatus != terminalStatus)
                     throw Failure("artifact_receipt_result_binding_invalid");
-                if (slotSubmission == SubmissionState.ResponseReceived.ToString())
-                {
-                    if (failure == SnowGlobeOllamaLoopbackRecordingFailureCode.WrapperRejected.ToString() && wrapper is null)
-                        throw Failure("artifact_receipt_terminal_slot_invalid");
-                    if (failure == SnowGlobeOllamaLoopbackRecordingFailureCode.HttpResponseRejected.ToString() && wrapper is not null)
-                        throw Failure("artifact_receipt_terminal_slot_invalid");
-                    if (failure == SnowGlobeOllamaLoopbackRecordingFailureCode.ResponseBodyRejected.ToString() && wrapper is not null)
-                        throw Failure("artifact_receipt_terminal_slot_invalid");
-                }
-                else if (wrapper is not null || slotStatus is not null)
+                if (slotSubmission != SubmissionState.ResponseReceived.ToString()
+                    && (wrapper is not null || slotStatus is not null))
                     throw Failure("artifact_receipt_terminal_slot_invalid");
             }
         }
@@ -479,162 +508,18 @@ public static class OllamaRecordingExecutionArtifactModule
             if (slotValues.Length == completed
                 && (terminalSubmission != SubmissionState.DefinitelyNotSubmitted.ToString() || terminalStatus is not null))
                 throw Failure("artifact_receipt_result_binding_invalid");
-            if (failure == SnowGlobeOllamaLoopbackRecordingFailureCode.RuntimeChanged.ToString())
-            {
-                bool beforeDispatch = terminalSubmission == SubmissionState.DefinitelyNotSubmitted.ToString()
-                    && terminalStatus is null && terminalWrapper is null;
-                bool afterResponseHeaders = terminalSubmission == SubmissionState.ResponseReceived.ToString()
-                    && terminalStatus is >= 100 and <= 599 && terminalWrapper is null;
-                bool afterExchange = terminalSubmission == SubmissionState.ResponseReceived.ToString()
-                    && terminalStatus == 200 && terminalWrapper is not null;
-                if (slotValues.Length != completed + 1 || !(beforeDispatch || afterResponseHeaders || afterExchange))
-                    throw Failure("artifact_receipt_result_binding_invalid");
-            }
         }
         RequireInt32(receipt, "automatic_retry_count", 0); RequireInt32(receipt, "fallback_count", 0); RequireInt32(receipt, "alternate_endpoint_or_model_count", 0);
         if (!string.Equals(RequireNullableDigest(receipt, "nested_recording_evidence_digest_sha256"), nestedDigest, StringComparison.Ordinal)) throw Failure("artifact_receipt_binding_invalid");
         RequireExactStringArray(receipt.GetProperty("claim_limitation_codes"), SnowGlobePinnedOllamaRecordingModule.ClaimLimitations, "artifact_receipt_claims_invalid");
-        string receiptPayload = receipt.GetProperty("receipt_payload_digest_sha256").GetString() ?? string.Empty;
+        JsonElement receiptPayloadValue = receipt.GetProperty("receipt_payload_digest_sha256");
+        if (receiptPayloadValue.ValueKind != JsonValueKind.String) throw Failure("artifact_receipt_payload_digest_invalid");
+        string receiptPayload = receiptPayloadValue.GetString() ?? string.Empty;
         if (!IsDigest(receiptPayload)) throw Failure("artifact_receipt_payload_digest_invalid");
         byte[] payload = CanonicalizeWithoutLast(receipt, ReceiptNames[^1]);
         try { if (!string.Equals(CognitionQualityHash.Sha256(payload), receiptPayload, StringComparison.Ordinal)) throw Failure("artifact_receipt_payload_digest_invalid"); }
         finally { CryptographicOperations.ZeroMemory(payload); }
-    }
-
-    private static void ValidateResultCoherence(
-        string compositionOutcome,
-        string compositionFailure,
-        bool recordingResultPresent,
-        string? recordingOutcome,
-        string? recordingFailure,
-        int? completed,
-        int? terminalSlot,
-        string? submission,
-        string? charge,
-        int? statusCode,
-        bool receiptPresent,
-        string? receiptDigest,
-        string? nestedDigest)
-    {
-        if (receiptPresent != (receiptDigest is not null)) throw Failure("artifact_receipt_nullability_invalid");
-        if (!recordingResultPresent)
-        {
-            bool exactCompositionFailure = compositionOutcome == OllamaRecordingCompositionOutcomeCode.AuthorizationRejected.ToString()
-                && compositionFailure == OllamaRecordingCompositionFailureCode.AuthorizationRejected.ToString()
-                || compositionOutcome == OllamaRecordingCompositionOutcomeCode.CompositionFailed.ToString()
-                && compositionFailure == OllamaRecordingCompositionFailureCode.CompositionFailed.ToString();
-            if (!exactCompositionFailure || recordingOutcome is not null || recordingFailure is not null
-                || completed is not null || terminalSlot is not null || submission is not null || charge is not null
-                || statusCode is not null || receiptPresent || nestedDigest is not null)
-                throw Failure("artifact_composition_failure_coherence_invalid");
-            return;
-        }
-
-        if (recordingOutcome is null || recordingFailure is null || completed is null || submission is null
-            || charge != ChargeState.NotApplicable.ToString()
-            || completed is < 0 or > CognitionQualityCorpusV1.ScenarioCount
-            || terminalSlot is < 1 or > CognitionQualityCorpusV1.ScenarioCount
-            || statusCode is < 100 or > 599)
-            throw Failure("artifact_result_coherence_invalid");
-
-        if (recordingOutcome == SnowGlobeOllamaLoopbackRecordingOutcomeCode.Complete.ToString())
-        {
-            if (compositionOutcome != OllamaRecordingCompositionOutcomeCode.Complete.ToString()
-                || compositionFailure != OllamaRecordingCompositionFailureCode.None.ToString()
-                || recordingFailure != SnowGlobeOllamaLoopbackRecordingFailureCode.None.ToString()
-                || completed != CognitionQualityCorpusV1.ScenarioCount || terminalSlot is not null
-                || submission != SubmissionState.ResponseReceived.ToString() || statusCode != 200
-                || !receiptPresent || nestedDigest is null)
-                throw Failure("artifact_complete_result_invalid");
-            return;
-        }
-
-        if (recordingOutcome == SnowGlobeOllamaLoopbackRecordingOutcomeCode.Failed.ToString()
-            && recordingFailure == SnowGlobeOllamaLoopbackRecordingFailureCode.CapabilityExpired.ToString())
-        {
-            if (compositionOutcome != OllamaRecordingCompositionOutcomeCode.Failed.ToString()
-                || compositionFailure != OllamaRecordingCompositionFailureCode.CapabilityExpired.ToString()
-                || completed != 0 || terminalSlot is not null
-                || submission != SubmissionState.DefinitelyNotSubmitted.ToString()
-                || statusCode is not null || receiptPresent || nestedDigest is not null)
-                throw Failure("artifact_failed_result_invalid");
-            return;
-        }
-
-        if (recordingOutcome == SnowGlobeOllamaLoopbackRecordingOutcomeCode.Failed.ToString()
-            && recordingFailure == SnowGlobeOllamaLoopbackRecordingFailureCode.EvidenceRejected.ToString())
-        {
-            if (compositionOutcome != OllamaRecordingCompositionOutcomeCode.Failed.ToString()
-                || compositionFailure != OllamaRecordingCompositionFailureCode.EvidenceRejected.ToString()
-                || completed != CognitionQualityCorpusV1.ScenarioCount
-                || terminalSlot != CognitionQualityCorpusV1.ScenarioCount
-                || submission != SubmissionState.ResponseReceived.ToString()
-                || statusCode != 200 || !receiptPresent || nestedDigest is not null)
-                throw Failure("artifact_failed_result_invalid");
-            return;
-        }
-
-        if (completed == CognitionQualityCorpusV1.ScenarioCount || nestedDigest is not null || terminalSlot != completed + 1)
-            throw Failure("artifact_terminal_result_invalid");
-        ValidateTerminalSubmission(submission, statusCode);
-
-        if (recordingOutcome == SnowGlobeOllamaLoopbackRecordingOutcomeCode.Cancelled.ToString()
-            || recordingOutcome == SnowGlobeOllamaLoopbackRecordingOutcomeCode.TimedOut.ToString())
-        {
-            bool cancelled = recordingOutcome == SnowGlobeOllamaLoopbackRecordingOutcomeCode.Cancelled.ToString();
-            string expectedOutcome = cancelled ? OllamaRecordingCompositionOutcomeCode.Cancelled.ToString() : OllamaRecordingCompositionOutcomeCode.TimedOut.ToString();
-            string expectedFailure = cancelled ? OllamaRecordingCompositionFailureCode.Cancelled.ToString() : OllamaRecordingCompositionFailureCode.TimedOut.ToString();
-            if (compositionOutcome != expectedOutcome || compositionFailure != expectedFailure
-                || recordingFailure != SnowGlobeOllamaLoopbackRecordingFailureCode.None.ToString()
-                || (!receiptPresent && (!cancelled || completed != 0 || terminalSlot != 1
-                    || submission != SubmissionState.DefinitelyNotSubmitted.ToString() || statusCode is not null)))
-                throw Failure("artifact_terminal_result_invalid");
-            return;
-        }
-
-        if (recordingOutcome != SnowGlobeOllamaLoopbackRecordingOutcomeCode.Failed.ToString()
-            || compositionOutcome != OllamaRecordingCompositionOutcomeCode.Failed.ToString()
-            || compositionFailure != recordingFailure
-            || !Enum.TryParse(recordingFailure, false, out OllamaRecordingCompositionFailureCode mappedFailure)
-            || mappedFailure is OllamaRecordingCompositionFailureCode.None
-                or OllamaRecordingCompositionFailureCode.Cancelled
-                or OllamaRecordingCompositionFailureCode.TimedOut
-                or OllamaRecordingCompositionFailureCode.AuthorizationRejected
-                or OllamaRecordingCompositionFailureCode.CompositionFailed)
-            throw Failure("artifact_failed_result_invalid");
-
-        if (!receiptPresent) throw Failure("artifact_failed_result_invalid");
-        if (mappedFailure == OllamaRecordingCompositionFailureCode.RuntimeBindingInvalid
-            && (completed != 0 || terminalSlot != 1 || submission != SubmissionState.DefinitelyNotSubmitted.ToString() || statusCode is not null))
-            throw Failure("artifact_failed_result_invalid");
-        if (mappedFailure == OllamaRecordingCompositionFailureCode.RuntimeChanged
-            && !((submission == SubmissionState.DefinitelyNotSubmitted.ToString() && statusCode is null)
-                || (submission == SubmissionState.ResponseReceived.ToString() && statusCode is >= 100 and <= 599)))
-            throw Failure("artifact_failed_result_invalid");
-        if (mappedFailure == OllamaRecordingCompositionFailureCode.TransportPoisoned
-            && (submission != SubmissionState.DefinitelyNotSubmitted.ToString() || statusCode is not null))
-            throw Failure("artifact_failed_result_invalid");
-        if (mappedFailure == OllamaRecordingCompositionFailureCode.TransportFailure
-            && (submission != SubmissionState.SubmissionUnknown.ToString() || statusCode is not null))
-            throw Failure("artifact_failed_result_invalid");
-        if (mappedFailure == OllamaRecordingCompositionFailureCode.HttpResponseRejected
-            && (submission != SubmissionState.ResponseReceived.ToString() || statusCode is null or < 100 or > 599))
-            throw Failure("artifact_failed_result_invalid");
-        if (mappedFailure is OllamaRecordingCompositionFailureCode.ResponseBodyRejected or OllamaRecordingCompositionFailureCode.WrapperRejected
-            && (submission != SubmissionState.ResponseReceived.ToString() || statusCode != 200))
-            throw Failure("artifact_failed_result_invalid");
-    }
-
-    private static void ValidateTerminalSubmission(string submission, int? statusCode)
-    {
-        if (submission == SubmissionState.ResponseReceived.ToString())
-        {
-            if (statusCode is < 100 or > 599) throw Failure("artifact_terminal_submission_invalid");
-            return;
-        }
-        if (submission is not (nameof(SubmissionState.DefinitelyNotSubmitted) or nameof(SubmissionState.SubmissionUnknown))
-            || statusCode is not null)
-            throw Failure("artifact_terminal_submission_invalid");
+        return new ReceiptTerminalFacts(terminalRowPresent, terminalWrapper is not null);
     }
 
     private static void RequireObjectAndOrder(JsonElement value, IReadOnlyList<string> names, string code)

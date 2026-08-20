@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Sockets;
+using System.Globalization;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 
@@ -31,14 +32,60 @@ internal enum OllamaLoopbackTransportFailureCode { RuntimeChanged, Poisoned, Can
 /// <summary>Closed, raw-free transport terminal; it never echoes URI, path, headers, body, prompt, nonce, or OS exceptions.</summary>
 internal sealed class OllamaLoopbackTransportException : Exception
 {
-    internal OllamaLoopbackTransportException(OllamaLoopbackTransportFailureCode code, SubmissionState submissionState, int? statusCode = null, string? wrapperDigestSha256 = null)
-        : base(code.ToString()) { Code = code; SubmissionState = submissionState; StatusCode = statusCode; WrapperDigestSha256 = wrapperDigestSha256; }
+    internal OllamaLoopbackTransportException(
+        OllamaLoopbackTransportFailureCode code,
+        SubmissionState submissionState,
+        int? statusCode = null,
+        string? wrapperDigestSha256 = null,
+        OllamaRecordingTerminalCheckpointCode? checkpoint = null,
+        OllamaRecordingTerminalPolicyCode? policy = null)
+        : base(code.ToString())
+    {
+        Code = code; SubmissionState = submissionState; StatusCode = statusCode; WrapperDigestSha256 = wrapperDigestSha256;
+        (Checkpoint, Policy) = checkpoint is not null && policy is not null
+            ? (checkpoint.Value, policy.Value)
+            : InferTerminalEvidence(code, submissionState, statusCode, wrapperDigestSha256);
+    }
     internal OllamaLoopbackTransportFailureCode Code { get; }
     internal SubmissionState SubmissionState { get; }
     internal ChargeState ChargeState => ChargeState.NotApplicable;
     internal int? StatusCode { get; }
     internal string? WrapperDigestSha256 { get; }
+    internal OllamaRecordingTerminalCheckpointCode Checkpoint { get; }
+    internal OllamaRecordingTerminalPolicyCode Policy { get; }
     internal bool AdditionalAttemptAuthorized => false;
+
+    private static (OllamaRecordingTerminalCheckpointCode, OllamaRecordingTerminalPolicyCode) InferTerminalEvidence(
+        OllamaLoopbackTransportFailureCode code,
+        SubmissionState submission,
+        int? status,
+        string? wrapperDigest) => code switch
+    {
+        OllamaLoopbackTransportFailureCode.RuntimeChanged when wrapperDigest is not null =>
+            (OllamaRecordingTerminalCheckpointCode.AfterExchange, OllamaRecordingTerminalPolicyCode.RuntimeOwnership),
+        OllamaLoopbackTransportFailureCode.RuntimeChanged when submission == SubmissionState.ResponseReceived =>
+            (OllamaRecordingTerminalCheckpointCode.ResponseHeaders, OllamaRecordingTerminalPolicyCode.RuntimeOwnership),
+        OllamaLoopbackTransportFailureCode.RuntimeChanged =>
+            (OllamaRecordingTerminalCheckpointCode.BeforeDispatch, OllamaRecordingTerminalPolicyCode.RuntimeOwnership),
+        OllamaLoopbackTransportFailureCode.Poisoned =>
+            (OllamaRecordingTerminalCheckpointCode.BeforeDispatch, OllamaRecordingTerminalPolicyCode.TransportState),
+        OllamaLoopbackTransportFailureCode.Cancelled =>
+            (submission == SubmissionState.ResponseReceived ? OllamaRecordingTerminalCheckpointCode.ResponseBody : OllamaRecordingTerminalCheckpointCode.RequestDispatch,
+                OllamaRecordingTerminalPolicyCode.Cancellation),
+        OllamaLoopbackTransportFailureCode.TimedOut =>
+            (submission == SubmissionState.ResponseReceived ? OllamaRecordingTerminalCheckpointCode.ResponseBody : OllamaRecordingTerminalCheckpointCode.RequestDispatch,
+                OllamaRecordingTerminalPolicyCode.Timeout),
+        OllamaLoopbackTransportFailureCode.TransportFailure when submission == SubmissionState.ResponseReceived && status == 200 =>
+            (OllamaRecordingTerminalCheckpointCode.ResponseBody, OllamaRecordingTerminalPolicyCode.BodyRead),
+        OllamaLoopbackTransportFailureCode.TransportFailure =>
+            (OllamaRecordingTerminalCheckpointCode.RequestDispatch, OllamaRecordingTerminalPolicyCode.TransportIo),
+        OllamaLoopbackTransportFailureCode.HttpResponseRejected =>
+            (OllamaRecordingTerminalCheckpointCode.ResponseHeaders,
+                status == 200 ? OllamaRecordingTerminalPolicyCode.ContentType : OllamaRecordingTerminalPolicyCode.HttpStatus),
+        OllamaLoopbackTransportFailureCode.ResponseBodyRejected =>
+            (OllamaRecordingTerminalCheckpointCode.ResponseBody, OllamaRecordingTerminalPolicyCode.BodyRead),
+        _ => (OllamaRecordingTerminalCheckpointCode.RequestDispatch, OllamaRecordingTerminalPolicyCode.TransportIo)
+    };
 }
 
 internal sealed class ProductionOllamaLoopbackRecordingTransportFactory : IOllamaLoopbackRecordingTransportFactory
@@ -68,7 +115,7 @@ internal sealed class SingleUseOllamaJsonContent : HttpContent
 internal sealed class OllamaLoopbackRecordingTransportAdapter : IOfflineOllamaRecordingTransportPort
 {
     internal const int CancellationDrainMilliseconds = 250;
-    internal const string ContractDescriptor = "snow-globe-ollama-loopback-recording-transport-adapter/v1|http-1.1-exact|post-generate|redirect-off|decompression-off|proxy-off|cookies-off|credentials-off|max-connection-1|response-headers-read|content-type-application-json-no-parameters|content-length-required|body-8192|single-serialization|runtime-owner-before-between-after|explicit-cancellation-cause|cancel-drain-250ms|one-late-observer|poison-on-indeterminate|no-retry";
+    internal const string ContractDescriptor = "snow-globe-ollama-loopback-recording-transport-adapter/v2|http-1.1-exact|post-generate|redirect-off|decompression-off|proxy-off|cookies-off|credentials-off|max-connection-1|response-headers-read|content-type-application-json-none-or-one-charset-utf-8|content-length-required|body-8192|typed-terminal-checkpoint-policy|single-serialization|runtime-owner-before-between-after|explicit-cancellation-cause|cancel-drain-250ms|one-late-observer|poison-on-indeterminate|no-retry";
     internal static string ContractDigestSha256 { get; } = CognitionQualityRecordingSessionCanonical.Digest(ContractDescriptor);
     private static readonly Uri GenerateUri = new("http://127.0.0.1:11435/api/generate", UriKind.Absolute);
     private readonly OllamaLoopbackRuntimeBinding _binding;
@@ -143,9 +190,10 @@ internal sealed class OllamaLoopbackRecordingTransportAdapter : IOfflineOllamaRe
     {
         ArgumentNullException.ThrowIfNull(request);
         try { ReserveExactSlot(request); } catch { request.Dispose(); throw; }
-        if (!Verify(OllamaLoopbackRuntimeCheckPoint.BeforeDispatch, null)) { Poison(); request.Dispose(); ReleaseInFlight(); throw Failure(OllamaLoopbackTransportFailureCode.RuntimeChanged, SubmissionState.DefinitelyNotSubmitted); }
-        if (cancellationToken.IsCancellationRequested) { Poison(); request.Dispose(); ReleaseInFlight(); throw Failure(OllamaLoopbackTransportFailureCode.Cancelled, SubmissionState.DefinitelyNotSubmitted); }
+        if (!Verify(OllamaLoopbackRuntimeCheckPoint.BeforeDispatch, null)) { Poison(); request.Dispose(); ReleaseInFlight(); throw Failure(OllamaLoopbackTransportFailureCode.RuntimeChanged, SubmissionState.DefinitelyNotSubmitted, checkpoint: OllamaRecordingTerminalCheckpointCode.BeforeDispatch, policy: OllamaRecordingTerminalPolicyCode.RuntimeOwnership); }
+        if (cancellationToken.IsCancellationRequested) { Poison(); request.Dispose(); ReleaseInFlight(); throw Failure(OllamaLoopbackTransportFailureCode.Cancelled, SubmissionState.DefinitelyNotSubmitted, checkpoint: OllamaRecordingTerminalCheckpointCode.BeforeDispatch, policy: OllamaRecordingTerminalPolicyCode.Cancellation); }
         byte[] body = request.TakeBody(); SingleUseOllamaJsonContent? content = null; HttpRequestMessage? message = null; HttpResponseMessage? response = null; bool ownershipTransferred = false;
+        byte[]? retainedWrapper = null;
         using CancellationTokenSource timeout = new(Math.Max(1, request.RemainingSessionMilliseconds));
         using CancellationTokenSource linked = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _disposeCancellation.Token, timeout.Token);
         try
@@ -160,24 +208,23 @@ internal sealed class OllamaLoopbackRecordingTransportAdapter : IOfflineOllamaRe
             {
                 OllamaLoopbackTransportFailureCode cancellationCode = ClassifyCancellationCause(cancellationToken, _disposeCancellation.Token, timeout.Token);
                 await DrainAsync(sendTask).ConfigureAwait(false);
-                if (sendTask.IsCompletedSuccessfully) { Poison(); response = sendTask.Result; throw Failure(cancellationCode, SubmissionState.ResponseReceived, (int)response.StatusCode); }
-                if (sendTask.IsCompleted) { Poison(); throw Failure(cancellationCode, content.HasSerializationBegun ? SubmissionState.SubmissionUnknown : SubmissionState.DefinitelyNotSubmitted); }
+                if (sendTask.IsCompletedSuccessfully) { Poison(); response = sendTask.Result; throw Failure(cancellationCode, SubmissionState.ResponseReceived, (int)response.StatusCode, checkpoint: OllamaRecordingTerminalCheckpointCode.ResponseHeaders, policy: CancellationPolicy(cancellationCode)); }
+                if (sendTask.IsCompleted) { Poison(); throw Failure(cancellationCode, content.HasSerializationBegun ? SubmissionState.SubmissionUnknown : SubmissionState.DefinitelyNotSubmitted, checkpoint: OllamaRecordingTerminalCheckpointCode.RequestDispatch, policy: CancellationPolicy(cancellationCode)); }
                 bool serializationBegan = content.HasSerializationBegun; Poison(); InstallLateSendObserver(sendTask, message); ownershipTransferred = true; message = null; content = null;
-                throw Failure(cancellationCode, serializationBegan ? SubmissionState.SubmissionUnknown : SubmissionState.DefinitelyNotSubmitted);
+                throw Failure(cancellationCode, serializationBegan ? SubmissionState.SubmissionUnknown : SubmissionState.DefinitelyNotSubmitted, checkpoint: OllamaRecordingTerminalCheckpointCode.RequestDispatch, policy: CancellationPolicy(cancellationCode));
             }
             catch
             {
-                Poison(); throw Failure(OllamaLoopbackTransportFailureCode.TransportFailure, content.HasSerializationBegun ? SubmissionState.SubmissionUnknown : SubmissionState.DefinitelyNotSubmitted);
+                Poison(); throw Failure(OllamaLoopbackTransportFailureCode.TransportFailure, content.HasSerializationBegun ? SubmissionState.SubmissionUnknown : SubmissionState.DefinitelyNotSubmitted, checkpoint: OllamaRecordingTerminalCheckpointCode.RequestDispatch, policy: OllamaRecordingTerminalPolicyCode.TransportIo);
             }
 
             int statusCode = (int)response.StatusCode;
             OllamaLoopbackConnectionIdentity? connection; lock (_gate) connection = _connection;
-            if (!Verify(OllamaLoopbackRuntimeCheckPoint.AfterResponseHeaders, connection)) { Poison(); throw Failure(OllamaLoopbackTransportFailureCode.RuntimeChanged, SubmissionState.ResponseReceived, statusCode); }
-            try { ValidateResponseHeaders(response, statusCode); } catch (OllamaLoopbackTransportException) { Poison(); throw; }
-            long declaredLength = response.Content.Headers.ContentLength!.Value;
+            if (!Verify(OllamaLoopbackRuntimeCheckPoint.AfterResponseHeaders, connection)) { Poison(); throw Failure(OllamaLoopbackTransportFailureCode.RuntimeChanged, SubmissionState.ResponseReceived, statusCode, checkpoint: OllamaRecordingTerminalCheckpointCode.ResponseHeaders, policy: OllamaRecordingTerminalPolicyCode.RuntimeOwnership); }
+            long declaredLength;
+            try { declaredLength = ValidateResponseHeaders(response, statusCode); } catch (OllamaLoopbackTransportException) { Poison(); throw; }
             Task<byte[]> readTask = ReadExactBodyAsync(response.Content, checked((int)declaredLength), linked.Token);
-            byte[] wrapper;
-            try { wrapper = await readTask.WaitAsync(linked.Token).ConfigureAwait(false); }
+            try { retainedWrapper = await readTask.WaitAsync(linked.Token).ConfigureAwait(false); }
             catch (OperationCanceledException)
             {
                 OllamaLoopbackTransportFailureCode cancellationCode = ClassifyCancellationCause(cancellationToken, _disposeCancellation.Token, timeout.Token);
@@ -185,14 +232,14 @@ internal sealed class OllamaLoopbackRecordingTransportAdapter : IOfflineOllamaRe
                 await DrainAsync(readTask).ConfigureAwait(false);
                 if (readTask.IsCompletedSuccessfully) CryptographicOperations.ZeroMemory(readTask.Result);
                 else if (!readTask.IsCompleted) { Poison(); InstallLateReadObserver(readTask, response, message); ownershipTransferred = true; response = null; message = null; content = null; }
-                throw Failure(cancellationCode, SubmissionState.ResponseReceived, statusCode);
+                throw Failure(cancellationCode, SubmissionState.ResponseReceived, statusCode, checkpoint: OllamaRecordingTerminalCheckpointCode.ResponseBody, policy: CancellationPolicy(cancellationCode, bodyRead: true));
             }
-            catch { Poison(); throw Failure(OllamaLoopbackTransportFailureCode.ResponseBodyRejected, SubmissionState.ResponseReceived, statusCode); }
+            catch { Poison(); throw Failure(OllamaLoopbackTransportFailureCode.ResponseBodyRejected, SubmissionState.ResponseReceived, statusCode, checkpoint: OllamaRecordingTerminalCheckpointCode.ResponseBody, policy: OllamaRecordingTerminalPolicyCode.BodyRead); }
 
-            string wrapperDigest = CognitionQualityHash.Sha256(wrapper);
-            if (!Verify(OllamaLoopbackRuntimeCheckPoint.AfterExchange, connection)) { Poison(); CryptographicOperations.ZeroMemory(wrapper); throw Failure(OllamaLoopbackTransportFailureCode.RuntimeChanged, SubmissionState.ResponseReceived, statusCode, wrapperDigest); }
-            OfflineOllamaRecordingTransportResponse result = new(request, wrapper) { StatusCode = 200, MediaType = "application/json", ContentEncoding = null, IsRedirect = false, DeclaredBodyLength = wrapper.Length };
-            wrapper = Array.Empty<byte>();
+            string wrapperDigest = CognitionQualityHash.Sha256(retainedWrapper);
+            if (!Verify(OllamaLoopbackRuntimeCheckPoint.AfterExchange, connection)) { Poison(); throw Failure(OllamaLoopbackTransportFailureCode.RuntimeChanged, SubmissionState.ResponseReceived, statusCode, wrapperDigest, OllamaRecordingTerminalCheckpointCode.AfterExchange, OllamaRecordingTerminalPolicyCode.RuntimeOwnership); }
+            OfflineOllamaRecordingTransportResponse result = new(request, retainedWrapper) { StatusCode = 200, MediaType = "application/json", ContentEncoding = null, IsRedirect = false, DeclaredBodyLength = retainedWrapper.Length };
+            retainedWrapper = null;
             return result;
         }
         finally
@@ -200,6 +247,7 @@ internal sealed class OllamaLoopbackRecordingTransportAdapter : IOfflineOllamaRe
             request.Dispose();
             ReleaseInFlight();
             if (body.Length != 0) CryptographicOperations.ZeroMemory(body);
+            if (retainedWrapper is not null) CryptographicOperations.ZeroMemory(retainedWrapper);
             if (!ownershipTransferred) { response?.Dispose(); message?.Dispose(); }
         }
     }
@@ -223,11 +271,19 @@ internal sealed class OllamaLoopbackRecordingTransportAdapter : IOfflineOllamaRe
         if (message.Method != HttpMethod.Post || message.RequestUri != GenerateUri || message.Version != HttpVersion.Version11 || message.VersionPolicy != HttpVersionPolicy.RequestVersionExact || message.Headers.Authorization is not null || message.Headers.Contains("Cookie") || message.Headers.Contains("Proxy-Authorization") || message.Content is null || !IsExactApplicationJson(message.Content.Headers.ContentType)) throw Failure(OllamaLoopbackTransportFailureCode.TransportFailure, SubmissionState.DefinitelyNotSubmitted);
     }
 
-    private static void ValidateResponseHeaders(HttpResponseMessage response, int statusCode)
+    private static long ValidateResponseHeaders(HttpResponseMessage response, int statusCode)
     {
-        if (statusCode != 200 || response.Version != HttpVersion.Version11 || response.Headers.Location is not null || response.Headers.TransferEncoding.Count != 0 || response.Headers.TransferEncodingChunked == true) throw Failure(OllamaLoopbackTransportFailureCode.HttpResponseRejected, SubmissionState.ResponseReceived, statusCode);
+        if (statusCode != 200) throw Failure(OllamaLoopbackTransportFailureCode.HttpResponseRejected, SubmissionState.ResponseReceived, statusCode, checkpoint: OllamaRecordingTerminalCheckpointCode.ResponseHeaders, policy: OllamaRecordingTerminalPolicyCode.HttpStatus);
+        if (response.Version != HttpVersion.Version11) throw Failure(OllamaLoopbackTransportFailureCode.HttpResponseRejected, SubmissionState.ResponseReceived, statusCode, checkpoint: OllamaRecordingTerminalCheckpointCode.ResponseHeaders, policy: OllamaRecordingTerminalPolicyCode.HttpVersion);
+        if (HasRawHeader(response.Headers, "Location")) throw Failure(OllamaLoopbackTransportFailureCode.HttpResponseRejected, SubmissionState.ResponseReceived, statusCode, checkpoint: OllamaRecordingTerminalCheckpointCode.ResponseHeaders, policy: OllamaRecordingTerminalPolicyCode.Redirect);
+        if (HasRawHeader(response.Headers, "Transfer-Encoding")) throw Failure(OllamaLoopbackTransportFailureCode.HttpResponseRejected, SubmissionState.ResponseReceived, statusCode, checkpoint: OllamaRecordingTerminalCheckpointCode.ResponseHeaders, policy: OllamaRecordingTerminalPolicyCode.TransferEncoding);
         HttpContentHeaders headers = response.Content.Headers;
-        if (!IsExactApplicationJson(headers.ContentType) || headers.ContentEncoding.Count != 0 || headers.ContentLength is null || headers.ContentLength is < 1 or > OfflineOllamaRecordingCodecModule.MaximumWrapperBytes) throw Failure(OllamaLoopbackTransportFailureCode.HttpResponseRejected, SubmissionState.ResponseReceived, statusCode);
+        if (!HasExactlyOnePinnedRuntimeContentType(headers)) throw Failure(OllamaLoopbackTransportFailureCode.HttpResponseRejected, SubmissionState.ResponseReceived, statusCode, checkpoint: OllamaRecordingTerminalCheckpointCode.ResponseHeaders, policy: OllamaRecordingTerminalPolicyCode.ContentType);
+        if (HasRawHeader(headers, "Content-Encoding")) throw Failure(OllamaLoopbackTransportFailureCode.HttpResponseRejected, SubmissionState.ResponseReceived, statusCode, checkpoint: OllamaRecordingTerminalCheckpointCode.ResponseHeaders, policy: OllamaRecordingTerminalPolicyCode.ContentEncoding);
+        if (!TryGetExactCanonicalContentLength(headers, out long contentLength)
+            || contentLength is < 1 or > OfflineOllamaRecordingCodecModule.MaximumWrapperBytes)
+            throw Failure(OllamaLoopbackTransportFailureCode.HttpResponseRejected, SubmissionState.ResponseReceived, statusCode, checkpoint: OllamaRecordingTerminalCheckpointCode.ResponseHeaders, policy: OllamaRecordingTerminalPolicyCode.ContentLength);
+        return contentLength;
     }
 
     private static async Task<byte[]> ReadExactBodyAsync(HttpContent content, int declaredLength, CancellationToken cancellationToken)
@@ -258,13 +314,73 @@ internal sealed class OllamaLoopbackRecordingTransportAdapter : IOfflineOllamaRe
     private void Poison() => Interlocked.Exchange(ref _poisoned, 1);
     private void ReleaseInFlight() { bool complete; lock (_gate) { _inFlight = 0; complete = Volatile.Read(ref _disposed) != 0 && Volatile.Read(ref _disposeCancellationIssued) != 0 && _lateObserver is null; } if (complete) CompleteLateDispose(); }
     private static bool IsExactApplicationJson(MediaTypeHeaderValue? value) => value is not null && string.Equals(value.MediaType, "application/json", StringComparison.Ordinal) && value.Parameters.Count == 0;
+    internal static bool IsPinnedRuntimeApplicationJson(MediaTypeHeaderValue? value)
+    {
+        if (value is null || !string.Equals(value.MediaType, "application/json", StringComparison.OrdinalIgnoreCase)) return false;
+        if (value.Parameters.Count == 0) return true;
+        if (value.Parameters.Count != 1) return false;
+        NameValueHeaderValue parameter = value.Parameters.Single();
+        if (!string.Equals(parameter.Name, "charset", StringComparison.OrdinalIgnoreCase) || parameter.Value is null) return false;
+        string charset = parameter.Value;
+        if (charset.Length >= 2 && charset[0] == '"' && charset[^1] == '"') charset = charset[1..^1];
+        return string.Equals(charset, "utf-8", StringComparison.OrdinalIgnoreCase);
+    }
+    private static bool HasExactlyOnePinnedRuntimeContentType(HttpContentHeaders headers)
+    {
+        try
+        {
+            if (!headers.NonValidated.TryGetValues("Content-Type", out HeaderStringValues values)) return false;
+            using IEnumerator<string> enumerator = values.GetEnumerator();
+            if (!enumerator.MoveNext() || enumerator.MoveNext()) return false;
+            return IsPinnedRuntimeApplicationJson(headers.ContentType);
+        }
+        catch { return false; }
+    }
+    private static bool HasRawHeader(HttpHeaders headers, string name)
+    {
+        try { return headers.NonValidated.Contains(name); }
+        catch { return true; }
+    }
+    private static bool TryGetExactCanonicalContentLength(HttpContentHeaders headers, out long contentLength)
+    {
+        contentLength = 0;
+        try
+        {
+            if (!headers.NonValidated.TryGetValues("Content-Length", out HeaderStringValues values)) return false;
+            using IEnumerator<string> enumerator = values.GetEnumerator();
+            if (!enumerator.MoveNext()) return false;
+            string raw = enumerator.Current;
+            if (enumerator.MoveNext()
+                || !long.TryParse(raw, NumberStyles.None, CultureInfo.InvariantCulture, out long parsed)
+                || !string.Equals(raw, parsed.ToString(CultureInfo.InvariantCulture), StringComparison.Ordinal)
+                || headers.ContentLength != parsed)
+                return false;
+            contentLength = parsed;
+            return true;
+        }
+        catch { contentLength = 0; return false; }
+    }
+    private static OllamaRecordingTerminalPolicyCode CancellationPolicy(OllamaLoopbackTransportFailureCode code, bool bodyRead = false) => code switch
+    {
+        OllamaLoopbackTransportFailureCode.Cancelled => OllamaRecordingTerminalPolicyCode.Cancellation,
+        OllamaLoopbackTransportFailureCode.TimedOut => OllamaRecordingTerminalPolicyCode.Timeout,
+        _ when bodyRead => OllamaRecordingTerminalPolicyCode.BodyRead,
+        _ => OllamaRecordingTerminalPolicyCode.TransportIo
+    };
     private static OllamaLoopbackTransportFailureCode ClassifyCancellationCause(CancellationToken session, CancellationToken disposal, CancellationToken timeout)
     {
         if (session.IsCancellationRequested || disposal.IsCancellationRequested) return OllamaLoopbackTransportFailureCode.Cancelled;
         if (timeout.IsCancellationRequested) return OllamaLoopbackTransportFailureCode.TimedOut;
         return OllamaLoopbackTransportFailureCode.TransportFailure;
     }
-    private static OllamaLoopbackTransportException Failure(OllamaLoopbackTransportFailureCode code, SubmissionState submission, int? status = null, string? wrapperDigest = null) => new(code, submission, status, wrapperDigest);
+    private static OllamaLoopbackTransportException Failure(
+        OllamaLoopbackTransportFailureCode code,
+        SubmissionState submission,
+        int? status = null,
+        string? wrapperDigest = null,
+        OllamaRecordingTerminalCheckpointCode? checkpoint = null,
+        OllamaRecordingTerminalPolicyCode? policy = null) =>
+        new(code, submission, status, wrapperDigest, checkpoint, policy);
 
     public void Dispose() => DisposeAsync().AsTask().GetAwaiter().GetResult();
     public ValueTask DisposeAsync()

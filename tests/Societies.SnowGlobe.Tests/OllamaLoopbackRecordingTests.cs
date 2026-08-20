@@ -105,7 +105,11 @@ public sealed class OllamaLoopbackRecordingTests
         Assert.False(result.HasBenchmarkOrQualityClaim); Assert.False(result.HasIndependentArtifactLoadedProof); Assert.False(result.HasWorldOrSimulationAuthority); Assert.False(result.HasRetryAuthority);
         Assert.Equal(callerPublication, publication.CanonicalUtf8.ToArray()); Assert.Equal(callerPrompts, publication.Slots.Select(static slot => slot.PromptUtf8.ToArray()).ToArray());
         JsonDocument.Parse(result.Receipt.CanonicalUtf8); Assert.Equal(result.Receipt.CanonicalDigestSha256, CognitionQualityHash.Sha256(result.Receipt.CanonicalUtf8.Span));
-        Assert.Equal("da913180079fc534543748bc53198f7d10de527137f038812fa5f735b90c62ee", result.Receipt.CanonicalDigestSha256);
+        Assert.Equal("62dc56e0c6372611c5dad258f7f3ad095f2c7f182fe0ca8c5a382b3851600715", result.Receipt.CanonicalDigestSha256);
+        Assert.Equal("snow_globe_ollama_loopback_recording_receipt/v2", result.Receipt.SchemaVersion);
+        Assert.Equal("None", result.TerminalCheckpointCode); Assert.Equal("None", result.TerminalPolicyCode);
+        Assert.Equal(result.TerminalCheckpointCode, result.Receipt.TerminalCheckpointCode);
+        Assert.Equal(result.TerminalPolicyCode, result.Receipt.TerminalPolicyCode);
         AssertReceiptPayloadDigest(result.Receipt); Assert.InRange(result.Receipt.CanonicalUtf8.Length, 1, SnowGlobePinnedOllamaRecordingModule.MaximumReceiptBytes); byte[] detached = result.Receipt.CanonicalUtf8.ToArray(); detached[0] ^= 0xff; Assert.Equal((byte)'{', result.Receipt.CanonicalUtf8.Span[0]);
     }
 
@@ -230,7 +234,7 @@ public sealed class OllamaLoopbackRecordingTests
             {
                 int slot = Interlocked.Increment(ref _calls); Assert.Equal(HttpMethod.Post, request.Method); Assert.Equal("http://127.0.0.1:11435/api/generate", request.RequestUri!.AbsoluteUri); Assert.Equal(HttpVersion.Version11, request.Version); Assert.Equal(HttpVersionPolicy.RequestVersionExact, request.VersionPolicy); Assert.Null(request.Headers.Authorization); Assert.False(request.Headers.Contains("Cookie")); Assert.False(request.Headers.Contains("Proxy-Authorization"));
                 byte[] body = await request.Content!.ReadAsByteArrayAsync(cancellationToken); Assert.InRange(body.Length, 1, OfflineOllamaRecordingCodecModule.MaximumRequestBytes); Assert.Contains("\"stream\":false", Encoding.UTF8.GetString(body), StringComparison.Ordinal); Assert.Contains("\"num_ctx\":4096", Encoding.UTF8.GetString(body), StringComparison.Ordinal);
-                byte[] responseBody = _failureSlot == slot ? "{}"u8.ToArray() : _wrapperMutation(Wrapper(slot)); HttpResponseMessage response = new(_failureSlot == slot ? _failureStatus : HttpStatusCode.OK) { Version = HttpVersion.Version11, Content = new ByteArrayContent(responseBody) }; response.Content.Headers.ContentType = new("application/json"); return response;
+                byte[] responseBody = _failureSlot == slot ? "{}"u8.ToArray() : _wrapperMutation(Wrapper(slot)); HttpResponseMessage response = new(_failureSlot == slot ? _failureStatus : HttpStatusCode.OK) { Version = HttpVersion.Version11, Content = new ByteArrayContent(responseBody) }; response.Content.Headers.ContentType = new("application/json"); response.Content.Headers.ContentLength = responseBody.Length; return response;
             }
             finally { Interlocked.Decrement(ref _concurrent); }
         }
@@ -250,7 +254,7 @@ public sealed class OllamaLoopbackRecordingTests
 
     private sealed class UncausedCancellationBodyContent : HttpContent
     {
-        internal UncausedCancellationBodyContent() => Headers.ContentType = new("application/json");
+        internal UncausedCancellationBodyContent() { Headers.ContentType = new("application/json"); Headers.ContentLength = 1; }
         protected override bool TryComputeLength(out long length) { length = 1; return true; }
         protected override Task SerializeToStreamAsync(Stream stream, TransportContext? context) => Task.FromException(new OperationCanceledException("attacker-controlled-body-oce"));
     }

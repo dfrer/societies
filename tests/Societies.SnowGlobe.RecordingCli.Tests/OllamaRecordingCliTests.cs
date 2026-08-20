@@ -80,6 +80,9 @@ public sealed class OllamaRecordingCliTests : IDisposable
         Assert.Contains($"submission={submission ?? "none"}", line, StringComparison.Ordinal);
         Assert.Contains($"status={(status?.ToString() ?? "none")}", line, StringComparison.Ordinal);
         Assert.Contains($"charge={charge ?? "none"}", line, StringComparison.Ordinal);
+        (string? checkpoint, string? policy) = TerminalEvidence(outcome, failure, submission, status);
+        Assert.Contains($"checkpoint={checkpoint ?? "none"}", line, StringComparison.Ordinal);
+        Assert.Contains($"policy={policy ?? "none"}", line, StringComparison.Ordinal);
         Assert.Contains("additional_attempt_authorized=false", line, StringComparison.Ordinal);
         Assert.Contains($"artifact_digest_sha256={ArtifactDigest}", line, StringComparison.Ordinal);
         Assert.Contains($"receipt_digest_sha256={(receiptPresent ? ReceiptDigest : "none")}", line, StringComparison.Ordinal);
@@ -103,6 +106,25 @@ public sealed class OllamaRecordingCliTests : IDisposable
         Assert.Equal(3, exit); Assert.Equal(1, factory.CreateCount); Assert.Equal(1, module.PrepareCount); Assert.Equal(1, module.ExecuteCount);
         Assert.Empty(error.ToString()); string line = Assert.Single(ReadLines(output.ToString()));
         Assert.Contains($"outcome=Failed failure=RuntimeChanged completed=2 submission=ResponseReceived status={status}", line, StringComparison.Ordinal);
+        Assert.Contains("additional_attempt_authorized=false", line, StringComparison.Ordinal); Assert.True(line.Length < 768);
+    }
+
+    [Theory]
+    [InlineData("HttpResponseRejected")]
+    [InlineData("TransportFailure")]
+    public async Task Http200ResponseTerminalPublishedSummaryMapsTerminalOnce(string failure)
+    {
+        CountingModule module = new()
+        {
+            Summary = Summary("Failed", failure, 0, "ResponseReceived", 200, "NotApplicable", artifactPublished: true, receiptPresent: true)
+        };
+        CountingFactory factory = new(module); StringWriter output = new(); StringWriter error = new();
+
+        int exit = await OllamaRecordingCliApplication.RunAsync(RecordArgs(PlanDigest), factory, output, error, CancellationToken.None);
+
+        Assert.Equal(3, exit); Assert.Equal(1, factory.CreateCount); Assert.Equal(1, module.PrepareCount); Assert.Equal(1, module.ExecuteCount);
+        Assert.Empty(error.ToString()); string line = Assert.Single(ReadLines(output.ToString()));
+        Assert.Contains($"outcome=Failed failure={failure} completed=0 submission=ResponseReceived status=200", line, StringComparison.Ordinal);
         Assert.Contains("additional_attempt_authorized=false", line, StringComparison.Ordinal); Assert.True(line.Length < 768);
     }
 
@@ -178,7 +200,11 @@ public sealed class OllamaRecordingCliTests : IDisposable
             Summary("Failed", "RuntimeChanged", 1, "DefinitelyNotSubmitted", 200, "NotApplicable", true, true),
             Summary("Failed", "RuntimeChanged", 1, "ResponseReceived", null, "NotApplicable", true, true),
             Summary("Failed", "TransportPoisoned", 1, "ResponseReceived", 200, "NotApplicable", true, true),
-            new("Complete", "None", 12, "ResponseReceived", 200, "NotApplicable", true, new string('A', 64), ReceiptDigest)
+            Summary() with { TerminalCheckpointCode = "ResponseHeaders" },
+            Summary() with { TerminalPolicyCode = "ContentType" },
+            Summary("Failed", "HttpResponseRejected", 1, "ResponseReceived", 200, "NotApplicable", true, true) with { TerminalPolicyCode = "WrapperShape" },
+            Summary("Failed", "TransportFailure", 1, "ResponseReceived", 200, "NotApplicable", true, true) with { TerminalCheckpointCode = "ResponseHeaders" },
+            Summary() with { ArtifactDigestSha256 = new string('A', 64) }
         ];
         foreach (OllamaRecordingCliExecutionSummary summary in invalid)
         {
@@ -352,8 +378,52 @@ public sealed class OllamaRecordingCliTests : IDisposable
 
     private static OllamaRecordingCliExecutionSummary Summary(
         string outcome = "Complete", string failure = "None", int? completed = 12, string? submission = "ResponseReceived",
-        int? status = 200, string? charge = "NotApplicable", bool artifactPublished = true, bool receiptPresent = true) =>
-        new(outcome, failure, completed, submission, status, charge, artifactPublished, artifactPublished ? ArtifactDigest : null, receiptPresent ? ReceiptDigest : null);
+        int? status = 200, string? charge = "NotApplicable", bool artifactPublished = true, bool receiptPresent = true)
+    {
+        bool recordingPresent = outcome is not ("AuthorizationRejected" or "CompositionFailed");
+        string? recordingOutcome = recordingPresent ? outcome : null;
+        string? recordingFailure = recordingPresent ? outcome is "Complete" or "Cancelled" or "TimedOut" ? "None" : failure : null;
+        int? terminalSlot = !recordingPresent || outcome == "Complete" || failure == "CapabilityExpired"
+            ? null
+            : failure == "EvidenceRejected" ? 12 : completed + 1;
+        bool terminalRow = receiptPresent && outcome != "Complete" && failure is not ("EvidenceRejected" or "RuntimeBindingInvalid")
+            && !(outcome is "Cancelled" or "TimedOut" && submission == "DefinitelyNotSubmitted");
+        bool wrapper = terminalRow && failure == "WrapperRejected";
+        bool nestedEvidence = outcome == "Complete";
+        (string? checkpoint, string? policy) = TerminalEvidence(outcome, failure, submission, status);
+        return new(outcome, failure, recordingPresent, recordingOutcome, recordingFailure, completed, terminalSlot,
+            submission, status, charge, artifactPublished, artifactPublished ? ArtifactDigest : null,
+            receiptPresent, receiptPresent ? ReceiptDigest : null, terminalRow, wrapper, nestedEvidence, checkpoint, policy);
+    }
+
+    private static (string? Checkpoint, string? Policy) TerminalEvidence(string outcome, string failure, string? submission, int? status) =>
+        (outcome, failure, submission, status) switch
+        {
+            ("Complete", _, _, _) => ("None", "None"),
+            ("AuthorizationRejected", _, _, _) => ("Authorization", "Authorization"),
+            ("CompositionFailed", _, _, _) => ("Composition", "UnexpectedException"),
+            (_, "CapabilityExpired", _, _) => ("BeforeDispatch", "Capability"),
+            (_, "RuntimeBindingInvalid", _, _) => ("BeforeDispatch", "RuntimeBinding"),
+            (_, "RuntimeChanged", "ResponseReceived", _) => ("ResponseHeaders", "RuntimeOwnership"),
+            (_, "RuntimeChanged", _, _) => ("BeforeDispatch", "RuntimeOwnership"),
+            (_, "TransportPoisoned", _, _) => ("BeforeDispatch", "TransportState"),
+            (_, "TransportFailure", "ResponseReceived", 200) => ("ResponseBody", "BodyRead"),
+            (_, "TransportFailure", _, _) => ("RequestDispatch", "TransportIo"),
+            (_, "HttpResponseRejected", _, 200) => ("ResponseHeaders", "ContentType"),
+            (_, "HttpResponseRejected", _, _) => ("ResponseHeaders", "HttpStatus"),
+            (_, "ResponseBodyRejected", _, _) => ("ResponseBody", "BodyRead"),
+            (_, "WrapperRejected", _, _) => ("WrapperDecode", "WrapperShape"),
+            (_, "EvidenceRejected", _, _) => ("EvidenceConstruction", "EvidenceShape"),
+            ("Cancelled", _, "ResponseReceived", 200) => ("ResponseBody", "Cancellation"),
+            ("Cancelled", _, "ResponseReceived", _) => ("ResponseHeaders", "Cancellation"),
+            ("Cancelled", _, "SubmissionUnknown", _) => ("RequestDispatch", "Cancellation"),
+            ("Cancelled", _, _, _) => ("BeforeDispatch", "Cancellation"),
+            ("TimedOut", _, "ResponseReceived", 200) => ("ResponseBody", "Timeout"),
+            ("TimedOut", _, "ResponseReceived", _) => ("ResponseHeaders", "Timeout"),
+            ("TimedOut", _, "SubmissionUnknown", _) => ("RequestDispatch", "Timeout"),
+            ("TimedOut", _, _, _) => ("BeforeDispatch", "Timeout"),
+            _ => (null, null)
+        };
 
     private static string[] ReadLines(string value) => value.Split(["\r\n", "\n"], StringSplitOptions.RemoveEmptyEntries);
 

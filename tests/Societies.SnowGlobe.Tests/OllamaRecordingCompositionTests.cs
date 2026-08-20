@@ -19,9 +19,12 @@ public sealed class OllamaRecordingCompositionTests
         SnowGlobeOllamaRecordingCompositionModule first = new(Root); SnowGlobeOllamaRecordingCompositionModule second = new(Root);
         OllamaRecordingCompositionPlan a = first.Prepare(new(777, StartTicks), "composition-nonce-v1");
         OllamaRecordingCompositionPlan b = second.Prepare(new(777, StartTicks), "composition-nonce-v1");
-        Assert.Equal("88c848fa574ae1fe4e90197231d7c414ab2f5b5e08faa85e13ab59c8e04b060b", a.PlanDigestSha256);
+        Assert.Equal("db77fb419a681dc6768c49ef79d92b6cc4ef8c893aef46101e913029e80dbfdd", a.PlanDigestSha256);
+        Assert.Equal("snow_globe_ollama_recording_composition_plan/v2", a.SchemaVersion);
         Assert.Equal(a.PlanDigestSha256, b.PlanDigestSha256);
         Assert.Equal(OllamaRecordingExecutionArtifactModule.RelativeArtifactPath, a.RelativeArtifactPath);
+        Assert.Equal("artifacts/snowglobe/local-model/qwen3.5-4b-recording-execution-v2.json", a.RelativeArtifactPath);
+        Assert.DoesNotContain("recording-execution-v1", a.RelativeArtifactPath, StringComparison.Ordinal);
         Assert.Equal(SnowGlobePinnedOllamaRecordingModule.RegisteredCellDigestSha256, a.RegisteredCellDigestSha256);
         Assert.False(a.IsConsumed); Assert.False(a.AdditionalAttemptAuthorized);
         string publicValues = string.Join('|', typeof(OllamaRecordingCompositionPlan).GetProperties(BindingFlags.Instance | BindingFlags.Public).Select(property => property.GetValue(a)?.ToString()));
@@ -68,6 +71,7 @@ public sealed class OllamaRecordingCompositionTests
         Assert.Equal(1, factory.CreateCount); Assert.Equal(12, factory.Transport!.CallCount);
         Assert.Equal(1, store.ReserveCount); Assert.Equal(1, store.PublishCount); Assert.Equal(0, store.ReadCount);
         Assert.NotNull(result.Artifact); Assert.Equal(12, result.Artifact!.CompletedSlotCount); Assert.True(result.Artifact.ReceiptPresent); Assert.NotNull(result.Artifact.NestedRecordingEvidenceDigestSha256);
+        Assert.Equal("None", result.Artifact.TerminalCheckpointCode); Assert.Equal("None", result.Artifact.TerminalPolicyCode);
         Assert.Equal(result.Artifact.CanonicalDigestSha256, module.ValidateArtifact().CanonicalDigestSha256); Assert.Equal(1, store.ReadCount);
         string json = Encoding.UTF8.GetString(result.Artifact.CanonicalUtf8.Span);
         Assert.DoesNotContain("happy-composition-v1", json, StringComparison.Ordinal);
@@ -130,6 +134,28 @@ public sealed class OllamaRecordingCompositionTests
         Assert.Equal(SubmissionState.ResponseReceived.ToString(), result.Artifact.TerminalSubmissionState);
         Assert.Equal(ChargeState.NotApplicable, result.Artifact.TerminalChargeState); Assert.Equal(200, result.Artifact.TerminalStatusCode);
         Assert.True(result.Artifact.ReceiptPresent); Assert.Null(result.Artifact.NestedRecordingEvidenceDigestSha256);
+        Assert.Equal(1, factory.Transport!.CallCount); Assert.Equal(1, store.ReserveCount); Assert.Equal(1, store.PublishCount);
+    }
+
+    [Fact]
+    public async Task OneSlotHttp200BodyReadTransportFailure_PersistsTerminalArtifactInsteadOfGenericIndeterminate()
+    {
+        InMemoryOllamaRecordingArtifactStore store = new();
+        ThrowingFactory factory = new(
+            OllamaLoopbackTransportFailureCode.TransportFailure,
+            SubmissionState.ResponseReceived,
+            200);
+        SnowGlobeOllamaRecordingCompositionModule module = new(
+            Root, new SnowGlobePinnedOllamaRecordingModule(new FixedClock(1), factory), store);
+
+        OllamaRecordingCompositionResult result = await module.ExecuteAndPublishOnceAsync(
+            module.Prepare(new(777, StartTicks), "one-slot-http200-body-read-transport-failure-v1"));
+
+        Assert.Equal("Failed", result.OutcomeCode); Assert.Equal("TransportFailure", result.FailureCode);
+        Assert.True(result.ArtifactPublished); Assert.NotNull(result.Artifact);
+        Assert.Equal(0, result.Artifact!.CompletedSlotCount); Assert.Equal(1, result.Artifact.TerminalSlotOrdinal);
+        Assert.Equal(SubmissionState.ResponseReceived.ToString(), result.Artifact.TerminalSubmissionState);
+        Assert.Equal(200, result.Artifact.TerminalStatusCode);
         Assert.Equal(1, factory.Transport!.CallCount); Assert.Equal(1, store.ReserveCount); Assert.Equal(1, store.PublishCount);
     }
 
@@ -308,6 +334,31 @@ public sealed class OllamaRecordingCompositionTests
         Assert.Null(artifact.InnerException); Assert.Equal(artifact.Code, artifact.Message); Assert.DoesNotContain("DecoderFallback", artifact.ToString(), StringComparison.Ordinal);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task UnexpectedPostRecordingPrepublicationFailure_PublishesRawFreeCompositionCheckpointArtifactOnce(bool argumentException)
+    {
+        const string sentinel = "unexpected-prepublication-secret-C:/outside/raw";
+        InMemoryOllamaRecordingArtifactStore store = new(); TestTransportFactory factory = new(TestWrappers.Valid());
+        SnowGlobeOllamaRecordingCompositionModule module = new(
+            Root,
+            new SnowGlobePinnedOllamaRecordingModule(new FixedClock(1), factory),
+            store,
+            (_, _) => { throw argumentException ? new ArgumentException(sentinel) : new InvalidOperationException(sentinel); });
+
+        OllamaRecordingCompositionResult result = await module.ExecuteAndPublishOnceAsync(
+            module.Prepare(new(777, StartTicks), "unexpected-prepublication-v2"));
+
+        Assert.Equal("CompositionFailed", result.OutcomeCode); Assert.Equal("CompositionFailed", result.FailureCode);
+        Assert.True(result.ArtifactPublished); Assert.NotNull(result.Artifact);
+        Assert.Equal("Composition", result.Artifact!.TerminalCheckpointCode); Assert.Equal("UnexpectedException", result.Artifact.TerminalPolicyCode);
+        Assert.Equal(1, store.ReserveCount); Assert.Equal(1, store.PublishCount);
+        string canonical = Encoding.UTF8.GetString(result.Artifact!.CanonicalUtf8.Span);
+        Assert.DoesNotContain(sentinel, canonical, StringComparison.Ordinal);
+        Assert.DoesNotContain("unexpected-prepublication-v2", canonical, StringComparison.Ordinal);
+    }
+
     private sealed class FixedClock : ICognitionQualityRecordingSessionClock
     {
         private readonly long _now; internal FixedClock(long now) => _now = now; public long NowMilliseconds => _now;
@@ -317,11 +368,13 @@ public sealed class OllamaRecordingCompositionTests
     {
         JsonObject receipt = JsonNode.Parse(complete.CanonicalUtf8.Span)!.AsObject();
         receipt["status"] = "terminal"; receipt["outcome"] = "Failed"; receipt["failure_code"] = "EvidenceRejected";
+        receipt["terminal_checkpoint_code"] = "EvidenceConstruction"; receipt["terminal_policy_code"] = "EvidenceShape";
         receipt["terminal_slot_ordinal"] = 12; receipt["nested_recording_evidence_digest_sha256"] = null;
         receipt.Remove("receipt_payload_digest_sha256"); byte[] payload = JsonSerializer.SerializeToUtf8Bytes(receipt);
         string payloadDigest = CognitionQualityHash.Sha256(payload); Array.Clear(payload);
         receipt["receipt_payload_digest_sha256"] = payloadDigest; byte[] canonical = JsonSerializer.SerializeToUtf8Bytes(receipt);
-        return new SnowGlobeOllamaLoopbackRecordingReceipt(canonical, payloadDigest, complete.Slots, null);
+        return new SnowGlobeOllamaLoopbackRecordingReceipt(canonical, payloadDigest, complete.Slots, null,
+            OllamaRecordingTerminalCheckpointCode.EvidenceConstruction, OllamaRecordingTerminalPolicyCode.EvidenceShape);
     }
 
     internal sealed class TestTransportFactory : IOllamaLoopbackRecordingTransportFactory

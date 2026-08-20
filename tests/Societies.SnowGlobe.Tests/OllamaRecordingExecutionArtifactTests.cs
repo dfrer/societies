@@ -14,16 +14,72 @@ public sealed class OllamaRecordingExecutionArtifactTests
     public async Task CanonicalArtifact_GoldenRoundTripsAndIsDetached()
     {
         OllamaRecordingExecutionArtifact artifact = await CreateArtifact();
-        Assert.Equal("19597b8a215f79b009d636b1528deee48c0a18b73a5a63341f03ddd6c63120cc", artifact.CanonicalDigestSha256);
-        Assert.Equal("5f7b742cf5badbd55546c054bbf93de6ddf9ade8d844cdcc4b41e93070883e9f", artifact.PayloadDigestSha256);
+        Assert.Equal("df98538e35aa6ed26e5587022c880d8347dd40283f00b51268ca6b479c2435bf", artifact.CanonicalDigestSha256);
+        Assert.Equal("cee6a6629b7ac5706b4e047d79b951d37aef32ec3a2544f42d6fbea79fea2a7d", artifact.PayloadDigestSha256);
         OllamaRecordingExecutionArtifact validated = OllamaRecordingExecutionArtifactModule.Validate(artifact.CanonicalUtf8);
         Assert.Equal(artifact.CanonicalDigestSha256, validated.CanonicalDigestSha256);
         Assert.Equal(artifact.PayloadDigestSha256, validated.PayloadDigestSha256);
         Assert.InRange(artifact.CanonicalUtf8.Length, 1, OllamaRecordingExecutionArtifactModule.MaximumArtifactBytes);
         byte[] detached = artifact.CanonicalUtf8.ToArray(); detached[0] ^= 0xff;
         Assert.Equal((byte)'{', artifact.CanonicalUtf8.Span[0]);
-        Assert.Equal("snow_globe_ollama_recording_execution_artifact/v1", artifact.SchemaVersion);
+        Assert.Equal("snow_globe_ollama_recording_execution_artifact/v2", artifact.SchemaVersion);
+        Assert.Equal("None", artifact.TerminalCheckpointCode); Assert.Equal("None", artifact.TerminalPolicyCode);
         Assert.Equal("raw_free_local_loopback_recording_execution_binding_only", artifact.Semantics);
+    }
+
+    [Fact]
+    public async Task TerminalCheckpointAndPolicy_AreExactAcrossResultReceiptAndArtifact()
+    {
+        OllamaRecordingExecutionArtifact artifact = await CreateArtifact();
+        Assert.Equal("None", artifact.TerminalCheckpointCode); Assert.Equal("None", artifact.TerminalPolicyCode);
+        AssertIntegrityValidForgeryRejected(artifact, (_, result, _) => result["terminal_checkpoint_code"] = "ResponseHeaders");
+        AssertIntegrityValidForgeryRejected(artifact, (_, result, _) => result["terminal_policy_code"] = "ContentType");
+        AssertIntegrityValidForgeryRejected(artifact, (_, _, receipt) => receipt!["terminal_checkpoint_code"] = "ResponseHeaders");
+        AssertIntegrityValidForgeryRejected(artifact, (_, _, receipt) => receipt!["terminal_policy_code"] = "ContentType");
+        AssertIntegrityValidForgeryRejected(artifact, (_, result, receipt) =>
+        {
+            result["terminal_checkpoint_code"] = "ResponseHeaders"; result["terminal_policy_code"] = "ContentType";
+            receipt!["terminal_checkpoint_code"] = "ResponseHeaders"; receipt["terminal_policy_code"] = "ContentType";
+        });
+        AssertIntegrityValidForgeryRejected(artifact, (_, result, _) => result["terminal_checkpoint_code"] = "RawSentinelC:/outside/nonce");
+
+        string json = Encoding.UTF8.GetString(artifact.CanonicalUtf8.Span);
+        byte[] reordered = Encoding.UTF8.GetBytes(json.Replace(
+            "\"terminal_checkpoint_code\":\"None\",\"terminal_policy_code\":\"None\"",
+            "\"terminal_policy_code\":\"None\",\"terminal_checkpoint_code\":\"None\"",
+            StringComparison.Ordinal));
+        Assert.Throws<OllamaRecordingExecutionArtifactException>(() => OllamaRecordingExecutionArtifactModule.Validate(reordered));
+    }
+
+    [Fact]
+    public async Task PayloadDigestWrongJsonKinds_AreAlwaysClosedArtifactExceptions()
+    {
+        OllamaRecordingExecutionArtifact artifact = await CreateArtifact();
+        Func<JsonNode?>[] wrongKinds =
+        [
+            static () => JsonValue.Create(7),
+            static () => null,
+            static () => new JsonObject(),
+            static () => new JsonArray()
+        ];
+
+        foreach (Func<JsonNode?> createWrongKind in wrongKinds)
+        {
+            JsonObject outer = JsonNode.Parse(artifact.CanonicalUtf8.Span)!.AsObject();
+            outer["artifact_payload_digest_sha256"] = createWrongKind();
+            OllamaRecordingExecutionArtifactException outerFailure = Assert.Throws<OllamaRecordingExecutionArtifactException>(
+                () => OllamaRecordingExecutionArtifactModule.Validate(JsonSerializer.SerializeToUtf8Bytes(outer)));
+            Assert.Equal("artifact_payload_digest_invalid", outerFailure.Code); Assert.Null(outerFailure.InnerException);
+
+            JsonObject receiptRoot = JsonNode.Parse(artifact.CanonicalUtf8.Span)!.AsObject();
+            JsonObject result = receiptRoot["result"]!.AsObject(); JsonObject receipt = receiptRoot["receipt"]!.AsObject();
+            receipt["receipt_payload_digest_sha256"] = createWrongKind();
+            result["receipt_digest_sha256"] = CognitionQualityHash.Sha256(JsonSerializer.SerializeToUtf8Bytes(receipt));
+            RecomputeLastDigest(receiptRoot, "artifact_payload_digest_sha256");
+            OllamaRecordingExecutionArtifactException receiptFailure = Assert.Throws<OllamaRecordingExecutionArtifactException>(
+                () => OllamaRecordingExecutionArtifactModule.Validate(JsonSerializer.SerializeToUtf8Bytes(receiptRoot)));
+            Assert.Equal("artifact_receipt_payload_digest_invalid", receiptFailure.Code); Assert.Null(receiptFailure.InnerException);
+        }
     }
 
     [Theory]
@@ -42,7 +98,7 @@ public sealed class OllamaRecordingExecutionArtifactTests
         byte[] changed = mutation switch
         {
             "unknown" => Encoding.UTF8.GetBytes(json.Replace("{\"schema_version\"", "{\"unknown\":0,\"schema_version\"", StringComparison.Ordinal)),
-            "duplicate" => Encoding.UTF8.GetBytes(json.Replace("{\"schema_version\":", "{\"schema_version\":\"snow_globe_ollama_recording_execution_artifact/v1\",\"schema_version\":", StringComparison.Ordinal)),
+            "duplicate" => Encoding.UTF8.GetBytes(json.Replace("{\"schema_version\":", "{\"schema_version\":\"snow_globe_ollama_recording_execution_artifact/v2\",\"schema_version\":", StringComparison.Ordinal)),
             "missing" => Encoding.UTF8.GetBytes(json.Replace("\"semantics\":\"raw_free_local_loopback_recording_execution_binding_only\",", string.Empty, StringComparison.Ordinal)),
             "noncanonical" => Encoding.UTF8.GetBytes(json + " "),
             "digest" => Encoding.UTF8.GetBytes(ReplaceFirstDigestCharacter(json, "\"plan_digest_sha256\":\"")),
@@ -201,6 +257,12 @@ public sealed class OllamaRecordingExecutionArtifactTests
             result["terminal_submission_state"] = submission.ToString();
             result["terminal_status_code"] = status;
             receipt!["failure_code"] = "RuntimeChanged";
+            string checkpoint = submission == SubmissionState.DefinitelyNotSubmitted
+                ? "BeforeDispatch" : wrapperPresent ? "AfterExchange" : "ResponseHeaders";
+            result["terminal_checkpoint_code"] = checkpoint;
+            result["terminal_policy_code"] = "RuntimeOwnership";
+            receipt["terminal_checkpoint_code"] = checkpoint;
+            receipt["terminal_policy_code"] = "RuntimeOwnership";
             receipt["slots"]![2]!["wrapper_digest_sha256"] = wrapperPresent ? new string('d', 64) : null;
             receipt["slots"]![2]!["status_code"] = status;
             receipt["slots"]![2]!["submission_state"] = submission.ToString();
@@ -302,11 +364,13 @@ public sealed class OllamaRecordingExecutionArtifactTests
         SnowGlobeOllamaRecordingCompositionModule module = new(Root);
         OllamaRecordingCompositionPlan authorizationPlan = module.Prepare(new(777, StartTicks), "authorization-row-v1");
         OllamaRecordingExecutionArtifact authorization = OllamaRecordingExecutionArtifactModule.Create(authorizationPlan,
-            new("AuthorizationRejected", "AuthorizationRejected", false, null, null, null, null, null, null, null, null, null, null));
+            new("AuthorizationRejected", "AuthorizationRejected", false, null, null, null, null, null, null, null,
+                "Authorization", "Authorization", null, null, null));
         SnowGlobeOllamaRecordingCompositionModule second = new(Root);
         OllamaRecordingExecutionArtifact composition = OllamaRecordingExecutionArtifactModule.Create(
             second.Prepare(new(777, StartTicks), "composition-row-v1"),
-            new("CompositionFailed", "CompositionFailed", false, null, null, null, null, null, null, null, null, null, null));
+            new("CompositionFailed", "CompositionFailed", false, null, null, null, null, null, null, null,
+                "Composition", "UnexpectedException", null, null, null));
         Assert.Equal("AuthorizationRejected", OllamaRecordingExecutionArtifactModule.Validate(authorization.CanonicalUtf8).OutcomeCode);
         Assert.Equal("CompositionFailed", OllamaRecordingExecutionArtifactModule.Validate(composition.CanonicalUtf8).OutcomeCode);
 
@@ -355,9 +419,13 @@ public sealed class OllamaRecordingExecutionArtifactTests
             result["recording_failure_code"] = "EvidenceRejected";
             result["terminal_slot_ordinal"] = 12;
             result["nested_recording_evidence_digest_sha256"] = null;
+            result["terminal_checkpoint_code"] = "EvidenceConstruction";
+            result["terminal_policy_code"] = "EvidenceShape";
             receipt!["status"] = "terminal";
             receipt["outcome"] = "Failed";
             receipt["failure_code"] = "EvidenceRejected";
+            receipt["terminal_checkpoint_code"] = "EvidenceConstruction";
+            receipt["terminal_policy_code"] = "EvidenceShape";
             receipt["terminal_slot_ordinal"] = 12;
             receipt["nested_recording_evidence_digest_sha256"] = null;
         });
@@ -388,6 +456,8 @@ public sealed class OllamaRecordingExecutionArtifactTests
             (_, result, _) => result["terminal_charge_state"] = null,
             (_, result, _) => result["terminal_status_code"] = 201,
             (_, result, _) => result["terminal_status_code"] = null,
+            (_, result, _) => result["terminal_checkpoint_code"] = "WrapperDecode",
+            (_, result, _) => result["terminal_policy_code"] = "WrapperShape",
             (_, result, _) => result["additional_attempt_authorized"] = true,
             (_, result, _) => result["additional_attempt_authorized"] = null,
             (_, result, _) => result["automatic_retry_count"] = 1,
@@ -409,6 +479,8 @@ public sealed class OllamaRecordingExecutionArtifactTests
             (_, _, receipt) => receipt!["status"] = "complete",
             (_, _, receipt) => receipt!["outcome"] = "Complete",
             (_, _, receipt) => receipt!["failure_code"] = "None",
+            (_, _, receipt) => receipt!["terminal_checkpoint_code"] = "WrapperDecode",
+            (_, _, receipt) => receipt!["terminal_policy_code"] = "WrapperShape",
             (_, _, receipt) => receipt!["slots"]!.AsArray().RemoveAt(11),
             (_, _, receipt) => receipt!["slots"]![11]!["wrapper_digest_sha256"] = null,
             (_, _, receipt) => receipt!["slots"]![11]!["status_code"] = 201,
@@ -492,7 +564,11 @@ public sealed class OllamaRecordingExecutionArtifactTests
         result["recording_failure_code"] = "HttpResponseRejected";
         result["terminal_submission_state"] = SubmissionState.ResponseReceived.ToString();
         result["terminal_status_code"] = status;
+        result["terminal_checkpoint_code"] = "ResponseHeaders";
+        result["terminal_policy_code"] = status == 200 ? "ContentType" : "HttpStatus";
         receipt["failure_code"] = "HttpResponseRejected";
+        receipt["terminal_checkpoint_code"] = "ResponseHeaders";
+        receipt["terminal_policy_code"] = status == 200 ? "ContentType" : "HttpStatus";
         receipt["slots"]![2]!["wrapper_digest_sha256"] = null;
         receipt["slots"]![2]!["status_code"] = status;
         receipt["slots"]![2]!["submission_state"] = SubmissionState.ResponseReceived.ToString();
@@ -504,7 +580,11 @@ public sealed class OllamaRecordingExecutionArtifactTests
         result["recording_failure_code"] = "ResponseBodyRejected";
         result["terminal_submission_state"] = SubmissionState.ResponseReceived.ToString();
         result["terminal_status_code"] = 200;
+        result["terminal_checkpoint_code"] = "ResponseBody";
+        result["terminal_policy_code"] = "BodyRead";
         receipt["failure_code"] = "ResponseBodyRejected";
+        receipt["terminal_checkpoint_code"] = "ResponseBody";
+        receipt["terminal_policy_code"] = "BodyRead";
         receipt["slots"]![2]!["wrapper_digest_sha256"] = wrapperDigest;
         receipt["slots"]![2]!["status_code"] = 200;
         receipt["slots"]![2]!["submission_state"] = SubmissionState.ResponseReceived.ToString();
