@@ -1,12 +1,16 @@
 # Snow Globe provider preflight, Ollama repair, and qwen3.5 smoke handoff
 
-## Current v4 score-summary handoff (Attempt-005 complete; comparison pending)
+## Current v4 score-summary handoff (Attempt-005 and comparison complete)
 
 ## Attempt-005 completed v4 evidence
 
+The bounded in-memory local-premium comparison is complete/historical: benchmark SHA `961b54b7d8cfb2aead566579499adb3aa21f1d85bfbe0b7c6fc504a8adc40e0d`, v4 SHA `fecf71cbe8cc268dadb603d29735a816bc0152ccc79b4ea44c5a91d7e7616d3e`, report 8,916 B SHA `19f7053418471c8c70bdb9fffbfcca042f5bd87c24796a28227a672558990e56`, payload `3c3ff4a3e97344afb80d2a6283827e3d846c73e0b7730765c5d09601db6d4acc`. Status `insufficient_live_premium_evidence`; null `premium`, `premium_cost`, `performance_delta`, `quality_delta`; 12 scenarios, 262/1200, dispositions 0/7/2/1/2. No file/provider/network/live traffic/mutation. FINAL COMPARISON GO, no P0-P2, exact bindings.
+
+Exactly one next action remains: offline Design-It-Twice for the first live-premium evidence/profile boundary and its separately chosen provider, official endpoint/auth/schema, credential, redirect/status/retry/charge/cost policy, and explicit paid/provider authority. No provider or authority is selected or available.
+
 The authorized preflight/record-once/validate ran exactly once and exited 0 in 141/26,420/175 ms; record was `Complete`/`None`, 12/12, plan digest `6c70ed6d69c378eb1fcfbc744dacdb4af41085cb57eaac42b4ee45e1ebd333b4`. Artifact SHA `fecf71cbe8cc268dadb603d29735a816bc0152ccc79b4ea44c5a91d7e7616d3e`; receipt `86ccd0b468a1b633f386b0abbe90386695f994c40be47f24dcffd63867529d65`; summary `1958e8b6c4601c9a9e9834403cd431a67a48324735dca7484d10809509245a9a`; report `0e5fe1d7a8849caf7294c79c5c80863db0aa7521fb3b7e991b469867538a4fe1`. Score 262/1200, dispositions 0/7/2/1/2, cq1..cq12 valid, 12 HTTP 200 POSTs, no retry/alternate/fallback/download/update. Deep review FINAL EVIDENCE GO, no P0-P2; cleanup is operator-observed only. The prior v4 action is complete.
 
-Exactly one next action remains: bounded offline local-premium comparison with null `premium`, `premium_cost`, `performance_delta`, `quality_delta`, no provider/live traffic; design the smallest offline invocation seam first if needed.
+The bounded offline local-premium comparison is complete and historical. The sole current action is the offline live-premium boundary Design-It-Twice above.
 
 Commit `9bb4027` adds the fixed raw-free cognition score-summary codec atop v3 evidence commit `38c9bdb`. It embeds the canonical quality report once, with no prompts, responses, proposals, submissions, or model text; exact scoring tuple checks include scenario-specific lower-utility reachability. Dispositions are bounded; the detached result proves structure/integrity only. For a complete result, only the score summary is populated; terminal and `EvidenceRejected` are null. No historical backfill occurred.
 
@@ -16,7 +20,7 @@ The v4 schema identities are plan `snow_globe_ollama_recording_composition_plan/
 
 Validation progressed through red phases `10/23/33`, then `6/92/98`, to final targeted `98/98`; owned `157/157`, full SnowGlobe `706/706`, Recording CLI `59/59`, Benchmark CLI `56/56`, and three Release builds passed with 0 warnings/errors. Independent deep review was FINAL CODE GO with no P0-P2 findings. Snapshot `21c3f18942072aaa6954a6f95dd86528c33b94386d6263938b906565a66032e8`.
 
-Attempt-001 through Attempt-004 chronology and v1-v3 artifacts remain preserved; older actions are historical/superseded. Attempt-005 completed the bounded v4 action. The sole current action is the bounded offline local-premium comparison above.
+Attempt-001 through Attempt-004 chronology and v1-v3 artifacts remain preserved; older actions are historical/superseded. Attempt-005 and the bounded offline comparison are complete. The sole current action is the offline live-premium boundary Design-It-Twice above.
 
 ## Historical v3 live settlement handoff (Attempt-004; completed/historical)
 
@@ -24,7 +28,7 @@ Clean HEAD `18f2dc622ce27f14dd9f5d4126176a944244ae8d` is FINAL EVIDENCE GO with 
 
 Identities are plan `snow_globe_ollama_recording_composition_plan/v3`, receipt `snow_globe_ollama_loopback_recording_receipt/v3`, artifact `snow_globe_ollama_recording_execution_artifact/v3`, transport `snow-globe-ollama-loopback-recording-transport-adapter/v3`; path `artifacts/snowglobe/local-model/qwen3.5-4b-recording-execution-v3.json`. Artifact is 9,621 B, SHA/canonical `12c3e0f9b8fe13f8eaf2525642e130e4298e18c37f2fff58c2a316d2292f7b67`, payload `da3797cfe041ec949083eaf6e5ec9fecd22df4564ff767b176d94e2da10a50a1`; receipt is 6,169 B, SHA `e1a43bc8b7c44dfde6d71e372f1c6237239efe4ffd60716b869be72bf9dcb6b1`, payload `4d3541fff307a3f7dcd5aea1958c51ba0cc49f7b62df01ee07b086868dfb97fc`; nested digest `cd846a45a85085d1943ce8eb0c8b10ad489a802c1727f58d9d1ca04328e594e7`.
 
-All 12 slots completed with `ResponseReceived`/200, `NotApplicable`, checkpoint/policy `None`, zero counters, and `additional=false`; validator accepted. CUDA RTX2070S was 34/34. Operator cleanup was zero but not independently retained or re-observed; raw-free/cloud/body-log were false. Limits are HttpClient-exposed framing only, no raw-wire proof, no embedded/revalidated nested scoring digest, no proof against overwritten captures, HEAD as provenance only, and cleanup as operator observation. No quality/intelligence/winner/cost/commercial/general-compatibility/world-authority claim. The v3 action is complete/historical. Historical/superseded next action: offline Design-It-Twice for bounded raw-free nested score-summary projection or explicit non-retention, before local-premium quality comparison; it does not replace the current authorized v4 action above.
+All 12 slots completed with `ResponseReceived`/200, `NotApplicable`, checkpoint/policy `None`, zero counters, and `additional=false`; validator accepted. CUDA RTX2070S was 34/34. Operator cleanup was zero but not independently retained or re-observed; raw-free/cloud/body-log were false. Limits are HttpClient-exposed framing only, no raw-wire proof, no embedded/revalidated nested scoring digest, no proof against overwritten captures, HEAD as provenance only, and cleanup as operator observation. No quality/intelligence/winner/cost/commercial/general-compatibility/world-authority claim. The v3 action and its score-summary next action are complete and historical.
 
 ## Offline Ollama recording codec milestone (completed)
 
