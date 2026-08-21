@@ -6,15 +6,21 @@
 
 ## Decision (v4 offline score-summary; Attempt-001..004 historical)
 
+## Attempt-005 completed v4 evidence
+
+Attempt-005 completed the authorized v4 action: preflight/record-once/validate exactly once, all exit 0 in 141/26,420/175 ms, `Complete`/`None`, 12/12, plan digest `6c70ed6d69c378eb1fcfbc744dacdb4af41085cb57eaac42b4ee45e1ebd333b4`. Artifact SHA `fecf71cbe8cc268dadb603d29735a816bc0152ccc79b4ea44c5a91d7e7616d3e`; receipt `86ccd0b468a1b633f386b0abbe90386695f994c40be47f24dcffd63867529d65`; summary `1958e8b6c4601c9a9e9834403cd431a67a48324735dca7484d10809509245a9a`; report `0e5fe1d7a8849caf7294c79c5c80863db0aa7521fb3b7e991b469867538a4fe1`. Score 262/1200, 12 HTTP 200 POSTs, no retry/alternate/fallback/download/update. Deep review FINAL EVIDENCE GO, no P0-P2; cleanup operator-observed only.
+
+Exactly one next action remains: bounded offline local-premium comparison, expecting `insufficient_live_premium_evidence` and null `premium`, `premium_cost`, `performance_delta`, `quality_delta`, with no provider/live traffic; design the smallest offline invocation seam first if needed.
+
 The current decision is the bounded offline v4 score-summary handoff in commit `9bb4027`, atop v3 evidence commit `38c9bdb`. The fixed raw-free codec embeds the canonical quality report once and retains no prompts, responses, proposals, submissions, or model text. Exact scoring tuple checks include scenario-specific lower-utility reachability; dispositions are bounded; the detached result establishes structure/integrity only. For a complete result, only the score summary is populated; terminal and `EvidenceRejected` are null. No historical backfill occurred.
 
 Terminal outcomes also include `Failed`, `Cancelled`, and `TimedOut`; only `Complete` populates the score summary/digest, while `EvidenceRejected` and other non-Complete terminal paths retain null summary/digest. The authoritative comparison fields are `premium`, `premium_cost`, `performance_delta`, and `quality_delta`, all null with status `insufficient_live_premium_evidence`.
 
-The v4 schema identities are plan `snow_globe_ollama_recording_composition_plan/v4`, receipt `snow_globe_ollama_loopback_recording_receipt/v4`, and artifact `snow_globe_ollama_recording_execution_artifact/v4`; the artifact filename/path is `artifacts/snowglobe/local-model/qwen3.5-4b-recording-execution-v4.json`. Transport remains v3 and the high-level adapter/profile remains v2. The receipt is canonical digest-only and the artifact embeds the summary once. The two-input `LocalPremiumComparison` overload emits local cognition facts only, with `premium`, `premium_cost`, `performance_delta`, and `quality_delta` null and status `insufficient_live_premium_evidence`; the one-input golden is unchanged. No live v4 artifact exists. This does not claim authenticity, premium quality/cost/winner, or general intelligence.
+The v4 schema identities are plan `snow_globe_ollama_recording_composition_plan/v4`, receipt `snow_globe_ollama_loopback_recording_receipt/v4`, and artifact `snow_globe_ollama_recording_execution_artifact/v4`; the retained artifact path is `artifacts/snowglobe/local-model/qwen3.5-4b-recording-execution-v4.json`. Transport remains v3 and the high-level adapter/profile remains v2. The receipt is canonical digest-only and the artifact embeds the summary once. The two-input `LocalPremiumComparison` overload emits local cognition facts only, with `premium`, `premium_cost`, `performance_delta`, and `quality_delta` null and status `insufficient_live_premium_evidence`; the one-input golden is unchanged. This does not claim authenticity, premium quality/cost/winner, or general intelligence.
 
 Validation recorded red phases `10/23/33`, then `6/92/98`, followed by final targeted `98/98`, owned `157/157`, full SnowGlobe `706/706`, Recording CLI `59/59`, Benchmark CLI `56/56`, and three Release builds with 0 warnings/errors. Independent deep review was FINAL CODE GO with no P0-P2 findings. Snapshot `21c3f18942072aaa6954a6f95dd86528c33b94386d6263938b906565a66032e8`.
 
-Attempt-001 through Attempt-004 chronology and v1-v3 artifacts remain preserved; older actions are historical/superseded. Exactly one current authorized action remains: execute one bounded local v4 preflight/record-once/validate against retained `qwen3.5:4b`, with no retry/alternate/download, preserving v1-v3. It has not occurred.
+Attempt-001 through Attempt-004 chronology and v1-v3 artifacts remain preserved; older actions are historical/superseded. Attempt-005 completed the bounded v4 action. The sole current action is the bounded offline local-premium comparison above.
 
 The v3 live settlement below is historical, not current.
 
