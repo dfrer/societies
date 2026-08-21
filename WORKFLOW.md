@@ -1,16 +1,30 @@
 # Snow Globe provider preflight, Ollama repair, and qwen3.5 smoke handoff
 
+## Current OpenRouter premium-evidence settlement
+
+The current documentation handoff records code commit `ef32576`, `Add offline OpenRouter premium evidence boundary`. Design-It-Twice chose the hybrid authorize -> single-use run -> pure validate seam, with separate immutable profile registry and premium-evidence journal; existing preflight, offline recording, legacy journal, comparison, two-tier/world, `src/societies/`, and v1-v4 artifacts remain unchanged. Exact changed code/test files and the offline contract are listed in [OPENROUTER_PREMIUM_EVIDENCE.md](labs/Societies.SnowGlobe/OPENROUTER_PREMIUM_EVIDENCE.md); the decision is [ADR 0015](docs/adr/0015-offline-openrouter-premium-evidence-boundary.md).
+
+Approval-time profile facts verified 2026-08-20 are frozen as `openai/gpt-5.6-luna`, request slug `openai/gpt-5.6-luna-20260709`, context `1,050,000`, base prompt/completion `$0.20/M` and `$1.20/M`, threshold override at 272,000 input tokens of `$0.40/M` and `$1.80/M`, and the exact OpenRouter chat-completion endpoint/policy documented in the contract with links to official primary pages. The hard 4,096-input bound makes that override unreachable for this slice. Limits are exactly 12 sequential one-exchange slots, 4,096/128 input/output tokens, 8 KiB request/response, 5-second credential-lease lifetime, 60-second aggregate execution timeout, 1,000 microusd per slot, and 12,000 microusd (`$0.012`) aggregate.
+
+Validation is focused independent 68/68, owner SnowGlobe Release 774/774, independent Release build 0 warnings/errors, snapshot `927cf8615ac6ad314938538a695eb9a9ce2c4bfe10c43cac4c379e9d9281b198`; first review NO-GO (4 P1 + 2 P2), bounded correction closed all, final deep review CODE GO with no P0-P2. No key/account/credit/paid/provider/network/file/world/deployment action occurred; no retained live/provider artifact or comparison file was produced, while offline tests did construct in-memory artifacts. This is not live-ready; blocker `paid_cost_ceiling_and_account_binding_unresolved`, plus dated-slug callability, response compatibility, durable live journal, bounded nonce replay, and managed Bearer-copy residuals.
+
+### Outcome, scope, delivery state, and one next action
+
+The exact new files are the five `labs/Societies.SnowGlobe/{AssemblyInfo.cs,OpenRouterPremiumProfile.cs,OpenRouterPremiumJournal.cs,OpenRouterPremiumExchange.cs,OpenRouterPremiumEvidence.cs}` files and three matching `tests/Societies.SnowGlobe.Tests/*OpenRouterPremium*Tests.cs` files. This prose-only handoff changes no executable files and performs no Git action.
+
+Bind an OpenRouter account identity plus trusted credential lease source and explicitly approve the frozen aggregate ceiling of 12,000 microusd (`$0.012`), then verify dated-slug callability, current catalog and price, and a durable journal in a security-reviewed preflight before any separately authorized one-shot provider run.
+
 ## Current v4 score-summary handoff (Attempt-005 and comparison complete)
 
 ## Attempt-005 completed v4 evidence
 
 The bounded in-memory local-premium comparison is complete/historical: benchmark SHA `961b54b7d8cfb2aead566579499adb3aa21f1d85bfbe0b7c6fc504a8adc40e0d`, v4 SHA `fecf71cbe8cc268dadb603d29735a816bc0152ccc79b4ea44c5a91d7e7616d3e`, report 8,916 B SHA `19f7053418471c8c70bdb9fffbfcca042f5bd87c24796a28227a672558990e56`, payload `3c3ff4a3e97344afb80d2a6283827e3d846c73e0b7730765c5d09601db6d4acc`. Status `insufficient_live_premium_evidence`; null `premium`, `premium_cost`, `performance_delta`, `quality_delta`; 12 scenarios, 262/1200, dispositions 0/7/2/1/2. No file/provider/network/live traffic/mutation. FINAL COMPARISON GO, no P0-P2, exact bindings.
 
-Exactly one next action remains: offline Design-It-Twice for the first live-premium evidence/profile boundary and its separately chosen provider, official endpoint/auth/schema, credential, redirect/status/retry/charge/cost policy, and explicit paid/provider authority. No provider or authority is selected or available.
+Historical/superseded next action: offline Design-It-Twice for the first live-premium evidence/profile boundary. It was settled by `ef32576`; see the current OpenRouter settlement above.
 
 The authorized preflight/record-once/validate ran exactly once and exited 0 in 141/26,420/175 ms; record was `Complete`/`None`, 12/12, plan digest `6c70ed6d69c378eb1fcfbc744dacdb4af41085cb57eaac42b4ee45e1ebd333b4`. Artifact SHA `fecf71cbe8cc268dadb603d29735a816bc0152ccc79b4ea44c5a91d7e7616d3e`; receipt `86ccd0b468a1b633f386b0abbe90386695f994c40be47f24dcffd63867529d65`; summary `1958e8b6c4601c9a9e9834403cd431a67a48324735dca7484d10809509245a9a`; report `0e5fe1d7a8849caf7294c79c5c80863db0aa7521fb3b7e991b469867538a4fe1`. Score 262/1200, dispositions 0/7/2/1/2, cq1..cq12 valid, 12 HTTP 200 POSTs, no retry/alternate/fallback/download/update. Deep review FINAL EVIDENCE GO, no P0-P2; cleanup is operator-observed only. The prior v4 action is complete.
 
-The bounded offline local-premium comparison is complete and historical. The sole current action is the offline live-premium boundary Design-It-Twice above.
+The bounded offline local-premium comparison and its former Design-It-Twice action are complete and historical. The current action is the OpenRouter preflight decision above.
 
 Commit `9bb4027` adds the fixed raw-free cognition score-summary codec atop v3 evidence commit `38c9bdb`. It embeds the canonical quality report once, with no prompts, responses, proposals, submissions, or model text; exact scoring tuple checks include scenario-specific lower-utility reachability. Dispositions are bounded; the detached result proves structure/integrity only. For a complete result, only the score summary is populated; terminal and `EvidenceRejected` are null. No historical backfill occurred.
 
@@ -20,7 +34,7 @@ The v4 schema identities are plan `snow_globe_ollama_recording_composition_plan/
 
 Validation progressed through red phases `10/23/33`, then `6/92/98`, to final targeted `98/98`; owned `157/157`, full SnowGlobe `706/706`, Recording CLI `59/59`, Benchmark CLI `56/56`, and three Release builds passed with 0 warnings/errors. Independent deep review was FINAL CODE GO with no P0-P2 findings. Snapshot `21c3f18942072aaa6954a6f95dd86528c33b94386d6263938b906565a66032e8`.
 
-Attempt-001 through Attempt-004 chronology and v1-v3 artifacts remain preserved; older actions are historical/superseded. Attempt-005 and the bounded offline comparison are complete. The sole current action is the offline live-premium boundary Design-It-Twice above.
+Attempt-001 through Attempt-004 chronology and v1-v3 artifacts remain preserved; older actions are historical/superseded. Attempt-005 and the bounded offline comparison are complete. The former Design-It-Twice action is historical/superseded.
 
 ## Historical v3 live settlement handoff (Attempt-004; completed/historical)
 
