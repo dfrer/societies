@@ -1,0 +1,288 @@
+using System.Net;
+using System.Reflection;
+using System.Security.Cryptography;
+using System.Text;
+using System.Text.Json;
+using Xunit;
+
+namespace Societies.SnowGlobe.Tests;
+
+public sealed class OpenRouterPremiumHttpExchangeTests
+{
+    [Fact]
+    public async Task HttpAdapterEmitsOneExactNonStreamingClosedRouteRequestWithoutAmbientFeatures()
+    {
+        CapturingHandler handler = new(SuccessBody());
+        using OpenRouterPremiumHttpExchange exchange = OpenRouterPremiumHttpExchange.CreateForOfflineTests(handler);
+        OpenRouterPremiumProfile profile = OpenRouterPremiumProfileRegistry.Selected;
+        CognitionQualityPromptEnvelopeSlot slot = CognitionQualityPromptEnvelopeBuilderModule.Create("prompt-v1").Slots[0];
+        using OpenRouterPremiumExchangeRequest request = OpenRouterPremiumExchangeRequest.CreateForProfile(profile, slot, new string('b', 64));
+        byte[] lease = Encoding.ASCII.GetBytes("offline-invalid-fixture-token");
+
+        using OpenRouterPremiumExchangeResponse response = await exchange.ExchangeOnceAsync(request, lease, CancellationToken.None);
+
+        Assert.Equal(1, handler.CallCount);
+        Assert.Equal(HttpMethod.Post, handler.Method);
+        Assert.Equal(OpenRouterPremiumProfile.EffectiveUri, handler.Uri!.AbsoluteUri);
+        Assert.Equal("Bearer", handler.AuthorizationScheme);
+        Assert.Equal("enabled", handler.RouterMetadata);
+        Assert.Equal("application/json", handler.ContentType);
+        Assert.False(exchange.RedirectsAllowed);
+        Assert.False(exchange.AutomaticRetriesAllowed);
+        Assert.False(exchange.ProxyAllowed);
+        Assert.False(exchange.CookiesAllowed);
+        Assert.False(exchange.AmbientAuthenticationAllowed);
+        Assert.False(exchange.AutomaticDecompressionAllowed);
+        Assert.Equal(1, exchange.SerializationCount);
+        using JsonDocument body = JsonDocument.Parse(handler.Body!);
+        JsonElement root = body.RootElement;
+        Assert.Equal(OpenRouterPremiumProfile.CanonicalModelSlug, root.GetProperty("model").GetString());
+        Assert.Equal(handler.Body!.Length, request.CanonicalRequestByteCount);
+        Assert.Equal(Convert.ToHexString(SHA256.HashData(handler.Body)).ToLowerInvariant(), request.RequestDigestSha256);
+        Assert.False(root.GetProperty("stream").GetBoolean());
+        Assert.False(root.TryGetProperty("temperature", out _));
+        Assert.Equal("json_schema", root.GetProperty("response_format").GetProperty("type").GetString());
+        Assert.True(root.GetProperty("response_format").GetProperty("json_schema").GetProperty("strict").GetBoolean());
+        JsonElement provider = root.GetProperty("provider");
+        Assert.False(provider.GetProperty("allow_fallbacks").GetBoolean());
+        Assert.True(provider.GetProperty("require_parameters").GetBoolean());
+        Assert.Equal("deny", provider.GetProperty("data_collection").GetString());
+        Assert.True(provider.GetProperty("zdr").GetBoolean());
+        Assert.Equal(new[] { "openai" }, provider.GetProperty("order").EnumerateArray().Select(value => value.GetString()));
+        Assert.Equal(new[] { "openai" }, provider.GetProperty("only").EnumerateArray().Select(value => value.GetString()));
+    }
+
+    [Theory]
+    [InlineData("{\"model\":\"openai/gpt-5.6-luna\",\"model\":\"openai/gpt-5.6-luna\"}", "response_json_duplicate_property")]
+    [InlineData("{\"model\":\"openai/gpt-5.6-luna\",\"unknown\":true}", "response_json_unknown_property")]
+    [InlineData("[[[[[[[[[0]]]]]]]]]", "response_json_too_deep")]
+    [InlineData("{\"cost\":1e9999}", "response_number_invalid")]
+    public void StrictParserRejectsMalformedClosedShapes(string json, string expected)
+    {
+        OpenRouterPremiumEvidenceException exception = Assert.Throws<OpenRouterPremiumEvidenceException>(() =>
+            OpenRouterPremiumResponseParser.Parse(Encoding.UTF8.GetBytes(json), 200, OpenRouterPremiumProfileRegistry.Selected, "cq1", "request-digest"));
+        Assert.Equal(expected, exception.Code);
+        Assert.Equal(expected, exception.Message);
+        Assert.Null(exception.InnerException);
+    }
+
+    [Fact]
+    public void StrictParserRejectsInvalidUtf8AndOversizeWithoutEcho()
+    {
+        byte[] invalid = [0xC3, 0x28];
+        OpenRouterPremiumEvidenceException utf8 = Assert.Throws<OpenRouterPremiumEvidenceException>(() =>
+            OpenRouterPremiumResponseParser.Parse(invalid, 200, OpenRouterPremiumProfileRegistry.Selected, "cq1", "request-digest"));
+        Assert.Equal("response_utf8_invalid", utf8.Code);
+        byte[] oversized = new byte[OpenRouterPremiumProfileRegistry.Selected.Bounds.MaximumResponseBytes + 1];
+        Assert.Equal("response_too_large", Assert.Throws<OpenRouterPremiumEvidenceException>(() =>
+            OpenRouterPremiumResponseParser.Parse(oversized, 200, OpenRouterPremiumProfileRegistry.Selected, "cq1", "request-digest")).Code);
+    }
+
+    [Fact]
+    public async Task MalformedCredentialZeroesCanonicalRequestCopyWithoutSendingOrEchoing()
+    {
+        bool requestCopyZeroed = false;
+        CapturingHandler handler = new(SuccessBody());
+        using OpenRouterPremiumHttpExchange exchange = OpenRouterPremiumHttpExchange.CreateForOfflineTests(
+            handler, zeroed => requestCopyZeroed = zeroed);
+        using OpenRouterPremiumExchangeRequest request = Request();
+        byte[] malformed = Encoding.ASCII.GetBytes("fixture\nsecret");
+
+        OpenRouterPremiumEvidenceException exception = await Assert.ThrowsAsync<OpenRouterPremiumEvidenceException>(() =>
+            exchange.ExchangeOnceAsync(request, malformed, CancellationToken.None).AsTask());
+
+        Assert.Equal("credential_invalid", exception.Code);
+        Assert.Equal("credential_invalid", exception.Message);
+        Assert.DoesNotContain("fixture", exception.ToString(), StringComparison.Ordinal);
+        Assert.True(requestCopyZeroed);
+        FieldInfo canonicalField = typeof(OpenRouterPremiumExchangeRequest).GetField("_canonicalRequestUtf8", BindingFlags.Instance | BindingFlags.NonPublic)!;
+        Assert.All((byte[])canonicalField.GetValue(request)!, value => Assert.Equal(0, value));
+        FieldInfo promptField = typeof(OpenRouterPremiumExchangeRequest).GetField("_promptUtf8", BindingFlags.Instance | BindingFlags.NonPublic)!;
+        Assert.All((byte[])promptField.GetValue(request)!, value => Assert.Equal(0, value));
+        Assert.Equal(0, handler.CallCount);
+    }
+
+    [Theory]
+    [InlineData("{\"cached_tokens\":0,\"unknown\":0}")]
+    [InlineData("[]")]
+    public void StrictParserRejectsUnclosedOrWrongUsageDetails(string details)
+    {
+        string json = Encoding.UTF8.GetString(SuccessBody()).Replace(
+            "\"cost\":0.000044", $"\"cost\":0.000044,\"prompt_tokens_details\":{details}", StringComparison.Ordinal);
+
+        OpenRouterPremiumEvidenceException exception = Assert.Throws<OpenRouterPremiumEvidenceException>(() =>
+            OpenRouterPremiumResponseParser.Parse(Encoding.UTF8.GetBytes(json), 200,
+                OpenRouterPremiumProfileRegistry.Selected, "cq1", new string('d', 64)));
+
+        Assert.Contains(exception.Code, new[] { "response_json_unknown_property", "response_usage_invalid" });
+    }
+
+    [Theory]
+    [InlineData(400, SubmissionState.SubmissionUnknown, ChargeState.Unknown)]
+    [InlineData(401, SubmissionState.SubmissionUnknown, ChargeState.Unknown)]
+    [InlineData(402, SubmissionState.SubmissionUnknown, ChargeState.Unknown)]
+    [InlineData(403, SubmissionState.SubmissionUnknown, ChargeState.Unknown)]
+    [InlineData(404, SubmissionState.SubmissionUnknown, ChargeState.Unknown)]
+    [InlineData(413, SubmissionState.SubmissionUnknown, ChargeState.Unknown)]
+    [InlineData(422, SubmissionState.SubmissionUnknown, ChargeState.Unknown)]
+    [InlineData(408, SubmissionState.SubmissionUnknown, ChargeState.Unknown)]
+    [InlineData(429, SubmissionState.SubmissionUnknown, ChargeState.Unknown)]
+    [InlineData(500, SubmissionState.SubmissionUnknown, ChargeState.Unknown)]
+    [InlineData(502, SubmissionState.SubmissionUnknown, ChargeState.Unknown)]
+    [InlineData(503, SubmissionState.SubmissionUnknown, ChargeState.Unknown)]
+    public void HttpStatusClassifiesSubmissionAndChargeSeparately(int status, SubmissionState submission, ChargeState charge)
+    {
+        byte[] body = Encoding.UTF8.GetBytes($"{{\"error\":{{\"code\":{status},\"message\":\"closed\"}}}}");
+        OpenRouterPremiumSlotReceipt receipt = OpenRouterPremiumResponseParser.Parse(body, status,
+            OpenRouterPremiumProfileRegistry.Selected, "cq1", new string('d', 64));
+
+        Assert.Equal(submission, receipt.SubmissionState);
+        Assert.Equal(charge, receipt.ChargeState);
+        Assert.Equal(0, receipt.SettledMicrousd);
+        Assert.Null(receipt.Proposal);
+    }
+
+    [Theory]
+    [InlineData(400, false)]
+    [InlineData(400, true)]
+    [InlineData(401, true)]
+    [InlineData(402, true)]
+    [InlineData(403, true)]
+    [InlineData(404, true)]
+    [InlineData(413, true)]
+    [InlineData(422, true)]
+    public void ProviderAttributedHttpFailuresRemainUnknownAfterDispatchMarker(int status, bool providerAttributed)
+    {
+        string metadata = providerAttributed ? ",\"metadata\":{\"provider_name\":\"OpenAI\",\"raw\":\"closed\"}" : string.Empty;
+        byte[] body = Encoding.UTF8.GetBytes($"{{\"error\":{{\"code\":{status},\"message\":\"closed\"{metadata}}}}}");
+
+        OpenRouterPremiumSlotReceipt receipt = OpenRouterPremiumResponseParser.Parse(body, status,
+            OpenRouterPremiumProfileRegistry.Selected, "cq1", new string('d', 64));
+
+        Assert.Equal(SubmissionState.SubmissionUnknown, receipt.SubmissionState);
+        Assert.Equal(ChargeState.Unknown, receipt.ChargeState);
+    }
+
+    [Fact]
+    public void SuccessRequiresExactRoutingUsageAndProposalBinding()
+    {
+        OpenRouterPremiumSlotReceipt receipt = OpenRouterPremiumResponseParser.Parse(SuccessBody(), 200,
+            OpenRouterPremiumProfileRegistry.Selected, "cq1", new string('d', 64));
+        Assert.Equal(SubmissionState.ResponseReceived, receipt.SubmissionState);
+        Assert.Equal(ChargeState.Settled, receipt.ChargeState);
+        Assert.Equal(44, receipt.SettledMicrousd);
+        Assert.Equal(120, receipt.TotalTokens);
+        Assert.Equal(new SnowGlobeActionProposal("agent-00", SnowGlobeActionKind.GatherWood, 12), receipt.Proposal);
+    }
+
+    [Fact]
+    public void MutableModelAliasIsRejectedAtResponseAndRoutingBindings()
+    {
+        byte[] aliased = Encoding.UTF8.GetBytes(Encoding.UTF8.GetString(SuccessBody()).Replace(
+            OpenRouterPremiumProfile.CanonicalModelSlug, OpenRouterPremiumProfile.ModelIdentity, StringComparison.Ordinal));
+
+        Assert.Equal("response_binding_invalid", Assert.Throws<OpenRouterPremiumEvidenceException>(() =>
+            OpenRouterPremiumResponseParser.Parse(aliased, 200, OpenRouterPremiumProfileRegistry.Selected,
+                "cq1", new string('d', 64))).Code);
+    }
+
+    [Theory]
+    [InlineData("\"requested\":\"openai/gpt-5.6-luna-20260709\"", "\"requested\":\"openai/gpt-5.6-luna\"")]
+    [InlineData("\"provider\":\"OpenAI\",\"model\":\"openai/gpt-5.6-luna-20260709\",\"selected\":true", "\"provider\":\"OpenAI\",\"model\":\"openai/gpt-5.6-luna\",\"selected\":true")]
+    [InlineData("\"provider\":\"OpenAI\",\"model\":\"openai/gpt-5.6-luna-20260709\",\"status\":200", "\"provider\":\"OpenAI\",\"model\":\"openai/gpt-5.6-luna\",\"status\":200")]
+    public void MutableModelAliasIsRejectedInEachRouterEvidenceBinding(string exact, string mutation)
+    {
+        string body = Encoding.UTF8.GetString(SuccessBody());
+        Assert.Contains(exact, body, StringComparison.Ordinal);
+        byte[] mutated = Encoding.UTF8.GetBytes(body.Replace(exact, mutation, StringComparison.Ordinal));
+
+        Assert.Equal("response_binding_invalid", Assert.Throws<OpenRouterPremiumEvidenceException>(() =>
+            OpenRouterPremiumResponseParser.Parse(mutated, 200, OpenRouterPremiumProfileRegistry.Selected,
+                "cq1", new string('d', 64))).Code);
+    }
+
+    [Fact]
+    public async Task TamperedCanonicalSerializedRequestIsRejectedByBothBuiltInAdapters()
+    {
+        using OpenRouterPremiumExchangeRequest request = Request();
+        FieldInfo field = typeof(OpenRouterPremiumExchangeRequest).GetField("_canonicalRequestUtf8", BindingFlags.Instance | BindingFlags.NonPublic)!;
+        byte[] bytes = (byte[])field.GetValue(request)!;
+        bytes[^2] ^= 1;
+        byte[] lease = Encoding.ASCII.GetBytes("offline-invalid-fixture-token");
+        CapturingHandler handler = new(SuccessBody());
+        using OpenRouterPremiumHttpExchange http = OpenRouterPremiumHttpExchange.CreateForOfflineTests(handler);
+        ScriptedOpenRouterPremiumExchange scripted = ScriptedOpenRouterPremiumExchange.CreateSuccessful();
+
+        Assert.Equal("exchange_request_binding_invalid", (await Assert.ThrowsAsync<OpenRouterPremiumEvidenceException>(() =>
+            http.ExchangeOnceAsync(request, lease, CancellationToken.None).AsTask())).Code);
+        Assert.Equal("exchange_request_binding_invalid", (await Assert.ThrowsAsync<OpenRouterPremiumEvidenceException>(() =>
+            scripted.ExchangeOnceAsync(request, lease, CancellationToken.None).AsTask())).Code);
+        Assert.Equal(0, handler.CallCount);
+        Assert.Equal(0, scripted.CallCount);
+    }
+
+    [Fact]
+    public async Task HttpAdapterDoesNotFollowRedirectOrRetryTerminalStatus()
+    {
+        CapturingHandler redirect = new(Encoding.UTF8.GetBytes("{\"error\":{\"code\":307,\"message\":\"redirect\"}}"), HttpStatusCode.TemporaryRedirect, new Uri("https://attacker.invalid/redirect"));
+        using (OpenRouterPremiumHttpExchange exchange = OpenRouterPremiumHttpExchange.CreateForOfflineTests(redirect))
+        {
+            using OpenRouterPremiumExchangeRequest request = Request();
+            OpenRouterPremiumEvidenceException exception = await Assert.ThrowsAsync<OpenRouterPremiumEvidenceException>(() =>
+                exchange.ExchangeOnceAsync(request, Encoding.ASCII.GetBytes("offline-invalid-fixture-token"), CancellationToken.None).AsTask());
+            Assert.Equal("effective_uri_mismatch", exception.Code);
+            Assert.Equal(1, redirect.CallCount);
+        }
+
+        CapturingHandler terminal = new(Encoding.UTF8.GetBytes("{\"error\":{\"code\":503,\"message\":\"closed\"}}"), HttpStatusCode.ServiceUnavailable);
+        using (OpenRouterPremiumHttpExchange exchange = OpenRouterPremiumHttpExchange.CreateForOfflineTests(terminal))
+        using (OpenRouterPremiumExchangeRequest request = Request())
+        using (OpenRouterPremiumExchangeResponse response = await exchange.ExchangeOnceAsync(request, Encoding.ASCII.GetBytes("offline-invalid-fixture-token"), CancellationToken.None))
+        {
+            Assert.Equal(503, response.StatusCode);
+            Assert.Equal(1, terminal.CallCount);
+            Assert.Equal(1, exchange.SerializationCount);
+        }
+    }
+
+    private static OpenRouterPremiumExchangeRequest Request()
+    {
+        OpenRouterPremiumProfile profile = OpenRouterPremiumProfileRegistry.Selected;
+        CognitionQualityPromptEnvelopeSlot slot = CognitionQualityPromptEnvelopeBuilderModule.Create("prompt-v1").Slots[0];
+        return OpenRouterPremiumExchangeRequest.CreateForProfile(profile, slot, new string('b', 64));
+    }
+
+    private static byte[] SuccessBody() => Encoding.UTF8.GetBytes("""
+        {"id":"gen-offline","object":"chat.completion","created":1,"model":"openai/gpt-5.6-luna-20260709","choices":[{"index":0,"finish_reason":"stop","message":{"role":"assistant","content":"{\"agent_id\":\"agent-00\",\"action\":\"GatherWood\",\"quantity\":12}"}}],"usage":{"prompt_tokens":100,"completion_tokens":20,"total_tokens":120,"cost":0.000044},"openrouter_metadata":{"requested":"openai/gpt-5.6-luna-20260709","strategy":"direct","attempt":1,"is_byok":false,"endpoints":{"total":1,"available":[{"provider":"OpenAI","model":"openai/gpt-5.6-luna-20260709","selected":true}]},"attempts":[{"provider":"OpenAI","model":"openai/gpt-5.6-luna-20260709","status":200}],"pipeline":[]}}
+        """);
+
+    private sealed class CapturingHandler(byte[] responseBody, HttpStatusCode statusCode = HttpStatusCode.OK, Uri? effectiveUri = null) : HttpMessageHandler
+    {
+        public int CallCount { get; private set; }
+        public HttpMethod? Method { get; private set; }
+        public Uri? Uri { get; private set; }
+        public string? AuthorizationScheme { get; private set; }
+        public string? RouterMetadata { get; private set; }
+        public string? ContentType { get; private set; }
+        public byte[]? Body { get; private set; }
+
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            CallCount++;
+            Method = request.Method;
+            Uri = request.RequestUri;
+            AuthorizationScheme = request.Headers.Authorization?.Scheme;
+            RouterMetadata = request.Headers.GetValues("X-OpenRouter-Metadata").Single();
+            ContentType = request.Content!.Headers.ContentType!.MediaType;
+            Body = await request.Content.ReadAsByteArrayAsync(cancellationToken);
+            return new HttpResponseMessage(statusCode)
+            {
+                RequestMessage = effectiveUri is null ? request : new HttpRequestMessage(request.Method, effectiveUri),
+                Content = new ByteArrayContent(responseBody)
+                {
+                    Headers = { ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/json") }
+                }
+            };
+        }
+    }
+}
