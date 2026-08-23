@@ -28,7 +28,8 @@
 
 ### Repository state, limitations, and next action
 
-- Delivery is pending on `codex/snowglobe-readonly-persisted-inspection`; after the required GitHub check and merge, record exact delivery evidence.
+- Implementation commit `419af90` was published through [PR #131](https://github.com/dfrer/societies/pull/131); required `build-test-smoke` passed in 3m50s and the PR merged to `master` as `61c746e`.
+- This bounded inspection milestone is complete; select the next isolated offline Snow Globe milestone before changing provider, credential, paid, live-state, mutable-session, or `src/societies/` behavior.
 - Two-pass equality detects observed drift but not a byte-identical ABA replacement between reads. The inspector inherits existing caller-supplied path semantics and does not add a path-security policy or read lease.
 - The resolved frozen-fixture line-ending defect is recorded as `WI-SOCIETIES-2026-012` and `WI-GLOBAL-2026-131`.
 - No provider, credential, payment, network, live-state, mutable-session, or `src/societies/` behavior changed.
