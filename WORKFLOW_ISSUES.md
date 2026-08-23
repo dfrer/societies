@@ -168,6 +168,26 @@ Statuses: **Open**, **Monitoring**, **Resolved**, **Deferred**, **Rejected**.
 
 ## Resolved entries
 
+### WI-SOCIETIES-2026-010 — OpenRouter readiness omitted the preserved one-shot state-generation blocker
+
+- **Tier:** T1
+- **Status:** Resolved
+- **Scope/project:** `C:\Users\hunte\.codex\worktrees\b452\societies`; Snow Globe OpenRouter premium evidence
+- **Category:** provider safety
+- **First seen:** 2026-08-22 (America/Vancouver)
+- **Last seen:** 2026-08-22 (America/Vancouver)
+- **Occurrences:** 1 separately authorized fourth preflight invocation
+- **Reporter:** main orchestrator
+- **Symptom:** The reviewed readiness plan said a fresh authority could be created by invoking `preflight` once, but the fixed production `v1` state tree still preserved Attempt 3's `execution-consumed.tombstone`, runtime authorization, terminal evidence, and validation receipt. The one permitted invocation therefore stopped as `preflight_already_attempted`.
+- **Impact:** The fourth authority was consumed without a metadata GET, credential read, new authorization, paid request, charge, or new validation artifact. Retrying, reusing Attempt 3's digest, or moving/deleting its state would violate the no-retry and evidence-preservation boundaries.
+- **Evidence:** The invocation returned `OPENROUTER_FAILED code=preflight_already_attempted` / exit 1. `OpenRouterPremiumProductionBridge.PreflightAsync` checks `preflight-failed`, `runtime-authorization`, and `execution-consumed` before metadata verification. The live tree hashes still match Attempt 3: runtime authorization `d13f4aaa9f930f27923147ef7ddcadbcefaf5938ca7217698fb8aa477a683288`, preflight artifact `60e8f0d1b07b6ed7c8f191d94add6f2187035cbc7f6d9492d95dc0ec7c7e19ad`, evidence `af485def08d5c465807d069fc59a566c077f111b003723c0ece75b8db7732ea0`, and receipt `0885c1b530d7a12b27cbe6c7c5eddc6dd27957125fe1650d741f70a4c0332ba3`.
+- **Workaround:** The fourth authority remains terminal and may not be retried. Preserve v1 exactly as evidence; all future paid work must use the distinct v2 lifecycle and a newly authorized authority digest.
+- **Root cause:** The offline readiness manifest behaviorally covered the in-memory evidence executor but did not cover production state-generation rollover. The documented five-step plan assumed the fixed `v1` path was empty even though preservation of Attempt 3 made that assumption false.
+- **Proposed fix:** Completed. The reviewed v2 composition provides exact fixed-v2 selection, anchor-before-root construction, exact O(1) authority lookup, durable claims, claimed-journal execution, final journal/evidence binding, exact-digest validation, and junction/reparse/path-swap containment without consulting or moving v1. A separately authorized one-shot command provisioned the distinct 32-byte state anchor and initialized only the empty v2 scaffold. Local files and the anchor do not claim protection against the owning user, an administrator, or whole-volume rollback.
+- **Auto-fix eligibility/rationale:** No — T1 provider-state lifecycle, preserved paid evidence, and no-retry authority required explicit scope, security review, and user authorization.
+- **Resolution/validation:** Resolved. The one-time provisioning command succeeded once with exit 0, anchor identity SHA-256 `d6eb68c6f14e32f342caee45f4c13d2398e4c0830e39d3e7cbfe478a10d9a78d`, and matching state-contract digest `f9d12a2c0bcfb60cc874dc49bc60462197700d681a42ae98ce4bcefd28ac8511`; its authority is consumed and it must not be rerun. The implementation gate passed 881/881 full Snow Globe and 70/70 full CLI/security tests; after the Global-mutex correction, focused anchor/admin 19/19, CLI security 14/14, bridge 56/56, and the CLI Release build passed. Independent review found no P0-P2 issue; the abandoned-mutex path lacks a dedicated regression (P3). The separately authorized fifth run then exercised the corrected v2 lifecycle exactly once: authority `40655d2535520757b411595593deda6a714127e5366cf9afb3292aab0f3bc2d6` produced one generation, one execution claim, terminal raw-free evidence `7d449d77c3b82ff1984a0e1d33c3026b80566321938418b2eb363ff1aa9f1bd8`, and one validation claim/receipt `7f42dfd15ffe1e4134d7110a9f491f9dfaae1632d69e14180bf47dbc6056dc49`; no second dispatch or retry occurred and v1 was not accessed. The provider charge remains unknown because local zero settlement is not provider accounting.
+- **Linked entry:** WI-GLOBAL-2026-127 in `C:\Users\hunte\Documents\Codex\WORKFLOW_ISSUES.md`.
+
 ### WI-SOCIETIES-2026-004 — Canonical matrix generated runner IDs longer than its own safety contract
 
 - **Tier:** T1

@@ -72,7 +72,7 @@ public sealed class OpenRouterPremiumEvidenceTests
 
         TestContext expired = CreateContext();
         OpenRouterPremiumExecutionCapability expiredCapability = OpenRouterPremiumEvidenceModule.Authorize(expired.Authorization);
-        expired.Clock.Advance(61_000);
+        expired.Clock.Advance(OpenRouterPremiumProfile.RuntimeAuthorizationLifetimeMilliseconds + 1);
         OpenRouterPremiumEvidenceException expiry = await Assert.ThrowsAsync<OpenRouterPremiumEvidenceException>(() => OpenRouterPremiumEvidenceModule.ExecuteOnceAsync(
             expiredCapability, expired.Exchange, expired.Leases, expired.Journal, expired.Clock, CancellationToken.None).AsTask());
         Assert.Equal("capability_expired", expiry.Code);
@@ -168,7 +168,10 @@ public sealed class OpenRouterPremiumEvidenceTests
             "exchange_contract" => context.Authorization with { ExchangeContractDigestSha256 = "invalid" },
             "lease" => context.Authorization with { CredentialLeaseSourceIdentity = "INVALID" },
             "nonce" => context.Authorization with { AuthorizationNonce = new string('a', 129) },
-            "expiry" => context.Authorization with { ExpiresAtMilliseconds = 61_001 },
+            "expiry" => context.Authorization with
+            {
+                ExpiresAtMilliseconds = 1_000 + OpenRouterPremiumProfile.RuntimeAuthorizationLifetimeMilliseconds + 1
+            },
             _ => throw new InvalidOperationException()
         };
 
@@ -240,7 +243,8 @@ public sealed class OpenRouterPremiumEvidenceTests
             OpenRouterPremiumProfile.CatalogEvidenceDigestSha256, OpenRouterPremiumProfile.EndpointEvidenceDigestSha256,
             account, header.JournalIdentity, header.HeaderChecksumSha256, exchange.Identity,
             exchange.ContractDigestSha256, leases.Identity,
-            $"openrouter-premium-authorization/credential-{behavior.ToString().ToLowerInvariant()}-{Interlocked.Increment(ref _contextCounter)}", 1_000, 61_000);
+            $"openrouter-premium-authorization/credential-{behavior.ToString().ToLowerInvariant()}-{Interlocked.Increment(ref _contextCounter)}",
+            1_000, 1_000 + OpenRouterPremiumProfile.RuntimeAuthorizationLifetimeMilliseconds);
 
         OpenRouterPremiumEvidenceArtifact artifact = await OpenRouterPremiumEvidenceModule.ExecuteOnceAsync(
             OpenRouterPremiumEvidenceModule.Authorize(authorization), exchange, leases, journal, clock, CancellationToken.None);
@@ -278,7 +282,7 @@ public sealed class OpenRouterPremiumEvidenceTests
             leases.Identity,
             $"openrouter-premium-authorization/test-nonce-{Interlocked.Increment(ref _contextCounter)}",
             1_000,
-            61_000);
+            1_000 + OpenRouterPremiumProfile.RuntimeAuthorizationLifetimeMilliseconds);
         return new(authorization, exchange, leases, journal, clock);
     }
 

@@ -275,7 +275,10 @@ public sealed class CredentialLease : IDisposable
                 throw new ProviderPreflightException(ProviderPreflightReasonCode.LeaseExpired);
             if (_ownedBuffer.Length == 0)
                 throw new ProviderPreflightException(ProviderPreflightReasonCode.LeaseInvalid);
-            return await operation(_ownedBuffer.AsMemory(), cancellationToken).ConfigureAwait(false);
+            long remainingMilliseconds = _expiresAtMilliseconds - nowMilliseconds;
+            using CancellationTokenSource leaseLifetime = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            leaseLifetime.CancelAfter(TimeSpan.FromMilliseconds(remainingMilliseconds));
+            return await operation(_ownedBuffer.AsMemory(), leaseLifetime.Token).ConfigureAwait(false);
         }
         finally
         {

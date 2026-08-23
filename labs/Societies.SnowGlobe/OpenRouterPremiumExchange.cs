@@ -1,6 +1,5 @@
 using System.Buffers;
 using System.Globalization;
-using System.Net;
 using System.Net.Http.Headers;
 using System.Security.Cryptography;
 using System.Text;
@@ -137,7 +136,9 @@ internal static class OpenRouterPremiumCanonicalRequestSerializer
             writer.WriteString("model", OpenRouterPremiumProfile.CanonicalModelSlug);
             writer.WritePropertyName("messages"); writer.WriteStartArray(); writer.WriteStartObject();
             writer.WriteString("role", "user"); writer.WriteString("content", promptUtf8); writer.WriteEndObject(); writer.WriteEndArray();
-            writer.WriteNumber("max_tokens", profile.Bounds.MaximumOutputTokens);
+            writer.WriteNumber("max_completion_tokens", profile.Bounds.MaximumOutputTokens);
+            writer.WritePropertyName("reasoning"); writer.WriteStartObject();
+            writer.WriteString("effort", "minimal"); writer.WriteBoolean("exclude", true); writer.WriteEndObject();
             writer.WriteBoolean("stream", false);
             writer.WritePropertyName("response_format"); writer.WriteStartObject(); writer.WriteString("type", "json_schema");
             writer.WritePropertyName("json_schema"); writer.WriteStartObject(); writer.WriteString("name", "snow_globe_action_proposal");
@@ -147,7 +148,11 @@ internal static class OpenRouterPremiumCanonicalRequestSerializer
             writer.WritePropertyName("order"); writer.WriteStartArray(); writer.WriteStringValue(OpenRouterPremiumProfile.ProviderSlug); writer.WriteEndArray();
             writer.WritePropertyName("only"); writer.WriteStartArray(); writer.WriteStringValue(OpenRouterPremiumProfile.ProviderSlug); writer.WriteEndArray();
             writer.WriteBoolean("allow_fallbacks", false); writer.WriteBoolean("require_parameters", true);
-            writer.WriteString("data_collection", "deny"); writer.WriteBoolean("zdr", true); writer.WriteEndObject();
+            writer.WriteString("data_collection", "deny"); writer.WriteBoolean("zdr", true);
+            writer.WriteString("sort", "price"); writer.WritePropertyName("max_price"); writer.WriteStartObject();
+            writer.WriteNumber("prompt", OpenRouterPremiumProfile.ProviderMaxPromptUsdPerMillionTokens);
+            writer.WriteNumber("completion", OpenRouterPremiumProfile.ProviderMaxCompletionUsdPerMillionTokens);
+            writer.WriteEndObject(); writer.WriteEndObject();
             writer.WriteEndObject();
         }
         return stream.ToArray();
@@ -361,7 +366,9 @@ public sealed class OpenRouterPremiumHttpExchange : IOpenRouterPremiumExchange, 
 {
     public const string AdapterIdentity = "openrouter-premium-http/openrouter-chat-completions/v1";
     public static readonly string AdapterContractDigestSha256 = OpenRouterPremiumCanonical.Digest(
-        "openrouter-premium-http-contract/v1|registered-sealed-type|post-exact-uri|canonical-model-revision|bearer|shared-canonical-request|exact-request-byte-digest|one-serialization|one-exchange|consume-and-zero-request|response-headers-read|no-redirect|no-retry|no-proxy|no-cookies|no-ambient-auth|no-decompression|bounded-response|strict-utf8|raw-free-errors");
+        "openrouter-premium-http-contract/v1|registered-sealed-type|post-exact-uri|exact-api-model-id|bearer|shared-canonical-request|exact-request-byte-digest|one-serialization|one-exchange|consume-and-zero-request|response-headers-read|strict-utf8|raw-free-errors|hardened_policy_sha256="
+        + OpenRouterPremiumHardenedHttp.PolicyDigestSha256);
+    internal static string HardenedHttpPolicyDigestSha256 => OpenRouterPremiumHardenedHttp.PolicyDigestSha256;
     private readonly HttpClient _client;
     private readonly Action<bool>? _requestCopyZeroObserver;
     private int _serializations;
@@ -384,25 +391,7 @@ public sealed class OpenRouterPremiumHttpExchange : IOpenRouterPremiumExchange, 
     public int SerializationCount => Volatile.Read(ref _serializations);
 
     public static OpenRouterPremiumHttpExchange CreateProduction()
-    {
-        SocketsHttpHandler handler = new()
-        {
-            AllowAutoRedirect = false,
-            UseProxy = false,
-            Proxy = null,
-            UseCookies = false,
-            CookieContainer = null,
-            Credentials = null,
-            PreAuthenticate = false,
-            AutomaticDecompression = DecompressionMethods.None,
-            MaxResponseHeadersLength = 8,
-            ConnectTimeout = TimeSpan.FromSeconds(15),
-            MaxConnectionsPerServer = 1,
-            PooledConnectionLifetime = TimeSpan.FromMinutes(2),
-            PooledConnectionIdleTimeout = TimeSpan.FromSeconds(30)
-        };
-        return new(handler);
-    }
+        => new(OpenRouterPremiumHardenedHttp.CreateSocketsHandler());
 
     internal static OpenRouterPremiumHttpExchange CreateForOfflineTests(
         HttpMessageHandler handler,
@@ -457,7 +446,9 @@ public sealed class OpenRouterPremiumHttpExchange : IOpenRouterPremiumExchange, 
                     throw new OpenRouterPremiumEvidenceException("response_content_type_invalid");
                 if (response.Content.Headers.ContentLength is long length && length > profile.Bounds.MaximumResponseBytes)
                     throw new OpenRouterPremiumEvidenceException("response_too_large");
-                byte[] responseBody = await ReadBoundedAsync(response.Content, profile.Bounds.MaximumResponseBytes, cancellationToken).ConfigureAwait(false);
+                byte[] responseBody = await OpenRouterPremiumHardenedHttp.ReadBoundedAsync(
+                    response.Content, profile.Bounds.MaximumResponseBytes,
+                    static () => new OpenRouterPremiumEvidenceException("response_too_large"), cancellationToken).ConfigureAwait(false);
                 return OpenRouterPremiumExchangeResponse.Received((int)response.StatusCode, effective, headerBytes, responseBody);
             }
         }
@@ -509,34 +500,12 @@ public sealed class OpenRouterPremiumHttpExchange : IOpenRouterPremiumExchange, 
         return total;
     }
 
-    private static async Task<byte[]> ReadBoundedAsync(HttpContent content, int maximum, CancellationToken cancellationToken)
-    {
-        await using Stream input = await content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
-        byte[] rented = ArrayPool<byte>.Shared.Rent(Math.Min(maximum + 1, 8192));
-        using MemoryStream output = new(Math.Min(maximum, 4096));
-        try
-        {
-            while (true)
-            {
-                int read = await input.ReadAsync(rented.AsMemory(0, Math.Min(rented.Length, maximum + 1)), cancellationToken).ConfigureAwait(false);
-                if (read == 0) break;
-                if (output.Length + read > maximum) throw new OpenRouterPremiumEvidenceException("response_too_large");
-                output.Write(rented, 0, read);
-            }
-            return output.ToArray();
-        }
-        finally
-        {
-            CryptographicOperations.ZeroMemory(rented);
-            ArrayPool<byte>.Shared.Return(rented);
-        }
-    }
 }
 
 internal static class OpenRouterPremiumResponseParser
 {
     private static readonly HashSet<string> RootProperties = new(StringComparer.Ordinal)
-    { "id", "object", "created", "model", "choices", "usage", "openrouter_metadata", "system_fingerprint", "service_tier", "error" };
+    { "id", "object", "created", "model", "provider", "choices", "usage", "openrouter_metadata", "system_fingerprint", "service_tier", "error" };
 
     internal static OpenRouterPremiumSlotReceipt Parse(ReadOnlySpan<byte> body, int statusCode, OpenRouterPremiumProfile profile, string scenarioId, string requestDigestSha256) =>
         Parse(body, statusCode, profile, int.Parse(scenarioId.AsSpan(2), CultureInfo.InvariantCulture), scenarioId,
@@ -576,6 +545,12 @@ internal static class OpenRouterPremiumResponseParser
         }
         RequireString(root, "object", "chat.completion");
         RequireString(root, "model", OpenRouterPremiumProfile.CanonicalModelSlug);
+        if (root.TryGetProperty("provider", out JsonElement provider))
+        {
+            if (provider.ValueKind != JsonValueKind.String
+                || provider.GetString() != OpenRouterPremiumProfile.ProviderResponseIdentity)
+                throw new OpenRouterPremiumEvidenceException("response_binding_invalid");
+        }
         _ = RequireBoundedString(root, "id", 128);
         if (!root.TryGetProperty("created", out JsonElement created) || !created.TryGetInt64(out long createdValue) || createdValue < 0)
             throw new OpenRouterPremiumEvidenceException("response_created_invalid");
@@ -597,17 +572,76 @@ internal static class OpenRouterPremiumResponseParser
         if (!root.TryGetProperty("choices", out JsonElement choices) || choices.ValueKind != JsonValueKind.Array || choices.GetArrayLength() != 1)
             throw new OpenRouterPremiumEvidenceException("response_choices_invalid");
         JsonElement choice = choices[0];
-        RejectUnknown(choice, new HashSet<string>(["index", "finish_reason", "message", "error"], StringComparer.Ordinal), "response_json_unknown_property");
+        RejectUnknown(choice, new HashSet<string>(["index", "finish_reason", "native_finish_reason", "logprobs", "message", "error"], StringComparer.Ordinal), "response_json_unknown_property");
         if (!choice.TryGetProperty("index", out JsonElement index) || !index.TryGetInt32(out int indexValue) || indexValue != 0
             || !choice.TryGetProperty("finish_reason", out JsonElement finish) || finish.ValueKind != JsonValueKind.String
             || !string.Equals(finish.GetString(), "stop", StringComparison.Ordinal) || choice.TryGetProperty("error", out _))
             throw new OpenRouterPremiumEvidenceException("response_finish_invalid");
+        if (choice.TryGetProperty("native_finish_reason", out JsonElement nativeFinish)
+            && (nativeFinish.ValueKind != JsonValueKind.String || nativeFinish.GetString() != "stop"))
+            throw new OpenRouterPremiumEvidenceException("response_finish_invalid");
+        if (choice.TryGetProperty("logprobs", out JsonElement logprobs) && logprobs.ValueKind != JsonValueKind.Null)
+            throw new OpenRouterPremiumEvidenceException("response_finish_invalid");
         if (!choice.TryGetProperty("message", out JsonElement message) || message.ValueKind != JsonValueKind.Object)
             throw new OpenRouterPremiumEvidenceException("response_message_invalid");
-        RejectUnknown(message, new HashSet<string>(["role", "content"], StringComparer.Ordinal), "response_json_unknown_property");
+        RejectUnknown(message, new HashSet<string>(["role", "content", "refusal", "reasoning", "reasoning_content", "reasoning_details"], StringComparer.Ordinal), "response_json_unknown_property");
         RequireString(message, "role", "assistant");
+        if (message.TryGetProperty("refusal", out JsonElement refusal) && refusal.ValueKind != JsonValueKind.Null)
+            throw new OpenRouterPremiumEvidenceException("response_finish_invalid");
+        ValidateOptionalNullableString(message, "reasoning", profile.Bounds.MaximumStringCharacters);
+        ValidateOptionalNullableString(message, "reasoning_content", profile.Bounds.MaximumStringCharacters);
+        ValidateReasoningDetails(message, profile.Bounds);
         string content = RequireBoundedString(message, "content", CognitionQualityRecordedResponseRunnerModule.MaximumResponseBytes);
         return ParseProposal(Encoding.UTF8.GetBytes(content), scenarioId);
+    }
+
+    private static void ValidateReasoningDetails(JsonElement message, OpenRouterPremiumBounds bounds)
+    {
+        if (!message.TryGetProperty("reasoning_details", out JsonElement details)) return;
+        if (details.ValueKind != JsonValueKind.Array || details.GetArrayLength() > bounds.MaximumArrayItems)
+            throw new OpenRouterPremiumEvidenceException("response_reasoning_invalid");
+        int expectedIndex = 0;
+        foreach (JsonElement detail in details.EnumerateArray())
+        {
+            if (detail.ValueKind != JsonValueKind.Object)
+                throw new OpenRouterPremiumEvidenceException("response_reasoning_invalid");
+            RejectUnknown(detail, new HashSet<string>(["type", "summary", "data", "text", "signature", "id", "format", "index"], StringComparer.Ordinal),
+                "response_json_unknown_property");
+            string type = RequireBoundedString(detail, "type", 32);
+            string format = RequireBoundedString(detail, "format", 64);
+            if (format is not ("unknown" or "openai-responses-v1" or "azure-openai-responses-v1"
+                or "bedrock-openai-responses-v1" or "xai-responses-v1" or "meta-responses-v1"
+                or "anthropic-claude-v1" or "google-gemini-v1"))
+                throw new OpenRouterPremiumEvidenceException("response_reasoning_invalid");
+            ValidateOptionalNullableString(detail, "id", 128);
+            if (detail.TryGetProperty("index", out JsonElement index)
+                && (!index.TryGetInt32(out int indexValue) || indexValue != expectedIndex))
+                throw new OpenRouterPremiumEvidenceException("response_reasoning_invalid");
+            switch (type)
+            {
+                case "reasoning.summary":
+                    _ = RequireBoundedString(detail, "summary", bounds.MaximumStringCharacters);
+                    if (detail.TryGetProperty("data", out _) || detail.TryGetProperty("text", out _)
+                        || detail.TryGetProperty("signature", out _))
+                        throw new OpenRouterPremiumEvidenceException("response_reasoning_invalid");
+                    break;
+                case "reasoning.encrypted":
+                    _ = RequireBoundedString(detail, "data", bounds.MaximumStringCharacters);
+                    if (detail.TryGetProperty("summary", out _) || detail.TryGetProperty("text", out _)
+                        || detail.TryGetProperty("signature", out _))
+                        throw new OpenRouterPremiumEvidenceException("response_reasoning_invalid");
+                    break;
+                case "reasoning.text":
+                    _ = RequireBoundedString(detail, "text", bounds.MaximumStringCharacters);
+                    ValidateOptionalNullableString(detail, "signature", 512);
+                    if (detail.TryGetProperty("summary", out _) || detail.TryGetProperty("data", out _))
+                        throw new OpenRouterPremiumEvidenceException("response_reasoning_invalid");
+                    break;
+                default:
+                    throw new OpenRouterPremiumEvidenceException("response_reasoning_invalid");
+            }
+            expectedIndex++;
+        }
     }
 
     private static SnowGlobeActionProposal ParseProposal(ReadOnlySpan<byte> content, string scenarioId)
@@ -675,9 +709,10 @@ internal static class OpenRouterPremiumResponseParser
     {
         if (!root.TryGetProperty("openrouter_metadata", out JsonElement metadata) || metadata.ValueKind != JsonValueKind.Object)
             throw new OpenRouterPremiumEvidenceException("response_routing_invalid");
-        RejectUnknown(metadata, new HashSet<string>(["requested", "strategy", "region", "summary", "attempt", "is_byok", "endpoints", "attempts", "pipeline"], StringComparer.Ordinal), "response_json_unknown_property");
         ValidateOptionalNullableString(metadata, "region", 64);
         ValidateOptionalNullableString(metadata, "summary", 512);
+        if (metadata.TryGetProperty("params", out JsonElement parameters) && parameters.ValueKind != JsonValueKind.Object)
+            throw new OpenRouterPremiumEvidenceException("response_routing_invalid");
         RequireString(metadata, "requested", OpenRouterPremiumProfile.CanonicalModelSlug); RequireString(metadata, "strategy", "direct");
         if (!metadata.TryGetProperty("attempt", out JsonElement attempt) || !attempt.TryGetInt32(out int attemptValue) || attemptValue != 1
             || !metadata.TryGetProperty("is_byok", out JsonElement byok) || byok.ValueKind is not (JsonValueKind.True or JsonValueKind.False) || byok.GetBoolean())
@@ -685,22 +720,42 @@ internal static class OpenRouterPremiumResponseParser
         if (!metadata.TryGetProperty("endpoints", out JsonElement endpoints) || endpoints.ValueKind != JsonValueKind.Object)
             throw new OpenRouterPremiumEvidenceException("response_routing_invalid");
         RejectUnknown(endpoints, new HashSet<string>(["total", "available"], StringComparer.Ordinal), "response_json_unknown_property");
-        if (RequireInteger(endpoints, "total", 1, 1) != 1 || !endpoints.TryGetProperty("available", out JsonElement available)
-            || available.ValueKind != JsonValueKind.Array || available.GetArrayLength() != 1)
+        int total = RequireInteger(endpoints, "total", 1, profile.Bounds.MaximumArrayItems);
+        if (!endpoints.TryGetProperty("available", out JsonElement available)
+            || available.ValueKind != JsonValueKind.Array || available.GetArrayLength() is < 1
+            || available.GetArrayLength() > profile.Bounds.MaximumArrayItems || total < available.GetArrayLength())
             throw new OpenRouterPremiumEvidenceException("response_routing_invalid");
-        JsonElement selected = available[0];
-        RejectUnknown(selected, new HashSet<string>(["provider", "model", "selected"], StringComparer.Ordinal), "response_json_unknown_property");
-        RequireString(selected, "provider", OpenRouterPremiumProfile.ProviderResponseIdentity); RequireString(selected, "model", OpenRouterPremiumProfile.CanonicalModelSlug);
-        if (!selected.TryGetProperty("selected", out JsonElement selectedFlag) || selectedFlag.ValueKind != JsonValueKind.True)
-            throw new OpenRouterPremiumEvidenceException("response_routing_invalid");
-        if (!metadata.TryGetProperty("attempts", out JsonElement attempts) || attempts.ValueKind != JsonValueKind.Array || attempts.GetArrayLength() != 1)
-            throw new OpenRouterPremiumEvidenceException("response_routing_invalid");
-        JsonElement routedAttempt = attempts[0];
-        RejectUnknown(routedAttempt, new HashSet<string>(["provider", "model", "status"], StringComparer.Ordinal), "response_json_unknown_property");
-        RequireString(routedAttempt, "provider", OpenRouterPremiumProfile.ProviderResponseIdentity); RequireString(routedAttempt, "model", OpenRouterPremiumProfile.CanonicalModelSlug);
-        if (RequireInteger(routedAttempt, "status", 200, 200) != 200)
-            throw new OpenRouterPremiumEvidenceException("response_routing_invalid");
-        if (!metadata.TryGetProperty("pipeline", out JsonElement pipeline) || pipeline.ValueKind != JsonValueKind.Array || pipeline.GetArrayLength() != 0)
+        int selectedCount = 0;
+        foreach (JsonElement candidate in available.EnumerateArray())
+        {
+            if (candidate.ValueKind != JsonValueKind.Object)
+                throw new OpenRouterPremiumEvidenceException("response_routing_invalid");
+            RejectUnknown(candidate, new HashSet<string>(["provider", "model", "selected"], StringComparer.Ordinal), "response_json_unknown_property");
+            string candidateProvider = RequireBoundedString(candidate, "provider", 128);
+            string candidateModel = RequireBoundedString(candidate, "model", 256);
+            if (!candidate.TryGetProperty("selected", out JsonElement selectedFlag)
+                || selectedFlag.ValueKind is not (JsonValueKind.True or JsonValueKind.False))
+                throw new OpenRouterPremiumEvidenceException("response_routing_invalid");
+            if (!selectedFlag.GetBoolean()) continue;
+            selectedCount++;
+            if (candidateProvider != OpenRouterPremiumProfile.ProviderResponseIdentity
+                || candidateModel != OpenRouterPremiumProfile.CanonicalModelSlug)
+                throw new OpenRouterPremiumEvidenceException("response_binding_invalid");
+        }
+        if (selectedCount != 1) throw new OpenRouterPremiumEvidenceException("response_routing_invalid");
+        if (metadata.TryGetProperty("attempts", out JsonElement attempts))
+        {
+            if (attempts.ValueKind != JsonValueKind.Array || attempts.GetArrayLength() != 1)
+                throw new OpenRouterPremiumEvidenceException("response_routing_invalid");
+            JsonElement routedAttempt = attempts[0];
+            RejectUnknown(routedAttempt, new HashSet<string>(["provider", "model", "status"], StringComparer.Ordinal), "response_json_unknown_property");
+            RequireString(routedAttempt, "provider", OpenRouterPremiumProfile.ProviderResponseIdentity);
+            RequireString(routedAttempt, "model", OpenRouterPremiumProfile.CanonicalModelSlug);
+            if (RequireInteger(routedAttempt, "status", 200, 200) != 200)
+                throw new OpenRouterPremiumEvidenceException("response_routing_invalid");
+        }
+        if (metadata.TryGetProperty("pipeline", out JsonElement pipeline)
+            && (pipeline.ValueKind != JsonValueKind.Array || pipeline.GetArrayLength() != 0))
             throw new OpenRouterPremiumEvidenceException("response_pipeline_forbidden");
     }
 
@@ -768,8 +823,10 @@ internal static class OpenRouterPremiumResponseParser
 
     private static void ValidateError(JsonElement root)
     {
-        if (root.EnumerateObject().Count() != 1
-            || !root.TryGetProperty("error", out JsonElement error) || error.ValueKind != JsonValueKind.Object)
+        foreach (JsonProperty property in root.EnumerateObject())
+            if (property.Name is not ("error" or "openrouter_metadata"))
+                throw new OpenRouterPremiumEvidenceException("response_error_invalid");
+        if (!root.TryGetProperty("error", out JsonElement error) || error.ValueKind != JsonValueKind.Object)
             throw new OpenRouterPremiumEvidenceException("response_error_invalid");
         RejectUnknown(error, new HashSet<string>(["code", "message", "metadata"], StringComparer.Ordinal), "response_json_unknown_property");
         if (!error.TryGetProperty("code", out JsonElement code) || !code.TryGetInt32(out int codeValue) || codeValue is < 1 or > 999
@@ -783,6 +840,20 @@ internal static class OpenRouterPremiumResponseParser
             RejectUnknown(metadata, new HashSet<string>(["provider_name", "raw"], StringComparer.Ordinal), "response_json_unknown_property");
             ValidateOptionalNullableString(metadata, "provider_name", 128);
             ValidateOptionalNullableString(metadata, "raw", OpenRouterPremiumProfileRegistry.Selected.Bounds.MaximumStringCharacters);
+        }
+        if (root.TryGetProperty("openrouter_metadata", out JsonElement routing))
+        {
+            if (routing.ValueKind != JsonValueKind.Object)
+                throw new OpenRouterPremiumEvidenceException("response_error_invalid");
+            if (routing.TryGetProperty("requested", out JsonElement requested)
+                && (requested.ValueKind != JsonValueKind.String
+                    || requested.GetString() != OpenRouterPremiumProfile.CanonicalModelSlug))
+                throw new OpenRouterPremiumEvidenceException("response_binding_invalid");
+            if (routing.TryGetProperty("attempt", out JsonElement attempt)
+                && (!attempt.TryGetInt32(out int attemptValue) || attemptValue is < 0 or > 1))
+                throw new OpenRouterPremiumEvidenceException("response_error_invalid");
+            if (routing.TryGetProperty("params", out JsonElement parameters) && parameters.ValueKind != JsonValueKind.Object)
+                throw new OpenRouterPremiumEvidenceException("response_error_invalid");
         }
     }
 

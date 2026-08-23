@@ -1,12 +1,26 @@
 # Societies Snow Globe Lab
 
-## Current OpenRouter premium-evidence boundary
+## Historical fourth-authorization preflight outcome
 
-Code commit `ef32576` adds the offline OpenRouter boundary; the exact shape, files, frozen approval-time profile facts, limits, semantics, validation, and non-live blocker are in [OPENROUTER_PREMIUM_EVIDENCE.md](OPENROUTER_PREMIUM_EVIDENCE.md). Design-It-Twice chose a tiny authorize -> single-use run -> pure validate seam with separate immutable profile registry and premium-evidence journal. Existing provider preflight, offline recording, legacy journal, comparison, two-tier/world, `src/societies/`, and v1-v4 artifacts are unchanged.
+The [focused contract](OPENROUTER_PREMIUM_EVIDENCE.md) records the Windows production bridge, three completed paid attempts, zero-I/O readiness manifest `snow_globe_openrouter_paid_run_readiness_manifest/v1` at digest `d1e653468fd7a39e33ad355297adf96c48bde97e40a73f6b6c6812623553f737`, and the fourth authorization consumed by a closed preflight. The manifest's fake-only executor conformance proved one-attempt behavior but omitted fixed production state-root generation rollover.
+
+On 2026-08-22 the user authorized up to twelve sequential requests, no retries/alternate providers, maximum `$0.018`. One `preflight` returned `preflight_already_attempted`/exit 1 before metadata verification; no provider or paid action occurred and Attempt 4 authority is consumed. The completed offline v2 composition validates 55/55 focused, 868/868 full Snow Globe Release, and 67/67 CLI/security, with zero-warning Release builds and GO review. The exact `state-anchor-provision-once --acknowledge-create-fixed-v2-state-anchor-and-initialize-offline` command was then invoked once and exited 0. It initialized the fixed v2 root with four empty state directories and `root-writer.lock` (567 bytes, SHA-256 `7827eeb9d15d1b43eeaaebe779b8d192ac3864e25fbfe2df8ea57b8572fd88aa`); anchor identity digest is `d6eb68c6f14e32f342caee45f4c13d2398e4c0830e39d3e7cbfe478a10d9a78d`. The secret remains in Windows Credential Manager and was not displayed. Provisioning authority is consumed and must not be rerun; no OpenRouter credential read, provider access, paid action, fifth authority, or v1 access occurred.
+
+Initialization-slice chronology: full SnowGlobe passed 881/881 and full CLI/security 70/70 before the one-time invocation. A dedicated real Global mutex abandonment regression in `OpenRouterPremiumWindowsStateTrustAnchorTests` proves fail-closed `state_trust_anchor_provisioning_indeterminate`, releases recovered ownership, and permits later reacquisition. Current validation after this test-only change is focused anchor 20/20, full SnowGlobe Release 884/884, full CLI/security 70/70, and both lab and CLI Release builds 0 warnings/0 errors. Independent paid-evidence review remains GO with no P0-P2; the separate plan-conformance residual P3 remains.
+
+### Historical next action
+
+The fifth authority was consumed and the offline documentation and delivery review stated below superseded this historical action. `WI-GLOBAL-2026-126` remains separate.
+
+## Current fifth paid-run evidence
+
+The fifth authority used up to 12 sequential requests, no retries or alternate providers, maximum aggregate `$0.018`; preflight, `record-once`, and local `validate` each ran exactly once. Evidence is 2,171 bytes/SHA `7d449d77c3b82ff1984a0e1d33c3026b80566321938418b2eb363ff1aa9f1bd8`, terminal `provider_response_rejected`, one exchange, `cq1` only, unknown submission/charge, zero trusted tokens, zero local settlement, null proposal. Receipt SHA `7f42dfd15ffe1e4134d7110a9f491f9dfaae1632d69e14180bf47dbc6056dc49`; journal SHA `b79acbe2cff7b2a72bee53db5c3663229de035f3700c5624b5d6f2a2dcffa161`, four records, terminal checksum `e3b987863489740096370a00a3b34374e16e7ab59d817e59743ddf2833f7b5b3`. Authority is consumed; no stage rerun, raw retention, v1 access, or accounting follow-up. No provider-side cause is claimed.
 
 ### One current next action
 
-Bind an OpenRouter account identity plus trusted credential lease source and explicitly approve the frozen aggregate ceiling of 12,000 microusd (`$0.012`), then verify dated-slug callability, current catalog and price, and a durable journal in a security-reviewed preflight before any separately authorized one-shot provider run.
+The offline documentation and delivery-state review is complete. The sole next action is explicit authorization for a bounded local Git delivery pass that stages and commits only the reviewed Snow Globe OpenRouter code, tests, and documentation; no push or PR is authorized.
+
+If Git delivery remains unauthorized and development is explicitly resumed instead, the next smallest offline-only milestone is to close the residual P3 by retaining and asserting all twelve fake-only lease-zero observations in the readiness-manifest probe. It must not access credentials, live v1/v2 state, provider/network surfaces, or `src/societies/`.
 
 ## Current offline cognition score-summary milestone (v4)
 
@@ -18,7 +32,7 @@ Historical/superseded next action: offline Design-It-Twice for the first live-pr
 
 Attempt-005 completed the authorized v4 preflight/record-once/validate exactly once, all exit 0 (141/26,420/175 ms), `Complete`/`None`, 12/12, plan digest `6c70ed6d69c378eb1fcfbc744dacdb4af41085cb57eaac42b4ee45e1ebd333b4`. Artifact 16,148 B SHA `fecf71cbe8cc268dadb603d29735a816bc0152ccc79b4ea44c5a91d7e7616d3e`; receipt `86ccd0b468a1b633f386b0abbe90386695f994c40be47f24dcffd63867529d65`; summary `1958e8b6c4601c9a9e9834403cd431a67a48324735dca7484d10809509245a9a`; report `0e5fe1d7a8849caf7294c79c5c80863db0aa7521fb3b7e991b469867538a4fe1`. Score 262/1200 (2183 bp), dispositions 0/7/2/1/2, cq1..cq12 valid, 12 HTTP 200 POSTs, no retry/alternate/fallback/download/update. Deep review FINAL EVIDENCE GO; cleanup operator-observed only; v1/v2/v3 unchanged.
 
-The bounded offline local-premium comparison and its former Design-It-Twice action are complete and historical. The current action is the OpenRouter preflight decision above.
+The bounded offline local-premium comparison and its former Design-It-Twice action are complete and historical. All three OpenRouter production attempts are also complete; the current decision is stated above.
 
 Commit `9bb4027` adds the internal fixed raw-free score-summary codec atop v3 evidence commit `38c9bdb`. It embeds the canonical quality report once and no prompts, responses, proposals, submissions, or model text. Exact scoring tuple checks include scenario-specific lower-utility reachability; dispositions are bounded, and the detached result proves structure/integrity only. For a complete result, only the score summary is populated; terminal and `EvidenceRejected` are null. No historical backfill occurred.
 
@@ -178,11 +192,13 @@ Response association and identity are caller-attested. The envelope proves neith
 
 The previous recording-evidence action is historical/completed. The recording-session action is now complete in `8256512`; its historical next action is superseded by the dedicated current section above. See [the recording-session contract](COGNITION_QUALITY_RECORDING_SESSION.md).
 
-`SnowGlobeLocalModelAdapterPreflight` remains the pure planning/evidence contract for the future shared local-model boundary. It accepts only canonical `http://127.0.0.1:<port>/` or `http://[::1]:<port>/` endpoints and rejects credentials, non-loopback hosts, redirects, retries, and execution authority. Request, output, queue, latency, context, and VRAM budgets are explicit.
+### Historical predecessor provider-preflight fixture
 
-The offline credential/provider preflight adds three explicit terms to that boundary: a **Credential Lease** exclusively owns a mutable secret buffer transferred by trusted credential infrastructure and zeroes that lease-owned buffer; a **Fixed Provider Profile** is an immutable registry-owned endpoint/policy identity whose transport and retry settings are not caller-controlled; and a **Provider Execution Capability** is the single-use, policy-bound permission required before any future authenticated submission. The current fixture exercises acquisition, cancellation, exception, cleanup, and no-retry behavior without HTTP, DNS, sockets, credentials, payment, or a production provider profile. It cannot claim that arbitrary trusted callbacks cannot retain a copied secret.
+`SnowGlobeLocalModelAdapterPreflight` remains the pure planning/evidence contract for the historical shared local-model boundary. It accepts only canonical `http://127.0.0.1:<port>/` or `http://[::1]:<port>/` endpoints and rejects credentials, non-loopback hosts, redirects, retries, and execution authority. Request, output, queue, latency, context, and VRAM budgets are explicit.
 
-The credential/preflight slice is validated by 6/6 focused tests and 348/348 full lab tests, with a Release build reporting 0 warnings and 0 errors. Independent deep review concluded CODE GO. This is offline evidence only: no production profile, authenticated HTTP adapter, live parser/status/charge evidence, live credential, or provider call exists.
+This predecessor offline credential/provider preflight added three explicit terms to that boundary: a **Credential Lease** exclusively owns a mutable secret buffer transferred by trusted credential infrastructure and zeroes that lease-owned buffer; a **Fixed Provider Profile** is an immutable registry-owned endpoint/policy identity whose transport and retry settings are not caller-controlled; and a **Provider Execution Capability** is the single-use, policy-bound permission required before an authenticated submission. That fixture exercises acquisition, cancellation, exception, cleanup, and no-retry behavior without HTTP, DNS, sockets, credentials, payment, or a production provider profile. It cannot claim that arbitrary trusted callbacks cannot retain a copied secret.
+
+The predecessor credential/preflight slice is validated by 6/6 focused tests and 348/348 full lab tests, with a Release build reporting 0 warnings and 0 errors. Independent deep review concluded CODE GO. Its historical absence-of-production claim applies only to that fixture milestone; the later OpenRouter production bridge and bounded paid attempt are recorded in the current section above.
 
 Future 8 GB benchmark evidence must be bounded canonical metrics-only JSON bytes. Validation derives the exact sample count and SHA-256 plus latency percentiles/maximum, peak/total queue wait, byte peaks, VRAM, throughput, failure, and fallback counts. Raw prompts, responses, provider payloads, credentials, and secrets are forbidden. This contract performs no file/network/GPU/model operation and makes no live-quality or hardware-fit claim.
 

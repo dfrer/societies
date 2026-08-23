@@ -155,7 +155,29 @@ public static class OpenRouterPremiumEvidenceModule
         ICredentialLeaseSource credentialLeaseSource,
         IOpenRouterPremiumJournal financialJournal,
         IOpenRouterPremiumClock clock,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default) =>
+        await ExecuteCoreOnceAsync(capability, exchange, credentialLeaseSource, financialJournal, clock,
+            productionPermit: null, cancellationToken).ConfigureAwait(false);
+
+    internal static async ValueTask<OpenRouterPremiumEvidenceArtifact> ExecuteAuthorizedProductionOnceAsync(
+        OpenRouterPremiumExecutionCapability capability,
+        OpenRouterPremiumHttpExchange exchange,
+        ICredentialLeaseSource credentialLeaseSource,
+        FileOpenRouterPremiumJournal financialJournal,
+        IOpenRouterPremiumClock clock,
+        OpenRouterPremiumProductionExecutionPermit productionPermit,
+        CancellationToken cancellationToken = default) =>
+        await ExecuteCoreOnceAsync(capability, exchange, credentialLeaseSource, financialJournal, clock,
+            productionPermit ?? throw new ArgumentNullException(nameof(productionPermit)), cancellationToken).ConfigureAwait(false);
+
+    private static async ValueTask<OpenRouterPremiumEvidenceArtifact> ExecuteCoreOnceAsync(
+        OpenRouterPremiumExecutionCapability capability,
+        IOpenRouterPremiumExchange exchange,
+        ICredentialLeaseSource credentialLeaseSource,
+        IOpenRouterPremiumJournal financialJournal,
+        IOpenRouterPremiumClock clock,
+        OpenRouterPremiumProductionExecutionPermit? productionPermit,
+        CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(capability);
         if (!capability.TryConsume()) throw new OpenRouterPremiumEvidenceException("capability_consumed");
@@ -169,7 +191,8 @@ public static class OpenRouterPremiumEvidenceModule
         if (cancellationToken.IsCancellationRequested) throw new OpenRouterPremiumEvidenceException("capability_cancelled");
         if (clock.NowMilliseconds >= capability.ExpiresAtMilliseconds) throw new OpenRouterPremiumEvidenceException("capability_expired");
         ValidateExecutionBindings(capability, exchangeRegistration, credentialLeaseSource, financialJournal);
-        if (exchangeRegistration.Kind == OpenRouterPremiumExchangeKind.ProductionHttp && !capability.Profile.LiveTrafficEnabled)
+        if (exchangeRegistration.Kind == OpenRouterPremiumExchangeKind.ProductionHttp
+            && (productionPermit is null || !productionPermit.Validate(capability, financialJournal, clock.NowMilliseconds)))
             throw new OpenRouterPremiumEvidenceException(OpenRouterPremiumProfile.LiveTrafficBlockerCode);
         if (exchangeRegistration.Kind == OpenRouterPremiumExchangeKind.ProductionHttp && !financialJournal.ProvidesDurableFlush)
             throw new OpenRouterPremiumEvidenceException("durable_journal_required");

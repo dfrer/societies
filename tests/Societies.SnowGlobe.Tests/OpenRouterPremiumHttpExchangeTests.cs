@@ -40,6 +40,11 @@ public sealed class OpenRouterPremiumHttpExchangeTests
         Assert.Equal(handler.Body!.Length, request.CanonicalRequestByteCount);
         Assert.Equal(Convert.ToHexString(SHA256.HashData(handler.Body)).ToLowerInvariant(), request.RequestDigestSha256);
         Assert.False(root.GetProperty("stream").GetBoolean());
+        Assert.Equal(512, root.GetProperty("max_completion_tokens").GetInt32());
+        JsonElement reasoning = root.GetProperty("reasoning");
+        Assert.Equal("minimal", reasoning.GetProperty("effort").GetString());
+        Assert.True(reasoning.GetProperty("exclude").GetBoolean());
+        Assert.False(root.TryGetProperty("max_tokens", out _));
         Assert.False(root.TryGetProperty("temperature", out _));
         Assert.Equal("json_schema", root.GetProperty("response_format").GetProperty("type").GetString());
         Assert.True(root.GetProperty("response_format").GetProperty("json_schema").GetProperty("strict").GetBoolean());
@@ -48,8 +53,12 @@ public sealed class OpenRouterPremiumHttpExchangeTests
         Assert.True(provider.GetProperty("require_parameters").GetBoolean());
         Assert.Equal("deny", provider.GetProperty("data_collection").GetString());
         Assert.True(provider.GetProperty("zdr").GetBoolean());
-        Assert.Equal(new[] { "openai" }, provider.GetProperty("order").EnumerateArray().Select(value => value.GetString()));
-        Assert.Equal(new[] { "openai" }, provider.GetProperty("only").EnumerateArray().Select(value => value.GetString()));
+        Assert.Equal(new[] { "azure" }, provider.GetProperty("order").EnumerateArray().Select(value => value.GetString()));
+        Assert.Equal(new[] { "azure" }, provider.GetProperty("only").EnumerateArray().Select(value => value.GetString()));
+        Assert.Equal("price", provider.GetProperty("sort").GetString());
+        JsonElement maxPrice = provider.GetProperty("max_price");
+        Assert.Equal(0.2m, maxPrice.GetProperty("prompt").GetDecimal());
+        Assert.Equal(1.2m, maxPrice.GetProperty("completion").GetDecimal());
     }
 
     [Theory]
@@ -153,7 +162,7 @@ public sealed class OpenRouterPremiumHttpExchangeTests
     [InlineData(422, true)]
     public void ProviderAttributedHttpFailuresRemainUnknownAfterDispatchMarker(int status, bool providerAttributed)
     {
-        string metadata = providerAttributed ? ",\"metadata\":{\"provider_name\":\"OpenAI\",\"raw\":\"closed\"}" : string.Empty;
+        string metadata = providerAttributed ? ",\"metadata\":{\"provider_name\":\"Azure\",\"raw\":\"closed\"}" : string.Empty;
         byte[] body = Encoding.UTF8.GetBytes($"{{\"error\":{{\"code\":{status},\"message\":\"closed\"{metadata}}}}}");
 
         OpenRouterPremiumSlotReceipt receipt = OpenRouterPremiumResponseParser.Parse(body, status,
@@ -176,10 +185,88 @@ public sealed class OpenRouterPremiumHttpExchangeTests
     }
 
     [Fact]
-    public void MutableModelAliasIsRejectedAtResponseAndRoutingBindings()
+    public void AdditiveRouterMetadataAndMultipleCandidatesPreserveExactSelectedRoute()
+    {
+        string body = Encoding.UTF8.GetString(SuccessBody());
+        body = body.Replace(
+            "\"is_byok\":false,\"endpoints\":{\"total\":1,\"available\":[{\"provider\":\"Azure\",\"model\":\"openai/gpt-5.6-luna\",\"selected\":true}]}",
+            "\"is_byok\":false,\"params\":{\"quality_floor\":0.5},\"future_router_field\":{\"opaque\":true},"
+            + "\"endpoints\":{\"total\":2,\"available\":[{\"provider\":\"Other\",\"model\":\"other/model\",\"selected\":false},"
+            + "{\"provider\":\"Azure\",\"model\":\"openai/gpt-5.6-luna\",\"selected\":true}]}",
+            StringComparison.Ordinal);
+
+        OpenRouterPremiumSlotReceipt receipt = OpenRouterPremiumResponseParser.Parse(Encoding.UTF8.GetBytes(body), 200,
+            OpenRouterPremiumProfileRegistry.Selected, "cq1", new string('d', 64));
+
+        Assert.Equal(SubmissionState.ResponseReceived, receipt.SubmissionState);
+        Assert.Equal(ChargeState.Settled, receipt.ChargeState);
+    }
+
+    [Fact]
+    public void DocumentedReasoningEnvelopeAndOptionalRouterArrays_AreAccepted()
+    {
+        string body = DocumentedReasoningBody();
+
+        OpenRouterPremiumSlotReceipt receipt = OpenRouterPremiumResponseParser.Parse(Encoding.UTF8.GetBytes(body), 200,
+            OpenRouterPremiumProfileRegistry.Selected, "cq1", new string('d', 64));
+
+        Assert.Equal(SubmissionState.ResponseReceived, receipt.SubmissionState);
+        Assert.Equal(ChargeState.Settled, receipt.ChargeState);
+        Assert.Equal(44, receipt.SettledMicrousd);
+    }
+
+    [Theory]
+    [InlineData("\"provider\":\"Azure\"", "\"provider\":\"Other\"", "response_binding_invalid")]
+    [InlineData("\"native_finish_reason\":\"stop\"", "\"native_finish_reason\":\"length\"", "response_finish_invalid")]
+    [InlineData("\"logprobs\":null", "\"logprobs\":{}", "response_finish_invalid")]
+    [InlineData("\"format\":\"azure-openai-responses-v1\"", "\"format\":\"future\"", "response_reasoning_invalid")]
+    [InlineData("\"index\":0}]", "\"index\":1}]", "response_reasoning_invalid")]
+    public void DocumentedReasoningEnvelopeStillFailsClosedOnBindingAndShapeMutations(
+        string exact, string mutation, string expectedCode)
+    {
+        string body = DocumentedReasoningBody();
+        Assert.Contains(exact, body, StringComparison.Ordinal);
+
+        OpenRouterPremiumEvidenceException exception = Assert.Throws<OpenRouterPremiumEvidenceException>(() =>
+            OpenRouterPremiumResponseParser.Parse(Encoding.UTF8.GetBytes(body.Replace(exact, mutation, StringComparison.Ordinal)), 200,
+                OpenRouterPremiumProfileRegistry.Selected, "cq1", new string('d', 64)));
+
+        Assert.Equal(expectedCode, exception.Code);
+    }
+
+    [Fact]
+    public void NonEmptyRouterPipelineRemainsForbidden()
+    {
+        string body = Encoding.UTF8.GetString(SuccessBody()).Replace("\"pipeline\":[]",
+            "\"pipeline\":[{\"type\":\"guardrail\"}]", StringComparison.Ordinal);
+
+        Assert.Equal("response_pipeline_forbidden", Assert.Throws<OpenRouterPremiumEvidenceException>(() =>
+            OpenRouterPremiumResponseParser.Parse(Encoding.UTF8.GetBytes(body), 200,
+                OpenRouterPremiumProfileRegistry.Selected, "cq1", new string('d', 64))).Code);
+    }
+
+    [Fact]
+    public void ErrorEnvelopeAcceptsAdditiveTopLevelRouterMetadataWithoutRetryAuthority()
+    {
+        byte[] body = Encoding.UTF8.GetBytes(
+            "{\"error\":{\"code\":404,\"message\":\"No allowed providers\"},\"openrouter_metadata\":{"
+            + "\"requested\":\"openai/gpt-5.6-luna\",\"strategy\":\"direct\",\"attempt\":0,"
+            + "\"params\":{\"max_price\":true},\"future_router_field\":{\"opaque\":true},"
+            + "\"endpoints\":{\"total\":1,\"available\":[{\"provider\":\"OpenAI\","
+            + "\"model\":\"openai/gpt-5.6-luna\",\"selected\":false}]}}}");
+
+        OpenRouterPremiumSlotReceipt receipt = OpenRouterPremiumResponseParser.Parse(body, 404,
+            OpenRouterPremiumProfileRegistry.Selected, "cq1", new string('d', 64));
+
+        Assert.Equal(SubmissionState.SubmissionUnknown, receipt.SubmissionState);
+        Assert.Equal(ChargeState.Unknown, receipt.ChargeState);
+    }
+
+    [Fact]
+    public void DatedWebRevisionPathIsRejectedAtResponseAndRoutingBindings()
     {
         byte[] aliased = Encoding.UTF8.GetBytes(Encoding.UTF8.GetString(SuccessBody()).Replace(
-            OpenRouterPremiumProfile.CanonicalModelSlug, OpenRouterPremiumProfile.ModelIdentity, StringComparison.Ordinal));
+            OpenRouterPremiumProfile.CanonicalModelSlug, OpenRouterPremiumProfile.ModelReleaseRevisionPathIdentity, StringComparison.Ordinal));
 
         Assert.Equal("response_binding_invalid", Assert.Throws<OpenRouterPremiumEvidenceException>(() =>
             OpenRouterPremiumResponseParser.Parse(aliased, 200, OpenRouterPremiumProfileRegistry.Selected,
@@ -187,10 +274,10 @@ public sealed class OpenRouterPremiumHttpExchangeTests
     }
 
     [Theory]
-    [InlineData("\"requested\":\"openai/gpt-5.6-luna-20260709\"", "\"requested\":\"openai/gpt-5.6-luna\"")]
-    [InlineData("\"provider\":\"OpenAI\",\"model\":\"openai/gpt-5.6-luna-20260709\",\"selected\":true", "\"provider\":\"OpenAI\",\"model\":\"openai/gpt-5.6-luna\",\"selected\":true")]
-    [InlineData("\"provider\":\"OpenAI\",\"model\":\"openai/gpt-5.6-luna-20260709\",\"status\":200", "\"provider\":\"OpenAI\",\"model\":\"openai/gpt-5.6-luna\",\"status\":200")]
-    public void MutableModelAliasIsRejectedInEachRouterEvidenceBinding(string exact, string mutation)
+    [InlineData("\"requested\":\"openai/gpt-5.6-luna\"", "\"requested\":\"openai/gpt-5.6-luna-20260709\"")]
+    [InlineData("\"provider\":\"Azure\",\"model\":\"openai/gpt-5.6-luna\",\"selected\":true", "\"provider\":\"Azure\",\"model\":\"openai/gpt-5.6-luna-20260709\",\"selected\":true")]
+    [InlineData("\"provider\":\"Azure\",\"model\":\"openai/gpt-5.6-luna\",\"status\":200", "\"provider\":\"Azure\",\"model\":\"openai/gpt-5.6-luna-20260709\",\"status\":200")]
+    public void DatedWebRevisionPathIsRejectedInEachRouterEvidenceBinding(string exact, string mutation)
     {
         string body = Encoding.UTF8.GetString(SuccessBody());
         Assert.Contains(exact, body, StringComparison.Ordinal);
@@ -253,8 +340,22 @@ public sealed class OpenRouterPremiumHttpExchangeTests
     }
 
     private static byte[] SuccessBody() => Encoding.UTF8.GetBytes("""
-        {"id":"gen-offline","object":"chat.completion","created":1,"model":"openai/gpt-5.6-luna-20260709","choices":[{"index":0,"finish_reason":"stop","message":{"role":"assistant","content":"{\"agent_id\":\"agent-00\",\"action\":\"GatherWood\",\"quantity\":12}"}}],"usage":{"prompt_tokens":100,"completion_tokens":20,"total_tokens":120,"cost":0.000044},"openrouter_metadata":{"requested":"openai/gpt-5.6-luna-20260709","strategy":"direct","attempt":1,"is_byok":false,"endpoints":{"total":1,"available":[{"provider":"OpenAI","model":"openai/gpt-5.6-luna-20260709","selected":true}]},"attempts":[{"provider":"OpenAI","model":"openai/gpt-5.6-luna-20260709","status":200}],"pipeline":[]}}
+        {"id":"gen-offline","object":"chat.completion","created":1,"model":"openai/gpt-5.6-luna","choices":[{"index":0,"finish_reason":"stop","message":{"role":"assistant","content":"{\"agent_id\":\"agent-00\",\"action\":\"GatherWood\",\"quantity\":12}"}}],"usage":{"prompt_tokens":100,"completion_tokens":20,"total_tokens":120,"cost":0.000044},"openrouter_metadata":{"requested":"openai/gpt-5.6-luna","strategy":"direct","attempt":1,"is_byok":false,"endpoints":{"total":1,"available":[{"provider":"Azure","model":"openai/gpt-5.6-luna","selected":true}]},"attempts":[{"provider":"Azure","model":"openai/gpt-5.6-luna","status":200}],"pipeline":[]}}
         """);
+
+    private static string DocumentedReasoningBody() => Encoding.UTF8.GetString(SuccessBody())
+        .Replace("\"model\":\"openai/gpt-5.6-luna\",\"choices\"",
+            "\"model\":\"openai/gpt-5.6-luna\",\"provider\":\"Azure\",\"choices\"", StringComparison.Ordinal)
+        .Replace("\"index\":0,\"finish_reason\":\"stop\",\"message\"",
+            "\"index\":0,\"finish_reason\":\"stop\",\"native_finish_reason\":\"stop\",\"logprobs\":null,\"message\"",
+            StringComparison.Ordinal)
+        .Replace("\"role\":\"assistant\",\"content\":\"{\\\"agent_id\\\":\\\"agent-00\\\",\\\"action\\\":\\\"GatherWood\\\",\\\"quantity\\\":12}\"",
+            "\"role\":\"assistant\",\"content\":\"{\\\"agent_id\\\":\\\"agent-00\\\",\\\"action\\\":\\\"GatherWood\\\",\\\"quantity\\\":12}\"," +
+            "\"refusal\":null,\"reasoning\":null,\"reasoning_details\":[{\"type\":\"reasoning.summary\"," +
+            "\"summary\":\"bounded\",\"id\":null,\"format\":\"azure-openai-responses-v1\",\"index\":0}]",
+            StringComparison.Ordinal)
+        .Replace(",\"attempts\":[{\"provider\":\"Azure\",\"model\":\"openai/gpt-5.6-luna\",\"status\":200}],\"pipeline\":[]",
+            string.Empty, StringComparison.Ordinal);
 
     private sealed class CapturingHandler(byte[] responseBody, HttpStatusCode statusCode = HttpStatusCode.OK, Uri? effectiveUri = null) : HttpMessageHandler
     {

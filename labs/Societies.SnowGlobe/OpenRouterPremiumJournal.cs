@@ -44,6 +44,7 @@ public sealed record OpenRouterPremiumJournalHeader(
             || !OpenRouterPremiumCanonical.IsDigest(PromptSetDigestSha256)
             || !AccountBindingIdentity.StartsWith("byok-account-sha256-", StringComparison.Ordinal)
             || AccountBindingIdentity.Length != "byok-account-sha256-".Length + 64
+            || !OpenRouterPremiumCanonical.IsDigest(AccountBindingIdentity["byok-account-sha256-".Length..])
             || MaximumSlots != 12 || PerSlotCostCeilingMicrousd <= 0
             || AggregateCostCeilingMicrousd != PerSlotCostCeilingMicrousd * MaximumSlots)
             throw new InvalidDataException("OpenRouter premium journal header is invalid.");
