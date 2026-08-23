@@ -51,5 +51,5 @@ Future bounded OpenRouter evidence must retain the exact existing parser rejecti
 
 ## Delivery
 
-- Deliver only this coherent offline slice on a `codex/` branch through commit, push, pull request, required-check monitoring, and merge.
-- Return `master` clean and synchronized with exact local and hosted evidence.
+- Implementation commit `3e8ba7a` was published through PR #141; required `build-test-smoke` passed in 4m16s and the PR merged to `master` as `ba161f9`.
+- Publish this exact delivery record, then return `master` clean and synchronized with exact local and hosted evidence.
