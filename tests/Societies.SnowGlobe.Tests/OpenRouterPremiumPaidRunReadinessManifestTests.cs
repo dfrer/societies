@@ -70,9 +70,12 @@ public sealed class OpenRouterPremiumPaidRunReadinessManifestTests
             manifest.StateContractDigestSha256);
         Assert.Equal("fixed_local_app_data_v2_no_v1_observation", manifest.StateRootPolicy);
         Assert.False(manifest.LiveReadiness);
-        Assert.Equal(FrozenCanonicalManifest.Replace("REPLACE_STATE_DIGEST",
-            OpenRouterPremiumStateGenerationStore.StateContractDigestSha256, StringComparison.Ordinal),
-            manifest.CanonicalManifest);
+        string expectedCanonicalManifest = FrozenCanonicalManifest
+            .Replace("\r\n", "\n", StringComparison.Ordinal)
+            .Replace("REPLACE_STATE_DIGEST", OpenRouterPremiumStateGenerationStore.StateContractDigestSha256,
+                StringComparison.Ordinal);
+        Assert.DoesNotContain('\r', manifest.CanonicalManifest);
+        Assert.Equal(expectedCanonicalManifest, manifest.CanonicalManifest);
         Assert.Equal("eea26a92d318a2ba102c7979d0cb44563d8bef967ae00b627bc6263ff59d759d",
             manifest.DigestSha256);
         Assert.Equal(OpenRouterPremiumCanonical.Digest(manifest.CanonicalManifest), manifest.DigestSha256);

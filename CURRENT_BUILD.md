@@ -17,7 +17,15 @@ This is the only in-repo implementation that currently has:
 - a buildable C# project
 - a runnable automated validation path
 
-## Current Snow Globe persisted-session v4 recovery conformance milestone
+## Current Snow Globe read-only persisted-run inspection milestone
+
+The isolated lab now exposes one deep read-only interface: `SnowGlobePersistedRunInspector.Inspect(directory, expectedIdentity, eventCursor)`. A caller can inspect strict v2, v3, or v4 run evidence without supplying an inference adapter or acquiring writer ownership. The exact expected identity is mandatory; the inspector performs two bounded raw-evidence reads, rejects identity or artifact drift, reconstructs only committed deterministic state, and returns the existing detached observer snapshot with at most 32 events. `IsPaused=true` means the returned projection is inert, not that historical pause state was persisted.
+
+V4 evidence binds the raw header plus every ledger/marker segment; v2/v3 evidence binds exact raw header and ledger bytes with explicit length framing. Pending v4 prefixes or complete uncommitted payloads remain at the prior committed checkpoint, and inspection never creates a lease, append, continuation, repair, adapter call, or artifact mutation. Failures return stable reasons with no partial snapshot or parser/filesystem detail. The public `SnowGlobeRunStore.Read` behavior is preserved by delegating through the same internal evidence-bearing reader.
+
+Final local Release evidence is 12/12 inspector tests, 143/143 inspector/RunStore/v4-recovery tests, 175/175 persistence compatibility tests, and 932/932 full Snow Globe tests. The Release build has 0 warnings and 0 errors, diff checks are clean, and independent determinism/public-interface review is GO with no P0-P3 findings. The full gate also exposed and resolved checkout-dependent CRLF in a frozen test fixture (`WI-SOCIETIES-2026-012` / `WI-GLOBAL-2026-131`) without changing the production canonical manifest. No `src/societies/`, provider, credential, paid, network, live-state, or mutable-session behavior changed. Delivery is pending on `codex/snowglobe-readonly-persisted-inspection`.
+
+## Prior Snow Globe persisted-session v4 recovery conformance milestone
 
 The unchanged public `SnowGlobePersistedSession.Reopen` path now has adversarial conformance evidence over physical RunStore v4 interruption artifacts. Six Release tests prove that a mutable session durably records recovery before it is returned, preserves original segment bytes, reconstructs the exact public snapshot and idempotent participant receipts, continues deterministic progress, remains stable on repeat reopen, rejects malformed UTF-8/NUL/garbage before writer ownership, and rejects a second recovery without creating a third segment. The internal filesystem seam is used only to compose interruption artifacts; recovery remains RunStore-local and no session recovery overload was added.
 
