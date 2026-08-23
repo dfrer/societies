@@ -19,8 +19,8 @@
 
 ### Delivery state and next action
 
-- The reviewed implementation is ready for Git delivery on `codex/snowglobe-v5-durable-control-status`; no provider or external action occurred.
-- Next action: commit, publish, pass the required `build-test-smoke` check, merge, and record the exact delivery identifiers.
+- Implementation commit `5a7bf43` was published through [PR #137](https://github.com/dfrer/societies/pull/137); required `build-test-smoke` passed in 4m16s and the PR merged to `master` as `4683bba`.
+- This bounded milestone is complete. Persisted-inspector path/ABA hardening and v5 recovery-provenance visibility remain separate future contracts; no provider or external action occurred.
 
 ## Snow Globe v5 durable-pause handoff
 
