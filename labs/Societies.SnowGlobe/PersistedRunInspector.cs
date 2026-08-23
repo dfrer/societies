@@ -39,6 +39,36 @@ public sealed record SnowGlobePersistedRunRecoveryProvenanceInspectionResult(
     string? RejectionReason,
     SnowGlobePersistedRunRecoveryProvenanceReceipt? Receipt);
 
+/// <summary>The durable control state with which a valid v5 persisted session will reopen.</summary>
+public enum SnowGlobePersistedSessionControlState
+{
+    Running,
+    Paused
+}
+
+/// <summary>
+/// Immutable, raw-free v5 durable session-control receipt. The receipt binds the reconstructed
+/// control state to the exact stable evidence image and committed deterministic world identity.
+/// </summary>
+public sealed record SnowGlobePersistedSessionControlStatusReceipt(
+    string ReceiptSchemaIdentity,
+    SnowGlobePersistedSessionControlState State,
+    string RunIdentityChecksum,
+    string EvidenceChecksum,
+    int CommittedTick,
+    int CommittedEventCount,
+    string CommittedStateDigest,
+    string CommittedEventDigest);
+
+/// <summary>
+/// Result of the separate v5 durable session-control read. Accepted v2/v3/v4 inputs deliberately
+/// have no receipt because they do not carry this v5 durable-control contract.
+/// </summary>
+public sealed record SnowGlobePersistedSessionControlStatusInspectionResult(
+    bool Accepted,
+    string? RejectionReason,
+    SnowGlobePersistedSessionControlStatusReceipt? Receipt);
+
 /// <summary>
 /// Read-only, offline projection of an already-persisted run. This module never acquires writer
 /// ownership, repairs pending frames, or returns a durable pause claim; <see cref="SnowGlobeObserverSnapshot.IsPaused"/>
@@ -47,6 +77,7 @@ public sealed record SnowGlobePersistedRunRecoveryProvenanceInspectionResult(
 public static class SnowGlobePersistedRunInspector
 {
     private const string RecoveryReceiptSchemaIdentity = "snow_globe_persisted_run_recovery_provenance_receipt/v1";
+    private const string DurableControlStatusReceiptSchemaIdentity = "snow_globe_persisted_session_control_status_receipt/v1";
 
     /// <summary>
     /// Reads a stable, exact-identity persisted run into a detached observer snapshot. The bounded
@@ -192,6 +223,84 @@ public static class SnowGlobePersistedRunInspector
         }
     }
 
+    /// <summary>
+    /// Reads a stable, exact-identity v5 run and reports only the durable control state that a
+    /// persisted session will reopen with. This is distinct from <see cref="Inspect"/>, whose
+    /// snapshot is deliberately inert. V2/v3/v4 runs remain accepted read-only inputs with a null receipt.
+    /// </summary>
+    public static SnowGlobePersistedSessionControlStatusInspectionResult InspectDurableControlStatus(
+        string directory,
+        SnowGlobeRunIdentity expectedIdentity) => InspectDurableControlStatus(
+            directory, expectedIdentity, PhysicalRunStoreFileSystem.Instance);
+
+    internal static SnowGlobePersistedSessionControlStatusInspectionResult InspectDurableControlStatus(
+        string directory,
+        SnowGlobeRunIdentity expectedIdentity,
+        IRunStoreFileSystem files)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(directory);
+        ArgumentNullException.ThrowIfNull(expectedIdentity);
+        ArgumentNullException.ThrowIfNull(files);
+        ValidateExpectedIdentity(expectedIdentity);
+
+        RunStoreReadEvidence first;
+        try
+        {
+            first = SnowGlobeRunStore.ReadWithEvidence(directory, files);
+        }
+        catch (Exception exception) when (exception is InvalidDataException or IOException or UnauthorizedAccessException)
+        {
+            return RejectDurableControlStatus(ReadFailureReason(exception));
+        }
+
+        if (!ExactIdentity(first.Ledger.Identity, expectedIdentity)) return RejectDurableControlStatus("run_identity_mismatch");
+
+        RunStoreReadEvidence second;
+        try
+        {
+            second = SnowGlobeRunStore.ReadWithEvidence(directory, files);
+        }
+        catch (Exception exception) when (exception is InvalidDataException or IOException or UnauthorizedAccessException)
+        {
+            return RejectDurableControlStatus("run_store_unstable");
+        }
+
+        if (!SnowGlobeRunStore.FixedEquals(first.EvidenceChecksum, second.EvidenceChecksum)
+            || !ExactIdentity(first.Ledger.Identity, second.Ledger.Identity))
+        {
+            return RejectDurableControlStatus("run_store_unstable");
+        }
+
+        if (!ExactIdentity(second.Ledger.Identity, expectedIdentity)) return RejectDurableControlStatus("run_identity_mismatch");
+        if (second.Ledger.Identity.SchemaVersion != SnowGlobeRunStore.SchemaVersion)
+            return new SnowGlobePersistedSessionControlStatusInspectionResult(true, null, null);
+
+        try
+        {
+            SnowGlobeInternalRunReconstruction reconstruction = SnowGlobePersistedRun.ReconstructInternal(second.Ledger);
+            SnowGlobeWorldIdentity identity = reconstruction.Public.World.CaptureIdentity();
+            SnowGlobePersistedSessionControlState state = reconstruction.IsDurablyPaused
+                ? SnowGlobePersistedSessionControlState.Paused
+                : SnowGlobePersistedSessionControlState.Running;
+            return new SnowGlobePersistedSessionControlStatusInspectionResult(
+                true,
+                null,
+                new SnowGlobePersistedSessionControlStatusReceipt(
+                    DurableControlStatusReceiptSchemaIdentity,
+                    state,
+                    second.V4HeaderChecksum ?? throw new InvalidDataException("V5 durable control status requires header evidence."),
+                    second.EvidenceChecksum,
+                    identity.Tick,
+                    identity.EventCount,
+                    identity.StateDigest,
+                    identity.EventDigest));
+        }
+        catch (Exception)
+        {
+            return RejectDurableControlStatus("inspection_coherence_lost");
+        }
+    }
+
     private static void ValidateExpectedIdentity(SnowGlobeRunIdentity expectedIdentity)
     {
         try
@@ -270,4 +379,6 @@ public static class SnowGlobePersistedRunInspector
     }
 
     private static SnowGlobePersistedRunRecoveryProvenanceInspectionResult RejectRecovery(string reason) => new(false, reason, null);
+
+    private static SnowGlobePersistedSessionControlStatusInspectionResult RejectDurableControlStatus(string reason) => new(false, reason, null);
 }
