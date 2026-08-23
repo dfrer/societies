@@ -1,5 +1,30 @@
 # Snow Globe provider preflight, Ollama repair, and qwen3.5 smoke handoff
 
+## Current Snow Globe v4 recovery-provenance receipt local handoff
+
+### Outcome and scope
+
+- Added `SnowGlobePersistedRunInspector.InspectRecoveryProvenance(directory, expectedIdentity)`, a separate offline reader for a bounded immutable v4 recovery-provenance receipt.
+- The receipt is issued only after exact expected-identity and two raw-evidence reads agree. It distinguishes no durable recovery, authenticated abandonment of an incomplete scheduled tick, and authenticated adoption of a complete scheduled tick.
+- Receipt binding is raw-free and bounded: canonical run identity checksum, exact-read evidence checksum, committed tick/event/state/event identity, and—only for a validated continuation—its checksum plus source prepare checksum, source segment/frame, and source ledger/marker lengths and checksums.
+- Pending v4 tails never become a receipt source. Strict v2/v3 `Inspect` behavior is preserved; accepted legacy reads intentionally return no v4 provenance. The reader never leases, appends, recovers, repairs, invokes an adapter, or mutates artifacts.
+- Required scalar marker fields now reject JSON null before typed validation, preserving stable no-receipt failures for malformed prepare, commit, and continuation evidence.
+
+### Changed files
+
+- Implementation: `labs/Societies.SnowGlobe/PersistedRunInspector.cs`, `labs/Societies.SnowGlobe/RunStore.cs`, and `labs/Societies.SnowGlobe/RunStoreStorage.cs`.
+- Focused coverage: `tests/Societies.SnowGlobe.Tests/PersistedRunInspectorTests.cs`.
+- Contract/repo truth: `labs/Societies.SnowGlobe/README.md`, `CURRENT_BUILD.md`, and this handoff.
+
+### Validation and delivery state
+
+- Release build passed with 0 warnings / 0 errors.
+- Focused Release `PersistedRunInspectorTests` passed 23/23, covering ordinary v4, both durable dispositions, pending-tail non-recovery, fork/corruption/drift rejection, legacy suppression, bounds/detachment, no-mutation/no-lease behavior, required-null prepare/commit/continuation fields, and null continuation corruption before the second read.
+- The focused inspector/RunStore-v4-crash-recovery/persisted-session-v4-recovery selection passed 58/58 in Release.
+- The full Snow Globe Release suite passed 943/943; `git diff --check` is clean.
+- Independent determinism/public-contract review is FINAL GO with no P0-P3 findings after the required-null marker correction closed its P1.
+- Commit, PR, required CI, and merge remain pending. This is local implementation evidence only; no delivery or readiness claim is made.
+
 ## Current Snow Globe read-only persisted-run inspection handoff
 
 ### Outcome and scope

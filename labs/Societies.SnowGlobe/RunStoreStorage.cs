@@ -140,6 +140,22 @@ internal sealed class FaultInjectingRunStoreFileSystem(
 internal enum RunStoreFrameKind { ScheduledTick, ParticipantEvaluation }
 internal enum RunStoreRecoveryDisposition { AbandonIncompleteScheduledTick, RecoverCompleteScheduledTick }
 
+/// <summary>
+/// Internal, already-validated evidence for the sole durable v4 recovery continuation. This is
+/// populated only after the continuation marker has been linked to and authenticated against its
+/// prepared source frame; it is not an inference from a pending tail.
+/// </summary>
+internal sealed record RunStoreDurableRecovery(
+    RunStoreRecoveryDisposition Disposition,
+    int SourceSegmentIndex,
+    int SourceFrameIndex,
+    string SourcePrepareChecksum,
+    int SourceLedgerLength,
+    string SourceLedgerChecksum,
+    int SourceMarkerLength,
+    string SourceMarkerChecksum,
+    string ContinuationChecksum);
+
 internal sealed record RunStorePendingFrame(
     int SegmentIndex,
     RunStorePrepareMarker Prepare,
@@ -161,7 +177,8 @@ internal sealed record RunStoreV4State(
     int CurrentLedgerLength,
     int NextFrameIndex,
     int RecoveryCount,
-    RunStorePendingFrame? PendingFrame);
+    RunStorePendingFrame? PendingFrame,
+    RunStoreDurableRecovery? DurableRecovery);
 
 internal sealed record RunStorePrepareMarker(
     string RecordType,
@@ -311,6 +328,7 @@ internal sealed class RunStoreV4Storage
         int nextFrame = 0;
         int recoveryCount = 0;
         RunStorePendingFrame? pending = null;
+        RunStoreDurableRecovery? durableRecovery = null;
         int currentSegment = 0;
         int currentLedgerLength = 0;
         using IncrementalHash evidence = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
@@ -338,6 +356,16 @@ internal sealed class RunStoreV4Storage
                 RunStoreContinuationMarker continuation = DeserializeContinuation(markerLines[markerIndex++]);
                 ValidateContinuation(continuation, segmentIndex, chain, pending, ledgerBytes.Length, markerBytes.Length);
                 ApplyPending(pending, records, ref expectedSequence);
+                durableRecovery = new RunStoreDurableRecovery(
+                    pending.Disposition,
+                    continuation.SourceSegmentIndex,
+                    continuation.SourceFrameIndex,
+                    continuation.SourcePrepareChecksum,
+                    continuation.SourceLedgerLength,
+                    continuation.SourceLedgerChecksum,
+                    continuation.SourceMarkerLength,
+                    continuation.SourceMarkerChecksum,
+                    continuation.Checksum);
                 chain = continuation.Checksum;
                 nextFrame = checked(pending.Prepare.FrameIndex + 1);
                 recoveryCount++;
@@ -394,7 +422,7 @@ internal sealed class RunStoreV4Storage
         _ = SnowGlobePersistedRun.Reconstruct(ledger);
         return new RunStoreV4State(
             ledger, headerChecksum, chain, Convert.ToHexString(evidence.GetHashAndReset()).ToLowerInvariant(),
-            currentSegment, currentLedgerLength, nextFrame, recoveryCount, pending);
+            currentSegment, currentLedgerLength, nextFrame, recoveryCount, pending, durableRecovery);
     }
 
     internal static void WriteContinuation(string directory, IRunStoreFileSystem files, RunStoreV4State state)
@@ -668,8 +696,9 @@ internal sealed class RunStoreV4Storage
             HashSet<string> found = new(StringComparer.Ordinal);
             foreach (JsonProperty property in document.RootElement.EnumerateObject())
             {
-                if (!found.Add(property.Name) || !properties.Contains(property.Name) || property.Value.ValueKind is JsonValueKind.Array or JsonValueKind.Object)
-                    throw new InvalidDataException($"{description} contains an unknown, duplicate, or nested property.");
+                if (!found.Add(property.Name) || !properties.Contains(property.Name)
+                    || property.Value.ValueKind is JsonValueKind.Array or JsonValueKind.Object or JsonValueKind.Null)
+                    throw new InvalidDataException($"{description} contains an unknown, duplicate, nested, or null property.");
             }
             if (!found.SetEquals(properties)) throw new InvalidDataException($"{description} is incomplete.");
             return JsonSerializer.Deserialize<T>(line, JsonOptions) ?? throw new InvalidDataException($"{description} is missing.");

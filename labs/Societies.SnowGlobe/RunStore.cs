@@ -50,7 +50,11 @@ public sealed record SnowGlobeRunLedger(
 /// Internal read result that binds a detached ledger to the exact raw artifacts consumed while
 /// reading it. It deliberately does not expose a filesystem abstraction to production callers.
 /// </summary>
-internal sealed record RunStoreReadEvidence(SnowGlobeRunLedger Ledger, string EvidenceChecksum);
+internal sealed record RunStoreReadEvidence(
+    SnowGlobeRunLedger Ledger,
+    string EvidenceChecksum,
+    string? V4HeaderChecksum,
+    RunStoreDurableRecovery? DurableRecovery);
 
 /// <summary>Bounded, append-only evidence. Readers never modify artifacts; a durable lock file is a lease, not ownership evidence.</summary>
 public sealed class SnowGlobeRunStore : IDisposable
@@ -221,11 +225,11 @@ public sealed class SnowGlobeRunStore : IDisposable
         if (identity.SchemaVersion == SchemaVersion)
         {
             RunStoreV4State state = ReadV4(directory, files, identity, headerChecksum, headerBytes);
-            return new RunStoreReadEvidence(state.Ledger, state.EvidenceChecksum);
+            return new RunStoreReadEvidence(state.Ledger, state.EvidenceChecksum, state.HeaderChecksum, state.DurableRecovery);
         }
 
         SnowGlobeRunLedger ledger = ReadLegacy(directory, files, identity, headerChecksum, out byte[] ledgerBytes);
-        return new RunStoreReadEvidence(ledger, LegacyRawEvidenceChecksum(headerBytes, ledgerBytes));
+        return new RunStoreReadEvidence(ledger, LegacyRawEvidenceChecksum(headerBytes, ledgerBytes), null, null);
     }
 
     private static RunStoreV4State ReadStateForAppend(string directory, IRunStoreFileSystem files)
