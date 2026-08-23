@@ -1,0 +1,766 @@
+using System.Security.Cryptography;
+using System.Text;
+using System.Text.Json;
+
+namespace Societies.SnowGlobe;
+
+/// <summary>Versioned local identity for one normalized, deterministic lab run.</summary>
+public sealed record SnowGlobeRunIdentity(
+    string SchemaVersion,
+    string RulesIdentity,
+    string PromptIdentity,
+    string AdapterIdentity,
+    int Seed,
+    int AgentCount,
+    string? ParticipantCommandIdentity = null);
+public enum SnowGlobeLedgerKind { Response, Proposal, Commit, Event, Checkpoint, ParticipantEvaluation }
+public sealed record SnowGlobeLedgerRecord(int Sequence, SnowGlobeLedgerKind Kind, int Tick, string AgentId, string Action, int Quantity, bool? Accepted, string? RejectionReason, string? StructureId, string? StateDigest, string? EventDigest, string Checksum, string HeaderChecksum = "");
+public sealed record SnowGlobeParticipantEvaluationRecord(
+    int Sequence,
+    SnowGlobeLedgerKind Kind,
+    int Tick,
+    string ParticipantId,
+    string IdempotencyKey,
+    int ExpectedTick,
+    string ExpectedStateDigest,
+    string ExpectedEventDigest,
+    string AgentId,
+    string Action,
+    int Quantity,
+    bool Accepted,
+    string? RejectionReason,
+    int? AcceptedEventSequence,
+    string? AcceptedStructureId,
+    string ResultingStateDigest,
+    string ResultingEventDigest,
+    string Checksum,
+    string HeaderChecksum);
+public sealed record SnowGlobeRunLedger(
+    SnowGlobeRunIdentity Identity,
+    IReadOnlyList<SnowGlobeLedgerRecord> Records,
+    IReadOnlyList<SnowGlobeParticipantEvaluationRecord>? ParticipantEvaluations = null)
+{
+    public IReadOnlyList<SnowGlobeParticipantEvaluationRecord> ParticipantEvaluationRecords =>
+        ParticipantEvaluations ?? Array.Empty<SnowGlobeParticipantEvaluationRecord>();
+    public int EntryCount => Records.Count + ParticipantEvaluationRecords.Count;
+}
+
+/// <summary>Bounded, append-only evidence. Readers never modify artifacts; a durable lock file is a lease, not ownership evidence.</summary>
+public sealed class SnowGlobeRunStore : IDisposable
+{
+    public const string SchemaVersion = "snow_globe_run_store/v3";
+    public const string LegacySchemaVersion = "snow_globe_run_store/v2";
+    public const string ParticipantCommandIdentity = "snow_globe_participant_command/v1";
+    public const int MaximumParticipantEvaluations = 128;
+    public const int MaximumLedgerRecords = 4096;
+    public const int MaximumFieldLength = 128;
+    public const int MaximumParticipantIdLength = 64;
+    public const int MaximumIdempotencyKeyLength = 64;
+    public const int MaximumHeaderBytes = 4096;
+    public const int MaximumLedgerRecordBytes = 2048;
+    public const int MaximumLedgerBytes = MaximumLedgerRecords * (MaximumLedgerRecordBytes + 1);
+    private const string HeaderFileName = "run.json";
+    private const string LedgerFileName = "ledger.jsonl";
+    private static readonly UTF8Encoding Utf8 = new(false, true);
+    private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower };
+    private static readonly JsonDocumentOptions DocumentOptions = new() { MaxDepth = 8, AllowTrailingCommas = false, CommentHandling = JsonCommentHandling.Disallow };
+    private static readonly HashSet<string> V2HeaderProperties = new(StringComparer.Ordinal) { "schema_version", "rules_identity", "prompt_identity", "adapter_identity", "seed", "agent_count" };
+    private static readonly HashSet<string> V3HeaderProperties = new(V2HeaderProperties, StringComparer.Ordinal) { "participant_command_identity" };
+    private static readonly HashSet<string> RecordProperties = new(StringComparer.Ordinal) { "sequence", "kind", "tick", "agent_id", "action", "quantity", "accepted", "rejection_reason", "structure_id", "state_digest", "event_digest", "checksum", "header_checksum" };
+    private static readonly HashSet<string> ParticipantEvaluationProperties = new(StringComparer.Ordinal)
+    {
+        "sequence", "kind", "tick", "participant_id", "idempotency_key", "expected_tick", "expected_state_digest", "expected_event_digest",
+        "agent_id", "action", "quantity", "accepted", "rejection_reason", "accepted_event_sequence", "accepted_structure_id",
+        "resulting_state_digest", "resulting_event_digest", "checksum", "header_checksum"
+    };
+    private static readonly HashSet<string> DomainRejectionReasons = new(StringComparer.Ordinal)
+    {
+        "unknown_agent",
+        "unknown_action",
+        "quantity_must_be_positive",
+        "construction_quantity_must_be_zero",
+        "shelter_missing",
+        "insufficient_resources_or_invalid_action"
+    };
+    private static readonly HashSet<string> ParticipantRejectionReasons = new(DomainRejectionReasons, StringComparer.Ordinal)
+    {
+        "stale_tick",
+        "stale_state_digest",
+        "stale_event_digest"
+    };
+    private readonly string _directory;
+    private readonly SnowGlobeRunIdentity _identity;
+    private readonly string _headerChecksum;
+    private readonly FileStream _lockStream;
+    private readonly SemaphoreSlim _operationLease = new(1, 1);
+    private readonly object _appendGate = new();
+    private readonly List<SnowGlobeLedgerRecord> _records;
+    private readonly List<SnowGlobeParticipantEvaluationRecord> _participantEvaluations;
+    private readonly Dictionary<(string ParticipantId, string IdempotencyKey), SnowGlobeParticipantEvaluationRecord> _participantIndex;
+    private readonly Dictionary<(string ParticipantId, string IdempotencyKey), SnowGlobeParticipantCommandReceipt> _participantReceipts;
+    private int _nextSequence;
+    private int _expectedTick;
+    private int _expectedEventCount;
+    private string _expectedStateDigest;
+    private string _expectedEventDigest;
+    private List<SnowGlobeLedgerRecord>? _scheduledTickFrame;
+    private bool _agentScheduleInProgress;
+    private bool _poisoned;
+    private bool _disposed;
+
+    internal Func<Task>? BeforeOperationLeaseReleaseForTesting { get; set; }
+    internal Action? BeforeLedgerAppendFlushForTesting { get; set; }
+    internal bool IsPoisoned => Volatile.Read(ref _poisoned);
+
+    private SnowGlobeRunStore(string directory, SnowGlobeRunLedger ledger, string headerChecksum, FileStream lockStream, SnowGlobeWorld expectedWorld)
+    {
+        _directory = directory;
+        _identity = ledger.Identity;
+        _headerChecksum = headerChecksum;
+        _lockStream = lockStream;
+        _records = ledger.Records.ToList();
+        _participantEvaluations = ledger.ParticipantEvaluationRecords.ToList();
+        _participantIndex = _participantEvaluations.ToDictionary(entry => (entry.ParticipantId, entry.IdempotencyKey), entry => entry);
+        _participantReceipts = SnowGlobePersistedRun.Reconstruct(ledger).ParticipantReceipts.ToDictionary(
+            entry => (entry.Key.ParticipantId, entry.Key.IdempotencyKey),
+            entry => entry.Value);
+        _nextSequence = ledger.EntryCount;
+        _expectedTick = expectedWorld.Tick;
+        _expectedEventCount = expectedWorld.Events.Count;
+        _expectedStateDigest = expectedWorld.StateDigest();
+        _expectedEventDigest = expectedWorld.EventDigest();
+    }
+
+    public SnowGlobeRunIdentity Identity => _identity;
+    public string DirectoryPath => _directory;
+
+    public static SnowGlobeRunStore CreateNew(string directory, SnowGlobeRunIdentity identity)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(directory);
+        ValidateIdentity(identity, requireCurrent: true);
+        if (Directory.Exists(directory) && Directory.EnumerateFileSystemEntries(directory).Any()) throw new InvalidOperationException("Run store directory must be empty; existing artifacts are never replaced.");
+        Directory.CreateDirectory(directory);
+        FileStream lease = AcquireWriterLock(directory);
+        try
+        {
+            byte[] header = CanonicalIdentityBytes(identity);
+            if (header.Length > MaximumHeaderBytes) throw new InvalidDataException("Run identity exceeds the bounded header limit.");
+            using FileStream stream = new(Path.Combine(directory, HeaderFileName), FileMode.CreateNew, FileAccess.Write, FileShare.Read);
+            stream.Write(header, 0, header.Length);
+            stream.Flush(flushToDisk: true);
+            using FileStream ledgerStream = new(Path.Combine(directory, LedgerFileName), FileMode.CreateNew, FileAccess.Write, FileShare.Read);
+            ledgerStream.Flush(flushToDisk: true);
+            SnowGlobeRunLedger ledger = new(identity, Array.Empty<SnowGlobeLedgerRecord>(), Array.Empty<SnowGlobeParticipantEvaluationRecord>());
+            return new SnowGlobeRunStore(directory, ledger, Digest(header), lease, SnowGlobeWorld.Create(identity.Seed, identity.AgentCount));
+        }
+        catch { lease.Dispose(); throw; }
+    }
+
+    public static SnowGlobeRunStore OpenForAppend(string directory)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(directory);
+        // Read and reject v2 before acquiring a lease, because acquiring a lease can create a file.
+        SnowGlobeRunLedger preflight = Read(directory);
+        if (preflight.Identity.SchemaVersion != SchemaVersion) throw new InvalidDataException("Legacy v2 run stores are read-only and are never upgraded in place.");
+        FileStream lease = AcquireWriterLock(directory);
+        try
+        {
+            SnowGlobeRunLedger ledger = Read(directory);
+            if (ledger.Identity != preflight.Identity || ledger.EntryCount != preflight.EntryCount) throw new InvalidDataException("Run store changed while append ownership was acquired.");
+            SnowGlobeWorld resumed = SnowGlobePersistedRun.Reconstruct(ledger).World;
+            return new SnowGlobeRunStore(directory, ledger, CanonicalIdentityChecksum(ledger.Identity), lease, resumed);
+        }
+        catch { lease.Dispose(); throw; }
+    }
+
+    public static SnowGlobeRunLedger Read(string directory)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(directory);
+        string headerPath = Path.Combine(directory, HeaderFileName);
+        string ledgerPath = Path.Combine(directory, LedgerFileName);
+        if (!File.Exists(headerPath) || !File.Exists(ledgerPath)) throw new InvalidDataException("Run store artifacts are incomplete.");
+        byte[] headerBytes = ReadBoundedFile(headerPath, MaximumHeaderBytes, "Run identity");
+        SnowGlobeRunIdentity identity = DeserializeIdentityStrict(headerBytes);
+        ValidateIdentity(identity, requireCurrent: false);
+        string headerChecksum = CanonicalIdentityChecksum(identity);
+        EnsureFileLength(ledgerPath, MaximumLedgerBytes, "Ledger");
+        List<SnowGlobeLedgerRecord> records = new();
+        List<SnowGlobeParticipantEvaluationRecord> participantEvaluations = new();
+        int expectedSequence = 0;
+        foreach (byte[] line in ReadLedgerLines(ledgerPath))
+        {
+            if (expectedSequence >= MaximumLedgerRecords) throw new InvalidDataException("Ledger exceeds bounded record limit.");
+            SnowGlobeLedgerKind kind = ReadRecordKind(line);
+            if (kind == SnowGlobeLedgerKind.ParticipantEvaluation)
+            {
+                if (identity.SchemaVersion != SchemaVersion) throw new InvalidDataException("Legacy v2 ledgers cannot contain participant evaluations.");
+                SnowGlobeParticipantEvaluationRecord evaluation = DeserializeStrict<SnowGlobeParticipantEvaluationRecord>(line, ParticipantEvaluationProperties, "Participant evaluation");
+                if (evaluation.Sequence != expectedSequence++) throw new InvalidDataException("Ledger sequence is out of order or duplicated.");
+                ValidateParticipantRecord(evaluation);
+                if (!FixedEquals(evaluation.HeaderChecksum, headerChecksum) || !FixedEquals(evaluation.Checksum, ParticipantChecksum(evaluation with { Checksum = string.Empty }))) throw new InvalidDataException("Participant evaluation integrity mismatch.");
+                participantEvaluations.Add(evaluation);
+            }
+            else
+            {
+                SnowGlobeLedgerRecord record = DeserializeStrict<SnowGlobeLedgerRecord>(line, RecordProperties, "Ledger record");
+                if (record.Sequence != expectedSequence++) throw new InvalidDataException("Ledger sequence is out of order or duplicated.");
+                ValidateRecord(record);
+                if (!FixedEquals(record.HeaderChecksum, headerChecksum) || !FixedEquals(record.Checksum, Checksum(record with { Checksum = string.Empty }))) throw new InvalidDataException("Ledger record integrity mismatch.");
+                records.Add(record);
+            }
+        }
+        SnowGlobeRunLedger ledger = new(identity, records.AsReadOnly(), participantEvaluations.AsReadOnly());
+        _ = SnowGlobePersistedRun.Reconstruct(ledger);
+        return ledger;
+    }
+
+    /// <summary>Reserves the maximum possible record count for a complete tick before its first response is persisted.</summary>
+    public void ReserveWholeTick(int agentCount)
+    {
+        ThrowIfDisposed();
+        if (agentCount != _identity.AgentCount) throw new InvalidDataException("Tick agent schedule does not match the run identity.");
+        int maximumTickRecords = checked(agentCount * 4 + 1);
+        if (_nextSequence > MaximumLedgerRecords - maximumTickRecords) throw new InvalidDataException("Ledger lacks capacity for a complete tick.");
+    }
+
+    internal async ValueTask<IDisposable> AcquireOperationLeaseAsync(CancellationToken cancellationToken)
+    {
+        ThrowIfDisposed();
+        await _operationLease.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try { ThrowIfDisposed(); return new OperationLease(_operationLease); }
+        catch { _operationLease.Release(); throw; }
+    }
+
+    private bool TryAcquireOperationLease(out IDisposable? lease)
+    {
+        ThrowIfDisposed();
+        if (!_operationLease.Wait(0))
+        {
+            lease = null;
+            return false;
+        }
+        try
+        {
+            ThrowIfDisposed();
+            lease = new OperationLease(_operationLease);
+            return true;
+        }
+        catch
+        {
+            _operationLease.Release();
+            throw;
+        }
+    }
+
+    internal Task WaitBeforeOperationLeaseReleaseForTestingAsync() =>
+        BeforeOperationLeaseReleaseForTesting?.Invoke() ?? Task.CompletedTask;
+
+    internal void BindAndReserveWholeTick(SnowGlobeWorld world, IReadOnlyList<string> scheduledAgents)
+    {
+        ArgumentNullException.ThrowIfNull(world);
+        ArgumentNullException.ThrowIfNull(scheduledAgents);
+        lock (_appendGate)
+        {
+            ThrowIfDisposed();
+            if (_agentScheduleInProgress) throw new InvalidDataException("A scheduled tick is already in progress.");
+            if (world.Seed != _identity.Seed || world.Tick != _expectedTick || !FixedEquals(world.StateDigest(), _expectedStateDigest) || !FixedEquals(world.EventDigest(), _expectedEventDigest)) throw new InvalidDataException("World does not match the store's latest continuity state.");
+            string[] expectedAgents = SnowGlobeWorld.Create(_identity.Seed, _identity.AgentCount).Agents.Select(agent => agent.AgentId).OrderBy(agentId => agentId, StringComparer.Ordinal).ToArray();
+            if (!scheduledAgents.SequenceEqual(expectedAgents, StringComparer.Ordinal)) throw new InvalidDataException("World agent schedule does not match the run identity.");
+            ReserveWholeTick(scheduledAgents.Count);
+            _scheduledTickFrame = new List<SnowGlobeLedgerRecord>(checked(scheduledAgents.Count * 4 + 1));
+            _agentScheduleInProgress = true;
+        }
+    }
+
+    internal void CompleteWholeTick(SnowGlobeWorld world)
+    {
+        ArgumentNullException.ThrowIfNull(world);
+        lock (_appendGate)
+        {
+            ThrowIfDisposed();
+            if (!_agentScheduleInProgress || _scheduledTickFrame is null || world.Tick != _expectedTick + 1) throw new InvalidDataException("Completed tick does not advance the bound world exactly once.");
+            SnowGlobeRunLedger prospectiveLedger = new(
+                _identity,
+                _records.Concat(_scheduledTickFrame).ToArray(),
+                _participantEvaluations.AsReadOnly());
+            SnowGlobeWorld reconstructed = SnowGlobePersistedRun.Reconstruct(prospectiveLedger).World;
+            if (reconstructed.Tick != world.Tick
+                || reconstructed.Events.Count != world.Events.Count
+                || !FixedEquals(reconstructed.StateDigest(), world.StateDigest())
+                || !FixedEquals(reconstructed.EventDigest(), world.EventDigest()))
+            {
+                throw new InvalidDataException("Completed tick frame does not match deterministic world reconstruction.");
+            }
+
+            byte[][] lines = _scheduledTickFrame.Select(record => JsonSerializer.SerializeToUtf8Bytes(record, JsonOptions)).ToArray();
+            foreach (byte[] line in lines)
+            {
+                if (line.Length > MaximumLedgerRecordBytes) throw new InvalidDataException("Ledger record exceeds bounded byte limit.");
+            }
+            int batchLength = lines.Aggregate(0, (length, line) => checked(length + line.Length + 1));
+            byte[] batch = new byte[batchLength];
+            int offset = 0;
+            foreach (byte[] line in lines)
+            {
+                line.CopyTo(batch, offset);
+                offset += line.Length;
+                batch[offset++] = (byte)'\n';
+            }
+            try
+            {
+                BeforeLedgerAppendFlushForTesting?.Invoke();
+                using FileStream ledger = new(Path.Combine(_directory, LedgerFileName), FileMode.Append, FileAccess.Write, FileShare.Read);
+                ledger.Write(batch, 0, batch.Length);
+                ledger.Flush(flushToDisk: true);
+            }
+            catch
+            {
+                // A process crash or low-level partial append is not claimed atomic. Poison the writer so it cannot
+                // continue from uncertain bytes; a later strict reader/reopen must decide whether the artifact is valid.
+                _poisoned = true;
+                throw;
+            }
+
+            _records.AddRange(_scheduledTickFrame);
+            _nextSequence += _scheduledTickFrame.Count;
+            _expectedTick = world.Tick;
+            _expectedEventCount = world.Events.Count;
+            _expectedStateDigest = world.StateDigest();
+            _expectedEventDigest = world.EventDigest();
+            _scheduledTickFrame = null;
+            _agentScheduleInProgress = false;
+        }
+    }
+
+    internal void AbortWholeTick()
+    {
+        lock (_appendGate)
+        {
+            _scheduledTickFrame = null;
+            _agentScheduleInProgress = false;
+        }
+    }
+
+    /// <summary>
+    /// Deterministically evaluates and appends one already-admitted, well-formed participant command at a tick boundary.
+    /// Admission failures belong to the caller and are never ledger records. This advances store continuity without
+    /// mutating a caller-owned live world.
+    /// </summary>
+    public SnowGlobeParticipantCommandReceipt EvaluateAndAppendParticipantCommand(SnowGlobeParticipantCommand command)
+    {
+        ArgumentNullException.ThrowIfNull(command);
+        if (!TryAcquireOperationLease(out IDisposable? operationLease))
+        {
+            lock (_appendGate) return TransientReceipt(command, "operation_in_progress");
+        }
+        using (operationLease)
+        lock (_appendGate)
+        {
+            ThrowIfDisposed();
+            if (_identity.SchemaVersion != SchemaVersion) throw new InvalidDataException("Participant evaluations cannot be appended to a legacy v2 run store.");
+            if (_agentScheduleInProgress) return TransientReceipt(command, "operation_in_progress");
+            ValidateParticipantCommand(command);
+
+            (string ParticipantId, string IdempotencyKey) key = (command.ParticipantId!, command.IdempotencyKey!);
+            if (_participantIndex.TryGetValue(key, out SnowGlobeParticipantEvaluationRecord? existing))
+            {
+                return SameParticipantCommand(existing, command)
+                    ? _participantReceipts[key]
+                    : TransientReceipt(command, "command_id_conflict");
+            }
+            if (_participantEvaluations.Count >= MaximumParticipantEvaluations) return TransientReceipt(command, "idempotency_store_saturated");
+            if (_nextSequence >= MaximumLedgerRecords) return TransientReceipt(command, "run_store_capacity_exhausted");
+
+            SnowGlobeWorld candidate = SnowGlobePersistedRun.Reconstruct(CurrentLedger()).World;
+            if (candidate.Tick != _expectedTick || candidate.Events.Count != _expectedEventCount || !FixedEquals(candidate.StateDigest(), _expectedStateDigest) || !FixedEquals(candidate.EventDigest(), _expectedEventDigest)) throw new InvalidDataException("Reconstructed ledger continuity does not match the append cursor.");
+
+            bool accepted = false;
+            string? reason;
+            int? acceptedEventSequence = null;
+            string? acceptedStructureId = null;
+            if (command.ExpectedTick != candidate.Tick) reason = "stale_tick";
+            else if (!FixedEquals(command.ExpectedStateDigest!, candidate.StateDigest())) reason = "stale_state_digest";
+            else if (!FixedEquals(command.ExpectedEventDigest!, candidate.EventDigest())) reason = "stale_event_digest";
+            else
+            {
+                SnowGlobeCommitResult result = candidate.ValidateAndCommit(new SnowGlobeActionProposal(command.TargetAgentId!, command.Action!.Value, command.Quantity!.Value));
+                accepted = result.Accepted;
+                reason = result.RejectionReason;
+                if (accepted)
+                {
+                    SnowGlobeEvent acceptedEvent = candidate.Events[^1];
+                    acceptedEventSequence = acceptedEvent.Sequence;
+                    acceptedStructureId = acceptedEvent.StructureId;
+                }
+            }
+
+            SnowGlobeParticipantEvaluationRecord unsigned = new(
+                _nextSequence,
+                SnowGlobeLedgerKind.ParticipantEvaluation,
+                candidate.Tick,
+                command.ParticipantId!,
+                command.IdempotencyKey!,
+                command.ExpectedTick!.Value,
+                command.ExpectedStateDigest!,
+                command.ExpectedEventDigest!,
+                command.TargetAgentId!,
+                command.Action!.Value.ToString(),
+                command.Quantity!.Value,
+                accepted,
+                reason,
+                acceptedEventSequence,
+                acceptedStructureId,
+                candidate.StateDigest(),
+                candidate.EventDigest(),
+                string.Empty,
+                _headerChecksum);
+            SnowGlobeParticipantEvaluationRecord evaluation = unsigned with { Checksum = ParticipantChecksum(unsigned) };
+            ValidateParticipantRecord(evaluation);
+            byte[] line = JsonSerializer.SerializeToUtf8Bytes(evaluation, JsonOptions);
+            AppendCompleteLine(line);
+
+            _participantEvaluations.Add(evaluation);
+            _participantIndex.Add(key, evaluation);
+            SnowGlobeParticipantCommandReceipt receipt = Receipt(evaluation, candidate.Events.Count - 1);
+            _participantReceipts.Add(key, receipt);
+            _nextSequence++;
+            _expectedEventCount = candidate.Events.Count;
+            _expectedStateDigest = evaluation.ResultingStateDigest;
+            _expectedEventDigest = evaluation.ResultingEventDigest;
+            return receipt;
+        }
+    }
+
+    public void AppendResponse(SnowGlobeObservation observation, SnowGlobeActionProposal response) => Append(SnowGlobeLedgerKind.Response, observation.Tick, response.AgentId, response.Action, response.Quantity, null, null, null, null, null);
+    public void AppendProposal(int tick, SnowGlobeActionProposal proposal) => Append(SnowGlobeLedgerKind.Proposal, tick, proposal.AgentId, proposal.Action, proposal.Quantity, null, null, null, null, null);
+    public void AppendCommit(int tick, SnowGlobeActionProposal proposal, SnowGlobeCommitResult result) => Append(SnowGlobeLedgerKind.Commit, tick, proposal.AgentId, proposal.Action, proposal.Quantity, result.Accepted, result.RejectionReason, null, null, null);
+    public void AppendEvent(SnowGlobeEvent entry) => Append(SnowGlobeLedgerKind.Event, entry.Tick, entry.AgentId, entry.Action, entry.Quantity, true, null, entry.StructureId, null, null);
+    public void AppendCheckpoint(SnowGlobeWorld world) => Append(SnowGlobeLedgerKind.Checkpoint, world.Tick, string.Empty, string.Empty, 0, null, null, null, world.StateDigest(), world.EventDigest());
+
+    private void Append(SnowGlobeLedgerKind kind, int tick, string agentId, SnowGlobeActionKind action, int quantity, bool? accepted, string? rejectionReason, string? structureId, string? stateDigest, string? eventDigest) => Append(kind, tick, agentId, action.ToString(), quantity, accepted, rejectionReason, structureId, stateDigest, eventDigest);
+    private void Append(SnowGlobeLedgerKind kind, int tick, string agentId, string action, int quantity, bool? accepted, string? rejectionReason, string? structureId, string? stateDigest, string? eventDigest)
+    {
+        lock (_appendGate)
+        {
+            ThrowIfDisposed();
+            if (!_agentScheduleInProgress || _scheduledTickFrame is null) throw new InvalidOperationException("Scheduled ledger records require an active whole-tick frame.");
+            int sequence = checked(_nextSequence + _scheduledTickFrame.Count);
+            if (sequence >= MaximumLedgerRecords) throw new InvalidDataException("Ledger exceeds bounded record limit.");
+            SnowGlobeLedgerRecord unsigned = new(sequence, kind, tick, agentId, action, quantity, accepted, rejectionReason, structureId, stateDigest, eventDigest, string.Empty, _headerChecksum);
+            SnowGlobeLedgerRecord record = unsigned with { Checksum = Checksum(unsigned) };
+            ValidateRecord(record);
+            byte[] line = JsonSerializer.SerializeToUtf8Bytes(record, JsonOptions);
+            if (line.Length > MaximumLedgerRecordBytes) throw new InvalidDataException("Ledger record exceeds bounded byte limit.");
+            _scheduledTickFrame.Add(record);
+        }
+    }
+
+    private void AppendCompleteLine(byte[] line)
+    {
+        if (line.Length > MaximumLedgerRecordBytes) throw new InvalidDataException("Ledger record exceeds bounded byte limit.");
+        try
+        {
+            BeforeLedgerAppendFlushForTesting?.Invoke();
+            using FileStream ledger = new(Path.Combine(_directory, LedgerFileName), FileMode.Append, FileAccess.Write, FileShare.Read);
+            ledger.Write(line, 0, line.Length);
+            ledger.WriteByte((byte)'\n');
+            ledger.Flush(flushToDisk: true);
+        }
+        catch
+        {
+            _poisoned = true;
+            throw;
+        }
+    }
+
+    private SnowGlobeRunLedger CurrentLedger() => new(_identity, _records.AsReadOnly(), _participantEvaluations.AsReadOnly());
+
+    private SnowGlobeParticipantCommandReceipt TransientReceipt(SnowGlobeParticipantCommand command, string reason) => new(
+        false,
+        reason,
+        false,
+        IsCanonicalOpaqueId(command.ParticipantId, MaximumParticipantIdLength) ? command.ParticipantId : null,
+        IsCanonicalOpaqueId(command.IdempotencyKey, MaximumIdempotencyKeyLength) ? command.IdempotencyKey : null,
+        _expectedTick,
+        _expectedEventCount - 1,
+        _expectedStateDigest,
+        _expectedEventDigest);
+
+    private static SnowGlobeParticipantCommandReceipt Receipt(SnowGlobeParticipantEvaluationRecord evaluation, int currentEventSequence) => new(
+        evaluation.Accepted,
+        evaluation.RejectionReason,
+        false,
+        evaluation.ParticipantId,
+        evaluation.IdempotencyKey,
+        evaluation.Tick,
+        evaluation.Accepted ? evaluation.AcceptedEventSequence : currentEventSequence,
+        evaluation.ResultingStateDigest,
+        evaluation.ResultingEventDigest);
+
+    internal static bool SameParticipantCommand(SnowGlobeParticipantEvaluationRecord existing, SnowGlobeParticipantCommand command) =>
+        existing.ParticipantId == command.ParticipantId
+        && existing.IdempotencyKey == command.IdempotencyKey
+        && existing.ExpectedTick == command.ExpectedTick
+        && existing.ExpectedStateDigest == command.ExpectedStateDigest
+        && existing.ExpectedEventDigest == command.ExpectedEventDigest
+        && existing.AgentId == command.TargetAgentId
+        && command.Action is SnowGlobeActionKind action
+        && existing.Action == action.ToString()
+        && existing.Quantity == command.Quantity;
+
+    private static FileStream AcquireWriterLock(string directory) => new(Path.Combine(directory, ".writer.lock"), FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None);
+    private static byte[] ReadBoundedFile(string path, int maximumBytes, string description)
+    {
+        // The single read handle denies concurrent writers and probes one byte past the cap, avoiding a length-check/read race.
+        using FileStream stream = new(path, FileMode.Open, FileAccess.Read, FileShare.Read);
+        byte[] boundedBuffer = new byte[checked(maximumBytes + 1)];
+        int total = 0;
+        while (total < boundedBuffer.Length)
+        {
+            int read = stream.Read(boundedBuffer, total, boundedBuffer.Length - total);
+            if (read == 0) break;
+            total += read;
+        }
+        if (total > maximumBytes) throw new InvalidDataException($"{description} exceeds the bounded byte limit.");
+        return boundedBuffer[..total];
+    }
+    private static void EnsureFileLength(string path, int maximumBytes, string description)
+    {
+        long length = new FileInfo(path).Length;
+        if (length > maximumBytes) throw new InvalidDataException($"{description} exceeds the bounded byte limit.");
+    }
+    private static IEnumerable<byte[]> ReadLedgerLines(string path)
+    {
+        using FileStream stream = new(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+        List<byte> line = new(MaximumLedgerRecordBytes);
+        int value;
+        while ((value = stream.ReadByte()) >= 0)
+        {
+            if (value == '\n')
+            {
+                if (line.Count == 0) throw new InvalidDataException("Ledger truncation or blank record detected.");
+                yield return line.ToArray();
+                line.Clear();
+                continue;
+            }
+            if (value == '\r' || line.Count >= MaximumLedgerRecordBytes) throw new InvalidDataException("Ledger record exceeds bounded byte limit.");
+            line.Add((byte)value);
+        }
+        if (line.Count != 0) throw new InvalidDataException("Ledger truncation: final record is missing its terminating line feed.");
+    }
+    private static SnowGlobeRunIdentity DeserializeIdentityStrict(byte[] utf8)
+    {
+        using JsonDocument document = ParseFlatObject(utf8, "Run identity");
+        if (!document.RootElement.TryGetProperty("schema_version", out JsonElement schema) || schema.ValueKind != JsonValueKind.String) throw new InvalidDataException("Run identity schema is missing.");
+        string? schemaVersion = schema.GetString();
+        if (schemaVersion == LegacySchemaVersion)
+        {
+            ValidateProperties(document.RootElement, V2HeaderProperties, "Run identity");
+            V2RunIdentity parsed = JsonSerializer.Deserialize<V2RunIdentity>(utf8, JsonOptions) ?? throw new InvalidDataException("Run identity is missing.");
+            return new(parsed.SchemaVersion, parsed.RulesIdentity, parsed.PromptIdentity, parsed.AdapterIdentity, parsed.Seed, parsed.AgentCount);
+        }
+        ValidateProperties(document.RootElement, V3HeaderProperties, "Run identity");
+        return JsonSerializer.Deserialize<SnowGlobeRunIdentity>(utf8, JsonOptions) ?? throw new InvalidDataException("Run identity is missing.");
+    }
+
+    private static SnowGlobeLedgerKind ReadRecordKind(byte[] utf8)
+    {
+        using JsonDocument document = ParseFlatObject(utf8, "Ledger record");
+        if (!document.RootElement.TryGetProperty("kind", out JsonElement kind) || kind.ValueKind != JsonValueKind.Number || !kind.TryGetInt32(out int value) || !Enum.IsDefined((SnowGlobeLedgerKind)value)) throw new InvalidDataException("Ledger record kind is invalid.");
+        return (SnowGlobeLedgerKind)value;
+    }
+
+    private static T DeserializeStrict<T>(byte[] utf8, HashSet<string> allowedProperties, string description)
+    {
+        try
+        {
+            using JsonDocument document = ParseFlatObject(utf8, description);
+            ValidateProperties(document.RootElement, allowedProperties, description);
+            return JsonSerializer.Deserialize<T>(utf8, JsonOptions) ?? throw new InvalidDataException($"{description} is missing.");
+        }
+        catch (JsonException exception) { throw new InvalidDataException($"{description} is malformed.", exception); }
+    }
+
+    private static JsonDocument ParseFlatObject(byte[] utf8, string description)
+    {
+        try
+        {
+            JsonDocument document = JsonDocument.Parse(utf8, DocumentOptions);
+            if (document.RootElement.ValueKind != JsonValueKind.Object)
+            {
+                document.Dispose();
+                throw new InvalidDataException($"{description} must be a JSON object.");
+            }
+            return document;
+        }
+        catch (JsonException exception) { throw new InvalidDataException($"{description} is malformed.", exception); }
+    }
+
+    private static void ValidateProperties(JsonElement element, HashSet<string> allowedProperties, string description)
+    {
+        HashSet<string> encountered = new(StringComparer.Ordinal);
+        foreach (JsonProperty property in element.EnumerateObject())
+        {
+            if (!encountered.Add(property.Name) || !allowedProperties.Contains(property.Name)) throw new InvalidDataException($"{description} contains an unknown or duplicate property.");
+            if (property.Value.ValueKind is JsonValueKind.Array or JsonValueKind.Object) throw new InvalidDataException($"{description} contains an unsupported nested value.");
+        }
+        if (!encountered.SetEquals(allowedProperties)) throw new InvalidDataException($"{description} is incomplete.");
+    }
+
+    private static void ValidateIdentity(SnowGlobeRunIdentity identity, bool requireCurrent)
+    {
+        bool common = identity.RulesIdentity == SnowGlobePersistedRun.RulesIdentity
+            && identity.PromptIdentity == SnowGlobePersistedRun.PromptIdentity
+            && SnowGlobeInferenceIdentity.IsCanonical(identity.AdapterIdentity)
+            && identity.AgentCount is >= 1 and <= 64
+            && IsBounded(identity.RulesIdentity)
+            && IsBounded(identity.PromptIdentity)
+            && IsBounded(identity.AdapterIdentity);
+        bool supportedVersion = identity.SchemaVersion switch
+        {
+            SchemaVersion => identity.ParticipantCommandIdentity == ParticipantCommandIdentity,
+            LegacySchemaVersion when !requireCurrent => identity.ParticipantCommandIdentity is null,
+            _ => false
+        };
+        if (!common || !supportedVersion) throw new InvalidDataException("Run identity is unsupported or incomplete.");
+    }
+
+    internal static void ValidateSupportedIdentity(SnowGlobeRunIdentity identity) => ValidateIdentity(identity, requireCurrent: false);
+
+    private static void ValidateRecord(SnowGlobeLedgerRecord record)
+    {
+        if (!Enum.IsDefined(record.Kind) || record.Kind == SnowGlobeLedgerKind.ParticipantEvaluation || record.Sequence < 0 || record.Tick < 0 || !IsDigest(record.Checksum) || !IsDigest(record.HeaderChecksum)) throw new InvalidDataException("Ledger record has invalid sequence, kind, or integrity fields.");
+        if (record.Kind is SnowGlobeLedgerKind.Response or SnowGlobeLedgerKind.Proposal or SnowGlobeLedgerKind.Commit or SnowGlobeLedgerKind.Event
+            && (!IsCanonicalOpaqueId(record.AgentId, MaximumFieldLength) || !TryParseCanonicalAction(record.Action, out _)))
+        {
+            throw new InvalidDataException("Ledger record contains a non-canonical action or agent.");
+        }
+
+        bool validShape = record.Kind switch
+        {
+            SnowGlobeLedgerKind.Response or SnowGlobeLedgerKind.Proposal =>
+                record.Accepted is null
+                && record.RejectionReason is null
+                && record.StructureId is null
+                && record.StateDigest is null
+                && record.EventDigest is null,
+            SnowGlobeLedgerKind.Commit =>
+                record.Accepted is not null
+                && (record.Accepted.Value ? record.RejectionReason is null : IsAllowedReason(record.RejectionReason, DomainRejectionReasons))
+                && record.StructureId is null
+                && record.StateDigest is null
+                && record.EventDigest is null,
+            SnowGlobeLedgerKind.Event =>
+                record.Accepted == true
+                && record.RejectionReason is null
+                && (record.StructureId is null || IsCanonicalOpaqueId(record.StructureId, MaximumFieldLength))
+                && record.StateDigest is null
+                && record.EventDigest is null,
+            SnowGlobeLedgerKind.Checkpoint =>
+                record.AgentId == string.Empty
+                && record.Action == string.Empty
+                && record.Quantity == 0
+                && record.Accepted is null
+                && record.RejectionReason is null
+                && record.StructureId is null
+                && IsDigest(record.StateDigest)
+                && IsDigest(record.EventDigest),
+            _ => false
+        };
+        if (!validShape) throw new InvalidDataException("Ledger record fields do not match the exact kind-specific shape.");
+    }
+
+    internal static void ValidateParticipantRecord(SnowGlobeParticipantEvaluationRecord record)
+    {
+        if (record.Kind != SnowGlobeLedgerKind.ParticipantEvaluation || record.Sequence < 0 || record.Tick < 0 || record.ExpectedTick < 0 || !IsDigest(record.Checksum) || !IsDigest(record.HeaderChecksum)) throw new InvalidDataException("Participant evaluation has invalid identity or integrity fields.");
+        if (!IsCanonicalOpaqueId(record.ParticipantId, MaximumParticipantIdLength) || !IsCanonicalOpaqueId(record.IdempotencyKey, MaximumIdempotencyKeyLength) || !IsCanonicalOpaqueId(record.AgentId, MaximumParticipantIdLength)) throw new InvalidDataException("Participant evaluation contains a non-canonical identity.");
+        if (!TryParseCanonicalAction(record.Action, out _) || !IsDigest(record.ExpectedStateDigest) || !IsDigest(record.ExpectedEventDigest) || !IsDigest(record.ResultingStateDigest) || !IsDigest(record.ResultingEventDigest)) throw new InvalidDataException("Participant evaluation contains a non-canonical action or digest.");
+        if (record.Accepted)
+        {
+            if (record.RejectionReason is not null
+                || record.AcceptedEventSequence is null or < 0
+                || record.AcceptedStructureId is not null && !IsCanonicalOpaqueId(record.AcceptedStructureId, MaximumFieldLength))
+            {
+                throw new InvalidDataException("Accepted participant evaluation has an invalid disposition.");
+            }
+        }
+        else if (!IsAllowedReason(record.RejectionReason, ParticipantRejectionReasons) || record.AcceptedEventSequence is not null || record.AcceptedStructureId is not null)
+        {
+            throw new InvalidDataException("Rejected participant evaluation has an invalid disposition.");
+        }
+    }
+
+    private static void ValidateParticipantCommand(SnowGlobeParticipantCommand command)
+    {
+        if (!IsCanonicalOpaqueId(command.ParticipantId, MaximumParticipantIdLength)) throw new InvalidDataException("Participant id is invalid.");
+        if (!IsCanonicalOpaqueId(command.IdempotencyKey, MaximumIdempotencyKeyLength)) throw new InvalidDataException("Participant idempotency key is invalid.");
+        if (command.ExpectedTick is null or < 0 || !IsDigest(command.ExpectedStateDigest) || !IsDigest(command.ExpectedEventDigest)) throw new InvalidDataException("Participant command anchors are invalid.");
+        if (!IsCanonicalOpaqueId(command.TargetAgentId, MaximumParticipantIdLength) || command.Action is not SnowGlobeActionKind action || !Enum.IsDefined(action) || command.Quantity is null) throw new InvalidDataException("Participant command action is invalid.");
+    }
+    internal static bool TryParseCanonicalAction(string? value, out SnowGlobeActionKind action)
+    {
+        action = default;
+        return value is not null && Enum.TryParse(value, ignoreCase: false, out action) && Enum.IsDefined(action) && string.Equals(value, Enum.GetName(action), StringComparison.Ordinal);
+    }
+    internal static bool IsCanonicalOpaqueId(string? value, int maximumLength)
+    {
+        if (string.IsNullOrEmpty(value) || value.Length > maximumLength) return false;
+        for (int index = 0; index < value.Length; index++)
+        {
+            char current = value[index];
+            if (!((current >= 'a' && current <= 'z') || (current >= '0' && current <= '9') || current is '-' or '_')) return false;
+        }
+        return value[0] is >= 'a' and <= 'z' or >= '0' and <= '9';
+    }
+
+    private static bool IsAllowedReason(string? value, HashSet<string> allowlist) => value is not null && allowlist.Contains(value);
+    private static bool IsBounded(string? value) => value is null || value.Length <= MaximumFieldLength;
+    internal static bool IsDigest(string? value) => value is { Length: 64 } && value.All(character => character is >= '0' and <= '9' or >= 'a' and <= 'f');
+    internal static string CanonicalIdentityChecksum(SnowGlobeRunIdentity identity) => Digest(CanonicalIdentityBytes(identity));
+    private static byte[] CanonicalIdentityBytes(SnowGlobeRunIdentity identity) => identity.SchemaVersion == LegacySchemaVersion
+        ? JsonSerializer.SerializeToUtf8Bytes(new V2RunIdentity(identity.SchemaVersion, identity.RulesIdentity, identity.PromptIdentity, identity.AdapterIdentity, identity.Seed, identity.AgentCount), JsonOptions)
+        : JsonSerializer.SerializeToUtf8Bytes(identity, JsonOptions);
+    private static string Checksum(SnowGlobeLedgerRecord record) => Digest(Utf8.GetBytes($"{record.Sequence}|{record.Kind}|{record.Tick}|{record.AgentId}|{record.Action}|{record.Quantity}|{record.Accepted}|{record.RejectionReason}|{record.StructureId}|{record.StateDigest}|{record.EventDigest}|{record.HeaderChecksum}"));
+    internal static string ParticipantChecksum(SnowGlobeParticipantEvaluationRecord record) => Digest(Utf8.GetBytes(
+        $"{record.Sequence}|{record.Kind}|{record.Tick}|{record.ParticipantId}|{record.IdempotencyKey}|{record.ExpectedTick}|{record.ExpectedStateDigest}|{record.ExpectedEventDigest}|{record.AgentId}|{record.Action}|{record.Quantity}|{record.Accepted}|{record.RejectionReason}|{record.AcceptedEventSequence}|{record.AcceptedStructureId}|{record.ResultingStateDigest}|{record.ResultingEventDigest}|{record.HeaderChecksum}"));
+    private static string Digest(byte[] bytes) => Convert.ToHexString(SHA256.HashData(bytes)).ToLowerInvariant();
+    internal static bool FixedEquals(string left, string right) => CryptographicOperations.FixedTimeEquals(Utf8.GetBytes(left), Utf8.GetBytes(right));
+    private void ThrowIfDisposed()
+    {
+        if (_disposed) throw new ObjectDisposedException(nameof(SnowGlobeRunStore));
+        if (_poisoned) throw new InvalidDataException("Run-store writer is poisoned after an uncertain low-level append failure.");
+    }
+    public void Dispose() { if (_disposed) return; _disposed = true; _operationLease.Dispose(); _lockStream.Dispose(); }
+
+    private sealed record V2RunIdentity(string SchemaVersion, string RulesIdentity, string PromptIdentity, string AdapterIdentity, int Seed, int AgentCount);
+
+    private sealed class OperationLease(SemaphoreSlim semaphore) : IDisposable
+    {
+        private SemaphoreSlim? _semaphore = semaphore;
+        public void Dispose() => Interlocked.Exchange(ref _semaphore, null)?.Release();
+    }
+}
+
+/// <summary>Recorded normalized responses are replay inputs, not world authority; the scheduler still validates every proposal.</summary>
+public sealed class SnowGlobeReplayAdapter : ISnowGlobeIdentifiedInferenceAdapter
+{
+    public const string Identity = "snow_globe_recorded_response_adapter/v1";
+    private readonly Queue<SnowGlobeLedgerRecord> _responses;
+    public string AdapterIdentity { get; }
+    public SnowGlobeReplayAdapter(SnowGlobeRunLedger ledger, string expectedAdapterIdentity, int startTick = 0)
+    {
+        ArgumentNullException.ThrowIfNull(ledger);
+        if (string.IsNullOrWhiteSpace(expectedAdapterIdentity) || !string.Equals(ledger.Identity.AdapterIdentity, expectedAdapterIdentity, StringComparison.Ordinal)) throw new InvalidDataException("Recorded responses require an exact expected adapter identity.");
+        SnowGlobeRunStore.ValidateSupportedIdentity(ledger.Identity);
+        AdapterIdentity = ledger.Identity.AdapterIdentity;
+        _responses = new Queue<SnowGlobeLedgerRecord>(ledger.Records.Where(record => record.Kind == SnowGlobeLedgerKind.Response && record.Tick >= startTick));
+    }
+    public ValueTask<SnowGlobeActionProposal> ProposeAsync(SnowGlobeObservation observation, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        if (_responses.Count == 0) throw new InvalidDataException("Recorded response ledger is exhausted.");
+        SnowGlobeLedgerRecord response = _responses.Dequeue();
+        if (response.Tick != observation.Tick || !string.Equals(response.AgentId, observation.AgentId, StringComparison.Ordinal) || !SnowGlobeRunStore.TryParseCanonicalAction(response.Action, out SnowGlobeActionKind action)) throw new InvalidDataException("Recorded response does not match the deterministic observation order.");
+        return ValueTask.FromResult(new SnowGlobeActionProposal(response.AgentId, action, response.Quantity));
+    }
+}
