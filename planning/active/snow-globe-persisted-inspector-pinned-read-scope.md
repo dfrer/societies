@@ -21,8 +21,8 @@
 - Exact-property malformed typed v2, v3, v4, and v5 headers return `run_store_invalid` through all three surfaces and dispose their sole opened header handle; `JsonException` cannot escape or bypass cleanup.
 - A concurrent v5 `AdvanceAsync`, `PauseAsync`, and `ResumeAsync` succeeds while the inspector holds pinned read handles, proving the scope neither opens `.writer.lock` nor blocks valid appends.
 - Final local Release evidence: 46/46 focused inspector tests, 234/234 inspector/persistence compatibility tests, and the full 992/992 Snow Globe suite pass; both the Snow Globe library and test project build with 0 warnings and 0 errors, and `git diff --check` is clean. Independent security/determinism/public-interface re-review is FINAL GO with no P0-P3 findings after closing two P1s in ancestor-validation order and malformed typed-header cleanup. The main task owns Git/PR delivery.
-- Linux physical symbolic-link coverage executes normally. Windows physical symbolic-link coverage is conditional on host privilege/filesystem support; this local milestone does not claim a separately verified junction case.
+- Physical symbolic-link coverage is enabled unconditionally on Linux and conditionally on Windows host privilege/filesystem support. This milestone did not execute the Snow Globe suite on Linux because the required repository smoke workflow does not run the isolated lab project; it does not claim a separately verified Windows junction case.
 
 ## Delivery boundary
 
-The reviewed implementation is ready for delivery. The main task owns commits, push, pull request, required-check monitoring, merge, and the final clean synchronized `master` continuation record.
+Implementation commit `8ce9214` was published through [PR #139](https://github.com/dfrer/societies/pull/139); required `build-test-smoke` passed in 4m20s and the PR merged to `master` as `980fc52`. The milestone is complete; the final delivery-record merge is the continuation point.

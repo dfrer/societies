@@ -21,8 +21,9 @@
 ### Limitations and next action
 
 - This pins the two evidence reads to the same objects and detects observed byte/layout/link-policy drift. It does not bind the directory object or current pathname at return, exclude hard links, detect link swap-and-restore between checks, prevent same-object content ABA, use native file IDs, or promise after-return stability.
-- Physical symbolic-link tests run on Linux and when Windows host privilege/filesystem support permits. No separate Windows junction result is claimed; an optional temp-only capability probe was blocked before execution and created nothing.
-- Next action: main task completes Git/PR delivery and records the exact merge identifiers.
+- Physical symbolic-link tests are enabled unconditionally on Linux and conditionally when Windows host privilege/filesystem support permits. This milestone did not execute the Snow Globe suite on Linux because the required repository smoke workflow does not run the isolated lab project. No separate Windows junction result is claimed; an optional temp-only capability probe was blocked before execution and created nothing.
+- Implementation commit `8ce9214` was published through [PR #139](https://github.com/dfrer/societies/pull/139); required `build-test-smoke` passed in 4m20s and the PR merged to `master` as `980fc52`.
+- This bounded milestone is complete. Native current-path/directory identity and hard-link exclusion remain separate future contracts.
 
 ## Current Snow Globe v5 durable session-control status handoff
 
