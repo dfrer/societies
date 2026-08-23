@@ -1,6 +1,6 @@
 # Snow Globe provider preflight, Ollama repair, and qwen3.5 smoke handoff
 
-## Snow Globe v5 durable-pause local handoff
+## Snow Globe v5 durable-pause handoff
 
 ### Outcome and scope
 
@@ -21,12 +21,12 @@
 - New v5 Release tests pass 25/25. Existing persistence compatibility selection passes 186/186. The aggregate persistence/provider-enum selection passes 239/239. The Snow Globe library Release build passes with 0 warnings / 0 errors.
 - The full Snow Globe Release suite passes 969/969; `git diff --check` is clean.
 - Independent deep migration/determinism/public-interface review is FINAL GO with no P0-P3 findings.
-- CI, commit, PR, and merge remain pending; no GitHub delivery claim is made.
+- Implementation commit `9b4b1c4` was published through [PR #135](https://github.com/dfrer/societies/pull/135); required `build-test-smoke` passed in 4m34s and the PR merged to `master` as `6505e01`.
 - No workflow T0/T1 blocker has been identified. One initially over-expensive test-only maximum-capacity artifact construction was replaced by the existing style of bounded internal branch seam; production capacity/artifact bounds remain covered separately.
 
 ### Next action
 
-- Commit and publish this reviewed slice through the required PR check, then record the exact merge boundary. Do not start another Snow Globe slice before delivery clears.
+- This bounded v5 durable-pause milestone is complete. Next decide between a distinct read-only durable session-control status surface and the separate persisted-inspector path/ABA hardening slice; do not overload inert `Snapshot.IsPaused` or start either without a fresh outcome contract.
 
 ## Current Snow Globe v4 recovery-provenance receipt handoff
 

@@ -6,7 +6,7 @@
 - Owned slice: isolated Snow Globe RunStore/session persistence, strict reconstruction, framed recovery, focused compatibility tests, and contract/status documentation.
 - Non-goals: no v4 rewrite or upgrade, second state file, public historical-pause inspector, extra recovery segment/count, world event or digest change, `ObserverShell` change, provider/network/credential/live-state work, `src/societies/` change, or power-loss/exactly-once claim.
 - Value gate: a local observer pause is no longer silently lost across an ordinary v5 session reopen, while deterministic world authority and frozen v4 behavior remain unchanged.
-- Delivery boundary: local implementation, full Release validation, and independent review are complete. Git delivery, CI, PR, and merge remain parent-owned gates.
+- Delivery boundary: implementation, full Release validation, independent review, required CI, PR, and merge are complete.
 
 ## Version and wire contract
 
@@ -37,10 +37,10 @@
 - Production files: `RunStore.cs`, `RunStoreStorage.cs`, `RunStoreExperiment.cs`, `PersistedSession.cs`, and minimal v4-only receipt routing in `PersistedRunInspector.cs`.
 - Focused v5 evidence: `RunStoreV5PauseTests.cs` and `PersistedSessionV5PauseTests.cs` cover exact wire/API shape, empty/initial pause, pause/resume/reopen, no-op bytes, participant gating/idempotency, paused Step plus running Advance, capacity/busy/uncertainty, inner/outer corruption, all pause write interruption boundaries, scheduled recovery under both states, shared recovery order, inert inspection, and exact artifact bounds.
 - Frozen compatibility evidence explicitly creates v4 fixtures in the existing RunStore, session recovery, and inspector tests rather than accidentally relabeling them v5.
-- Current local evidence: 25/25 new v5 tests, 186/186 persistence compatibility tests, the 239/239 aggregate persistence/provider-enum selection, and the full 969/969 Snow Globe suite pass in Release; the Snow Globe library builds with zero warnings/errors and `git diff --check` is clean. Independent migration/determinism/public-interface review is FINAL GO with no P0-P3 findings. CI, commit, PR, and merge are not yet claimed.
+- Final evidence: 25/25 new v5 tests, 186/186 persistence compatibility tests, the 239/239 aggregate persistence/provider-enum selection, and the full 969/969 Snow Globe suite pass in Release; the Snow Globe library builds with zero warnings/errors and `git diff --check` is clean. Independent migration/determinism/public-interface review is FINAL GO with no P0-P3 findings. Implementation commit `9b4b1c4` was published through PR #135; required `build-test-smoke` passed in 4m34s and the PR merged to `master` as `6505e01`.
 
 ## Risks and continuation
 
 - The internal v4 fixture seam is compatibility-test-only; public creation remains v5-only.
 - Recovery evidence proves the existing deterministic record-boundary model. It does not certify power-loss atomicity, hardware durability, cross-host coordination, or exactly-once behavior.
-- Next action: commit and publish the reviewed slice through the required PR check, merge it, and record the exact delivery boundary.
+- Next decision: choose a distinct read-only durable session-control status surface or the separate persisted-inspector path/ABA hardening slice; preserve the inert `Snapshot.IsPaused` meaning.
