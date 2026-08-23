@@ -48,7 +48,8 @@ public sealed record SnowGlobeRunLedger(
 /// <summary>Bounded, append-only evidence. Readers never modify artifacts; a durable lock file is a lease, not ownership evidence.</summary>
 public sealed class SnowGlobeRunStore : IDisposable
 {
-    public const string SchemaVersion = "snow_globe_run_store/v3";
+    public const string SchemaVersion = "snow_globe_run_store/v4";
+    public const string PreviousSchemaVersion = "snow_globe_run_store/v3";
     public const string LegacySchemaVersion = "snow_globe_run_store/v2";
     public const string ParticipantCommandIdentity = "snow_globe_participant_command/v1";
     public const int MaximumParticipantEvaluations = 128;
@@ -89,9 +90,11 @@ public sealed class SnowGlobeRunStore : IDisposable
         "stale_event_digest"
     };
     private readonly string _directory;
+    private readonly IRunStoreFileSystem _files;
     private readonly SnowGlobeRunIdentity _identity;
     private readonly string _headerChecksum;
-    private readonly FileStream _lockStream;
+    private readonly IDisposable _lockStream;
+    private readonly RunStoreV4Storage _storage;
     private readonly SemaphoreSlim _operationLease = new(1, 1);
     private readonly object _appendGate = new();
     private readonly List<SnowGlobeLedgerRecord> _records;
@@ -112,12 +115,21 @@ public sealed class SnowGlobeRunStore : IDisposable
     internal Action? BeforeLedgerAppendFlushForTesting { get; set; }
     internal bool IsPoisoned => Volatile.Read(ref _poisoned);
 
-    private SnowGlobeRunStore(string directory, SnowGlobeRunLedger ledger, string headerChecksum, FileStream lockStream, SnowGlobeWorld expectedWorld)
+    private SnowGlobeRunStore(
+        string directory,
+        IRunStoreFileSystem files,
+        SnowGlobeRunLedger ledger,
+        string headerChecksum,
+        IDisposable lockStream,
+        SnowGlobeWorld expectedWorld,
+        RunStoreV4State storageState)
     {
         _directory = directory;
+        _files = files;
         _identity = ledger.Identity;
         _headerChecksum = headerChecksum;
         _lockStream = lockStream;
+        _storage = new RunStoreV4Storage(directory, files, storageState);
         _records = ledger.Records.ToList();
         _participantEvaluations = ledger.ParticipantEvaluationRecords.ToList();
         _participantIndex = _participantEvaluations.ToDictionary(entry => (entry.ParticipantId, entry.IdempotencyKey), entry => entry);
@@ -135,79 +147,101 @@ public sealed class SnowGlobeRunStore : IDisposable
     public string DirectoryPath => _directory;
 
     public static SnowGlobeRunStore CreateNew(string directory, SnowGlobeRunIdentity identity)
+        => CreateNew(directory, identity, PhysicalRunStoreFileSystem.Instance);
+
+    internal static SnowGlobeRunStore CreateNew(string directory, SnowGlobeRunIdentity identity, IRunStoreFileSystem files)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(directory);
+        ArgumentNullException.ThrowIfNull(files);
         ValidateIdentity(identity, requireCurrent: true);
-        if (Directory.Exists(directory) && Directory.EnumerateFileSystemEntries(directory).Any()) throw new InvalidOperationException("Run store directory must be empty; existing artifacts are never replaced.");
-        Directory.CreateDirectory(directory);
-        FileStream lease = AcquireWriterLock(directory);
+        if (files.DirectoryExists(directory) && files.EnumerateEntryNames(directory).Count != 0) throw new InvalidOperationException("Run store directory must be empty; existing artifacts are never replaced.");
+        files.CreateDirectory(directory);
+        IDisposable lease = AcquireWriterLock(directory, files);
         try
         {
             byte[] header = CanonicalIdentityBytes(identity);
             if (header.Length > MaximumHeaderBytes) throw new InvalidDataException("Run identity exceeds the bounded header limit.");
-            using FileStream stream = new(Path.Combine(directory, HeaderFileName), FileMode.CreateNew, FileAccess.Write, FileShare.Read);
-            stream.Write(header, 0, header.Length);
-            stream.Flush(flushToDisk: true);
-            using FileStream ledgerStream = new(Path.Combine(directory, LedgerFileName), FileMode.CreateNew, FileAccess.Write, FileShare.Read);
-            ledgerStream.Flush(flushToDisk: true);
-            SnowGlobeRunLedger ledger = new(identity, Array.Empty<SnowGlobeLedgerRecord>(), Array.Empty<SnowGlobeParticipantEvaluationRecord>());
-            return new SnowGlobeRunStore(directory, ledger, Digest(header), lease, SnowGlobeWorld.Create(identity.Seed, identity.AgentCount));
+            files.CreateFile(Path.Combine(directory, HeaderFileName), header, RunStoreWriteKind.Header);
+            RunStoreV4Storage.CreateEmpty(directory, files);
+            RunStoreV4State state = ReadV4(directory, files, identity, Digest(header), header);
+            return new SnowGlobeRunStore(directory, files, state.Ledger, state.HeaderChecksum, lease, SnowGlobeWorld.Create(identity.Seed, identity.AgentCount), state);
         }
         catch { lease.Dispose(); throw; }
     }
 
     public static SnowGlobeRunStore OpenForAppend(string directory)
+        => OpenForAppend(directory, PhysicalRunStoreFileSystem.Instance);
+
+    internal static SnowGlobeRunStore OpenForAppend(string directory, IRunStoreFileSystem files)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(directory);
-        // Read and reject v2 before acquiring a lease, because acquiring a lease can create a file.
-        SnowGlobeRunLedger preflight = Read(directory);
-        if (preflight.Identity.SchemaVersion != SchemaVersion) throw new InvalidDataException("Legacy v2 run stores are read-only and are never upgraded in place.");
-        FileStream lease = AcquireWriterLock(directory);
+        ArgumentNullException.ThrowIfNull(files);
+        // Read and reject legacy stores before acquiring a lease, because acquiring a lease can create a file.
+        RunStoreV4State preflight = ReadStateForAppend(directory, files);
+        IDisposable lease = AcquireWriterLock(directory, files);
         try
         {
-            SnowGlobeRunLedger ledger = Read(directory);
-            if (ledger.Identity != preflight.Identity || ledger.EntryCount != preflight.EntryCount) throw new InvalidDataException("Run store changed while append ownership was acquired.");
-            SnowGlobeWorld resumed = SnowGlobePersistedRun.Reconstruct(ledger).World;
-            return new SnowGlobeRunStore(directory, ledger, CanonicalIdentityChecksum(ledger.Identity), lease, resumed);
+            RunStoreV4State state = ReadStateForAppend(directory, files);
+            if (!FixedEquals(state.EvidenceChecksum, preflight.EvidenceChecksum)) throw new InvalidDataException("Run store changed while append ownership was acquired.");
+            if (state.PendingFrame is not null)
+            {
+                RunStoreV4Storage.WriteContinuation(directory, files, state);
+                state = ReadStateForAppend(directory, files);
+            }
+            SnowGlobeWorld resumed = SnowGlobePersistedRun.Reconstruct(state.Ledger).World;
+            return new SnowGlobeRunStore(directory, files, state.Ledger, state.HeaderChecksum, lease, resumed, state);
         }
         catch { lease.Dispose(); throw; }
     }
 
     public static SnowGlobeRunLedger Read(string directory)
+        => Read(directory, PhysicalRunStoreFileSystem.Instance);
+
+    internal static SnowGlobeRunLedger Read(string directory, IRunStoreFileSystem files)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(directory);
+        ArgumentNullException.ThrowIfNull(files);
         string headerPath = Path.Combine(directory, HeaderFileName);
         string ledgerPath = Path.Combine(directory, LedgerFileName);
-        if (!File.Exists(headerPath) || !File.Exists(ledgerPath)) throw new InvalidDataException("Run store artifacts are incomplete.");
-        byte[] headerBytes = ReadBoundedFile(headerPath, MaximumHeaderBytes, "Run identity");
+        if (!files.FileExists(headerPath) || !files.FileExists(ledgerPath)) throw new InvalidDataException("Run store artifacts are incomplete.");
+        byte[] headerBytes = files.ReadFile(headerPath, MaximumHeaderBytes, "Run identity");
         SnowGlobeRunIdentity identity = DeserializeIdentityStrict(headerBytes);
         ValidateIdentity(identity, requireCurrent: false);
         string headerChecksum = CanonicalIdentityChecksum(identity);
-        EnsureFileLength(ledgerPath, MaximumLedgerBytes, "Ledger");
+        if (identity.SchemaVersion == SchemaVersion) return ReadV4(directory, files, identity, headerChecksum, headerBytes).Ledger;
+        return ReadLegacy(directory, files, identity, headerChecksum);
+    }
+
+    private static RunStoreV4State ReadStateForAppend(string directory, IRunStoreFileSystem files)
+    {
+        string headerPath = Path.Combine(directory, HeaderFileName);
+        if (!files.FileExists(headerPath)) throw new InvalidDataException("Run store artifacts are incomplete.");
+        byte[] headerBytes = files.ReadFile(headerPath, MaximumHeaderBytes, "Run identity");
+        SnowGlobeRunIdentity identity = DeserializeIdentityStrict(headerBytes);
+        ValidateIdentity(identity, requireCurrent: false);
+        if (identity.SchemaVersion != SchemaVersion) throw new InvalidDataException("Legacy v2/v3 run stores are read-only and are never upgraded in place.");
+        return ReadV4(directory, files, identity, CanonicalIdentityChecksum(identity), headerBytes);
+    }
+
+    private static RunStoreV4State ReadV4(string directory, IRunStoreFileSystem files, SnowGlobeRunIdentity identity, string headerChecksum, ReadOnlySpan<byte> rawHeader) =>
+        RunStoreV4Storage.Read(directory, files, identity, headerChecksum, rawHeader);
+
+    private static SnowGlobeRunLedger ReadLegacy(string directory, IRunStoreFileSystem files, SnowGlobeRunIdentity identity, string headerChecksum)
+    {
+        HashSet<string> allowedArtifacts = new(StringComparer.Ordinal) { HeaderFileName, LedgerFileName, ".writer.lock" };
+        if (files.EnumerateEntryNames(directory).Any(name => !allowedArtifacts.Contains(name)))
+            throw new InvalidDataException("Legacy run store contains unknown or extra artifacts.");
+        string ledgerPath = Path.Combine(directory, LedgerFileName);
+        byte[] ledgerBytes = files.ReadFile(ledgerPath, MaximumLedgerBytes, "Ledger");
         List<SnowGlobeLedgerRecord> records = new();
         List<SnowGlobeParticipantEvaluationRecord> participantEvaluations = new();
         int expectedSequence = 0;
-        foreach (byte[] line in ReadLedgerLines(ledgerPath))
+        foreach (byte[] line in ReadLedgerLines(ledgerBytes))
         {
             if (expectedSequence >= MaximumLedgerRecords) throw new InvalidDataException("Ledger exceeds bounded record limit.");
-            SnowGlobeLedgerKind kind = ReadRecordKind(line);
-            if (kind == SnowGlobeLedgerKind.ParticipantEvaluation)
-            {
-                if (identity.SchemaVersion != SchemaVersion) throw new InvalidDataException("Legacy v2 ledgers cannot contain participant evaluations.");
-                SnowGlobeParticipantEvaluationRecord evaluation = DeserializeStrict<SnowGlobeParticipantEvaluationRecord>(line, ParticipantEvaluationProperties, "Participant evaluation");
-                if (evaluation.Sequence != expectedSequence++) throw new InvalidDataException("Ledger sequence is out of order or duplicated.");
-                ValidateParticipantRecord(evaluation);
-                if (!FixedEquals(evaluation.HeaderChecksum, headerChecksum) || !FixedEquals(evaluation.Checksum, ParticipantChecksum(evaluation with { Checksum = string.Empty }))) throw new InvalidDataException("Participant evaluation integrity mismatch.");
-                participantEvaluations.Add(evaluation);
-            }
-            else
-            {
-                SnowGlobeLedgerRecord record = DeserializeStrict<SnowGlobeLedgerRecord>(line, RecordProperties, "Ledger record");
-                if (record.Sequence != expectedSequence++) throw new InvalidDataException("Ledger sequence is out of order or duplicated.");
-                ValidateRecord(record);
-                if (!FixedEquals(record.HeaderChecksum, headerChecksum) || !FixedEquals(record.Checksum, Checksum(record with { Checksum = string.Empty }))) throw new InvalidDataException("Ledger record integrity mismatch.");
-                records.Add(record);
-            }
+            ParseAndValidateEntry(line, identity, headerChecksum, expectedSequence++, out SnowGlobeLedgerRecord? record, out SnowGlobeParticipantEvaluationRecord? participant);
+            if (record is not null) records.Add(record);
+            else if (participant is not null) participantEvaluations.Add(participant);
         }
         SnowGlobeRunLedger ledger = new(identity, records.AsReadOnly(), participantEvaluations.AsReadOnly());
         _ = SnowGlobePersistedRun.Reconstruct(ledger);
@@ -309,9 +343,7 @@ public sealed class SnowGlobeRunStore : IDisposable
             try
             {
                 BeforeLedgerAppendFlushForTesting?.Invoke();
-                using FileStream ledger = new(Path.Combine(_directory, LedgerFileName), FileMode.Append, FileAccess.Write, FileShare.Read);
-                ledger.Write(batch, 0, batch.Length);
-                ledger.Flush(flushToDisk: true);
+                _storage.AppendFrame(RunStoreFrameKind.ScheduledTick, batch, _nextSequence, _scheduledTickFrame.Count);
             }
             catch
             {
@@ -417,7 +449,7 @@ public sealed class SnowGlobeRunStore : IDisposable
             SnowGlobeParticipantEvaluationRecord evaluation = unsigned with { Checksum = ParticipantChecksum(unsigned) };
             ValidateParticipantRecord(evaluation);
             byte[] line = JsonSerializer.SerializeToUtf8Bytes(evaluation, JsonOptions);
-            AppendCompleteLine(line);
+            AppendCompleteLine(line, RunStoreFrameKind.ParticipantEvaluation);
 
             _participantEvaluations.Add(evaluation);
             _participantIndex.Add(key, evaluation);
@@ -455,16 +487,16 @@ public sealed class SnowGlobeRunStore : IDisposable
         }
     }
 
-    private void AppendCompleteLine(byte[] line)
+    private void AppendCompleteLine(byte[] line, RunStoreFrameKind frameKind)
     {
         if (line.Length > MaximumLedgerRecordBytes) throw new InvalidDataException("Ledger record exceeds bounded byte limit.");
         try
         {
             BeforeLedgerAppendFlushForTesting?.Invoke();
-            using FileStream ledger = new(Path.Combine(_directory, LedgerFileName), FileMode.Append, FileAccess.Write, FileShare.Read);
-            ledger.Write(line, 0, line.Length);
-            ledger.WriteByte((byte)'\n');
-            ledger.Flush(flushToDisk: true);
+            byte[] payload = new byte[line.Length + 1];
+            line.CopyTo(payload, 0);
+            payload[^1] = (byte)'\n';
+            _storage.AppendFrame(frameKind, payload, _nextSequence, 1);
         }
         catch
         {
@@ -508,33 +540,13 @@ public sealed class SnowGlobeRunStore : IDisposable
         && existing.Action == action.ToString()
         && existing.Quantity == command.Quantity;
 
-    private static FileStream AcquireWriterLock(string directory) => new(Path.Combine(directory, ".writer.lock"), FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None);
-    private static byte[] ReadBoundedFile(string path, int maximumBytes, string description)
+    private static IDisposable AcquireWriterLock(string directory, IRunStoreFileSystem files) =>
+        files.AcquireExclusiveLease(Path.Combine(directory, ".writer.lock"));
+
+    private static IEnumerable<byte[]> ReadLedgerLines(byte[] bytes)
     {
-        // The single read handle denies concurrent writers and probes one byte past the cap, avoiding a length-check/read race.
-        using FileStream stream = new(path, FileMode.Open, FileAccess.Read, FileShare.Read);
-        byte[] boundedBuffer = new byte[checked(maximumBytes + 1)];
-        int total = 0;
-        while (total < boundedBuffer.Length)
-        {
-            int read = stream.Read(boundedBuffer, total, boundedBuffer.Length - total);
-            if (read == 0) break;
-            total += read;
-        }
-        if (total > maximumBytes) throw new InvalidDataException($"{description} exceeds the bounded byte limit.");
-        return boundedBuffer[..total];
-    }
-    private static void EnsureFileLength(string path, int maximumBytes, string description)
-    {
-        long length = new FileInfo(path).Length;
-        if (length > maximumBytes) throw new InvalidDataException($"{description} exceeds the bounded byte limit.");
-    }
-    private static IEnumerable<byte[]> ReadLedgerLines(string path)
-    {
-        using FileStream stream = new(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
         List<byte> line = new(MaximumLedgerRecordBytes);
-        int value;
-        while ((value = stream.ReadByte()) >= 0)
+        foreach (byte value in bytes)
         {
             if (value == '\n')
             {
@@ -544,7 +556,7 @@ public sealed class SnowGlobeRunStore : IDisposable
                 continue;
             }
             if (value == '\r' || line.Count >= MaximumLedgerRecordBytes) throw new InvalidDataException("Ledger record exceeds bounded byte limit.");
-            line.Add((byte)value);
+            line.Add(value);
         }
         if (line.Count != 0) throw new InvalidDataException("Ledger truncation: final record is missing its terminating line feed.");
     }
@@ -559,15 +571,47 @@ public sealed class SnowGlobeRunStore : IDisposable
             V2RunIdentity parsed = JsonSerializer.Deserialize<V2RunIdentity>(utf8, JsonOptions) ?? throw new InvalidDataException("Run identity is missing.");
             return new(parsed.SchemaVersion, parsed.RulesIdentity, parsed.PromptIdentity, parsed.AdapterIdentity, parsed.Seed, parsed.AgentCount);
         }
+        if (schemaVersion is not PreviousSchemaVersion and not SchemaVersion) throw new InvalidDataException("Run identity schema is unsupported.");
         ValidateProperties(document.RootElement, V3HeaderProperties, "Run identity");
         return JsonSerializer.Deserialize<SnowGlobeRunIdentity>(utf8, JsonOptions) ?? throw new InvalidDataException("Run identity is missing.");
     }
 
-    private static SnowGlobeLedgerKind ReadRecordKind(byte[] utf8)
+    internal static SnowGlobeLedgerKind ReadEntryKind(byte[] utf8)
     {
         using JsonDocument document = ParseFlatObject(utf8, "Ledger record");
         if (!document.RootElement.TryGetProperty("kind", out JsonElement kind) || kind.ValueKind != JsonValueKind.Number || !kind.TryGetInt32(out int value) || !Enum.IsDefined((SnowGlobeLedgerKind)value)) throw new InvalidDataException("Ledger record kind is invalid.");
         return (SnowGlobeLedgerKind)value;
+    }
+
+    internal static void ParseAndValidateEntry(
+        byte[] line,
+        SnowGlobeRunIdentity identity,
+        string headerChecksum,
+        int expectedSequence,
+        out SnowGlobeLedgerRecord? record,
+        out SnowGlobeParticipantEvaluationRecord? participant)
+    {
+        if (expectedSequence < 0 || expectedSequence >= MaximumLedgerRecords)
+            throw new InvalidDataException("Ledger exceeds bounded record limit.");
+        SnowGlobeLedgerKind kind = ReadEntryKind(line);
+        if (kind == SnowGlobeLedgerKind.ParticipantEvaluation)
+        {
+            if (identity.SchemaVersion == LegacySchemaVersion) throw new InvalidDataException("Legacy v2 ledgers cannot contain participant evaluations.");
+            SnowGlobeParticipantEvaluationRecord evaluation = DeserializeStrict<SnowGlobeParticipantEvaluationRecord>(line, ParticipantEvaluationProperties, "Participant evaluation");
+            if (evaluation.Sequence != expectedSequence) throw new InvalidDataException("Ledger sequence is out of order or duplicated.");
+            ValidateParticipantRecord(evaluation);
+            if (!FixedEquals(evaluation.HeaderChecksum, headerChecksum) || !FixedEquals(evaluation.Checksum, ParticipantChecksum(evaluation with { Checksum = string.Empty }))) throw new InvalidDataException("Participant evaluation integrity mismatch.");
+            record = null;
+            participant = evaluation;
+            return;
+        }
+
+        SnowGlobeLedgerRecord parsed = DeserializeStrict<SnowGlobeLedgerRecord>(line, RecordProperties, "Ledger record");
+        if (parsed.Sequence != expectedSequence) throw new InvalidDataException("Ledger sequence is out of order or duplicated.");
+        ValidateRecord(parsed);
+        if (!FixedEquals(parsed.HeaderChecksum, headerChecksum) || !FixedEquals(parsed.Checksum, Checksum(parsed with { Checksum = string.Empty }))) throw new InvalidDataException("Ledger record integrity mismatch.");
+        record = parsed;
+        participant = null;
     }
 
     private static T DeserializeStrict<T>(byte[] utf8, HashSet<string> allowedProperties, string description)
@@ -619,6 +663,7 @@ public sealed class SnowGlobeRunStore : IDisposable
         bool supportedVersion = identity.SchemaVersion switch
         {
             SchemaVersion => identity.ParticipantCommandIdentity == ParticipantCommandIdentity,
+            PreviousSchemaVersion when !requireCurrent => identity.ParticipantCommandIdentity == ParticipantCommandIdentity,
             LegacySchemaVersion when !requireCurrent => identity.ParticipantCommandIdentity is null,
             _ => false
         };

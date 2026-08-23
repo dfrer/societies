@@ -11,9 +11,9 @@ public sealed record SnowGlobeRunReconstruction(
 /// <summary>
 /// The persistence experiment's deterministic execution surface. It owns validation and commits;
 /// adapters can only return value proposals and recorded responses remain non-authoritative.
-/// Managed adapter, cancellation, and validation interruptions before the batch append clear the
-/// pending frame and remain resumable. Low-level partial I/O and process crashes are not promised
-/// atomic or resumable; an observed append/flush failure poisons the live writer.
+/// Managed adapter, cancellation, and validation interruptions before the framed append clear the
+/// pending frame. Version-four scheduled-tick writes use checksum-linked framing so a deterministic
+/// interruption reopens at the prior or complete new tick; the observed live writer is still poisoned.
 /// </summary>
 public static class SnowGlobePersistedRun
 {
@@ -34,8 +34,7 @@ public static class SnowGlobePersistedRun
         ArgumentNullException.ThrowIfNull(world);
         ArgumentNullException.ThrowIfNull(inference);
         ArgumentNullException.ThrowIfNull(store);
-        // Managed failures before a tick's batch append retain the last completed checkpoint;
-        // partial I/O and process crashes are outside that resumability guarantee.
+        // Managed failures before a tick's framed append retain the last completed checkpoint.
         if (targetTick < world.Tick || checkpointInterval != 1) throw new ArgumentOutOfRangeException(nameof(checkpointInterval));
         using IDisposable operationLease = await store.AcquireOperationLeaseAsync(cancellationToken);
         SnowGlobeRunMetrics metrics = new();
@@ -98,7 +97,7 @@ public static class SnowGlobePersistedRun
         {
             while (index < entries.Count && entries[index].ParticipantEvaluation is SnowGlobeParticipantEvaluationRecord evaluation)
             {
-                if (ledger.Identity.SchemaVersion != SnowGlobeRunStore.SchemaVersion) throw new InvalidDataException("Legacy v2 reconstruction cannot contain participant evaluations.");
+                if (ledger.Identity.SchemaVersion == SnowGlobeRunStore.LegacySchemaVersion) throw new InvalidDataException("Legacy v2 reconstruction cannot contain participant evaluations.");
                 if (participantReceipts.Count >= SnowGlobeRunStore.MaximumParticipantEvaluations) throw new InvalidDataException("Participant evaluation index exceeds its bounded capacity.");
                 SnowGlobeParticipantCommandKey key = new(evaluation.ParticipantId, evaluation.IdempotencyKey);
                 if (participantReceipts.ContainsKey(key)) throw new InvalidDataException("Participant evaluation idempotency key is duplicated.");
