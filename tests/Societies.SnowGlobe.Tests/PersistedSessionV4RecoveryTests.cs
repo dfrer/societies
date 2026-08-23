@@ -17,7 +17,7 @@ public sealed class PersistedSessionV4RecoveryTests
     public async Task Reopen_AbandonsAuthenticatedNonemptyScheduledPrefix_PreservesReceiptAndProgresses()
     {
         string root = NewTemporaryDirectory();
-        SnowGlobeRunIdentity identity = SnowGlobePersistedRun.Identity(
+        SnowGlobeRunIdentity identity = V4Identity(
             "persisted_session_v4_prefix_recovery/v1", seed: 401, agentCount: 64);
         try
         {
@@ -60,7 +60,7 @@ public sealed class PersistedSessionV4RecoveryTests
     public async Task Reopen_AdoptsCompleteScheduledPayloadOnlyAfterContinuation_PreservesReceiptAndIsStable()
     {
         string root = NewTemporaryDirectory();
-        SnowGlobeRunIdentity identity = SnowGlobePersistedRun.Identity(
+        SnowGlobeRunIdentity identity = V4Identity(
             "persisted_session_v4_commit_gap_recovery/v1", seed: 402, agentCount: 1);
         try
         {
@@ -113,7 +113,7 @@ public sealed class PersistedSessionV4RecoveryTests
     public async Task Reopen_RejectsUnauthenticatedPendingResidueBeforeWriterOwnership(string mutation)
     {
         string root = NewTemporaryDirectory();
-        SnowGlobeRunIdentity identity = SnowGlobePersistedRun.Identity(
+        SnowGlobeRunIdentity identity = V4Identity(
             $"persisted_session_v4_unauthenticated_{mutation}/v1", seed: 403, agentCount: 64);
         try
         {
@@ -146,7 +146,7 @@ public sealed class PersistedSessionV4RecoveryTests
     public async Task Reopen_RejectsSecondScheduledInterruptionAfterOneSuccessfulRecoveryWithoutFurtherMutation()
     {
         string root = NewTemporaryDirectory();
-        SnowGlobeRunIdentity identity = SnowGlobePersistedRun.Identity(
+        SnowGlobeRunIdentity identity = V4Identity(
             "persisted_session_v4_second_recovery_bound/v1", seed: 404, agentCount: 1);
         try
         {
@@ -175,7 +175,8 @@ public sealed class PersistedSessionV4RecoveryTests
 
     private static async Task CreateEmptySessionAsync(string root, SnowGlobeRunIdentity identity)
     {
-        using SnowGlobePersistedSession session = SnowGlobePersistedSession.CreateNew(
+        using (SnowGlobeRunStore.CreateV4Fixture(root, identity)) { }
+        using SnowGlobePersistedSession session = SnowGlobePersistedSession.Reopen(
             root, identity, new IdleAdapter(identity.AdapterIdentity), isPaused: true);
         await Task.CompletedTask;
     }
@@ -183,7 +184,8 @@ public sealed class PersistedSessionV4RecoveryTests
     private static async Task<(SnowGlobeParticipantCommand Command, SnowGlobeParticipantCommandReceipt Receipt)>
         CreatePausedSessionReceiptAsync(string root, SnowGlobeRunIdentity identity, string idempotencyKey)
     {
-        using SnowGlobePersistedSession session = SnowGlobePersistedSession.CreateNew(
+        using (SnowGlobeRunStore.CreateV4Fixture(root, identity)) { }
+        using SnowGlobePersistedSession session = SnowGlobePersistedSession.Reopen(
             root, identity, new IdleAdapter(identity.AdapterIdentity), isPaused: true);
         SnowGlobeObserverSnapshot snapshot = session.Inspect().Snapshot!;
         SnowGlobeParticipantCommand command = new(
@@ -274,6 +276,9 @@ public sealed class PersistedSessionV4RecoveryTests
 
     private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower };
     private static string Digest(ReadOnlySpan<byte> bytes) => Convert.ToHexString(SHA256.HashData(bytes)).ToLowerInvariant();
+
+    private static SnowGlobeRunIdentity V4Identity(string adapterIdentity, int seed, int agentCount) =>
+        SnowGlobePersistedRun.Identity(adapterIdentity, seed, agentCount) with { SchemaVersion = SnowGlobeRunStore.V4SchemaVersion };
 
     private static void AssertDirectoryBytesUnchanged(string root, IReadOnlyDictionary<string, byte[]> expected)
     {

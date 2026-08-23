@@ -35,9 +35,9 @@ public sealed class PersistedSessionTests
             }
 
             byte[] ledgerBeforeRetry = File.ReadAllBytes(Path.Combine(root, "ledger.jsonl"));
-            using (SnowGlobePersistedSession reopened = SnowGlobePersistedSession.Reopen(root, identity, new IdleAdapter(identity.AdapterIdentity), isPaused: true))
+            using (SnowGlobePersistedSession reopened = SnowGlobePersistedSession.Reopen(root, identity, new IdleAdapter(identity.AdapterIdentity)))
             {
-                AssertSnapshotEqual(beforeClose, reopened.Inspect().Snapshot! with { IsPaused = false });
+                AssertSnapshotEqual(beforeClose, reopened.Inspect().Snapshot!);
                 Assert.Equal(beforeReceipt, await reopened.SubmitParticipantCommandAsync(before));
                 Assert.Equal(betweenReceipt, await reopened.SubmitParticipantCommandAsync(between));
                 Assert.Equal(ledgerBeforeRetry, File.ReadAllBytes(Path.Combine(root, "ledger.jsonl")));
@@ -79,9 +79,10 @@ public sealed class PersistedSessionTests
                 domain = Command(session, "participant-01", "domain", SnowGlobeActionKind.BuildShelter);
                 staleReceipt = await session.SubmitParticipantCommandAsync(stale);
                 domainReceipt = await session.SubmitParticipantCommandAsync(domain);
+                Assert.True((await session.ResumeAsync()).Applied);
             }
 
-            using (SnowGlobePersistedSession reopened = SnowGlobePersistedSession.Reopen(root, identity, new IdleAdapter(identity.AdapterIdentity), isPaused: false))
+            using (SnowGlobePersistedSession reopened = SnowGlobePersistedSession.Reopen(root, identity, new IdleAdapter(identity.AdapterIdentity)))
             {
                 int bytesBefore = File.ReadAllBytes(Path.Combine(root, "ledger.jsonl")).Length;
                 Assert.Equal(acceptedReceipt, await reopened.SubmitParticipantCommandAsync(accepted));
@@ -155,13 +156,17 @@ public sealed class PersistedSessionTests
         finally { Directory.Delete(root, recursive: true); }
     }
 
-    [Fact]
-    public void MutableReopen_RejectsV2BeforeAnyWrite()
+    [Theory]
+    [InlineData("snow_globe_run_store/v2")]
+    [InlineData("snow_globe_run_store/v3")]
+    public void MutableReopen_RejectsLegacyV2AndV3BeforeAnyWrite(string schemaVersion)
     {
         string root = NewTemporaryDirectory();
         try
         {
-            SnowGlobeRunIdentity identity = WriteEmptyV2(root);
+            SnowGlobeRunIdentity identity = schemaVersion == SnowGlobeRunStore.LegacySchemaVersion
+                ? WriteEmptyV2(root)
+                : WriteEmptyV3(root);
             Dictionary<string, byte[]> before = Directory.GetFiles(root)
                 .ToDictionary(path => Path.GetFileName(path)!, File.ReadAllBytes);
 
@@ -274,8 +279,8 @@ public sealed class PersistedSessionTests
                 .ToArray();
             Assert.Equal(Enumerable.Range(0, ledger.EntryCount), sequences);
             Assert.Equal(SnowGlobeLedgerKind.ParticipantEvaluation, ledger.ParticipantEvaluationRecords.Single().Kind);
-            Assert.Equal(0, ledger.ParticipantEvaluationRecords.Single().Sequence);
-            Assert.Equal(SnowGlobeLedgerKind.Response, ledger.Records.OrderBy(record => record.Sequence).First().Kind);
+            Assert.Equal(1, ledger.ParticipantEvaluationRecords.Single().Sequence);
+            Assert.Equal(SnowGlobeLedgerKind.PauseTransition, ledger.Records.OrderBy(record => record.Sequence).First().Kind);
             Assert.Equal(SnowGlobeLedgerKind.Checkpoint, ledger.Records.OrderBy(record => record.Sequence).Last().Kind);
             SnowGlobeRunReconstruction reconstruction = SnowGlobePersistedRun.Reconstruct(ledger, identity);
             Assert.Equal(3, reconstruction.World.Events.Count);
@@ -426,8 +431,7 @@ public sealed class PersistedSessionTests
             using SnowGlobePersistedSession reopened = SnowGlobePersistedSession.Reopen(
                 root,
                 identity,
-                new IdleAdapter(identity.AdapterIdentity),
-                isPaused: true);
+                new IdleAdapter(identity.AdapterIdentity));
             Assert.Equal(0, reopened.Inspect().Snapshot!.Tick);
             Assert.Equal(before, File.ReadAllBytes(Path.Combine(root, "ledger.jsonl")));
             if (path == SessionAppendFault.Scheduled)
@@ -655,6 +659,22 @@ public sealed class PersistedSessionTests
             310,
             1);
         string header = "{\"schema_version\":\"snow_globe_run_store/v2\",\"rules_identity\":\"snow_globe_domain_rules/v1\",\"prompt_identity\":\"normalized_values_only/no_participant_text/v1\",\"adapter_identity\":\"frozen_v2_session/v1\",\"seed\":310,\"agent_count\":1}";
+        File.WriteAllText(Path.Combine(root, "run.json"), header, new UTF8Encoding(false));
+        File.WriteAllBytes(Path.Combine(root, "ledger.jsonl"), Array.Empty<byte>());
+        return identity;
+    }
+
+    private static SnowGlobeRunIdentity WriteEmptyV3(string root)
+    {
+        SnowGlobeRunIdentity identity = new(
+            SnowGlobeRunStore.PreviousSchemaVersion,
+            SnowGlobePersistedRun.RulesIdentity,
+            SnowGlobePersistedRun.PromptIdentity,
+            "frozen_v3_session/v1",
+            311,
+            1,
+            SnowGlobeRunStore.ParticipantCommandIdentity);
+        string header = "{\"schema_version\":\"snow_globe_run_store/v3\",\"rules_identity\":\"snow_globe_domain_rules/v1\",\"prompt_identity\":\"normalized_values_only/no_participant_text/v1\",\"adapter_identity\":\"frozen_v3_session/v1\",\"seed\":311,\"agent_count\":1,\"participant_command_identity\":\"snow_globe_participant_command/v1\"}";
         File.WriteAllText(Path.Combine(root, "run.json"), header, new UTF8Encoding(false));
         File.WriteAllBytes(Path.Combine(root, "ledger.jsonl"), Array.Empty<byte>());
         return identity;

@@ -18,7 +18,7 @@ public sealed class PersistedRunInspectorTests
         try
         {
             SnowGlobeRunIdentity identity = NewIdentity();
-            using (SnowGlobeRunStore.CreateNew(root, identity)) { }
+            using (SnowGlobeRunStore.CreateV4Fixture(root, identity)) { }
 
             SnowGlobeObserverInspectionResult result = SnowGlobePersistedRunInspector.Inspect(root, identity);
 
@@ -98,7 +98,7 @@ public sealed class PersistedRunInspectorTests
         try
         {
             SnowGlobeRunIdentity identity = NewIdentity();
-            using (SnowGlobeRunStore.CreateNew(root, identity)) { }
+            using (SnowGlobeRunStore.CreateV4Fixture(root, identity)) { }
 
             SnowGlobeObserverInspectionResult result = SnowGlobePersistedRunInspector.Inspect(
                 root,
@@ -146,7 +146,7 @@ public sealed class PersistedRunInspectorTests
                 PhysicalRunStoreFileSystem.Instance,
                 interruption == "payload" ? RunStoreWriteKind.ScheduledPayload : RunStoreWriteKind.CommitMarker,
                 bytesBeforeFailure);
-            using (SnowGlobeRunStore store = SnowGlobeRunStore.CreateNew(root, identity, faulting))
+            using (SnowGlobeRunStore store = SnowGlobeRunStore.CreateV4Fixture(root, identity, faulting))
             {
                 await Assert.ThrowsAsync<IOException>(async () =>
                     await SnowGlobePersistedRun.RunAsync(
@@ -174,7 +174,7 @@ public sealed class PersistedRunInspectorTests
         try
         {
             SnowGlobeRunIdentity identity = NewIdentity();
-            using (SnowGlobeRunStore.CreateNew(root, identity)) { }
+            using (SnowGlobeRunStore.CreateV4Fixture(root, identity)) { }
 
             SnowGlobePersistedRunRecoveryProvenanceInspectionResult first =
                 SnowGlobePersistedRunInspector.InspectRecoveryProvenance(root, identity);
@@ -332,7 +332,7 @@ public sealed class PersistedRunInspectorTests
 
             Directory.Delete(root, recursive: true);
             Directory.CreateDirectory(root);
-            using (SnowGlobeRunStore.CreateNew(root, identity)) { }
+            using (SnowGlobeRunStore.CreateV4Fixture(root, identity)) { }
             File.AppendAllText(Path.Combine(root, "ledger.jsonl"), "not-json\n", Encoding.UTF8);
             SnowGlobePersistedRunRecoveryProvenanceInspectionResult malformed =
                 SnowGlobePersistedRunInspector.InspectRecoveryProvenance(root, identity);
@@ -342,7 +342,7 @@ public sealed class PersistedRunInspectorTests
 
             Directory.Delete(root, recursive: true);
             Directory.CreateDirectory(root);
-            using (SnowGlobeRunStore.CreateNew(root, identity)) { }
+            using (SnowGlobeRunStore.CreateV4Fixture(root, identity)) { }
             SnowGlobePersistedRunRecoveryProvenanceInspectionResult drifting =
                 SnowGlobePersistedRunInspector.InspectRecoveryProvenance(root, identity,
                     new HeaderMutatingFileSystem(PhysicalRunStoreFileSystem.Instance));
@@ -419,7 +419,7 @@ public sealed class PersistedRunInspectorTests
         try
         {
             SnowGlobeRunIdentity identity = NewIdentity();
-            using (SnowGlobeRunStore.CreateNew(root, identity)) { }
+            using (SnowGlobeRunStore.CreateV4Fixture(root, identity)) { }
             File.AppendAllText(Path.Combine(root, "ledger.jsonl"), "not-json\n", Encoding.UTF8);
 
             SnowGlobeObserverInspectionResult result = SnowGlobePersistedRunInspector.Inspect(root, identity);
@@ -438,7 +438,7 @@ public sealed class PersistedRunInspectorTests
         try
         {
             SnowGlobeRunIdentity identity = NewIdentity();
-            using (SnowGlobeRunStore.CreateNew(root, identity)) { }
+            using (SnowGlobeRunStore.CreateV4Fixture(root, identity)) { }
 
             SnowGlobeObserverInspectionResult result = SnowGlobePersistedRunInspector.Inspect(
                 root, identity, 0, new UnavailableReadFileSystem(PhysicalRunStoreFileSystem.Instance));
@@ -457,7 +457,7 @@ public sealed class PersistedRunInspectorTests
         try
         {
             SnowGlobeRunIdentity identity = NewIdentity();
-            using (SnowGlobeRunStore.CreateNew(root, identity)) { }
+            using (SnowGlobeRunStore.CreateV4Fixture(root, identity)) { }
             IRunStoreFileSystem mutating = new HeaderMutatingFileSystem(PhysicalRunStoreFileSystem.Instance);
 
             SnowGlobeObserverInspectionResult result = SnowGlobePersistedRunInspector.Inspect(root, identity, 0, mutating);
@@ -476,7 +476,7 @@ public sealed class PersistedRunInspectorTests
         try
         {
             SnowGlobeRunIdentity identity = NewIdentity();
-            using (SnowGlobeRunStore.CreateNew(root, identity)) { }
+            using (SnowGlobeRunStore.CreateV4Fixture(root, identity)) { }
             Dictionary<string, byte[]> before = ArtifactBytes(root);
             TrackingFileSystem files = new(PhysicalRunStoreFileSystem.Instance);
 
@@ -500,7 +500,7 @@ public sealed class PersistedRunInspectorTests
         try
         {
             SnowGlobeRunIdentity identity = NewIdentity();
-            using (SnowGlobeRunStore.CreateNew(root, identity)) { }
+            using (SnowGlobeRunStore.CreateV4Fixture(root, identity)) { }
             Dictionary<string, byte[]> before = ArtifactBytes(root);
             TrackingFileSystem files = new(PhysicalRunStoreFileSystem.Instance);
 
@@ -521,7 +521,7 @@ public sealed class PersistedRunInspectorTests
 
     private static async Task WriteTicksAsync(string root, SnowGlobeRunIdentity identity, int ticks)
     {
-        using SnowGlobeRunStore store = SnowGlobeRunStore.CreateNew(root, identity);
+        using SnowGlobeRunStore store = SnowGlobeRunStore.CreateV4Fixture(root, identity);
         await SnowGlobePersistedRun.RunAsync(
             SnowGlobeWorld.Create(identity.Seed, identity.AgentCount), new IdleAdapter(), store, ticks);
     }
@@ -534,7 +534,7 @@ public sealed class PersistedRunInspectorTests
     {
         IRunStoreFileSystem faulting = new FaultInjectingRunStoreFileSystem(
             PhysicalRunStoreFileSystem.Instance, interruption, bytesBeforeFailure);
-        SnowGlobeRunStore? store = SnowGlobeRunStore.CreateNew(root, identity, faulting);
+        SnowGlobeRunStore? store = SnowGlobeRunStore.CreateV4Fixture(root, identity, faulting);
         try
         {
             await Assert.ThrowsAsync<IOException>(() => SnowGlobePersistedRun.RunAsync(
@@ -544,7 +544,10 @@ public sealed class PersistedRunInspectorTests
     }
 
     private static SnowGlobeRunIdentity NewIdentity() =>
-        SnowGlobePersistedRun.Identity("persisted_run_inspector_adapter/v1");
+        SnowGlobePersistedRun.Identity("persisted_run_inspector_adapter/v1") with
+        {
+            SchemaVersion = SnowGlobeRunStore.V4SchemaVersion
+        };
 
     private static string NewTemporaryDirectory()
     {

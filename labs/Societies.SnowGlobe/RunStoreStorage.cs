@@ -12,6 +12,7 @@ internal enum RunStoreWriteKind
     PrepareMarker,
     ScheduledPayload,
     ParticipantPayload,
+    PausePayload,
     CommitMarker,
     ContinuationMarker
 }
@@ -137,11 +138,11 @@ internal sealed class FaultInjectingRunStoreFileSystem(
         kind == targetKind && Interlocked.CompareExchange(ref _injected, 1, 0) == 0;
 }
 
-internal enum RunStoreFrameKind { ScheduledTick, ParticipantEvaluation }
+internal enum RunStoreFrameKind { ScheduledTick, ParticipantEvaluation, PauseTransition }
 internal enum RunStoreRecoveryDisposition { AbandonIncompleteScheduledTick, RecoverCompleteScheduledTick }
 
 /// <summary>
-/// Internal, already-validated evidence for the sole durable v4 recovery continuation. This is
+/// Internal, already-validated evidence for the sole durable framed-run recovery continuation. This is
 /// populated only after the continuation marker has been linked to and authenticated against its
 /// prepared source frame; it is not an inference from a pending tail.
 /// </summary>
@@ -221,8 +222,9 @@ internal sealed record RunStoreContinuationMarker(
     string Checksum);
 
 /// <summary>
-/// Version-four framing implementation. Ledger payloads remain ordinary JSONL; prepare/commit markers
-/// bind each append to the prior committed chain. Recovery writes only a new continuation segment.
+/// Version-four framing implementation reused unchanged by v5. Ledger payloads remain ordinary JSONL;
+/// prepare/commit markers bind each append to the prior committed chain. Recovery writes only a new
+/// continuation segment.
 /// </summary>
 internal sealed class RunStoreV4Storage
 {
@@ -278,10 +280,10 @@ internal sealed class RunStoreV4Storage
 
     internal void AppendFrame(RunStoreFrameKind kind, ReadOnlySpan<byte> payload, int firstSequence, int entryCount)
     {
-        int maximumEntries = kind == RunStoreFrameKind.ParticipantEvaluation ? 1 : 64 * 4 + 1;
-        int maximumPayload = kind == RunStoreFrameKind.ParticipantEvaluation
-            ? SnowGlobeRunStore.MaximumLedgerRecordBytes + 1
-            : MaximumScheduledPayloadBytes;
+        int maximumEntries = kind == RunStoreFrameKind.ScheduledTick ? 64 * 4 + 1 : 1;
+        int maximumPayload = kind == RunStoreFrameKind.ScheduledTick
+            ? MaximumScheduledPayloadBytes
+            : SnowGlobeRunStore.MaximumLedgerRecordBytes + 1;
         if (entryCount < 1 || entryCount > maximumEntries || firstSequence < 0
             || firstSequence > SnowGlobeRunStore.MaximumLedgerRecords - entryCount
             || payload.Length < 1 || payload.Length > maximumPayload || payload[^1] != (byte)'\n')
@@ -296,9 +298,13 @@ internal sealed class RunStoreV4Storage
         byte[] prepareLine = SerializeLine(prepare);
         _files.AppendFile(MarkerPath(_directory, _segmentIndex), prepareLine, RunStoreWriteKind.PrepareMarker);
 
-        RunStoreWriteKind payloadKind = kind == RunStoreFrameKind.ScheduledTick
-            ? RunStoreWriteKind.ScheduledPayload
-            : RunStoreWriteKind.ParticipantPayload;
+        RunStoreWriteKind payloadKind = kind switch
+        {
+            RunStoreFrameKind.ScheduledTick => RunStoreWriteKind.ScheduledPayload,
+            RunStoreFrameKind.ParticipantEvaluation => RunStoreWriteKind.ParticipantPayload,
+            RunStoreFrameKind.PauseTransition => RunStoreWriteKind.PausePayload,
+            _ => throw new InvalidDataException("Run-store frame kind is unsupported.")
+        };
         _files.AppendFile(LedgerPath(_directory, _segmentIndex), payload, payloadKind);
 
         int ledgerEnd = checked(_ledgerLength + payload.Length);
@@ -375,7 +381,7 @@ internal sealed class RunStoreV4Storage
             while (markerIndex < markerLines.Count)
             {
                 RunStorePrepareMarker prepare = DeserializePrepare(markerLines[markerIndex++]);
-                ValidatePrepare(prepare, segmentIndex, nextFrame, chain, expectedSequence, identity.AgentCount);
+                ValidatePrepare(prepare, segmentIndex, nextFrame, chain, expectedSequence, identity);
                 if (markerIndex >= markerLines.Count)
                 {
                     pending = ResolvePending(
@@ -460,8 +466,12 @@ internal sealed class RunStoreV4Storage
     {
         if (prepare.FrameKind == RunStoreFrameKind.ParticipantEvaluation.ToString())
             throw new InvalidDataException("Uncommitted participant-command evidence is never repaired or ignored.");
-        if (prepare.FrameKind != RunStoreFrameKind.ScheduledTick.ToString())
+        bool isScheduled = prepare.FrameKind == RunStoreFrameKind.ScheduledTick.ToString();
+        bool isPauseTransition = prepare.FrameKind == RunStoreFrameKind.PauseTransition.ToString();
+        if (!isScheduled && !isPauseTransition)
             throw new InvalidDataException("Run-store pending frame kind is unsupported.");
+        if (isPauseTransition && identity.SchemaVersion != SnowGlobeRunStore.SchemaVersion)
+            throw new InvalidDataException("Durable pause recovery evidence is valid only in v5 run stores.");
         int actualLength = ledgerBytes.Length - ledgerOffset;
         if (actualLength < 0 || actualLength > prepare.PayloadLength || actualLength > MaximumScheduledPayloadBytes)
             throw new InvalidDataException("Run-store pending payload exceeds its prepared bound.");
@@ -472,12 +482,36 @@ internal sealed class RunStoreV4Storage
             prepare.Checksum, prepare.PayloadChecksum, checked(ledgerOffset + prepare.PayloadLength), string.Empty);
         RunStoreCommitMarker expectedCommit = expectedUnsigned with { Checksum = CommitChecksum(expectedUnsigned) };
         byte[] expectedCommitLine = SerializeLine(expectedCommit);
+        if (isPauseTransition && commitTail.Length != 0)
+            throw new InvalidDataException("Pending durable pause commit contains a partial marker tail.");
         if (commitTail.Length != 0 && !expectedCommitLine.AsSpan().StartsWith(commitTail))
             throw new InvalidDataException("Run-store uncertain commit marker is not a canonical prefix.");
 
         List<SnowGlobeLedgerRecord> scheduled = new();
         RunStoreRecoveryDisposition disposition;
-        if (actualLength == prepare.PayloadLength)
+        if (isPauseTransition)
+        {
+            if (actualLength != 0 && actualLength != prepare.PayloadLength)
+                throw new InvalidDataException("Pending durable pause payload is partial.");
+            if (actualLength == prepare.PayloadLength)
+            {
+                if (!FixedEquals(Digest(payload), prepare.PayloadChecksum))
+                    throw new InvalidDataException("Pending durable pause payload integrity mismatch.");
+                int sequence = expectedSequence;
+                List<SnowGlobeLedgerRecord> prospectiveRecords = committedRecords.ToList();
+                List<SnowGlobeParticipantEvaluationRecord> prospectiveParticipants = committedParticipants.ToList();
+                ReadCommittedPayload(
+                    payload,
+                    prepare,
+                    identity,
+                    SnowGlobeRunStore.CanonicalIdentityChecksum(identity),
+                    prospectiveRecords,
+                    prospectiveParticipants,
+                    ref sequence);
+            }
+            disposition = RunStoreRecoveryDisposition.AbandonIncompleteScheduledTick;
+        }
+        else if (actualLength == prepare.PayloadLength)
         {
             if (!FixedEquals(Digest(payload), prepare.PayloadChecksum)) throw new InvalidDataException("Run-store pending payload integrity mismatch.");
             int sequence = expectedSequence;
@@ -593,7 +627,8 @@ internal sealed class RunStoreV4Storage
             throw new InvalidDataException("Run-store frame exceeds the global bounded record limit.");
         int recordCountBefore = records.Count;
         int participantCountBefore = participants.Count;
-        SnowGlobeWorld before = SnowGlobePersistedRun.Reconstruct(new SnowGlobeRunLedger(identity, records.AsReadOnly(), participants.AsReadOnly())).World;
+        SnowGlobeInternalRunReconstruction before = SnowGlobePersistedRun.ReconstructInternal(
+            new SnowGlobeRunLedger(identity, records.AsReadOnly(), participants.AsReadOnly()));
         if (payload.Length != prepare.PayloadLength || !FixedEquals(Digest(payload), prepare.PayloadChecksum))
             throw new InvalidDataException("Committed run-store payload integrity mismatch.");
         string expectedPrefixManifest = prepare.FrameKind == RunStoreFrameKind.ScheduledTick.ToString()
@@ -619,20 +654,45 @@ internal sealed class RunStoreV4Storage
             if (lines.Count != 1 || records.Count != recordCountBefore || participants.Count != participantCountBefore + 1 || participants[^1].Sequence != prepare.FirstSequence)
                 throw new InvalidDataException("Participant frame does not contain exactly one participant evaluation.");
             SnowGlobeWorld after = SnowGlobePersistedRun.Reconstruct(new SnowGlobeRunLedger(identity, records.AsReadOnly(), participants.AsReadOnly())).World;
-            if (after.Tick != before.Tick) throw new InvalidDataException("Participant frame advanced the scheduled tick cursor.");
+            if (after.Tick != before.Public.World.Tick) throw new InvalidDataException("Participant frame advanced the scheduled tick cursor.");
         }
         else if (prepare.FrameKind == RunStoreFrameKind.ScheduledTick.ToString())
         {
             if (participants.Count != participantCountBefore || records.Count != recordCountBefore + lines.Count
-                || lines.Any(line => SnowGlobeRunStore.ReadEntryKind(line) == SnowGlobeLedgerKind.ParticipantEvaluation))
+                || lines.Any(line => SnowGlobeRunStore.ReadEntryKind(line) is SnowGlobeLedgerKind.ParticipantEvaluation or SnowGlobeLedgerKind.PauseTransition))
                 throw new InvalidDataException("Scheduled frame contains participant evidence.");
             SnowGlobeWorld after = SnowGlobePersistedRun.Reconstruct(new SnowGlobeRunLedger(identity, records.AsReadOnly(), participants.AsReadOnly())).World;
-            if (after.Tick != before.Tick + 1) throw new InvalidDataException("Committed scheduled frame does not advance exactly one tick.");
+            if (after.Tick != before.Public.World.Tick + 1) throw new InvalidDataException("Committed scheduled frame does not advance exactly one tick.");
+        }
+        else if (prepare.FrameKind == RunStoreFrameKind.PauseTransition.ToString())
+        {
+            if (identity.SchemaVersion != SnowGlobeRunStore.SchemaVersion
+                || lines.Count != 1
+                || participants.Count != participantCountBefore
+                || records.Count != recordCountBefore + 1
+                || records[^1].Kind != SnowGlobeLedgerKind.PauseTransition
+                || records[^1].Sequence != prepare.FirstSequence)
+            {
+                throw new InvalidDataException("Durable pause frame does not contain exactly one v5 transition.");
+            }
+            SnowGlobeInternalRunReconstruction after = SnowGlobePersistedRun.ReconstructInternal(
+                new SnowGlobeRunLedger(identity, records.AsReadOnly(), participants.AsReadOnly()));
+            if (after.Public.World.CaptureIdentity() != before.Public.World.CaptureIdentity()
+                || after.IsDurablyPaused == before.IsDurablyPaused)
+            {
+                throw new InvalidDataException("Durable pause frame changed world authority or did not transition pause state.");
+            }
         }
         else throw new InvalidDataException("Run-store frame kind is unsupported.");
     }
 
-    private static void ValidatePrepare(RunStorePrepareMarker marker, int segmentIndex, int frameIndex, string chain, int firstSequence, int agentCount)
+    private static void ValidatePrepare(
+        RunStorePrepareMarker marker,
+        int segmentIndex,
+        int frameIndex,
+        string chain,
+        int firstSequence,
+        SnowGlobeRunIdentity identity)
     {
         if (marker.RecordType != "prepare" || marker.MarkerSchema != MarkerSchema || marker.SegmentIndex != segmentIndex || marker.FrameIndex != frameIndex
             || marker.FirstSequence != firstSequence || marker.EntryCount < 1 || marker.PayloadLength < 1
@@ -646,8 +706,18 @@ internal sealed class RunStoreV4Storage
         }
         else if (marker.FrameKind == RunStoreFrameKind.ScheduledTick.ToString())
         {
-            if (marker.EntryCount > checked(agentCount * 4 + 1) || marker.PayloadLength > MaximumScheduledPayloadBytes) throw new InvalidDataException("Scheduled frame exceeds its bounded shape.");
+            if (marker.EntryCount > checked(identity.AgentCount * 4 + 1) || marker.PayloadLength > MaximumScheduledPayloadBytes) throw new InvalidDataException("Scheduled frame exceeds its bounded shape.");
             _ = ParsePayloadPrefixManifest(marker.PayloadPrefixManifest, marker.PayloadLength);
+        }
+        else if (marker.FrameKind == RunStoreFrameKind.PauseTransition.ToString())
+        {
+            if (identity.SchemaVersion != SnowGlobeRunStore.SchemaVersion
+                || marker.EntryCount != 1
+                || marker.PayloadLength > SnowGlobeRunStore.MaximumLedgerRecordBytes + 1
+                || marker.PayloadPrefixManifest.Length != 0)
+            {
+                throw new InvalidDataException("Durable pause frame exceeds its v5-only bounded shape.");
+            }
         }
         else throw new InvalidDataException("Run-store prepare marker frame kind is unknown.");
         if (firstSequence < 0 || marker.EntryCount > SnowGlobeRunStore.MaximumLedgerRecords - firstSequence)
@@ -786,7 +856,7 @@ internal sealed class RunStoreV4Storage
         string[] unknown = files.EnumerateEntryNames(directory).Where(name => !allowed.Contains(name)).ToArray();
         if (unknown.Length != 0) throw new InvalidDataException("Run store contains unknown or extra artifacts.");
         if (!files.FileExists(LedgerPath(directory, 0)) || !files.FileExists(MarkerPath(directory, 0)))
-            throw new InvalidDataException("Run-store v4 artifacts are incomplete.");
+            throw new InvalidDataException("Framed run-store artifacts are incomplete.");
         bool hasSecondLedger = files.FileExists(LedgerPath(directory, 1));
         bool hasSecondMarker = files.FileExists(MarkerPath(directory, 1));
         if (hasSecondLedger != hasSecondMarker) throw new InvalidDataException("Run-store continuation artifacts are incomplete.");

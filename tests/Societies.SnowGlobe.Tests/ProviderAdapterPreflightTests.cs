@@ -374,7 +374,8 @@ public sealed class ProviderAdapterPreflightTests
         Assert.Equal(new[]
         {
             SnowGlobeLedgerKind.Response, SnowGlobeLedgerKind.Proposal, SnowGlobeLedgerKind.Commit,
-            SnowGlobeLedgerKind.Event, SnowGlobeLedgerKind.Checkpoint, SnowGlobeLedgerKind.ParticipantEvaluation
+            SnowGlobeLedgerKind.Event, SnowGlobeLedgerKind.Checkpoint, SnowGlobeLedgerKind.ParticipantEvaluation,
+            SnowGlobeLedgerKind.PauseTransition
         }, Enum.GetValues<SnowGlobeLedgerKind>());
         Assert.DoesNotContain(typeof(SnowGlobeReplayAdapter).GetFields(BindingFlags.Instance | BindingFlags.NonPublic),
             field => typeof(ICredentialLeaseSource).IsAssignableFrom(field.FieldType));

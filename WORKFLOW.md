@@ -1,5 +1,33 @@
 # Snow Globe provider preflight, Ollama repair, and qwen3.5 smoke handoff
 
+## Snow Globe v5 durable-pause local handoff
+
+### Outcome and scope
+
+- Local implementation now emits `snow_globe_run_store/v5` and records state-changing session Pause/Resume as one exact checksum-linked `PauseTransition` frame that leaves deterministic world authority unchanged.
+- V2/v3 remain flat read-only. Explicit framed v4 routing preserves its existing mutable session, participant, scheduled recovery, and v4-only recovery-provenance receipt behavior; v4 pause remains ephemeral.
+- V5 reconstruction starts running, requires alternating exact tick/state/event-bound transitions at frame boundaries, and admits new participant evaluations only while durably paused. Existing receipt retries remain idempotent after Resume.
+- V5 pause interruption recovery shares the existing single continuation with scheduled recovery. Pending pause frames are validated then abandoned at the prior durable state; partial payload/commit evidence and a second pending recovery fail closed.
+- Persisted inspection remains inert rather than a historical pause surface. No second state file, additional recovery segment, `ObserverShell`, world event/digest, provider/network/credential/live-state, or `src/societies/` behavior changed.
+
+### Changed files
+
+- Persistence/session: `labs/Societies.SnowGlobe/RunStore.cs`, `RunStoreStorage.cs`, `RunStoreExperiment.cs`, `PersistedSession.cs`, and minimal routing in `PersistedRunInspector.cs`.
+- Focused tests: new `RunStoreV5PauseTests.cs` and `PersistedSessionV5PauseTests.cs`; existing v4 compatibility tests now construct explicit frozen-v4 fixtures.
+- Contract/repo truth: `planning/active/snow-globe-v5-durable-pause.md`, `README.md`, `CURRENT_BUILD.md`, and this handoff.
+
+### Validation and delivery state
+
+- New v5 Release tests pass 25/25. Existing persistence compatibility selection passes 186/186. The aggregate persistence/provider-enum selection passes 239/239. The Snow Globe library Release build passes with 0 warnings / 0 errors.
+- The full Snow Globe Release suite passes 969/969; `git diff --check` is clean.
+- Independent deep migration/determinism/public-interface review is FINAL GO with no P0-P3 findings.
+- CI, commit, PR, and merge remain pending; no GitHub delivery claim is made.
+- No workflow T0/T1 blocker has been identified. One initially over-expensive test-only maximum-capacity artifact construction was replaced by the existing style of bounded internal branch seam; production capacity/artifact bounds remain covered separately.
+
+### Next action
+
+- Commit and publish this reviewed slice through the required PR check, then record the exact merge boundary. Do not start another Snow Globe slice before delivery clears.
+
 ## Current Snow Globe v4 recovery-provenance receipt handoff
 
 ### Outcome and scope
