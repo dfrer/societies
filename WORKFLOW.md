@@ -1,5 +1,34 @@
 # Snow Globe provider preflight, Ollama repair, and qwen3.5 smoke handoff
 
+## Current Snow Globe RunStore v4 recovery handoff
+
+### Outcome and scope
+
+- New isolated-lab stores emit `snow_globe_run_store/v4` behind the unchanged `CreateNew` / `OpenForAppend` / `Read` interface.
+- Bounded checksum-linked prepare, payload, commit, and continuation evidence makes committed ticks distinct from recoverable tails. Ordinary reads expose committed frames only; one authenticated scheduled-tick interruption may be resolved under the writer lease in a new continuation without modifying source bytes.
+- Participant-command tails, a second recovery, malformed or unauthenticated residue, committed corruption, broken/forked links, header lease-time mutation, unknown artifacts, and global capacity overflow fail closed.
+- V2/v3 remain byte-preserving read-only inputs and are never upgraded. Frozen scheduled and participant v3 fixtures reconstruct. No `src/societies/`, provider, network, credential, payment, or live-state behavior changed.
+
+### Changed files
+
+- Persistence: `labs/Societies.SnowGlobe/RunStore.cs`, `labs/Societies.SnowGlobe/RunStoreStorage.cs`, and `labs/Societies.SnowGlobe/RunStoreExperiment.cs`.
+- Contract summary: `labs/Societies.SnowGlobe/README.md`.
+- Adversarial evidence: `tests/Societies.SnowGlobe.Tests/RunStoreV4CrashRecoveryTests.cs`.
+- Milestone reconciliation: `CURRENT_BUILD.md` and `WORKFLOW.md`.
+
+### Validation and review
+
+- Focused RunStore Release tests: 132/132 passed.
+- Full Snow Globe Release tests: 914/914 passed.
+- Release build: 0 warnings / 0 errors; `git diff --check` clean.
+- Independent migration/determinism review: FINAL CODE GO, no P0-P3 findings after one correction cycle.
+
+### Repository state, limitations, and next action
+
+- The reviewed work is on `feature/snowglobe-runstore-v4-crash-recovery`; commit, push, pull request, and required GitHub check are the remaining authorized delivery steps.
+- Recovery is intentionally limited to authenticated, independently flushed complete-record prefixes. A real partial filesystem write fails closed. This is ordinary deterministic restart evidence, not power-loss certification, hardware durability, cross-host coordination, a general transaction layer, or exactly-once persistence.
+- Next action: commit the reviewed slice, publish its pull request, require `build-test-smoke`, and merge only after the branch gate succeeds.
+
 ## Current OpenRouter production settlement and fifth paid-run outcome
 
 The fifth authority incorporated up to 12 sequential requests, no retries or alternate providers, and maximum aggregate `$0.018`. One session ran exactly once: preflight succeeded, `record-once` ran once, and local `validate` ran once. Authorization digest `40655d2535520757b411595593deda6a714127e5366cf9afb3292aab0f3bc2d6`; generation `g2-03d00c2b41770f885e7ce27c9a4545cd9a420161b00351573fc2886b6c886df2`; manifest SHA `cd71868d349bb71b88d5b819a14e166fb520055d706f6da95025d04f33325d83`.

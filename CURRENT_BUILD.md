@@ -17,6 +17,14 @@ This is the only in-repo implementation that currently has:
 - a buildable C# project
 - a runnable automated validation path
 
+## Current Snow Globe RunStore v4 recovery milestone
+
+New isolated-lab run stores now use `snow_globe_run_store/v4`. The public `CreateNew` / `OpenForAppend` / `Read` surface is unchanged, while the storage module writes bounded checksum-linked prepare, payload, commit, and continuation evidence. An ordinary read exposes committed frames only. After one deterministically interrupted scheduled-tick write at an authenticated complete-record boundary, `OpenForAppend` can durably record either abandonment at the prior checkpoint or adoption of the complete tick in a new continuation segment without truncating or rewriting the original segment. Participant-command tails, a second recovery, malformed or unauthenticated residue, corrupt committed history, broken or forked links, header changes during lease acquisition, unknown artifacts, and combined capacity above 4,096 entries fail closed.
+
+V2 and v3 artifacts remain strict read-only inputs and are never upgraded in place; frozen scheduled and participant v3 fixtures reconstruct successfully. The filesystem and fault-injection adapters remain internal, and `src/societies/` is unchanged. This proves deterministic record-boundary interruption and ordinary restart behavior only. A real partial filesystem write fails closed; there is no power-loss, hardware-durability, cross-host, general-transaction, or exactly-once claim.
+
+Local Release validation passes 132/132 focused RunStore tests and 914/914 full Snow Globe tests; the Release build has 0 warnings and 0 errors; `git diff --check` is clean. Independent migration/determinism review is FINAL CODE GO with no P0-P3 findings after correcting premature uncommitted-tick visibility, global-cap enforcement, authenticated-prefix recovery, header/lease binding, framing-aware adversarial tests, and continuation source lengths. Delivery is pending on `feature/snowglobe-runstore-v4-crash-recovery`; the next action is the authorized GitHub pull-request gate.
+
 ## Current OpenRouter production settlement and fifth paid-run outcome
 
 The fifth authority incorporated the exact terms: up to 12 sequential requests, no retries or alternate providers, and maximum aggregate charge `$0.018`. One session ran exactly once: preflight succeeded, `record-once` ran once, and local `validate` ran once. Authorization digest is `40655d2535520757b411595593deda6a714127e5366cf9afb3292aab0f3bc2d6`; generation is `g2-03d00c2b41770f885e7ce27c9a4545cd9a420161b00351573fc2886b6c886df2`, manifest SHA `cd71868d349bb71b88d5b819a14e166fb520055d706f6da95025d04f33325d83`.
