@@ -2,7 +2,7 @@
 
 ## Status
 
-Local implementation complete; GitHub delivery is pending. This contract does not authorize provider, credential, network, payment, deployment, mutable-session, or `src/societies/` work.
+Complete and merged. This contract does not authorize provider, credential, network, payment, deployment, mutable-session, or `src/societies/` work.
 
 ## Outcome contract
 
@@ -19,4 +19,5 @@ Local implementation complete; GitHub delivery is pending. This contract does no
 - Full Snow Globe Release suite: passed 943/943.
 - `git diff --check`: passed.
 - Independent determinism/public-contract review: FINAL GO with no P0-P3 findings after closing the required-null marker P1.
-- Pending: commit, PR, required CI, merge, and exact delivery record. No GitHub delivery claim is made here.
+- Implementation commit `10b9816` was published through PR #133; required `build-test-smoke` passed in 4m12s and the PR merged to `master` as `11d662b`.
+- Next decision: durable pause/resume requires an explicit v5 contract; stronger path/ABA identity remains a separate filesystem-hardening slice.

@@ -1,6 +1,6 @@
 # Snow Globe provider preflight, Ollama repair, and qwen3.5 smoke handoff
 
-## Current Snow Globe v4 recovery-provenance receipt local handoff
+## Current Snow Globe v4 recovery-provenance receipt handoff
 
 ### Outcome and scope
 
@@ -23,7 +23,8 @@
 - The focused inspector/RunStore-v4-crash-recovery/persisted-session-v4-recovery selection passed 58/58 in Release.
 - The full Snow Globe Release suite passed 943/943; `git diff --check` is clean.
 - Independent determinism/public-contract review is FINAL GO with no P0-P3 findings after the required-null marker correction closed its P1.
-- Commit, PR, required CI, and merge remain pending. This is local implementation evidence only; no delivery or readiness claim is made.
+- Implementation commit `10b9816` was published through [PR #133](https://github.com/dfrer/societies/pull/133); required `build-test-smoke` passed in 4m12s and the PR merged to `master` as `11d662b`.
+- This bounded receipt milestone is complete. Durable pause/resume still requires an explicit v5 contract; stronger path/ABA identity remains a separate filesystem-hardening decision. No delivery, deployment, release, power-loss, exactly-once, provider-quality, or cost claim is made.
 
 ## Current Snow Globe read-only persisted-run inspection handoff
 
