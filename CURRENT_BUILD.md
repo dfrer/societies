@@ -27,9 +27,9 @@ The authority is consumed and no stage may be rerun. Preflight performed authent
 
 ### Current delivery record and next boundary
 
-The reviewed Snow Globe/OpenRouter milestone was committed as `dfbeb81`, pushed on `feature/snowglobe-agent-lab-owner-v1`, and published as [PR #125](https://github.com/dfrer/societies/pull/125). GitHub `build-test-smoke` passed in 4m16s, including the authoritative Godot build, fast unit tests, Godot C# builds, and headless smoke suite. The PR contains no `src/societies/` change. Its remaining delivery action is merge; after merge, this milestone's Git delivery is complete.
+The reviewed Snow Globe/OpenRouter milestone was committed as `dfbeb81`, published as [PR #125](https://github.com/dfrer/societies/pull/125), and merged to `master` as `f021cdc`. GitHub `build-test-smoke` passed twice on the delivery branch, including the authoritative Godot build, fast unit tests, Godot C# builds, and headless smoke suite. The merged PR contains no `src/societies/` change.
 
-The next selectable offline-only development milestone is the residual P3: retain and assert all twelve fake-only lease-zero observations in the readiness-manifest probe. It is not started by this delivery and must not access credentials, live state, provider/network surfaces, or `src/societies/`.
+The residual P3 is closed by commit `399adac` in [PR #126](https://github.com/dfrer/societies/pull/126): fake lease evidence now retains and validates all twelve success observations plus exact uncertain and pre-dispatch observations, rejecting missing, null, extra, false, or count-mismatched evidence. Focused Release tests pass 10/10, full SnowGlobe Release passes 885/885, CLI/security passes 70/70, both Release builds have zero warnings/errors, and independent deep security review is GO with no P0-P3 findings. PR #126 merge completes this follow-up; it authorizes no credential, live-state, provider, network, accounting, paid, or `src/societies/` action.
 
 ## Historical fourth-authorization preflight outcome
 
@@ -61,7 +61,7 @@ Live fixed-v1 state remains immutable Attempt 3: runtime authorization `d13f4aaa
 
 At the pre-delivery fixed point, all OpenRouter code, tests, and documentation were dirty/untracked on `feature/snowglobe-agent-lab-owner-v1` at HEAD `246304f`; nothing had been staged, committed, pushed, or opened as a PR, `git diff --check` passed, and `src/societies/` was unchanged. That fixed point was later committed and published through PR #125 as recorded above. The credential intentionally remains in Windows Credential Manager and was not read or displayed. The v2 lifecycle initialization is complete; existing `WI-GLOBAL-2026-126` remains the separate public-documentation-traffic issue.
 
-Initialization-slice chronology: the implementation gate passed full SnowGlobe 881/881 and full CLI/security 70/70. A dedicated real Global mutex abandonment regression in `OpenRouterPremiumWindowsStateTrustAnchorTests` proves fail-closed `state_trust_anchor_provisioning_indeterminate`, releases recovered ownership, and permits later reacquisition. Current validation after this test-only change is focused anchor 20/20, full SnowGlobe Release 884/884, full CLI/security 70/70, and both lab and CLI Release builds 0 warnings/0 errors. Independent paid-evidence review remains GO with no P0-P2; the separate plan-conformance residual P3 remains.
+Initialization-slice chronology: the implementation gate passed full SnowGlobe 881/881 and full CLI/security 70/70. A dedicated real Global mutex abandonment regression in `OpenRouterPremiumWindowsStateTrustAnchorTests` proves fail-closed `state_trust_anchor_provisioning_indeterminate`, releases recovered ownership, and permits later reacquisition. The later lease-zero conformance follow-up closes the former residual P3 with focused 10/10, full SnowGlobe Release 885/885, full CLI/security 70/70, and both lab and CLI Release builds at 0 warnings/0 errors; independent deep security review is GO with no P0-P3.
 
 ### Historical next action
 
