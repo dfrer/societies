@@ -1,5 +1,27 @@
 # Snow Globe provider preflight, Ollama repair, and qwen3.5 smoke handoff
 
+## Current Snow Globe v5 durable session-control status handoff
+
+### Outcome and scope
+
+- Adds the additive offline `SnowGlobePersistedRunInspector.InspectDurableControlStatus` surface for the v5 durable reopen state, explicitly separate from inert `Inspect(...).Snapshot.IsPaused`.
+- A v5 receipt is raw-free and immutable: schema identity, `Running`/`Paused`, run-identity checksum, stable evidence checksum, and committed tick/event-count/state/event digest binding.
+- Reuses the existing exact-identity two-read stability gate and validated reconstruction. Valid uncommitted pause evidence reports the prior durable state; partial or noncanonical evidence fails closed. V2/v3/v4 are accepted with no receipt.
+- No RunStore wire/writer/session changes, v4 behavior change, recovery-provenance redesign, path/ABA work, `src/societies/`, provider, network, credential, paid, or live-state action.
+
+### Changed files and validation
+
+- Production: `labs/Societies.SnowGlobe/PersistedRunInspector.cs`.
+- Focused evidence: `tests/Societies.SnowGlobe.Tests/PersistedRunInspectorTests.cs`.
+- Contract/current state: `planning/active/snow-globe-v5-durable-session-control-status.md`, `labs/Societies.SnowGlobe/README.md`, `CURRENT_BUILD.md`, and this file.
+- Focused Release inspector tests pass 30/30; v5 pause/session tests pass 25/25; the full Snow Globe Release suite passes 976/976; the Snow Globe Release build passes with 0 warnings / 0 errors; `git diff --check` is clean.
+- Independent determinism/persistence/public-interface review is FINAL GO with no P0-P3 findings.
+
+### Delivery state and next action
+
+- The reviewed implementation is ready for Git delivery on `codex/snowglobe-v5-durable-control-status`; no provider or external action occurred.
+- Next action: commit, publish, pass the required `build-test-smoke` check, merge, and record the exact delivery identifiers.
+
 ## Snow Globe v5 durable-pause handoff
 
 ### Outcome and scope
@@ -26,7 +48,7 @@
 
 ### Next action
 
-- This bounded v5 durable-pause milestone is complete. Next decide between a distinct read-only durable session-control status surface and the separate persisted-inspector path/ABA hardening slice; do not overload inert `Snapshot.IsPaused` or start either without a fresh outcome contract.
+- This bounded v5 durable-pause milestone is complete. Its proposed read-only durable session-control status follow-up is fulfilled by the current handoff above; persisted-inspector path/ABA hardening remains a separate future contract.
 
 ## Current Snow Globe v4 recovery-provenance receipt handoff
 

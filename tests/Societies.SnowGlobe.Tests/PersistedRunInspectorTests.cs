@@ -150,7 +150,7 @@ public sealed class PersistedRunInspectorTests
             {
                 await Assert.ThrowsAsync<IOException>(async () =>
                     await SnowGlobePersistedRun.RunAsync(
-                        SnowGlobeWorld.Create(identity.Seed, identity.AgentCount), new IdleAdapter(), store, 1));
+                        SnowGlobeWorld.Create(identity.Seed, identity.AgentCount), new IdleAdapter(identity.AdapterIdentity), store, 1));
             }
 
             Dictionary<string, byte[]> before = ArtifactBytes(root);
@@ -519,11 +519,200 @@ public sealed class PersistedRunInspectorTests
         finally { Directory.Delete(root, recursive: true); }
     }
 
+    [Fact]
+    public async Task DurableControlStatus_V5RunningPauseAndResume_AreDistinctFromTheInertSnapshot()
+    {
+        string root = NewTemporaryDirectory();
+        try
+        {
+            SnowGlobeRunIdentity identity = NewV5Identity();
+            using SnowGlobePersistedSession session = SnowGlobePersistedSession.CreateNew(root, identity, new IdleAdapter(identity.AdapterIdentity));
+
+            AssertDurableControlStatus(root, identity, SnowGlobePersistedSessionControlState.Running);
+            SnowGlobeObserverInspectionResult inert = SnowGlobePersistedRunInspector.Inspect(root, identity);
+            Assert.True(inert.Accepted);
+            Assert.True(inert.Snapshot!.IsPaused);
+
+            Assert.True((await session.PauseAsync()).Applied);
+            AssertDurableControlStatus(root, identity, SnowGlobePersistedSessionControlState.Paused);
+
+            Assert.True((await session.ResumeAsync()).Applied);
+            AssertDurableControlStatus(root, identity, SnowGlobePersistedSessionControlState.Running);
+        }
+        finally { Directory.Delete(root, recursive: true); }
+    }
+
+    [Fact]
+    public void DurableControlStatus_LegacyAndV4Inputs_AreAcceptedWithoutFabricatingAState()
+    {
+        string root = NewTemporaryDirectory();
+        try
+        {
+            SnowGlobeRunIdentity v2 = new(
+                SnowGlobeRunStore.LegacySchemaVersion,
+                SnowGlobePersistedRun.RulesIdentity,
+                SnowGlobePersistedRun.PromptIdentity,
+                "persisted_control_status_v2_adapter/v1",
+                SnowGlobeScenario.FixedSeed,
+                SnowGlobeScenario.FixedAgentCount);
+            WriteFrozenHeaderAndEmptyLedger(root, v2);
+            SnowGlobePersistedSessionControlStatusInspectionResult v2Result =
+                SnowGlobePersistedRunInspector.InspectDurableControlStatus(root, v2);
+            Assert.True(v2Result.Accepted);
+            Assert.Null(v2Result.Receipt);
+
+            Directory.Delete(root, recursive: true);
+            Directory.CreateDirectory(root);
+            SnowGlobeRunIdentity v3 = new(
+                SnowGlobeRunStore.PreviousSchemaVersion,
+                SnowGlobePersistedRun.RulesIdentity,
+                SnowGlobePersistedRun.PromptIdentity,
+                "persisted_control_status_v3_adapter/v1",
+                SnowGlobeScenario.FixedSeed,
+                SnowGlobeScenario.FixedAgentCount,
+                SnowGlobeRunStore.ParticipantCommandIdentity);
+            WriteFrozenHeaderAndEmptyLedger(root, v3);
+            SnowGlobePersistedSessionControlStatusInspectionResult v3Result =
+                SnowGlobePersistedRunInspector.InspectDurableControlStatus(root, v3);
+            Assert.True(v3Result.Accepted);
+            Assert.Null(v3Result.Receipt);
+
+            Directory.Delete(root, recursive: true);
+            Directory.CreateDirectory(root);
+            SnowGlobeRunIdentity v4 = NewIdentity();
+            using (SnowGlobeRunStore.CreateV4Fixture(root, v4)) { }
+            SnowGlobePersistedSessionControlStatusInspectionResult v4Result =
+                SnowGlobePersistedRunInspector.InspectDurableControlStatus(root, v4);
+            Assert.True(v4Result.Accepted);
+            Assert.Null(v4Result.Receipt);
+        }
+        finally { if (Directory.Exists(root)) Directory.Delete(root, recursive: true); }
+    }
+
+    [Fact]
+    public void DurableControlStatus_IdentityMismatchAndBetweenReadDrift_FailClosedWithoutAReceipt()
+    {
+        string root = NewTemporaryDirectory();
+        try
+        {
+            SnowGlobeRunIdentity identity = NewV5Identity();
+            using (SnowGlobePersistedSession.CreateNew(root, identity, new IdleAdapter(identity.AdapterIdentity))) { }
+
+            SnowGlobePersistedSessionControlStatusInspectionResult mismatch =
+                SnowGlobePersistedRunInspector.InspectDurableControlStatus(root, identity with { AdapterIdentity = "other/v1" });
+            Assert.False(mismatch.Accepted);
+            Assert.Equal("run_identity_mismatch", mismatch.RejectionReason);
+            Assert.Null(mismatch.Receipt);
+
+            SnowGlobePersistedSessionControlStatusInspectionResult drift =
+                SnowGlobePersistedRunInspector.InspectDurableControlStatus(
+                    root, identity, new HeaderMutatingFileSystem(PhysicalRunStoreFileSystem.Instance));
+            Assert.False(drift.Accepted);
+            Assert.Equal("run_store_unstable", drift.RejectionReason);
+            Assert.Null(drift.Receipt);
+        }
+        finally { Directory.Delete(root, recursive: true); }
+    }
+
+    [Fact]
+    public void DurableControlStatus_UncommittedPauseEvidenceReportsThePriorDurableState()
+    {
+        string root = NewTemporaryDirectory();
+        try
+        {
+            SnowGlobeRunIdentity identity = NewV5Identity();
+            using (SnowGlobePersistedSession.CreateNew(root, identity, new IdleAdapter(identity.AdapterIdentity))) { }
+
+            IRunStoreFileSystem faulting = new FaultInjectingRunStoreFileSystem(
+                PhysicalRunStoreFileSystem.Instance, RunStoreWriteKind.CommitMarker, 0);
+            SnowGlobeRunStore store = SnowGlobeRunStore.OpenForAppend(root, faulting);
+            try { Assert.Throws<IOException>(() => store.AppendPauseTransition(paused: true)); }
+            finally { store.Dispose(); }
+
+            AssertDurableControlStatus(root, identity, SnowGlobePersistedSessionControlState.Running);
+        }
+        finally { Directory.Delete(root, recursive: true); }
+    }
+
+    [Fact]
+    public void DurableControlStatus_PartialPauseEvidence_FailsClosedWithoutAReceipt()
+    {
+        string root = NewTemporaryDirectory();
+        try
+        {
+            SnowGlobeRunIdentity identity = NewV5Identity();
+            using (SnowGlobePersistedSession.CreateNew(root, identity, new IdleAdapter(identity.AdapterIdentity))) { }
+
+            IRunStoreFileSystem faulting = new FaultInjectingRunStoreFileSystem(
+                PhysicalRunStoreFileSystem.Instance, RunStoreWriteKind.PausePayload, 1);
+            SnowGlobeRunStore store = SnowGlobeRunStore.OpenForAppend(root, faulting);
+            try { Assert.Throws<IOException>(() => store.AppendPauseTransition(paused: true)); }
+            finally { store.Dispose(); }
+
+            SnowGlobePersistedSessionControlStatusInspectionResult result =
+                SnowGlobePersistedRunInspector.InspectDurableControlStatus(root, identity);
+            Assert.False(result.Accepted);
+            Assert.Equal("run_store_invalid", result.RejectionReason);
+            Assert.Null(result.Receipt);
+        }
+        finally { Directory.Delete(root, recursive: true); }
+    }
+
+    [Fact]
+    public void DurableControlStatus_NoncanonicalPauseCommitTail_FailsClosedWithoutAReceipt()
+    {
+        string root = NewTemporaryDirectory();
+        try
+        {
+            SnowGlobeRunIdentity identity = NewV5Identity();
+            using (SnowGlobePersistedSession.CreateNew(root, identity, new IdleAdapter(identity.AdapterIdentity))) { }
+
+            IRunStoreFileSystem faulting = new FaultInjectingRunStoreFileSystem(
+                PhysicalRunStoreFileSystem.Instance, RunStoreWriteKind.CommitMarker, 1);
+            SnowGlobeRunStore store = SnowGlobeRunStore.OpenForAppend(root, faulting);
+            try { Assert.Throws<IOException>(() => store.AppendPauseTransition(paused: true)); }
+            finally { store.Dispose(); }
+
+            SnowGlobePersistedSessionControlStatusInspectionResult result =
+                SnowGlobePersistedRunInspector.InspectDurableControlStatus(root, identity);
+            Assert.False(result.Accepted);
+            Assert.Equal("run_store_invalid", result.RejectionReason);
+            Assert.Null(result.Receipt);
+        }
+        finally { Directory.Delete(root, recursive: true); }
+    }
+
+    [Fact]
+    public void DurableControlStatus_UsesNoWriterLeaseOrArtifactMutation()
+    {
+        string root = NewTemporaryDirectory();
+        try
+        {
+            SnowGlobeRunIdentity identity = NewV5Identity();
+            using (SnowGlobePersistedSession.CreateNew(root, identity, new IdleAdapter(identity.AdapterIdentity))) { }
+            Dictionary<string, byte[]> before = ArtifactBytes(root);
+            TrackingFileSystem files = new(PhysicalRunStoreFileSystem.Instance);
+
+            SnowGlobePersistedSessionControlStatusInspectionResult result =
+                SnowGlobePersistedRunInspector.InspectDurableControlStatus(root, identity, files);
+
+            Assert.True(result.Accepted);
+            Assert.NotNull(result.Receipt);
+            Assert.True(files.Reads > 0);
+            Assert.Equal(0, files.CreateDirectoryCalls);
+            Assert.Equal(0, files.CreateFileCalls);
+            Assert.Equal(0, files.AppendFileCalls);
+            Assert.Equal(0, files.LeaseCalls);
+            AssertArtifactBytesEqual(before, ArtifactBytes(root));
+        }
+        finally { Directory.Delete(root, recursive: true); }
+    }
+
     private static async Task WriteTicksAsync(string root, SnowGlobeRunIdentity identity, int ticks)
     {
         using SnowGlobeRunStore store = SnowGlobeRunStore.CreateV4Fixture(root, identity);
         await SnowGlobePersistedRun.RunAsync(
-            SnowGlobeWorld.Create(identity.Seed, identity.AgentCount), new IdleAdapter(), store, ticks);
+            SnowGlobeWorld.Create(identity.Seed, identity.AgentCount), new IdleAdapter(identity.AdapterIdentity), store, ticks);
     }
 
     private static async Task CreateInterruptedV4RunAsync(
@@ -538,7 +727,7 @@ public sealed class PersistedRunInspectorTests
         try
         {
             await Assert.ThrowsAsync<IOException>(() => SnowGlobePersistedRun.RunAsync(
-                SnowGlobeWorld.Create(identity.Seed, identity.AgentCount), new IdleAdapter(), store, 1));
+                SnowGlobeWorld.Create(identity.Seed, identity.AgentCount), new IdleAdapter(identity.AdapterIdentity), store, 1));
         }
         finally { store.Dispose(); }
     }
@@ -548,6 +737,31 @@ public sealed class PersistedRunInspectorTests
         {
             SchemaVersion = SnowGlobeRunStore.V4SchemaVersion
         };
+
+    private static SnowGlobeRunIdentity NewV5Identity() =>
+        SnowGlobePersistedRun.Identity("persisted_control_status_adapter/v1");
+
+    private static void AssertDurableControlStatus(
+        string root,
+        SnowGlobeRunIdentity identity,
+        SnowGlobePersistedSessionControlState expectedState)
+    {
+        SnowGlobePersistedSessionControlStatusInspectionResult result =
+            SnowGlobePersistedRunInspector.InspectDurableControlStatus(root, identity);
+        Assert.True(result.Accepted);
+        Assert.Null(result.RejectionReason);
+        SnowGlobePersistedSessionControlStatusReceipt receipt = Assert.IsType<SnowGlobePersistedSessionControlStatusReceipt>(result.Receipt);
+        SnowGlobeRunReconstruction reconstruction = SnowGlobePersistedRun.Reconstruct(SnowGlobeRunStore.Read(root), identity);
+        SnowGlobeWorldIdentity committed = reconstruction.World.CaptureIdentity();
+        Assert.Equal("snow_globe_persisted_session_control_status_receipt/v1", receipt.ReceiptSchemaIdentity);
+        Assert.Equal(expectedState, receipt.State);
+        Assert.Equal(committed.Tick, receipt.CommittedTick);
+        Assert.Equal(committed.EventCount, receipt.CommittedEventCount);
+        Assert.Equal(committed.StateDigest, receipt.CommittedStateDigest);
+        Assert.Equal(committed.EventDigest, receipt.CommittedEventDigest);
+        Assert.Equal(SnowGlobeRunStore.CanonicalIdentityChecksum(identity), receipt.RunIdentityChecksum);
+        Assert.Matches("^[0-9a-f]{64}$", receipt.EvidenceChecksum);
+    }
 
     private static string NewTemporaryDirectory()
     {
@@ -605,8 +819,10 @@ public sealed class PersistedRunInspectorTests
 
     private static string Digest(ReadOnlySpan<byte> bytes) => Convert.ToHexString(SHA256.HashData(bytes)).ToLowerInvariant();
 
-    private sealed class IdleAdapter : ISnowGlobeInferenceAdapter
+    private sealed class IdleAdapter(string adapterIdentity) : ISnowGlobeIdentifiedInferenceAdapter
     {
+        public string AdapterIdentity { get; } = adapterIdentity;
+
         public ValueTask<SnowGlobeActionProposal> ProposeAsync(SnowGlobeObservation observation, CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
