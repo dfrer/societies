@@ -1,3 +1,4 @@
+using System.Buffers.Binary;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -44,6 +45,12 @@ public sealed record SnowGlobeRunLedger(
         ParticipantEvaluations ?? Array.Empty<SnowGlobeParticipantEvaluationRecord>();
     public int EntryCount => Records.Count + ParticipantEvaluationRecords.Count;
 }
+
+/// <summary>
+/// Internal read result that binds a detached ledger to the exact raw artifacts consumed while
+/// reading it. It deliberately does not expose a filesystem abstraction to production callers.
+/// </summary>
+internal sealed record RunStoreReadEvidence(SnowGlobeRunLedger Ledger, string EvidenceChecksum);
 
 /// <summary>Bounded, append-only evidence. Readers never modify artifacts; a durable lock file is a lease, not ownership evidence.</summary>
 public sealed class SnowGlobeRunStore : IDisposable
@@ -195,9 +202,12 @@ public sealed class SnowGlobeRunStore : IDisposable
     }
 
     public static SnowGlobeRunLedger Read(string directory)
-        => Read(directory, PhysicalRunStoreFileSystem.Instance);
+        => ReadWithEvidence(directory, PhysicalRunStoreFileSystem.Instance).Ledger;
 
     internal static SnowGlobeRunLedger Read(string directory, IRunStoreFileSystem files)
+        => ReadWithEvidence(directory, files).Ledger;
+
+    internal static RunStoreReadEvidence ReadWithEvidence(string directory, IRunStoreFileSystem files)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(directory);
         ArgumentNullException.ThrowIfNull(files);
@@ -208,8 +218,14 @@ public sealed class SnowGlobeRunStore : IDisposable
         SnowGlobeRunIdentity identity = DeserializeIdentityStrict(headerBytes);
         ValidateIdentity(identity, requireCurrent: false);
         string headerChecksum = CanonicalIdentityChecksum(identity);
-        if (identity.SchemaVersion == SchemaVersion) return ReadV4(directory, files, identity, headerChecksum, headerBytes).Ledger;
-        return ReadLegacy(directory, files, identity, headerChecksum);
+        if (identity.SchemaVersion == SchemaVersion)
+        {
+            RunStoreV4State state = ReadV4(directory, files, identity, headerChecksum, headerBytes);
+            return new RunStoreReadEvidence(state.Ledger, state.EvidenceChecksum);
+        }
+
+        SnowGlobeRunLedger ledger = ReadLegacy(directory, files, identity, headerChecksum, out byte[] ledgerBytes);
+        return new RunStoreReadEvidence(ledger, LegacyRawEvidenceChecksum(headerBytes, ledgerBytes));
     }
 
     private static RunStoreV4State ReadStateForAppend(string directory, IRunStoreFileSystem files)
@@ -226,13 +242,13 @@ public sealed class SnowGlobeRunStore : IDisposable
     private static RunStoreV4State ReadV4(string directory, IRunStoreFileSystem files, SnowGlobeRunIdentity identity, string headerChecksum, ReadOnlySpan<byte> rawHeader) =>
         RunStoreV4Storage.Read(directory, files, identity, headerChecksum, rawHeader);
 
-    private static SnowGlobeRunLedger ReadLegacy(string directory, IRunStoreFileSystem files, SnowGlobeRunIdentity identity, string headerChecksum)
+    private static SnowGlobeRunLedger ReadLegacy(string directory, IRunStoreFileSystem files, SnowGlobeRunIdentity identity, string headerChecksum, out byte[] ledgerBytes)
     {
         HashSet<string> allowedArtifacts = new(StringComparer.Ordinal) { HeaderFileName, LedgerFileName, ".writer.lock" };
         if (files.EnumerateEntryNames(directory).Any(name => !allowedArtifacts.Contains(name)))
             throw new InvalidDataException("Legacy run store contains unknown or extra artifacts.");
         string ledgerPath = Path.Combine(directory, LedgerFileName);
-        byte[] ledgerBytes = files.ReadFile(ledgerPath, MaximumLedgerBytes, "Ledger");
+        ledgerBytes = files.ReadFile(ledgerPath, MaximumLedgerBytes, "Ledger");
         List<SnowGlobeLedgerRecord> records = new();
         List<SnowGlobeParticipantEvaluationRecord> participantEvaluations = new();
         int expectedSequence = 0;
@@ -762,6 +778,24 @@ public sealed class SnowGlobeRunStore : IDisposable
     private static bool IsBounded(string? value) => value is null || value.Length <= MaximumFieldLength;
     internal static bool IsDigest(string? value) => value is { Length: 64 } && value.All(character => character is >= '0' and <= '9' or >= 'a' and <= 'f');
     internal static string CanonicalIdentityChecksum(SnowGlobeRunIdentity identity) => Digest(CanonicalIdentityBytes(identity));
+
+    private static string LegacyRawEvidenceChecksum(ReadOnlySpan<byte> header, ReadOnlySpan<byte> ledger)
+    {
+        using IncrementalHash evidence = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
+        evidence.AppendData("snow_globe_run_store_legacy_raw_evidence/v1"u8);
+        AppendFramedRawEvidence(evidence, header);
+        AppendFramedRawEvidence(evidence, ledger);
+        return Convert.ToHexString(evidence.GetHashAndReset()).ToLowerInvariant();
+    }
+
+    private static void AppendFramedRawEvidence(IncrementalHash evidence, ReadOnlySpan<byte> bytes)
+    {
+        Span<byte> length = stackalloc byte[sizeof(long)];
+        BinaryPrimitives.WriteInt64BigEndian(length, bytes.Length);
+        evidence.AppendData(length);
+        evidence.AppendData(bytes);
+    }
+
     private static byte[] CanonicalIdentityBytes(SnowGlobeRunIdentity identity) => identity.SchemaVersion == LegacySchemaVersion
         ? JsonSerializer.SerializeToUtf8Bytes(new V2RunIdentity(identity.SchemaVersion, identity.RulesIdentity, identity.PromptIdentity, identity.AdapterIdentity, identity.Seed, identity.AgentCount), JsonOptions)
         : JsonSerializer.SerializeToUtf8Bytes(identity, JsonOptions);

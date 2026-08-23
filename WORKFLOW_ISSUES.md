@@ -168,6 +168,26 @@ Statuses: **Open**, **Monitoring**, **Resolved**, **Deferred**, **Rejected**.
 
 ## Resolved entries
 
+### WI-SOCIETIES-2026-012 — Frozen canonical-manifest fixture inherited checkout line endings
+
+- **Tier:** T1
+- **Status:** Resolved
+- **Scope/project:** `C:\Users\hunte\.codex\worktrees\b452\societies`; Snow Globe .NET validation
+- **Category:** validation
+- **First seen:** 2026-08-22 (America/Vancouver)
+- **Last seen:** 2026-08-22 (America/Vancouver)
+- **Occurrences:** 1 full Snow Globe Release gate after a Windows checkout
+- **Reporter:** `deep_reviewer`; captured and resolved by main orchestrator and `bugfix_worker`
+- **Symptom:** `OpenRouterPremiumPaidRunReadinessManifestTests.Create_IsCanonicalBoundedRawFreeAndDigestBound` expected CRLF because its raw multiline frozen fixture inherited working-tree line endings, while production deliberately emits canonical LF with `string.Join('\n', ...)`.
+- **Impact:** The full suite reported 931 passes and one failure even though the production manifest and digest were unchanged; cross-platform checkout policy could therefore invalidate the delivery gate.
+- **Evidence:** The isolated class reproduced the mismatch at character 59. After the test-only repair, the focused class passed 4/4 and production output is explicitly asserted to contain no carriage return.
+- **Workaround:** Normalize the source-literal fixture from CRLF to LF before the exact comparison; retain the frozen manifest, canonical digest, and explicit LF assertion.
+- **Root cause:** C# raw multiline string literals preserve source-file line endings, but the test treated the fixture as platform-independent canonical text.
+- **Proposed fix:** Completed with bounded test-only fixture normalization; production manifest behavior and provider boundaries remain unchanged.
+- **Auto-fix eligibility/rationale:** No — T1 full-gate correctness required an exact regression repair and replacement full validation.
+- **Resolution/validation:** Resolved. Focused readiness-manifest tests pass 4/4; final full-suite and build evidence is recorded in the current milestone handoff.
+- **Linked entry:** WI-GLOBAL-2026-131 in `C:\Users\hunte\Documents\Codex\WORKFLOW_ISSUES.md`.
+
 ### WI-SOCIETIES-2026-011 — Ollama benchmark tests used scheduler timing as an in-flight sampling contract
 
 - **Tier:** T1

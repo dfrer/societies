@@ -1,6 +1,39 @@
 # Snow Globe provider preflight, Ollama repair, and qwen3.5 smoke handoff
 
-## Current Snow Globe persisted-session v4 recovery conformance handoff
+## Current Snow Globe read-only persisted-run inspection handoff
+
+### Outcome and scope
+
+- Added one public `SnowGlobePersistedRunInspector.Inspect(directory, expectedIdentity, eventCursor)` entry point for strict v2/v3/v4 saved-run inspection.
+- Exact provenance is mandatory. Two bounded raw-evidence reads must match before a detached snapshot is published; failures expose a stable reason and no snapshot.
+- V4 uses checksum-bound header/segment evidence; v2/v3 bind exact raw header and ledger bytes with length framing. Only committed deterministic state is reconstructed.
+- Snapshots retain the existing 32-event paging contract. `IsPaused=true` denotes an inert read-only projection and is not durable pause evidence.
+- Inspection cannot acquire a writer lease, append, recover, repair, create a continuation, invoke an inference adapter, or mutate artifacts.
+
+### Changed files
+
+- Inspector and shared evidence read: `labs/Societies.SnowGlobe/PersistedRunInspector.cs` and `labs/Societies.SnowGlobe/RunStore.cs`.
+- Interface-level evidence: `tests/Societies.SnowGlobe.Tests/PersistedRunInspectorTests.cs`.
+- Windows line-ending regression: `tests/Societies.SnowGlobe.Tests/OpenRouterPremiumPaidRunReadinessManifestTests.cs`.
+- Contract and repository truth: `labs/Societies.SnowGlobe/README.md`, `CURRENT_BUILD.md`, `WORKFLOW.md`, and `WORKFLOW_ISSUES.md`.
+
+### Validation and review
+
+- Inspector Release tests: 12/12 passed.
+- Inspector/RunStore/v4-recovery Release tests: 143/143 passed.
+- Persistence compatibility Release tests: 175/175 passed.
+- Full Snow Globe Release tests: 932/932 passed.
+- Release build: 0 warnings / 0 errors; diff checks clean.
+- Independent determinism/public-interface review: GO with no P0-P3 findings.
+
+### Repository state, limitations, and next action
+
+- Delivery is pending on `codex/snowglobe-readonly-persisted-inspection`; after the required GitHub check and merge, record exact delivery evidence.
+- Two-pass equality detects observed drift but not a byte-identical ABA replacement between reads. The inspector inherits existing caller-supplied path semantics and does not add a path-security policy or read lease.
+- The resolved frozen-fixture line-ending defect is recorded as `WI-SOCIETIES-2026-012` and `WI-GLOBAL-2026-131`.
+- No provider, credential, payment, network, live-state, mutable-session, or `src/societies/` behavior changed.
+
+## Prior Snow Globe persisted-session v4 recovery conformance handoff
 
 ### Outcome and scope
 
