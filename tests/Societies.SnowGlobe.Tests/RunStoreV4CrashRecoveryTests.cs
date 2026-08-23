@@ -32,13 +32,13 @@ public sealed class RunStoreV4CrashRecoveryTests
     }
 
     [Fact]
-    public void CreateNew_EmitsV4WithEmptyFramedSegment()
+    public void V4CompatibilityFixture_EmitsEmptyFramedSegment()
     {
         string root = NewTemporaryDirectory();
         try
         {
-            SnowGlobeRunIdentity identity = SnowGlobePersistedRun.Identity("runstore_v4_create_adapter/v1");
-            using (SnowGlobeRunStore.CreateNew(root, identity)) { }
+            SnowGlobeRunIdentity identity = V4Identity("runstore_v4_create_adapter/v1");
+            using (SnowGlobeRunStore.CreateV4Fixture(root, identity)) { }
 
             using JsonDocument header = JsonDocument.Parse(File.ReadAllBytes(Path.Combine(root, "run.json")));
             Assert.Equal("snow_globe_run_store/v4", header.RootElement.GetProperty("schema_version").GetString());
@@ -57,12 +57,12 @@ public sealed class RunStoreV4CrashRecoveryTests
         string root = NewTemporaryDirectory();
         try
         {
-            SnowGlobeRunIdentity identity = SnowGlobePersistedRun.Identity("runstore_v4_partial_adapter/v1");
+            SnowGlobeRunIdentity identity = V4Identity("runstore_v4_partial_adapter/v1");
             IRunStoreFileSystem faulting = new FaultInjectingRunStoreFileSystem(
                 PhysicalRunStoreFileSystem.Instance,
                 RunStoreWriteKind.ScheduledPayload,
                 bytesBeforeFailure);
-            SnowGlobeRunStore? interrupted = SnowGlobeRunStore.CreateNew(root, identity, faulting);
+            SnowGlobeRunStore? interrupted = SnowGlobeRunStore.CreateV4Fixture(root, identity, faulting);
             try
             {
                 SnowGlobeWorld live = SnowGlobeWorld.Create(identity.Seed, identity.AgentCount);
@@ -105,12 +105,12 @@ public sealed class RunStoreV4CrashRecoveryTests
         string root = NewTemporaryDirectory();
         try
         {
-            SnowGlobeRunIdentity identity = SnowGlobePersistedRun.Identity("runstore_v4_commit_gap_adapter/v1");
+            SnowGlobeRunIdentity identity = V4Identity("runstore_v4_commit_gap_adapter/v1");
             IRunStoreFileSystem faulting = new FaultInjectingRunStoreFileSystem(
                 PhysicalRunStoreFileSystem.Instance,
                 RunStoreWriteKind.CommitMarker,
                 bytesBeforeFailure);
-            SnowGlobeRunStore? interrupted = SnowGlobeRunStore.CreateNew(root, identity, faulting);
+            SnowGlobeRunStore? interrupted = SnowGlobeRunStore.CreateV4Fixture(root, identity, faulting);
             try
             {
                 SnowGlobeWorld live = SnowGlobeWorld.Create(identity.Seed, identity.AgentCount);
@@ -143,12 +143,12 @@ public sealed class RunStoreV4CrashRecoveryTests
         string root = NewTemporaryDirectory();
         try
         {
-            SnowGlobeRunIdentity identity = SnowGlobePersistedRun.Identity("runstore_v4_partial_corruption_adapter/v1");
+            SnowGlobeRunIdentity identity = V4Identity("runstore_v4_partial_corruption_adapter/v1");
             IRunStoreFileSystem faulting = new FaultInjectingRunStoreFileSystem(
                 PhysicalRunStoreFileSystem.Instance,
                 RunStoreWriteKind.ScheduledPayload,
                 4096);
-            SnowGlobeRunStore? interrupted = SnowGlobeRunStore.CreateNew(root, identity, faulting);
+            SnowGlobeRunStore? interrupted = SnowGlobeRunStore.CreateV4Fixture(root, identity, faulting);
             try
             {
                 await Assert.ThrowsAsync<IOException>(() => SnowGlobePersistedRun.RunAsync(
@@ -179,12 +179,12 @@ public sealed class RunStoreV4CrashRecoveryTests
         string root = NewTemporaryDirectory();
         try
         {
-            SnowGlobeRunIdentity identity = SnowGlobePersistedRun.Identity("runstore_v4_prefix_binding_adapter/v1");
+            SnowGlobeRunIdentity identity = V4Identity("runstore_v4_prefix_binding_adapter/v1");
             IRunStoreFileSystem faulting = new FaultInjectingRunStoreFileSystem(
                 PhysicalRunStoreFileSystem.Instance,
                 RunStoreWriteKind.ScheduledPayload,
                 4096);
-            SnowGlobeRunStore? interrupted = SnowGlobeRunStore.CreateNew(root, identity, faulting);
+            SnowGlobeRunStore? interrupted = SnowGlobeRunStore.CreateV4Fixture(root, identity, faulting);
             try
             {
                 await Assert.ThrowsAsync<IOException>(() => SnowGlobePersistedRun.RunAsync(
@@ -210,8 +210,8 @@ public sealed class RunStoreV4CrashRecoveryTests
         string root = NewTemporaryDirectory();
         try
         {
-            SnowGlobeRunIdentity identity = SnowGlobePersistedRun.Identity("runstore_v4_header_toctou_adapter/v1");
-            using (SnowGlobeRunStore.CreateNew(root, identity)) { }
+            SnowGlobeRunIdentity identity = V4Identity("runstore_v4_header_toctou_adapter/v1");
+            using (SnowGlobeRunStore.CreateV4Fixture(root, identity)) { }
             byte[] before = File.ReadAllBytes(Path.Combine(root, "run.json"));
             IRunStoreFileSystem mutating = new LeaseMutatingRunStoreFileSystem(
                 PhysicalRunStoreFileSystem.Instance,
@@ -230,9 +230,9 @@ public sealed class RunStoreV4CrashRecoveryTests
         string root = NewTemporaryDirectory();
         try
         {
-            SnowGlobeRunIdentity identity = SnowGlobePersistedRun.Identity("runstore_v4_continuation_length_adapter/v1");
+            SnowGlobeRunIdentity identity = V4Identity("runstore_v4_continuation_length_adapter/v1");
             SnowGlobeWorld world = SnowGlobeWorld.Create(identity.Seed, identity.AgentCount);
-            using (SnowGlobeRunStore first = SnowGlobeRunStore.CreateNew(root, identity))
+            using (SnowGlobeRunStore first = SnowGlobeRunStore.CreateV4Fixture(root, identity))
                 await SnowGlobePersistedRun.RunAsync(world, new IdleAdapter(), first, 1);
 
             IRunStoreFileSystem faulting = new FaultInjectingRunStoreFileSystem(
@@ -263,12 +263,12 @@ public sealed class RunStoreV4CrashRecoveryTests
         string root = NewTemporaryDirectory();
         try
         {
-            SnowGlobeRunIdentity identity = SnowGlobePersistedRun.Identity("runstore_v4_commit_readback_adapter/v1");
+            SnowGlobeRunIdentity identity = V4Identity("runstore_v4_commit_readback_adapter/v1");
             IRunStoreFileSystem faulting = new FaultInjectingRunStoreFileSystem(
                 PhysicalRunStoreFileSystem.Instance,
                 RunStoreWriteKind.CommitMarker,
                 int.MaxValue);
-            SnowGlobeRunStore? interrupted = SnowGlobeRunStore.CreateNew(root, identity, faulting);
+            SnowGlobeRunStore? interrupted = SnowGlobeRunStore.CreateV4Fixture(root, identity, faulting);
             try
             {
                 SnowGlobeWorld live = SnowGlobeWorld.Create(identity.Seed, identity.AgentCount);
@@ -290,12 +290,12 @@ public sealed class RunStoreV4CrashRecoveryTests
         string root = NewTemporaryDirectory();
         try
         {
-            SnowGlobeRunIdentity identity = SnowGlobePersistedRun.Identity("runstore_v4_recovery_bound_adapter/v1");
+            SnowGlobeRunIdentity identity = V4Identity("runstore_v4_recovery_bound_adapter/v1");
             IRunStoreFileSystem firstFault = new FaultInjectingRunStoreFileSystem(
                 PhysicalRunStoreFileSystem.Instance,
                 RunStoreWriteKind.ScheduledPayload,
                 0);
-            SnowGlobeRunStore? first = SnowGlobeRunStore.CreateNew(root, identity, firstFault);
+            SnowGlobeRunStore? first = SnowGlobeRunStore.CreateV4Fixture(root, identity, firstFault);
             try
             {
                 await Assert.ThrowsAsync<IOException>(() => SnowGlobePersistedRun.RunAsync(SnowGlobeWorld.Create(identity.Seed, identity.AgentCount), new IdleAdapter(), first, 1));
@@ -330,8 +330,8 @@ public sealed class RunStoreV4CrashRecoveryTests
         string root = NewTemporaryDirectory();
         try
         {
-            SnowGlobeRunIdentity identity = SnowGlobePersistedRun.Identity("runstore_v4_inner_validation_adapter/v1");
-            using (SnowGlobeRunStore store = SnowGlobeRunStore.CreateNew(root, identity))
+            SnowGlobeRunIdentity identity = V4Identity("runstore_v4_inner_validation_adapter/v1");
+            using (SnowGlobeRunStore store = SnowGlobeRunStore.CreateV4Fixture(root, identity))
                 await SnowGlobePersistedRun.RunAsync(SnowGlobeWorld.Create(identity.Seed, identity.AgentCount), new IdleAdapter(), store, 1);
 
             string[] lines = File.ReadAllLines(Path.Combine(root, "ledger.jsonl"));
@@ -363,8 +363,8 @@ public sealed class RunStoreV4CrashRecoveryTests
         string root = NewTemporaryDirectory();
         try
         {
-            SnowGlobeRunIdentity identity = SnowGlobePersistedRun.Identity("runstore_v4_broken_chain_adapter/v1");
-            using (SnowGlobeRunStore store = SnowGlobeRunStore.CreateNew(root, identity))
+            SnowGlobeRunIdentity identity = V4Identity("runstore_v4_broken_chain_adapter/v1");
+            using (SnowGlobeRunStore store = SnowGlobeRunStore.CreateV4Fixture(root, identity))
                 await SnowGlobePersistedRun.RunAsync(SnowGlobeWorld.Create(identity.Seed, identity.AgentCount), new IdleAdapter(), store, 1);
 
             string markerPath = Path.Combine(root, "commits.jsonl");
@@ -394,12 +394,12 @@ public sealed class RunStoreV4CrashRecoveryTests
         string root = NewTemporaryDirectory();
         try
         {
-            SnowGlobeRunIdentity identity = SnowGlobePersistedRun.Identity("runstore_v4_forked_continuation_adapter/v1");
+            SnowGlobeRunIdentity identity = V4Identity("runstore_v4_forked_continuation_adapter/v1");
             IRunStoreFileSystem faulting = new FaultInjectingRunStoreFileSystem(
                 PhysicalRunStoreFileSystem.Instance,
                 RunStoreWriteKind.ScheduledPayload,
                 0);
-            SnowGlobeRunStore? interrupted = SnowGlobeRunStore.CreateNew(root, identity, faulting);
+            SnowGlobeRunStore? interrupted = SnowGlobeRunStore.CreateV4Fixture(root, identity, faulting);
             try
             {
                 await Assert.ThrowsAsync<IOException>(() => SnowGlobePersistedRun.RunAsync(
@@ -425,9 +425,9 @@ public sealed class RunStoreV4CrashRecoveryTests
         string root = NewTemporaryDirectory();
         try
         {
-            SnowGlobeRunIdentity identity = SnowGlobePersistedRun.Identity("runstore_v4_participant_capacity_adapter/v1");
+            SnowGlobeRunIdentity identity = V4Identity("runstore_v4_participant_capacity_adapter/v1");
             SnowGlobeWorld initial = SnowGlobeWorld.Create(identity.Seed, identity.AgentCount);
-            using (SnowGlobeRunStore store = SnowGlobeRunStore.CreateNew(root, identity))
+            using (SnowGlobeRunStore store = SnowGlobeRunStore.CreateV4Fixture(root, identity))
             {
                 for (int index = 0; index < SnowGlobeRunStore.MaximumParticipantEvaluations; index++)
                 {
@@ -460,9 +460,9 @@ public sealed class RunStoreV4CrashRecoveryTests
         string root = NewTemporaryDirectory();
         try
         {
-            SnowGlobeRunIdentity identity = SnowGlobePersistedRun.Identity("runstore_v4_global_capacity_adapter/v1");
+            SnowGlobeRunIdentity identity = V4Identity("runstore_v4_global_capacity_adapter/v1");
             SnowGlobeWorld world = SnowGlobeWorld.Create(identity.Seed, identity.AgentCount);
-            using (SnowGlobeRunStore store = SnowGlobeRunStore.CreateNew(root, identity))
+            using (SnowGlobeRunStore store = SnowGlobeRunStore.CreateV4Fixture(root, identity))
                 await SnowGlobePersistedRun.RunAsync(world, new IdleAdapter(), store, 123);
 
             IRunStoreFileSystem faulting = new FaultInjectingRunStoreFileSystem(
@@ -493,13 +493,13 @@ public sealed class RunStoreV4CrashRecoveryTests
         string root = NewTemporaryDirectory();
         try
         {
-            SnowGlobeRunIdentity identity = SnowGlobePersistedRun.Identity("runstore_v4_participant_tail_adapter/v1");
+            SnowGlobeRunIdentity identity = V4Identity("runstore_v4_participant_tail_adapter/v1");
             IRunStoreFileSystem faulting = new FaultInjectingRunStoreFileSystem(
                 PhysicalRunStoreFileSystem.Instance,
                 RunStoreWriteKind.ParticipantPayload,
                 12);
             SnowGlobeWorld initial = SnowGlobeWorld.Create(identity.Seed, identity.AgentCount);
-            using SnowGlobeRunStore store = SnowGlobeRunStore.CreateNew(root, identity, faulting);
+            using SnowGlobeRunStore store = SnowGlobeRunStore.CreateV4Fixture(root, identity, faulting);
             SnowGlobeParticipantCommand command = new(
                 "participant-01", "participant-tail", initial.Tick, initial.StateDigest(), initial.EventDigest(),
                 "agent-00", SnowGlobeActionKind.Idle, 0);
@@ -523,8 +523,8 @@ public sealed class RunStoreV4CrashRecoveryTests
         string root = NewTemporaryDirectory();
         try
         {
-            SnowGlobeRunIdentity identity = SnowGlobePersistedRun.Identity("runstore_v4_chain_rejection_adapter/v1");
-            using (SnowGlobeRunStore store = SnowGlobeRunStore.CreateNew(root, identity))
+            SnowGlobeRunIdentity identity = V4Identity("runstore_v4_chain_rejection_adapter/v1");
+            using (SnowGlobeRunStore store = SnowGlobeRunStore.CreateV4Fixture(root, identity))
                 await SnowGlobePersistedRun.RunAsync(SnowGlobeWorld.Create(identity.Seed, identity.AgentCount), new IdleAdapter(), store, 1);
 
             string ledger = Path.Combine(root, "ledger.jsonl");
@@ -564,15 +564,15 @@ public sealed class RunStoreV4CrashRecoveryTests
         string recoveredRoot = NewTemporaryDirectory();
         try
         {
-            SnowGlobeRunIdentity identity = SnowGlobePersistedRun.Identity("runstore_v4_digest_adapter/v1");
-            using (SnowGlobeRunStore store = SnowGlobeRunStore.CreateNew(uninterruptedRoot, identity))
+            SnowGlobeRunIdentity identity = V4Identity("runstore_v4_digest_adapter/v1");
+            using (SnowGlobeRunStore store = SnowGlobeRunStore.CreateV4Fixture(uninterruptedRoot, identity))
                 await SnowGlobePersistedRun.RunAsync(SnowGlobeWorld.Create(identity.Seed, identity.AgentCount), new IdleAdapter(), store, 2);
 
             IRunStoreFileSystem faulting = new FaultInjectingRunStoreFileSystem(
                 PhysicalRunStoreFileSystem.Instance,
                 RunStoreWriteKind.CommitMarker,
                 0);
-            SnowGlobeRunStore? interrupted = SnowGlobeRunStore.CreateNew(recoveredRoot, identity, faulting);
+            SnowGlobeRunStore? interrupted = SnowGlobeRunStore.CreateV4Fixture(recoveredRoot, identity, faulting);
             try
             {
                 await Assert.ThrowsAsync<IOException>(() => SnowGlobePersistedRun.RunAsync(SnowGlobeWorld.Create(identity.Seed, identity.AgentCount), new IdleAdapter(), interrupted, 1));
@@ -609,9 +609,9 @@ public sealed class RunStoreV4CrashRecoveryTests
         string frozen = NewTemporaryDirectory();
         try
         {
-            SnowGlobeRunIdentity current = SnowGlobePersistedRun.Identity("frozen_v3_adapter/v1");
+            SnowGlobeRunIdentity current = V4Identity("frozen_v3_adapter/v1");
             SnowGlobeWorld initial = SnowGlobeWorld.Create(current.Seed, current.AgentCount);
-            using (SnowGlobeRunStore store = SnowGlobeRunStore.CreateNew(source, current))
+            using (SnowGlobeRunStore store = SnowGlobeRunStore.CreateV4Fixture(source, current))
             {
                 SnowGlobeParticipantCommand command = new(
                     "participant-01", "frozen-v3", initial.Tick, initial.StateDigest(), initial.EventDigest(),
@@ -725,6 +725,9 @@ public sealed class RunStoreV4CrashRecoveryTests
     private static string ParticipantChecksum(SnowGlobeParticipantEvaluationRecord record) => Digest(Encoding.UTF8.GetBytes(
         $"{record.Sequence}|{record.Kind}|{record.Tick}|{record.ParticipantId}|{record.IdempotencyKey}|{record.ExpectedTick}|{record.ExpectedStateDigest}|{record.ExpectedEventDigest}|{record.AgentId}|{record.Action}|{record.Quantity}|{record.Accepted}|{record.RejectionReason}|{record.AcceptedEventSequence}|{record.AcceptedStructureId}|{record.ResultingStateDigest}|{record.ResultingEventDigest}|{record.HeaderChecksum}"));
     private static string Digest(ReadOnlySpan<byte> bytes) => Convert.ToHexString(SHA256.HashData(bytes)).ToLowerInvariant();
+
+    private static SnowGlobeRunIdentity V4Identity(string adapterIdentity) =>
+        SnowGlobePersistedRun.Identity(adapterIdentity) with { SchemaVersion = SnowGlobeRunStore.V4SchemaVersion };
 
     private static string NewTemporaryDirectory()
     {

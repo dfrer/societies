@@ -394,7 +394,7 @@ public sealed class TwoTierCognitionTests
     }
 
     [Fact]
-    public void TwoTierSlice_DoesNotAlterTheVersionThreeRunStoreLedgerKinds()
+    public void TwoTierSlice_RecognizesTheExplicitV5PauseLedgerKindExtension()
     {
         Assert.Equal(new[]
         {
@@ -403,7 +403,8 @@ public sealed class TwoTierCognitionTests
             SnowGlobeLedgerKind.Commit,
             SnowGlobeLedgerKind.Event,
             SnowGlobeLedgerKind.Checkpoint,
-            SnowGlobeLedgerKind.ParticipantEvaluation
+            SnowGlobeLedgerKind.ParticipantEvaluation,
+            SnowGlobeLedgerKind.PauseTransition
         }, Enum.GetValues<SnowGlobeLedgerKind>());
     }
 

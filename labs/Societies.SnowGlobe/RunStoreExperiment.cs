@@ -8,11 +8,15 @@ public sealed record SnowGlobeRunReconstruction(
     SnowGlobeWorld World,
     IReadOnlyDictionary<SnowGlobeParticipantCommandKey, SnowGlobeParticipantCommandReceipt> ParticipantReceipts);
 
+internal sealed record SnowGlobeInternalRunReconstruction(
+    SnowGlobeRunReconstruction Public,
+    bool IsDurablyPaused);
+
 /// <summary>
 /// The persistence experiment's deterministic execution surface. It owns validation and commits;
 /// adapters can only return value proposals and recorded responses remain non-authoritative.
 /// Managed adapter, cancellation, and validation interruptions before the framed append clear the
-/// pending frame. Version-four scheduled-tick writes use checksum-linked framing so a deterministic
+/// pending frame. Version-four/five scheduled-tick writes use checksum-linked framing so a deterministic
 /// interruption reopens at the prior or complete new tick; the observed live writer is still poisoned.
 /// </summary>
 public static class SnowGlobePersistedRun
@@ -85,6 +89,11 @@ public static class SnowGlobePersistedRun
         Reconstruct(ledger, expectedIdentity).World;
 
     public static SnowGlobeRunReconstruction Reconstruct(SnowGlobeRunLedger ledger, SnowGlobeRunIdentity? expectedIdentity = null)
+        => ReconstructInternal(ledger, expectedIdentity).Public;
+
+    internal static SnowGlobeInternalRunReconstruction ReconstructInternal(
+        SnowGlobeRunLedger ledger,
+        SnowGlobeRunIdentity? expectedIdentity = null)
     {
         ArgumentNullException.ThrowIfNull(ledger);
         SnowGlobeRunStore.ValidateSupportedIdentity(ledger.Identity);
@@ -92,20 +101,41 @@ public static class SnowGlobePersistedRun
         SnowGlobeWorld world = SnowGlobeWorld.Create(ledger.Identity.Seed, ledger.Identity.AgentCount);
         IReadOnlyList<OrderedLedgerEntry> entries = OrderedEntries(ledger);
         Dictionary<SnowGlobeParticipantCommandKey, SnowGlobeParticipantCommandReceipt> participantReceipts = new();
+        bool isDurablyPaused = false;
         int index = 0;
         while (index < entries.Count)
         {
-            while (index < entries.Count && entries[index].ParticipantEvaluation is SnowGlobeParticipantEvaluationRecord evaluation)
+            if (entries[index].Record is SnowGlobeLedgerRecord transition
+                && transition.Kind == SnowGlobeLedgerKind.PauseTransition)
+            {
+                SnowGlobeRunStore.ValidatePauseTransitionRecord(transition, ledger.Identity);
+                if (transition.Tick != world.Tick
+                    || !SnowGlobeRunStore.FixedEquals(transition.StateDigest!, world.StateDigest())
+                    || !SnowGlobeRunStore.FixedEquals(transition.EventDigest!, world.EventDigest()))
+                {
+                    throw new InvalidDataException("Durable pause transition is not bound to the exact current world identity.");
+                }
+                bool targetPaused = transition.Action == "Pause";
+                if (targetPaused == isDurablyPaused)
+                    throw new InvalidDataException("Durable pause transition is redundant or out of order.");
+                isDurablyPaused = targetPaused;
+                index++;
+                continue;
+            }
+
+            if (entries[index].ParticipantEvaluation is SnowGlobeParticipantEvaluationRecord evaluation)
             {
                 if (ledger.Identity.SchemaVersion == SnowGlobeRunStore.LegacySchemaVersion) throw new InvalidDataException("Legacy v2 reconstruction cannot contain participant evaluations.");
+                if (ledger.Identity.SchemaVersion == SnowGlobeRunStore.SchemaVersion && !isDurablyPaused)
+                    throw new InvalidDataException("V5 participant evaluation is valid only while durably paused.");
                 if (participantReceipts.Count >= SnowGlobeRunStore.MaximumParticipantEvaluations) throw new InvalidDataException("Participant evaluation index exceeds its bounded capacity.");
                 SnowGlobeParticipantCommandKey key = new(evaluation.ParticipantId, evaluation.IdempotencyKey);
                 if (participantReceipts.ContainsKey(key)) throw new InvalidDataException("Participant evaluation idempotency key is duplicated.");
                 participantReceipts.Add(key, ReplayParticipantEvaluation(world, evaluation));
                 index++;
+                continue;
             }
 
-            if (index == entries.Count) break;
             foreach (string expectedAgentId in world.Agents.Select(agent => agent.AgentId).OrderBy(agentId => agentId, StringComparer.Ordinal))
             {
                 SnowGlobeLedgerRecord response = Require(entries, ref index, SnowGlobeLedgerKind.Response, world.Tick);
@@ -131,10 +161,12 @@ public static class SnowGlobePersistedRun
             world.AdvanceTick();
             if (!string.Equals(checkpoint.StateDigest, world.StateDigest(), StringComparison.Ordinal) || !string.Equals(checkpoint.EventDigest, world.EventDigest(), StringComparison.Ordinal)) throw new InvalidDataException("Checkpoint digest mismatch.");
         }
-        return new SnowGlobeRunReconstruction(
-            world,
-            new ReadOnlyDictionary<SnowGlobeParticipantCommandKey, SnowGlobeParticipantCommandReceipt>(
-                new Dictionary<SnowGlobeParticipantCommandKey, SnowGlobeParticipantCommandReceipt>(participantReceipts)));
+        return new SnowGlobeInternalRunReconstruction(
+            new SnowGlobeRunReconstruction(
+                world,
+                new ReadOnlyDictionary<SnowGlobeParticipantCommandKey, SnowGlobeParticipantCommandReceipt>(
+                    new Dictionary<SnowGlobeParticipantCommandKey, SnowGlobeParticipantCommandReceipt>(participantReceipts))),
+            isDurablyPaused);
     }
 
     private static SnowGlobeParticipantCommandReceipt ReplayParticipantEvaluation(SnowGlobeWorld world, SnowGlobeParticipantEvaluationRecord evaluation)

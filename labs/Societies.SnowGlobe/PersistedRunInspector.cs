@@ -175,7 +175,7 @@ public static class SnowGlobePersistedRunInspector
         }
 
         if (!ExactIdentity(second.Ledger.Identity, expectedIdentity)) return RejectRecovery("run_identity_mismatch");
-        if (second.Ledger.Identity.SchemaVersion != SnowGlobeRunStore.SchemaVersion)
+        if (second.Ledger.Identity.SchemaVersion != SnowGlobeRunStore.V4SchemaVersion)
             return new SnowGlobePersistedRunRecoveryProvenanceInspectionResult(true, null, null);
 
         try

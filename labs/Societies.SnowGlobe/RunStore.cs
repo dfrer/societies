@@ -14,7 +14,16 @@ public sealed record SnowGlobeRunIdentity(
     int Seed,
     int AgentCount,
     string? ParticipantCommandIdentity = null);
-public enum SnowGlobeLedgerKind { Response, Proposal, Commit, Event, Checkpoint, ParticipantEvaluation }
+public enum SnowGlobeLedgerKind
+{
+    Response = 0,
+    Proposal = 1,
+    Commit = 2,
+    Event = 3,
+    Checkpoint = 4,
+    ParticipantEvaluation = 5,
+    PauseTransition = 6
+}
 public sealed record SnowGlobeLedgerRecord(int Sequence, SnowGlobeLedgerKind Kind, int Tick, string AgentId, string Action, int Quantity, bool? Accepted, string? RejectionReason, string? StructureId, string? StateDigest, string? EventDigest, string Checksum, string HeaderChecksum = "");
 public sealed record SnowGlobeParticipantEvaluationRecord(
     int Sequence,
@@ -56,11 +65,20 @@ internal sealed record RunStoreReadEvidence(
     string? V4HeaderChecksum,
     RunStoreDurableRecovery? DurableRecovery);
 
+internal enum RunStorePauseAppendResult
+{
+    Appended,
+    AlreadyInTargetState,
+    OperationInProgress,
+    CapacityExhausted
+}
+
 /// <summary>Bounded, append-only evidence. Readers never modify artifacts; a durable lock file is a lease, not ownership evidence.</summary>
 public sealed class SnowGlobeRunStore : IDisposable
 {
-    public const string SchemaVersion = "snow_globe_run_store/v4";
+    public const string SchemaVersion = "snow_globe_run_store/v5";
     public const string PreviousSchemaVersion = "snow_globe_run_store/v3";
+    public const string V4SchemaVersion = "snow_globe_run_store/v4";
     public const string LegacySchemaVersion = "snow_globe_run_store/v2";
     public const string ParticipantCommandIdentity = "snow_globe_participant_command/v1";
     public const int MaximumParticipantEvaluations = 128;
@@ -165,6 +183,31 @@ public sealed class SnowGlobeRunStore : IDisposable
         ArgumentException.ThrowIfNullOrWhiteSpace(directory);
         ArgumentNullException.ThrowIfNull(files);
         ValidateIdentity(identity, requireCurrent: true);
+        return CreateEmptyFramedStore(directory, identity, files);
+    }
+
+    /// <summary>Internal compatibility-fixture seam; public CreateNew remains v5-only.</summary>
+    internal static SnowGlobeRunStore CreateV4Fixture(string directory, SnowGlobeRunIdentity identity) =>
+        CreateV4Fixture(directory, identity, PhysicalRunStoreFileSystem.Instance);
+
+    internal static SnowGlobeRunStore CreateV4Fixture(
+        string directory,
+        SnowGlobeRunIdentity identity,
+        IRunStoreFileSystem files)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(directory);
+        ArgumentNullException.ThrowIfNull(files);
+        ValidateIdentity(identity, requireCurrent: false);
+        if (identity.SchemaVersion != V4SchemaVersion)
+            throw new InvalidDataException("The compatibility fixture seam accepts only an explicit v4 identity.");
+        return CreateEmptyFramedStore(directory, identity, files);
+    }
+
+    private static SnowGlobeRunStore CreateEmptyFramedStore(
+        string directory,
+        SnowGlobeRunIdentity identity,
+        IRunStoreFileSystem files)
+    {
         if (files.DirectoryExists(directory) && files.EnumerateEntryNames(directory).Count != 0) throw new InvalidOperationException("Run store directory must be empty; existing artifacts are never replaced.");
         files.CreateDirectory(directory);
         IDisposable lease = AcquireWriterLock(directory, files);
@@ -222,7 +265,7 @@ public sealed class SnowGlobeRunStore : IDisposable
         SnowGlobeRunIdentity identity = DeserializeIdentityStrict(headerBytes);
         ValidateIdentity(identity, requireCurrent: false);
         string headerChecksum = CanonicalIdentityChecksum(identity);
-        if (identity.SchemaVersion == SchemaVersion)
+        if (identity.SchemaVersion is V4SchemaVersion or SchemaVersion)
         {
             RunStoreV4State state = ReadV4(directory, files, identity, headerChecksum, headerBytes);
             return new RunStoreReadEvidence(state.Ledger, state.EvidenceChecksum, state.HeaderChecksum, state.DurableRecovery);
@@ -239,7 +282,7 @@ public sealed class SnowGlobeRunStore : IDisposable
         byte[] headerBytes = files.ReadFile(headerPath, MaximumHeaderBytes, "Run identity");
         SnowGlobeRunIdentity identity = DeserializeIdentityStrict(headerBytes);
         ValidateIdentity(identity, requireCurrent: false);
-        if (identity.SchemaVersion != SchemaVersion) throw new InvalidDataException("Legacy v2/v3 run stores are read-only and are never upgraded in place.");
+        if (identity.SchemaVersion is not V4SchemaVersion and not SchemaVersion) throw new InvalidDataException("Legacy v2/v3 run stores are read-only and are never upgraded in place.");
         return ReadV4(directory, files, identity, CanonicalIdentityChecksum(identity), headerBytes);
     }
 
@@ -308,6 +351,16 @@ public sealed class SnowGlobeRunStore : IDisposable
 
     internal Task WaitBeforeOperationLeaseReleaseForTestingAsync() =>
         BeforeOperationLeaseReleaseForTesting?.Invoke() ?? Task.CompletedTask;
+
+    internal void ExhaustCapacityForTesting()
+    {
+        lock (_appendGate)
+        {
+            ThrowIfDisposed();
+            if (_agentScheduleInProgress) throw new InvalidOperationException("Cannot exhaust capacity during a scheduled frame.");
+            _nextSequence = MaximumLedgerRecords;
+        }
+    }
 
     internal void BindAndReserveWholeTick(SnowGlobeWorld world, IReadOnlyList<string> scheduledAgents)
     {
@@ -409,7 +462,7 @@ public sealed class SnowGlobeRunStore : IDisposable
         lock (_appendGate)
         {
             ThrowIfDisposed();
-            if (_identity.SchemaVersion != SchemaVersion) throw new InvalidDataException("Participant evaluations cannot be appended to a legacy v2 run store.");
+            if (_identity.SchemaVersion is not V4SchemaVersion and not SchemaVersion) throw new InvalidDataException("Participant evaluations cannot be appended to a legacy v2/v3 run store.");
             if (_agentScheduleInProgress) return TransientReceipt(command, "operation_in_progress");
             ValidateParticipantCommand(command);
 
@@ -420,10 +473,12 @@ public sealed class SnowGlobeRunStore : IDisposable
                     ? _participantReceipts[key]
                     : TransientReceipt(command, "command_id_conflict");
             }
+            SnowGlobeInternalRunReconstruction durable = SnowGlobePersistedRun.ReconstructInternal(CurrentLedger());
+            if (_identity.SchemaVersion == SchemaVersion && !durable.IsDurablyPaused)
+                return TransientReceipt(command, "must_be_paused");
             if (_participantEvaluations.Count >= MaximumParticipantEvaluations) return TransientReceipt(command, "idempotency_store_saturated");
             if (_nextSequence >= MaximumLedgerRecords) return TransientReceipt(command, "run_store_capacity_exhausted");
-
-            SnowGlobeWorld candidate = SnowGlobePersistedRun.Reconstruct(CurrentLedger()).World;
+            SnowGlobeWorld candidate = durable.Public.World;
             if (candidate.Tick != _expectedTick || candidate.Events.Count != _expectedEventCount || !FixedEquals(candidate.StateDigest(), _expectedStateDigest) || !FixedEquals(candidate.EventDigest(), _expectedEventDigest)) throw new InvalidDataException("Reconstructed ledger continuity does not match the append cursor.");
 
             bool accepted = false;
@@ -480,6 +535,56 @@ public sealed class SnowGlobeRunStore : IDisposable
             _expectedStateDigest = evaluation.ResultingStateDigest;
             _expectedEventDigest = evaluation.ResultingEventDigest;
             return receipt;
+        }
+    }
+
+    /// <summary>Appends one v5-only durable pause transition at a ledger/frame boundary.</summary>
+    internal RunStorePauseAppendResult AppendPauseTransition(bool paused)
+    {
+        if (!TryAcquireOperationLease(out IDisposable? operationLease))
+            return RunStorePauseAppendResult.OperationInProgress;
+        using (operationLease)
+        lock (_appendGate)
+        {
+            ThrowIfDisposed();
+            if (_identity.SchemaVersion != SchemaVersion)
+                throw new InvalidDataException("Durable pause transitions require a v5 run store.");
+            if (_agentScheduleInProgress) return RunStorePauseAppendResult.OperationInProgress;
+
+            SnowGlobeInternalRunReconstruction durable = SnowGlobePersistedRun.ReconstructInternal(CurrentLedger(), _identity);
+            SnowGlobeWorld world = durable.Public.World;
+            if (world.Tick != _expectedTick
+                || world.Events.Count != _expectedEventCount
+                || !FixedEquals(world.StateDigest(), _expectedStateDigest)
+                || !FixedEquals(world.EventDigest(), _expectedEventDigest))
+            {
+                throw new InvalidDataException("Reconstructed ledger continuity does not match the append cursor.");
+            }
+            if (durable.IsDurablyPaused == paused) return RunStorePauseAppendResult.AlreadyInTargetState;
+            if (_nextSequence >= MaximumLedgerRecords) return RunStorePauseAppendResult.CapacityExhausted;
+
+            SnowGlobeLedgerRecord unsigned = new(
+                _nextSequence,
+                SnowGlobeLedgerKind.PauseTransition,
+                world.Tick,
+                string.Empty,
+                paused ? "Pause" : "Resume",
+                0,
+                null,
+                null,
+                null,
+                world.StateDigest(),
+                world.EventDigest(),
+                string.Empty,
+                _headerChecksum);
+            SnowGlobeLedgerRecord transition = unsigned with { Checksum = Checksum(unsigned) };
+            ValidateRecord(transition);
+            byte[] line = JsonSerializer.SerializeToUtf8Bytes(transition, JsonOptions);
+            AppendCompleteLine(line, RunStoreFrameKind.PauseTransition);
+
+            _records.Add(transition);
+            _nextSequence++;
+            return RunStorePauseAppendResult.Appended;
         }
     }
 
@@ -591,7 +696,7 @@ public sealed class SnowGlobeRunStore : IDisposable
             V2RunIdentity parsed = JsonSerializer.Deserialize<V2RunIdentity>(utf8, JsonOptions) ?? throw new InvalidDataException("Run identity is missing.");
             return new(parsed.SchemaVersion, parsed.RulesIdentity, parsed.PromptIdentity, parsed.AdapterIdentity, parsed.Seed, parsed.AgentCount);
         }
-        if (schemaVersion is not PreviousSchemaVersion and not SchemaVersion) throw new InvalidDataException("Run identity schema is unsupported.");
+        if (schemaVersion is not PreviousSchemaVersion and not V4SchemaVersion and not SchemaVersion) throw new InvalidDataException("Run identity schema is unsupported.");
         ValidateProperties(document.RootElement, V3HeaderProperties, "Run identity");
         return JsonSerializer.Deserialize<SnowGlobeRunIdentity>(utf8, JsonOptions) ?? throw new InvalidDataException("Run identity is missing.");
     }
@@ -628,6 +733,8 @@ public sealed class SnowGlobeRunStore : IDisposable
 
         SnowGlobeLedgerRecord parsed = DeserializeStrict<SnowGlobeLedgerRecord>(line, RecordProperties, "Ledger record");
         if (parsed.Sequence != expectedSequence) throw new InvalidDataException("Ledger sequence is out of order or duplicated.");
+        if (parsed.Kind == SnowGlobeLedgerKind.PauseTransition && identity.SchemaVersion != SchemaVersion)
+            throw new InvalidDataException("Durable pause evidence is valid only in v5 run stores.");
         ValidateRecord(parsed);
         if (!FixedEquals(parsed.HeaderChecksum, headerChecksum) || !FixedEquals(parsed.Checksum, Checksum(parsed with { Checksum = string.Empty }))) throw new InvalidDataException("Ledger record integrity mismatch.");
         record = parsed;
@@ -683,6 +790,7 @@ public sealed class SnowGlobeRunStore : IDisposable
         bool supportedVersion = identity.SchemaVersion switch
         {
             SchemaVersion => identity.ParticipantCommandIdentity == ParticipantCommandIdentity,
+            V4SchemaVersion when !requireCurrent => identity.ParticipantCommandIdentity == ParticipantCommandIdentity,
             PreviousSchemaVersion when !requireCurrent => identity.ParticipantCommandIdentity == ParticipantCommandIdentity,
             LegacySchemaVersion when !requireCurrent => identity.ParticipantCommandIdentity is null,
             _ => false
@@ -730,9 +838,31 @@ public sealed class SnowGlobeRunStore : IDisposable
                 && record.StructureId is null
                 && IsDigest(record.StateDigest)
                 && IsDigest(record.EventDigest),
+            SnowGlobeLedgerKind.PauseTransition =>
+                record.AgentId == string.Empty
+                && record.Action is "Pause" or "Resume"
+                && record.Quantity == 0
+                && record.Accepted is null
+                && record.RejectionReason is null
+                && record.StructureId is null
+                && IsDigest(record.StateDigest)
+                && IsDigest(record.EventDigest),
             _ => false
         };
         if (!validShape) throw new InvalidDataException("Ledger record fields do not match the exact kind-specific shape.");
+    }
+
+    internal static void ValidatePauseTransitionRecord(SnowGlobeLedgerRecord record, SnowGlobeRunIdentity identity)
+    {
+        if (identity.SchemaVersion != SchemaVersion || record.Kind != SnowGlobeLedgerKind.PauseTransition)
+            throw new InvalidDataException("Durable pause evidence is valid only in v5 run stores.");
+        ValidateRecord(record);
+        string expectedHeaderChecksum = CanonicalIdentityChecksum(identity);
+        if (!FixedEquals(record.HeaderChecksum, expectedHeaderChecksum)
+            || !FixedEquals(record.Checksum, Checksum(record with { Checksum = string.Empty })))
+        {
+            throw new InvalidDataException("Durable pause transition integrity mismatch.");
+        }
     }
 
     internal static void ValidateParticipantRecord(SnowGlobeParticipantEvaluationRecord record)

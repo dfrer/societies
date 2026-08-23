@@ -1,7 +1,7 @@
 namespace Societies.SnowGlobe;
 
 /// <summary>
-/// Mutable local session over one v4 append-only run. The durable ledger is authoritative; the
+/// Mutable local session over one v4/v5 append-only run. The durable ledger is authoritative; the
 /// owned world is replaced from an independent strict read/reconstruction after every mutation.
 /// </summary>
 public sealed class SnowGlobePersistedSession : IDisposable
@@ -29,12 +29,12 @@ public sealed class SnowGlobePersistedSession : IDisposable
     private SnowGlobePersistedSession(
         SnowGlobeRunStore store,
         ISnowGlobeIdentifiedInferenceAdapter inference,
-        SnowGlobeRunReconstruction reconstruction,
+        SnowGlobeInternalRunReconstruction reconstruction,
         bool isPaused)
     {
         _store = store;
         _inference = inference;
-        _world = reconstruction.World;
+        _world = reconstruction.Public.World;
         _isPaused = isPaused;
         CacheWorldIdentity();
     }
@@ -51,12 +51,26 @@ public sealed class SnowGlobePersistedSession : IDisposable
     {
         set => _store.BeforeLedgerAppendFlushForTesting = value;
     }
+    internal void ExhaustRunStoreCapacityForTesting() => _store.ExhaustCapacityForTesting();
+
+    public static SnowGlobePersistedSession CreateNew(
+        string directory,
+        SnowGlobeRunIdentity identity,
+        ISnowGlobeIdentifiedInferenceAdapter inference) =>
+        CreateNewCore(directory, identity, inference, isPaused: false);
 
     public static SnowGlobePersistedSession CreateNew(
         string directory,
         SnowGlobeRunIdentity identity,
         ISnowGlobeIdentifiedInferenceAdapter inference,
-        bool isPaused = false)
+        bool isPaused) =>
+        CreateNewCore(directory, identity, inference, isPaused);
+
+    private static SnowGlobePersistedSession CreateNewCore(
+        string directory,
+        SnowGlobeRunIdentity identity,
+        ISnowGlobeIdentifiedInferenceAdapter inference,
+        bool isPaused)
     {
         ArgumentNullException.ThrowIfNull(identity);
         ArgumentNullException.ThrowIfNull(inference);
@@ -64,7 +78,15 @@ public sealed class SnowGlobePersistedSession : IDisposable
         SnowGlobeRunStore store = SnowGlobeRunStore.CreateNew(directory, identity);
         try
         {
-            SnowGlobeRunReconstruction reconstruction = ReadAndReconstruct(store, identity);
+            SnowGlobeInternalRunReconstruction reconstruction = ReadAndReconstructInternal(store, identity);
+            if (isPaused)
+            {
+                if (store.AppendPauseTransition(paused: true) != RunStorePauseAppendResult.Appended)
+                    throw new InvalidDataException("Initial durable pause transition could not be appended.");
+                reconstruction = ReadAndReconstructInternal(store, identity);
+                if (!reconstruction.IsDurablyPaused)
+                    throw new InvalidDataException("Initial durable pause transition did not reconstruct.");
+            }
             return new SnowGlobePersistedSession(store, inference, reconstruction, isPaused);
         }
         catch
@@ -77,8 +99,21 @@ public sealed class SnowGlobePersistedSession : IDisposable
     public static SnowGlobePersistedSession Reopen(
         string directory,
         SnowGlobeRunIdentity expectedIdentity,
+        ISnowGlobeIdentifiedInferenceAdapter inference) =>
+        ReopenCore(directory, expectedIdentity, inference, v4PauseOverride: null);
+
+    public static SnowGlobePersistedSession Reopen(
+        string directory,
+        SnowGlobeRunIdentity expectedIdentity,
         ISnowGlobeIdentifiedInferenceAdapter inference,
-        bool isPaused = false)
+        bool isPaused) =>
+        ReopenCore(directory, expectedIdentity, inference, isPaused);
+
+    private static SnowGlobePersistedSession ReopenCore(
+        string directory,
+        SnowGlobeRunIdentity expectedIdentity,
+        ISnowGlobeIdentifiedInferenceAdapter inference,
+        bool? v4PauseOverride)
     {
         ArgumentNullException.ThrowIfNull(expectedIdentity);
         ArgumentNullException.ThrowIfNull(inference);
@@ -87,15 +122,22 @@ public sealed class SnowGlobePersistedSession : IDisposable
         // The preflight is read-only. In particular, legacy v2/v3 is rejected before OpenForAppend can
         // acquire/create a writer lease artifact.
         SnowGlobeRunLedger preflight = SnowGlobeRunStore.Read(directory);
-        if (preflight.Identity.SchemaVersion != SnowGlobeRunStore.SchemaVersion)
-            throw new InvalidDataException("Legacy v2/v3 run stores are read-only and cannot back a mutable session.");
         if (preflight.Identity != expectedIdentity)
             throw new InvalidDataException("Recorded run identity does not match the exact expected session identity.");
+        if (preflight.Identity.SchemaVersion is SnowGlobeRunStore.LegacySchemaVersion or SnowGlobeRunStore.PreviousSchemaVersion)
+            throw new InvalidDataException("Legacy v2/v3 run stores are read-only and cannot back a mutable session.");
+        if (preflight.Identity.SchemaVersion == SnowGlobeRunStore.SchemaVersion && v4PauseOverride.HasValue)
+            throw new InvalidDataException("V5 persisted sessions derive pause state from durable evidence; the four-argument reopen overload is v4-only.");
+        if (preflight.Identity.SchemaVersion is not SnowGlobeRunStore.V4SchemaVersion and not SnowGlobeRunStore.SchemaVersion)
+            throw new InvalidDataException("Run-store schema cannot back a mutable session.");
 
         SnowGlobeRunStore store = SnowGlobeRunStore.OpenForAppend(directory);
         try
         {
-            SnowGlobeRunReconstruction reconstruction = ReadAndReconstruct(store, expectedIdentity);
+            SnowGlobeInternalRunReconstruction reconstruction = ReadAndReconstructInternal(store, expectedIdentity);
+            bool isPaused = expectedIdentity.SchemaVersion == SnowGlobeRunStore.SchemaVersion
+                ? reconstruction.IsDurablyPaused
+                : v4PauseOverride ?? false;
             return new SnowGlobePersistedSession(store, inference, reconstruction, isPaused);
         }
         catch
@@ -195,11 +237,16 @@ public sealed class SnowGlobePersistedSession : IDisposable
             SnowGlobeParticipantCommand validCommand = command!;
 
             SnowGlobeRunLedger beforeLedger;
-            SnowGlobeRunReconstruction before;
+            SnowGlobeInternalRunReconstruction before;
             try
             {
                 beforeLedger = SnowGlobeRunStore.Read(_store.DirectoryPath);
-                before = SnowGlobePersistedRun.Reconstruct(beforeLedger, _store.Identity);
+                before = SnowGlobePersistedRun.ReconstructInternal(beforeLedger, _store.Identity);
+                if (_store.Identity.SchemaVersion == SnowGlobeRunStore.SchemaVersion
+                    && before.IsDurablyPaused != _isPaused)
+                {
+                    throw new InvalidDataException("Session pause state differs from durable v5 evidence.");
+                }
             }
             catch
             {
@@ -212,9 +259,9 @@ public sealed class SnowGlobePersistedSession : IDisposable
                 .SingleOrDefault(entry => entry.ParticipantId == key.ParticipantId && entry.IdempotencyKey == key.IdempotencyKey);
             if (existing is not null)
             {
-                ReplaceWorld(before.World);
+                ReplaceWorld(before.Public.World);
                 return SnowGlobeRunStore.SameParticipantCommand(existing, validCommand)
-                    ? before.ParticipantReceipts[key]
+                    ? before.Public.ParticipantReceipts[key]
                     : ParticipantFailure(validCommand, "command_id_conflict");
             }
 
@@ -237,8 +284,13 @@ public sealed class SnowGlobePersistedSession : IDisposable
             {
                 AfterDurableMutationForTesting?.Invoke(_world);
                 SnowGlobeRunLedger afterLedger = SnowGlobeRunStore.Read(_store.DirectoryPath);
-                SnowGlobeRunReconstruction after = SnowGlobePersistedRun.Reconstruct(afterLedger, _store.Identity);
-                bool wasDurable = after.ParticipantReceipts.TryGetValue(key, out SnowGlobeParticipantCommandReceipt? durableReceipt);
+                SnowGlobeInternalRunReconstruction after = SnowGlobePersistedRun.ReconstructInternal(afterLedger, _store.Identity);
+                if (_store.Identity.SchemaVersion == SnowGlobeRunStore.SchemaVersion
+                    && after.IsDurablyPaused != _isPaused)
+                {
+                    throw new InvalidDataException("Participant append changed durable pause state.");
+                }
+                bool wasDurable = after.Public.ParticipantReceipts.TryGetValue(key, out SnowGlobeParticipantCommandReceipt? durableReceipt);
                 if (wasDurable)
                 {
                     if (durableReceipt != receipt) throw new InvalidDataException("Durable participant receipt differs from the returned evaluation.");
@@ -247,7 +299,7 @@ public sealed class SnowGlobePersistedSession : IDisposable
                 {
                     throw new InvalidDataException("Participant evaluation changed the ledger without a reconstructable receipt.");
                 }
-                ReplaceWorld(after.World);
+                ReplaceWorld(after.Public.World);
                 return receipt;
             }
             catch
@@ -270,8 +322,55 @@ public sealed class SnowGlobePersistedSession : IDisposable
         {
             if (_failedClosed)
                 return Task.FromResult(ControlFailure(CoherenceFailure, includeSnapshot: false));
-            _isPaused = paused;
-            return Task.FromResult(ControlSuccess());
+            if (_isPaused == paused)
+                return Task.FromResult(ControlSuccess());
+
+            if (_store.Identity.SchemaVersion == SnowGlobeRunStore.V4SchemaVersion)
+            {
+                _isPaused = paused;
+                return Task.FromResult(ControlSuccess());
+            }
+
+            RunStorePauseAppendResult appendResult;
+            try
+            {
+                appendResult = _store.AppendPauseTransition(paused);
+            }
+            catch
+            {
+                FailClosed();
+                return Task.FromResult(ControlFailure(CoherenceFailure, includeSnapshot: false));
+            }
+
+            if (appendResult == RunStorePauseAppendResult.OperationInProgress)
+                return Task.FromResult(ControlFailure("operation_in_progress"));
+            if (appendResult == RunStorePauseAppendResult.CapacityExhausted)
+                return Task.FromResult(ControlFailure("run_store_capacity_exhausted"));
+            if (appendResult != RunStorePauseAppendResult.Appended)
+            {
+                FailClosed();
+                return Task.FromResult(ControlFailure(CoherenceFailure, includeSnapshot: false));
+            }
+
+            try
+            {
+                AfterDurableMutationForTesting?.Invoke(_world);
+                SnowGlobeWorldIdentity beforeIdentity = _world.CaptureIdentity();
+                SnowGlobeInternalRunReconstruction reconstruction = ReadAndReconstructInternal(_store, _store.Identity);
+                if (reconstruction.IsDurablyPaused != paused
+                    || !WorldIdentitiesMatch(beforeIdentity, reconstruction.Public.World.CaptureIdentity()))
+                {
+                    throw new InvalidDataException("Durable pause transition changed world authority or did not reconstruct.");
+                }
+                ReplaceWorld(reconstruction.Public.World);
+                _isPaused = paused;
+                return Task.FromResult(ControlSuccess());
+            }
+            catch
+            {
+                FailClosed();
+                return Task.FromResult(ControlFailure(CoherenceFailure, includeSnapshot: false));
+            }
         }
         finally
         {
@@ -309,11 +408,16 @@ public sealed class SnowGlobePersistedSession : IDisposable
         {
             AfterDurableMutationForTesting?.Invoke(_world);
             SnowGlobeWorldIdentity liveIdentity = _world.CaptureIdentity();
-            SnowGlobeRunReconstruction reconstruction = ReadAndReconstruct(_store, _store.Identity);
-            SnowGlobeWorldIdentity durableIdentity = reconstruction.World.CaptureIdentity();
+            SnowGlobeInternalRunReconstruction reconstruction = ReadAndReconstructInternal(_store, _store.Identity);
+            SnowGlobeWorldIdentity durableIdentity = reconstruction.Public.World.CaptureIdentity();
             if (!WorldIdentitiesMatch(liveIdentity, durableIdentity))
                 throw new InvalidDataException("Live scheduled result differs from durable reconstruction.");
-            ReplaceWorld(reconstruction.World);
+            if (_store.Identity.SchemaVersion == SnowGlobeRunStore.SchemaVersion
+                && reconstruction.IsDurablyPaused != _isPaused)
+            {
+                throw new InvalidDataException("Scheduled operation changed durable pause state.");
+            }
+            ReplaceWorld(reconstruction.Public.World);
             return ControlSuccess();
         }
         catch
@@ -337,8 +441,13 @@ public sealed class SnowGlobePersistedSession : IDisposable
     {
         try
         {
-            SnowGlobeRunReconstruction reconstruction = ReadAndReconstruct(_store, _store.Identity);
-            ReplaceWorld(reconstruction.World);
+            SnowGlobeInternalRunReconstruction reconstruction = ReadAndReconstructInternal(_store, _store.Identity);
+            if (_store.Identity.SchemaVersion == SnowGlobeRunStore.SchemaVersion
+                && reconstruction.IsDurablyPaused != _isPaused)
+            {
+                throw new InvalidDataException("Managed failure changed durable pause state.");
+            }
+            ReplaceWorld(reconstruction.Public.World);
             return ControlFailure(reason);
         }
         catch
@@ -348,14 +457,14 @@ public sealed class SnowGlobePersistedSession : IDisposable
         }
     }
 
-    private static SnowGlobeRunReconstruction ReadAndReconstruct(
+    private static SnowGlobeInternalRunReconstruction ReadAndReconstructInternal(
         SnowGlobeRunStore store,
         SnowGlobeRunIdentity expectedIdentity)
     {
         SnowGlobeRunLedger ledger = SnowGlobeRunStore.Read(store.DirectoryPath);
         if (ledger.Identity != store.Identity || ledger.Identity != expectedIdentity)
             throw new InvalidDataException("Run-store identity changed while the mutable session owned it.");
-        return SnowGlobePersistedRun.Reconstruct(ledger, expectedIdentity);
+        return SnowGlobePersistedRun.ReconstructInternal(ledger, expectedIdentity);
     }
 
     private void ReplaceWorld(SnowGlobeWorld world)

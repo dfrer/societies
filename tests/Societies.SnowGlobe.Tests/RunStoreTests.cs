@@ -490,16 +490,16 @@ public sealed class RunStoreTests
     }
 
     [Fact]
-    public void V3CreateReadAndReconstruct_UsesExactParticipantIdentityAndFlatEvaluation()
+    public void V4CreateReadAndReconstruct_UsesExactParticipantIdentityAndFramedEvaluation()
     {
         string root = NewTemporaryDirectory();
         try
         {
-            SnowGlobeRunIdentity identity = SnowGlobePersistedRun.Identity("participant_store_adapter/v1");
+            SnowGlobeRunIdentity identity = V4Identity("participant_store_adapter/v1");
             SnowGlobeWorld initial = SnowGlobeWorld.Create(identity.Seed, identity.AgentCount);
             SnowGlobeParticipantCommand command = ParticipantCommand(initial, "participant-01", "command-001", SnowGlobeActionKind.Idle);
             SnowGlobeParticipantCommandReceipt receipt;
-            using (SnowGlobeRunStore store = SnowGlobeRunStore.CreateNew(root, identity))
+            using (SnowGlobeRunStore store = SnowGlobeRunStore.CreateV4Fixture(root, identity))
                 receipt = store.EvaluateAndAppendParticipantCommand(command);
 
             SnowGlobeRunLedger ledger = SnowGlobeRunStore.Read(root);
@@ -508,7 +508,7 @@ public sealed class RunStoreTests
             using JsonDocument header = JsonDocument.Parse(File.ReadAllBytes(Path.Combine(root, "run.json")));
             HashSet<string> headerNames = header.RootElement.EnumerateObject().Select(property => property.Name).ToHashSet(StringComparer.Ordinal);
 
-            Assert.Equal(SnowGlobeRunStore.SchemaVersion, ledger.Identity.SchemaVersion);
+            Assert.Equal(SnowGlobeRunStore.V4SchemaVersion, ledger.Identity.SchemaVersion);
             Assert.Equal(SnowGlobeRunStore.ParticipantCommandIdentity, ledger.Identity.ParticipantCommandIdentity);
             Assert.True(headerNames.SetEquals(new[] { "schema_version", "rules_identity", "prompt_identity", "adapter_identity", "seed", "agent_count", "participant_command_identity" }));
             Assert.Equal(SnowGlobeLedgerKind.ParticipantEvaluation, evaluation.Kind);
@@ -529,13 +529,13 @@ public sealed class RunStoreTests
     }
 
     [Fact]
-    public async Task EmptyV3CreateDisposeReadOpenAndZeroTickRun_AreValidWithoutWrites()
+    public async Task EmptyV4CreateDisposeReadOpenAndZeroTickRun_AreValidWithoutWrites()
     {
         string root = NewTemporaryDirectory();
         try
         {
-            SnowGlobeRunIdentity identity = SnowGlobePersistedRun.Identity("empty_store_adapter/v1");
-            using (SnowGlobeRunStore.CreateNew(root, identity)) { }
+            SnowGlobeRunIdentity identity = V4Identity("empty_store_adapter/v1");
+            using (SnowGlobeRunStore.CreateV4Fixture(root, identity)) { }
             string ledgerPath = Path.Combine(root, "ledger.jsonl");
             Assert.True(File.Exists(ledgerPath));
             Assert.Empty(File.ReadAllBytes(ledgerPath));
@@ -665,8 +665,8 @@ public sealed class RunStoreTests
         SnowGlobeRunStore? store = null;
         try
         {
-            SnowGlobeRunIdentity identity = SnowGlobePersistedRun.Identity("append_fault_adapter/v1");
-            store = SnowGlobeRunStore.CreateNew(root, identity);
+            SnowGlobeRunIdentity identity = V4Identity("append_fault_adapter/v1");
+            store = SnowGlobeRunStore.CreateV4Fixture(root, identity);
             SnowGlobeWorld live = SnowGlobeWorld.Create(identity.Seed, identity.AgentCount);
             await SnowGlobePersistedRun.RunAsync(live, new YieldingIdleAdapter(), store, 1);
             string ledgerPath = Path.Combine(root, "ledger.jsonl");
@@ -793,9 +793,9 @@ public sealed class RunStoreTests
         string root = NewTemporaryDirectory();
         try
         {
-            SnowGlobeRunIdentity identity = SnowGlobePersistedRun.Identity("mixed_participant_adapter/v1");
+            SnowGlobeRunIdentity identity = V4Identity("mixed_participant_adapter/v1");
             SnowGlobeWorld live = SnowGlobeWorld.Create(identity.Seed, identity.AgentCount);
-            using (SnowGlobeRunStore store = SnowGlobeRunStore.CreateNew(root, identity))
+            using (SnowGlobeRunStore store = SnowGlobeRunStore.CreateV4Fixture(root, identity))
             {
                 SnowGlobeParticipantCommand before = ParticipantCommand(live, "participant-01", "before", SnowGlobeActionKind.Idle);
                 Assert.True(store.EvaluateAndAppendParticipantCommand(before).Accepted);
@@ -829,7 +829,7 @@ public sealed class RunStoreTests
         string root = NewTemporaryDirectory();
         try
         {
-            SnowGlobeRunIdentity identity = SnowGlobePersistedRun.Identity("participant_resume_adapter/v1");
+            SnowGlobeRunIdentity identity = V4Identity("participant_resume_adapter/v1");
             SnowGlobeWorld initial = SnowGlobeWorld.Create(identity.Seed, identity.AgentCount);
             SnowGlobeParticipantCommand accepted = ParticipantCommand(initial, "participant-01", "accepted", SnowGlobeActionKind.Idle);
             SnowGlobeParticipantCommandReceipt acceptedReceipt;
@@ -837,7 +837,7 @@ public sealed class RunStoreTests
             SnowGlobeParticipantCommandReceipt staleReceipt;
             SnowGlobeParticipantCommand domainReject;
             SnowGlobeParticipantCommandReceipt domainReceipt;
-            using (SnowGlobeRunStore store = SnowGlobeRunStore.CreateNew(root, identity))
+            using (SnowGlobeRunStore store = SnowGlobeRunStore.CreateV4Fixture(root, identity))
             {
                 acceptedReceipt = store.EvaluateAndAppendParticipantCommand(accepted);
                 stale = new SnowGlobeParticipantCommand("participant-01", "stale", 1, acceptedReceipt.ResultingStateDigest, acceptedReceipt.ResultingEventDigest, "agent-00", SnowGlobeActionKind.Idle, 0);
@@ -974,9 +974,9 @@ public sealed class RunStoreTests
         string root = NewTemporaryDirectory();
         try
         {
-            SnowGlobeRunIdentity identity = SnowGlobePersistedRun.Identity("participant_capacity_adapter/v1");
+            SnowGlobeRunIdentity identity = V4Identity("participant_capacity_adapter/v1");
             SnowGlobeWorld initial = SnowGlobeWorld.Create(identity.Seed, identity.AgentCount);
-            using (SnowGlobeRunStore store = SnowGlobeRunStore.CreateNew(root, identity))
+            using (SnowGlobeRunStore store = SnowGlobeRunStore.CreateV4Fixture(root, identity))
             {
                 for (int index = 0; index < SnowGlobeRunStore.MaximumParticipantEvaluations; index++)
                 {
@@ -1093,9 +1093,9 @@ public sealed class RunStoreTests
     private static string WriteOneParticipantEvaluation(bool stale)
     {
         string root = NewTemporaryDirectory();
-        SnowGlobeRunIdentity identity = SnowGlobePersistedRun.Identity("participant_fixture_adapter/v1");
+        SnowGlobeRunIdentity identity = V4Identity("participant_fixture_adapter/v1");
         SnowGlobeWorld initial = SnowGlobeWorld.Create(identity.Seed, identity.AgentCount);
-        using (SnowGlobeRunStore store = SnowGlobeRunStore.CreateNew(root, identity))
+        using (SnowGlobeRunStore store = SnowGlobeRunStore.CreateV4Fixture(root, identity))
         {
             SnowGlobeParticipantCommand command = ParticipantCommand(initial, "participant-01", "command-001", SnowGlobeActionKind.Idle);
             if (stale) command = command with { ExpectedTick = command.ExpectedTick + 1 };
@@ -1254,6 +1254,9 @@ public sealed class RunStoreTests
             throw new InvalidOperationException("Cancellation token did not cancel.");
         }
     }
+
+    private static SnowGlobeRunIdentity V4Identity(string adapterIdentity) =>
+        SnowGlobePersistedRun.Identity(adapterIdentity) with { SchemaVersion = SnowGlobeRunStore.V4SchemaVersion };
 
     private static string NewTemporaryDirectory()
     {
