@@ -21,7 +21,8 @@
 
 - The fifth OpenRouter run's exact parser cause was discarded under the historical generic contract and cannot be recovered by this change. This milestone improves future evidence; it does not prove current provider compatibility, quality, cost, readiness, or another paid authority.
 - No credential, provider, account, network, paid, retained-evidence, live-state, preflight, `record-once`, `validate`, gameplay, or `src/societies/` action occurred.
-- Deliver this reviewed offline slice through its `codex/` branch and required check, then return `master` clean and synchronized. Any future live proof requires a new exact authority and is a separate decision.
+- Implementation commit `3e8ba7a` was published through [PR #141](https://github.com/dfrer/societies/pull/141); required `build-test-smoke` passed in 4m16s and the PR merged to `master` as `ba161f9`.
+- The implementation milestone is complete. Publish this exact delivery record, then return `master` clean and synchronized. Any future live proof requires a new exact authority and is a separate decision.
 
 ## Current Snow Globe persisted-inspector pinned read-scope handoff
 
