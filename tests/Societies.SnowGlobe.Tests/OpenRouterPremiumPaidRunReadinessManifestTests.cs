@@ -115,7 +115,41 @@ public sealed class OpenRouterPremiumPaidRunReadinessManifestTests
         Assert.Equal("authorization_nonce_consumed", evidence.DuplicateNonceFailureCode);
         Assert.Equal(0, evidence.DuplicateNonceExchangeCalls);
         Assert.Equal(0, evidence.DuplicateNonceLeaseCalls);
+        Assert.Equal(12, evidence.SuccessLeaseZeroObservations.Count);
+        for (int ordinal = 0; ordinal < 12; ordinal++)
+            Assert.True(evidence.SuccessLeaseZeroObservations[ordinal], $"Lease zero observation {ordinal + 1} was false.");
+        Assert.Single(evidence.UncertainLeaseZeroObservations);
+        Assert.True(evidence.UncertainLeaseZeroObservations[0]);
+        Assert.Single(evidence.PreDispatchTerminalLeaseZeroObservations);
+        Assert.True(evidence.PreDispatchTerminalLeaseZeroObservations[0]);
         Assert.True(evidence.AllLeaseBuffersZeroed);
+    }
+
+    [Fact]
+    public void LeaseZeroConformance_RejectsMissingFalseExtraAndNullObservationEvidence()
+    {
+        OpenRouterPremiumPaidRunBehaviorEvidence valid = OpenRouterPremiumPaidRunBehaviorConformance.Evidence;
+        Assert.True(valid.AllLeaseBuffersZeroed);
+
+        Assert.False((valid with
+        {
+            SuccessLeaseZeroObservations = Array.AsReadOnly(valid.SuccessLeaseZeroObservations.Take(11).ToArray())
+        }).AllLeaseBuffersZeroed);
+
+        bool[] falseObservation = valid.SuccessLeaseZeroObservations.ToArray();
+        falseObservation[5] = false;
+        Assert.False((valid with
+        {
+            SuccessLeaseZeroObservations = Array.AsReadOnly(falseObservation)
+        }).AllLeaseBuffersZeroed);
+
+        Assert.False((valid with
+        {
+            SuccessLeaseZeroObservations = Array.AsReadOnly(valid.SuccessLeaseZeroObservations.Append(true).ToArray())
+        }).AllLeaseBuffersZeroed);
+        Assert.False((valid with { SuccessLeaseZeroObservations = null! }).AllLeaseBuffersZeroed);
+        Assert.False((valid with { UncertainLeaseZeroObservations = Array.Empty<bool>() }).AllLeaseBuffersZeroed);
+        Assert.False((valid with { PreDispatchTerminalLeaseZeroObservations = Array.AsReadOnly(new[] { false }) }).AllLeaseBuffersZeroed);
     }
 
     [Fact]

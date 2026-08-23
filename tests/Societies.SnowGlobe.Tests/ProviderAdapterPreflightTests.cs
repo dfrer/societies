@@ -316,6 +316,7 @@ public sealed class ProviderAdapterPreflightTests
         Assert.Equal(ProviderPreflightReasonCode.Cancelled, cancellationError.ReasonCode);
         Assert.True(cancellationSource.LastLeaseZeroed);
         Assert.Equal(1, cancellationSource.ZeroObservationCount);
+        Assert.Equal(new[] { true }, cancellationSource.LeaseZeroObservations);
         Assert.Equal(1, cancellationSource.CallCount);
         ProviderPreflightException cancellationRetry = await Assert.ThrowsAsync<ProviderPreflightException>(async () =>
             await cancellationProbe.ExecuteOnceAsync(cancellationCapability, cancellationAuthorization, cancellationSource, cancellationClock));
@@ -414,6 +415,7 @@ public sealed class ProviderAdapterPreflightTests
         Assert.Equal(1, source.CallCount);
         Assert.True(source.LastLeaseZeroed);
         Assert.Equal(1, source.ZeroObservationCount);
+        Assert.Equal(new[] { true }, source.LeaseZeroObservations);
     }
 
     private static ProviderPreflightAuthorization Authorization() => new(

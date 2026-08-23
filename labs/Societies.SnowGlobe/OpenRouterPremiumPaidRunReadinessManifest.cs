@@ -309,7 +309,9 @@ internal sealed record OpenRouterPremiumPaidRunBehaviorEvidence(
     string DuplicateNonceFailureCode,
     int DuplicateNonceExchangeCalls,
     int DuplicateNonceLeaseCalls,
-    bool AllLeaseBuffersZeroed)
+    IReadOnlyList<bool> SuccessLeaseZeroObservations,
+    IReadOnlyList<bool> UncertainLeaseZeroObservations,
+    IReadOnlyList<bool> PreDispatchTerminalLeaseZeroObservations)
 {
     internal int ObservedAttemptsPerTerminalSlot => UncertainExchangeCalls;
     internal int ObservedRetryCallsAfterTerminal => Math.Max(0, UncertainExchangeCalls - 1);
@@ -328,6 +330,20 @@ internal sealed record OpenRouterPremiumPaidRunBehaviorEvidence(
         ReuseFailureCode == "capability_consumed" && ReuseExchangeCalls == 0 && ReuseLeaseCalls == 0
         && DuplicateNonceFailureCode == "authorization_nonce_consumed"
         && DuplicateNonceExchangeCalls == 0 && DuplicateNonceLeaseCalls == 0;
+    internal bool AllLeaseBuffersZeroed =>
+        HasExactZeroObservations(SuccessLeaseZeroObservations, SuccessLeaseCalls,
+            OpenRouterPremiumPaidRunFrozenContract.RequiredScenarioCount)
+        && HasExactZeroObservations(UncertainLeaseZeroObservations, UncertainLeaseCalls, 1)
+        && HasExactZeroObservations(PreDispatchTerminalLeaseZeroObservations, PreDispatchTerminalLeaseCalls, 1);
+
+    private static bool HasExactZeroObservations(
+        IReadOnlyList<bool>? observations,
+        int observedLeaseCalls,
+        int expectedObservations) =>
+        observations is not null
+        && observedLeaseCalls == expectedObservations
+        && observations.Count == expectedObservations
+        && observations.All(static zeroed => zeroed);
 }
 
 /// <summary>
@@ -403,7 +419,9 @@ internal static class OpenRouterPremiumPaidRunBehaviorConformance
             duplicateNonceFailureCode,
             success.Exchange.CallCount - exchangeCallsBeforeReuse,
             success.Leases.CallCount - leaseCallsBeforeReuse,
-            success.Leases.LastLeaseZeroed && uncertain.Leases.LastLeaseZeroed && preDispatchTerminal.Leases.LastLeaseZeroed);
+            success.Leases.LeaseZeroObservations,
+            uncertain.Leases.LeaseZeroObservations,
+            preDispatchTerminal.Leases.LeaseZeroObservations);
         if (successArtifact.Status != "complete"
             || successArtifact.ExchangeCount != OpenRouterPremiumPaidRunFrozenContract.RequiredScenarioCount
             || evidence.SuccessExchangeCalls != OpenRouterPremiumPaidRunFrozenContract.RequiredScenarioCount

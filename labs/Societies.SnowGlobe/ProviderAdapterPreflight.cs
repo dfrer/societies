@@ -308,10 +308,13 @@ public sealed class FakeCredentialLeaseSource : ICredentialLeaseSource
 {
     public const string PrimaryIdentity = "offline-fake-lease-source/v1";
     public const string SecondaryIdentity = "offline-fake-lease-source-secondary/v1";
+    private const int MaximumRetainedZeroObservations = 64;
     private readonly OfflineCredentialLeaseBehavior _behavior;
     private int _calls;
     private int _zeroObservations;
     private int _lastLeaseZeroed;
+    private readonly bool[] _retainedZeroObservations = new bool[MaximumRetainedZeroObservations];
+    private readonly object _zeroObservationGate = new();
     private CredentialLeaseRequest? _lastRequest;
     private readonly object _nonceGate = new();
     private readonly HashSet<string> _consumedNonces = new(StringComparer.Ordinal);
@@ -326,8 +329,27 @@ public sealed class FakeCredentialLeaseSource : ICredentialLeaseSource
 
     public string Identity { get; }
     public int CallCount => Volatile.Read(ref _calls);
-    public int ZeroObservationCount => Volatile.Read(ref _zeroObservations);
-    public bool LastLeaseZeroed => Volatile.Read(ref _lastLeaseZeroed) == 1;
+    public int ZeroObservationCount
+    {
+        get { lock (_zeroObservationGate) return _zeroObservations; }
+    }
+    public bool LastLeaseZeroed
+    {
+        get { lock (_zeroObservationGate) return _lastLeaseZeroed == 1; }
+    }
+    internal IReadOnlyList<bool> LeaseZeroObservations
+    {
+        get
+        {
+            lock (_zeroObservationGate)
+            {
+                int retainedCount = Math.Min(_zeroObservations, MaximumRetainedZeroObservations);
+                bool[] snapshot = new bool[retainedCount];
+                Array.Copy(_retainedZeroObservations, snapshot, retainedCount);
+                return Array.AsReadOnly(snapshot);
+            }
+        }
+    }
     public CredentialLeaseRequest? LastRequest => Volatile.Read(ref _lastRequest);
     public Task AcquisitionStarted => _acquisitionStarted.Task;
 
@@ -378,8 +400,13 @@ public sealed class FakeCredentialLeaseSource : ICredentialLeaseSource
 
     private void ObserveZeroing(bool zeroed)
     {
-        Interlocked.Increment(ref _zeroObservations);
-        Volatile.Write(ref _lastLeaseZeroed, zeroed ? 1 : 0);
+        lock (_zeroObservationGate)
+        {
+            if (_zeroObservations < MaximumRetainedZeroObservations)
+                _retainedZeroObservations[_zeroObservations] = zeroed;
+            _zeroObservations++;
+            _lastLeaseZeroed = zeroed ? 1 : 0;
+        }
     }
 }
 
