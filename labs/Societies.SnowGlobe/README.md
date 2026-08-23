@@ -6,7 +6,7 @@ The [focused contract](OPENROUTER_PREMIUM_EVIDENCE.md) records the Windows produ
 
 On 2026-08-22 the user authorized up to twelve sequential requests, no retries/alternate providers, maximum `$0.018`. One `preflight` returned `preflight_already_attempted`/exit 1 before metadata verification; no provider or paid action occurred and Attempt 4 authority is consumed. The completed offline v2 composition validates 55/55 focused, 868/868 full Snow Globe Release, and 67/67 CLI/security, with zero-warning Release builds and GO review. The exact `state-anchor-provision-once --acknowledge-create-fixed-v2-state-anchor-and-initialize-offline` command was then invoked once and exited 0. It initialized the fixed v2 root with four empty state directories and `root-writer.lock` (567 bytes, SHA-256 `7827eeb9d15d1b43eeaaebe779b8d192ac3864e25fbfe2df8ea57b8572fd88aa`); anchor identity digest is `d6eb68c6f14e32f342caee45f4c13d2398e4c0830e39d3e7cbfe478a10d9a78d`. The secret remains in Windows Credential Manager and was not displayed. Provisioning authority is consumed and must not be rerun; no OpenRouter credential read, provider access, paid action, fifth authority, or v1 access occurred.
 
-Initialization-slice chronology: full SnowGlobe passed 881/881 and full CLI/security 70/70 before the one-time invocation. A dedicated real Global mutex abandonment regression in `OpenRouterPremiumWindowsStateTrustAnchorTests` proves fail-closed `state_trust_anchor_provisioning_indeterminate`, releases recovered ownership, and permits later reacquisition. Current validation after this test-only change is focused anchor 20/20, full SnowGlobe Release 884/884, full CLI/security 70/70, and both lab and CLI Release builds 0 warnings/0 errors. Independent paid-evidence review remains GO with no P0-P2; the separate plan-conformance residual P3 remains.
+Initialization-slice chronology: full SnowGlobe passed 881/881 and full CLI/security 70/70 before the one-time invocation. A dedicated real Global mutex abandonment regression in `OpenRouterPremiumWindowsStateTrustAnchorTests` proves fail-closed `state_trust_anchor_provisioning_indeterminate`, releases recovered ownership, and permits later reacquisition. The later lease-zero conformance follow-up closes the former residual P3 with focused 10/10, full SnowGlobe Release 885/885, full CLI/security 70/70, and both lab and CLI Release builds at 0 warnings/0 errors; independent deep security review is GO with no P0-P3.
 
 ### Historical next action
 
@@ -18,9 +18,9 @@ The fifth authority used up to 12 sequential requests, no retries or alternate p
 
 ### One current next action
 
-The reviewed Snow Globe/OpenRouter milestone was committed as `dfbeb81` and published through [PR #125](https://github.com/dfrer/societies/pull/125); GitHub `build-test-smoke` passed. Merge completes this Git delivery. No provider, accounting, credential, or live-state action is authorized by the PR.
+The reviewed Snow Globe/OpenRouter milestone was merged through [PR #125](https://github.com/dfrer/societies/pull/125) as `f021cdc`. The residual fake-only lease-zero conformance fix is commit `399adac` in [PR #126](https://github.com/dfrer/societies/pull/126); its merge completes the follow-up. Neither PR authorizes provider, accounting, credential, or live-state action.
 
-If Git delivery remains unauthorized and development is explicitly resumed instead, the next smallest offline-only milestone is to close the residual P3 by retaining and asserting all twelve fake-only lease-zero observations in the readiness-manifest probe. It must not access credentials, live v1/v2 state, provider/network surfaces, or `src/societies/`.
+The former residual P3 is complete: bounded fake-only evidence retains and asserts all twelve success lease-zero observations plus exact uncertain and pre-dispatch observations, and fails closed on missing, null, extra, false, or count-mismatched evidence. No credential, live v1/v2 state, provider/network, accounting, paid, or `src/societies/` access occurred.
 
 ## Current offline cognition score-summary milestone (v4)
 
