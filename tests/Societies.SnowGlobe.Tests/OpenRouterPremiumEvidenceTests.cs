@@ -109,6 +109,51 @@ public sealed class OpenRouterPremiumEvidenceTests
     }
 
     [Fact]
+    public void HistoricalGenericProviderResponseRejectionArtifactRemainsCanonicalAndValid()
+    {
+        TestContext context = CreateContext();
+        OpenRouterPremiumExecutionCapability capability = OpenRouterPremiumEvidenceModule.Authorize(context.Authorization);
+        CognitionQualityPromptEnvelopeSlot prompt = capability.Publication.Slots[0];
+        OpenRouterPremiumSlotReceipt historical = new(1, prompt.ScenarioId, prompt.PromptDigestSha256,
+            new string('a', 64), new string('b', 64), SubmissionState.SubmissionUnknown, ChargeState.Unknown,
+            0, 0, 0, 0, null, "provider_response_rejected");
+
+        OpenRouterPremiumEvidenceArtifact artifact = OpenRouterPremiumEvidenceArtifactModule.Create(
+            capability, context.Journal.Header, context.Exchange.Identity, [historical]);
+        byte[] canonical = artifact.CanonicalUtf8.ToArray();
+        OpenRouterPremiumEvidenceArtifact validated = OpenRouterPremiumEvidenceArtifactModule.Validate(canonical);
+
+        Assert.Equal("provider_response_rejected", validated.TerminalCode);
+        Assert.Equal("provider_response_rejected", Assert.Single(validated.Slots).OutcomeCode);
+        Assert.Equal(artifact.CanonicalJson, validated.CanonicalJson);
+        Assert.Equal(artifact.CanonicalDigestSha256, validated.CanonicalDigestSha256);
+    }
+
+    [Fact]
+    public void EveryTypedParserRejectionCodeMapsExhaustivelyWhileUntypedCodesStayGeneric()
+    {
+        OpenRouterPremiumResponseParserRejectionCode[] codes =
+            Enum.GetValues<OpenRouterPremiumResponseParserRejectionCode>();
+        Assert.Equal(codes.Length, codes.Select(code => code.ToString()).Distinct(StringComparer.Ordinal).Count());
+        foreach (OpenRouterPremiumResponseParserRejectionCode code in codes)
+        {
+            OpenRouterPremiumEvidenceException exception = new(code);
+            Assert.Equal(code.ToString(), exception.Code);
+            Assert.Equal("provider_response_rejected_" + code,
+                OpenRouterPremiumResponseParser.ToRejectedOutcomeCode(exception));
+        }
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+            new OpenRouterPremiumEvidenceException((OpenRouterPremiumResponseParserRejectionCode)int.MaxValue));
+
+        Assert.Equal("provider_response_rejected",
+            OpenRouterPremiumResponseParser.ToRejectedOutcomeCode(
+                new OpenRouterPremiumEvidenceException("response_finish_invalid")));
+        Assert.Equal("provider_response_rejected",
+            OpenRouterPremiumResponseParser.ToRejectedOutcomeCode(
+                new OpenRouterPremiumEvidenceException("journal_sequence_invalid")));
+    }
+
+    [Fact]
     public async Task LiveHttpIdentityClosesOnUnresolvedCostAndAccountGateBeforeCredentialOrJournalIo()
     {
         TestContext context = CreateContext();

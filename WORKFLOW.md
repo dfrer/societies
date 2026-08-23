@@ -1,5 +1,28 @@
 # Snow Globe provider preflight, Ollama repair, and qwen3.5 smoke handoff
 
+## Current Snow Globe OpenRouter raw-free rejection-diagnostics handoff
+
+### Outcome and scope
+
+- Future received responses rejected by the closed local parser retain `provider_response_rejected_<parser-code>` across the slot receipt, durable journal/readback, evidence artifact/local validation, v1/v2 production result, and CLI line.
+- Every diagnosable parser rejection is constructed from one typed enum that directly defines its bounded wire suffix. Undefined enum values fail closed; provider text and exception messages cannot enter evidence.
+- First-terminal stop, no retry/fallback/alternate, unknown submission/charge, zero trusted counters/settlement, null proposal, and response-digest behavior are unchanged. Pre-parser and unexpected exchange failures remain generic.
+- Existing v1 evidence/journal shapes and schema identities are unchanged. Historical generic `provider_response_rejected` artifacts and journals remain valid and are not rewritten.
+
+### Changed files and validation
+
+- Production: `OpenRouterPremiumExchange.cs` and `OpenRouterPremiumEvidence.cs`.
+- Evidence: `OpenRouterPremiumEvidenceTests.cs`, `FileOpenRouterPremiumJournalTests.cs`, `OpenRouterProductionBridgeTests.cs`, and `OpenRouterCliSecurityTests.cs`.
+- Contract/current truth: `planning/active/snow-globe-openrouter-raw-free-rejection-diagnostics.md`, `labs/Societies.SnowGlobe/OPENROUTER_PREMIUM_EVIDENCE.md`, `labs/Societies.SnowGlobe/README.md`, `CURRENT_BUILD.md`, and this handoff.
+- Red-first fake evidence failed all eight parser diagnostics as generic while three unchanged terminal/generic cases passed. Final targeted bridge/CLI evidence passes 12/12; evidence/journal/HTTP passes 88/88; full OpenRouter CLI/security passes 80/80; and full Snow Globe Release passes 995/995.
+- Both Snow Globe and OpenRouter CLI Release builds pass with 0 warnings / 0 errors; `git diff --check` is clean. Independent deep security/public-contract re-review is FINAL GO with no P0-P3 findings after closing the parser-vocabulary drift P3.
+
+### Limitations and next action
+
+- The fifth OpenRouter run's exact parser cause was discarded under the historical generic contract and cannot be recovered by this change. This milestone improves future evidence; it does not prove current provider compatibility, quality, cost, readiness, or another paid authority.
+- No credential, provider, account, network, paid, retained-evidence, live-state, preflight, `record-once`, `validate`, gameplay, or `src/societies/` action occurred.
+- Deliver this reviewed offline slice through its `codex/` branch and required check, then return `master` clean and synchronized. Any future live proof requires a new exact authority and is a separate decision.
+
 ## Current Snow Globe persisted-inspector pinned read-scope handoff
 
 ### Outcome and scope

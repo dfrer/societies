@@ -202,9 +202,19 @@ public sealed class OpenRouterProductionBridgeTests
 
     [Theory]
     [InlineData(ScriptedResponse.Http503, "http_503_terminal")]
-    [InlineData(ScriptedResponse.CostAboveCeiling, "provider_response_rejected")]
-    [InlineData(ScriptedResponse.MalformedSchema, "provider_response_rejected")]
-    public async Task StatusCostAndSchemaUncertaintyAreTerminalUnknownAndNeverRetried(ScriptedResponse response, string expectedTerminal)
+    [InlineData(ScriptedResponse.CostAboveCeiling, "provider_response_rejected_response_cost_invalid")]
+    [InlineData(ScriptedResponse.MalformedSchema, "provider_response_rejected_response_binding_invalid")]
+    [InlineData(ScriptedResponse.InvalidFinish, "provider_response_rejected_response_finish_invalid")]
+    [InlineData(ScriptedResponse.InvalidRouting, "provider_response_rejected_response_routing_invalid")]
+    [InlineData(ScriptedResponse.InvalidJson, "provider_response_rejected_response_json_invalid")]
+    [InlineData(ScriptedResponse.InvalidShape, "provider_response_rejected_response_shape_invalid")]
+    [InlineData(ScriptedResponse.InvalidUsage, "provider_response_rejected_response_usage_invalid")]
+    [InlineData(ScriptedResponse.InvalidProposal, "provider_response_rejected_proposal_content_invalid")]
+    [InlineData(ScriptedResponse.InvalidContentType, "provider_exchange_unknown")]
+    [InlineData(ScriptedResponse.UnexpectedExchangeFailure, "provider_exchange_unknown")]
+    public async Task StatusParserAndPreParserFailuresAreTerminalUnknownRawFreeAndNeverRetried(
+        ScriptedResponse response,
+        string expectedTerminal)
     {
         string root = Temp(); string account = Account('a'); ScriptedHandler handler = new(response);
         try
@@ -218,8 +228,29 @@ public sealed class OpenRouterProductionBridgeTests
             Assert.True(File.Exists(Path.Combine(root, OpenRouterPremiumProductionFiles.ExecutionIndeterminateFileName)));
             byte[] evidenceBytes = File.ReadAllBytes(Path.Combine(root, OpenRouterPremiumProductionFiles.EvidenceArtifactFileName));
             OpenRouterPremiumEvidenceArtifact detached = OpenRouterPremiumEvidenceArtifactModule.Validate(evidenceBytes);
-            Assert.Equal(ChargeState.Unknown, Assert.Single(detached.Slots).ChargeState);
+            OpenRouterPremiumSlotReceipt slot = Assert.Single(detached.Slots);
+            Assert.Equal(expectedTerminal, detached.TerminalCode);
+            Assert.Equal(expectedTerminal, slot.OutcomeCode);
+            Assert.Equal(ChargeState.Unknown, slot.ChargeState);
+            Assert.Equal(SubmissionState.SubmissionUnknown, slot.SubmissionState);
+            Assert.Equal(0, slot.PromptTokens); Assert.Equal(0, slot.CompletionTokens);
+            Assert.Equal(0, slot.TotalTokens); Assert.Equal(0, slot.SettledMicrousd);
+            Assert.Null(slot.Proposal);
+            if (expectedTerminal.StartsWith("provider_response_rejected_", StringComparison.Ordinal)
+                || expectedTerminal == "http_503_terminal")
+                Assert.Equal(handler.LastResponseDigestSha256, slot.ResponseDigestSha256);
+            else
+                Assert.Equal(new string('0', 64), slot.ResponseDigestSha256);
+            Assert.DoesNotContain("agent-00", detached.CanonicalJson, StringComparison.Ordinal);
+            Assert.DoesNotContain("raw-provider-sentinel-must-not-leak", detached.CanonicalJson, StringComparison.Ordinal);
             CryptographicOperations.ZeroMemory(evidenceBytes);
+            using (FileOpenRouterPremiumJournal reopened = FileOpenRouterPremiumJournal.OpenForAppend(
+                Path.Combine(root, OpenRouterPremiumProductionFiles.JournalDirectoryName)))
+            {
+                OpenRouterPremiumJournalSlotSnapshot persisted = Assert.Single(reopened.Snapshot().Slots);
+                Assert.Equal(expectedTerminal, persisted.Receipt!.OutcomeCode);
+                Assert.Contains($"cq1/completed/{expectedTerminal}", reopened.Snapshot().Trace);
+            }
             OpenRouterPremiumProductionValidationResult validation = bridge.ValidateOnce();
             Assert.Equal("terminal", validation.Status); Assert.Equal(1, validation.ExchangeCount);
             await Assert.ThrowsAnyAsync<Exception>(async () => await bridge.RecordOnceAsync(preflight.AuthorizationDigestSha256));
@@ -746,6 +777,43 @@ public sealed class OpenRouterProductionBridgeTests
         finally { Delete(local); }
     }
 
+    [Fact]
+    public async Task V2CompositionRetainsTheRawFreeParserDiagnosticThroughRunAndValidation()
+    {
+        const string diagnostic = "provider_response_rejected_response_finish_invalid";
+        string local = Temp();
+        string root = Path.Combine(local, "Societies", "SnowGlobe", "OpenRouterPremiumOneShot", "v2");
+        List<string> order = [];
+        FakeAnchorSource anchors = new(order);
+        TrackingV2StoreFactory stores = new(order);
+        ScriptedHandler handler = new(ScriptedResponse.InvalidFinish);
+        OpenRouterPremiumV2ProductionBridge bridge = new(local, root, anchors, stores,
+            new FakeCredentialStore(Account('a'), Secret()), new FakeProtector(), new FakeClock(ParsedNow),
+            () => new FakeMetadataVerifier(Bundle(Account('a'))),
+            () => OpenRouterPremiumHttpExchange.CreateForOfflineTests(handler));
+        try
+        {
+            OpenRouterPremiumProductionPreflightResult preflight = await bridge.PreflightAsync();
+            OpenRouterPremiumProductionRunResult run = await bridge.RecordOnceAsync(
+                preflight.AuthorizationDigestSha256);
+            OpenRouterPremiumProductionValidationResult validation = bridge.ValidateOnce(
+                preflight.AuthorizationDigestSha256);
+
+            Assert.Equal("terminal", run.Status);
+            Assert.Equal(1, run.ExchangeCount);
+            Assert.Equal(0, run.TotalSettledMicrousd);
+            Assert.Equal(diagnostic, run.TerminalCode);
+            Assert.Equal("terminal", validation.Status);
+            Assert.Equal(1, validation.ExchangeCount);
+            Assert.Equal(run.EvidenceArtifactDigestSha256, validation.EvidenceArtifactDigestSha256);
+            Assert.Equal(1, handler.CallCount);
+            Assert.Equal(3, anchors.OpenCalls);
+            Assert.Equal(3, anchors.DisposeCalls);
+            Assert.Equal(3, stores.OpenCalls);
+        }
+        finally { Delete(local); }
+    }
+
     private static byte[] Bundle(string account, string expiresAtUtc = "2026-08-22T12:00:00Z")
     {
         const string observed = "2026-08-21T12:00:00Z";
@@ -920,7 +988,21 @@ public sealed class OpenRouterProductionBridgeTests
         }
     }
 
-    public enum ScriptedResponse { Success, Http503, CostAboveCeiling, MalformedSchema }
+    public enum ScriptedResponse
+    {
+        Success,
+        Http503,
+        CostAboveCeiling,
+        MalformedSchema,
+        InvalidFinish,
+        InvalidRouting,
+        InvalidJson,
+        InvalidShape,
+        InvalidUsage,
+        InvalidProposal,
+        InvalidContentType,
+        UnexpectedExchangeFailure
+    }
 
     public enum MetadataScenario
     {
@@ -1079,6 +1161,7 @@ public sealed class OpenRouterProductionBridgeTests
         private int _active;
         internal int CallCount { get; private set; }
         internal int MaximumActive { get; private set; }
+        internal string? LastResponseDigestSha256 { get; private set; }
         internal List<string> RequestUris { get; } = [];
         internal List<string?> AuthorizationSchemes { get; } = [];
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
@@ -1087,6 +1170,8 @@ public sealed class OpenRouterProductionBridgeTests
             try
             {
                 CallCount++; RequestUris.Add(request.RequestUri!.AbsoluteUri); AuthorizationSchemes.Add(request.Headers.Authorization?.Scheme);
+                if (response == ScriptedResponse.UnexpectedExchangeFailure)
+                    throw new InvalidOperationException("raw-provider-sentinel-must-not-leak");
                 byte[] body; HttpStatusCode status;
                 switch (response)
                 {
@@ -1098,14 +1183,33 @@ public sealed class OpenRouterProductionBridgeTests
                         status = HttpStatusCode.OK; body = SuccessBody("0.100000"); break;
                     case ScriptedResponse.MalformedSchema:
                         status = HttpStatusCode.OK; body = Encoding.UTF8.GetBytes("{\"id\":\"bad\"}"); break;
+                    case ScriptedResponse.InvalidFinish:
+                        status = HttpStatusCode.OK; body = MutatedSuccess(value => value.Replace(
+                            "\"finish_reason\":\"stop\"", "\"finish_reason\":\"length\"", StringComparison.Ordinal)); break;
+                    case ScriptedResponse.InvalidRouting:
+                        status = HttpStatusCode.OK; body = MutatedSuccess(value => value.Replace(
+                            "\"attempt\":1", "\"attempt\":2", StringComparison.Ordinal)); break;
+                    case ScriptedResponse.InvalidJson:
+                        status = HttpStatusCode.OK; body = Encoding.UTF8.GetBytes("{\"id\":@}"); break;
+                    case ScriptedResponse.InvalidShape:
+                        status = HttpStatusCode.OK; body = Encoding.UTF8.GetBytes("[]"); break;
+                    case ScriptedResponse.InvalidUsage:
+                        status = HttpStatusCode.OK; body = MutatedSuccess(value => value.Replace(
+                            "\"total_tokens\":120", "\"total_tokens\":121", StringComparison.Ordinal)); break;
+                    case ScriptedResponse.InvalidProposal:
+                        status = HttpStatusCode.OK; body = MutatedSuccess(value => value.Replace(
+                            "GatherWood", "BreakWorld", StringComparison.Ordinal)); break;
                     default:
                         status = HttpStatusCode.OK; body = SuccessBody("0.000044"); break;
                 }
+                LastResponseDigestSha256 = Convert.ToHexString(SHA256.HashData(body)).ToLowerInvariant();
                 HttpResponseMessage result = new(status)
                 {
                     RequestMessage = request,
                     Content = new ByteArrayContent(body) { Headers = { ContentType = new MediaTypeHeaderValue("application/json") } }
                 };
+                if (response == ScriptedResponse.InvalidContentType)
+                    result.Content.Headers.ContentType = new MediaTypeHeaderValue("text/plain");
                 afterResponse?.Invoke();
                 return Task.FromResult(result);
             }
@@ -1114,5 +1218,8 @@ public sealed class OpenRouterProductionBridgeTests
 
         private static byte[] SuccessBody(string cost) => Encoding.UTF8.GetBytes(
             "{\"id\":\"gen-offline\",\"object\":\"chat.completion\",\"created\":1,\"model\":\"openai/gpt-5.6-luna\",\"choices\":[{\"index\":0,\"finish_reason\":\"stop\",\"message\":{\"role\":\"assistant\",\"content\":\"{\\\"agent_id\\\":\\\"agent-00\\\",\\\"action\\\":\\\"GatherWood\\\",\\\"quantity\\\":12}\"}}],\"usage\":{\"prompt_tokens\":100,\"completion_tokens\":20,\"total_tokens\":120,\"cost\":" + cost + "},\"openrouter_metadata\":{\"requested\":\"openai/gpt-5.6-luna\",\"strategy\":\"direct\",\"attempt\":1,\"is_byok\":false,\"endpoints\":{\"total\":1,\"available\":[{\"provider\":\"Azure\",\"model\":\"openai/gpt-5.6-luna\",\"selected\":true}]},\"attempts\":[{\"provider\":\"Azure\",\"model\":\"openai/gpt-5.6-luna\",\"status\":200}],\"pipeline\":[]}}");
+
+        private static byte[] MutatedSuccess(Func<string, string> mutate) =>
+            Encoding.UTF8.GetBytes(mutate(Encoding.UTF8.GetString(SuccessBody("0.000044"))));
     }
 }
