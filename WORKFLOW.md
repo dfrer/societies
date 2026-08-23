@@ -28,7 +28,8 @@
 
 - The resolved aggregate-test race is recorded as `WI-SOCIETIES-2026-011` and `WI-GLOBAL-2026-130`.
 - This adds conformance evidence, not a new durability mechanism. Recovery remains limited to the RunStore v4 deterministic record-boundary model; real partial filesystem writes fail closed and no power-loss or hardware-durability claim is made.
-- Delivery is pending on `feature/snowglobe-session-v4-recovery-conformance`; after the required GitHub check and merge, record the exact delivery evidence.
+- Implementation commit `11f7fd2` was published through [PR #129](https://github.com/dfrer/societies/pull/129); required `build-test-smoke` passed in 3m55s and the PR merged to `master` as `2edfbe6`.
+- This bounded conformance milestone is complete; select the next isolated offline Snow Globe milestone before changing provider, credential, paid, live-state, or `src/societies/` behavior.
 - No provider, credential, payment, live-state, or `src/societies/` behavior changed.
 
 ## Prior Snow Globe RunStore v4 recovery handoff
