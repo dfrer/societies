@@ -458,13 +458,231 @@ public sealed class PersistedRunInspectorTests
         {
             SnowGlobeRunIdentity identity = NewIdentity();
             using (SnowGlobeRunStore.CreateV4Fixture(root, identity)) { }
-            IRunStoreFileSystem mutating = new HeaderMutatingFileSystem(PhysicalRunStoreFileSystem.Instance);
+            TrackingFileSystem files = new(
+                new HeaderMutatingFileSystem(PhysicalRunStoreFileSystem.Instance));
 
-            SnowGlobeObserverInspectionResult result = SnowGlobePersistedRunInspector.Inspect(root, identity, 0, mutating);
+            SnowGlobeObserverInspectionResult result = SnowGlobePersistedRunInspector.Inspect(root, identity, 0, files);
 
             Assert.False(result.Accepted);
             Assert.Equal("run_store_unstable", result.RejectionReason);
             Assert.Null(result.Snapshot);
+            Assert.Equal(files.OpenedFileCounts.Count, files.DisposedHandleCount);
+        }
+        finally { Directory.Delete(root, recursive: true); }
+    }
+
+    [Fact]
+    public void TrailingDirectorySeparator_RemainsAcceptedAfterLexicalCanonicalization()
+    {
+        string root = NewTemporaryDirectory();
+        try
+        {
+            SnowGlobeRunIdentity identity = NewIdentity();
+            using (SnowGlobeRunStore.CreateV4Fixture(root, identity)) { }
+
+            SnowGlobeObserverInspectionResult result = SnowGlobePersistedRunInspector.Inspect(
+                root + Path.DirectorySeparatorChar,
+                identity);
+
+            Assert.True(result.Accepted);
+            Assert.Null(result.RejectionReason);
+            Assert.NotNull(result.Snapshot);
+        }
+        finally { Directory.Delete(root, recursive: true); }
+    }
+
+    [Theory]
+    [InlineData("ledger.jsonl")]
+    [InlineData("commits.jsonl")]
+    public void InPlaceLedgerOrMarkerMutation_FailsClosedAsUnstable(string artifactName)
+    {
+        string root = NewTemporaryDirectory();
+        try
+        {
+            SnowGlobeRunIdentity identity = NewIdentity();
+            using (SnowGlobeRunStore.CreateV4Fixture(root, identity)) { }
+            InPlaceMutatingFileSystem files = new(PhysicalRunStoreFileSystem.Instance, Path.Combine(root, artifactName));
+
+            SnowGlobeObserverInspectionResult result = SnowGlobePersistedRunInspector.Inspect(root, identity, 0, files);
+
+            Assert.True(files.Mutated);
+            Assert.False(result.Accepted);
+            Assert.Equal("run_store_unstable", result.RejectionReason);
+            Assert.Null(result.Snapshot);
+        }
+        finally { Directory.Delete(root, recursive: true); }
+    }
+
+    [Fact]
+    public void ByteIdenticalPathReplacement_CannotSwitchTheSecondEvidenceSource()
+    {
+        string root = NewTemporaryDirectory();
+        try
+        {
+            SnowGlobeRunIdentity identity = NewIdentity();
+            using (SnowGlobeRunStore.CreateV4Fixture(root, identity)) { }
+            string headerPath = Path.Combine(root, "run.json");
+            byte[] expectedCurrentPathBytes = File.ReadAllBytes(headerPath);
+            PinnedOriginalMutationFileSystem files = new(PhysicalRunStoreFileSystem.Instance, headerPath);
+
+            SnowGlobeObserverInspectionResult result = SnowGlobePersistedRunInspector.Inspect(root, identity, 0, files);
+
+            Assert.True(files.ReplacedAndMutatedPinnedOriginal);
+            Assert.Equal(expectedCurrentPathBytes, File.ReadAllBytes(headerPath));
+            Assert.False(result.Accepted);
+            Assert.Equal("run_store_unstable", result.RejectionReason);
+            Assert.Null(result.Snapshot);
+        }
+        finally { Directory.Delete(root, recursive: true); }
+    }
+
+    [Theory]
+    [InlineData("add")]
+    [InlineData("remove")]
+    [InlineData("link_policy")]
+    public void BetweenReadLayoutOrLinkPolicyDrift_FailsClosedAsUnstable(string drift)
+    {
+        string root = NewTemporaryDirectory();
+        try
+        {
+            SnowGlobeRunIdentity identity = NewIdentity();
+            using (SnowGlobeRunStore.CreateV4Fixture(root, identity)) { }
+            LayoutDriftingFileSystem files = new(PhysicalRunStoreFileSystem.Instance, root, drift);
+
+            SnowGlobeObserverInspectionResult result = SnowGlobePersistedRunInspector.Inspect(root, identity, 0, files);
+
+            Assert.True(files.Drifted);
+            Assert.False(result.Accepted);
+            Assert.Equal("run_store_unstable", result.RejectionReason);
+            Assert.Null(result.Snapshot);
+        }
+        finally { Directory.Delete(root, recursive: true); }
+    }
+
+    [Theory]
+    [InlineData("artifact")]
+    [InlineData("directory")]
+    public void InitialPhysicalLinks_AreRejectedBeforeArtifactReads(string linkKind)
+    {
+        string container = NewTemporaryDirectory();
+        string? runPath = null;
+        try
+        {
+            string realRun = Path.Combine(container, "real-run");
+            Directory.CreateDirectory(realRun);
+            SnowGlobeRunIdentity identity = NewIdentity();
+            WriteFrozenHeaderAndEmptyLedger(realRun, identity);
+
+            if (linkKind == "artifact")
+            {
+                string outsideHeader = Path.Combine(container, "outside-run.json");
+                File.Move(Path.Combine(realRun, "run.json"), outsideHeader);
+                if (!TryCreateFileSymbolicLink(Path.Combine(realRun, "run.json"), outsideHeader)) return;
+                runPath = realRun;
+            }
+            else
+            {
+                string linkedRun = Path.Combine(container, "linked-run");
+                if (!TryCreateDirectorySymbolicLink(linkedRun, realRun)) return;
+                runPath = linkedRun;
+            }
+
+            TrackingFileSystem files = new(PhysicalRunStoreFileSystem.Instance);
+            SnowGlobeObserverInspectionResult result = SnowGlobePersistedRunInspector.Inspect(runPath, identity, 0, files);
+
+            Assert.False(result.Accepted);
+            Assert.Equal("run_store_invalid", result.RejectionReason);
+            Assert.Null(result.Snapshot);
+            Assert.Empty(files.OpenedFileCounts);
+        }
+        finally { Directory.Delete(container, recursive: true); }
+    }
+
+    [Fact]
+    public void PhysicalAncestorLink_IsRejectedBeforeRunDirectoryAccessWhenSupported()
+    {
+        string container = NewTemporaryDirectory();
+        try
+        {
+            string realAncestor = Path.Combine(container, "real-ancestor");
+            string realRun = Path.Combine(realAncestor, "run");
+            Directory.CreateDirectory(realRun);
+            SnowGlobeRunIdentity identity = NewIdentity();
+            WriteFrozenHeaderAndEmptyLedger(realRun, identity);
+            string linkedAncestor = Path.Combine(container, "linked-ancestor");
+            if (!TryCreateDirectorySymbolicLink(linkedAncestor, realAncestor)) return;
+
+            SnowGlobeObserverInspectionResult result = SnowGlobePersistedRunInspector.Inspect(
+                Path.Combine(linkedAncestor, "run"),
+                identity);
+
+            Assert.False(result.Accepted);
+            Assert.Equal("run_store_invalid", result.RejectionReason);
+            Assert.Null(result.Snapshot);
+        }
+        finally { Directory.Delete(container, recursive: true); }
+    }
+
+    [Fact]
+    public void LinkAncestor_IsCheckedBeforeAnyDescendantMetadataOrAccess()
+    {
+        string root = NewTemporaryDirectory();
+        try
+        {
+            SnowGlobeRunIdentity identity = NewIdentity();
+            using (SnowGlobeRunStore.CreateV4Fixture(root, identity)) { }
+            string linkedAncestor = Directory.GetParent(root)!.FullName;
+            RootToLeafLinkPolicyFileSystem files = new(
+                PhysicalRunStoreFileSystem.Instance,
+                linkedAncestor);
+
+            SnowGlobeObserverInspectionResult result = SnowGlobePersistedRunInspector.Inspect(
+                root,
+                identity,
+                0,
+                files);
+
+            Assert.True(files.LinkedAncestorChecked);
+            Assert.False(files.DescendantAccessed);
+            Assert.False(result.Accepted);
+            Assert.Equal("run_store_invalid", result.RejectionReason);
+            Assert.Null(result.Snapshot);
+        }
+        finally { Directory.Delete(root, recursive: true); }
+    }
+
+    [Theory]
+    [InlineData(SnowGlobeRunStore.LegacySchemaVersion)]
+    [InlineData(SnowGlobeRunStore.PreviousSchemaVersion)]
+    [InlineData(SnowGlobeRunStore.V4SchemaVersion)]
+    [InlineData(SnowGlobeRunStore.SchemaVersion)]
+    public void MalformedTypedHeaders_AreInvalidAndDisposeTheHeaderHandleAcrossAllSurfaces(string schemaVersion)
+    {
+        string root = NewTemporaryDirectory();
+        try
+        {
+            SnowGlobeRunIdentity identity = NewIdentityForSchema(schemaVersion);
+            WriteMalformedTypedHeader(root, identity);
+
+            foreach (string surface in new[] { "inspect", "recovery", "durable_control" })
+            {
+                TrackingFileSystem files = new(PhysicalRunStoreFileSystem.Instance);
+                (bool accepted, string? reason, bool payloadPresent) = surface switch
+                {
+                    "inspect" => InspectMalformed(root, identity, files),
+                    "recovery" => InspectMalformedRecovery(root, identity, files),
+                    "durable_control" => InspectMalformedDurableControl(root, identity, files),
+                    _ => throw new InvalidOperationException("Unknown inspector surface.")
+                };
+
+                Assert.False(accepted);
+                Assert.Equal("run_store_invalid", reason);
+                Assert.False(payloadPresent);
+                Assert.Equal(1, files.OpenedFileCounts["run.json"]);
+                Assert.Equal(1, files.ZeroOffsetReadCounts["run.json"]);
+                Assert.Equal(1, files.DisposedHandleCount);
+                Assert.Single(files.OpenedFileCounts);
+            }
         }
         finally { Directory.Delete(root, recursive: true); }
     }
@@ -484,6 +702,7 @@ public sealed class PersistedRunInspectorTests
 
             Assert.True(result.Accepted);
             Assert.True(files.Reads > 0);
+            AssertPinnedArtifactReads(files, "commits.jsonl", "ledger.jsonl", "run.json");
             Assert.Equal(0, files.CreateDirectoryCalls);
             Assert.Equal(0, files.CreateFileCalls);
             Assert.Equal(0, files.AppendFileCalls);
@@ -510,6 +729,7 @@ public sealed class PersistedRunInspectorTests
             Assert.True(result.Accepted);
             Assert.NotNull(result.Receipt);
             Assert.True(files.Reads > 0);
+            AssertPinnedArtifactReads(files, "commits.jsonl", "ledger.jsonl", "run.json");
             Assert.Equal(0, files.CreateDirectoryCalls);
             Assert.Equal(0, files.CreateFileCalls);
             Assert.Equal(0, files.AppendFileCalls);
@@ -517,6 +737,42 @@ public sealed class PersistedRunInspectorTests
             AssertArtifactBytesEqual(before, ArtifactBytes(root));
         }
         finally { Directory.Delete(root, recursive: true); }
+    }
+
+    [Fact]
+    public async Task PinnedReadHandles_DoNotBlockValidAppendPauseOrResume()
+    {
+        string root = NewTemporaryDirectory();
+        BlockingFirstReadFileSystem? files = null;
+        try
+        {
+            SnowGlobeRunIdentity identity = NewV5Identity();
+            using (SnowGlobePersistedSession.CreateNew(root, identity, new IdleAdapter(identity.AdapterIdentity))) { }
+            files = new BlockingFirstReadFileSystem(PhysicalRunStoreFileSystem.Instance);
+
+            Task<SnowGlobeObserverInspectionResult> inspection = Task.Run(() =>
+                SnowGlobePersistedRunInspector.Inspect(root, identity, 0, files));
+            Assert.True(files.FirstReadStarted.Wait(TimeSpan.FromSeconds(5)));
+
+            using (SnowGlobePersistedSession session = SnowGlobePersistedSession.Reopen(
+                root, identity, new IdleAdapter(identity.AdapterIdentity)))
+            {
+                Assert.True((await session.AdvanceAsync()).Applied);
+                Assert.True((await session.PauseAsync()).Applied);
+                Assert.True((await session.ResumeAsync()).Applied);
+            }
+
+            files.ReleaseRead.Set();
+            SnowGlobeObserverInspectionResult result = await inspection.WaitAsync(TimeSpan.FromSeconds(5));
+            Assert.True(result.Accepted);
+            Assert.Null(result.RejectionReason);
+            Assert.NotNull(result.Snapshot);
+        }
+        finally
+        {
+            files?.ReleaseRead.Set();
+            Directory.Delete(root, recursive: true);
+        }
     }
 
     [Fact]
@@ -699,6 +955,7 @@ public sealed class PersistedRunInspectorTests
             Assert.True(result.Accepted);
             Assert.NotNull(result.Receipt);
             Assert.True(files.Reads > 0);
+            AssertPinnedArtifactReads(files, "commits.jsonl", "ledger.jsonl", "run.json");
             Assert.Equal(0, files.CreateDirectoryCalls);
             Assert.Equal(0, files.CreateFileCalls);
             Assert.Equal(0, files.AppendFileCalls);
@@ -741,6 +998,57 @@ public sealed class PersistedRunInspectorTests
     private static SnowGlobeRunIdentity NewV5Identity() =>
         SnowGlobePersistedRun.Identity("persisted_control_status_adapter/v1");
 
+    private static SnowGlobeRunIdentity NewIdentityForSchema(string schemaVersion) => schemaVersion switch
+    {
+        SnowGlobeRunStore.LegacySchemaVersion => new(
+            schemaVersion,
+            SnowGlobePersistedRun.RulesIdentity,
+            SnowGlobePersistedRun.PromptIdentity,
+            "persisted_malformed_header_v2_adapter/v1",
+            SnowGlobeScenario.FixedSeed,
+            SnowGlobeScenario.FixedAgentCount),
+        SnowGlobeRunStore.PreviousSchemaVersion => new(
+            schemaVersion,
+            SnowGlobePersistedRun.RulesIdentity,
+            SnowGlobePersistedRun.PromptIdentity,
+            "persisted_malformed_header_v3_adapter/v1",
+            SnowGlobeScenario.FixedSeed,
+            SnowGlobeScenario.FixedAgentCount,
+            SnowGlobeRunStore.ParticipantCommandIdentity),
+        SnowGlobeRunStore.V4SchemaVersion => NewIdentity(),
+        SnowGlobeRunStore.SchemaVersion => NewV5Identity(),
+        _ => throw new ArgumentOutOfRangeException(nameof(schemaVersion))
+    };
+
+    private static (bool Accepted, string? Reason, bool PayloadPresent) InspectMalformed(
+        string root,
+        SnowGlobeRunIdentity identity,
+        IRunStoreReadFileSystem files)
+    {
+        SnowGlobeObserverInspectionResult result = SnowGlobePersistedRunInspector.Inspect(root, identity, 0, files);
+        return (result.Accepted, result.RejectionReason, result.Snapshot is not null);
+    }
+
+    private static (bool Accepted, string? Reason, bool PayloadPresent) InspectMalformedRecovery(
+        string root,
+        SnowGlobeRunIdentity identity,
+        IRunStoreReadFileSystem files)
+    {
+        SnowGlobePersistedRunRecoveryProvenanceInspectionResult result =
+            SnowGlobePersistedRunInspector.InspectRecoveryProvenance(root, identity, files);
+        return (result.Accepted, result.RejectionReason, result.Receipt is not null);
+    }
+
+    private static (bool Accepted, string? Reason, bool PayloadPresent) InspectMalformedDurableControl(
+        string root,
+        SnowGlobeRunIdentity identity,
+        IRunStoreReadFileSystem files)
+    {
+        SnowGlobePersistedSessionControlStatusInspectionResult result =
+            SnowGlobePersistedRunInspector.InspectDurableControlStatus(root, identity, files);
+        return (result.Accepted, result.RejectionReason, result.Receipt is not null);
+    }
+
     private static void AssertDurableControlStatus(
         string root,
         SnowGlobeRunIdentity identity,
@@ -780,6 +1088,26 @@ public sealed class PersistedRunInspectorTests
         File.WriteAllBytes(Path.Combine(root, "ledger.jsonl"), Array.Empty<byte>());
     }
 
+    private static void WriteMalformedTypedHeader(string root, SnowGlobeRunIdentity identity)
+    {
+        byte[] header;
+        if (identity.SchemaVersion == SnowGlobeRunStore.LegacySchemaVersion)
+        {
+            header = Encoding.UTF8.GetBytes(
+                $"{{\"schema_version\":\"{identity.SchemaVersion}\",\"rules_identity\":\"{identity.RulesIdentity}\",\"prompt_identity\":\"{identity.PromptIdentity}\",\"adapter_identity\":\"{identity.AdapterIdentity}\",\"seed\":\"not-an-integer\",\"agent_count\":{identity.AgentCount}}}");
+        }
+        else
+        {
+            JsonObject malformed = JsonSerializer.SerializeToNode(identity, JsonOptions)!.AsObject();
+            malformed["seed"] = "not-an-integer";
+            header = Encoding.UTF8.GetBytes(malformed.ToJsonString(JsonOptions));
+        }
+        File.WriteAllBytes(Path.Combine(root, "run.json"), header);
+        File.WriteAllBytes(Path.Combine(root, "ledger.jsonl"), Array.Empty<byte>());
+        if (identity.SchemaVersion is SnowGlobeRunStore.V4SchemaVersion or SnowGlobeRunStore.SchemaVersion)
+            File.WriteAllBytes(Path.Combine(root, "commits.jsonl"), Array.Empty<byte>());
+    }
+
     private static void AssertInspectionAcceptedWithoutLease(string root, SnowGlobeRunIdentity identity)
     {
         Assert.False(File.Exists(Path.Combine(root, ".writer.lock")));
@@ -801,6 +1129,46 @@ public sealed class PersistedRunInspectorTests
     {
         Assert.Equal(expected.Keys.OrderBy(name => name, StringComparer.Ordinal), actual.Keys.OrderBy(name => name, StringComparer.Ordinal));
         foreach ((string name, byte[] bytes) in expected) Assert.Equal(bytes, actual[name]);
+    }
+
+    private static void AssertPinnedArtifactReads(TrackingFileSystem files, params string[] expectedNames)
+    {
+        Assert.Equal(
+            expectedNames.OrderBy(name => name, StringComparer.Ordinal),
+            files.OpenedFileCounts.Keys.OrderBy(name => name, StringComparer.Ordinal));
+        Assert.All(files.OpenedFileCounts.Values, count => Assert.Equal(1, count));
+        Assert.All(expectedNames, name => Assert.Equal(2, files.ZeroOffsetReadCounts[name]));
+        Assert.Equal(expectedNames.Length, files.DisposedHandleCount);
+    }
+
+    private static bool TryCreateFileSymbolicLink(string linkPath, string targetPath)
+    {
+        try
+        {
+            File.CreateSymbolicLink(linkPath, targetPath);
+            return true;
+        }
+        catch (Exception exception) when (
+            OperatingSystem.IsWindows()
+            && exception is UnauthorizedAccessException or IOException or PlatformNotSupportedException)
+        {
+            return false;
+        }
+    }
+
+    private static bool TryCreateDirectorySymbolicLink(string linkPath, string targetPath)
+    {
+        try
+        {
+            Directory.CreateSymbolicLink(linkPath, targetPath);
+            return true;
+        }
+        catch (Exception exception) when (
+            OperatingSystem.IsWindows()
+            && exception is UnauthorizedAccessException or IOException or PlatformNotSupportedException)
+        {
+            return false;
+        }
     }
 
     private static void ReplaceMarkerPropertyWithNull(string path, int lineIndex, string propertyName)
@@ -837,10 +1205,28 @@ public sealed class PersistedRunInspectorTests
         public int CreateFileCalls { get; private set; }
         public int AppendFileCalls { get; private set; }
         public int LeaseCalls { get; private set; }
+        public int DisposedHandleCount { get; private set; }
+        public Dictionary<string, int> OpenedFileCounts { get; } = new(StringComparer.Ordinal);
+        public Dictionary<string, int> ZeroOffsetReadCounts { get; } = new(StringComparer.Ordinal);
 
         public bool DirectoryExists(string path) => inner.DirectoryExists(path);
         public IReadOnlyList<string> EnumerateEntryNames(string directory) => inner.EnumerateEntryNames(directory);
         public bool FileExists(string path) => inner.FileExists(path);
+        public FileAttributes GetAttributes(string path) => inner.GetAttributes(path);
+        public IRunStoreReadHandle OpenReadFile(string path)
+        {
+            string name = Path.GetFileName(path);
+            OpenedFileCounts[name] = OpenedFileCounts.GetValueOrDefault(name) + 1;
+            ZeroOffsetReadCounts.TryAdd(name, 0);
+            return new TrackingReadHandle(
+                inner.OpenReadFile(path),
+                offset =>
+                {
+                    Reads++;
+                    if (offset == 0) ZeroOffsetReadCounts[name]++;
+                },
+                () => DisposedHandleCount++);
+        }
         public byte[] ReadFile(string path, int maximumBytes, string description) { Reads++; return inner.ReadFile(path, maximumBytes, description); }
         public void CreateDirectory(string path) { CreateDirectoryCalls++; inner.CreateDirectory(path); }
         public void CreateFile(string path, ReadOnlySpan<byte> bytes, RunStoreWriteKind kind) { CreateFileCalls++; inner.CreateFile(path, bytes, kind); }
@@ -855,6 +1241,18 @@ public sealed class PersistedRunInspectorTests
         public bool DirectoryExists(string path) => inner.DirectoryExists(path);
         public IReadOnlyList<string> EnumerateEntryNames(string directory) => inner.EnumerateEntryNames(directory);
         public bool FileExists(string path) => inner.FileExists(path);
+        public FileAttributes GetAttributes(string path) => inner.GetAttributes(path);
+        public IRunStoreReadHandle OpenReadFile(string path)
+        {
+            IRunStoreReadHandle handle = inner.OpenReadFile(path);
+            return Path.GetFileName(path) == "run.json"
+                ? new CallbackReadHandle(handle, (_, offset) =>
+                {
+                    if (offset == 0 && Interlocked.Increment(ref _headerReads) == 2)
+                        File.WriteAllBytes(path, [(byte)' ', .. File.ReadAllBytes(path)]);
+                })
+                : handle;
+        }
         public byte[] ReadFile(string path, int maximumBytes, string description)
         {
             if (Path.GetFileName(path) == "run.json" && Interlocked.Increment(ref _headerReads) == 2)
@@ -876,6 +1274,18 @@ public sealed class PersistedRunInspectorTests
         public bool DirectoryExists(string path) => inner.DirectoryExists(path);
         public IReadOnlyList<string> EnumerateEntryNames(string directory) => inner.EnumerateEntryNames(directory);
         public bool FileExists(string path) => inner.FileExists(path);
+        public FileAttributes GetAttributes(string path) => inner.GetAttributes(path);
+        public IRunStoreReadHandle OpenReadFile(string path)
+        {
+            IRunStoreReadHandle handle = inner.OpenReadFile(path);
+            return string.Equals(path, continuationPath, StringComparison.Ordinal)
+                ? new CallbackReadHandle(handle, (_, offset) =>
+                {
+                    if (offset == 0 && Interlocked.Increment(ref _continuationReads) == 2)
+                        ReplaceMarkerPropertyWithNull(continuationPath, 0, "source_prepare_checksum");
+                })
+                : handle;
+        }
         public byte[] ReadFile(string path, int maximumBytes, string description)
         {
             if (string.Equals(path, continuationPath, StringComparison.Ordinal)
@@ -896,10 +1306,263 @@ public sealed class PersistedRunInspectorTests
         public bool DirectoryExists(string path) => inner.DirectoryExists(path);
         public IReadOnlyList<string> EnumerateEntryNames(string directory) => inner.EnumerateEntryNames(directory);
         public bool FileExists(string path) => inner.FileExists(path);
+        public FileAttributes GetAttributes(string path) => inner.GetAttributes(path);
+        public IRunStoreReadHandle OpenReadFile(string path) => throw new IOException("test-only filesystem interruption");
         public byte[] ReadFile(string path, int maximumBytes, string description) => throw new IOException("test-only filesystem interruption");
         public void CreateDirectory(string path) => inner.CreateDirectory(path);
         public void CreateFile(string path, ReadOnlySpan<byte> bytes, RunStoreWriteKind kind) => inner.CreateFile(path, bytes, kind);
         public void AppendFile(string path, ReadOnlySpan<byte> bytes, RunStoreWriteKind kind) => inner.AppendFile(path, bytes, kind);
         public IDisposable AcquireExclusiveLease(string path) => inner.AcquireExclusiveLease(path);
     }
+
+    private sealed class InPlaceMutatingFileSystem(
+        IRunStoreReadFileSystem inner,
+        string targetPath) : IRunStoreReadFileSystem
+    {
+        private int _targetPasses;
+        public bool Mutated { get; private set; }
+
+        public bool DirectoryExists(string path) => inner.DirectoryExists(path);
+        public IReadOnlyList<string> EnumerateEntryNames(string directory) => inner.EnumerateEntryNames(directory);
+        public bool FileExists(string path) => inner.FileExists(path);
+        public FileAttributes GetAttributes(string path) => inner.GetAttributes(path);
+        public byte[] ReadFile(string path, int maximumBytes, string description) => inner.ReadFile(path, maximumBytes, description);
+
+        public IRunStoreReadHandle OpenReadFile(string path)
+        {
+            IRunStoreReadHandle handle = inner.OpenReadFile(path);
+            return string.Equals(path, targetPath, StringComparison.Ordinal)
+                ? new CallbackReadHandle(handle, (_, offset) =>
+                {
+                    if (offset == 0 && Interlocked.Increment(ref _targetPasses) == 2)
+                    {
+                        File.WriteAllBytes(targetPath, [(byte)'x']);
+                        Mutated = true;
+                    }
+                })
+                : handle;
+        }
+    }
+
+    private sealed class PinnedOriginalMutationFileSystem(
+        IRunStoreReadFileSystem inner,
+        string headerPath) : IRunStoreReadFileSystem
+    {
+        private int _headerPasses;
+        public bool ReplacedAndMutatedPinnedOriginal { get; private set; }
+
+        public bool DirectoryExists(string path) => inner.DirectoryExists(path);
+        public IReadOnlyList<string> EnumerateEntryNames(string directory) => inner.EnumerateEntryNames(directory);
+        public bool FileExists(string path) => inner.FileExists(path);
+        public FileAttributes GetAttributes(string path) => inner.GetAttributes(path);
+        public byte[] ReadFile(string path, int maximumBytes, string description) => inner.ReadFile(path, maximumBytes, description);
+
+        public IRunStoreReadHandle OpenReadFile(string path)
+        {
+            IRunStoreReadHandle handle = inner.OpenReadFile(path);
+            return string.Equals(path, headerPath, StringComparison.Ordinal)
+                ? new CallbackReadHandle(handle, (_, offset) =>
+                {
+                    if (offset != 0 || Interlocked.Increment(ref _headerPasses) != 2) return;
+                    byte[] original = File.ReadAllBytes(headerPath);
+                    string displaced = Path.Combine(
+                        Path.GetTempPath(),
+                        "societies-pinned-run-original-" + Guid.NewGuid().ToString("N"));
+                    File.Move(headerPath, displaced);
+                    try
+                    {
+                        File.WriteAllBytes(headerPath, original);
+                        File.WriteAllBytes(displaced, [(byte)' ', .. original]);
+                        ReplacedAndMutatedPinnedOriginal = true;
+                    }
+                    finally
+                    {
+                        if (File.Exists(displaced)) File.Delete(displaced);
+                    }
+                })
+                : handle;
+        }
+    }
+
+    private sealed class LayoutDriftingFileSystem(
+        IRunStoreReadFileSystem inner,
+        string root,
+        string drift) : IRunStoreReadFileSystem
+    {
+        private int _headerPasses;
+        private bool _reportLedgerLink;
+        public bool Drifted { get; private set; }
+
+        public bool DirectoryExists(string path) => inner.DirectoryExists(path);
+        public IReadOnlyList<string> EnumerateEntryNames(string directory) => inner.EnumerateEntryNames(directory);
+        public bool FileExists(string path) => inner.FileExists(path);
+        public byte[] ReadFile(string path, int maximumBytes, string description) => inner.ReadFile(path, maximumBytes, description);
+
+        public FileAttributes GetAttributes(string path)
+        {
+            FileAttributes attributes = inner.GetAttributes(path);
+            return _reportLedgerLink && Path.GetFileName(path) == "ledger.jsonl"
+                ? attributes | FileAttributes.ReparsePoint
+                : attributes;
+        }
+
+        public IRunStoreReadHandle OpenReadFile(string path)
+        {
+            IRunStoreReadHandle handle = inner.OpenReadFile(path);
+            return Path.GetFileName(path) == "run.json"
+                ? new CallbackReadHandle(handle, (_, offset) =>
+                {
+                    if (offset != 0 || Interlocked.Increment(ref _headerPasses) != 2) return;
+                    switch (drift)
+                    {
+                        case "add":
+                            File.WriteAllBytes(Path.Combine(root, "unexpected.bin"), [(byte)1]);
+                            break;
+                        case "remove":
+                            File.Delete(Path.Combine(root, "ledger.jsonl"));
+                            break;
+                        case "link_policy":
+                            _reportLedgerLink = true;
+                            break;
+                        default:
+                            throw new InvalidOperationException("Unknown test drift.");
+                    }
+                    Drifted = true;
+                })
+                : handle;
+        }
+    }
+
+    private sealed class RootToLeafLinkPolicyFileSystem(
+        IRunStoreReadFileSystem inner,
+        string linkedAncestor) : IRunStoreReadFileSystem
+    {
+        public bool LinkedAncestorChecked { get; private set; }
+        public bool DescendantAccessed { get; private set; }
+
+        public bool DirectoryExists(string path)
+        {
+            ThrowOnLinkedOrDescendantAccess(path);
+            return inner.DirectoryExists(path);
+        }
+
+        public IReadOnlyList<string> EnumerateEntryNames(string directory)
+        {
+            ThrowOnDescendantAccess(directory);
+            return inner.EnumerateEntryNames(directory);
+        }
+
+        public bool FileExists(string path)
+        {
+            ThrowOnDescendantAccess(path);
+            return inner.FileExists(path);
+        }
+
+        public FileAttributes GetAttributes(string path)
+        {
+            if (SamePath(path, linkedAncestor))
+            {
+                LinkedAncestorChecked = true;
+                return inner.GetAttributes(path) | FileAttributes.ReparsePoint;
+            }
+            ThrowOnDescendantAccess(path);
+            return inner.GetAttributes(path);
+        }
+
+        public IRunStoreReadHandle OpenReadFile(string path)
+        {
+            ThrowOnDescendantAccess(path);
+            return inner.OpenReadFile(path);
+        }
+
+        public byte[] ReadFile(string path, int maximumBytes, string description)
+        {
+            ThrowOnDescendantAccess(path);
+            return inner.ReadFile(path, maximumBytes, description);
+        }
+
+        private void ThrowOnLinkedOrDescendantAccess(string path)
+        {
+            if (SamePath(path, linkedAncestor))
+                throw new InvalidOperationException("DirectoryExists followed a linked ancestor.");
+            ThrowOnDescendantAccess(path);
+        }
+
+        private void ThrowOnDescendantAccess(string path)
+        {
+            string relative = Path.GetRelativePath(linkedAncestor, path);
+            if (relative == "." || relative.StartsWith(".." + Path.DirectorySeparatorChar, StringComparison.Ordinal)
+                || relative == "..") return;
+            DescendantAccessed = true;
+            throw new InvalidOperationException("Descendant access occurred before ancestor-link rejection.");
+        }
+
+        private static bool SamePath(string left, string right) => string.Equals(
+            Path.TrimEndingDirectorySeparator(Path.GetFullPath(left)),
+            Path.TrimEndingDirectorySeparator(Path.GetFullPath(right)),
+            OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal);
+    }
+
+    private sealed class BlockingFirstReadFileSystem(IRunStoreReadFileSystem inner) : IRunStoreReadFileSystem
+    {
+        private int _blocked;
+        public ManualResetEventSlim FirstReadStarted { get; } = new(false);
+        public ManualResetEventSlim ReleaseRead { get; } = new(false);
+
+        public bool DirectoryExists(string path) => inner.DirectoryExists(path);
+        public IReadOnlyList<string> EnumerateEntryNames(string directory) => inner.EnumerateEntryNames(directory);
+        public bool FileExists(string path) => inner.FileExists(path);
+        public FileAttributes GetAttributes(string path) => inner.GetAttributes(path);
+        public byte[] ReadFile(string path, int maximumBytes, string description) => inner.ReadFile(path, maximumBytes, description);
+
+        public IRunStoreReadHandle OpenReadFile(string path)
+        {
+            IRunStoreReadHandle handle = inner.OpenReadFile(path);
+            return Path.GetFileName(path) == "ledger.jsonl"
+                ? new CallbackReadHandle(handle, (_, offset) =>
+                {
+                    if (offset != 0 || Interlocked.CompareExchange(ref _blocked, 1, 0) != 0) return;
+                    FirstReadStarted.Set();
+                    if (!ReleaseRead.Wait(TimeSpan.FromSeconds(10)))
+                        throw new IOException("Timed out waiting for the concurrent writer test.");
+                })
+                : handle;
+        }
+    }
+
+    private sealed class CallbackReadHandle(
+        IRunStoreReadHandle inner,
+        BeforeReadCallback beforeRead) : IRunStoreReadHandle
+    {
+        public int Read(Span<byte> destination, long fileOffset)
+        {
+            beforeRead(destination, fileOffset);
+            return inner.Read(destination, fileOffset);
+        }
+
+        public void Dispose() => inner.Dispose();
+    }
+
+    private sealed class TrackingReadHandle(
+        IRunStoreReadHandle inner,
+        Action<long> beforeRead,
+        Action onDispose) : IRunStoreReadHandle
+    {
+        private int _disposed;
+
+        public int Read(Span<byte> destination, long fileOffset)
+        {
+            beforeRead(fileOffset);
+            return inner.Read(destination, fileOffset);
+        }
+
+        public void Dispose()
+        {
+            if (Interlocked.Exchange(ref _disposed, 1) != 0) return;
+            try { inner.Dispose(); }
+            finally { onDispose(); }
+        }
+    }
+
+    private delegate void BeforeReadCallback(Span<byte> destination, long fileOffset);
 }

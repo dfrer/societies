@@ -1,5 +1,29 @@
 # Snow Globe provider preflight, Ollama repair, and qwen3.5 smoke handoff
 
+## Current Snow Globe persisted-inspector pinned read-scope handoff
+
+### Outcome and scope
+
+- `Inspect`, `InspectRecoveryProvenance`, and `InspectDurableControlStatus` now share one deep internal read module: root-to-leaf ancestor validation before descendant access, exact finite layout and direct-entry link-policy validation, one read-only open per schema-consumed artifact, two bounded offset-zero reads through the existing strict parsers, and post-open/post-second-parse revalidation.
+- The internal inspector seam is `IRunStoreReadFileSystem`; writer creation, append, and lease operations are absent from it. The physical adapter uses `File.OpenHandle` with `FileAccess.Read` and `FileShare.ReadWrite | FileShare.Delete`, so the scope pins objects without taking writer authority.
+- Public interfaces/results/receipts, v2-v5 wire and reconstruction behavior, optional continuation pair, pending-frame treatment, v4 recovery provenance, v5 durable control state, inert snapshot meaning, and stable rejection vocabulary remain unchanged.
+- No `SnowGlobeRunStore.Read`/`OpenForAppend` mutation contract, storage format, provider, credential, network, paid, live-state, retained evidence, dependency, gameplay, or `src/societies/` behavior changed.
+
+### Changed files and validation
+
+- Production: `RunStoreStableReadScope.cs`, `RunStoreStorage.cs`, minimal read-side narrowing in `RunStore.cs`, and shared inspector routing in `PersistedRunInspector.cs`.
+- Evidence: `PersistedRunInspectorTests.cs`; `RunStoreV4CrashRecoveryTests.cs` only forwards the two newly inherited read-adapter members so its existing writer-race fake still compiles.
+- Contract/current state: `planning/active/snow-globe-persisted-inspector-pinned-read-scope.md`, `labs/Societies.SnowGlobe/README.md`, `CURRENT_BUILD.md`, and this file.
+- Review P1s are closed locally: deterministic order coverage proves a linked ancestor is rejected before descendant metadata/access, conditional physical coverage uses a true ancestor link, and malformed typed v2-v5 headers across all three surfaces normalize to invalid while disposing the header handle.
+- Release inspector tests pass 46/46; the focused inspector/persistence compatibility selection passes 234/234; the full Snow Globe Release suite passes 992/992; both Snow Globe Release projects build with 0 warnings / 0 errors and `git diff --check` is clean.
+- Independent security/determinism/public-interface re-review is FINAL GO with no P0-P3 findings after closing the root-to-leaf ancestor-validation and malformed typed-header cleanup P1s.
+
+### Limitations and next action
+
+- This pins the two evidence reads to the same objects and detects observed byte/layout/link-policy drift. It does not bind the directory object or current pathname at return, exclude hard links, detect link swap-and-restore between checks, prevent same-object content ABA, use native file IDs, or promise after-return stability.
+- Physical symbolic-link tests run on Linux and when Windows host privilege/filesystem support permits. No separate Windows junction result is claimed; an optional temp-only capability probe was blocked before execution and created nothing.
+- Next action: main task completes Git/PR delivery and records the exact merge identifiers.
+
 ## Current Snow Globe v5 durable session-control status handoff
 
 ### Outcome and scope

@@ -251,10 +251,10 @@ public sealed class SnowGlobeRunStore : IDisposable
     public static SnowGlobeRunLedger Read(string directory)
         => ReadWithEvidence(directory, PhysicalRunStoreFileSystem.Instance).Ledger;
 
-    internal static SnowGlobeRunLedger Read(string directory, IRunStoreFileSystem files)
+    internal static SnowGlobeRunLedger Read(string directory, IRunStoreReadFileSystem files)
         => ReadWithEvidence(directory, files).Ledger;
 
-    internal static RunStoreReadEvidence ReadWithEvidence(string directory, IRunStoreFileSystem files)
+    internal static RunStoreReadEvidence ReadWithEvidence(string directory, IRunStoreReadFileSystem files)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(directory);
         ArgumentNullException.ThrowIfNull(files);
@@ -262,8 +262,7 @@ public sealed class SnowGlobeRunStore : IDisposable
         string ledgerPath = Path.Combine(directory, LedgerFileName);
         if (!files.FileExists(headerPath) || !files.FileExists(ledgerPath)) throw new InvalidDataException("Run store artifacts are incomplete.");
         byte[] headerBytes = files.ReadFile(headerPath, MaximumHeaderBytes, "Run identity");
-        SnowGlobeRunIdentity identity = DeserializeIdentityStrict(headerBytes);
-        ValidateIdentity(identity, requireCurrent: false);
+        SnowGlobeRunIdentity identity = ReadIdentityForInspection(headerBytes);
         string headerChecksum = CanonicalIdentityChecksum(identity);
         if (identity.SchemaVersion is V4SchemaVersion or SchemaVersion)
         {
@@ -273,6 +272,13 @@ public sealed class SnowGlobeRunStore : IDisposable
 
         SnowGlobeRunLedger ledger = ReadLegacy(directory, files, identity, headerChecksum, out byte[] ledgerBytes);
         return new RunStoreReadEvidence(ledger, LegacyRawEvidenceChecksum(headerBytes, ledgerBytes), null, null);
+    }
+
+    internal static SnowGlobeRunIdentity ReadIdentityForInspection(byte[] headerBytes)
+    {
+        SnowGlobeRunIdentity identity = DeserializeIdentityStrict(headerBytes);
+        ValidateIdentity(identity, requireCurrent: false);
+        return identity;
     }
 
     private static RunStoreV4State ReadStateForAppend(string directory, IRunStoreFileSystem files)
@@ -286,10 +292,10 @@ public sealed class SnowGlobeRunStore : IDisposable
         return ReadV4(directory, files, identity, CanonicalIdentityChecksum(identity), headerBytes);
     }
 
-    private static RunStoreV4State ReadV4(string directory, IRunStoreFileSystem files, SnowGlobeRunIdentity identity, string headerChecksum, ReadOnlySpan<byte> rawHeader) =>
+    private static RunStoreV4State ReadV4(string directory, IRunStoreReadFileSystem files, SnowGlobeRunIdentity identity, string headerChecksum, ReadOnlySpan<byte> rawHeader) =>
         RunStoreV4Storage.Read(directory, files, identity, headerChecksum, rawHeader);
 
-    private static SnowGlobeRunLedger ReadLegacy(string directory, IRunStoreFileSystem files, SnowGlobeRunIdentity identity, string headerChecksum, out byte[] ledgerBytes)
+    private static SnowGlobeRunLedger ReadLegacy(string directory, IRunStoreReadFileSystem files, SnowGlobeRunIdentity identity, string headerChecksum, out byte[] ledgerBytes)
     {
         HashSet<string> allowedArtifacts = new(StringComparer.Ordinal) { HeaderFileName, LedgerFileName, ".writer.lock" };
         if (files.EnumerateEntryNames(directory).Any(name => !allowedArtifacts.Contains(name)))
