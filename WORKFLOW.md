@@ -25,9 +25,9 @@
 
 ### Repository state, limitations, and next action
 
-- The reviewed work is on `feature/snowglobe-runstore-v4-crash-recovery`; commit, push, pull request, and required GitHub check are the remaining authorized delivery steps.
+- Implementation commit `a41ea6b` is published from `feature/snowglobe-runstore-v4-crash-recovery` in [PR #127](https://github.com/dfrer/societies/pull/127); the required GitHub check and merge remain.
 - Recovery is intentionally limited to authenticated, independently flushed complete-record prefixes. A real partial filesystem write fails closed. This is ordinary deterministic restart evidence, not power-loss certification, hardware durability, cross-host coordination, a general transaction layer, or exactly-once persistence.
-- Next action: commit the reviewed slice, publish its pull request, require `build-test-smoke`, and merge only after the branch gate succeeds.
+- Next action: require `build-test-smoke` on PR #127 and merge only after the branch gate succeeds.
 
 ## Current OpenRouter production settlement and fifth paid-run outcome
 
