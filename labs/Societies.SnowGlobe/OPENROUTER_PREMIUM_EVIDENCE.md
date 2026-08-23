@@ -30,7 +30,7 @@ The authority is consumed; never rerun any stage. Preflight performed authentica
 
 ### One current next action
 
-The offline documentation and delivery-state review is complete: retained evidence hashes remain stable, `git diff --check` passes, nothing is staged, and `src/societies/` is unchanged. The sole next action is explicit authorization for a bounded local Git delivery pass that stages and commits only the reviewed Snow Globe OpenRouter code, tests, and documentation; no push or PR is authorized.
+The reviewed Snow Globe/OpenRouter milestone was committed as `dfbeb81` and published through [PR #125](https://github.com/dfrer/societies/pull/125). GitHub `build-test-smoke` passed in 4m16s, and the PR contains no `src/societies/` change. Merge completes this Git delivery without authorizing any provider, accounting, credential, or live-state action.
 
 This readiness boundary is the isolated Snow Globe lab; gameplay manifest and Godot headless checks are outside the unchanged `src/societies/` scope. The last source change remains covered by 884/884 SnowGlobe Release tests, 70/70 CLI/security tests, and zero-warning Release builds. This review changed documentation only and re-ran `git diff --check` plus inventory checks. If Git delivery remains unauthorized and development is explicitly resumed instead, the next smallest offline-only milestone is to close the residual P3 by retaining and asserting all twelve fake-only lease-zero observations in the readiness-manifest probe, without credential, live-state, provider, network, or `src/societies/` access.
 
@@ -64,7 +64,7 @@ The reviewed composition baseline passed 55/55 focused, 868/868 full SnowGlobe R
 
 Security review found and fixed two P1 issues and one P2 issue, then ended with no P0-P2. Independent deep re-review returned GO with no P0-P2. Residual P3: plan-time conformance records the last observed lease-zero flag in each probe; the existing executor suite separately proves all twelve lease zero observations, and there is no current credential-leakage finding.
 
-Repository state is intentionally undelivered: all OpenRouter code, tests, and documentation remain dirty/untracked on `feature/snowglobe-agent-lab-owner-v1` at HEAD `246304f`. Nothing was staged, committed, pushed, or opened as a PR, and `src/societies/` is unchanged. The credential intentionally remains in Windows Credential Manager and was not read or displayed. The first security review's unauthenticated public-documentation traffic remains separately disclosed in `WORKFLOW.md` and global T1 `WI-GLOBAL-2026-126`.
+At the pre-delivery fixed point, all OpenRouter code, tests, and documentation were dirty/untracked on `feature/snowglobe-agent-lab-owner-v1` at HEAD `246304f`; nothing had been staged, committed, pushed, or opened as a PR, and `src/societies/` was unchanged. That fixed point was later committed and published through PR #125 as recorded above. The credential intentionally remains in Windows Credential Manager and was not read or displayed. The first security review's unauthenticated public-documentation traffic remains separately disclosed in `WORKFLOW.md` and global T1 `WI-GLOBAL-2026-126`.
 
 The production state-lifecycle gap is resolved for this milestone by the one-time anchor provisioning and empty-root initialization; `WI-GLOBAL-2026-126` remains a separate traffic-control issue.
 

@@ -18,7 +18,7 @@ The fifth authority used up to 12 sequential requests, no retries or alternate p
 
 ### One current next action
 
-The offline documentation and delivery-state review is complete. The sole next action is explicit authorization for a bounded local Git delivery pass that stages and commits only the reviewed Snow Globe OpenRouter code, tests, and documentation; no push or PR is authorized.
+The reviewed Snow Globe/OpenRouter milestone was committed as `dfbeb81` and published through [PR #125](https://github.com/dfrer/societies/pull/125); GitHub `build-test-smoke` passed. Merge completes this Git delivery. No provider, accounting, credential, or live-state action is authorized by the PR.
 
 If Git delivery remains unauthorized and development is explicitly resumed instead, the next smallest offline-only milestone is to close the residual P3 by retaining and asserting all twelve fake-only lease-zero observations in the readiness-manifest probe. It must not access credentials, live v1/v2 state, provider/network surfaces, or `src/societies/`.
 

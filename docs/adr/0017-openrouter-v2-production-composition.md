@@ -18,4 +18,4 @@ The reviewed composition baseline passed 55/55 focused, 868/868 full SnowGlobe R
 
 Attempt 4 remains consumed by the sole `preflight_already_attempted` before credentials/provider/charge; no retry occurred and v1 is untouched. The provisioning authority is separately consumed; `WI-GLOBAL-2026-126` is separate.
 
-The fifth paid-run authority and all stages are consumed and recorded in ADR 0015; no stage may be rerun. The offline delivery-state review is complete. The sole current action is explicit authorization for a bounded local Git delivery pass that stages and commits only the reviewed Snow Globe OpenRouter code, tests, and documentation; no push or PR is authorized.
+The fifth paid-run authority and all stages are consumed and recorded in ADR 0015; no stage may be rerun. The reviewed milestone was committed as `dfbeb81` and published through PR #125; GitHub `build-test-smoke` passed. Merge completes this Git delivery without authorizing provider, accounting, credential, or live-state action.

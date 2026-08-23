@@ -30,7 +30,7 @@ Evidence: 2,171 bytes/SHA `7d449d77c3b82ff1984a0e1d33c3026b80566321938418b2eb363
 
 ### One current next action
 
-The offline documentation and delivery-state review is complete. The sole next action is explicit authorization for a bounded local Git delivery pass that stages and commits only the reviewed Snow Globe OpenRouter code, tests, and documentation; no push or PR is authorized.
+The reviewed Snow Globe/OpenRouter milestone was committed as `dfbeb81` and published through [PR #125](https://github.com/dfrer/societies/pull/125); GitHub `build-test-smoke` passed. Merge completes this Git delivery. No provider, accounting, credential, or live-state action is authorized by the PR.
 
 ## Current offline cognition score-summary milestone (v4)
 

@@ -8,11 +8,11 @@ Evidence is 2,171 bytes/SHA `7d449d77c3b82ff1984a0e1d33c3026b80566321938418b2eb3
 
 Authority is consumed; never rerun any stage. Preflight did authenticated metadata and durable authorization, but its exact metadata count is not retained. No raw prompt/response/secret, provider/accounting follow-up, or v1 access. Local zero settlement is not provider zero cost; charge is unknown. HTTP status, finish reason, body, redirect trace, and parser-rejection detail are absent, so no provider-side cause is claimed. Deep review GO, no P0-P2; no runtime/framework Bearer cleanup proof.
 
-### One current next action
+### Current delivery record and next boundary
 
-The offline documentation and delivery-state review is complete: evidence hashes remain stable, `git diff --check` passes, nothing is staged, and `src/societies/` is unchanged. The sole next action is explicit authorization for a bounded local Git delivery pass that stages and commits only the reviewed Snow Globe OpenRouter code, tests, and documentation; no push or PR is authorized.
+The reviewed Snow Globe/OpenRouter milestone was committed as `dfbeb81`, pushed on `feature/snowglobe-agent-lab-owner-v1`, and published as [PR #125](https://github.com/dfrer/societies/pull/125). GitHub `build-test-smoke` passed in 4m16s, including the authoritative Godot build, fast unit tests, Godot C# builds, and headless smoke suite. The PR contains no `src/societies/` change. Its remaining delivery action is merge; after merge, this milestone's Git delivery is complete.
 
-This is an isolated Snow Globe lab handoff, so the gameplay manifest and Godot headless tiers are outside the unchanged `src/societies/` boundary. The last source change is covered by the recorded 884/884 SnowGlobe Release tests, 70/70 CLI/security tests, and zero-warning Release builds; this review changed documentation only and re-ran `git diff --check` plus inventory checks. If Git delivery remains unauthorized and development is explicitly resumed instead, the next smallest offline-only milestone is to close the residual P3 by retaining and asserting all twelve fake-only lease-zero observations in the readiness-manifest probe, without credential, live-state, provider, network, or `src/societies/` access.
+The next selectable offline-only development milestone is the residual P3: retain and assert all twelve fake-only lease-zero observations in the readiness-manifest probe. It is not started by this delivery and must not access credentials, live state, provider/network surfaces, or `src/societies/`.
 
 ## Historical fourth-authorization preflight outcome
 
@@ -28,7 +28,7 @@ Fourth authorization: on 2026-08-22 the user authorized up to twelve sequential 
 
 Preserved v1 evidence: fixed live state remains Attempt 3 with runtime authorization `d13f4aaa9f930f27923147ef7ddcadbcefaf5938ca7217698fb8aa477a683288`, preflight artifact `60e8f0d1b07b6ed7c8f191d94add6f2187035cbc7f6d9492d95dc0ec7c7e19ad`, live evidence `af485def08d5c465807d069fc59a566c077f111b003723c0ece75b8db7732ea0`, and validation receipt `0885c1b530d7a12b27cbe6c7c5eddc6dd27957125fe1650d741f70a4c0332ba3`; hashes match, and execution-consumed and validation-consumed tombstones remain. Do not move/delete it, use its digest, call `record-once`, or call `validate`.
 
-Repository/delivery state: all OpenRouter code, tests, and docs remain dirty/untracked on `feature/snowglobe-agent-lab-owner-v1` at HEAD `246304f`. Nothing was staged, committed, pushed, or opened as a PR; `src/societies/` is unchanged. The Credential Manager secret remains intentionally stored and was not read or displayed.
+Pre-delivery repository state: all OpenRouter code, tests, and docs were dirty/untracked on `feature/snowglobe-agent-lab-owner-v1` at HEAD `246304f`. Nothing had been staged, committed, pushed, or opened as a PR; `src/societies/` was unchanged. That fixed point was later committed and published through PR #125 as recorded above. The Credential Manager secret remains intentionally stored and was not read or displayed.
 
 Risk/process evidence: the development turn was not wholly offline. During the first security review, a worker made four web-tool calls: three search calls containing eight `site:openrouter.ai` searches and one open call issuing five unauthenticated public OpenRouter model/documentation page GETs. There was no `/api/v1`, authenticated metadata, account, credits, generation, credential, inference, or charge request. Further traffic stopped, the deep re-review remained local-only, and global T1 `WI-GLOBAL-2026-126` is Open for orchestration monitoring.
 

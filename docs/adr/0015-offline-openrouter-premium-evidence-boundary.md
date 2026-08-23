@@ -2,7 +2,7 @@
 
 - Status: Active; three bounded paid attempts completed, fourth authorization consumed by closed preflight, offline state-generation v2 store complete
 - Date: 2026-08-22
-- Base code commit: `ef32576`; all OpenRouter code, tests, and docs remain dirty/untracked on `feature/snowglobe-agent-lab-owner-v1` at HEAD `246304f`
+- Base code commit: `ef32576`; reviewed delivery commit `dfbeb81`, published through PR #125
 
 ## Decision
 
@@ -42,8 +42,8 @@ Security review fixed two P1 and one P2 and ended with no P0-P2. A dedicated rea
 
 ## Limits and next action
 
-The completed attempts and offline readiness plan do not establish output-limit-corrected live compatibility, twelve premium proposals, cognition quality, a winner, a comparison, world authority, or readiness for another paid authorization. The provider secret remains intentionally stored and was not read or displayed during Attempt 4. All OpenRouter work remains dirty/untracked on `feature/snowglobe-agent-lab-owner-v1` at HEAD `246304f`; no stage/commit/push/PR or `src/societies/` change occurred. The first security review's unauthenticated public documentation traffic remains separately disclosed in `WORKFLOW.md` and `WI-GLOBAL-2026-126`.
+The completed attempts and offline readiness plan do not establish output-limit-corrected live compatibility, twelve premium proposals, cognition quality, a winner, a comparison, world authority, or readiness for another paid authorization. The provider secret remains intentionally stored and was not read or displayed during Attempt 4. The reviewed milestone was committed as `dfbeb81` and published through PR #125; the PR contains no `src/societies/` change and its GitHub `build-test-smoke` gate passed. The first security review's unauthenticated public documentation traffic remains separately disclosed in `WORKFLOW.md` and `WI-GLOBAL-2026-126`.
 
 The exact `state-anchor-provision-once --acknowledge-create-fixed-v2-state-anchor-and-initialize-offline` command was invoked exactly once and exited 0. It stored the generated anchor without exposing its secret and initialized the fixed v2 root with four empty state directories plus `root-writer.lock` (567 bytes, SHA-256 `7827eeb9d15d1b43eeaaebe779b8d192ac3864e25fbfe2df8ea57b8572fd88aa`). Anchor identity digest is `d6eb68c6f14e32f342caee45f4c13d2398e4c0830e39d3e7cbfe478a10d9a78d`; state-contract digest is `f9d12a2c0bcfb60cc874dc49bc60462197700d681a42ae98ce4bcefd28ac8511`. The provisioning authority is consumed and must never be rerun. No OpenRouter credential read, provider access, paid action, fifth authority, generation, claim, evidence, receipt, or v1 access occurred. `WI-GLOBAL-2026-126` remains separate; rollback resistance, rotation, and recovery are not claimed.
 
-The v2 generation-store, offline production-composition, one-time anchor-initialization, fifth-run evidence, and offline delivery-state review milestones are complete; see [ADR 0016](0016-openrouter-authenticated-append-only-generation-store.md) and [ADR 0017](0017-openrouter-v2-production-composition.md). The sole current action is explicit authorization for a bounded local Git delivery pass that stages and commits only the reviewed Snow Globe OpenRouter code, tests, and documentation; no push or PR is authorized.
+The v2 generation-store, offline production-composition, one-time anchor-initialization, fifth-run evidence, and offline delivery-state review milestones are complete; see [ADR 0016](0016-openrouter-authenticated-append-only-generation-store.md) and [ADR 0017](0017-openrouter-v2-production-composition.md). Delivery is recorded by commit `dfbeb81` and PR #125; merge completes the Git boundary without authorizing any provider or accounting action.
