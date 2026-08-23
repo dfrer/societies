@@ -17,13 +17,13 @@ This is the only in-repo implementation that currently has:
 - a buildable C# project
 - a runnable automated validation path
 
-## Snow Globe v5 durable-pause local handoff
+## Snow Globe v5 durable-pause milestone
 
 The isolated Snow Globe lab now has a local implementation draft for `snow_globe_run_store/v5`. V5 adds one checksum-linked `PauseTransition` frame to the existing framed journal so `SnowGlobePersistedSession` can restore the last committed pause state after close/reopen without changing deterministic world state, events, or digests. Public three-argument creation starts running; four-argument creation with `true` commits Pause before return. Three-argument reopen derives v5 pause, while the Boolean reopen overload remains v4-only and rejects v5 after read-only preflight but before writer ownership.
 
 V2/v3 remain strict flat read-only inputs. Explicit `V4SchemaVersion` routes frozen v4 through its unchanged append, participant, scheduled-recovery, recovery-provenance, and ephemeral-pause contracts. V5 pause recovery reuses the same one-continuation/two-segment bound and always abandons an uncommitted pause frame at the prior durable state after validating any complete payload; partial payload/commit evidence fails closed. Persisted-run inspection remains inert (`Snapshot.IsPaused=true` for every schema), and recovery-provenance receipts remain v4-only.
 
-Local Release evidence passes 25/25 new v5 pause tests, 186/186 persistence compatibility tests, the 239/239 aggregate persistence/provider-enum selection, and the full 969/969 Snow Globe suite; the Snow Globe Release library build has zero warnings/errors. `git diff --check` is clean, and independent migration/determinism/public-interface review is FINAL GO with no P0-P3 findings. CI, commit, PR, and merge remain pending. See [the active v5 contract](planning/active/snow-globe-v5-durable-pause.md). No `src/societies/`, provider, credential, network, paid, live-state, world-event, or observer-shell behavior changed.
+Local Release evidence passes 25/25 new v5 pause tests, 186/186 persistence compatibility tests, the 239/239 aggregate persistence/provider-enum selection, and the full 969/969 Snow Globe suite; the Snow Globe Release library build has zero warnings/errors. `git diff --check` is clean, and independent migration/determinism/public-interface review is FINAL GO with no P0-P3 findings. Implementation commit `9b4b1c4` was published through [PR #135](https://github.com/dfrer/societies/pull/135); required `build-test-smoke` passed in 4m34s and the PR merged to `master` as `6505e01`. See [the v5 contract](planning/active/snow-globe-v5-durable-pause.md). No `src/societies/`, provider, credential, network, paid, live-state, world-event, or observer-shell behavior changed.
 
 ## Current Snow Globe v4 recovery-provenance receipt milestone
 
