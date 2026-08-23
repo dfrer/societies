@@ -17,7 +17,15 @@ This is the only in-repo implementation that currently has:
 - a buildable C# project
 - a runnable automated validation path
 
-## Current Snow Globe RunStore v4 recovery milestone
+## Current Snow Globe persisted-session v4 recovery conformance milestone
+
+The unchanged public `SnowGlobePersistedSession.Reopen` path now has adversarial conformance evidence over physical RunStore v4 interruption artifacts. Six Release tests prove that a mutable session durably records recovery before it is returned, preserves original segment bytes, reconstructs the exact public snapshot and idempotent participant receipts, continues deterministic progress, remains stable on repeat reopen, rejects malformed UTF-8/NUL/garbage before writer ownership, and rejects a second recovery without creating a third segment. The internal filesystem seam is used only to compose interruption artifacts; recovery remains RunStore-local and no session recovery overload was added.
+
+The aggregate gate also exposed and resolved a test-only Ollama benchmark race: fake successful POSTs used scheduler timing to imply exactly one in-flight VRAM sample, which could yield zero or an extra sample under full-suite load. An opt-in per-request POST/probe handshake now makes those tests deterministic without changing production inference, provider, network, or sampling behavior. This is recorded as resolved workflow issue `WI-SOCIETIES-2026-011` / `WI-GLOBAL-2026-130`.
+
+Final local Release evidence is 6/6 new recovery tests, 163/163 PersistedSession/RunStore tests, 76/76 Ollama benchmark tests, and 920/920 full Snow Globe tests. The Release build has 0 warnings and 0 errors, diff checks are clean, and independent recovery/determinism review is FINAL CODE GO after closing all P1-P3 findings. Only isolated-lab tests and v4/v2-v3 wording changed; no `src/societies/`, provider, credential, paid, live-state, or production recovery behavior changed. Delivery is pending on `feature/snowglobe-session-v4-recovery-conformance`.
+
+## Prior Snow Globe RunStore v4 recovery milestone
 
 New isolated-lab run stores now use `snow_globe_run_store/v4`. The public `CreateNew` / `OpenForAppend` / `Read` surface is unchanged, while the storage module writes bounded checksum-linked prepare, payload, commit, and continuation evidence. An ordinary read exposes committed frames only. After one deterministically interrupted scheduled-tick write at an authenticated complete-record boundary, `OpenForAppend` can durably record either abandonment at the prior checkpoint or adoption of the complete tick in a new continuation segment without truncating or rewriting the original segment. Participant-command tails, a second recovery, malformed or unauthenticated residue, corrupt committed history, broken or forked links, header changes during lease acquisition, unknown artifacts, and combined capacity above 4,096 entries fail closed.
 
