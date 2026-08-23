@@ -1,3 +1,4 @@
+using Microsoft.Win32.SafeHandles;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -17,13 +18,24 @@ internal enum RunStoreWriteKind
     ContinuationMarker
 }
 
-internal interface IRunStoreFileSystem
+internal interface IRunStoreReadHandle : IDisposable
+{
+    int Read(Span<byte> destination, long fileOffset);
+}
+
+internal interface IRunStoreReadFileSystem
 {
     bool DirectoryExists(string path);
-    void CreateDirectory(string path);
     IReadOnlyList<string> EnumerateEntryNames(string directory);
     bool FileExists(string path);
+    FileAttributes GetAttributes(string path);
+    IRunStoreReadHandle OpenReadFile(string path);
     byte[] ReadFile(string path, int maximumBytes, string description);
+}
+
+internal interface IRunStoreFileSystem : IRunStoreReadFileSystem
+{
+    void CreateDirectory(string path);
     void CreateFile(string path, ReadOnlySpan<byte> bytes, RunStoreWriteKind kind);
     void AppendFile(string path, ReadOnlySpan<byte> bytes, RunStoreWriteKind kind);
     IDisposable AcquireExclusiveLease(string path);
@@ -40,6 +52,14 @@ internal sealed class PhysicalRunStoreFileSystem : IRunStoreFileSystem
     public IReadOnlyList<string> EnumerateEntryNames(string directory) =>
         Directory.EnumerateFileSystemEntries(directory).Select(Path.GetFileName).OrderBy(name => name, StringComparer.Ordinal).ToArray()!;
     public bool FileExists(string path) => File.Exists(path);
+    public FileAttributes GetAttributes(string path) => File.GetAttributes(path);
+    public IRunStoreReadHandle OpenReadFile(string path) => new PhysicalRunStoreReadHandle(
+        File.OpenHandle(
+            path,
+            FileMode.Open,
+            FileAccess.Read,
+            FileShare.ReadWrite | FileShare.Delete,
+            FileOptions.RandomAccess));
 
     public byte[] ReadFile(string path, int maximumBytes, string description)
     {
@@ -89,6 +109,12 @@ internal sealed class PhysicalRunStoreFileSystem : IRunStoreFileSystem
 
     public IDisposable AcquireExclusiveLease(string path) =>
         new FileStream(path, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None);
+
+    private sealed class PhysicalRunStoreReadHandle(SafeFileHandle handle) : IRunStoreReadHandle
+    {
+        public int Read(Span<byte> destination, long fileOffset) => RandomAccess.Read(handle, destination, fileOffset);
+        public void Dispose() => handle.Dispose();
+    }
 }
 
 /// <summary>One-shot deterministic write interruption used only through the internal filesystem seam.</summary>
@@ -103,6 +129,8 @@ internal sealed class FaultInjectingRunStoreFileSystem(
     public void CreateDirectory(string path) => inner.CreateDirectory(path);
     public IReadOnlyList<string> EnumerateEntryNames(string directory) => inner.EnumerateEntryNames(directory);
     public bool FileExists(string path) => inner.FileExists(path);
+    public FileAttributes GetAttributes(string path) => inner.GetAttributes(path);
+    public IRunStoreReadHandle OpenReadFile(string path) => inner.OpenReadFile(path);
     public byte[] ReadFile(string path, int maximumBytes, string description) => inner.ReadFile(path, maximumBytes, description);
     public IDisposable AcquireExclusiveLease(string path) => inner.AcquireExclusiveLease(path);
 
@@ -321,7 +349,7 @@ internal sealed class RunStoreV4Storage
 
     internal static RunStoreV4State Read(
         string directory,
-        IRunStoreFileSystem files,
+        IRunStoreReadFileSystem files,
         SnowGlobeRunIdentity identity,
         string headerChecksum,
         ReadOnlySpan<byte> rawHeader)
@@ -845,7 +873,7 @@ internal sealed class RunStoreV4Storage
         return prefixes;
     }
 
-    private static void ValidateLayout(string directory, IRunStoreFileSystem files)
+    private static void ValidateLayout(string directory, IRunStoreReadFileSystem files)
     {
         HashSet<string> allowed = new(StringComparer.Ordinal) { "run.json", ".writer.lock" };
         for (int index = 0; index < MaximumSegments; index++)
@@ -862,7 +890,7 @@ internal sealed class RunStoreV4Storage
         if (hasSecondLedger != hasSecondMarker) throw new InvalidDataException("Run-store continuation artifacts are incomplete.");
     }
 
-    private static int LastExistingSegment(string directory, IRunStoreFileSystem files) =>
+    private static int LastExistingSegment(string directory, IRunStoreReadFileSystem files) =>
         files.FileExists(LedgerPath(directory, 1)) ? 1 : 0;
 
     private static void AppendEvidence(IncrementalHash evidence, int segmentIndex, byte[] ledger, byte[] markers)

@@ -753,6 +753,8 @@ public sealed class RunStoreV4CrashRecoveryTests
         public void CreateDirectory(string path) => inner.CreateDirectory(path);
         public IReadOnlyList<string> EnumerateEntryNames(string directory) => inner.EnumerateEntryNames(directory);
         public bool FileExists(string path) => inner.FileExists(path);
+        public FileAttributes GetAttributes(string path) => inner.GetAttributes(path);
+        public IRunStoreReadHandle OpenReadFile(string path) => inner.OpenReadFile(path);
         public byte[] ReadFile(string path, int maximumBytes, string description) => inner.ReadFile(path, maximumBytes, description);
         public void CreateFile(string path, ReadOnlySpan<byte> bytes, RunStoreWriteKind kind) => inner.CreateFile(path, bytes, kind);
         public void AppendFile(string path, ReadOnlySpan<byte> bytes, RunStoreWriteKind kind) => inner.AppendFile(path, bytes, kind);

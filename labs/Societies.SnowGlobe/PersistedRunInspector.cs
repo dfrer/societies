@@ -92,7 +92,7 @@ public static class SnowGlobePersistedRunInspector
         string directory,
         SnowGlobeRunIdentity expectedIdentity,
         int eventCursor,
-        IRunStoreFileSystem files)
+        IRunStoreReadFileSystem files)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(directory);
         ArgumentNullException.ThrowIfNull(expectedIdentity);
@@ -101,37 +101,9 @@ public static class SnowGlobePersistedRunInspector
 
         if (eventCursor < 0) return Reject("event_cursor_invalid");
 
-        RunStoreReadEvidence first;
-        try
-        {
-            first = SnowGlobeRunStore.ReadWithEvidence(directory, files);
-        }
-        catch (Exception exception) when (exception is InvalidDataException or IOException or UnauthorizedAccessException)
-        {
-            return Reject(ReadFailureReason(exception));
-        }
-
-        if (!ExactIdentity(first.Ledger.Identity, expectedIdentity)) return Reject("run_identity_mismatch");
-
-        RunStoreReadEvidence second;
-        try
-        {
-            second = SnowGlobeRunStore.ReadWithEvidence(directory, files);
-        }
-        catch (Exception exception) when (exception is InvalidDataException or IOException or UnauthorizedAccessException)
-        {
-            // The first validated image cannot be projected once the second read is no longer
-            // coherent. Do not reveal whether the competing writer left a valid or invalid tail.
-            return Reject("run_store_unstable");
-        }
-
-        if (!SnowGlobeRunStore.FixedEquals(first.EvidenceChecksum, second.EvidenceChecksum)
-            || !ExactIdentity(first.Ledger.Identity, second.Ledger.Identity))
-        {
-            return Reject("run_store_unstable");
-        }
-
-        if (!ExactIdentity(second.Ledger.Identity, expectedIdentity)) return Reject("run_identity_mismatch");
+        StableInspectionRead stable = ReadStable(directory, expectedIdentity, files);
+        if (stable.RejectionReason is not null) return Reject(stable.RejectionReason);
+        RunStoreReadEvidence second = stable.Evidence!;
 
         try
         {
@@ -170,42 +142,16 @@ public static class SnowGlobePersistedRunInspector
     internal static SnowGlobePersistedRunRecoveryProvenanceInspectionResult InspectRecoveryProvenance(
         string directory,
         SnowGlobeRunIdentity expectedIdentity,
-        IRunStoreFileSystem files)
+        IRunStoreReadFileSystem files)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(directory);
         ArgumentNullException.ThrowIfNull(expectedIdentity);
         ArgumentNullException.ThrowIfNull(files);
         ValidateExpectedIdentity(expectedIdentity);
 
-        RunStoreReadEvidence first;
-        try
-        {
-            first = SnowGlobeRunStore.ReadWithEvidence(directory, files);
-        }
-        catch (Exception exception) when (exception is InvalidDataException or IOException or UnauthorizedAccessException)
-        {
-            return RejectRecovery(ReadFailureReason(exception));
-        }
-
-        if (!ExactIdentity(first.Ledger.Identity, expectedIdentity)) return RejectRecovery("run_identity_mismatch");
-
-        RunStoreReadEvidence second;
-        try
-        {
-            second = SnowGlobeRunStore.ReadWithEvidence(directory, files);
-        }
-        catch (Exception exception) when (exception is InvalidDataException or IOException or UnauthorizedAccessException)
-        {
-            return RejectRecovery("run_store_unstable");
-        }
-
-        if (!SnowGlobeRunStore.FixedEquals(first.EvidenceChecksum, second.EvidenceChecksum)
-            || !ExactIdentity(first.Ledger.Identity, second.Ledger.Identity))
-        {
-            return RejectRecovery("run_store_unstable");
-        }
-
-        if (!ExactIdentity(second.Ledger.Identity, expectedIdentity)) return RejectRecovery("run_identity_mismatch");
+        StableInspectionRead stable = ReadStable(directory, expectedIdentity, files);
+        if (stable.RejectionReason is not null) return RejectRecovery(stable.RejectionReason);
+        RunStoreReadEvidence second = stable.Evidence!;
         if (second.Ledger.Identity.SchemaVersion != SnowGlobeRunStore.V4SchemaVersion)
             return new SnowGlobePersistedRunRecoveryProvenanceInspectionResult(true, null, null);
 
@@ -236,42 +182,16 @@ public static class SnowGlobePersistedRunInspector
     internal static SnowGlobePersistedSessionControlStatusInspectionResult InspectDurableControlStatus(
         string directory,
         SnowGlobeRunIdentity expectedIdentity,
-        IRunStoreFileSystem files)
+        IRunStoreReadFileSystem files)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(directory);
         ArgumentNullException.ThrowIfNull(expectedIdentity);
         ArgumentNullException.ThrowIfNull(files);
         ValidateExpectedIdentity(expectedIdentity);
 
-        RunStoreReadEvidence first;
-        try
-        {
-            first = SnowGlobeRunStore.ReadWithEvidence(directory, files);
-        }
-        catch (Exception exception) when (exception is InvalidDataException or IOException or UnauthorizedAccessException)
-        {
-            return RejectDurableControlStatus(ReadFailureReason(exception));
-        }
-
-        if (!ExactIdentity(first.Ledger.Identity, expectedIdentity)) return RejectDurableControlStatus("run_identity_mismatch");
-
-        RunStoreReadEvidence second;
-        try
-        {
-            second = SnowGlobeRunStore.ReadWithEvidence(directory, files);
-        }
-        catch (Exception exception) when (exception is InvalidDataException or IOException or UnauthorizedAccessException)
-        {
-            return RejectDurableControlStatus("run_store_unstable");
-        }
-
-        if (!SnowGlobeRunStore.FixedEquals(first.EvidenceChecksum, second.EvidenceChecksum)
-            || !ExactIdentity(first.Ledger.Identity, second.Ledger.Identity))
-        {
-            return RejectDurableControlStatus("run_store_unstable");
-        }
-
-        if (!ExactIdentity(second.Ledger.Identity, expectedIdentity)) return RejectDurableControlStatus("run_identity_mismatch");
+        StableInspectionRead stable = ReadStable(directory, expectedIdentity, files);
+        if (stable.RejectionReason is not null) return RejectDurableControlStatus(stable.RejectionReason);
+        RunStoreReadEvidence second = stable.Evidence!;
         if (second.Ledger.Identity.SchemaVersion != SnowGlobeRunStore.SchemaVersion)
             return new SnowGlobePersistedSessionControlStatusInspectionResult(true, null, null);
 
@@ -322,10 +242,73 @@ public static class SnowGlobePersistedRunInspector
         && actual.AgentCount == expected.AgentCount
         && actual.ParticipantCommandIdentity == expected.ParticipantCommandIdentity;
 
+    private static StableInspectionRead ReadStable(
+        string directory,
+        SnowGlobeRunIdentity expectedIdentity,
+        IRunStoreReadFileSystem files)
+    {
+        RunStoreStableReadScope scope;
+        try
+        {
+            scope = RunStoreStableReadScope.Open(directory, files);
+        }
+        catch (RunStoreReadScopeException exception)
+        {
+            return new StableInspectionRead(null, ReadScopeFailureReason(exception.Failure));
+        }
+
+        using (scope)
+        {
+            RunStoreReadEvidence first;
+            try
+            {
+                first = scope.ReadWithEvidence();
+            }
+            catch (Exception exception) when (exception is InvalidDataException or IOException or UnauthorizedAccessException)
+            {
+                return new StableInspectionRead(null, ReadFailureReason(exception));
+            }
+
+            if (!ExactIdentity(first.Ledger.Identity, expectedIdentity))
+                return new StableInspectionRead(null, "run_identity_mismatch");
+
+            RunStoreReadEvidence second;
+            try
+            {
+                second = scope.ReadWithEvidence();
+                scope.Revalidate();
+            }
+            catch (Exception exception) when (exception is InvalidDataException or IOException or UnauthorizedAccessException)
+            {
+                // Once one validated image exists, all parser, read, layout, and link-policy
+                // drift is deliberately collapsed into the stable competing-change result.
+                return new StableInspectionRead(null, "run_store_unstable");
+            }
+
+            if (!SnowGlobeRunStore.FixedEquals(first.EvidenceChecksum, second.EvidenceChecksum)
+                || !ExactIdentity(first.Ledger.Identity, second.Ledger.Identity))
+            {
+                return new StableInspectionRead(null, "run_store_unstable");
+            }
+
+            if (!ExactIdentity(second.Ledger.Identity, expectedIdentity))
+                return new StableInspectionRead(null, "run_identity_mismatch");
+            return new StableInspectionRead(second, null);
+        }
+    }
+
     private static string ReadFailureReason(Exception exception) => exception switch
     {
         IOException or UnauthorizedAccessException => "run_store_unavailable",
         InvalidDataException => "run_store_invalid",
+        _ => "run_store_unavailable"
+    };
+
+    private static string ReadScopeFailureReason(RunStoreReadScopeFailure failure) => failure switch
+    {
+        RunStoreReadScopeFailure.Invalid => "run_store_invalid",
+        RunStoreReadScopeFailure.Unavailable => "run_store_unavailable",
+        RunStoreReadScopeFailure.Unstable => "run_store_unstable",
         _ => "run_store_unavailable"
     };
 
@@ -381,4 +364,6 @@ public static class SnowGlobePersistedRunInspector
     private static SnowGlobePersistedRunRecoveryProvenanceInspectionResult RejectRecovery(string reason) => new(false, reason, null);
 
     private static SnowGlobePersistedSessionControlStatusInspectionResult RejectDurableControlStatus(string reason) => new(false, reason, null);
+
+    private sealed record StableInspectionRead(RunStoreReadEvidence? Evidence, string? RejectionReason);
 }
