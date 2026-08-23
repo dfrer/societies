@@ -73,6 +73,23 @@ public sealed class OpenRouterCliSecurityTests
     }
 
     [Fact]
+    public async Task RecordOncePrintsTheExactRawFreeParserRejectionDiagnostic()
+    {
+        const string diagnostic = "provider_response_rejected_response_finish_invalid";
+        FakeCliModule module = new(new OpenRouterCliRunResult("terminal", 1, 0, diagnostic, Digest('b')));
+        StringWriter output = new(); StringWriter error = new();
+
+        int exit = await OpenRouterCliApplication.RunAsync(
+            ["record-once", "--confirm-authorization-sha256", Digest('a'), "--acknowledge-openrouter-paid-one-shot-18000-microusd"],
+            () => new FakeCliFactory(module), output, error, CancellationToken.None);
+
+        Assert.Equal(3, exit);
+        Assert.Empty(error.ToString());
+        Assert.Equal($"RECORD_ONCE_RESULT status=terminal exchange_count=1 total_settled_microusd=0 terminal={diagnostic} evidence_artifact_digest_sha256={Digest('b')} additional_attempt_authorized=false"
+            + Environment.NewLine, output.ToString());
+    }
+
+    [Fact]
     public async Task PlanEmitsTheFrozenRawFreeContractWithoutProductionDispatch()
     {
         int dispatchesBefore = OpenRouterCliApplication.ProductionDispatchCount;
@@ -308,8 +325,11 @@ public sealed class OpenRouterCliSecurityTests
         }
     }
 
-    private sealed class FakeCliModule : IOpenRouterCliCredentialModule, IOpenRouterCliStateModule
+    private sealed class FakeCliModule(OpenRouterCliRunResult? runResult = null)
+        : IOpenRouterCliCredentialModule, IOpenRouterCliStateModule
     {
+        private readonly OpenRouterCliRunResult _runResult = runResult
+            ?? new OpenRouterCliRunResult("complete", 12, 1, null, Digest('b'));
         public int Calls { get; private set; }
         public string? Confirmation { get; private set; }
         public string? ValidationConfirmation { get; private set; }
@@ -319,7 +339,7 @@ public sealed class OpenRouterCliSecurityTests
         public ValueTask<OpenRouterCliRunResult> RecordOnceAsync(string authorizationDigestSha256, CancellationToken cancellationToken)
         {
             Calls++; Confirmation = authorizationDigestSha256;
-            return ValueTask.FromResult(new OpenRouterCliRunResult("complete", 12, 1, null, Digest('b')));
+            return ValueTask.FromResult(_runResult);
         }
         public OpenRouterCliValidationResult ValidateOnce(string authorizationDigestSha256)
         {

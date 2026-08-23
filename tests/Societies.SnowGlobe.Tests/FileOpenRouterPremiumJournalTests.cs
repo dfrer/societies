@@ -35,6 +35,30 @@ public sealed class FileOpenRouterPremiumJournalTests
     }
 
     [Fact]
+    public void HistoricalGenericProviderResponseRejectionJournalRemainsReadable()
+    {
+        string root = Temp();
+        try
+        {
+            using (FileOpenRouterPremiumJournal journal = FileOpenRouterPremiumJournal.CreateNew(root, Header()))
+            {
+                long admitted = journal.Admit(1, "cq1", Digest('a'), Digest('b'), 1_500);
+                long dispatched = journal.MarkDispatchUnknown(1, Digest('b'), admitted);
+                OpenRouterPremiumSlotReceipt historical = new(1, "cq1", Digest('a'), Digest('b'), Digest('c'),
+                    SubmissionState.SubmissionUnknown, ChargeState.Unknown, 0, 0, 0, 0, null,
+                    "provider_response_rejected");
+                Assert.Equal(3, journal.Complete(historical, dispatched));
+            }
+
+            using FileOpenRouterPremiumJournal reopened = FileOpenRouterPremiumJournal.OpenForAppend(root);
+            OpenRouterPremiumJournalSlotSnapshot slot = Assert.Single(reopened.Snapshot().Slots);
+            Assert.Equal("provider_response_rejected", slot.Receipt!.OutcomeCode);
+            Assert.Contains("cq1/completed/provider_response_rejected", reopened.Snapshot().Trace);
+        }
+        finally { Delete(root); }
+    }
+
+    [Fact]
     public void ConcurrentWriterAndReplayOrConflict_FailClosed()
     {
         string root = Temp();

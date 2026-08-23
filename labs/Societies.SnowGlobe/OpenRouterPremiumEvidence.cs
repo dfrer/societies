@@ -8,13 +8,22 @@ namespace Societies.SnowGlobe;
 public sealed class OpenRouterPremiumEvidenceException : Exception
 {
     public OpenRouterPremiumEvidenceException(string code) : base(Validate(code)) => Code = code;
+    internal OpenRouterPremiumEvidenceException(OpenRouterPremiumResponseParserRejectionCode parserRejectionCode)
+        : this(ValidateParserRejectionCode(parserRejectionCode)) => ParserRejectionCode = parserRejectionCode;
     public string Code { get; }
+    internal OpenRouterPremiumResponseParserRejectionCode? ParserRejectionCode { get; }
 
     private static string Validate(string code)
     {
         if (!OpenRouterPremiumCanonical.IsIdentity(code) || code.Length > 64)
             throw new ArgumentOutOfRangeException(nameof(code));
         return code;
+    }
+
+    private static string ValidateParserRejectionCode(OpenRouterPremiumResponseParserRejectionCode code)
+    {
+        if (!Enum.IsDefined(code)) throw new ArgumentOutOfRangeException(nameof(code));
+        return code.ToString();
     }
 }
 
@@ -280,11 +289,11 @@ public static class OpenRouterPremiumEvidenceModule
             return OpenRouterPremiumResponseParser.Parse(response.BodySpan, response.StatusCode, profile,
                 slotIndex, slot.ScenarioId, slot.PromptDigestSha256, requestDigest);
         }
-        catch (OpenRouterPremiumEvidenceException)
+        catch (OpenRouterPremiumEvidenceException exception)
         {
             string digest = response.ResponseByteCount == 0 ? new string('0', 64) : OpenRouterPremiumCanonical.Digest(response.BodySpan);
             return OpenRouterPremiumResponseParser.Unknown(slotIndex, slot.ScenarioId, slot.PromptDigestSha256,
-                requestDigest, digest, "provider_response_rejected");
+                requestDigest, digest, OpenRouterPremiumResponseParser.ToRejectedOutcomeCode(exception));
         }
     }
 
