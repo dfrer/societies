@@ -1,4 +1,5 @@
 using System.Buffers;
+using System.Collections.Concurrent;
 using System.Net;
 using System.Net.Sockets;
 using System.Runtime.InteropServices;
@@ -18,8 +19,11 @@ public sealed class OllamaBenchmarkRunnerTests
         LocalModelBenchmarkPlan plan = ValidPlan();
         OllamaRuntimeAuthorization runtime = ValidRuntime();
         SequenceVramProbe probe = new(index => index == 1 ? 6900 : index == 2 ? 5120 : 6144);
-        FakeTransport transport = SuccessTransport(plan, runtime);
-        OllamaBenchmarkRunner runner = new(transport, probe, new FixedStepClock());
+        FakeTransport transport = SuccessTransport(plan, runtime, coordinatePostResponseToVramSample: true);
+        OllamaBenchmarkRunner runner = new(
+            transport,
+            transport.CoordinatePostResponsesWith(probe),
+            new FixedStepClock());
 
         OllamaBenchmarkRunResult result = await runner.RunAsync(plan, Capability(plan, runtime));
 
@@ -78,11 +82,11 @@ public sealed class OllamaBenchmarkRunnerTests
             return request.Method == HttpMethod.Get
                 ? JsonResponse(request.RequestUri, tagsJson)
                 : JsonResponse(request.RequestUri, ValidGenerate(runtime.RuntimeModelReference));
-        });
+        }, coordinatePostResponseToVramSample: true);
 
         OllamaBenchmarkRunResult result = await new OllamaBenchmarkRunner(
             transport,
-            new SequenceVramProbe(_ => 1000),
+            transport.CoordinatePostResponsesWith(new SequenceVramProbe(_ => 1000)),
             new FixedStepClock()).RunAsync(plan, Capability(plan, runtime));
 
         Assert.Equal(runtime.RuntimeModelReference, result.Provenance.RuntimeModelReference);
@@ -94,8 +98,11 @@ public sealed class OllamaBenchmarkRunnerTests
     {
         LocalModelBenchmarkPlan plan = ValidPlan();
         OllamaRuntimeAuthorization runtime = ValidRuntime();
-        FakeTransport transport = SuccessTransport(plan, runtime);
-        OllamaBenchmarkRunner runner = new(transport, new SequenceVramProbe(_ => 1000), new FixedStepClock());
+        FakeTransport transport = SuccessTransport(plan, runtime, coordinatePostResponseToVramSample: true);
+        OllamaBenchmarkRunner runner = new(
+            transport,
+            transport.CoordinatePostResponsesWith(new SequenceVramProbe(_ => 1000)),
+            new FixedStepClock());
 
         await Assert.ThrowsAsync<ArgumentNullException>(() => runner.RunAsync(plan, null!));
         Assert.Equal(0, transport.CallCount);
@@ -166,11 +173,11 @@ public sealed class OllamaBenchmarkRunnerTests
         {
             RuntimeModelReference = "qwen3.5:4b-q4_K_M"
         };
-        FakeTransport transport = SuccessTransport(plan, runtime);
+        FakeTransport transport = SuccessTransport(plan, runtime, coordinatePostResponseToVramSample: true);
 
         OllamaBenchmarkRunResult result = await new OllamaBenchmarkRunner(
             transport,
-            new SequenceVramProbe(_ => 1000),
+            transport.CoordinatePostResponsesWith(new SequenceVramProbe(_ => 1000)),
             new FixedStepClock()).RunAsync(plan, Capability(plan, runtime));
 
         Assert.Equal(runtime.RuntimeModelReference, result.Provenance.RuntimeModelReference);
@@ -305,10 +312,13 @@ public sealed class OllamaBenchmarkRunnerTests
             return request.Method == HttpMethod.Get
                 ? JsonResponse(request.RequestUri, ValidTags(runtime))
                 : JsonResponse(request.RequestUri, generateJson);
-        });
+        }, coordinatePostResponseToVramSample: true);
 
         LocalModelBenchmarkException exception = await Assert.ThrowsAsync<LocalModelBenchmarkException>(() =>
-            new OllamaBenchmarkRunner(transport, new SequenceVramProbe(_ => 1000), new FixedStepClock())
+            new OllamaBenchmarkRunner(
+                transport,
+                transport.CoordinatePostResponsesWith(new SequenceVramProbe(_ => 1000)),
+                new FixedStepClock())
                 .RunAsync(plan, Capability(plan, runtime)));
 
         Assert.Equal(expectedCode, exception.Code);
@@ -364,10 +374,13 @@ public sealed class OllamaBenchmarkRunnerTests
                     promptDuration,
                     evalDuration,
                     doneReason));
-        });
+        }, coordinatePostResponseToVramSample: true);
 
         LocalModelBenchmarkException exception = await Assert.ThrowsAsync<LocalModelBenchmarkException>(() =>
-            new OllamaBenchmarkRunner(transport, new SequenceVramProbe(_ => 1000), new FixedStepClock())
+            new OllamaBenchmarkRunner(
+                transport,
+                transport.CoordinatePostResponsesWith(new SequenceVramProbe(_ => 1000)),
+                new FixedStepClock())
                 .RunAsync(plan, Capability(plan, runtime)));
 
         Assert.Equal("response_counter_or_content_invalid", exception.Code);
@@ -387,9 +400,12 @@ public sealed class OllamaBenchmarkRunnerTests
             (new SequenceVramProbe(_ => plan.VramBudgetMiB * 0.85 + 0.001), "vram_headroom_exceeded")
         })
         {
-            FakeTransport transport = SuccessTransport(plan, runtime);
+            FakeTransport transport = SuccessTransport(plan, runtime, coordinatePostResponseToVramSample: true);
             LocalModelBenchmarkException exception = await Assert.ThrowsAsync<LocalModelBenchmarkException>(() =>
-                new OllamaBenchmarkRunner(transport, candidate.Probe, new FixedStepClock())
+                new OllamaBenchmarkRunner(
+                    transport,
+                    transport.CoordinatePostResponsesWith(candidate.Probe),
+                    new FixedStepClock())
                     .RunAsync(plan, Capability(plan, runtime)));
             Assert.Equal(candidate.Code, exception.Code);
             Assert.Equal(2, transport.CallCount);
@@ -400,16 +416,22 @@ public sealed class OllamaBenchmarkRunnerTests
             await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
             throw new InvalidOperationException("unreachable");
         });
-        FakeTransport timeoutTransport = SuccessTransport(plan, runtime);
+        FakeTransport timeoutTransport = SuccessTransport(plan, runtime, coordinatePostResponseToVramSample: true);
         LocalModelBenchmarkException timeout = await Assert.ThrowsAsync<LocalModelBenchmarkException>(() =>
-            new OllamaBenchmarkRunner(timeoutTransport, timeoutProbe, new FixedStepClock())
+            new OllamaBenchmarkRunner(
+                timeoutTransport,
+                timeoutTransport.CoordinatePostResponsesWith(timeoutProbe),
+                new FixedStepClock())
                 .RunAsync(plan, Capability(plan, runtime)));
         Assert.Equal("vram_read_timeout", timeout.Code);
         Assert.Equal(2, timeoutTransport.CallCount);
 
         SequenceVramProbe boundaryProbe = new(_ => plan.VramBudgetMiB * 0.85);
+        FakeTransport boundaryTransport = SuccessTransport(plan, runtime, coordinatePostResponseToVramSample: true);
         OllamaBenchmarkRunResult boundary = await new OllamaBenchmarkRunner(
-            SuccessTransport(plan, runtime), boundaryProbe, new FixedStepClock())
+            boundaryTransport,
+            boundaryTransport.CoordinatePostResponsesWith(boundaryProbe),
+            new FixedStepClock())
             .RunAsync(plan, Capability(plan, runtime));
         Assert.Equal(plan.VramBudgetMiB * 0.85, boundary.ObservedSampledPeakVramMiB);
         Assert.Equal(
@@ -436,17 +458,18 @@ public sealed class OllamaBenchmarkRunnerTests
             }
             if (Interlocked.Increment(ref postCount) == 1)
             {
-                await Task.Delay(2, cancellationToken);
                 return JsonResponse(request.RequestUri, ValidGenerate(runtime.RuntimeModelReference));
             }
             stalledRequestEntered.TrySetResult(true);
             return await stalledResponse.Task;
-        });
+        },
+        coordinatePostResponseToVramSample: true,
+        shouldCoordinatePostResponse: _ => Volatile.Read(ref postCount) == 0);
         SequenceVramProbe probe = new(index =>
             index <= 2 ? 1000 : plan.VramBudgetMiB * 0.85 + 0.001);
         Task<OllamaBenchmarkRunResult> run = new OllamaBenchmarkRunner(
             transport,
-            probe,
+            transport.CoordinatePostResponsesWith(probe),
             new FixedStepClock()).RunAsync(plan, Capability(plan, runtime));
         await stalledRequestEntered.Task;
 
@@ -609,7 +632,6 @@ public sealed class OllamaBenchmarkRunnerTests
             if (request.Method == HttpMethod.Get) return JsonResponse(request.RequestUri, ValidTags(runtime));
             if (Interlocked.Increment(ref postCount) == 1)
             {
-                await Task.Delay(2, cancellationToken);
                 return JsonResponse(request.RequestUri, ValidGenerate(runtime.RuntimeModelReference));
             }
             await Task.Delay(50, CancellationToken.None);
@@ -622,20 +644,25 @@ public sealed class OllamaBenchmarkRunnerTests
                 body.Length,
                 new MemoryStream(body, writable: false),
                 owner: owner);
-        });
+        },
+        coordinatePostResponseToVramSample: true,
+        shouldCoordinatePostResponse: _ => Volatile.Read(ref postCount) == 0);
         SequenceVramProbe probe = new(index =>
             index <= 2 ? 1000 : plan.VramBudgetMiB * 0.85 + 0.001);
 
         LocalModelBenchmarkException exception = await Assert.ThrowsAsync<LocalModelBenchmarkException>(() =>
-            new OllamaBenchmarkRunner(transport, probe, new FixedStepClock())
+            new OllamaBenchmarkRunner(
+                transport,
+                transport.CoordinatePostResponsesWith(probe),
+                new FixedStepClock())
                 .RunAsync(plan, Capability(plan, runtime)));
 
         Assert.Equal("vram_headroom_exceeded", exception.Code);
         Assert.True(owner.IsDisposed);
-        FakeTransport nextTransport = SuccessTransport(plan, runtime);
+        FakeTransport nextTransport = SuccessTransport(plan, runtime, coordinatePostResponseToVramSample: true);
         OllamaBenchmarkRunResult next = await new OllamaBenchmarkRunner(
             nextTransport,
-            new SequenceVramProbe(_ => 1000),
+            nextTransport.CoordinatePostResponsesWith(new SequenceVramProbe(_ => 1000)),
             new FixedStepClock()).RunAsync(plan, Capability(plan, runtime));
         Assert.True(LocalModelAdapterPreflight.ValidateBenchmarkEvidence(plan, next.Evidence).IsAccepted);
     }
@@ -653,16 +680,20 @@ public sealed class OllamaBenchmarkRunnerTests
             if (request.Method == HttpMethod.Get) return JsonResponse(request.RequestUri, ValidTags(runtime));
             if (Interlocked.Increment(ref postCount) == 1)
             {
-                await Task.Delay(2, cancellationToken);
                 return JsonResponse(request.RequestUri, ValidGenerate(runtime.RuntimeModelReference));
             }
             return await lateResponse.Task;
-        });
+        },
+        coordinatePostResponseToVramSample: true,
+        shouldCoordinatePostResponse: _ => Volatile.Read(ref postCount) == 0);
         SequenceVramProbe probe = new(index =>
             index <= 2 ? 1000 : plan.VramBudgetMiB * 0.85 + 0.001);
 
         LocalModelBenchmarkException exception = await Assert.ThrowsAsync<LocalModelBenchmarkException>(() =>
-            new OllamaBenchmarkRunner(transport, probe, new FixedStepClock())
+            new OllamaBenchmarkRunner(
+                transport,
+                transport.CoordinatePostResponsesWith(probe),
+                new FixedStepClock())
                 .RunAsync(plan, Capability(plan, runtime)));
 
         Assert.Equal("vram_headroom_exceeded", exception.Code);
@@ -795,24 +826,31 @@ public sealed class OllamaBenchmarkRunnerTests
         OllamaRuntimeAuthorization runtime = ValidRuntime();
         TaskCompletionSource<bool> releaseFirstTags = new(TaskCreationOptions.RunContinuationsAsynchronously);
         TaskCompletionSource<bool> firstTagsEntered = new(TaskCreationOptions.RunContinuationsAsynchronously);
-        FakeTransport firstTransport = SuccessTransport(plan, runtime, async (request, cancellationToken) =>
+        FakeTransport firstTransport = SuccessTransport(
+            plan,
+            runtime,
+            async (request, cancellationToken) =>
         {
             if (request.Method == HttpMethod.Get)
             {
                 firstTagsEntered.TrySetResult(true);
                 await releaseFirstTags.Task.WaitAsync(cancellationToken);
             }
-        });
-        FakeTransport secondTransport = SuccessTransport(plan, runtime);
+        }, coordinatePostResponseToVramSample: true);
+        FakeTransport secondTransport = SuccessTransport(plan, runtime, coordinatePostResponseToVramSample: true);
         FakeTransport rejectedTransport = SuccessTransport(plan, runtime);
         FixedStepClock clock = new();
         Task<OllamaBenchmarkRunResult> first = new OllamaBenchmarkRunner(
-            firstTransport, new SequenceVramProbe(_ => 1000), clock)
+            firstTransport,
+            firstTransport.CoordinatePostResponsesWith(new SequenceVramProbe(_ => 1000)),
+            clock)
             .RunAsync(plan, Capability(plan, runtime));
         await firstTagsEntered.Task;
 
         Task<OllamaBenchmarkRunResult> second = new OllamaBenchmarkRunner(
-            secondTransport, new SequenceVramProbe(_ => 1000), clock)
+            secondTransport,
+            secondTransport.CoordinatePostResponsesWith(new SequenceVramProbe(_ => 1000)),
+            clock)
             .RunAsync(plan, Capability(plan, runtime));
         LocalModelBenchmarkExecutionCapability rejectedCapability = Capability(plan, runtime);
         LocalModelBenchmarkException saturated = await Assert.ThrowsAsync<LocalModelBenchmarkException>(() =>
@@ -840,16 +878,20 @@ public sealed class OllamaBenchmarkRunnerTests
         OllamaRuntimeAuthorization runtime = ValidRuntime();
         TaskCompletionSource<bool> release = new(TaskCreationOptions.RunContinuationsAsynchronously);
         TaskCompletionSource<bool> entered = new(TaskCreationOptions.RunContinuationsAsynchronously);
-        FakeTransport holderTransport = SuccessTransport(plan, runtime, async (request, cancellationToken) =>
+        FakeTransport holderTransport = SuccessTransport(
+            plan,
+            runtime,
+            async (request, cancellationToken) =>
         {
             if (request.Method == HttpMethod.Get)
             {
                 entered.TrySetResult(true);
                 await release.Task.WaitAsync(cancellationToken);
             }
-        });
+        }, coordinatePostResponseToVramSample: true);
         Task<OllamaBenchmarkRunResult> holder = new OllamaBenchmarkRunner(
-            holderTransport, new SequenceVramProbe(_ => 1000))
+            holderTransport,
+            holderTransport.CoordinatePostResponsesWith(new SequenceVramProbe(_ => 1000)))
             .RunAsync(plan, Capability(plan, runtime));
         await entered.Task;
 
@@ -874,10 +916,10 @@ public sealed class OllamaBenchmarkRunnerTests
         release.TrySetResult(true);
         await holder;
 
-        FakeTransport afterRetirementTransport = SuccessTransport(plan, runtime);
+        FakeTransport afterRetirementTransport = SuccessTransport(plan, runtime, coordinatePostResponseToVramSample: true);
         OllamaBenchmarkRunResult afterRetirement = await new OllamaBenchmarkRunner(
             afterRetirementTransport,
-            new SequenceVramProbe(_ => 1000),
+            afterRetirementTransport.CoordinatePostResponsesWith(new SequenceVramProbe(_ => 1000)),
             new FixedStepClock()).RunAsync(plan, Capability(plan, runtime));
         Assert.Equal(2, afterRetirement.Evidence.PeakQueueDepth);
         Assert.True(LocalModelAdapterPreflight.ValidateBenchmarkEvidence(plan, afterRetirement.Evidence).IsAccepted);
@@ -893,17 +935,20 @@ public sealed class OllamaBenchmarkRunnerTests
         OllamaRuntimeAuthorization runtime = ValidRuntime();
         TaskCompletionSource<bool> entered = new(TaskCreationOptions.RunContinuationsAsynchronously);
         TaskCompletionSource<bool> release = new(TaskCreationOptions.RunContinuationsAsynchronously);
-        FakeTransport holderTransport = SuccessTransport(plan, runtime, async (request, cancellationToken) =>
+        FakeTransport holderTransport = SuccessTransport(
+            plan,
+            runtime,
+            async (request, cancellationToken) =>
         {
             if (request.Method == HttpMethod.Get)
             {
                 entered.TrySetResult(true);
                 await release.Task.WaitAsync(cancellationToken);
             }
-        });
+        }, coordinatePostResponseToVramSample: true);
         Task<OllamaBenchmarkRunResult> holder = new OllamaBenchmarkRunner(
             holderTransport,
-            new SequenceVramProbe(_ => 1000),
+            holderTransport.CoordinatePostResponsesWith(new SequenceVramProbe(_ => 1000)),
             new FixedStepClock()).RunAsync(plan, Capability(plan, runtime));
         await entered.Task;
 
@@ -948,10 +993,13 @@ public sealed class OllamaBenchmarkRunnerTests
                 "application/json",
                 body.Length,
                 new MemoryStream(body, writable: false));
-        });
+        }, coordinatePostResponseToVramSample: true);
 
         LocalModelBenchmarkException exception = await Assert.ThrowsAsync<LocalModelBenchmarkException>(() =>
-            new OllamaBenchmarkRunner(transport, new SequenceVramProbe(_ => 1000), new FixedStepClock())
+            new OllamaBenchmarkRunner(
+                transport,
+                transport.CoordinatePostResponsesWith(new SequenceVramProbe(_ => 1000)),
+                new FixedStepClock())
                 .RunAsync(plan, Capability(plan, runtime)));
 
         Assert.Equal("http_status_rejected", exception.Code);
@@ -1322,15 +1370,15 @@ public sealed class OllamaBenchmarkRunnerTests
     private static FakeTransport SuccessTransport(
         LocalModelBenchmarkPlan plan,
         OllamaRuntimeAuthorization runtime,
-        Func<LocalModelBenchmarkTransportRequest, CancellationToken, Task>? before = null) =>
+        Func<LocalModelBenchmarkTransportRequest, CancellationToken, Task>? before = null,
+        bool coordinatePostResponseToVramSample = false) =>
         new(async (request, cancellationToken) =>
         {
             if (before is not null) await before(request, cancellationToken);
-            if (request.Method == HttpMethod.Post) await Task.Delay(2, cancellationToken);
             return request.Method == HttpMethod.Get
                 ? JsonResponse(request.RequestUri, ValidTags(runtime))
                 : JsonResponse(request.RequestUri, ValidGenerate(runtime.RuntimeModelReference));
-        });
+        }, coordinatePostResponseToVramSample: coordinatePostResponseToVramSample);
 
     private static LocalModelBenchmarkTransportResponse JsonResponse(Uri requestUri, string json)
     {
@@ -1405,13 +1453,21 @@ public sealed class OllamaBenchmarkRunnerTests
         private readonly object _gate = new();
         private readonly Func<LocalModelBenchmarkTransportRequest, CancellationToken, Task<LocalModelBenchmarkTransportResponse>> _handler;
         private readonly List<LocalModelBenchmarkTransportRequest> _requests = new();
+        private readonly PostResponseVramSampleCoordinator? _postResponseVramSampleCoordinator;
+        private readonly Func<LocalModelBenchmarkTransportRequest, bool>? _shouldCoordinatePostResponse;
 
         internal FakeTransport(
             Func<LocalModelBenchmarkTransportRequest, CancellationToken, Task<LocalModelBenchmarkTransportResponse>> handler,
-            int boundOllamaProcessId = 4242)
+            int boundOllamaProcessId = 4242,
+            bool coordinatePostResponseToVramSample = false,
+            Func<LocalModelBenchmarkTransportRequest, bool>? shouldCoordinatePostResponse = null)
         {
             _handler = handler;
             BoundOllamaProcessId = boundOllamaProcessId;
+            _postResponseVramSampleCoordinator = coordinatePostResponseToVramSample
+                ? new PostResponseVramSampleCoordinator()
+                : null;
+            _shouldCoordinatePostResponse = shouldCoordinatePostResponse;
         }
 
         public int BoundOllamaProcessId { get; }
@@ -1432,6 +1488,12 @@ public sealed class OllamaBenchmarkRunnerTests
             }
         }
 
+        internal ILocalModelBenchmarkVramProbe CoordinatePostResponsesWith(
+            ILocalModelBenchmarkVramProbe probe) =>
+            _postResponseVramSampleCoordinator is null
+                ? throw new InvalidOperationException("POST response coordination was not enabled for this fake transport.")
+                : new CoordinatedVramProbe(probe, _postResponseVramSampleCoordinator);
+
         public ValueTask<LocalModelBenchmarkTransportResponse> SendAsync(
             LocalModelBenchmarkTransportRequest request,
             CancellationToken cancellationToken)
@@ -1441,7 +1503,107 @@ public sealed class OllamaBenchmarkRunnerTests
                 request.RequestUri,
                 request.BodyUtf8.ToArray());
             lock (_gate) _requests.Add(captured);
+            if (request.Method == HttpMethod.Post
+                && _postResponseVramSampleCoordinator is not null
+                && (_shouldCoordinatePostResponse is null || _shouldCoordinatePostResponse(request)))
+            {
+                return new ValueTask<LocalModelBenchmarkTransportResponse>(
+                    _postResponseVramSampleCoordinator.RunPostAsync(
+                        () => _handler(request, cancellationToken),
+                        cancellationToken));
+            }
             return new ValueTask<LocalModelBenchmarkTransportResponse>(_handler(request, cancellationToken));
+        }
+    }
+
+    /// <summary>
+    /// Test-only handshake: every coordinated fake POST remains pending until the runner has completed
+    /// one probe read for it. Without this pairing, early response completion can produce zero samples,
+    /// while delayed task visibility can admit an extra sample. The handshake models the production
+    /// invariant without relying on scheduler yields or elapsed time.
+    /// </summary>
+    private sealed class PostResponseVramSampleCoordinator
+    {
+        private readonly ConcurrentQueue<PendingPostResponse> _pending = new();
+
+        internal Task<LocalModelBenchmarkTransportResponse> RunPostAsync(
+            Func<Task<LocalModelBenchmarkTransportResponse>> handler,
+            CancellationToken cancellationToken)
+        {
+            PendingPostResponse pending = new();
+            _pending.Enqueue(pending);
+            _ = CompletePostAsync(pending, handler, cancellationToken);
+            return pending.Response.Task;
+        }
+
+        internal async ValueTask CompleteNextProbeAsync(CancellationToken cancellationToken)
+        {
+            if (!_pending.TryPeek(out PendingPostResponse? pending)) return;
+            pending.ProbeCompleted.TrySetResult(true);
+            await pending.ResponseReleased.Task.WaitAsync(cancellationToken);
+            if (!_pending.TryDequeue(out PendingPostResponse? released) || !ReferenceEquals(released, pending))
+            {
+                throw new InvalidOperationException("Coordinated fake POST response order changed.");
+            }
+        }
+
+        private static async Task CompletePostAsync(
+            PendingPostResponse pending,
+            Func<Task<LocalModelBenchmarkTransportResponse>> handler,
+            CancellationToken cancellationToken)
+        {
+            try
+            {
+                LocalModelBenchmarkTransportResponse response = await handler();
+                await pending.ProbeCompleted.Task.WaitAsync(cancellationToken);
+                pending.Response.TrySetResult(response);
+            }
+            catch (OperationCanceledException exception) when (cancellationToken.IsCancellationRequested)
+            {
+                pending.Response.TrySetCanceled(exception.CancellationToken);
+            }
+            catch (Exception exception)
+            {
+                pending.Response.TrySetException(exception);
+            }
+            finally
+            {
+                pending.ResponseReleased.TrySetResult(true);
+            }
+        }
+
+        private sealed class PendingPostResponse
+        {
+            internal TaskCompletionSource<bool> ProbeCompleted { get; } =
+                new(TaskCreationOptions.RunContinuationsAsynchronously);
+            internal TaskCompletionSource<LocalModelBenchmarkTransportResponse> Response { get; } =
+                new(TaskCreationOptions.RunContinuationsAsynchronously);
+            internal TaskCompletionSource<bool> ResponseReleased { get; } =
+                new(TaskCreationOptions.RunContinuationsAsynchronously);
+        }
+    }
+
+    private sealed class CoordinatedVramProbe : ILocalModelBenchmarkVramProbe
+    {
+        private readonly ILocalModelBenchmarkVramProbe _inner;
+        private readonly PostResponseVramSampleCoordinator _coordinator;
+
+        internal CoordinatedVramProbe(
+            ILocalModelBenchmarkVramProbe inner,
+            PostResponseVramSampleCoordinator coordinator)
+        {
+            _inner = inner;
+            _coordinator = coordinator;
+        }
+
+        public async ValueTask<LocalModelVramReading> ReadAsync(
+            LocalModelBenchmarkPlan plan,
+            OllamaRuntimeAuthorization runtime,
+            CancellationToken cancellationToken)
+        {
+            LocalModelVramReading reading = await _inner.ReadAsync(plan, runtime, cancellationToken);
+            await _coordinator.CompleteNextProbeAsync(cancellationToken);
+            return reading;
         }
     }
 

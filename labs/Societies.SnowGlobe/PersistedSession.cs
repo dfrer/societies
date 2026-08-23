@@ -1,7 +1,7 @@
 namespace Societies.SnowGlobe;
 
 /// <summary>
-/// Mutable local session over one v3 append-only run. The durable ledger is authoritative; the
+/// Mutable local session over one v4 append-only run. The durable ledger is authoritative; the
 /// owned world is replaced from an independent strict read/reconstruction after every mutation.
 /// </summary>
 public sealed class SnowGlobePersistedSession : IDisposable
@@ -84,11 +84,11 @@ public sealed class SnowGlobePersistedSession : IDisposable
         ArgumentNullException.ThrowIfNull(inference);
         ValidateAdapterProvenance(expectedIdentity, inference);
 
-        // The preflight is read-only. In particular, v2 is rejected before OpenForAppend can
+        // The preflight is read-only. In particular, legacy v2/v3 is rejected before OpenForAppend can
         // acquire/create a writer lease artifact.
         SnowGlobeRunLedger preflight = SnowGlobeRunStore.Read(directory);
         if (preflight.Identity.SchemaVersion != SnowGlobeRunStore.SchemaVersion)
-            throw new InvalidDataException("Legacy v2 run stores are read-only and cannot back a mutable session.");
+            throw new InvalidDataException("Legacy v2/v3 run stores are read-only and cannot back a mutable session.");
         if (preflight.Identity != expectedIdentity)
             throw new InvalidDataException("Recorded run identity does not match the exact expected session identity.");
 

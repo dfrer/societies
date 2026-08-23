@@ -168,6 +168,26 @@ Statuses: **Open**, **Monitoring**, **Resolved**, **Deferred**, **Rejected**.
 
 ## Resolved entries
 
+### WI-SOCIETIES-2026-011 — Ollama benchmark tests used scheduler timing as an in-flight sampling contract
+
+- **Tier:** T1
+- **Status:** Resolved
+- **Scope/project:** `C:\Users\hunte\.codex\worktrees\b452\societies`; Snow Globe .NET validation
+- **Category:** validation
+- **First seen:** 2026-08-22 (America/Vancouver)
+- **Last seen:** 2026-08-22 (America/Vancouver)
+- **Occurrences:** 1 aggregate Snow Globe Release validation
+- **Reporter:** main orchestrator and `bugfix_worker`
+- **Symptom:** The full Snow Globe suite intermittently reported `inflight_vram_sample_unavailable` instead of the expected parser rejection, counted 13 VRAM samples instead of 12, and could stall, while the full Ollama benchmark class passed 76/76 in isolation.
+- **Impact:** Aggregate validation could not provide a trustworthy completion result until the test harness was made deterministic. Production model, provider, network, and sampling behavior were unaffected.
+- **Evidence:** The original aggregate run produced the two mismatched expectations. After the test-only repair, the seven original regressions passed five consecutive runs, the affected set passed 14/14, the full Ollama class passed 76/76, and the full Snow Globe Release suite passed 920/920 without hanging.
+- **Workaround:** The repair replaces scheduler yields and elapsed-time assumptions with an opt-in per-POST/probe handshake in the fake transport and probe.
+- **Root cause:** Tests used `Task.Yield` or a two-millisecond delay to imply that exactly one VRAM probe completed while a fake POST remained pending; parallel suite scheduling could produce zero or two samples.
+- **Proposed fix:** Completed. Keep production behavior unchanged and coordinate only the affected fake POST/probe pairs with explicit asynchronous signals.
+- **Auto-fix eligibility/rationale:** No — T1 aggregate validation correctness required a focused regression repair and full replacement gate.
+- **Resolution/validation:** Resolved. Focused regressions passed 7/7 five times; affected coverage passed 14/14; the class passed 76/76; the full Snow Globe Release suite passed 920/920; the Release build passed with 0 warnings and 0 errors; diff checks are clean.
+- **Linked entry:** WI-GLOBAL-2026-130 in `C:\Users\hunte\Documents\Codex\WORKFLOW_ISSUES.md`.
+
 ### WI-SOCIETIES-2026-010 — OpenRouter readiness omitted the preserved one-shot state-generation blocker
 
 - **Tier:** T1

@@ -1,6 +1,37 @@
 # Snow Globe provider preflight, Ollama repair, and qwen3.5 smoke handoff
 
-## Current Snow Globe RunStore v4 recovery handoff
+## Current Snow Globe persisted-session v4 recovery conformance handoff
+
+### Outcome and scope
+
+- The unchanged public `SnowGlobePersistedSession.Reopen` path now proves RunStore v4 recovery at the session boundary; the internal filesystem adapter is confined to deterministic artifact construction.
+- Six adversarial tests cover nonempty authenticated-prefix abandonment, complete-payload adoption only after a durable continuation, unchanged original bytes, exact reconstructed snapshots, idempotent participant receipts, continued progress, repeat-reopen stability, malformed residue rejection before writer ownership, and the one-recovery/no-third-segment bound.
+- No new public or internal session recovery overload was added. Recovery remains owned by the RunStore module; legacy v2/v3 sessions remain read-only and are rejected before writer ownership.
+- The full gate exposed a scheduler-sensitive race in Ollama benchmark test fakes. A test-only per-POST/probe handshake now guarantees one in-flight sample for each successful request without changing production inference, provider, network, or sampling behavior.
+
+### Changed files
+
+- Session conformance and wording: `tests/Societies.SnowGlobe.Tests/PersistedSessionV4RecoveryTests.cs`, `labs/Societies.SnowGlobe/PersistedSession.cs`, and `labs/Societies.SnowGlobe/README.md`.
+- Deterministic benchmark test harness: `tests/Societies.SnowGlobe.Tests/OllamaBenchmarkRunnerTests.cs`.
+- Repository truth and issue capture: `CURRENT_BUILD.md`, `WORKFLOW.md`, and `WORKFLOW_ISSUES.md`.
+
+### Validation and review
+
+- New session-recovery Release tests: 6/6 passed.
+- PersistedSession/RunStore Release tests: 163/163 passed.
+- Ollama benchmark tests: 76/76 passed.
+- Full Snow Globe Release tests: 920/920 passed.
+- Release build: 0 warnings / 0 errors; diff checks clean.
+- Independent recovery/determinism review: FINAL CODE GO after every P1-P3 finding was corrected.
+
+### Repository state, limitations, and next action
+
+- The resolved aggregate-test race is recorded as `WI-SOCIETIES-2026-011` and `WI-GLOBAL-2026-130`.
+- This adds conformance evidence, not a new durability mechanism. Recovery remains limited to the RunStore v4 deterministic record-boundary model; real partial filesystem writes fail closed and no power-loss or hardware-durability claim is made.
+- Delivery is pending on `feature/snowglobe-session-v4-recovery-conformance`; after the required GitHub check and merge, record the exact delivery evidence.
+- No provider, credential, payment, live-state, or `src/societies/` behavior changed.
+
+## Prior Snow Globe RunStore v4 recovery handoff
 
 ### Outcome and scope
 
