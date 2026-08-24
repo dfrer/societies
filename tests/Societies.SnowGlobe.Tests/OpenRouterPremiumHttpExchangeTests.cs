@@ -207,15 +207,22 @@ public sealed class OpenRouterPremiumHttpExchangeTests
     }
 
     [Fact]
-    public void SuccessRequiresExactRoutingUsageAndProposalBinding()
+    public void SuccessRequiresExactRoutingUsageAndTheSharedProposalContract()
     {
-        OpenRouterPremiumSlotReceipt receipt = OpenRouterPremiumResponseParser.Parse(SuccessBody(), 200,
+        byte[] response = SuccessBody();
+        OpenRouterPremiumSlotReceipt receipt = OpenRouterPremiumResponseParser.Parse(response, 200,
             OpenRouterPremiumProfileRegistry.Selected, "cq1", new string('d', 64));
         Assert.Equal(SubmissionState.ResponseReceived, receipt.SubmissionState);
         Assert.Equal(ChargeState.Settled, receipt.ChargeState);
         Assert.Equal(44, receipt.SettledMicrousd);
         Assert.Equal(120, receipt.TotalTokens);
         Assert.Equal(new SnowGlobeActionProposal("agent-00", SnowGlobeActionKind.GatherWood, 12), receipt.Proposal);
+        using JsonDocument document = JsonDocument.Parse(response);
+        byte[] content = Encoding.UTF8.GetBytes(document.RootElement.GetProperty("choices")[0].GetProperty("message").GetProperty("content").GetString()!);
+        CognitionQualityProposalResponseParseResult shared = CognitionQualityProposalResponseContract.Parse(content);
+        Assert.Equal(CognitionQualityRecordedResponseRunnerModule.ProposalSchemaVersion, CognitionQualityProposalResponseContract.SchemaVersion);
+        Assert.Equal("proposal_parsed", shared.Outcome);
+        Assert.Equal(receipt.Proposal, shared.Proposal);
     }
 
     [Fact]

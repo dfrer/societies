@@ -19,6 +19,7 @@ public sealed class OllamaRecordingCliTests : IDisposable
         int exit = await RecordingProgram.RunAsync(["preflight", "--repository-root", _root, "--pid", "777", "--start-utc-ticks", StartTicks.ToString(), "--nonce", nonce], output, error);
         Assert.Equal(0, exit); Assert.Empty(error.ToString()); Assert.Contains("PREFLIGHT_ACCEPTED", output.ToString(), StringComparison.Ordinal);
         Assert.Contains("io_performed=false", output.ToString(), StringComparison.Ordinal); Assert.Contains("live_authorized=false", output.ToString(), StringComparison.Ordinal);
+        Assert.Contains("artifact=artifacts/snowglobe/local-model/qwen3.5-4b-recording-execution-v5.json", output.ToString(), StringComparison.Ordinal);
         Assert.DoesNotContain(nonce, output.ToString(), StringComparison.Ordinal); Assert.DoesNotContain(_root, output.ToString(), StringComparison.OrdinalIgnoreCase);
         Assert.False(Directory.Exists(_root));
     }

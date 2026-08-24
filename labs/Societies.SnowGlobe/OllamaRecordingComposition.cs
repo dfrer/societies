@@ -71,7 +71,7 @@ public sealed class OllamaRecordingCompositionPlan
         return ReferenceEquals(_owner, owner) ? PlanConsumeResult.Consumed : PlanConsumeResult.BindingMismatch;
     }
 
-    public string SchemaVersion => "snow_globe_ollama_recording_composition_plan/v4";
+    public string SchemaVersion => SnowGlobeOllamaRecordingCompositionModule.PlanSchemaVersion;
     public string RelativeArtifactPath => OllamaRecordingExecutionArtifactModule.RelativeArtifactPath;
     public string RegisteredCellDigestSha256 => SnowGlobePinnedOllamaRecordingModule.RegisteredCellDigestSha256;
     public string ProfileDigestSha256 => SnowGlobePinnedOllamaRecordingModule.ProfileDigestSha256;
@@ -127,6 +127,8 @@ public sealed class OllamaRecordingCompositionResult
 public sealed class SnowGlobeOllamaRecordingCompositionModule
 {
     public const string PromptRevision = "prompt-v1";
+    internal const string PlanSchemaVersion = "snow_globe_ollama_recording_composition_plan/v5";
+    internal const string LegacyPlanSchemaVersion = "snow_globe_ollama_recording_composition_plan/v4";
     private readonly string _absoluteRepositoryRoot;
     private readonly string _repositoryRootDigestSha256;
     private readonly SnowGlobePinnedOllamaRecordingModule? _injectedInnerModule;
@@ -173,14 +175,19 @@ public sealed class SnowGlobeOllamaRecordingCompositionModule
             SnowGlobePinnedOllamaRecordingModule.CanonicalEndpointIdentity,
             runtime.ProcessId);
         string nonceDigest = CognitionQualityRecordingSessionCanonical.Digest(authorizationNonce);
-        string planDigest = ComputePlanDigest(publication, provenance, binding, _repositoryRootDigestSha256, nonceDigest);
+        string planDigest = ComputePlanDigest(publication, provenance, binding, _repositoryRootDigestSha256, nonceDigest,
+            PlanSchemaVersion, OllamaRecordingExecutionArtifactModule.RelativeArtifactPath);
         return new OllamaRecordingCompositionPlan(this, publication, provenance, binding, authorizationNonce, nonceDigest, _repositoryRootDigestSha256, planDigest);
     }
 
     internal static string ComputePlanDigest(CognitionQualityPromptEnvelopePublication publication, CognitionQualityExecutionProvenance provenance, OllamaLoopbackRuntimeBinding binding, string repositoryRootDigestSha256, string nonceDigest) =>
+        ComputePlanDigest(publication, provenance, binding, repositoryRootDigestSha256, nonceDigest,
+            PlanSchemaVersion, OllamaRecordingExecutionArtifactModule.RelativeArtifactPath);
+
+    internal static string ComputePlanDigest(CognitionQualityPromptEnvelopePublication publication, CognitionQualityExecutionProvenance provenance, OllamaLoopbackRuntimeBinding binding, string repositoryRootDigestSha256, string nonceDigest, string planSchemaVersion, string relativeArtifactPath) =>
         CognitionQualityRecordingSessionCanonical.Digest(string.Join('|',
-            "snow_globe_ollama_recording_composition_plan/v4",
-            OllamaRecordingExecutionArtifactModule.RelativeArtifactPath,
+            planSchemaVersion,
+            relativeArtifactPath,
             SnowGlobePinnedOllamaRecordingModule.RegisteredCellDigestSha256,
             SnowGlobePinnedOllamaRecordingModule.ProfileDigestSha256,
             SnowGlobePinnedOllamaRecordingModule.AdapterIdentity,

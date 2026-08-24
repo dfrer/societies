@@ -729,7 +729,11 @@ internal static class OpenRouterPremiumResponseParser
             _ => false
         };
         if (!shape) throw Rejected(ParserRejection.proposal_content_invalid);
-        return new(agent, action, amount);
+        CognitionQualityProposalResponseParseResult shared = CognitionQualityProposalResponseContract.Parse(content);
+        if (shared.Outcome != "proposal_parsed" || shared.Proposal is not { } proposal
+            || proposal.AgentId != agent || proposal.Action != action || proposal.Quantity != amount)
+            throw Rejected(ParserRejection.proposal_content_invalid);
+        return proposal;
     }
 
     private static (int Prompt, int Completion, int Total, long Cost) ParseUsage(JsonElement root, OpenRouterPremiumProfile profile)

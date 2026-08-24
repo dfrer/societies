@@ -10,6 +10,25 @@ public sealed class OllamaRecordingArtifactStoreTests : IDisposable
     private readonly string _root = Path.Combine(Path.GetTempPath(), "societies-recording-store-" + Guid.NewGuid().ToString("N"));
 
     [Fact]
+    public void CurrentReservationNeverOverwritesTheHistoricalV4ArtifactPath()
+    {
+        if (!OperatingSystem.IsWindows()) return;
+        CreateRepositoryMarkers();
+        string legacyPath = Path.Combine(_root, OllamaRecordingExecutionArtifactModule.LegacyRelativeArtifactPath.Replace('/', Path.DirectorySeparatorChar));
+        Directory.CreateDirectory(Path.GetDirectoryName(legacyPath)!);
+        byte[] historical = "immutable-historical-v4-evidence"u8.ToArray();
+        File.WriteAllBytes(legacyPath, historical);
+
+        FileOllamaRecordingArtifactStore store = new();
+        byte[] current = "new-v5-evidence"u8.ToArray();
+        using (IOllamaRecordingArtifactReservation reservation = store.Reserve(_root, OllamaRecordingExecutionArtifactModule.RelativeArtifactPath))
+            Assert.Equal(current, reservation.PublishAndReadBack(current, 1024));
+
+        Assert.Equal(historical, File.ReadAllBytes(legacyPath));
+        Assert.True(File.Exists(Path.Combine(_root, OllamaRecordingExecutionArtifactModule.RelativeArtifactPath.Replace('/', Path.DirectorySeparatorChar))));
+    }
+
+    [Fact]
     public void ReserveCreatesFixedAncestorsAndDurableExactReadbackWithoutOverwrite()
     {
         if (!OperatingSystem.IsWindows()) return;

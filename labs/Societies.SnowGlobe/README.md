@@ -114,6 +114,10 @@ The unchanged `OfflinePinnedOllamaRecordingFixture` and `CognitionQualityRecordi
 
 A standalone, headless research toy for proving agent-infrastructure choices before they enter the Godot runtime. It is intentionally isolated from `src/societies/`. The lab contains a production-capable Ollama benchmark boundary; the frozen qwen3.5:4b compatibility cell completed with canonical metrics evidence, while general intelligence, quality, and production readiness remain unproven.
 
+The current provider-completion slice gives both Ollama and OpenRouter one shared deterministic parser for the strict `snow_globe_cognition_quality_proposal_response/v1` response payload. Fresh local recordings publish additively as `snow_globe_ollama_recording_execution_artifact/v5` at `artifacts/snowglobe/local-model/qwen3.5-4b-recording-execution-v5.json`; the frozen v4 path remains strict read-only compatibility evidence. Historical v4 local-comparison output remains exact comparison/v2, while v5 uses additive comparison/v3. OpenRouter provider, finish, cost, security, and evidence admission remain outside the shared proposal parser and unchanged.
+
+One governed local v5 recording completed against the exact registered Ollama 0.32.14 loopback cell: 12/12 proposals accepted, zero retries/fallbacks/alternates, artifact SHA-256 `448af70b6ac262e67ddd0a6da3c76174d15faf0a2c771e2ca7a57bffb596cf57`, receipt SHA-256 `835dda47c070d60fb29376b7a51c321be8b82a5e9d63c471f9e3e1fca3a0a8b`. This is raw-free bounded local compatibility evidence, not zero-cost, general quality, deployment, or world-authority evidence. The separately authorized OpenRouter live generation remains unconsumed at this checkpoint.
+
 ## Architecture
 
 - `SnowGlobeWorld` owns persistent agent records, resources, stockpiles, structures, event history, validation, commit, and deterministic digests.

@@ -19,11 +19,13 @@ public sealed class OllamaRecordingCompositionTests
         SnowGlobeOllamaRecordingCompositionModule first = new(Root); SnowGlobeOllamaRecordingCompositionModule second = new(Root);
         OllamaRecordingCompositionPlan a = first.Prepare(new(777, StartTicks), "composition-nonce-v1");
         OllamaRecordingCompositionPlan b = second.Prepare(new(777, StartTicks), "composition-nonce-v1");
-        Assert.Equal("a2eb8e5a0eeb9254fead81b0b9f31c6eaf71affab6e3491395355c54c637c802", a.PlanDigestSha256);
-        Assert.Equal("snow_globe_ollama_recording_composition_plan/v4", a.SchemaVersion);
+        Assert.Equal("21382ea363bf7d2a56b58200c2ae166a4674413403bc2b912369b55b39d8486f", a.PlanDigestSha256);
+        Assert.Equal("snow_globe_ollama_recording_composition_plan/v5", a.SchemaVersion);
         Assert.Equal(a.PlanDigestSha256, b.PlanDigestSha256);
         Assert.Equal(OllamaRecordingExecutionArtifactModule.RelativeArtifactPath, a.RelativeArtifactPath);
-        Assert.Equal("artifacts/snowglobe/local-model/qwen3.5-4b-recording-execution-v4.json", a.RelativeArtifactPath);
+        Assert.Equal("artifacts/snowglobe/local-model/qwen3.5-4b-recording-execution-v5.json", a.RelativeArtifactPath);
+        Assert.Equal("artifacts/snowglobe/local-model/qwen3.5-4b-recording-execution-v4.json", OllamaRecordingExecutionArtifactModule.LegacyRelativeArtifactPath);
+        Assert.NotEqual(OllamaRecordingExecutionArtifactModule.LegacyRelativeArtifactPath, a.RelativeArtifactPath);
         Assert.DoesNotContain("recording-execution-v1", a.RelativeArtifactPath, StringComparison.Ordinal);
         Assert.DoesNotContain("recording-execution-v2", a.RelativeArtifactPath, StringComparison.Ordinal);
         Assert.Equal(SnowGlobePinnedOllamaRecordingModule.RegisteredCellDigestSha256, a.RegisteredCellDigestSha256);

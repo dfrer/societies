@@ -41,6 +41,8 @@ public sealed class OllamaRecordingExecutionArtifact
     internal OllamaRecordingExecutionArtifact(
         byte[] canonicalUtf8,
         string payloadDigestSha256,
+        string schemaVersion,
+        string relativeArtifactPath,
         string repositoryRootDigestSha256,
         string compositionOutcomeCode,
         string compositionFailureCode,
@@ -64,6 +66,8 @@ public sealed class OllamaRecordingExecutionArtifact
         _canonicalUtf8 = canonicalUtf8.ToArray();
         PayloadDigestSha256 = payloadDigestSha256;
         CanonicalDigestSha256 = CognitionQualityHash.Sha256(_canonicalUtf8);
+        SchemaVersion = schemaVersion;
+        RelativeArtifactPath = relativeArtifactPath;
         RepositoryRootDigestSha256 = repositoryRootDigestSha256;
         OutcomeCode = compositionOutcomeCode;
         FailureCode = compositionFailureCode;
@@ -86,9 +90,9 @@ public sealed class OllamaRecordingExecutionArtifact
         ScoreSummaryDigestSha256 = ScoreSummary?.CanonicalDigestSha256;
     }
 
-    public string SchemaVersion => OllamaRecordingExecutionArtifactModule.SchemaVersion;
+    public string SchemaVersion { get; }
     public string Semantics => OllamaRecordingExecutionArtifactModule.Semantics;
-    public string RelativeArtifactPath => OllamaRecordingExecutionArtifactModule.RelativeArtifactPath;
+    public string RelativeArtifactPath { get; }
     public string RepositoryRootDigestSha256 { get; }
     public string PayloadDigestSha256 { get; }
     public string CanonicalDigestSha256 { get; }
@@ -143,9 +147,11 @@ internal sealed record OllamaRecordingArtifactSnapshot(
 /// <summary>Pure canonical writer/validator for the fixed raw-free recording artifact.</summary>
 public static class OllamaRecordingExecutionArtifactModule
 {
-    public const string SchemaVersion = "snow_globe_ollama_recording_execution_artifact/v4";
+    public const string SchemaVersion = "snow_globe_ollama_recording_execution_artifact/v5";
+    public const string LegacySchemaVersion = "snow_globe_ollama_recording_execution_artifact/v4";
     public const string Semantics = "raw_free_local_loopback_recording_execution_binding_only";
-    public const string RelativeArtifactPath = "artifacts/snowglobe/local-model/qwen3.5-4b-recording-execution-v4.json";
+    public const string RelativeArtifactPath = "artifacts/snowglobe/local-model/qwen3.5-4b-recording-execution-v5.json";
+    public const string LegacyRelativeArtifactPath = "artifacts/snowglobe/local-model/qwen3.5-4b-recording-execution-v4.json";
     public const int MaximumArtifactBytes = 128 * 1024;
     public const int MaximumJsonDepth = 8;
 
@@ -244,10 +250,19 @@ public static class OllamaRecordingExecutionArtifactModule
             JsonElement root = document.RootElement;
             RequireCanonicalScalarEncoding(root);
             RequireObjectAndOrder(root, OuterNames, "artifact_shape_invalid");
-            RequireString(root, "schema_version", SchemaVersion);
+            string schemaVersion = root.GetProperty("schema_version").ValueKind == JsonValueKind.String
+                ? root.GetProperty("schema_version").GetString() ?? string.Empty
+                : string.Empty;
+            (string relativeArtifactPath, string planSchemaVersion) = schemaVersion switch
+            {
+                SchemaVersion => (RelativeArtifactPath, SnowGlobeOllamaRecordingCompositionModule.PlanSchemaVersion),
+                LegacySchemaVersion => (LegacyRelativeArtifactPath, SnowGlobeOllamaRecordingCompositionModule.LegacyPlanSchemaVersion),
+                _ => throw Failure("artifact_value_invalid")
+            };
+            RequireString(root, "schema_version", schemaVersion);
             RequireString(root, "semantics", Semantics);
             RequireString(root, "artifact_status", "structurally_complete");
-            RequireString(root, "relative_artifact_path", RelativeArtifactPath);
+            RequireString(root, "relative_artifact_path", relativeArtifactPath);
             RequireDigest(root, "repository_root_digest_sha256");
             string repositoryRootDigest = root.GetProperty("repository_root_digest_sha256").GetString()!;
             if (expectedRepositoryRootDigestSha256 is not null
@@ -280,7 +295,9 @@ public static class OllamaRecordingExecutionArtifactModule
             OllamaLoopbackRuntimeBinding expectedBinding = new(processId, startTicks, SnowGlobePinnedOllamaRecordingModule.RuntimeExecutablePath, SnowGlobePinnedOllamaRecordingModule.RuntimeExecutableSha256, SnowGlobePinnedOllamaRecordingModule.CanonicalEndpointIdentity, processId);
             RequireString(root, "runtime_executable_path_digest_sha256", CognitionQualityRecordingSessionCanonical.Digest(expectedBinding.CanonicalExecutablePath));
             RequireString(root, "runtime_binding_digest_sha256", SnowGlobePinnedOllamaRecordingModule.DigestRuntimeBinding(expectedBinding));
-            RequireString(root, "plan_digest_sha256", SnowGlobeOllamaRecordingCompositionModule.ComputePlanDigest(expectedPublication, expectedProvenance, expectedBinding, repositoryRootDigest, root.GetProperty("authorization_nonce_digest_sha256").GetString()!));
+            RequireString(root, "plan_digest_sha256", SnowGlobeOllamaRecordingCompositionModule.ComputePlanDigest(
+                expectedPublication, expectedProvenance, expectedBinding, repositoryRootDigest,
+                root.GetProperty("authorization_nonce_digest_sha256").GetString()!, planSchemaVersion, relativeArtifactPath));
 
             JsonElement result = root.GetProperty("result");
             RequireObjectAndOrder(result, ResultNames, "artifact_result_shape_invalid");
@@ -376,7 +393,7 @@ public static class OllamaRecordingExecutionArtifactModule
             byte[] canonical = Canonicalize(root);
             try { if (!canonical.AsSpan().SequenceEqual(canonicalUtf8.Span)) throw Failure("artifact_noncanonical"); }
             catch { CryptographicOperations.ZeroMemory(canonical); throw; }
-            return new OllamaRecordingExecutionArtifact(canonical, payloadDigest, repositoryRootDigest,
+            return new OllamaRecordingExecutionArtifact(canonical, payloadDigest, schemaVersion, relativeArtifactPath, repositoryRootDigest,
                 compositionOutcome, compositionFailure, recordingResultPresent, recordingOutcome, recordingFailure,
                 completed, terminalSlot, submission, charge, statusCode, checkpoint, policy, receiptPresent,
                 receiptFacts.RowPresent, receiptFacts.WrapperPresent, receiptDigest, nestedDigest, scoreSummary);
