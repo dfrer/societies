@@ -1,5 +1,12 @@
 # Snow Globe provider preflight, Ollama repair, and qwen3.5 smoke handoff
 
+## Provider-routing policy implementation gate
+
+- Outcome: a pure offline `ProviderRoutingPolicyModule` validates the accepted comparison artifact and emits a bounded canonical pre-dispatch decision. `preferred_online` selects OpenRouter when ready; `local_only` selects Ollama; preferred-online fallback selects Ollama only when OpenRouter is explicitly unavailable before dispatch.
+- Safety: dispatch-started, possible/unknown submission, and completed primary states deny fallback and select no provider. Missing/malformed/asymmetric/conditional/insufficient/unsupported comparison evidence, unknown readiness, unavailable providers, and undefined inputs fail closed. Decisions carry no execution, credential, payment, network, retry, gameplay, or world authority.
+- Validation: red-first failed on the absent policy surface. Review then exposed mutable caller-memory digest/validation TOCTOU; its regression failed with five memory reads before a one-snapshot/zeroing repair. Focused Release is now 17/17, full Snow Globe Release is 1128/1128, Recording CLI is 59/59, OpenRouter CLI/security is 100/100, and three Release builds are 0 warnings/errors. No provider or live-state action occurred; `src/societies/` is unchanged.
+- Delivery state: provider/security ownership and independent deep review are FINAL GO with no unresolved P0-P3. Reviewed PR delivery is the remaining gate. One next action: merge after the required check passes.
+
 ## Cognition-quality benchmark milestone result
 
 - Outcome: the provider-neutral v1 evaluator scored both retained proposal batches through one deterministic path over the same frozen twelve scenarios. OpenRouter scored 8,341/10,000; Ollama scored 4,444/10,000. The 3,897-basis-point margin and OpenRouter's score above the 7,000 threshold produce `openrouter_default`. Ollama remains the isolated compatible local/offline fallback.

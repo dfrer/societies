@@ -1,5 +1,11 @@
 # Societies Snow Globe Lab
 
+## Provider-routing policy
+
+The lab now has a deterministic, offline-only routing policy over the accepted cognition comparison. Preferred online operation selects OpenRouter when it is ready; explicit local-only operation selects Ollama; and Ollama availability fallback is allowed only when OpenRouter is explicitly unavailable before any dispatch. Once dispatch has started or submission is possible, unknown, or complete, the policy selects no provider rather than creating a retry or alternate request.
+
+The Module returns a bounded canonical decision only. It does not probe provider availability, access credentials, reserve funds, invoke a provider, retry, write a journal, or mutate a world. See [the full routing contract](PROVIDER_ROUTING_POLICY.md).
+
 ## Cognition-quality provider selection
 
 The versioned provider-neutral comparison evaluates the accepted OpenRouter proposals and a fresh governed Ollama v6 proposal batch through the same deterministic rubric over the same twelve frozen scenarios. OpenRouter scored 8,341/10,000; Ollama scored 4,444/10,000. OpenRouter clears the 7,000 default threshold and leads by 3,897 basis points, so the automated result is `openrouter_default`. Ollama remains the compatible local/offline fallback.
