@@ -17,6 +17,16 @@ This is the only in-repo implementation that currently has:
 - a buildable C# project
 - a runnable automated validation path
 
+## Current Snow Globe OpenRouter finish-diagnostic refinement
+
+Future raw-free OpenRouter evidence now distinguishes all nine existing finish-admission failures: invalid choice index; missing, wrong-type, or non-`stop` finish reason; choice error present; wrong-type or non-`stop` native finish reason; non-null logprobs; and non-null refusal. Each condition maps through the existing terminal evidence path as `provider_response_rejected_<parser-code>` without retaining the provider value, response body, error/refusal text, exception detail, or secret. The prior short-circuit order and all accepted-response behavior are unchanged.
+
+Historical `provider_response_rejected_response_finish_invalid` artifacts and journal records remain canonical and readable even though new parsing no longer emits the broad typed code. V1 evidence/journal schemas and JSON shapes are unchanged; v1/v2 run results, local validation, and CLI output continue carrying the bounded terminal identity. First-terminal stop, no retry/fallback/alternate, unknown submission/charge, zero trusted tokens and local settlement, null proposal, and response-digest behavior are also unchanged. The zero-I/O readiness manifest's schema, output, bounds, and digest remain frozen.
+
+Red-first Release evidence failed all nine new expectations as the prior broad code, then passed after the split. Final evidence passes 19/19 production-bridge cases, 14/14 finish-parser cases, 5/5 historical/exhaustive-vocabulary cases, 11/11 v2/validation/CLI cases, 4/4 readiness-manifest cases, 99/99 focused evidence/journal/HTTP cases, 97/97 full OpenRouter CLI/security tests, and the full 1006/1006 Snow Globe suite. Both Release builds pass with 0 warnings / 0 errors and `git diff --check` is clean. Independent deep security/public-contract review is FINAL GO with no P0-P3 findings. See [the outcome contract](planning/active/snow-globe-openrouter-finish-diagnostic-refinement.md).
+
+This is an offline forward-looking refinement only. It cannot reclassify the immutable sixth-run terminal evidence, reveal that response's exact condition, or prove current live compatibility, provider quality, or cost. No provider, network, credential, account, paid, retained-evidence, live-state, CLI stage, gameplay, or `src/societies/` action occurred. Delivery through the current `codex/` branch and required check is the remaining boundary.
+
 ## Current OpenRouter sixth authorized-run outcome
 
 The fresh sixth authority used the exact approved ceiling and route: at most 12 sequential requests, one attempt per slot, no retry or alternate provider, and maximum aggregate charge `$0.018`. From merged source `80d0ab2`, Release rebuilt with 0 warnings/errors; zero-I/O `plan`, live `preflight`, paid `record-once`, and local `validate` were each operator-invoked once and are consumed. Plan/preflight/record/validate completed in 149 / 1,268 / 4,913 / 194 ms. Durable state proves exactly one completed preflight generation, one execution claim, and one validation claim; it cannot prove rejected duplicate invocations or the marker-free plan count.

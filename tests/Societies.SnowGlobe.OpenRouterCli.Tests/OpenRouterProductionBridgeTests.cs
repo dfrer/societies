@@ -204,7 +204,15 @@ public sealed class OpenRouterProductionBridgeTests
     [InlineData(ScriptedResponse.Http503, "http_503_terminal")]
     [InlineData(ScriptedResponse.CostAboveCeiling, "provider_response_rejected_response_cost_invalid")]
     [InlineData(ScriptedResponse.MalformedSchema, "provider_response_rejected_response_binding_invalid")]
-    [InlineData(ScriptedResponse.InvalidFinish, "provider_response_rejected_response_finish_invalid")]
+    [InlineData(ScriptedResponse.InvalidChoiceIndex, "provider_response_rejected_response_choice_index_invalid")]
+    [InlineData(ScriptedResponse.MissingFinishReason, "provider_response_rejected_response_finish_reason_missing")]
+    [InlineData(ScriptedResponse.WrongTypeFinishReason, "provider_response_rejected_response_finish_reason_type_invalid")]
+    [InlineData(ScriptedResponse.NonStopFinishReason, "provider_response_rejected_response_finish_reason_not_stop")]
+    [InlineData(ScriptedResponse.ChoiceErrorPresent, "provider_response_rejected_response_choice_error_present")]
+    [InlineData(ScriptedResponse.WrongTypeNativeFinishReason, "provider_response_rejected_response_native_finish_reason_type_invalid")]
+    [InlineData(ScriptedResponse.NonStopNativeFinishReason, "provider_response_rejected_response_native_finish_reason_not_stop")]
+    [InlineData(ScriptedResponse.NonNullLogprobs, "provider_response_rejected_response_logprobs_non_null")]
+    [InlineData(ScriptedResponse.NonNullRefusal, "provider_response_rejected_response_refusal_non_null")]
     [InlineData(ScriptedResponse.InvalidRouting, "provider_response_rejected_response_routing_invalid")]
     [InlineData(ScriptedResponse.InvalidJson, "provider_response_rejected_response_json_invalid")]
     [InlineData(ScriptedResponse.InvalidShape, "provider_response_rejected_response_shape_invalid")]
@@ -780,13 +788,13 @@ public sealed class OpenRouterProductionBridgeTests
     [Fact]
     public async Task V2CompositionRetainsTheRawFreeParserDiagnosticThroughRunAndValidation()
     {
-        const string diagnostic = "provider_response_rejected_response_finish_invalid";
+        const string diagnostic = "provider_response_rejected_response_finish_reason_not_stop";
         string local = Temp();
         string root = Path.Combine(local, "Societies", "SnowGlobe", "OpenRouterPremiumOneShot", "v2");
         List<string> order = [];
         FakeAnchorSource anchors = new(order);
         TrackingV2StoreFactory stores = new(order);
-        ScriptedHandler handler = new(ScriptedResponse.InvalidFinish);
+        ScriptedHandler handler = new(ScriptedResponse.NonStopFinishReason);
         OpenRouterPremiumV2ProductionBridge bridge = new(local, root, anchors, stores,
             new FakeCredentialStore(Account('a'), Secret()), new FakeProtector(), new FakeClock(ParsedNow),
             () => new FakeMetadataVerifier(Bundle(Account('a'))),
@@ -994,7 +1002,15 @@ public sealed class OpenRouterProductionBridgeTests
         Http503,
         CostAboveCeiling,
         MalformedSchema,
-        InvalidFinish,
+        InvalidChoiceIndex,
+        MissingFinishReason,
+        WrongTypeFinishReason,
+        NonStopFinishReason,
+        ChoiceErrorPresent,
+        WrongTypeNativeFinishReason,
+        NonStopNativeFinishReason,
+        NonNullLogprobs,
+        NonNullRefusal,
         InvalidRouting,
         InvalidJson,
         InvalidShape,
@@ -1183,9 +1199,33 @@ public sealed class OpenRouterProductionBridgeTests
                         status = HttpStatusCode.OK; body = SuccessBody("0.100000"); break;
                     case ScriptedResponse.MalformedSchema:
                         status = HttpStatusCode.OK; body = Encoding.UTF8.GetBytes("{\"id\":\"bad\"}"); break;
-                    case ScriptedResponse.InvalidFinish:
+                    case ScriptedResponse.InvalidChoiceIndex:
                         status = HttpStatusCode.OK; body = MutatedSuccess(value => value.Replace(
-                            "\"finish_reason\":\"stop\"", "\"finish_reason\":\"length\"", StringComparison.Ordinal)); break;
+                            "\"index\":0", "\"index\":1", StringComparison.Ordinal)); break;
+                    case ScriptedResponse.MissingFinishReason:
+                        status = HttpStatusCode.OK; body = MutatedSuccess(value => value.Replace(
+                            ",\"finish_reason\":\"stop\"", string.Empty, StringComparison.Ordinal)); break;
+                    case ScriptedResponse.WrongTypeFinishReason:
+                        status = HttpStatusCode.OK; body = MutatedSuccess(value => value.Replace(
+                            "\"finish_reason\":\"stop\"", "\"finish_reason\":42", StringComparison.Ordinal)); break;
+                    case ScriptedResponse.NonStopFinishReason:
+                        status = HttpStatusCode.OK; body = MutatedSuccess(value => value.Replace(
+                            "\"finish_reason\":\"stop\"", "\"finish_reason\":\"raw-provider-sentinel-must-not-leak\"", StringComparison.Ordinal)); break;
+                    case ScriptedResponse.ChoiceErrorPresent:
+                        status = HttpStatusCode.OK; body = MutatedSuccess(value => value.Replace(
+                            "\"finish_reason\":\"stop\"", "\"finish_reason\":\"stop\",\"error\":{\"message\":\"raw-provider-sentinel-must-not-leak\"}", StringComparison.Ordinal)); break;
+                    case ScriptedResponse.WrongTypeNativeFinishReason:
+                        status = HttpStatusCode.OK; body = MutatedSuccess(value => value.Replace(
+                            "\"finish_reason\":\"stop\"", "\"finish_reason\":\"stop\",\"native_finish_reason\":42", StringComparison.Ordinal)); break;
+                    case ScriptedResponse.NonStopNativeFinishReason:
+                        status = HttpStatusCode.OK; body = MutatedSuccess(value => value.Replace(
+                            "\"finish_reason\":\"stop\"", "\"finish_reason\":\"stop\",\"native_finish_reason\":\"raw-provider-sentinel-must-not-leak\"", StringComparison.Ordinal)); break;
+                    case ScriptedResponse.NonNullLogprobs:
+                        status = HttpStatusCode.OK; body = MutatedSuccess(value => value.Replace(
+                            "\"finish_reason\":\"stop\"", "\"finish_reason\":\"stop\",\"logprobs\":{\"marker\":\"raw-provider-sentinel-must-not-leak\"}", StringComparison.Ordinal)); break;
+                    case ScriptedResponse.NonNullRefusal:
+                        status = HttpStatusCode.OK; body = MutatedSuccess(value => value.Replace(
+                            "\"message\":{\"role\":\"assistant\"", "\"message\":{\"role\":\"assistant\",\"refusal\":\"raw-provider-sentinel-must-not-leak\"", StringComparison.Ordinal)); break;
                     case ScriptedResponse.InvalidRouting:
                         status = HttpStatusCode.OK; body = MutatedSuccess(value => value.Replace(
                             "\"attempt\":1", "\"attempt\":2", StringComparison.Ordinal)); break;
