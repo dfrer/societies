@@ -10,6 +10,14 @@ Each paid authority is single-use and permits at most 12 sequential requests, 4,
 
 The OpenRouter secret is stored in Windows Credential Manager under the fixed application target and is never accepted through argv, environment variables, configuration files, or retained evidence. Documentation records no secret value. Cleanup claims cover application-owned mutable buffers; immutable framework-owned Bearer copies cannot be globally proven erased.
 
+## Location-specific raw-free unknown-property diagnostics
+
+The response parser's former active `response_json_unknown_property` diagnostic is now split across fourteen predefined response-object scopes: root, choice, message, reasoning detail, usage, prompt-token details, completion-token details, server-tool-use details, cost details, routing endpoints, routing candidate, routing attempt, error, and error metadata. The diagnostic identifies only that finite parser scope. It never incorporates a provider property name, value, dynamic path, response body, prompt, refusal text, exception message, or credential.
+
+Every existing strict allowlist and its evaluation order remain unchanged; only the typed rejection code supplied at that boundary differs. Proposal parsing continues to emit `proposal_unknown_property`. The broad `response_json_unknown_property` member remains historical-only so immutable artifacts and journals continue to validate and read back canonically without rewrite or reclassification.
+
+Red-first Release evidence failed all fourteen new fixture expectations with the former broad code, then passed 14/14 after the direct mapping. Focused parser/historical/exhaustive-vocabulary evidence passes 92/92; the full Snow Globe suite passes 1044/1044; OpenRouter CLI/security passes 100/100; shared Recording CLI passes 59/59; both relevant Release builds have 0 warnings and 0 errors; and `git diff --check` is clean apart from line-ending notices. Independent deep security/public-contract review is FINAL GO with no unresolved P0-P3 findings. This is offline evidence only and did not access the provider, network, credential, runtime, retained live artifacts, or `src/societies/`.
+
 ## Provider-completion generation 3: final unknown-property terminal evidence
 
 The documented-usage correction merged through PR #149 as `d23a6cf`; required `build-test-smoke` passed in 4m23s. From that exact source, Release rebuilt with 0 warnings/errors, and the zero-I/O plan, authenticated preflight, paid record-once, and local validate each ran exactly once. Preflight accepted authorization `057f82366a4b9846aa2371f7de31749bc9e951bf5ba936de0990298232d54ddf`, 2,344-byte artifact SHA-256 `46a65a796fffe693324a53f46de4e4ca519ebf6928a94ca1ad8bcfc6761e017b`, and generation `g2-74906e534c14cf9255a7e41ecca9012ec941ec2e7c4b4c2c8cda359be45da9b8`.

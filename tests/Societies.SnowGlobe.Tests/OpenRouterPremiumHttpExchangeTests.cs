@@ -63,7 +63,7 @@ public sealed class OpenRouterPremiumHttpExchangeTests
 
     [Theory]
     [InlineData("{\"model\":\"openai/gpt-5.6-luna\",\"model\":\"openai/gpt-5.6-luna\"}", "response_json_duplicate_property")]
-    [InlineData("{\"model\":\"openai/gpt-5.6-luna\",\"unknown\":true}", "response_json_unknown_property")]
+    [InlineData("{\"model\":\"openai/gpt-5.6-luna\",\"unknown\":true}", "response_root_unknown_property")]
     [InlineData("[[[[[[[[[0]]]]]]]]]", "response_json_too_deep")]
     [InlineData("{\"cost\":1e9999}", "response_number_invalid")]
     public void StrictParserRejectsMalformedClosedShapes(string json, string expected)
@@ -72,6 +72,49 @@ public sealed class OpenRouterPremiumHttpExchangeTests
             OpenRouterPremiumResponseParser.Parse(Encoding.UTF8.GetBytes(json), 200, OpenRouterPremiumProfileRegistry.Selected, "cq1", "request-digest"));
         Assert.Equal(expected, exception.Code);
         Assert.Equal(expected, exception.Message);
+        Assert.Null(exception.InnerException);
+    }
+
+    [Theory]
+    [MemberData(nameof(StrictResponseUnknownPropertyCases))]
+    public void StrictResponseObjectAllowlistScopesEmitUniqueRawFreeDiagnostics(
+        string scope,
+        string json,
+        int statusCode,
+        string expectedCode)
+    {
+        OpenRouterPremiumEvidenceException exception = Assert.Throws<OpenRouterPremiumEvidenceException>(() =>
+            OpenRouterPremiumResponseParser.Parse(
+                Encoding.UTF8.GetBytes(json), statusCode, OpenRouterPremiumProfileRegistry.Selected,
+                "cq1", new string('d', 64)));
+
+        Assert.Equal(expectedCode, exception.Code);
+        Assert.Equal(expectedCode, exception.Message);
+        Assert.Equal("provider_response_rejected_" + expectedCode,
+            OpenRouterPremiumResponseParser.ToRejectedOutcomeCode(exception));
+        Assert.Contains(scope, expectedCode, StringComparison.Ordinal);
+        Assert.DoesNotContain("raw-provider-sentinel-must-not-leak", exception.ToString(), StringComparison.Ordinal);
+        Assert.Null(exception.InnerException);
+    }
+
+    [Fact]
+    public void ProposalUnknownPropertyDiagnosticRemainsUnchanged()
+    {
+        string body = Encoding.UTF8.GetString(SuccessBody()).Replace(
+            "\\\"quantity\\\":12}",
+            "\\\"quantity\\\":12,\\\"raw-provider-sentinel-must-not-leak\\\":0}",
+            StringComparison.Ordinal);
+
+        OpenRouterPremiumEvidenceException exception = Assert.Throws<OpenRouterPremiumEvidenceException>(() =>
+            OpenRouterPremiumResponseParser.Parse(
+                Encoding.UTF8.GetBytes(body), 200, OpenRouterPremiumProfileRegistry.Selected,
+                "cq1", new string('d', 64)));
+
+        Assert.Equal("proposal_unknown_property", exception.Code);
+        Assert.Equal("proposal_unknown_property", exception.Message);
+        Assert.Equal("provider_response_rejected_proposal_unknown_property",
+            OpenRouterPremiumResponseParser.ToRejectedOutcomeCode(exception));
+        Assert.DoesNotContain("raw-provider-sentinel-must-not-leak", exception.ToString(), StringComparison.Ordinal);
         Assert.Null(exception.InnerException);
     }
 
@@ -183,9 +226,9 @@ public sealed class OpenRouterPremiumHttpExchangeTests
     }
 
     [Theory]
-    [InlineData("{\"cached_tokens\":0,\"unknown\":0}")]
-    [InlineData("[]")]
-    public void StrictParserRejectsUnclosedOrWrongUsageDetails(string details)
+    [InlineData("{\"cached_tokens\":0,\"unknown\":0}", "response_usage_prompt_tokens_details_unknown_property")]
+    [InlineData("[]", "response_usage_invalid")]
+    public void StrictParserRejectsUnclosedOrWrongUsageDetails(string details, string expectedCode)
     {
         string json = Encoding.UTF8.GetString(SuccessBody()).Replace(
             "\"cost\":0.000044", $"\"cost\":0.000044,\"prompt_tokens_details\":{details}", StringComparison.Ordinal);
@@ -194,7 +237,7 @@ public sealed class OpenRouterPremiumHttpExchangeTests
             OpenRouterPremiumResponseParser.Parse(Encoding.UTF8.GetBytes(json), 200,
                 OpenRouterPremiumProfileRegistry.Selected, "cq1", new string('d', 64)));
 
-        Assert.Contains(exception.Code, new[] { "response_json_unknown_property", "response_usage_invalid" });
+        Assert.Equal(expectedCode, exception.Code);
     }
 
     [Fact]
@@ -242,9 +285,9 @@ public sealed class OpenRouterPremiumHttpExchangeTests
     [InlineData("\"server_tool_use_details\":{\"tool_calls_executed\":1}", "response_usage_invalid")]
     [InlineData("\"server_tool_use_details\":{\"tool_calls_requested\":-1}", "response_usage_invalid")]
     [InlineData("\"server_tool_use_details\":{\"tool_calls_executed\":\"0\"}", "response_usage_invalid")]
-    [InlineData("\"server_tool_use_details\":{\"unknown\":0}", "response_json_unknown_property")]
+    [InlineData("\"server_tool_use_details\":{\"unknown\":0}", "response_usage_server_tool_use_details_unknown_property")]
     [InlineData("\"cost_details\":[]", "response_usage_invalid")]
-    [InlineData("\"cost_details\":{\"unknown\":0}", "response_json_unknown_property")]
+    [InlineData("\"cost_details\":{\"unknown\":0}", "response_usage_cost_details_unknown_property")]
     [InlineData("\"cost_details\":{\"upstream_inference_cost\":\"0\"}", "response_usage_invalid")]
     [InlineData("\"cost_details\":{\"upstream_inference_prompt_cost\":-0.000001}", "response_usage_invalid")]
     [InlineData("\"cost_details\":{\"upstream_inference_completions_cost\":0.000045}", "response_usage_invalid")]
@@ -496,6 +539,54 @@ public sealed class OpenRouterPremiumHttpExchangeTests
         OpenRouterPremiumProfile profile = OpenRouterPremiumProfileRegistry.Selected;
         CognitionQualityPromptEnvelopeSlot slot = CognitionQualityPromptEnvelopeBuilderModule.Create("prompt-v1").Slots[0];
         return OpenRouterPremiumExchangeRequest.CreateForProfile(profile, slot, new string('b', 64));
+    }
+
+    public static IEnumerable<object[]> StrictResponseUnknownPropertyCases()
+    {
+        const string sentinel = "raw-provider-sentinel-must-not-leak";
+        string success = Encoding.UTF8.GetString(SuccessBody());
+        string reasoning = DocumentedReasoningBody();
+
+        yield return ["root", success.Replace(
+            "{\"id\"", $"{{\"{sentinel}\":0,\"id\"", StringComparison.Ordinal),
+            200, "response_root_unknown_property"];
+        yield return ["choice", success.Replace(
+            "\"choices\":[{\"index\"", $"\"choices\":[{{\"{sentinel}\":0,\"index\"", StringComparison.Ordinal),
+            200, "response_choice_unknown_property"];
+        yield return ["message", success.Replace(
+            "\"message\":{\"role\"", $"\"message\":{{\"{sentinel}\":0,\"role\"", StringComparison.Ordinal),
+            200, "response_message_unknown_property"];
+        yield return ["reasoning_detail", reasoning.Replace(
+            "\"reasoning_details\":[{\"type\"", $"\"reasoning_details\":[{{\"{sentinel}\":0,\"type\"", StringComparison.Ordinal),
+            200, "response_reasoning_detail_unknown_property"];
+        yield return ["usage", success.Replace(
+            "\"usage\":{\"prompt_tokens\"", $"\"usage\":{{\"{sentinel}\":0,\"prompt_tokens\"", StringComparison.Ordinal),
+            200, "response_usage_unknown_property"];
+        yield return ["usage_prompt_tokens_details", success.Replace(
+            "\"cost\":0.000044", $"\"cost\":0.000044,\"prompt_tokens_details\":{{\"{sentinel}\":0}}", StringComparison.Ordinal),
+            200, "response_usage_prompt_tokens_details_unknown_property"];
+        yield return ["usage_completion_tokens_details", success.Replace(
+            "\"cost\":0.000044", $"\"cost\":0.000044,\"completion_tokens_details\":{{\"{sentinel}\":0}}", StringComparison.Ordinal),
+            200, "response_usage_completion_tokens_details_unknown_property"];
+        yield return ["usage_server_tool_use_details", success.Replace(
+            "\"cost\":0.000044", $"\"cost\":0.000044,\"server_tool_use_details\":{{\"{sentinel}\":0}}", StringComparison.Ordinal),
+            200, "response_usage_server_tool_use_details_unknown_property"];
+        yield return ["usage_cost_details", success.Replace(
+            "\"cost\":0.000044", $"\"cost\":0.000044,\"cost_details\":{{\"{sentinel}\":0}}", StringComparison.Ordinal),
+            200, "response_usage_cost_details_unknown_property"];
+        yield return ["routing_endpoints", success.Replace(
+            "\"endpoints\":{\"total\"", $"\"endpoints\":{{\"{sentinel}\":0,\"total\"", StringComparison.Ordinal),
+            200, "response_routing_endpoints_unknown_property"];
+        yield return ["routing_candidate", success.Replace(
+            "\"available\":[{\"provider\"", $"\"available\":[{{\"{sentinel}\":0,\"provider\"", StringComparison.Ordinal),
+            200, "response_routing_candidate_unknown_property"];
+        yield return ["routing_attempt", success.Replace(
+            "\"attempts\":[{\"provider\"", $"\"attempts\":[{{\"{sentinel}\":0,\"provider\"", StringComparison.Ordinal),
+            200, "response_routing_attempt_unknown_property"];
+        yield return ["error", $"{{\"error\":{{\"{sentinel}\":0,\"code\":503,\"message\":\"closed\"}}}}",
+            503, "response_error_unknown_property"];
+        yield return ["error_metadata", $"{{\"error\":{{\"code\":503,\"message\":\"closed\",\"metadata\":{{\"{sentinel}\":0}}}}}}",
+            503, "response_error_metadata_unknown_property"];
     }
 
     private static byte[] SuccessBody() => Encoding.UTF8.GetBytes("""
