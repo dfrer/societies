@@ -21,7 +21,7 @@
 
 - The immutable sixth-run evidence retains its historical broad code and cannot be assigned to one of the nine new conditions. This change does not reveal its exact provider finish value, resolve unknown charge, or prove live compatibility, quality, cost, readiness, deployment, or release status.
 - No provider, network, credential, account, paid, retained-evidence, live-state, preflight, `record-once`, `validate`, gameplay, or `src/societies/` action occurred.
-- Deliver the reviewed offline slice through the current `codex/` branch, required check, and merge, then publish the exact delivery record and return `master` clean and synchronized. No additional provider action is authorized.
+- Implementation commit `2dff642` was published through [PR #145](https://github.com/dfrer/societies/pull/145); required `build-test-smoke` passed in 4m15s and the PR merged to `master` as `d0c7d09`. Publish this exact delivery record, then return `master` clean and synchronized. No additional provider action is authorized.
 
 ## Current OpenRouter sixth authorized-run handoff
 
