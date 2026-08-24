@@ -10,7 +10,7 @@ Each paid authority is single-use and permits at most 12 sequential requests, 4,
 
 The OpenRouter secret is stored in Windows Credential Manager under the fixed application target and is never accepted through argv, environment variables, configuration files, or retained evidence. Documentation records no secret value. Cleanup claims cover application-owned mutable buffers; immutable framework-owned Bearer copies cannot be globally proven erased.
 
-## Standing completion authority and current diagnostic
+## Standing completion authority and progression
 
 Standing user authorization permits the successive bounded generations needed to reach an accepted OpenRouter proposal. It does not create retries or an unbounded run: each generation independently preserves Azure-only/ZDR-required routing, at most twelve sequential one-attempt slots, no fallback/alternate, the 18,000-microusd maximum reservation, and one invocation each of plan, preflight, paid `record-once`, and validate. A terminal or uncertain outcome stops that generation; consumed stages never rerun; corrections are reviewed and merged before the next generation.
 
@@ -29,6 +29,16 @@ The current offline correction partitions the historical broad binding result in
 The preceding binding-diagnostic correction passed its required check in 4m09s and merged through PR #159 as `d3acce6`. From the exact merge, plan/preflight/paid `record-once`/validate each ran once under the frozen contract. Authorization `b7656569d1680738e809c91fcacd8c677542bd4c39bf534974ee206095212bcb`; generation `g2-f1dbf7d2562db29762c4fcc30050b818b7f0c5e06aaf71a1f2d02d5e89791e04`; preflight artifact 2,344 bytes/SHA-256 `5d636236999730d8a18dc0e097da0e8c8a08197b8c5604af12cb39ca8293e54f`. One Azure/ZDR exchange stopped `provider_response_rejected_response_routing_candidate_model_binding_invalid`; no second slot, retry, fallback, alternate, or proposal occurred. Evidence is 2,269 bytes/SHA-256 `05defc8ce14ee15b4f2ffe3d1b5a2e537a4c38c6c051eaa9896833beb081641d`; receipt is 793 bytes/SHA-256 `b9c40a29d8b197306bfe007e649cc258a4945c28029f7b657de9564267ca8a11`; journal is 2,882 bytes/SHA-256 `f6302c25595f0fea3b3d9cd129449859d788f64f0d77c344a21b5ccd2bf3e88e`, four records, final checksum `14bbdaab3a5336836d5631fbf9db6add5e62374410f46da28de8e81f3f81ac64`. Submission and charge are Unknown, trusted token/local-settlement counters are zero, proposal is null, response digest is nonzero, and the generation/stages are consumed.
 
 The active correction admits exactly the authenticated API alias or authenticated dated canonical release only in actual selected-candidate and routed-attempt model fields. Request/root/`requested` model bindings remain exact to the API alias; Azure/provider identity, selected/attempt cardinality and status, accounting, cost, proposal, finish/refusal, secret, and no-retry controls remain unchanged. Arbitrary and case-variant identities fail closed. Red-first was 0/2 and the identical loop is green 2/2; focused identity/location coverage passes 17/17, broader OpenRouter 277/277, full Snow Globe 1093/1093, OpenRouter CLI/security 100/100, Recording CLI 59/59, and both builds 0/0. This is an inference from official router-metadata semantics plus the already authenticated alias/canonical-release pair; it does not reveal or claim the consumed response value. No provider, credential, account, network, retained-artifact, or `src/societies/` action used this correction.
+
+The preceding routed-model correction paragraph is historical pre-merge evidence; its no-provider-action statement is scoped to that offline phase and its pending next step is superseded.
+
+## Accepted provider-completion evidence
+
+The routed-model correction passed its required check in 3m40s and merged through PR #160 as `7897adf`. From that exact merge, Release rebuilt 0/0 and plan/preflight/paid `record-once`/validate each ran exactly once under the frozen contract. Authorization `c7187e362b8fce84da3ff84175014800c81808e24a7776fb24e0ca5ed37b744c`; generation `g2-fab8d9bc51468be6d63d5f00b864a1060b360a1e6d75e69ee2c7549e920094a4`; preflight artifact 2,344 bytes/SHA-256 `271f2c3cd7713a81fd2bf43c2f320d447974ecd7990e40cf366a85b4e291bb31`.
+
+Paid recording completed all 12 sequential Azure-only/ZDR-required exchanges. Each slot is `ResponseReceived` / `Settled`, has outcome `premium_evidence_success`, and contains a proposal accepted by the deterministic shared proposal parser/validation contract. Totals are 5,232 prompt tokens, 1,175 completion tokens, and 2,460 microusd settled. Terminal code is null. The 8,497-byte evidence SHA-256 is `ebbcc39d8e1ab7d0ee926600753aeaa5e420f70c5b14dee62b57614945c65e51`; payload digest is `c6323dc146d1b1e9c799ed4c7ee473d8d2e0bcaff5cf0e9abb068f72f2b07597`. The 797-byte validation receipt SHA-256 is `1c2067f02804b146bf2efd9237a38664fb0c5ca48ef88d67af07d4fd48a0b6c0` and accepts `complete` with 12 exchanges and the same settlement/evidence binding. The 26,920-byte journal has 37 records, SHA-256 `7c501006b35aebb6ea1df9c3d71a355c196c6ad21b90e84f3a6c02b46a853b8e`, and final checksum `4b3018eeb430aa1ea75314531b581af95d146d2045f27ae22db6e9ce4d0f0053`.
+
+The sequence is one preflight-consumption record followed by one admit, one dispatch-unknown checkpoint, and one completion per slot. There is no retry, fallback, alternate, thirteenth exchange, terminal error, or additional attempt authorization. The evidence proves functional provider compatibility through this frozen recording/proposal boundary; it does not prove a model-quality winner, deployment/release readiness, world authority, or broader provider compatibility.
 
 ## Historical post-correction generation terminal evidence
 
@@ -128,7 +138,7 @@ Evidence is 2,171 bytes, SHA-256 `7d449d77c3b82ff1984a0e1d33c3026b80566321938418
 
 The authority is consumed; never rerun any stage. Preflight performed authenticated metadata verification and produced durable authorization, but the exact metadata count is not retained. No raw prompt/response/secret was retained, v1 was not accessed, and no provider/accounting follow-up occurred. Local zero settlement is not provider zero cost; provider charge is unknown. The artifact does not retain HTTP status, finish reason, response body, redirect trace, or parser-rejection detail, so no provider-side cause is claimed. No runtime/framework Bearer cleanup proof is claimed. Independent deep review is GO with no P0-P2.
 
-### One current next action
+### Historical PR #126 follow-up action
 
 The reviewed Snow Globe/OpenRouter milestone was merged through [PR #125](https://github.com/dfrer/societies/pull/125) as `f021cdc`. The residual fake-only lease-zero conformance fix is commit `399adac` in [PR #126](https://github.com/dfrer/societies/pull/126); its merge completes the follow-up. Neither PR contains a `src/societies/` change or authorizes provider, accounting, credential, or live-state action.
 
