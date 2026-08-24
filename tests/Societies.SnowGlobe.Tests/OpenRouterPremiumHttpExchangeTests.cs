@@ -303,22 +303,70 @@ public sealed class OpenRouterPremiumHttpExchangeTests
     }
 
     [Fact]
-    public void PromptTokenDetailsEnvelope_DoesNotRelaxCompletionDetailsUnknownFields()
+    public void CompletionTokenDetailsEnvelope_AcceptsUnknownBoundedIntegerAsNonAuthoritative()
     {
         const string dynamicName = "future_completion_metric_must_not_leak";
         string json = Encoding.UTF8.GetString(SuccessBody()).Replace(
             "\"cost\":0.000044",
-            $"\"cost\":0.000044,\"completion_tokens_details\":{{\"{dynamicName}\":0}}",
+            $"\"cost\":0.000044,\"completion_tokens_details\":{{\"reasoning_tokens\":4,\"{dynamicName}\":7}}",
             StringComparison.Ordinal);
+
+        OpenRouterPremiumSlotReceipt receipt = OpenRouterPremiumResponseParser.Parse(
+            Encoding.UTF8.GetBytes(json), 200, OpenRouterPremiumProfileRegistry.Selected,
+            "cq1", new string('d', 64));
+
+        Assert.Equal("premium_evidence_success", receipt.OutcomeCode);
+        Assert.Equal(100, receipt.PromptTokens);
+        Assert.Equal(20, receipt.CompletionTokens);
+        Assert.Equal(120, receipt.TotalTokens);
+        Assert.Equal(44, receipt.SettledMicrousd);
+        Assert.Equal(new SnowGlobeActionProposal("agent-00", SnowGlobeActionKind.GatherWood, 12), receipt.Proposal);
+        Assert.DoesNotContain(dynamicName, receipt.ToString(), StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("[]", "response_usage_invalid")]
+    [InlineData("{\"reasoning_tokens\":null}", "response_usage_invalid")]
+    [InlineData("{\"reasoning_tokens\":0.5}", "response_usage_invalid")]
+    [InlineData("{\"reasoning_tokens\":\"1\"}", "response_usage_invalid")]
+    [InlineData("{\"reasoning_tokens\":-1}", "response_usage_invalid")]
+    [InlineData("{\"reasoning_tokens\":513}", "response_usage_invalid")]
+    [InlineData("{\"reasoning_tokens\":0,\"reasoning_tokens\":0}", "response_json_duplicate_property")]
+    public void CompletionTokenDetailsEnvelope_RejectsMalformedDuplicateOrOutOfRangeValues(
+        string details,
+        string expectedCode)
+    {
+        string json = Encoding.UTF8.GetString(SuccessBody()).Replace(
+            "\"cost\":0.000044", $"\"cost\":0.000044,\"completion_tokens_details\":{details}", StringComparison.Ordinal);
 
         OpenRouterPremiumEvidenceException exception = Assert.Throws<OpenRouterPremiumEvidenceException>(() =>
             OpenRouterPremiumResponseParser.Parse(
                 Encoding.UTF8.GetBytes(json), 200, OpenRouterPremiumProfileRegistry.Selected,
                 "cq1", new string('d', 64)));
 
-        Assert.Equal("response_usage_completion_tokens_details_unknown_property", exception.Code);
-        Assert.Equal("response_usage_completion_tokens_details_unknown_property", exception.Message);
-        Assert.DoesNotContain(dynamicName, exception.ToString(), StringComparison.Ordinal);
+        Assert.Equal(expectedCode, exception.Code);
+        Assert.Equal(expectedCode, exception.Message);
+        Assert.Null(exception.InnerException);
+    }
+
+    [Theory]
+    [InlineData("\"server_tool_use_details\":{\"future_server_metric\":0}", "response_usage_server_tool_use_details_unknown_property")]
+    [InlineData("\"cost_details\":{\"future_cost_metric\":0}", "response_usage_cost_details_unknown_property")]
+    public void CompletionTokenDetailsEnvelope_DoesNotRelaxOtherStrictUsageDetailScopes(
+        string addition,
+        string expectedCode)
+    {
+        string json = Encoding.UTF8.GetString(SuccessBody()).Replace(
+            "\"cost\":0.000044", $"\"cost\":0.000044,{addition}", StringComparison.Ordinal);
+
+        OpenRouterPremiumEvidenceException exception = Assert.Throws<OpenRouterPremiumEvidenceException>(() =>
+            OpenRouterPremiumResponseParser.Parse(
+                Encoding.UTF8.GetBytes(json), 200, OpenRouterPremiumProfileRegistry.Selected,
+                "cq1", new string('d', 64)));
+
+        Assert.Equal(expectedCode, exception.Code);
+        Assert.Equal(expectedCode, exception.Message);
+        Assert.DoesNotContain("future_", exception.ToString(), StringComparison.Ordinal);
         Assert.Null(exception.InnerException);
     }
 
@@ -683,9 +731,6 @@ public sealed class OpenRouterPremiumHttpExchangeTests
         yield return ["usage", success.Replace(
             "\"usage\":{\"prompt_tokens\"", $"\"usage\":{{\"{sentinel}\":0,\"prompt_tokens\"", StringComparison.Ordinal),
             200, "response_usage_unknown_property"];
-        yield return ["usage_completion_tokens_details", success.Replace(
-            "\"cost\":0.000044", $"\"cost\":0.000044,\"completion_tokens_details\":{{\"{sentinel}\":0}}", StringComparison.Ordinal),
-            200, "response_usage_completion_tokens_details_unknown_property"];
         yield return ["usage_server_tool_use_details", success.Replace(
             "\"cost\":0.000044", $"\"cost\":0.000044,\"server_tool_use_details\":{{\"{sentinel}\":0}}", StringComparison.Ordinal),
             200, "response_usage_server_tool_use_details_unknown_property"];
