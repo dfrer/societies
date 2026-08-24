@@ -741,25 +741,39 @@ internal static class OpenRouterPremiumResponseParser
     {
         if (!root.TryGetProperty("usage", out JsonElement usage) || usage.ValueKind != JsonValueKind.Object)
             throw Rejected(ParserRejection.response_usage_invalid);
-        RejectUnknown(usage, new HashSet<string>(["prompt_tokens", "completion_tokens", "total_tokens", "cost", "prompt_tokens_details", "completion_tokens_details", "cost_details"], StringComparer.Ordinal), ParserRejection.response_json_unknown_property);
+        RejectUnknown(usage, new HashSet<string>(["prompt_tokens", "completion_tokens", "total_tokens", "cost", "is_byok", "prompt_tokens_details", "completion_tokens_details", "server_tool_use_details", "cost_details"], StringComparer.Ordinal), ParserRejection.response_json_unknown_property);
         int prompt = RequireInteger(usage, "prompt_tokens", 0, profile.Bounds.MaximumInputTokens);
         int completion = RequireInteger(usage, "completion_tokens", 0, profile.Bounds.MaximumOutputTokens);
         int total = RequireInteger(usage, "total_tokens", 0, profile.Bounds.MaximumInputTokens + profile.Bounds.MaximumOutputTokens);
         if (total != prompt + completion || !usage.TryGetProperty("cost", out JsonElement costElement)
             || costElement.ValueKind != JsonValueKind.Number || !costElement.TryGetDecimal(out decimal cost) || cost < 0)
             throw Rejected(ParserRejection.response_usage_invalid);
+        if (usage.TryGetProperty("is_byok", out JsonElement isByok)
+            && (isByok.ValueKind is not (JsonValueKind.True or JsonValueKind.False) || isByok.GetBoolean()))
+            throw Rejected(ParserRejection.response_usage_invalid);
         ValidateOptionalIntegerObject(usage, "prompt_tokens_details",
             ["cached_tokens", "cache_write_tokens", "audio_tokens"], profile.Bounds.MaximumInputTokens);
         ValidateOptionalIntegerObject(usage, "completion_tokens_details",
             ["reasoning_tokens"], profile.Bounds.MaximumOutputTokens);
+        ValidateOptionalZeroIntegerObject(usage, "server_tool_use_details",
+            ["tool_calls_executed", "tool_calls_requested"], profile.Bounds.MaximumArrayItems);
         if (usage.TryGetProperty("cost_details", out JsonElement costDetails))
         {
             if (costDetails.ValueKind != JsonValueKind.Object)
                 throw Rejected(ParserRejection.response_usage_invalid);
-            RejectUnknown(costDetails, new HashSet<string>(["upstream_inference_cost"], StringComparer.Ordinal), ParserRejection.response_json_unknown_property);
-            if (costDetails.TryGetProperty("upstream_inference_cost", out JsonElement upstream)
-                && (upstream.ValueKind != JsonValueKind.Number || !upstream.TryGetDecimal(out decimal upstreamCost)
-                    || upstreamCost < 0 || upstreamCost > cost))
+            RejectUnknown(costDetails, new HashSet<string>([
+                "upstream_inference_cost", "upstream_inference_prompt_cost", "upstream_inference_completions_cost"
+            ], StringComparer.Ordinal), ParserRejection.response_json_unknown_property);
+            decimal maximumDetailCost = Math.Min(cost, profile.Bounds.PerSlotCostCeilingMicrousd / 1_000_000m);
+            decimal? upstream = ReadOptionalCostDetail(costDetails, "upstream_inference_cost", maximumDetailCost);
+            decimal? upstreamPrompt = ReadOptionalCostDetail(costDetails, "upstream_inference_prompt_cost", maximumDetailCost);
+            decimal? upstreamCompletion = ReadOptionalCostDetail(costDetails, "upstream_inference_completions_cost", maximumDetailCost);
+            if (upstreamPrompt.HasValue && upstreamCompletion.HasValue
+                && upstreamPrompt.Value > maximumDetailCost - upstreamCompletion.Value)
+                throw Rejected(ParserRejection.response_usage_invalid);
+            decimal componentCost = upstreamPrompt.GetValueOrDefault() + upstreamCompletion.GetValueOrDefault();
+            if (upstream.HasValue && (upstreamPrompt.HasValue || upstreamCompletion.HasValue)
+                && componentCost > upstream.Value)
                 throw Rejected(ParserRejection.response_usage_invalid);
         }
         decimal microusdDecimal = cost * 1_000_000m;
@@ -931,8 +945,27 @@ internal static class OpenRouterPremiumResponseParser
             throw Rejected(ParserRejection.response_usage_invalid);
         RejectUnknown(details, new HashSet<string>(allowed, StringComparer.Ordinal), ParserRejection.response_json_unknown_property);
         foreach (JsonProperty detail in details.EnumerateObject())
-            if (!detail.Value.TryGetInt32(out int value) || value < 0 || value > maximum)
+            if (detail.Value.ValueKind != JsonValueKind.Number
+                || !detail.Value.TryGetInt32(out int value) || value < 0 || value > maximum)
                 throw Rejected(ParserRejection.response_usage_invalid);
+    }
+
+    private static void ValidateOptionalZeroIntegerObject(JsonElement parent, string property, string[] allowed, int maximum)
+    {
+        ValidateOptionalIntegerObject(parent, property, allowed, maximum);
+        if (!parent.TryGetProperty(property, out JsonElement details)) return;
+        foreach (JsonProperty detail in details.EnumerateObject())
+            if (detail.Value.GetInt32() != 0)
+                throw Rejected(ParserRejection.response_usage_invalid);
+    }
+
+    private static decimal? ReadOptionalCostDetail(JsonElement parent, string property, decimal maximum)
+    {
+        if (!parent.TryGetProperty(property, out JsonElement value) || value.ValueKind == JsonValueKind.Null) return null;
+        if (value.ValueKind != JsonValueKind.Number || !value.TryGetDecimal(out decimal result)
+            || result < 0 || result > maximum)
+            throw Rejected(ParserRejection.response_usage_invalid);
+        return result;
     }
 
     private static void ValidateOptionalNullableString(JsonElement parent, string property, int maximum)

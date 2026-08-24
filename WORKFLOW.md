@@ -1,5 +1,22 @@
 # Snow Globe provider preflight, Ollama repair, and qwen3.5 smoke handoff
 
+## Current provider-completion OpenRouter generation 2 handoff
+
+### Outcome and evidence
+
+- The native-finish correction merged through PR #148 as `c6429bc`; required `build-test-smoke` passed in 4m15s. From merged source, Release rebuilt with 0 warnings/errors and the zero-I/O plan, preflight, paid record-once, and local validate each ran exactly once.
+- Authorization `5fa1e4853f7fb24679c3bbf7f7f0bad1783030a5c61fdfcdc01ab3d7e8d1f8a5`; generation `g2-c40ab7d6aa310f99608a4ee935258c1b74087fe0c3e8089b04ea79f65e57fb25`.
+- Exactly one Azure-only ZDR exchange stopped `provider_response_rejected_response_json_unknown_property`; no second slot, retry, fallback, alternate, or accepted proposal occurred.
+- Raw-free evidence is 2,233 bytes/SHA-256 `71953be66499f6bc0e163b12a9d3329d7eb7e96ac1d1ec924a5221a6eb11909f`; receipt is 793 bytes/SHA-256 `c593ec52d829b888829fe20a8fc0a9a75e05900fec0e307b1091eb95a9b0d0e8`; journal is 2,864 bytes/SHA-256 `bb1b94f09c1377b212e1437d789e62df27dc64077c7a24dd065f090faf88129b`, final checksum `61a29f34bb4c5972a3cde7e5204a3be024190a084e4c1acee2734504cc513957`.
+- Submission and charge remain Unknown; trusted tokens/local settlement are zero, proposal is null, and response digest is nonzero. The provider body, property name/value, prompt, refusal text, and secret were not retained or queried.
+
+### Exact blocker and next action
+
+- Generation 2 and every stage are consumed and must never be rerun.
+- Current official response documentation includes additive `usage.is_byok`, `usage.server_tool_use_details`, and prompt/completion cost-breakdown members absent from the local allowlists. The raw-free terminal cannot identify which was present.
+- Implement red-first bounded typed validation for only those documented usage members, preserving strict unknown rejection elsewhere and every proposal/routing/ZDR/financial/no-retry/raw-free/history control. Independently review and merge it before the third and final generation.
+- The correction is implemented and green: `is_byok` must be false; server-tool counts must be bounded integer zeroes; the three documented nullable cost-detail fields must be nonnegative, within reported/ceiling cost, and component-consistent. Unknown properties elsewhere remain rejected. Evidence passes 16/16 new usage, 21/21 bridge, 213/213 focused OpenRouter, 100/100 CLI/security, and 1029/1029 full Snow Globe tests; both builds pass 0/0 and diff check is clean. Independent re-review is FINAL GO with no unresolved P0-P3 findings; merged delivery remains.
+
 ## Current provider-completion OpenRouter generation 1 handoff
 
 ### Outcome and evidence
@@ -22,7 +39,7 @@
 
 - Ollama and OpenRouter now route accepted `{agent_id, action, quantity}` content through the same deterministic `snow_globe_cognition_quality_proposal_response/v1` parser. Provider output remains proposal input only and never becomes direct world authority.
 - Fresh Ollama recording is additive composition/artifact v5 at a new fixed path. The immutable v4 artifact remains readable and unchanged. Historical v4 comparison/v2 canonical output is byte-identical; v5 comparison uses a separate additive v3 identity.
-- OpenRouter still requires exact documented normalized `finish_reason=stop`. An optional native-finish member must be a bounded string but its value is non-authoritative and unretained. Routing/usage/cost checks, Azure-only ZDR policy, raw-free evidence, bounded I/O, no redirects, first-terminal stop, and no retry/fallback/alternate behavior are unchanged. `src/societies` is unchanged.
+- OpenRouter still requires exact documented normalized `finish_reason=stop`. An optional native-finish member must be a bounded string but its value is non-authoritative and unretained. Usage admission now includes only the bounded documented metadata in the generation-2 handoff. Routing, trusted token/total-cost settlement and ceilings, Azure-only ZDR policy, raw-free evidence, bounded I/O, no redirects, first-terminal stop, and no retry/fallback/alternate behavior are unchanged. `src/societies` is unchanged.
 
 ### Validation and local evidence
 
@@ -33,8 +50,8 @@
 
 ### Delivery state and next action
 
-- The implementation/local-evidence slice is ready for commit, PR, required checks, and merge on `codex/snowglobe-provider-completion`.
-- This implementation slice merged through PR #147. The separate generation-1 handoff above now supersedes the former unconsumed-live-stage checkpoint.
+- The former pre-merge checkpoint had the implementation/local-evidence slice ready on `codex/snowglobe-provider-completion`.
+- That implementation slice merged through PR #147. The separate generation-1 and generation-2 handoffs above supersede its former unconsumed-live-stage checkpoint.
 
 ## Historical Snow Globe OpenRouter finish-diagnostic refinement handoff
 

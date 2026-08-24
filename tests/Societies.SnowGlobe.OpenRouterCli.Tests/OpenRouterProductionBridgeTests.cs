@@ -217,6 +217,7 @@ public sealed class OpenRouterProductionBridgeTests
     [InlineData(ScriptedResponse.InvalidJson, "provider_response_rejected_response_json_invalid")]
     [InlineData(ScriptedResponse.InvalidShape, "provider_response_rejected_response_shape_invalid")]
     [InlineData(ScriptedResponse.InvalidUsage, "provider_response_rejected_response_usage_invalid")]
+    [InlineData(ScriptedResponse.UsageByokTrue, "provider_response_rejected_response_usage_invalid")]
     [InlineData(ScriptedResponse.InvalidProposal, "provider_response_rejected_proposal_content_invalid")]
     [InlineData(ScriptedResponse.InvalidContentType, "provider_exchange_unknown")]
     [InlineData(ScriptedResponse.UnexpectedExchangeFailure, "provider_exchange_unknown")]
@@ -292,6 +293,38 @@ public sealed class OpenRouterProductionBridgeTests
                 OpenRouterPremiumEvidenceArtifact artifact = OpenRouterPremiumEvidenceArtifactModule.Validate(evidenceBytes);
                 Assert.Equal("complete", artifact.Status);
                 Assert.DoesNotContain("bounded-provider-metadata", artifact.CanonicalJson, StringComparison.Ordinal);
+            }
+            finally { CryptographicOperations.ZeroMemory(evidenceBytes); }
+        }
+        finally { Delete(root); }
+    }
+
+    [Fact]
+    public async Task DocumentedBoundedUsageAdditionsCompleteWithoutRetryFallbackOrRawRetention()
+    {
+        string root = Temp();
+        ScriptedHandler handler = new(ScriptedResponse.DocumentedUsageAdditions);
+        try
+        {
+            OpenRouterPremiumProductionBridge bridge = Bridge(root,
+                new FakeCredentialStore(Account('a'), Secret()), new FakeProtector(), new FakeClock(ParsedNow), handler);
+            OpenRouterPremiumProductionPreflightResult preflight = await bridge.PreflightAsync();
+
+            OpenRouterPremiumProductionRunResult run = await bridge.RecordOnceAsync(preflight.AuthorizationDigestSha256);
+
+            Assert.Equal("complete", run.Status);
+            Assert.Equal(12, run.ExchangeCount);
+            Assert.Equal(528, run.TotalSettledMicrousd);
+            Assert.Null(run.TerminalCode);
+            Assert.Equal(12, handler.CallCount);
+            Assert.Equal(1, handler.MaximumActive);
+            byte[] evidenceBytes = File.ReadAllBytes(Path.Combine(root, OpenRouterPremiumProductionFiles.EvidenceArtifactFileName));
+            try
+            {
+                OpenRouterPremiumEvidenceArtifact artifact = OpenRouterPremiumEvidenceArtifactModule.Validate(evidenceBytes);
+                Assert.Equal("complete", artifact.Status);
+                Assert.DoesNotContain("server_tool_use_details", artifact.CanonicalJson, StringComparison.Ordinal);
+                Assert.DoesNotContain("upstream_inference", artifact.CanonicalJson, StringComparison.Ordinal);
             }
             finally { CryptographicOperations.ZeroMemory(evidenceBytes); }
         }
@@ -1047,6 +1080,8 @@ public sealed class OpenRouterProductionBridgeTests
         InvalidJson,
         InvalidShape,
         InvalidUsage,
+        UsageByokTrue,
+        DocumentedUsageAdditions,
         InvalidProposal,
         InvalidContentType,
         UnexpectedExchangeFailure
@@ -1271,6 +1306,17 @@ public sealed class OpenRouterProductionBridgeTests
                     case ScriptedResponse.InvalidUsage:
                         status = HttpStatusCode.OK; body = MutatedSuccess(value => value.Replace(
                             "\"total_tokens\":120", "\"total_tokens\":121", StringComparison.Ordinal)); break;
+                    case ScriptedResponse.UsageByokTrue:
+                        status = HttpStatusCode.OK; body = MutatedSuccess(value => value.Replace(
+                            "\"cost\":0.000044", "\"cost\":0.000044,\"is_byok\":true", StringComparison.Ordinal)); break;
+                    case ScriptedResponse.DocumentedUsageAdditions:
+                        status = HttpStatusCode.OK; body = MutatedSuccess(value => value.Replace(
+                            "\"cost\":0.000044",
+                            "\"cost\":0.000044,\"is_byok\":false," +
+                            "\"server_tool_use_details\":{\"tool_calls_executed\":0,\"tool_calls_requested\":0}," +
+                            "\"cost_details\":{\"upstream_inference_cost\":0.000040," +
+                            "\"upstream_inference_prompt_cost\":0.000010,\"upstream_inference_completions_cost\":0.000020}",
+                            StringComparison.Ordinal)); break;
                     case ScriptedResponse.InvalidProposal:
                         status = HttpStatusCode.OK; body = MutatedSuccess(value => value.Replace(
                             "GatherWood", "BreakWorld", StringComparison.Ordinal)); break;
