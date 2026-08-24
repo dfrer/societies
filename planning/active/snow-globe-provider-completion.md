@@ -77,7 +77,7 @@ Complete the existing isolated Snow Globe cognition-recording implementations so
 - The exact native-finish correction is implemented: normalized `finish_reason=stop` remains mandatory; optional native metadata must be a bounded string but its value is non-authoritative and unretained; historical native-non-stop terminal validation remains intact.
 - Correction evidence passes 196/196 focused OpenRouter tests, 98/98 full OpenRouter CLI/security tests, 59/59 Recording CLI tests, 1012/1012 full Snow Globe Release tests, relevant Release builds with 0 warnings/errors, and clean diff checks. Independent deep security/public-contract re-review is FINAL GO with no unresolved P0-P3 findings; merged PR delivery remains before generation 2.
 
-## Generation 2 terminal and third-generation correction contract
+## Historical generation 2 terminal and third-generation correction contract
 
 - The native-finish correction merged through PR #148 as `c6429bc`; required `build-test-smoke` passed in 4m15s. From that exact merged source, Release rebuilt with 0 warnings/errors and the zero-I/O plan, preflight, paid record-once, and local validate each ran exactly once.
 - Authorization `5fa1e4853f7fb24679c3bbf7f7f0bad1783030a5c61fdfcdc01ab3d7e8d1f8a5`, generation `g2-c40ab7d6aa310f99608a4ee935258c1b74087fe0c3e8089b04ea79f65e57fb25`.
@@ -88,7 +88,7 @@ Complete the existing isolated Snow Globe cognition-recording implementations so
 - Prove the correction red first with current documented fixture shapes plus malformed/type/range/nonzero-tool/cost-inconsistency cases; run focused/full Release gates and independent deep review; merge delivery before the third and final authorized generation.
 - The correction is implemented and green. It admits only the documented typed/zero/bounded/nullable usage forms above, does not retain them, and keeps unknown-property rejection elsewhere. Evidence passes 16/16 new usage cases, 21/21 narrow bridge cases, 213/213 focused OpenRouter, 100/100 CLI/security, 1029/1029 full Snow Globe, both relevant builds with 0 warnings/errors, and clean diff checks. Independent deep re-review is FINAL GO with no unresolved P0-P3 findings; PR #149 merged it before generation 3.
 
-## Final generation and blocked delivery boundary
+## Historical final generation and blocked delivery boundary
 
 - The correction merged through PR #149 as `d23a6cf`; required `build-test-smoke` passed in 4m23s. From that merged source, Release rebuilt 0/0 and the zero-I/O plan, third preflight, paid record-once, and local validate each ran exactly once.
 - Authorization `057f82366a4b9846aa2371f7de31749bc9e951bf5ba936de0990298232d54ddf`; preflight artifact 2,344 bytes/SHA-256 `46a65a796fffe693324a53f46de4e4ca519ebf6928a94ca1ad8bcfc6761e017b`; generation `g2-74906e534c14cf9255a7e41ecca9012ec941ec2e7c4b4c2c8cda359be45da9b8`.
@@ -138,7 +138,7 @@ Complete the existing isolated Snow Globe cognition-recording implementations so
 - One bounded `security_worker` owns the parser/test correction and does not stage, commit, use credentials, call the provider, change live state, or spawn workers. One independent `deep_reviewer` reviews the complete security/public-contract diff before delivery.
 - At the resulting milestone boundary, update `CURRENT_BUILD.md`, `WORKFLOW.md`, this contract, and the Snow Globe README with facts, validation, evidence digests, provider-stage counts, charge uncertainty, runtime state, delivery state, remaining blocker, and one practical next action.
 
-## Generation 4 terminal and prompt-detail compatibility contract
+## Historical generation 4 terminal and prompt-detail compatibility contract
 
 ### Consumed live result
 
@@ -168,11 +168,18 @@ Complete the existing isolated Snow Globe cognition-recording implementations so
 - Focused parser, historical-artifact, and exhaustive-vocabulary evidence passes 99/99, including a shallow 260-token fixture that proves the configured 256-token ceiling fails raw-free as `response_json_token_limit`. The former prompt-detail location code remains valid historical vocabulary; thirteen other location-specific unknown-property scopes remain active and strict.
 - Full Snow Globe Release passes 1051/1051, OpenRouter CLI/security passes 100/100, Recording CLI passes 59/59, both relevant builds have 0 warnings/errors, and diff checks are clean apart from line-ending notices.
 - No provider, network, credential, account, paid, live-state, retained-artifact, gameplay, or `src/societies/` action occurred during this offline correction. Independent deep review is FINAL GO with no unresolved P0-P3 after closing stale-generation wording and the missing JSON-token-limit regression. PR #152 passed required `build-test-smoke` in 2m53s and merged the correction as `43c553a`.
-- This completes the bounded offline follow-up and generation-4 evidence delivery. OpenRouter accepted compatibility remains unproven; no additional generation is authorized. The one practical next action is a fresh explicit paid decision only if a post-correction generation is desired.
+- This completed the bounded offline follow-up and generation-4 evidence delivery. OpenRouter accepted compatibility remained unproven; at that boundary no additional generation was authorized and the next action required a fresh explicit paid decision. The standing continuation below supersedes only that former authority limit.
 
-## Post-correction generation terminal
+## Historical post-correction generation terminal
 
 - The fresh authority checkpoint passed independent deep review, required `build-test-smoke`, and merged through PR #154 as `31a284b` before invocation. Release rebuilt from that exact source with 0 warnings/errors.
 - Zero-I/O plan, authenticated preflight, paid `record-once`, and local validate each ran once under the fixed Azure-only/ZDR-required, 12-slot, one-attempt, no-retry/fallback/alternate, 18,000-microusd maximum-reservation contract. Plan digest `eea26a92d318a2ba102c7979d0cb44563d8bef967ae00b627bc6263ff59d759d`; authorization `b73c2447a22046d36123b7615832697557567c4e1dd74c75ae37587414660fb8`; generation `g2-28a74bf64ac12fc54ff6b5ad9e1597c98a17fe3d04c74abce2c239f734a8998b`; preflight artifact 2,344 bytes/SHA-256 `ea7a19664af8039bc3b827a775293d0b0c6ec19b2403e2f500c59fec77dd52e0`.
 - Exactly one Azure-only ZDR exchange stopped `provider_error_terminal`; no second slot, retry, fallback, alternate, or accepted proposal occurred. Validation accepted 2,165-byte evidence SHA-256 `b5b02bf6ff3be1e00dd7001f8159dddeb26c60fc543a3eb43d6a1083e45a9b69`, 793-byte receipt SHA-256 `ad2bfc8a8f59b0c135f0b760770f4b537ddfd91d68cbd3665a03770908f3a73e`, and 2,830-byte/four-record journal SHA-256 `a279337d3edc2b4e2f71d1fc13d225bdc067bea44a7e10a3ef8cea08af3c88c6`; final checksum `cbf980f83f953661d32ff4731e509522517b67537deebc376aed800a7c406e85`.
 - Submission and charge are Unknown; trusted tokens/local settlement are zero, proposal is null, response digest is nonzero, and both consumed claims exist. The classifier proves only an HTTP 200 structurally valid provider error object, not its exact provider code/message/metadata/body. The authority and every stage are consumed; no rerun or second generation is authorized, no exact local correction is justified, and accepted OpenRouter compatibility remains unproven.
+
+## Standing provider-completion continuation
+
+- The user granted standing authorization for all future work required to make both Ollama and OpenRouter functional. Apply that authority through sequential bounded generations rather than retries: each OpenRouter generation remains Azure-only/ZDR-required, at most 12 one-attempt slots, no retry/fallback/alternate, maximum 18,000 microusd reserved, with plan/preflight/record/validate invoked at most once each. Never rerun a consumed stage; stop each terminal/uncertain generation; review and merge every correction before the next paid verification.
+- Ollama is currently functional on the frozen cell. Fresh preflight plan `c3da44aec1539b76e0dfe9d6c208f29116a9625567dee241fa1fff1f7d106138` and local validate accept the existing v5 artifact as `Complete`, SHA-256 `448af70b6ac262e67ddd0a6da3c76174d15faf0a2c771e2ca7a57bffb596cf57`. It binds the currently listening repaired-runtime PID/start identity, endpoint, runtime/model hashes, and 12/12 HTTP-200 result with zero retry/fallback/alternate. No new recording was created.
+- The current OpenRouter correction classifies only the strictly validated integer error code into 14 finite documented raw-free families; every other value remains historical `provider_error_terminal`. Provider message, metadata, body, dynamic names/text, submission, charge, settlement, proposal, routing, ZDR, secret, and retry semantics remain unchanged.
+- Red-first failed 14 new expectations while three generic controls passed, then passed 17/17. Focused parser/history/vocabulary passes 118/118, OpenRouter 254/254, full Snow Globe 1070/1070, OpenRouter CLI/security 100/100, Recording CLI 59/59, both Release builds 0/0, and independent deep review is FINAL GO with no P0-P3. No provider action used the correction. Deliver it through a reviewed PR and required check, then use that exact merge for one governed generation.

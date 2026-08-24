@@ -558,6 +558,25 @@ internal enum OpenRouterPremiumResponseParserRejectionCode
     response_utf8_invalid
 }
 
+internal enum OpenRouterPremiumProviderErrorOutcomeCode
+{
+    provider_error_code_400_terminal,
+    provider_error_code_401_terminal,
+    provider_error_code_402_terminal,
+    provider_error_code_403_terminal,
+    provider_error_code_404_terminal,
+    provider_error_code_408_terminal,
+    provider_error_code_413_terminal,
+    provider_error_code_422_terminal,
+    provider_error_code_429_terminal,
+    provider_error_code_500_terminal,
+    provider_error_code_502_terminal,
+    provider_error_code_503_terminal,
+    provider_error_code_524_terminal,
+    provider_error_code_529_terminal,
+    provider_error_terminal
+}
+
 internal static class OpenRouterPremiumResponseParser
 {
     private const string GenericRejectedOutcomeCode = "provider_response_rejected";
@@ -608,8 +627,9 @@ internal static class OpenRouterPremiumResponseParser
 
         if (root.TryGetProperty("error", out _))
         {
-            ValidateError(root);
-            return Unknown(slotIndex, scenarioId, promptDigestSha256, requestDigestSha256, responseDigest, "provider_error_terminal");
+            int providerErrorCode = ValidateError(root);
+            return Unknown(slotIndex, scenarioId, promptDigestSha256, requestDigestSha256, responseDigest,
+                ClassifyProviderErrorOutcome(providerErrorCode).ToString());
         }
         RequireString(root, "object", "chat.completion");
         RequireString(root, "model", OpenRouterPremiumProfile.CanonicalModelSlug);
@@ -919,7 +939,7 @@ internal static class OpenRouterPremiumResponseParser
         foreach (JsonProperty property in element.EnumerateObject()) if (!allowed.Contains(property.Name)) throw Rejected(code);
     }
 
-    private static void ValidateError(JsonElement root)
+    private static int ValidateError(JsonElement root)
     {
         foreach (JsonProperty property in root.EnumerateObject())
             if (property.Name is not ("error" or "openrouter_metadata"))
@@ -953,7 +973,27 @@ internal static class OpenRouterPremiumResponseParser
             if (routing.TryGetProperty("params", out JsonElement parameters) && parameters.ValueKind != JsonValueKind.Object)
                 throw Rejected(ParserRejection.response_error_invalid);
         }
+        return codeValue;
     }
+
+    private static OpenRouterPremiumProviderErrorOutcomeCode ClassifyProviderErrorOutcome(int code) => code switch
+    {
+        400 => OpenRouterPremiumProviderErrorOutcomeCode.provider_error_code_400_terminal,
+        401 => OpenRouterPremiumProviderErrorOutcomeCode.provider_error_code_401_terminal,
+        402 => OpenRouterPremiumProviderErrorOutcomeCode.provider_error_code_402_terminal,
+        403 => OpenRouterPremiumProviderErrorOutcomeCode.provider_error_code_403_terminal,
+        404 => OpenRouterPremiumProviderErrorOutcomeCode.provider_error_code_404_terminal,
+        408 => OpenRouterPremiumProviderErrorOutcomeCode.provider_error_code_408_terminal,
+        413 => OpenRouterPremiumProviderErrorOutcomeCode.provider_error_code_413_terminal,
+        422 => OpenRouterPremiumProviderErrorOutcomeCode.provider_error_code_422_terminal,
+        429 => OpenRouterPremiumProviderErrorOutcomeCode.provider_error_code_429_terminal,
+        500 => OpenRouterPremiumProviderErrorOutcomeCode.provider_error_code_500_terminal,
+        502 => OpenRouterPremiumProviderErrorOutcomeCode.provider_error_code_502_terminal,
+        503 => OpenRouterPremiumProviderErrorOutcomeCode.provider_error_code_503_terminal,
+        524 => OpenRouterPremiumProviderErrorOutcomeCode.provider_error_code_524_terminal,
+        529 => OpenRouterPremiumProviderErrorOutcomeCode.provider_error_code_529_terminal,
+        _ => OpenRouterPremiumProviderErrorOutcomeCode.provider_error_terminal
+    };
 
     private static void ValidateOptionalIntegerObject(
         JsonElement parent,
