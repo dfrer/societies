@@ -15,19 +15,24 @@ public sealed class OllamaRecordingExecutionArtifactTests
     public async Task CanonicalArtifact_GoldenRoundTripsAndIsDetached()
     {
         OllamaRecordingExecutionArtifact artifact = await CreateArtifact();
-        Assert.Equal("f0999cd1190c6ef0135e36977ceb783ad3ad01d124f90f372aeb0f11e4693f43", artifact.CanonicalDigestSha256);
-        Assert.Equal("17fa9231737575cbb16be650c0a49c51822f71ccecdc5224abeb5037e54cdfe1", artifact.PayloadDigestSha256);
+        Assert.Equal("c52cece2d068ffa9cc772742aa91f2480623d074014d5b27eaef4a37acc51ee3", artifact.CanonicalDigestSha256);
+        Assert.Equal("2041f85e056cc5b2ef5425e1be4d9388306e799cb499ad19580273caab7fc992", artifact.PayloadDigestSha256);
         OllamaRecordingExecutionArtifact validated = OllamaRecordingExecutionArtifactModule.Validate(artifact.CanonicalUtf8);
         Assert.Equal(artifact.CanonicalDigestSha256, validated.CanonicalDigestSha256);
         Assert.Equal(artifact.PayloadDigestSha256, validated.PayloadDigestSha256);
         Assert.InRange(artifact.CanonicalUtf8.Length, 1, OllamaRecordingExecutionArtifactModule.MaximumArtifactBytes);
         byte[] detached = artifact.CanonicalUtf8.ToArray(); detached[0] ^= 0xff;
         Assert.Equal((byte)'{', artifact.CanonicalUtf8.Span[0]);
-        Assert.Equal("snow_globe_ollama_recording_execution_artifact/v5", artifact.SchemaVersion);
-        Assert.Equal("artifacts/snowglobe/local-model/qwen3.5-4b-recording-execution-v5.json", artifact.RelativeArtifactPath);
+        Assert.Equal("snow_globe_ollama_recording_execution_artifact/v6", artifact.SchemaVersion);
+        Assert.Equal("artifacts/snowglobe/local-model/qwen3.5-4b-recording-execution-v6.json", artifact.RelativeArtifactPath);
         Assert.NotNull(artifact.ScoreSummary);
         Assert.Equal(artifact.ScoreSummary!.CanonicalDigestSha256, artifact.ScoreSummaryDigestSha256);
         Assert.Equal(artifact.NestedRecordingEvidenceDigestSha256, artifact.ScoreSummary.RecordingEvidenceDigestSha256);
+        Assert.NotNull(artifact.NormalizedProposalEvidence);
+        Assert.Equal(artifact.NormalizedProposalEvidence!.CanonicalDigestSha256, artifact.NormalizedProposalEvidenceDigestSha256);
+        Assert.Equal(artifact.NestedRecordingEvidenceDigestSha256, artifact.NormalizedProposalEvidence.SourceEvidenceDigestSha256);
+        Assert.Equal(CognitionQualityRecordingEvidenceModule.SchemaVersion, artifact.NormalizedProposalEvidence.SourceEvidenceSchemaVersion);
+        Assert.Equal(12, artifact.NormalizedProposalEvidence.Proposals.Count);
         Assert.Equal("None", artifact.TerminalCheckpointCode); Assert.Equal("None", artifact.TerminalPolicyCode);
         Assert.Equal("raw_free_local_loopback_recording_execution_binding_only", artifact.Semantics);
         using JsonDocument document = JsonDocument.Parse(artifact.CanonicalUtf8);
@@ -42,6 +47,7 @@ public sealed class OllamaRecordingExecutionArtifactTests
             "no_live_compatibility_proof",
             "digests_provide_integrity_not_authenticity",
             "raw_free_score_summary_embedded_and_revalidated_only_after_complete_evidence",
+            "normalized_proposals_embedded_and_revalidated_only_after_complete_evidence",
             "bounded_offline_corpus_score_not_general_quality_or_intelligence",
             "no_cost_latency_price_winner_or_commercial_claim",
             "no_world_or_simulation_authority",
@@ -74,14 +80,85 @@ public sealed class OllamaRecordingExecutionArtifactTests
     }
 
     [Fact]
+    public async Task HistoricalV5Schema_RemainsReadableWithoutNormalizedProposalReclassification()
+    {
+        OllamaRecordingExecutionArtifact current = await CreateArtifact();
+        JsonObject root = JsonNode.Parse(current.CanonicalUtf8.Span)!.AsObject();
+        root["schema_version"] = OllamaRecordingExecutionArtifactModule.PreviousSchemaVersion;
+        root["relative_artifact_path"] = OllamaRecordingExecutionArtifactModule.PreviousRelativeArtifactPath;
+        CognitionQualityPromptEnvelopePublication publication = CognitionQualityPromptEnvelopeBuilderModule.Create(SnowGlobeOllamaRecordingCompositionModule.PromptRevision);
+        CognitionQualityExecutionProvenance provenance = CognitionQualityExecutionProvenance.ForLocal(
+            SnowGlobePinnedOllamaRecordingModule.NormalizedModelIdentity,
+            "sha256-" + SnowGlobePinnedOllamaRecordingModule.ArtifactDigestSha256,
+            SnowGlobePinnedOllamaRecordingModule.AdapterContractDigestSha256,
+            publication.PromptRevision,
+            CognitionQualityRecordedResponseRunnerModule.ProposalSchemaVersion,
+            SnowGlobePinnedOllamaRecordingModule.AdapterIdentity);
+        OllamaLoopbackRuntimeBinding binding = new(
+            root["runtime_process_id"]!.GetValue<int>(),
+            root["runtime_process_start_utc_ticks"]!.GetValue<long>(),
+            SnowGlobePinnedOllamaRecordingModule.RuntimeExecutablePath,
+            SnowGlobePinnedOllamaRecordingModule.RuntimeExecutableSha256,
+            SnowGlobePinnedOllamaRecordingModule.CanonicalEndpointIdentity,
+            root["endpoint_owner_process_id"]!.GetValue<int>());
+        root["plan_digest_sha256"] = SnowGlobeOllamaRecordingCompositionModule.ComputePlanDigest(
+            publication,
+            provenance,
+            binding,
+            root["repository_root_digest_sha256"]!.GetValue<string>(),
+            root["authorization_nonce_digest_sha256"]!.GetValue<string>(),
+            SnowGlobeOllamaRecordingCompositionModule.PreviousPlanSchemaVersion,
+            OllamaRecordingExecutionArtifactModule.PreviousRelativeArtifactPath);
+        root["result"]!.AsObject().Remove("normalized_proposal_evidence_digest_sha256");
+        root.Remove("normalized_proposal_evidence");
+        JsonArray claims = root["claim_limitation_codes"]!.AsArray();
+        claims.Remove(claims.Single(node => node!.GetValue<string>() == "normalized_proposals_embedded_and_revalidated_only_after_complete_evidence"));
+        RecomputeLastDigest(root, "artifact_payload_digest_sha256");
+        byte[] historical = JsonSerializer.SerializeToUtf8Bytes(root);
+
+        OllamaRecordingExecutionArtifact validated = OllamaRecordingExecutionArtifactModule.Validate(historical);
+        Assert.Equal(OllamaRecordingExecutionArtifactModule.PreviousSchemaVersion, validated.SchemaVersion);
+        Assert.Equal(OllamaRecordingExecutionArtifactModule.PreviousRelativeArtifactPath, validated.RelativeArtifactPath);
+        Assert.Null(validated.NormalizedProposalEvidence);
+        Assert.Null(validated.NormalizedProposalEvidenceDigestSha256);
+        Assert.NotNull(validated.ScoreSummary);
+    }
+
+    [Fact]
+    public void AcceptedHistoricalV5Artifact_RemainsByteIdenticalAndReadableWithoutNormalizedProposals()
+    {
+        string repositoryRoot = FindRepositoryRoot();
+        string path = Path.Combine(repositoryRoot, OllamaRecordingExecutionArtifactModule.PreviousRelativeArtifactPath.Replace('/', Path.DirectorySeparatorChar));
+        byte[] bytes = File.ReadAllBytes(path);
+        try
+        {
+            Assert.Equal(16_148, bytes.Length);
+            Assert.Equal("448af70b6ac262e67ddd0a6da3c76174d15faf0a2c771e2ca7a57bffb596cf57",
+                Convert.ToHexString(SHA256.HashData(bytes)).ToLowerInvariant());
+            OllamaRecordingExecutionArtifact artifact = OllamaRecordingExecutionArtifactModule.Validate(bytes);
+            Assert.Equal(OllamaRecordingExecutionArtifactModule.PreviousSchemaVersion, artifact.SchemaVersion);
+            Assert.Equal(OllamaRecordingExecutionArtifactModule.PreviousRelativeArtifactPath, artifact.RelativeArtifactPath);
+            Assert.Equal("Complete", artifact.OutcomeCode);
+            Assert.Equal(12, artifact.CompletedSlotCount);
+            Assert.Null(artifact.NormalizedProposalEvidence);
+            Assert.Null(artifact.NormalizedProposalEvidenceDigestSha256);
+            Assert.Equal("448af70b6ac262e67ddd0a6da3c76174d15faf0a2c771e2ca7a57bffb596cf57", artifact.CanonicalDigestSha256);
+        }
+        finally { CryptographicOperations.ZeroMemory(bytes); }
+    }
+
+    [Fact]
     public async Task ScoreSummaryIsSingleEmbeddedCrossBoundAndEveryTerminalPathRequiresNull()
     {
         OllamaRecordingExecutionArtifact complete = await CreateArtifact();
         using JsonDocument document = JsonDocument.Parse(complete.CanonicalUtf8);
         JsonElement root = document.RootElement;
         Assert.Equal(1, root.EnumerateObject().Count(static property => property.NameEquals("score_summary")));
+        Assert.Equal(1, root.EnumerateObject().Count(static property => property.NameEquals("normalized_proposal_evidence")));
         Assert.Equal(complete.ScoreSummary!.CanonicalJson, root.GetProperty("score_summary").GetRawText());
+        Assert.Equal(complete.NormalizedProposalEvidence!.CanonicalJson, root.GetProperty("normalized_proposal_evidence").GetRawText());
         Assert.Equal(complete.ScoreSummaryDigestSha256, root.GetProperty("result").GetProperty("score_summary_digest_sha256").GetString());
+        Assert.Equal(complete.NormalizedProposalEvidenceDigestSha256, root.GetProperty("result").GetProperty("normalized_proposal_evidence_digest_sha256").GetString());
         Assert.Equal(complete.ScoreSummaryDigestSha256, root.GetProperty("receipt").GetProperty("score_summary_digest_sha256").GetString());
 
         AssertIntegrityValidForgeryRejected(complete, (_, result, _) => result["score_summary_digest_sha256"] = new string('a', 64));
@@ -92,8 +169,11 @@ public sealed class OllamaRecordingExecutionArtifactTests
 
         OllamaRecordingExecutionArtifact terminal = await CreateTerminalArtifact();
         Assert.Null(terminal.ScoreSummary); Assert.Null(terminal.ScoreSummaryDigestSha256);
+        Assert.Null(terminal.NormalizedProposalEvidence); Assert.Null(terminal.NormalizedProposalEvidenceDigestSha256);
         using JsonDocument terminalDocument = JsonDocument.Parse(terminal.CanonicalUtf8);
         Assert.Equal(JsonValueKind.Null, terminalDocument.RootElement.GetProperty("score_summary").ValueKind);
+        Assert.Equal(JsonValueKind.Null, terminalDocument.RootElement.GetProperty("normalized_proposal_evidence").ValueKind);
+        Assert.Equal(JsonValueKind.Null, terminalDocument.RootElement.GetProperty("result").GetProperty("normalized_proposal_evidence_digest_sha256").ValueKind);
         Assert.Equal(JsonValueKind.Null, terminalDocument.RootElement.GetProperty("result").GetProperty("score_summary_digest_sha256").ValueKind);
         Assert.Equal(JsonValueKind.Null, terminalDocument.RootElement.GetProperty("receipt").GetProperty("score_summary_digest_sha256").ValueKind);
     }
@@ -677,6 +757,7 @@ public sealed class OllamaRecordingExecutionArtifactTests
             result["terminal_slot_ordinal"] = 12;
             result["nested_recording_evidence_digest_sha256"] = null;
             result["score_summary_digest_sha256"] = null;
+            result["normalized_proposal_evidence_digest_sha256"] = null;
             result["terminal_checkpoint_code"] = "EvidenceConstruction";
             result["terminal_policy_code"] = "EvidenceShape";
             receipt!["status"] = "terminal";
@@ -688,6 +769,7 @@ public sealed class OllamaRecordingExecutionArtifactTests
             receipt["nested_recording_evidence_digest_sha256"] = null;
             receipt["score_summary_digest_sha256"] = null;
             root["score_summary"] = null;
+            root["normalized_proposal_evidence"] = null;
         });
 
         OllamaRecordingExecutionArtifact validated = OllamaRecordingExecutionArtifactModule.Validate(evidenceRejected);
@@ -695,6 +777,7 @@ public sealed class OllamaRecordingExecutionArtifactTests
         Assert.Equal(12, validated.CompletedSlotCount); Assert.Equal(12, validated.TerminalSlotOrdinal);
         Assert.True(validated.ReceiptPresent); Assert.Null(validated.NestedRecordingEvidenceDigestSha256);
         Assert.Null(validated.ScoreSummary); Assert.Null(validated.ScoreSummaryDigestSha256);
+        Assert.Null(validated.NormalizedProposalEvidence); Assert.Null(validated.NormalizedProposalEvidenceDigestSha256);
 
         Action<JsonObject, JsonObject, JsonObject?>[] resultMutations =
         [

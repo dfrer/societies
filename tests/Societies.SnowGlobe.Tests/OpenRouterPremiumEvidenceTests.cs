@@ -26,6 +26,12 @@ public sealed class OpenRouterPremiumEvidenceTests
         Assert.Equal(12, context.Leases.CallCount);
         Assert.Equal(12, context.Leases.ZeroObservationCount);
         Assert.True(context.Leases.LastLeaseZeroed);
+        CognitionQualityNormalizedProposalEvidence normalized = CognitionQualityNormalizedProposalEvidenceCodec.CreateFromOpenRouter(artifact);
+        Assert.Equal(OpenRouterPremiumEvidenceArtifactModule.SchemaVersion, normalized.SourceEvidenceSchemaVersion);
+        Assert.Equal(artifact.CanonicalDigestSha256, normalized.SourceEvidenceDigestSha256);
+        Assert.Equal(artifact.Slots.Select(slot => slot.ScenarioId), normalized.Proposals.Select(item => item.ScenarioId));
+        Assert.Equal(artifact.Slots.Select(slot => slot.Proposal), normalized.Proposals.Select(item => item.Proposal));
+        Assert.All(normalized.Proposals, item => Assert.NotNull(item.Proposal));
         Assert.Equal(Enumerable.Range(1, 12).Select(index => $"cq{index}"), artifact.Slots.Select(slot => slot.ScenarioId));
         Assert.All(artifact.Slots, slot =>
         {

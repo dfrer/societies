@@ -33,6 +33,10 @@ public sealed class CognitionQualityRecordingEvidenceTests
         Assert.Equal(evidence.ResponseSetDigestSha256, Digest(ResponseSetDocument(publication, Responses())));
         Assert.Equal(evidence.CanonicalDigestSha256, Digest(evidence.CanonicalUtf8.Span));
         Assert.Equal(evidence.PayloadDigestSha256, Digest(WithoutFinalDigest(document.RootElement, "recording_evidence_payload_digest_sha256")));
+        CognitionQualityNormalizedProposalEvidence normalized = CognitionQualityNormalizedProposalEvidenceCodec.CreateFromRecording(evidence);
+        Assert.Equal(CognitionQualityRecordingEvidenceModule.SchemaVersion, normalized.SourceEvidenceSchemaVersion);
+        Assert.Equal(evidence.CanonicalDigestSha256, normalized.SourceEvidenceDigestSha256);
+        Assert.Equal(evidence.RecordedResponseRun.ProposalBatch.Select(item => item.Proposal), normalized.Proposals.Select(item => item.Proposal));
     }
 
     [Fact]
@@ -47,6 +51,25 @@ public sealed class CognitionQualityRecordingEvidenceTests
         Assert.NotEqual(local.CanonicalDigestSha256, premium.CanonicalDigestSha256);
         Assert.Contains("response_binding_is_caller_attested", premium.ClaimLimitationCodes);
         Assert.Contains("no_transport_delivery_attestation", premium.ClaimLimitationCodes);
+    }
+
+    [Fact]
+    public void MalformedRecordedResponseProjectsCanonicalNullableNoProposalSlot()
+    {
+        CognitionQualityPromptEnvelopePublication publication = CognitionQualityPromptEnvelopeBuilderModule.Create("prompt-v1");
+        ReadOnlyMemory<byte>[] responses = Responses();
+        responses[0] = "{bad"u8.ToArray();
+        CognitionQualityRecordingEvidence recording = CognitionQualityRecordingEvidenceModule.Create(publication, Local(), responses);
+        Assert.Equal("complete", recording.Status);
+        Assert.Equal("response_json_invalid", recording.RecordedResponseRun.ResponseBindings[0].ParseOutcome);
+        Assert.Null(recording.RecordedResponseRun.ProposalBatch[0].Proposal);
+
+        CognitionQualityNormalizedProposalEvidence normalized = CognitionQualityNormalizedProposalEvidenceCodec.CreateFromRecording(recording);
+        CognitionQualityNormalizedProposalEvidence validated = CognitionQualityNormalizedProposalEvidenceCodec.Validate(normalized.CanonicalUtf8);
+        Assert.Null(validated.Proposals[0].Proposal);
+        using JsonDocument document = JsonDocument.Parse(validated.CanonicalUtf8);
+        Assert.Equal(JsonValueKind.Null, document.RootElement.GetProperty("proposals")[0].GetProperty("proposal").ValueKind);
+        Assert.Equal(recording.CanonicalDigestSha256, validated.SourceEvidenceDigestSha256);
     }
 
     [Fact]
