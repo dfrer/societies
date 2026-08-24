@@ -17,6 +17,12 @@ This is the only in-repo implementation that currently has:
 - a buildable C# project
 - a runnable automated validation path
 
+## Current Snow Globe post-correction generation authority
+
+After the generation-4 evidence and bounded prompt-detail correction were fully delivered, the user granted fresh continuation authority. The main task narrows that grant to one post-correction OpenRouter generation under the existing frozen contract: Azure-only, ZDR-required, at most 12 sequential scenario slots, one attempt per slot, no retry/fallback/alternate provider or model, and an 18,000-microusd maximum reservation. The zero-I/O plan, authenticated preflight, paid `record-once`, and local validate may each be invoked exactly once from merged source; the run must stop on its first terminal or uncertain outcome. This authority does not permit rerunning a consumed stage or an additional generation.
+
+No stage under this fresh authority has run at this checkpoint. The generation-4 statement below that no additional generation was then authorized remains the accurate historical settlement of that delivery and is superseded only by this later explicit grant. Independent deep review is FINAL GO with no P0-P3 findings on this authority boundary.
+
 ## Current Snow Globe provider-completion generation 4 outcome
 
 The location-specific raw-free diagnostic correction merged through [PR #151](https://github.com/dfrer/societies/pull/151) as `63288d2`; required `build-test-smoke` passed in 4m31s. From that exact merge, the OpenRouter CLI rebuilt in Release with 0 warnings/errors, and the zero-I/O plan, fresh authenticated preflight, paid `record-once`, and local validate each ran exactly once. Preflight accepted authorization `ae157e559ce8c95a9ac5ff331766f607565aae5144b74489f6266a031e5dd9fc`, 2,344-byte artifact SHA-256 `468e26bb5dc0ccb5aa2d401d9bcab746c04333fe093f0c7b77bd0c81a5eca914`, and generation `g2-bcec3e99ac2a434927a118ff446a8fce0b0e1f81bb66190b118550da9322b700` under the unchanged 12-slot / 18,000-microusd maximum reservation.

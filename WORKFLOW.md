@@ -1,5 +1,11 @@
 # Snow Globe provider preflight, Ollama repair, and qwen3.5 smoke handoff
 
+## Fresh post-correction generation authority checkpoint
+
+- The user granted fresh continuation authority after PR #152 and the final handoff were merged. It is narrowed to one generation: Azure-only, ZDR-required, at most 12 sequential one-attempt slots, no retry/fallback/alternate, and maximum reserved exposure of 18,000 microusd.
+- The zero-I/O plan, authenticated preflight, paid `record-once`, and local validate may each run exactly once from merged source. Stop on the first terminal or uncertain outcome; never rerun a consumed stage.
+- No stage has run under this authority at this checkpoint. It does not authorize another generation, credential mutation, account-wide setting change, accounting query, deployment, gameplay, or `src/societies/` work. Independent deep review is FINAL GO with no P0-P3 findings.
+
 ## Generation 4 terminal and offline prompt-detail follow-up
 
 ### Outcome and evidence

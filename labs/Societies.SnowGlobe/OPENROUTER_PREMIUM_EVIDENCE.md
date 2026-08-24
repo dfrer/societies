@@ -10,6 +10,10 @@ Each paid authority is single-use and permits at most 12 sequential requests, 4,
 
 The OpenRouter secret is stored in Windows Credential Manager under the fixed application target and is never accepted through argv, environment variables, configuration files, or retained evidence. Documentation records no secret value. Cleanup claims cover application-owned mutable buffers; immutable framework-owned Bearer copies cannot be globally proven erased.
 
+## Fresh post-correction generation authority
+
+The user granted fresh continuation authority after the generation-4 correction and final handoff merged. This is bounded to one generation under the frozen contract above: Azure-only, ZDR-required, at most twelve sequential one-attempt slots, no retry/fallback/alternate, and an 18,000-microusd maximum reservation. The zero-I/O plan, authenticated preflight, paid `record-once`, and local validate may each be invoked exactly once from merged source and must stop after any terminal or uncertain outcome. No stage has run under this authority at this checkpoint. The grant does not authorize rerunning a consumed stage or an additional generation.
+
 ## Provider-completion generation 4: prompt-detail terminal evidence
 
 Location-diagnostic PR #151 passed required `build-test-smoke` in 4m31s and merged as `63288d2`. From that exact source, Release rebuilt with 0 warnings/errors, and the zero-I/O plan, authenticated preflight, paid `record-once`, and local validate each ran exactly once. Preflight accepted authorization `ae157e559ce8c95a9ac5ff331766f607565aae5144b74489f6266a031e5dd9fc`, 2,344-byte artifact SHA-256 `468e26bb5dc0ccb5aa2d401d9bcab746c04333fe093f0c7b77bd0c81a5eca914`, and generation `g2-bcec3e99ac2a434927a118ff446a8fce0b0e1f81bb66190b118550da9322b700`.

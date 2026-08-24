@@ -169,3 +169,10 @@ Complete the existing isolated Snow Globe cognition-recording implementations so
 - Full Snow Globe Release passes 1051/1051, OpenRouter CLI/security passes 100/100, Recording CLI passes 59/59, both relevant builds have 0 warnings/errors, and diff checks are clean apart from line-ending notices.
 - No provider, network, credential, account, paid, live-state, retained-artifact, gameplay, or `src/societies/` action occurred during this offline correction. Independent deep review is FINAL GO with no unresolved P0-P3 after closing stale-generation wording and the missing JSON-token-limit regression. PR #152 passed required `build-test-smoke` in 2m53s and merged the correction as `43c553a`.
 - This completes the bounded offline follow-up and generation-4 evidence delivery. OpenRouter accepted compatibility remains unproven; no additional generation is authorized. The one practical next action is a fresh explicit paid decision only if a post-correction generation is desired.
+
+## Fresh post-correction generation authority
+
+- The user subsequently granted all authorization needed to continue. The main task narrows that grant to one new governed OpenRouter generation under the existing fixed terms: Azure-only, ZDR-required, at most 12 sequential slots, one attempt per slot, no retry/fallback/alternate provider or model, and a maximum reserved ceiling of 18,000 microusd.
+- From exact merged source, invoke the zero-I/O plan once, authenticated preflight once, paid `record-once` once, and local validate once. Stop immediately after any terminal or uncertain outcome and inspect only raw-free retained evidence.
+- This grant does not authorize rerunning any consumed stage, a second new generation, credential mutation, account-wide privacy/configuration changes, an accounting query, deployment, gameplay, or `src/societies/` work.
+- No stage has run under this fresh authority at this checkpoint. Independent deep review is FINAL GO with no P0-P3 findings; delivery of this authority record precedes invocation.
