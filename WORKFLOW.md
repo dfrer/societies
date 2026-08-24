@@ -1,5 +1,14 @@
 # Snow Globe provider preflight, Ollama repair, and qwen3.5 smoke handoff
 
+## Cognition-quality benchmark implementation gate
+
+- Fresh branch `codex/snowglobe-cognition-quality-benchmark` starts at provider-completion merge `1d279ea` from PR #161 and preserves the unrelated dirty main workspace.
+- Accepted evidence inspection found OpenRouter retains all twelve normalized proposals, while Ollama v5 retains only its score summary. The pair cannot symmetrically support useful-variation scoring without one additive local evidence extension; no proposal is inferred from a score or digest.
+- The reviewed implementation adds a strict normalized-proposal schema plus one deterministic comparison Module over the exact frozen scenarios and rules. Ollama v6 retains parser-representable proposals or canonical null `no_proposal`; historical v4/v5 remain unchanged. OpenRouter needs no new call.
+- Recommendation rules are versioned and fail closed on missing/malformed/asymmetric evidence, equal inputs, exact ties, sub-500-basis-point margins, or winner scores below 7,000 basis points. Conditional routing additionally binds complementary category evidence, a 500..1,500 aggregate margin, and a 4,000-basis-point minimum for both roles.
+- Red-first repairs and final validation pass 4/4 targeted, 162/162 broad, 1111/1111 full Snow Globe Release, 59/59 Recording CLI Release, builds 0/0, and clean diff checking. Independent review is FINAL GO with no P0-P3. No provider, credential, network, runtime, paid, account, live-state, or `src/societies/` action occurred.
+- Current result remains `insufficient_evidence` until reviewed code is delivered and one governed local Ollama v6 preflight/record-once/validate sequence supplies the symmetric proposal batch. No new OpenRouter generation is indicated.
+
 ## Provider-completion result and progression
 
 - Standing user authorization covers completing Ollama and OpenRouter, including bounded credentials/account/paid actions. OpenRouter proceeds through sequential fresh generations only: Azure/ZDR, at most 12 one-attempt slots, no retry/fallback/alternate, 18,000 microusd maximum reserved per generation, plan/preflight/record/validate once each, stop on first terminal/uncertain outcome, never rerun a consumed stage, and merge every reviewed correction before its paid verification.

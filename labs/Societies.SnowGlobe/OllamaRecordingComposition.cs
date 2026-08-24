@@ -105,7 +105,7 @@ internal enum OllamaRecordingCompositionFailureCode
     HttpResponseRejected, ResponseBodyRejected, WrapperRejected, EvidenceRejected
 }
 
-/// <summary>Detached raw-free composition result; it never exposes prompts, proposals, or nested evidence.</summary>
+/// <summary>Detached raw-free composition result; the artifact may expose only the normalized proposal projection.</summary>
 public sealed class OllamaRecordingCompositionResult
 {
     internal OllamaRecordingCompositionResult(string outcomeCode, string failureCode, OllamaRecordingExecutionArtifact? artifact)
@@ -115,6 +115,8 @@ public sealed class OllamaRecordingCompositionResult
     public OllamaRecordingExecutionArtifact? Artifact { get; }
     public CognitionQualityScoreSummary? ScoreSummary => Artifact?.ScoreSummary;
     public string? ScoreSummaryDigestSha256 => Artifact?.ScoreSummaryDigestSha256;
+    public CognitionQualityNormalizedProposalEvidence? NormalizedProposalEvidence => Artifact?.NormalizedProposalEvidence;
+    public string? NormalizedProposalEvidenceDigestSha256 => Artifact?.NormalizedProposalEvidenceDigestSha256;
     public bool AdditionalAttemptAuthorized => false;
     public bool ArtifactPublished => Artifact is not null;
     public bool HasRawRecordingEvidence => false;
@@ -127,7 +129,8 @@ public sealed class OllamaRecordingCompositionResult
 public sealed class SnowGlobeOllamaRecordingCompositionModule
 {
     public const string PromptRevision = "prompt-v1";
-    internal const string PlanSchemaVersion = "snow_globe_ollama_recording_composition_plan/v5";
+    internal const string PlanSchemaVersion = "snow_globe_ollama_recording_composition_plan/v6";
+    internal const string PreviousPlanSchemaVersion = "snow_globe_ollama_recording_composition_plan/v5";
     internal const string LegacyPlanSchemaVersion = "snow_globe_ollama_recording_composition_plan/v4";
     private readonly string _absoluteRepositoryRoot;
     private readonly string _repositoryRootDigestSha256;
@@ -265,6 +268,9 @@ public sealed class SnowGlobeOllamaRecordingCompositionModule
                     if (_resultProjectionForTesting is not null)
                         result = _resultProjectionForTesting(session, result) ?? throw Failure("composition_execution_indeterminate");
                     ReadOnlyMemory<byte>? receiptBytes = result.Receipt?.CanonicalUtf8;
+                    CognitionQualityNormalizedProposalEvidence? normalizedProposals = result.Evidence is null
+                        ? null
+                        : CognitionQualityNormalizedProposalEvidenceCodec.CreateFromRecording(result.Evidence);
                     (OllamaRecordingCompositionOutcomeCode compositionOutcome, OllamaRecordingCompositionFailureCode compositionFailure) = DeriveComposition(result);
                     snapshot = new OllamaRecordingArtifactSnapshot(
                         compositionOutcome.ToString(), compositionFailure.ToString(), true,
@@ -272,7 +278,8 @@ public sealed class SnowGlobeOllamaRecordingCompositionModule
                         result.TerminalSlotOrdinal, result.TerminalSubmissionState.ToString(), ChargeState.NotApplicable.ToString(), result.TerminalStatusCode,
                         result.TerminalCheckpointCode, result.TerminalPolicyCode,
                         receiptBytes, result.Receipt?.CanonicalDigestSha256, result.Receipt?.NestedRecordingEvidenceDigestSha256,
-                        result.ScoreSummary?.CanonicalUtf8, result.ScoreSummaryDigestSha256);
+                        result.ScoreSummary?.CanonicalUtf8, result.ScoreSummaryDigestSha256,
+                        normalizedProposals?.CanonicalUtf8, normalizedProposals?.CanonicalDigestSha256);
                 }
             }
         }

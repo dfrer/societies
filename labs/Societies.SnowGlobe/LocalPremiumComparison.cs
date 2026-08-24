@@ -57,6 +57,7 @@ public static class LocalPremiumComparison
     public const int MaximumReportBytes = 32 * 1024;
     private const string ComparisonV2SchemaVersion = "snow_globe_local_premium_comparison/v2";
     private const string ComparisonV3SchemaVersion = "snow_globe_local_premium_comparison/v3";
+    private const string ComparisonV4SchemaVersion = "snow_globe_local_premium_comparison/v4";
     private static readonly string ComparisonV2ContractId = LocalPremiumComparisonHash.Sha256(Encoding.UTF8.GetBytes(string.Join('|',
         ComparisonV2SchemaVersion,
         FrozenLocalBenchmarkRegistry.ComparisonContractId,
@@ -67,8 +68,16 @@ public static class LocalPremiumComparison
     private static readonly string ComparisonV3ContractId = LocalPremiumComparisonHash.Sha256(Encoding.UTF8.GetBytes(string.Join('|',
         ComparisonV3SchemaVersion,
         FrozenLocalBenchmarkRegistry.ComparisonContractId,
+        OllamaRecordingExecutionArtifactModule.PreviousSchemaVersion,
+        CognitionQualityScoreSummaryCodec.SchemaVersion,
+        "separate-benchmark-and-recording-runs",
+        "premium-null|premium-cost-null|performance-delta-null|quality-delta-null")));
+    private static readonly string ComparisonV4ContractId = LocalPremiumComparisonHash.Sha256(Encoding.UTF8.GetBytes(string.Join('|',
+        ComparisonV4SchemaVersion,
+        FrozenLocalBenchmarkRegistry.ComparisonContractId,
         OllamaRecordingExecutionArtifactModule.SchemaVersion,
         CognitionQualityScoreSummaryCodec.SchemaVersion,
+        CognitionQualityNormalizedProposalEvidenceCodec.SchemaVersion,
         "separate-benchmark-and-recording-runs",
         "premium-null|premium-cost-null|performance-delta-null|quality-delta-null")));
     private static readonly string[] ComparisonV2MissingGateCodes =
@@ -91,12 +100,20 @@ public static class LocalPremiumComparison
         "bounded_offline_corpus_score_not_general_quality_or_intelligence", "no_live_premium_evidence",
         "no_cross_run_latency_per_quality_or_price_conclusion", "no_cost_conclusion", "no_winner_selection"
     ];
+    private static readonly string[] ComparisonV4ClaimLimitations =
+    [
+        "frozen_local_benchmark_cell_only", "validated_local_recording_artifact_v6_only",
+        "normalized_proposals_retained_but_not_compared_by_this_legacy_report",
+        "local_benchmark_and_recording_are_separate_runs", "sampled_vram_does_not_prove_unsampled_transient_peak",
+        "bounded_offline_corpus_score_not_general_quality_or_intelligence", "no_live_premium_evidence",
+        "no_cross_run_latency_per_quality_or_price_conclusion", "no_cost_conclusion", "no_winner_selection"
+    ];
 
     public static LocalPremiumComparisonReport Evaluate(ReadOnlyMemory<byte> canonicalLocalCellUtf8) =>
         Evaluate(canonicalLocalCellUtf8, AbsentPremiumComparisonEvidenceAdapter.Instance);
 
     /// <summary>
-    /// Validates one frozen benchmark run and one distinct closed v4 or v5 recording run without treating them as
+    /// Validates one frozen benchmark run and one distinct closed v4, v5, or v6 recording run without treating them as
     /// a joined latency/quality sample or inspecting any live premium evidence.
     /// </summary>
     public static LocalPremiumComparisonReport Evaluate(
@@ -117,7 +134,9 @@ public static class LocalPremiumComparison
             catch (OllamaRecordingExecutionArtifactException exception)
             { throw new LocalPremiumComparisonException(LocalPremiumComparisonErrors.LocalRecordingArtifactRejected, exception); }
 
-            if (recording.SchemaVersion is not (OllamaRecordingExecutionArtifactModule.LegacySchemaVersion or OllamaRecordingExecutionArtifactModule.SchemaVersion)
+            if (recording.SchemaVersion is not (OllamaRecordingExecutionArtifactModule.LegacySchemaVersion
+                    or OllamaRecordingExecutionArtifactModule.PreviousSchemaVersion
+                    or OllamaRecordingExecutionArtifactModule.SchemaVersion)
                 || !string.Equals(recording.OutcomeCode, "Complete", StringComparison.Ordinal)
                 || !string.Equals(recording.FailureCode, "None", StringComparison.Ordinal)
                 || !string.Equals(recording.RecordingOutcomeCode, "Complete", StringComparison.Ordinal)
@@ -130,9 +149,10 @@ public static class LocalPremiumComparison
             using JsonDocument benchmarkDocument = JsonDocument.Parse(benchmark.CanonicalUtf8);
             JsonElement benchmarkRun = benchmarkDocument.RootElement.GetProperty("local");
             bool legacyV4 = string.Equals(recording.SchemaVersion, OllamaRecordingExecutionArtifactModule.LegacySchemaVersion, StringComparison.Ordinal);
-            string comparisonSchemaVersion = legacyV4 ? ComparisonV2SchemaVersion : ComparisonV3SchemaVersion;
-            string comparisonContractId = legacyV4 ? ComparisonV2ContractId : ComparisonV3ContractId;
-            IReadOnlyList<string> claimLimitations = legacyV4 ? ComparisonV2ClaimLimitations : ComparisonV3ClaimLimitations;
+            bool previousV5 = string.Equals(recording.SchemaVersion, OllamaRecordingExecutionArtifactModule.PreviousSchemaVersion, StringComparison.Ordinal);
+            string comparisonSchemaVersion = legacyV4 ? ComparisonV2SchemaVersion : previousV5 ? ComparisonV3SchemaVersion : ComparisonV4SchemaVersion;
+            string comparisonContractId = legacyV4 ? ComparisonV2ContractId : previousV5 ? ComparisonV3ContractId : ComparisonV4ContractId;
+            IReadOnlyList<string> claimLimitations = legacyV4 ? ComparisonV2ClaimLimitations : previousV5 ? ComparisonV3ClaimLimitations : ComparisonV4ClaimLimitations;
             byte[] payload = WriteComparisonReport(benchmarkRun, recording, comparisonSchemaVersion, comparisonContractId, claimLimitations, null);
             string payloadDigest = LocalPremiumComparisonHash.Sha256(payload);
             CryptographicOperations.ZeroMemory(payload);

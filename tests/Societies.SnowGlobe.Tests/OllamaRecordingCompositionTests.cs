@@ -19,11 +19,12 @@ public sealed class OllamaRecordingCompositionTests
         SnowGlobeOllamaRecordingCompositionModule first = new(Root); SnowGlobeOllamaRecordingCompositionModule second = new(Root);
         OllamaRecordingCompositionPlan a = first.Prepare(new(777, StartTicks), "composition-nonce-v1");
         OllamaRecordingCompositionPlan b = second.Prepare(new(777, StartTicks), "composition-nonce-v1");
-        Assert.Equal("21382ea363bf7d2a56b58200c2ae166a4674413403bc2b912369b55b39d8486f", a.PlanDigestSha256);
-        Assert.Equal("snow_globe_ollama_recording_composition_plan/v5", a.SchemaVersion);
+        Assert.Equal("1766a6530bcf10dd34983b5edfd6be93060ba8a67fce4032a612f3c34f64a529", a.PlanDigestSha256);
+        Assert.Equal("snow_globe_ollama_recording_composition_plan/v6", a.SchemaVersion);
         Assert.Equal(a.PlanDigestSha256, b.PlanDigestSha256);
         Assert.Equal(OllamaRecordingExecutionArtifactModule.RelativeArtifactPath, a.RelativeArtifactPath);
-        Assert.Equal("artifacts/snowglobe/local-model/qwen3.5-4b-recording-execution-v5.json", a.RelativeArtifactPath);
+        Assert.Equal("artifacts/snowglobe/local-model/qwen3.5-4b-recording-execution-v6.json", a.RelativeArtifactPath);
+        Assert.Equal("artifacts/snowglobe/local-model/qwen3.5-4b-recording-execution-v5.json", OllamaRecordingExecutionArtifactModule.PreviousRelativeArtifactPath);
         Assert.Equal("artifacts/snowglobe/local-model/qwen3.5-4b-recording-execution-v4.json", OllamaRecordingExecutionArtifactModule.LegacyRelativeArtifactPath);
         Assert.NotEqual(OllamaRecordingExecutionArtifactModule.LegacyRelativeArtifactPath, a.RelativeArtifactPath);
         Assert.DoesNotContain("recording-execution-v1", a.RelativeArtifactPath, StringComparison.Ordinal);
@@ -75,6 +76,8 @@ public sealed class OllamaRecordingCompositionTests
         Assert.Equal(1, store.ReserveCount); Assert.Equal(1, store.PublishCount); Assert.Equal(0, store.ReadCount);
         Assert.NotNull(result.Artifact); Assert.Equal(12, result.Artifact!.CompletedSlotCount); Assert.True(result.Artifact.ReceiptPresent); Assert.NotNull(result.Artifact.NestedRecordingEvidenceDigestSha256);
         Assert.NotNull(result.ScoreSummary); Assert.NotNull(result.Artifact.ScoreSummary);
+        Assert.NotNull(result.NormalizedProposalEvidence); Assert.NotNull(result.Artifact.NormalizedProposalEvidence);
+        Assert.Equal(result.NormalizedProposalEvidenceDigestSha256, result.Artifact.NormalizedProposalEvidenceDigestSha256);
         Assert.Equal(result.ScoreSummaryDigestSha256, result.Artifact.ScoreSummaryDigestSha256);
         Assert.Equal(result.Artifact.ScoreSummary!.RecordingEvidenceDigestSha256, result.Artifact.NestedRecordingEvidenceDigestSha256);
         Assert.Equal("None", result.Artifact.TerminalCheckpointCode); Assert.Equal("None", result.Artifact.TerminalPolicyCode);
@@ -82,8 +85,66 @@ public sealed class OllamaRecordingCompositionTests
         string json = Encoding.UTF8.GetString(result.Artifact.CanonicalUtf8.Span);
         Assert.DoesNotContain("happy-composition-v1", json, StringComparison.Ordinal);
         Assert.DoesNotContain(SnowGlobePinnedOllamaRecordingModule.RuntimeExecutablePath, json, StringComparison.OrdinalIgnoreCase);
-        Assert.DoesNotContain("agent-00", json, StringComparison.Ordinal); Assert.DoesNotContain("GatherWood", json, StringComparison.Ordinal);
+        Assert.Contains("agent-00", json, StringComparison.Ordinal); Assert.DoesNotContain("GatherWood", json, StringComparison.Ordinal);
         Assert.False(result.HasRawRecordingEvidence); Assert.False(result.AdditionalAttemptAuthorized);
+    }
+
+    [Fact]
+    public async Task CompleteDefinedActionContractIllegalProposalPreservesRecordingEvidenceAndRemainsCommandIllegal()
+    {
+        InMemoryOllamaRecordingArtifactStore store = new();
+        TestTransportFactory factory = new(TestWrappers.DefinedActionContractIllegalQuantity());
+        SnowGlobeOllamaRecordingCompositionModule module = new(
+            Root, new SnowGlobePinnedOllamaRecordingModule(new FixedClock(1), factory), store);
+
+        OllamaRecordingCompositionResult result = await module.ExecuteAndPublishOnceAsync(
+            module.Prepare(new(777, StartTicks), "contract-illegal-composition-v1"));
+
+        Assert.Equal("Complete", result.OutcomeCode); Assert.Equal("None", result.FailureCode);
+        Assert.NotNull(result.Artifact); Assert.True(result.Artifact!.RecordingResultPresent);
+        Assert.Equal(12, result.Artifact.CompletedSlotCount); Assert.True(result.Artifact.ReceiptPresent);
+        Assert.NotNull(result.Artifact.ReceiptDigestSha256); Assert.NotNull(result.Artifact.NestedRecordingEvidenceDigestSha256);
+        CognitionQualityNormalizedProposalEvidence normalized = Assert.IsType<CognitionQualityNormalizedProposalEvidence>(result.NormalizedProposalEvidence);
+        Assert.Equal(12, normalized.Proposals.Count);
+        SnowGlobeActionProposal proposal = Assert.IsType<SnowGlobeActionProposal>(normalized.Proposals[0].Proposal);
+        Assert.Equal(SnowGlobeActionKind.GatherWood, proposal.Action);
+        Assert.Equal(0, proposal.Quantity);
+
+        CognitionQualityComparisonArtifact comparison = CognitionQualityComparisonModule.Compare(
+            new CognitionQualityComparisonInput(new string('a', 64), normalized),
+            new CognitionQualityComparisonInput(new string('b', 64), normalized));
+        CognitionQualityScenarioCriteria scenario = comparison.Providers[0].AutomatedEvaluation!.Scenarios[0];
+        Assert.True(scenario.SchemaValid); Assert.False(scenario.CommandLegal);
+        Assert.False(scenario.ResourceFeasible); Assert.Equal(0, scenario.GoalRelevanceBasisPoints);
+        Assert.Contains("\"command_legal\":false", comparison.CanonicalJson, StringComparison.Ordinal);
+        Assert.Equal(1, store.PublishCount); Assert.Equal(12, factory.Transport!.CallCount);
+    }
+
+    [Fact]
+    public async Task CompleteMalformedProposalResponsePreservesRecordingEvidenceAndPublishesNullableNormalizedSlot()
+    {
+        InMemoryOllamaRecordingArtifactStore store = new();
+        TestTransportFactory factory = new(TestWrappers.MalformedProposalResponse());
+        SnowGlobeOllamaRecordingCompositionModule module = new(
+            Root, new SnowGlobePinnedOllamaRecordingModule(new FixedClock(1), factory), store);
+
+        OllamaRecordingCompositionResult result = await module.ExecuteAndPublishOnceAsync(
+            module.Prepare(new(777, StartTicks), "no-proposal-composition-v1"));
+
+        Assert.Equal("Complete", result.OutcomeCode); Assert.Equal("None", result.FailureCode);
+        Assert.NotNull(result.Artifact); Assert.True(result.Artifact!.RecordingResultPresent);
+        Assert.Equal(12, result.Artifact.CompletedSlotCount); Assert.True(result.Artifact.ReceiptPresent);
+        Assert.NotNull(result.Artifact.ReceiptDigestSha256); Assert.NotNull(result.Artifact.NestedRecordingEvidenceDigestSha256);
+        Assert.NotNull(result.NormalizedProposalEvidence); Assert.Equal(12, result.NormalizedProposalEvidence!.Proposals.Count);
+        Assert.Null(result.NormalizedProposalEvidence.Proposals[0].Proposal);
+        using JsonDocument document = JsonDocument.Parse(result.Artifact.CanonicalUtf8);
+        Assert.Equal(JsonValueKind.Null,
+            document.RootElement.GetProperty("normalized_proposal_evidence").GetProperty("proposals")[0].GetProperty("proposal").ValueKind);
+
+        CognitionQualityProviderEvaluation score = CognitionQualityComparisonModule.EvaluateProvider(result.NormalizedProposalEvidence);
+        Assert.False(score.Scenarios[0].SchemaValid); Assert.False(score.Scenarios[0].CommandLegal);
+        Assert.False(score.Scenarios[0].ResourceFeasible); Assert.Equal(0, score.Scenarios[0].GoalRelevanceBasisPoints);
+        Assert.Equal(1, store.PublishCount); Assert.Equal(12, factory.Transport!.CallCount);
     }
 
     [Fact]
@@ -458,12 +519,24 @@ public sealed class OllamaRecordingCompositionTests
 
 internal static class TestWrappers
 {
-    internal static byte[][] Valid() => Enumerable.Range(1, 12).Select(Wrapper).ToArray();
-    private static byte[] Wrapper(int index)
+    internal static byte[][] Valid() => Enumerable.Range(1, 12).Select(index => Wrapper(index)).ToArray();
+    internal static byte[][] DefinedActionContractIllegalQuantity()
+    {
+        byte[][] wrappers = Valid();
+        wrappers[0] = Wrapper(1, 0);
+        return wrappers;
+    }
+    internal static byte[][] MalformedProposalResponse()
+    {
+        byte[][] wrappers = Valid();
+        wrappers[0] = Wrapper(1, responseOverride: "{bad");
+        return wrappers;
+    }
+    private static byte[] Wrapper(int index, int? quantityOverride = null, string? responseOverride = null)
     {
         string action = index switch { 1 or 7 => "GatherWood", 2 or 3 => "GatherStone", 4 or 5 or 6 => "BuildShelter", 8 or 9 => "BuildStorage", _ => "Idle" };
-        int quantity = index switch { 1 => 12, 2 => 6, 3 => 2, 7 => 8, _ => 0 };
-        string proposal = $"{{\"agent_id\":\"agent-00\",\"action\":\"{action}\",\"quantity\":{quantity}}}";
+        int quantity = quantityOverride ?? index switch { 1 => 12, 2 => 6, 3 => 2, 7 => 8, _ => 0 };
+        string proposal = responseOverride ?? $"{{\"agent_id\":\"agent-00\",\"action\":\"{action}\",\"quantity\":{quantity}}}";
         return Encoding.UTF8.GetBytes($"{{\"model\":\"qwen3.5:4b\",\"created_at\":\"2026-08-18T12:00:00Z\",\"response\":{JsonSerializer.Serialize(proposal)},\"done\":true,\"done_reason\":\"stop\",\"context\":[1,2],\"total_duration\":1000000,\"load_duration\":0,\"prompt_eval_count\":10,\"prompt_eval_duration\":500000,\"eval_count\":20,\"eval_duration\":500000}}" );
     }
 }
