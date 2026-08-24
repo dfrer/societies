@@ -49,5 +49,6 @@ Future raw-free OpenRouter evidence must distinguish each existing finish-admiss
 
 ## Delivery
 
-- Update the focused contract, lab README, `CURRENT_BUILD.md`, and `WORKFLOW.md` with the reviewed outcome and the immutable sixth-run limitation.
-- Deliver through a `codex/` branch, required check, and merge; return `master` clean and synchronized.
+- The focused contract, lab README, `CURRENT_BUILD.md`, and `WORKFLOW.md` record the reviewed outcome and immutable sixth-run limitation.
+- Implementation commit `2dff642` was published through PR #145; required `build-test-smoke` passed in 4m15s and the PR merged to `master` as `d0c7d09`.
+- Publish this exact delivery record through a documentation-only `codex/` branch, then return `master` clean and synchronized.
