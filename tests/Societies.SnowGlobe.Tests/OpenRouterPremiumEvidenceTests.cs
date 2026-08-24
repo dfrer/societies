@@ -114,6 +114,7 @@ public sealed class OpenRouterPremiumEvidenceTests
     [InlineData("provider_response_rejected_response_native_finish_reason_not_stop")]
     [InlineData("provider_response_rejected_response_json_unknown_property")]
     [InlineData("provider_response_rejected_response_usage_prompt_tokens_details_unknown_property")]
+    [InlineData("provider_error_terminal")]
     public void HistoricalProviderResponseRejectionArtifactsRemainCanonicalAndValid(string outcomeCode)
     {
         TestContext context = CreateContext();
@@ -132,6 +133,42 @@ public sealed class OpenRouterPremiumEvidenceTests
         Assert.Equal(outcomeCode, Assert.Single(validated.Slots).OutcomeCode);
         Assert.Equal(artifact.CanonicalJson, validated.CanonicalJson);
         Assert.Equal(artifact.CanonicalDigestSha256, validated.CanonicalDigestSha256);
+    }
+
+    [Fact]
+    public void ProviderErrorOutcomeVocabularyIsFiniteCanonicalAndRawFree()
+    {
+        string[] expected =
+        [
+            "provider_error_code_400_terminal",
+            "provider_error_code_401_terminal",
+            "provider_error_code_402_terminal",
+            "provider_error_code_403_terminal",
+            "provider_error_code_404_terminal",
+            "provider_error_code_408_terminal",
+            "provider_error_code_413_terminal",
+            "provider_error_code_422_terminal",
+            "provider_error_code_429_terminal",
+            "provider_error_code_500_terminal",
+            "provider_error_code_502_terminal",
+            "provider_error_code_503_terminal",
+            "provider_error_code_524_terminal",
+            "provider_error_code_529_terminal",
+            "provider_error_terminal"
+        ];
+
+        string[] actual = Enum.GetValues<OpenRouterPremiumProviderErrorOutcomeCode>()
+            .Select(value => value.ToString()).ToArray();
+
+        Assert.Equal(expected, actual);
+        Assert.Equal(actual.Length, actual.Distinct(StringComparer.Ordinal).Count());
+        Assert.All(actual, outcome =>
+        {
+            Assert.True(OpenRouterPremiumCanonical.IsIdentity(outcome));
+            Assert.DoesNotContain("message", outcome, StringComparison.Ordinal);
+            Assert.DoesNotContain("metadata", outcome, StringComparison.Ordinal);
+            Assert.DoesNotContain("raw", outcome, StringComparison.Ordinal);
+        });
     }
 
     [Fact]

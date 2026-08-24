@@ -1,13 +1,20 @@
 # Snow Globe provider preflight, Ollama repair, and qwen3.5 smoke handoff
 
-## Post-correction generation terminal handoff
+## Active provider-completion continuation
+
+- Standing user authorization covers completing Ollama and OpenRouter, including bounded credentials/account/paid actions. OpenRouter proceeds through sequential fresh generations only: Azure/ZDR, at most 12 one-attempt slots, no retry/fallback/alternate, 18,000 microusd maximum reserved per generation, plan/preflight/record/validate once each, stop on first terminal/uncertain outcome, never rerun a consumed stage, and merge every reviewed correction before its paid verification.
+- Ollama is functional on the current frozen cell. Fresh Release build is 0/0; preflight plan is `c3da44aec1539b76e0dfe9d6c208f29116a9625567dee241fa1fff1f7d106138`; v5 artifact validation accepts `Complete` at SHA-256 `448af70b6ac262e67ddd0a6da3c76174d15faf0a2c771e2ca7a57bffb596cf57`. It binds the currently listening repaired-runtime PID/start identity and records 12/12 HTTP-200 slots with zero retries/fallbacks/alternates. Fresh checks did not create a second recording.
+- The OpenRouter HTTP-200 provider error correction maps only 14 documented numeric codes to predefined raw-free terminal strings and leaves all other valid integers generic. It retains no provider message, metadata, body, or dynamic code text and changes no submission, charge, settlement, proposal, retry, routing, or secret behavior.
+- Red-first is 14 intended failures/3 generic passes, then green 17/17. Focused parser/history/vocabulary is 118/118, OpenRouter 254/254, full Snow Globe 1070/1070, CLI/security 100/100, Recording CLI 59/59, both Release builds 0/0, and independent deep review FINAL GO with no P0-P3 findings. No provider action used the correction. Next action: merge it, then run one governed generation from that exact source.
+
+## Historical post-correction generation terminal handoff
 
 - Fresh authority was reviewed, checked, and merged through PR #154 as `31a284b`. From that exact source, Release rebuilt 0/0 and the zero-I/O plan, authenticated preflight, paid `record-once`, and local validate each ran once under the fixed Azure-only/ZDR-required, 12-slot, no-retry/fallback/alternate, 18,000-microusd maximum-reservation contract.
 - Plan digest `eea26a92d318a2ba102c7979d0cb44563d8bef967ae00b627bc6263ff59d759d`; authorization `b73c2447a22046d36123b7615832697557567c4e1dd74c75ae37587414660fb8`; generation `g2-28a74bf64ac12fc54ff6b5ad9e1597c98a17fe3d04c74abce2c239f734a8998b`; preflight artifact 2,344 bytes/SHA-256 `ea7a19664af8039bc3b827a775293d0b0c6ec19b2403e2f500c59fec77dd52e0`.
 - Exactly one Azure-only ZDR exchange stopped `provider_error_terminal`; no second slot, retry, fallback, alternate, or accepted proposal occurred. Local validation accepted the terminal evidence. Evidence is 2,165 bytes/SHA-256 `b5b02bf6ff3be1e00dd7001f8159dddeb26c60fc543a3eb43d6a1083e45a9b69`; receipt is 793 bytes/SHA-256 `ad2bfc8a8f59b0c135f0b760770f4b537ddfd91d68cbd3665a03770908f3a73e`; journal is 2,830 bytes/SHA-256 `a279337d3edc2b4e2f71d1fc13d225bdc067bea44a7e10a3ef8cea08af3c88c6`, final checksum `cbf980f83f953661d32ff4731e509522517b67537deebc376aed800a7c406e85`.
 - Submission and charge are Unknown; trusted tokens/local settlement are zero, proposal is null, response digest is nonzero, and both claims are consumed. The local classification proves only an HTTP 200 structurally valid provider error object; exact provider code/message/metadata/body were not retained. Independent deep review is FINAL EVIDENCE GO with no P0-P3 findings after verifying the hashes, checksum chain, claim bindings, one-exchange boundary, documentation, and absence of secret-like diff material without accessing the trust-anchor credential. The authority and stages are consumed, no rerun or second generation is authorized, no exact compatibility correction is supported, and accepted OpenRouter compatibility remains unproven.
 
-## Generation 4 terminal and offline prompt-detail follow-up
+## Historical generation 4 terminal and offline prompt-detail follow-up
 
 ### Outcome and evidence
 
@@ -19,12 +26,12 @@
 
 ### Exact boundary and next action
 
-- Generation 4 and every stage are consumed and must never be rerun. No additional generation is authorized.
+- Generation 4 and every stage are consumed and must never be rerun. At that historical boundary, no additional generation was authorized.
 - Official Usage Accounting documentation lists only prompt-detail members already admitted locally, so the raw-free location identifies an undocumented additive metric inside a non-authoritative detail object.
 - The red-first typed correction is implemented for `usage.prompt_tokens_details` only: every member value remains an integer from zero through the input-token bound and none is retained or trusted. Every other strict scope, all routing/ZDR/financial/proposal/history controls, and no retry/fallback/alternate behavior remain unchanged.
 - Red-first failed only the intended valid additive case while seven security/boundary cases passed; the identical loop is green 8/8. Focused parser/history/vocabulary passes 99/99 including explicit JSON-token-limit coverage, full Snow Globe 1051/1051, OpenRouter CLI/security 100/100, Recording CLI 59/59, both relevant builds 0/0, and diff checks are clean apart from line-ending notices.
 - Independent deep review is FINAL GO with no unresolved P0-P3 after closing stale-generation wording and the missing JSON-token-limit regression. PR #152 passed required `build-test-smoke` in 2m53s and merged the correction as `43c553a`. No provider, credential, account, paid, live-state, or `src/societies/` action is part of this offline follow-up.
-- OpenRouter accepted compatibility remains unproven. No additional generation is authorized; the one practical next action is a fresh explicit paid decision if another post-correction generation is desired.
+- OpenRouter accepted compatibility remained unproven at that boundary. The former requirement for a fresh explicit paid decision is superseded by the standing continuation authority above; consumed generation-4 stages remain permanently closed.
 
 ## Historical generation 3 provider-completion OpenRouter handoff
 
@@ -42,7 +49,7 @@
 - The documented additive usage members were bounded and validated, yet the same broad raw-free unknown-property family remained. Retained evidence could not identify the property's location/name/value, so the next action was a separately reviewed location-specific raw-free diagnostic and fresh authority.
 - Local Ollama was accepted 12/12 and OpenRouter was blocked at that historical boundary. The generation-4 handoff above supersedes this blocker; none of the three consumed stages may be rerun.
 
-## Current provider-completion OpenRouter generation 2 handoff
+## Historical provider-completion OpenRouter generation 2 handoff
 
 ### Outcome and evidence
 
@@ -59,7 +66,7 @@
 - Implement red-first bounded typed validation for only those documented usage members, preserving strict unknown rejection elsewhere and every proposal/routing/ZDR/financial/no-retry/raw-free/history control. Independently review and merge it before the third and final generation.
 - The correction is implemented and green: `is_byok` must be false; server-tool counts must be bounded integer zeroes; the three documented nullable cost-detail fields must be nonnegative, within reported/ceiling cost, and component-consistent. Unknown properties elsewhere remain rejected. Evidence passes 16/16 new usage, 21/21 bridge, 213/213 focused OpenRouter, 100/100 CLI/security, and 1029/1029 full Snow Globe tests; both builds pass 0/0 and diff check is clean. Independent re-review is FINAL GO with no unresolved P0-P3 findings; PR #149 merged it before the final generation.
 
-## Current provider-completion OpenRouter generation 1 handoff
+## Historical provider-completion OpenRouter generation 1 handoff
 
 ### Outcome and evidence
 
@@ -75,7 +82,7 @@
 - Generation 1 and every stage are consumed and must not be rerun.
 - The red-first bounded compatibility correction is implemented and green: exact normalized stop remains authoritative; optional native-finish metadata is typed and bounded but non-authoritative; historical diagnostic validation and all security/financial/no-retry controls remain intact. Independent re-review is FINAL GO with no unresolved P0-P3 findings; delivery and merge remain before generation 2.
 
-## Current Snow Globe provider-completion implementation and local handoff
+## Historical Snow Globe provider-completion implementation and local handoff
 
 ### Outcome and scope
 
@@ -118,7 +125,7 @@
 - No provider, network, credential, account, paid, retained-evidence, live-state, preflight, `record-once`, `validate`, gameplay, or `src/societies/` action occurred.
 - Implementation commit `2dff642` was published through [PR #145](https://github.com/dfrer/societies/pull/145); required `build-test-smoke` passed in 4m15s and the PR merged to `master` as `d0c7d09`. Publish this exact delivery record, then return `master` clean and synchronized. No additional provider action is authorized.
 
-## Current OpenRouter sixth authorized-run handoff
+## Historical OpenRouter sixth authorized-run handoff
 
 ### Outcome and scope
 
@@ -140,7 +147,7 @@
 - Provider HTTP status, exact finish-reason value, and charge were not retained or queried. Charge is Unknown; zero local settlement is not provider zero cost. Immutable framework-owned Bearer cleanup, owning-user/admin rewrite resistance, and whole-volume rollback resistance remain unproven.
 - No raw capture, account query, accounting follow-up, credential/anchor mutation, state cleanup, deployment, release, gameplay, or `src/societies/` change occurred. Evidence-record commit `ce217a6` was published through [PR #143](https://github.com/dfrer/societies/pull/143); required `build-test-smoke` passed in 8s and the PR merged to `master` as `e8df0c1`. Publish this exact delivery record, then return `master` clean and synchronized. No additional provider action is authorized.
 
-## Current Snow Globe OpenRouter raw-free rejection-diagnostics handoff
+## Historical Snow Globe OpenRouter raw-free rejection-diagnostics handoff
 
 ### Outcome and scope
 

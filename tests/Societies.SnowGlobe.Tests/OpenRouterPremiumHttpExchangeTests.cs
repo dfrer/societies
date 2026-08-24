@@ -415,6 +415,45 @@ public sealed class OpenRouterPremiumHttpExchangeTests
     }
 
     [Theory]
+    [InlineData(400, "provider_error_code_400_terminal")]
+    [InlineData(401, "provider_error_code_401_terminal")]
+    [InlineData(402, "provider_error_code_402_terminal")]
+    [InlineData(403, "provider_error_code_403_terminal")]
+    [InlineData(404, "provider_error_code_404_terminal")]
+    [InlineData(408, "provider_error_code_408_terminal")]
+    [InlineData(413, "provider_error_code_413_terminal")]
+    [InlineData(422, "provider_error_code_422_terminal")]
+    [InlineData(429, "provider_error_code_429_terminal")]
+    [InlineData(500, "provider_error_code_500_terminal")]
+    [InlineData(502, "provider_error_code_502_terminal")]
+    [InlineData(503, "provider_error_code_503_terminal")]
+    [InlineData(524, "provider_error_code_524_terminal")]
+    [InlineData(529, "provider_error_code_529_terminal")]
+    [InlineData(200, "provider_error_terminal")]
+    [InlineData(504, "provider_error_terminal")]
+    [InlineData(999, "provider_error_terminal")]
+    public void Http200ValidatedProviderErrorCodesMapToFiniteRawFreeTerminals(int providerCode, string expectedOutcome)
+    {
+        byte[] body = Encoding.UTF8.GetBytes(
+            $"{{\"error\":{{\"code\":{providerCode},\"message\":\"raw-provider-message-must-not-leak\"," +
+            "\"metadata\":{\"provider_name\":\"raw-provider-name-must-not-leak\"," +
+            "\"raw\":\"raw-provider-metadata-must-not-leak\"}}}");
+
+        OpenRouterPremiumSlotReceipt receipt = OpenRouterPremiumResponseParser.Parse(
+            body, 200, OpenRouterPremiumProfileRegistry.Selected, "cq1", new string('d', 64));
+
+        Assert.Equal(expectedOutcome, receipt.OutcomeCode);
+        Assert.Equal(SubmissionState.SubmissionUnknown, receipt.SubmissionState);
+        Assert.Equal(ChargeState.Unknown, receipt.ChargeState);
+        Assert.Equal(0, receipt.PromptTokens);
+        Assert.Equal(0, receipt.CompletionTokens);
+        Assert.Equal(0, receipt.TotalTokens);
+        Assert.Equal(0, receipt.SettledMicrousd);
+        Assert.Null(receipt.Proposal);
+        Assert.DoesNotContain("raw-provider", receipt.ToString(), StringComparison.Ordinal);
+    }
+
+    [Theory]
     [InlineData(400, false)]
     [InlineData(400, true)]
     [InlineData(401, true)]

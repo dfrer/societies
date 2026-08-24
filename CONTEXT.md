@@ -1,6 +1,14 @@
 # Societies Domain Context
 
-## Current sixth OpenRouter authorization outcome
+## Current provider-completion continuation
+
+Standing user authorization now covers completing both provider paths. Ollama is currently functional: the repaired runtime at `127.0.0.1:11435` and installed `qwen3.5:4b` still match the frozen identities, fresh preflight is accepted, and the v5 artifact freshly validates `Complete` with 12/12 HTTP-200 slots and zero retry/fallback/alternate. The artifact SHA-256 is `448af70b6ac262e67ddd0a6da3c76174d15faf0a2c771e2ca7a57bffb596cf57`; these checks did not create another recording.
+
+OpenRouter remains unaccepted after one post-correction Azure/ZDR exchange returned the raw-free HTTP-200 `provider_error_terminal`. The current reviewed offline correction adds a closed numeric family for documented codes 400, 401, 402, 403, 404, 408, 413, 422, 429, 500, 502, 503, 524, and 529 while preserving the generic historical terminal for every other valid integer. It is red-first proven and passes 1070/1070 full Snow Globe, 100/100 CLI/security, 59/59 Recording CLI, clean builds, and independent deep review FINAL GO. No provider action has used it.
+
+Future OpenRouter work remains sequential and one-shot despite standing authorization: each fresh generation keeps Azure-only/ZDR, at most 12 one-attempt slots, no retry/fallback/alternate, an 18,000-microusd maximum reservation, and plan/preflight/record/validate at most once each. Every terminal/uncertain generation stops, every correction is reviewed and merged before another paid verification, and consumed stages are never rerun. The historical sections below remain immutable evidence rather than current authority.
+
+## Historical sixth OpenRouter authorization outcome
 
 Fresh authority permitted at most 12 sequential requests, no retry or alternate provider, and maximum aggregate `$0.018`. From merged source `80d0ab2`, zero-I/O plan, live preflight, paid record-once, and local validate were each operator-invoked once and are consumed. Preflight accepted authorization `16892f25b9c6fe81fcee1911295634f9cc88cf8bff633aa66678bef65fa42574`, artifact `776fe3f1efe6548023328babd4391bdf58d8d5d9cd447896e6c9048eeee6c5fa`, and generation `g2-b85c3da641755eda2f07bd65978ea779ef3caebf8136537f55209d2c6f7d8e6c` after the contract's authenticated metadata checks.
 
