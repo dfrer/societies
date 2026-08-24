@@ -111,6 +111,7 @@ public sealed class OpenRouterPremiumEvidenceTests
     [Theory]
     [InlineData("provider_response_rejected")]
     [InlineData("provider_response_rejected_response_finish_invalid")]
+    [InlineData("provider_response_rejected_response_native_finish_reason_not_stop")]
     public void HistoricalProviderResponseRejectionArtifactsRemainCanonicalAndValid(string outcomeCode)
     {
         TestContext context = CreateContext();
@@ -132,7 +133,7 @@ public sealed class OpenRouterPremiumEvidenceTests
     }
 
     [Fact]
-    public void EveryTypedParserRejectionCodeMapsExhaustivelyWhileUntypedCodesStayGeneric()
+    public void EveryTypedActiveOrHistoricalParserDiagnosticMapsExhaustivelyWhileUntypedCodesStayGeneric()
     {
         OpenRouterPremiumResponseParserRejectionCode[] codes =
             Enum.GetValues<OpenRouterPremiumResponseParserRejectionCode>();

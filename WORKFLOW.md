@@ -1,12 +1,28 @@
 # Snow Globe provider preflight, Ollama repair, and qwen3.5 smoke handoff
 
+## Current provider-completion OpenRouter generation 1 handoff
+
+### Outcome and evidence
+
+- Implementation/local evidence merged through PR #147 as `0a59339`; required `build-test-smoke` passed in 4m19s.
+- From merged source, the zero-I/O plan ran once. Preflight, paid record-once, and local validate each ran exactly once for authorization `331ed7373ae3938d8fd13603a199b064d84b1d760836efd83ed4868846a2418c` and generation `g2-c8fb9caaa6c1e83cba7a553fb7b9e1744d0d847b5f0006e83ad885b8cfeb33f3`.
+- Exactly one Azure-only ZDR exchange stopped terminal `provider_response_rejected_response_native_finish_reason_not_stop`. There was no second admit/dispatch, retry, fallback, alternate, accepted proposal, or trusted token/settlement count.
+- Raw-free evidence is 2,249 bytes/SHA-256 `500c27a40a37e9cfaa49066ca4d293b5c337bce36003271683b21452a601d347`; validation receipt is 793 bytes/SHA-256 `e6a717dd6825fd0d8d2f0973b1c798b2cd197bc64ff00dbce5630ddac6bb2abb`; journal is 2,872 bytes/SHA-256 `fcbef4a12b3753983859a018c33ce27985e4eda3e38e819b9463582b326cf2c2`, final checksum `3004ac3665bf554fcdfd05eb78c952547ffbcd699b1f91bc575d100d1304aa58`.
+- Submission and charge remain Unknown; zero local settlement is not a zero-cost claim. The raw provider value, response body, prompt, refusal text, and secret were not retained or queried.
+
+### Exact blocker and next action
+
+- The documented normalized `finish_reason=stop` gate passed; the optional undocumented additive native-finish string failed the local second stop gate before proposal parsing.
+- Generation 1 and every stage are consumed and must not be rerun.
+- The red-first bounded compatibility correction is implemented and green: exact normalized stop remains authoritative; optional native-finish metadata is typed and bounded but non-authoritative; historical diagnostic validation and all security/financial/no-retry controls remain intact. Independent re-review is FINAL GO with no unresolved P0-P3 findings; delivery and merge remain before generation 2.
+
 ## Current Snow Globe provider-completion implementation and local handoff
 
 ### Outcome and scope
 
 - Ollama and OpenRouter now route accepted `{agent_id, action, quantity}` content through the same deterministic `snow_globe_cognition_quality_proposal_response/v1` parser. Provider output remains proposal input only and never becomes direct world authority.
 - Fresh Ollama recording is additive composition/artifact v5 at a new fixed path. The immutable v4 artifact remains readable and unchanged. Historical v4 comparison/v2 canonical output is byte-identical; v5 comparison uses a separate additive v3 identity.
-- OpenRouter finish/routing/usage/cost checks, Azure-only ZDR policy, raw-free evidence, bounded I/O, no redirects, first-terminal stop, and no retry/fallback/alternate behavior are unchanged. `src/societies` is unchanged.
+- OpenRouter still requires exact documented normalized `finish_reason=stop`. An optional native-finish member must be a bounded string but its value is non-authoritative and unretained. Routing/usage/cost checks, Azure-only ZDR policy, raw-free evidence, bounded I/O, no redirects, first-terminal stop, and no retry/fallback/alternate behavior are unchanged. `src/societies` is unchanged.
 
 ### Validation and local evidence
 
@@ -18,15 +34,15 @@
 ### Delivery state and next action
 
 - The implementation/local-evidence slice is ready for commit, PR, required checks, and merge on `codex/snowglobe-provider-completion`.
-- No fresh OpenRouter plan, preflight, paid generation, or validation has occurred. After this reviewed slice is merged, invoke the zero-I/O plan once, then exactly one governed preflight/record-once/validate generation and stop on its raw-free result.
+- This implementation slice merged through PR #147. The separate generation-1 handoff above now supersedes the former unconsumed-live-stage checkpoint.
 
-## Current Snow Globe OpenRouter finish-diagnostic refinement handoff
+## Historical Snow Globe OpenRouter finish-diagnostic refinement handoff
 
 ### Outcome and scope
 
-- Future raw-free evidence now identifies each of the nine existing finish-admission failures with a closed local code: choice index invalid; finish reason missing, wrong type, or not `stop`; choice error present; native finish reason wrong type or not `stop`; logprobs non-null; and refusal non-null.
-- The prior parser evaluation order and every accepted-response path are unchanged. Provider values, bodies, errors, refusal text, exception details, and secrets never enter evidence.
-- Historical `provider_response_rejected_response_finish_invalid` artifacts and journals remain valid without rewrite. V1 schemas/shapes, v1/v2 result propagation, validation, CLI formatting, first-terminal stop, no-retry/no-alternate behavior, unknown submission/charge, zero trusted counters/settlement, null proposal, and response-digest behavior remain unchanged.
+- At the PR #145 milestone, raw-free evidence identified nine finish-admission failures with closed local codes: choice index invalid; normalized finish reason missing, wrong type, or not `stop`; choice error present; native finish reason wrong type or not `stop`; logprobs non-null; and refusal non-null.
+- The current provider-completion correction retires only native-finish value mismatch as an active rejection. A present native member must still be a bounded string: null or wrong-type values remain `response_native_finish_reason_type_invalid`, while an oversized string fails earlier as `response_string_too_long`. Provider values, bodies, errors, refusal text, exception details, and secrets never enter evidence.
+- Historical `provider_response_rejected_response_finish_invalid` and `provider_response_rejected_response_native_finish_reason_not_stop` artifacts and journals remain valid without rewrite. V1 schemas/shapes, v1/v2 result propagation, validation, CLI formatting, first-terminal stop, no-retry/no-alternate behavior, unknown submission/charge, zero trusted counters/settlement, null proposal, and response-digest behavior remain unchanged.
 - The readiness manifest's only source adjustment is its internal fake-parser expectation. Its schema, fields, CLI output, request bounds, digest `eea26a92d318a2ba102c7979d0cb44563d8bef967ae00b627bc6263ff59d759d`, and `live_readiness=false` remain unchanged.
 
 ### Changed files and validation

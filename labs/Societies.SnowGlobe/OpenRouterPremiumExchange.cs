@@ -528,6 +528,7 @@ internal enum OpenRouterPremiumResponseParserRejectionCode
     response_json_unknown_property,
     response_logprobs_non_null,
     response_message_invalid,
+    // Historical-only: retained so immutable evidence and raw-free diagnostics remain readable.
     response_native_finish_reason_not_stop,
     response_native_finish_reason_type_invalid,
     response_number_invalid,
@@ -639,8 +640,8 @@ internal static class OpenRouterPremiumResponseParser
         {
             if (nativeFinish.ValueKind != JsonValueKind.String)
                 throw Rejected(ParserRejection.response_native_finish_reason_type_invalid);
-            if (!string.Equals(nativeFinish.GetString(), "stop", StringComparison.Ordinal))
-                throw Rejected(ParserRejection.response_native_finish_reason_not_stop);
+            if ((nativeFinish.GetString()?.Length ?? 0) > profile.Bounds.MaximumStringCharacters)
+                throw Rejected(ParserRejection.response_string_too_long);
         }
         if (choice.TryGetProperty("logprobs", out JsonElement logprobs) && logprobs.ValueKind != JsonValueKind.Null)
             throw Rejected(ParserRejection.response_logprobs_non_null);
