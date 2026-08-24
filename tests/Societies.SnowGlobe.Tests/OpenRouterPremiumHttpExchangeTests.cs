@@ -652,10 +652,12 @@ public sealed class OpenRouterPremiumHttpExchangeTests
     }
 
     [Fact]
-    public void DatedWebRevisionPathIsRejectedAtResponseAndRoutingBindings()
+    public void DatedReleaseIdentityRemainsRejectedForRootResponseModel()
     {
-        byte[] aliased = Encoding.UTF8.GetBytes(Encoding.UTF8.GetString(SuccessBody()).Replace(
-            OpenRouterPremiumProfile.CanonicalModelSlug, OpenRouterPremiumProfile.ModelReleaseRevisionPathIdentity, StringComparison.Ordinal));
+        string body = Encoding.UTF8.GetString(SuccessBody());
+        byte[] aliased = Encoding.UTF8.GetBytes(body.Replace(
+            "\"model\":\"openai/gpt-5.6-luna\",\"choices\"",
+            "\"model\":\"openai/gpt-5.6-luna-20260709\",\"choices\"", StringComparison.Ordinal));
 
         Assert.Equal("response_model_binding_invalid", Assert.Throws<OpenRouterPremiumEvidenceException>(() =>
             OpenRouterPremiumResponseParser.Parse(aliased, 200, OpenRouterPremiumProfileRegistry.Selected,
@@ -663,10 +665,31 @@ public sealed class OpenRouterPremiumHttpExchangeTests
     }
 
     [Theory]
+    [InlineData("candidate", "\"provider\":\"Azure\",\"model\":\"openai/gpt-5.6-luna\",\"selected\":true")]
+    [InlineData("attempt", "\"provider\":\"Azure\",\"model\":\"openai/gpt-5.6-luna\",\"status\":200")]
+    public void AuthenticatedDatedReleaseIdentityIsAcceptedForActualRoutedModelFields(
+        string scope, string exact)
+    {
+        string body = Encoding.UTF8.GetString(SuccessBody());
+        Assert.Contains(exact, body, StringComparison.Ordinal);
+        Assert.Equal(scope, exact.Contains("\"selected\":true", StringComparison.Ordinal) ? "candidate" : "attempt");
+        string mutation = exact.Replace(OpenRouterPremiumProfile.CanonicalModelSlug,
+            OpenRouterPremiumProfile.ModelReleaseRevisionPathIdentity, StringComparison.Ordinal);
+
+        OpenRouterPremiumSlotReceipt receipt = OpenRouterPremiumResponseParser.Parse(
+            Encoding.UTF8.GetBytes(body.Replace(exact, mutation, StringComparison.Ordinal)), 200,
+            OpenRouterPremiumProfileRegistry.Selected, "cq1", new string('d', 64));
+
+        Assert.Equal("premium_evidence_success", receipt.OutcomeCode);
+        Assert.Equal(SubmissionState.ResponseReceived, receipt.SubmissionState);
+        Assert.Equal(ChargeState.Settled, receipt.ChargeState);
+    }
+
+    [Theory]
     [InlineData("\"requested\":\"openai/gpt-5.6-luna\"", "\"requested\":\"openai/gpt-5.6-luna-20260709\"", "response_routing_requested_binding_invalid")]
-    [InlineData("\"provider\":\"Azure\",\"model\":\"openai/gpt-5.6-luna\",\"selected\":true", "\"provider\":\"Azure\",\"model\":\"openai/gpt-5.6-luna-20260709\",\"selected\":true", "response_routing_candidate_model_binding_invalid")]
-    [InlineData("\"provider\":\"Azure\",\"model\":\"openai/gpt-5.6-luna\",\"status\":200", "\"provider\":\"Azure\",\"model\":\"openai/gpt-5.6-luna-20260709\",\"status\":200", "response_routing_attempt_model_binding_invalid")]
-    public void DatedWebRevisionPathIsRejectedInEachRouterEvidenceBinding(
+    [InlineData("\"provider\":\"Azure\",\"model\":\"openai/gpt-5.6-luna\",\"selected\":true", "\"provider\":\"Azure\",\"model\":\"unlisted/model\",\"selected\":true", "response_routing_candidate_model_binding_invalid")]
+    [InlineData("\"provider\":\"Azure\",\"model\":\"openai/gpt-5.6-luna\",\"status\":200", "\"provider\":\"Azure\",\"model\":\"unlisted/model\",\"status\":200", "response_routing_attempt_model_binding_invalid")]
+    public void RequestedAliasAndActualRoutedModelAllowlistRemainExact(
         string exact, string mutation, string expectedCode)
     {
         string body = Encoding.UTF8.GetString(SuccessBody());

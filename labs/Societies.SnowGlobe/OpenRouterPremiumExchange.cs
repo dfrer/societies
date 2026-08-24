@@ -871,7 +871,7 @@ internal static class OpenRouterPremiumResponseParser
             selectedCount++;
             if (candidateProvider != OpenRouterPremiumProfile.ProviderResponseIdentity)
                 throw Rejected(ParserRejection.response_routing_candidate_provider_binding_invalid);
-            if (candidateModel != OpenRouterPremiumProfile.CanonicalModelSlug)
+            if (!IsActualRoutedModelIdentity(candidateModel))
                 throw Rejected(ParserRejection.response_routing_candidate_model_binding_invalid);
         }
         if (selectedCount != 1) throw Rejected(ParserRejection.response_routing_invalid);
@@ -883,7 +883,7 @@ internal static class OpenRouterPremiumResponseParser
             RejectUnknown(routedAttempt, new HashSet<string>(["provider", "model", "status"], StringComparer.Ordinal), ParserRejection.response_routing_attempt_unknown_property);
             RequireString(routedAttempt, "provider", OpenRouterPremiumProfile.ProviderResponseIdentity,
                 ParserRejection.response_routing_attempt_provider_binding_invalid);
-            RequireString(routedAttempt, "model", OpenRouterPremiumProfile.CanonicalModelSlug,
+            RequireActualRoutedModelIdentity(routedAttempt, "model",
                 ParserRejection.response_routing_attempt_model_binding_invalid);
             if (RequireInteger(routedAttempt, "status", 200, 200) != 200)
                 throw Rejected(ParserRejection.response_routing_invalid);
@@ -1084,6 +1084,20 @@ internal static class OpenRouterPremiumResponseParser
             || !string.Equals(value.GetString(), expected, StringComparison.Ordinal))
             throw Rejected(bindingCode);
     }
+
+    private static void RequireActualRoutedModelIdentity(
+        JsonElement element,
+        string property,
+        ParserRejection bindingCode)
+    {
+        if (!element.TryGetProperty(property, out JsonElement value) || value.ValueKind != JsonValueKind.String
+            || !IsActualRoutedModelIdentity(value.GetString()))
+            throw Rejected(bindingCode);
+    }
+
+    private static bool IsActualRoutedModelIdentity(string? value) =>
+        value is OpenRouterPremiumProfile.CanonicalModelSlug
+            or OpenRouterPremiumProfile.ModelReleaseRevisionPathIdentity;
 
     private static string RequireBoundedString(JsonElement element, string property, int maximum)
     {
