@@ -20,7 +20,7 @@
 
 - Exact CLI invocation counts are operator-observed; durable state proves one successful preflight generation, one execution claim, and one validation claim but cannot prove marker-free plan count or rejected duplicates. The exact three metadata GET count is source-mandated rather than artifact-counted.
 - Provider HTTP status, exact finish-reason value, and charge were not retained or queried. Charge is Unknown; zero local settlement is not provider zero cost. Immutable framework-owned Bearer cleanup, owning-user/admin rewrite resistance, and whole-volume rollback resistance remain unproven.
-- No raw capture, account query, accounting follow-up, credential/anchor mutation, state cleanup, deployment, release, gameplay, or `src/societies/` change occurred. Publish the reviewed raw-free outcome, then return `master` clean and synchronized. No additional provider action is authorized.
+- No raw capture, account query, accounting follow-up, credential/anchor mutation, state cleanup, deployment, release, gameplay, or `src/societies/` change occurred. Evidence-record commit `ce217a6` was published through [PR #143](https://github.com/dfrer/societies/pull/143); required `build-test-smoke` passed in 8s and the PR merged to `master` as `e8df0c1`. Publish this exact delivery record, then return `master` clean and synchronized. No additional provider action is authorized.
 
 ## Current Snow Globe OpenRouter raw-free rejection-diagnostics handoff
 
