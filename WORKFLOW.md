@@ -1,5 +1,21 @@
 # Snow Globe provider preflight, Ollama repair, and qwen3.5 smoke handoff
 
+## Final provider-completion OpenRouter handoff
+
+### Outcome and evidence
+
+- The documented-usage correction merged through PR #149 as `d23a6cf`; required `build-test-smoke` passed in 4m23s. From merged source, Release rebuilt 0/0 and the zero-I/O plan, third preflight, paid record-once, and local validate each ran exactly once.
+- Authorization `057f82366a4b9846aa2371f7de31749bc9e951bf5ba936de0990298232d54ddf`; generation `g2-74906e534c14cf9255a7e41ecca9012ec941ec2e7c4b4c2c8cda359be45da9b8`; preflight artifact is 2,344 bytes/SHA-256 `46a65a796fffe693324a53f46de4e4ca519ebf6928a94ca1ad8bcfc6761e017b`.
+- Exactly one Azure-only ZDR exchange again stopped `provider_response_rejected_response_json_unknown_property`; no second slot, retry, fallback, alternate, or accepted proposal occurred.
+- Raw-free evidence is 2,233 bytes/SHA-256 `f295600120bce3c4ada87dc645aeb1280d56c5cd31bd3a4f6d5afbda63c584b1`; receipt is 793 bytes/SHA-256 `b4671467bc82bb1742f7a9840952392df70db847d4e259b1aa54ecbc5ffea064`; journal is 2,864 bytes/SHA-256 `54e6ddd51417023e454c3d03a02e378db923c4d9502e6174769b6ed5b168b07b`, final checksum `9389bd3abe3e3c2b657477331090530938bdc64924c0c6d7991cbb3c7b82fcf3`.
+- Submission and charge are Unknown; trusted tokens/local settlement are zero, proposal is null, response digest is nonzero, and both tombstones exist. No provider body, property location/name/value, prompt, refusal text, exception detail, or secret was retained or queried.
+
+### Final blocker and next action
+
+- All three newly authorized generations are consumed. Exactly three Azure-only ZDR exchanges occurred in total, one per generation, with no retry/fallback/alternate and no accepted OpenRouter proposal. Aggregate authorization was capped at 54,000 microusd; only one 1,500-microusd-reserved slot dispatched per generation, but all provider charges remain unknown.
+- Current documented additive usage members are now bounded and validated, yet the same raw-free unknown-property family remained. Retained evidence cannot identify the property's location/name/value, so no further evidence-backed compatibility correction or generation is authorized.
+- Local Ollama is accepted 12/12. OpenRouter provider completion is blocked. A future continuation requires a separately reviewed location-specific raw-free diagnostic design and fresh explicit paid authority; do not rerun any consumed stage.
+
 ## Current provider-completion OpenRouter generation 2 handoff
 
 ### Outcome and evidence
@@ -15,7 +31,7 @@
 - Generation 2 and every stage are consumed and must never be rerun.
 - Current official response documentation includes additive `usage.is_byok`, `usage.server_tool_use_details`, and prompt/completion cost-breakdown members absent from the local allowlists. The raw-free terminal cannot identify which was present.
 - Implement red-first bounded typed validation for only those documented usage members, preserving strict unknown rejection elsewhere and every proposal/routing/ZDR/financial/no-retry/raw-free/history control. Independently review and merge it before the third and final generation.
-- The correction is implemented and green: `is_byok` must be false; server-tool counts must be bounded integer zeroes; the three documented nullable cost-detail fields must be nonnegative, within reported/ceiling cost, and component-consistent. Unknown properties elsewhere remain rejected. Evidence passes 16/16 new usage, 21/21 bridge, 213/213 focused OpenRouter, 100/100 CLI/security, and 1029/1029 full Snow Globe tests; both builds pass 0/0 and diff check is clean. Independent re-review is FINAL GO with no unresolved P0-P3 findings; merged delivery remains.
+- The correction is implemented and green: `is_byok` must be false; server-tool counts must be bounded integer zeroes; the three documented nullable cost-detail fields must be nonnegative, within reported/ceiling cost, and component-consistent. Unknown properties elsewhere remain rejected. Evidence passes 16/16 new usage, 21/21 bridge, 213/213 focused OpenRouter, 100/100 CLI/security, and 1029/1029 full Snow Globe tests; both builds pass 0/0 and diff check is clean. Independent re-review is FINAL GO with no unresolved P0-P3 findings; PR #149 merged it before the final generation.
 
 ## Current provider-completion OpenRouter generation 1 handoff
 
@@ -45,7 +61,7 @@
 
 - Release gates pass 172/172 changed provider/runtime/comparison tests, 59/59 Recording CLI tests, 97/97 OpenRouter CLI/security tests, and 1009/1009 full Snow Globe tests. Three Release builds have 0 warnings / 0 errors; diff checks are clean.
 - Independent deep review is FINAL GO with no unresolved P0-P3 after closing one P1 that initially changed historical v4 comparison bytes.
-- One local preflight, one record-once, and one validate completed against the exact registered Ollama 0.32.14 loopback runtime on `127.0.0.1:11435`. Raw-free v5 evidence is 16,148 bytes/SHA-256 `448af70b6ac262e67ddd0a6da3c76174d15faf0a2c771e2ca7a57bffb596cf57`, receipt `835dda47c070d60fb29376b7a51c321be8b82a5e9d63c471f9e3e1fca3a0a8b`: 12/12 complete, HTTP 200, zero retry/fallback/alternate.
+- One local preflight, one record-once, and one validate completed against the exact registered Ollama 0.32.14 loopback runtime on `127.0.0.1:11435`. Raw-free v5 evidence is 16,148 bytes/SHA-256 `448af70b6ac262e67ddd0a6da3c76174d15faf0a2c771e2ca7a57bffb596cf57`, receipt `835dda47c070d60fb29376b7a51c321be8b82a5e9d63c471f9e3e1fca3a0a8b1`: 12/12 complete, HTTP 200, zero retry/fallback/alternate.
 - Historical v4 evidence remains 16,148 bytes/SHA-256 `fecf71cbe8cc268dadb603d29735a816bc0152ccc79b4ea44c5a91d7e7616d3e`; its comparison/v2 report remains 8,916 bytes/SHA-256 `19f7053418471c8c70bdb9fffbfcca042f5bd87c24796a28227a672558990e56`.
 
 ### Delivery state and next action
