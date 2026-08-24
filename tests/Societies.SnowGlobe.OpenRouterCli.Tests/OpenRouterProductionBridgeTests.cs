@@ -203,7 +203,7 @@ public sealed class OpenRouterProductionBridgeTests
     [Theory]
     [InlineData(ScriptedResponse.Http503, "http_503_terminal")]
     [InlineData(ScriptedResponse.CostAboveCeiling, "provider_response_rejected_response_cost_invalid")]
-    [InlineData(ScriptedResponse.MalformedSchema, "provider_response_rejected_response_binding_invalid")]
+    [InlineData(ScriptedResponse.MalformedSchema, "provider_response_rejected_response_object_binding_invalid")]
     [InlineData(ScriptedResponse.InvalidChoiceIndex, "provider_response_rejected_response_choice_index_invalid")]
     [InlineData(ScriptedResponse.MissingFinishReason, "provider_response_rejected_response_finish_reason_missing")]
     [InlineData(ScriptedResponse.WrongTypeFinishReason, "provider_response_rejected_response_finish_reason_type_invalid")]

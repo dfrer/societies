@@ -541,6 +541,24 @@ public sealed class OpenRouterPremiumHttpExchangeTests
         Assert.Equal(receipt.Proposal, shared.Proposal);
     }
 
+    [Theory]
+    [MemberData(nameof(ResponseBindingDiagnosticCases))]
+    public void ResponseBindingFailuresEmitFiniteLocationDiagnostics(
+        string scope, string body, int statusCode, string expectedCode)
+    {
+        OpenRouterPremiumEvidenceException exception = Assert.Throws<OpenRouterPremiumEvidenceException>(() =>
+            OpenRouterPremiumResponseParser.Parse(Encoding.UTF8.GetBytes(body), statusCode,
+                OpenRouterPremiumProfileRegistry.Selected, "cq1", new string('d', 64)));
+
+        Assert.Equal(expectedCode, exception.Code);
+        Assert.Equal("provider_response_rejected_" + expectedCode,
+            OpenRouterPremiumResponseParser.ToRejectedOutcomeCode(exception));
+        Assert.Contains(scope, exception.Code, StringComparison.Ordinal);
+        Assert.DoesNotContain("raw-provider-binding-sentinel-must-not-leak", exception.ToString(),
+            StringComparison.Ordinal);
+        Assert.Null(exception.InnerException);
+    }
+
     [Fact]
     public void AdditiveRouterMetadataAndMultipleCandidatesPreserveExactSelectedRoute()
     {
@@ -573,7 +591,7 @@ public sealed class OpenRouterPremiumHttpExchangeTests
     }
 
     [Theory]
-    [InlineData("\"provider\":\"Azure\"", "\"provider\":\"Other\"", "response_binding_invalid")]
+    [InlineData("\"provider\":\"Azure\"", "\"provider\":\"Other\"", "response_provider_binding_invalid")]
     [InlineData("\"logprobs\":null", "\"logprobs\":{}", "response_logprobs_non_null")]
     [InlineData("\"format\":\"azure-openai-responses-v1\"", "\"format\":\"future\"", "response_reasoning_invalid")]
     [InlineData("\"index\":0}]", "\"index\":1}]", "response_reasoning_invalid")]
@@ -639,22 +657,23 @@ public sealed class OpenRouterPremiumHttpExchangeTests
         byte[] aliased = Encoding.UTF8.GetBytes(Encoding.UTF8.GetString(SuccessBody()).Replace(
             OpenRouterPremiumProfile.CanonicalModelSlug, OpenRouterPremiumProfile.ModelReleaseRevisionPathIdentity, StringComparison.Ordinal));
 
-        Assert.Equal("response_binding_invalid", Assert.Throws<OpenRouterPremiumEvidenceException>(() =>
+        Assert.Equal("response_model_binding_invalid", Assert.Throws<OpenRouterPremiumEvidenceException>(() =>
             OpenRouterPremiumResponseParser.Parse(aliased, 200, OpenRouterPremiumProfileRegistry.Selected,
                 "cq1", new string('d', 64))).Code);
     }
 
     [Theory]
-    [InlineData("\"requested\":\"openai/gpt-5.6-luna\"", "\"requested\":\"openai/gpt-5.6-luna-20260709\"")]
-    [InlineData("\"provider\":\"Azure\",\"model\":\"openai/gpt-5.6-luna\",\"selected\":true", "\"provider\":\"Azure\",\"model\":\"openai/gpt-5.6-luna-20260709\",\"selected\":true")]
-    [InlineData("\"provider\":\"Azure\",\"model\":\"openai/gpt-5.6-luna\",\"status\":200", "\"provider\":\"Azure\",\"model\":\"openai/gpt-5.6-luna-20260709\",\"status\":200")]
-    public void DatedWebRevisionPathIsRejectedInEachRouterEvidenceBinding(string exact, string mutation)
+    [InlineData("\"requested\":\"openai/gpt-5.6-luna\"", "\"requested\":\"openai/gpt-5.6-luna-20260709\"", "response_routing_requested_binding_invalid")]
+    [InlineData("\"provider\":\"Azure\",\"model\":\"openai/gpt-5.6-luna\",\"selected\":true", "\"provider\":\"Azure\",\"model\":\"openai/gpt-5.6-luna-20260709\",\"selected\":true", "response_routing_candidate_model_binding_invalid")]
+    [InlineData("\"provider\":\"Azure\",\"model\":\"openai/gpt-5.6-luna\",\"status\":200", "\"provider\":\"Azure\",\"model\":\"openai/gpt-5.6-luna-20260709\",\"status\":200", "response_routing_attempt_model_binding_invalid")]
+    public void DatedWebRevisionPathIsRejectedInEachRouterEvidenceBinding(
+        string exact, string mutation, string expectedCode)
     {
         string body = Encoding.UTF8.GetString(SuccessBody());
         Assert.Contains(exact, body, StringComparison.Ordinal);
         byte[] mutated = Encoding.UTF8.GetBytes(body.Replace(exact, mutation, StringComparison.Ordinal));
 
-        Assert.Equal("response_binding_invalid", Assert.Throws<OpenRouterPremiumEvidenceException>(() =>
+        Assert.Equal(expectedCode, Assert.Throws<OpenRouterPremiumEvidenceException>(() =>
             OpenRouterPremiumResponseParser.Parse(mutated, 200, OpenRouterPremiumProfileRegistry.Selected,
                 "cq1", new string('d', 64))).Code);
     }
@@ -750,6 +769,48 @@ public sealed class OpenRouterPremiumHttpExchangeTests
             503, "response_error_unknown_property"];
         yield return ["error_metadata", $"{{\"error\":{{\"code\":503,\"message\":\"closed\",\"metadata\":{{\"{sentinel}\":0}}}}}}",
             503, "response_error_metadata_unknown_property"];
+    }
+
+    public static IEnumerable<object[]> ResponseBindingDiagnosticCases()
+    {
+        const string sentinel = "raw-provider-binding-sentinel-must-not-leak";
+        string success = Encoding.UTF8.GetString(SuccessBody());
+
+        yield return ["object", success.Replace(
+            "\"object\":\"chat.completion\"", $"\"object\":\"{sentinel}\"", StringComparison.Ordinal),
+            200, "response_object_binding_invalid"];
+        yield return ["model", success.Replace(
+            "\"model\":\"openai/gpt-5.6-luna\",\"choices\"", $"\"model\":\"{sentinel}\",\"choices\"", StringComparison.Ordinal),
+            200, "response_model_binding_invalid"];
+        yield return ["provider", DocumentedReasoningBody().Replace(
+            "\"provider\":\"Azure\"", $"\"provider\":\"{sentinel}\"", StringComparison.Ordinal),
+            200, "response_provider_binding_invalid"];
+        yield return ["message_role", success.Replace(
+            "\"role\":\"assistant\"", $"\"role\":\"{sentinel}\"", StringComparison.Ordinal),
+            200, "response_message_role_binding_invalid"];
+        yield return ["routing_requested", success.Replace(
+            "\"requested\":\"openai/gpt-5.6-luna\"", $"\"requested\":\"{sentinel}\"", StringComparison.Ordinal),
+            200, "response_routing_requested_binding_invalid"];
+        yield return ["routing_strategy", success.Replace(
+            "\"strategy\":\"direct\"", $"\"strategy\":\"{sentinel}\"", StringComparison.Ordinal),
+            200, "response_routing_strategy_binding_invalid"];
+        yield return ["routing_candidate_provider", success.Replace(
+            "\"available\":[{\"provider\":\"Azure\"", $"\"available\":[{{\"provider\":\"{sentinel}\"", StringComparison.Ordinal),
+            200, "response_routing_candidate_provider_binding_invalid"];
+        yield return ["routing_candidate_model", success.Replace(
+            "\"available\":[{\"provider\":\"Azure\",\"model\":\"openai/gpt-5.6-luna\"",
+            $"\"available\":[{{\"provider\":\"Azure\",\"model\":\"{sentinel}\"", StringComparison.Ordinal),
+            200, "response_routing_candidate_model_binding_invalid"];
+        yield return ["routing_attempt_provider", success.Replace(
+            "\"attempts\":[{\"provider\":\"Azure\"", $"\"attempts\":[{{\"provider\":\"{sentinel}\"", StringComparison.Ordinal),
+            200, "response_routing_attempt_provider_binding_invalid"];
+        yield return ["routing_attempt_model", success.Replace(
+            "\"attempts\":[{\"provider\":\"Azure\",\"model\":\"openai/gpt-5.6-luna\"",
+            $"\"attempts\":[{{\"provider\":\"Azure\",\"model\":\"{sentinel}\"", StringComparison.Ordinal),
+            200, "response_routing_attempt_model_binding_invalid"];
+        yield return ["error_routing_requested",
+            $"{{\"error\":{{\"code\":400,\"message\":\"closed\"}},\"openrouter_metadata\":{{\"requested\":\"{sentinel}\"}}}}",
+            200, "response_error_routing_requested_binding_invalid"];
     }
 
     private static byte[] SuccessBody() => Encoding.UTF8.GetBytes("""
