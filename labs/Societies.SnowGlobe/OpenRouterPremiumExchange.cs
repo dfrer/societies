@@ -788,9 +788,8 @@ internal static class OpenRouterPremiumResponseParser
             throw Rejected(ParserRejection.response_usage_invalid);
         ValidateNameAdditiveOptionalIntegerObject(
             usage, "prompt_tokens_details", profile.Bounds.MaximumInputTokens);
-        ValidateOptionalIntegerObject(usage, "completion_tokens_details",
-            ["reasoning_tokens"], profile.Bounds.MaximumOutputTokens,
-            ParserRejection.response_usage_completion_tokens_details_unknown_property);
+        ValidateNameAdditiveOptionalIntegerObject(
+            usage, "completion_tokens_details", profile.Bounds.MaximumOutputTokens);
         ValidateOptionalZeroIntegerObject(usage, "server_tool_use_details",
             ["tool_calls_executed", "tool_calls_requested"], profile.Bounds.MaximumArrayItems,
             ParserRejection.response_usage_server_tool_use_details_unknown_property);
