@@ -113,6 +113,7 @@ public sealed class OpenRouterPremiumEvidenceTests
     [InlineData("provider_response_rejected_response_finish_invalid")]
     [InlineData("provider_response_rejected_response_native_finish_reason_not_stop")]
     [InlineData("provider_response_rejected_response_json_unknown_property")]
+    [InlineData("provider_response_rejected_response_usage_prompt_tokens_details_unknown_property")]
     public void HistoricalProviderResponseRejectionArtifactsRemainCanonicalAndValid(string outcomeCode)
     {
         TestContext context = CreateContext();

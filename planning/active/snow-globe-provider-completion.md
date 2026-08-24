@@ -137,3 +137,34 @@ Complete the existing isolated Snow Globe cognition-recording implementations so
 - Main task owns documentation, provider/runtime invocation, evidence inspection, full validation, Git/PR/check/merge delivery, and final repository-state reporting.
 - One bounded `security_worker` owns the parser/test correction and does not stage, commit, use credentials, call the provider, change live state, or spawn workers. One independent `deep_reviewer` reviews the complete security/public-contract diff before delivery.
 - At the resulting milestone boundary, update `CURRENT_BUILD.md`, `WORKFLOW.md`, this contract, and the Snow Globe README with facts, validation, evidence digests, provider-stage counts, charge uncertainty, runtime state, delivery state, remaining blocker, and one practical next action.
+
+## Generation 4 terminal and prompt-detail compatibility contract
+
+### Consumed live result
+
+- Location-diagnostic PR #151 passed required `build-test-smoke` in 4m31s and merged as `63288d2`. The OpenRouter CLI rebuilt from that exact merge with 0 warnings and 0 errors.
+- The zero-I/O plan, authenticated preflight, paid `record-once`, and local validate were each invoked exactly once. Authorization `ae157e559ce8c95a9ac5ff331766f607565aae5144b74489f6266a031e5dd9fc`; generation `g2-bcec3e99ac2a434927a118ff446a8fce0b0e1f81bb66190b118550da9322b700`.
+- Exactly one Azure-only ZDR exchange stopped `provider_response_rejected_response_usage_prompt_tokens_details_unknown_property`. No second slot, retry, fallback, alternate, or accepted proposal occurred. The authority and every stage are consumed; no rerun or additional generation is authorized.
+- Raw-free evidence is 2,279 bytes/SHA-256 `711cb320634c8606768aa860a43a8109d5dd89c80d303b9f4d37dfe9c678d398`; receipt is 793 bytes/SHA-256 `6d7d576737c4d727bda20b52e90904afcb5c41a23b3664c77efcca11698bab9e`; journal is 2,887 bytes/SHA-256 `8659c1d5dc25e010e0338afd0171e40c46cba4f5cee9634af8c040e0a1fb94a7`, four records, final checksum `856017252e1734f7191f4e8f74ff363c4e79577b6df668644423ab614920dd7b`.
+- Submission and charge are Unknown; trusted token and local-settlement counters are zero, proposal is null, response digest is nonzero, and both consumed claims are present. Zero local settlement is not a zero-charge claim.
+
+### Evidence-backed compatibility outcome
+
+- Current official OpenRouter Usage Accounting documentation identifies `cached_tokens`, `cache_write_tokens`, and `audio_tokens` in `usage.prompt_tokens_details`; all three are already admitted by the parser. The retained raw-free scope therefore proves an additive field in that non-authoritative detail object, but intentionally does not identify its name or value.
+- Accept additive `usage.prompt_tokens_details` members only through the object's existing typed envelope: every value must be a JSON integer from zero through the fixed maximum input-token bound. The object remains bounded by the existing response-body, JSON-token, depth, duplicate-property, and string limits; none of its members is retained or used for trusted token or cost accounting.
+- Preserve exact known-field behavior, `usage.prompt_tokens`, `usage.total_tokens`, cost ceilings, every other strict unknown-property scope, proposal schema, routing/Azure/ZDR binding, finish/refusal gates, evidence shape, secret handling, and no retry/fallback/alternate behavior.
+- Do not make `completion_tokens_details`, server-tool details, cost details, routing metadata, errors, choices, messages, root, or proposal fields additive. Do not access provider content, infer or retain a dynamic property name, change `src/societies/`, or authorize another live generation.
+
+### Red-first and delivery acceptance
+
+- First add deterministic fabricated fixtures proving a previously unknown prompt-detail member is accepted only when its value is a bounded nonnegative integer, while unknown fields in all other scopes still fail with their exact finite codes. Capture the focused red result before production changes, then rerun the identical command green.
+- Prove malformed, null, fractional, string, negative, over-bound, duplicate, excessive-size/depth/token, historical-artifact, and exhaustive typed-vocabulary cases remain fail-closed and canonical.
+- Run focused OpenRouter parser/evidence tests, the full Snow Globe Release suite, OpenRouter CLI/security, shared Recording CLI, relevant Release builds, and diff checks. Require independent deep review FINAL GO with no unresolved P0-P3.
+- Deliver through a reviewed `codex/` PR and required check. Then update repository truth with the exact consumed-generation evidence and the remaining boundary. No post-merge provider invocation is part of this slice.
+
+### Offline implementation gate
+
+- Red-first failed only the intended valid additive prompt-detail member with `response_usage_prompt_tokens_details_unknown_property`; seven malformed, out-of-range, and unchanged completion-detail cases passed. The identical command is green 8/8 after the one-scope typed-envelope correction.
+- Focused parser, historical-artifact, and exhaustive-vocabulary evidence passes 99/99, including a shallow 260-token fixture that proves the configured 256-token ceiling fails raw-free as `response_json_token_limit`. The former prompt-detail location code remains valid historical vocabulary; thirteen other location-specific unknown-property scopes remain active and strict.
+- Full Snow Globe Release passes 1051/1051, OpenRouter CLI/security passes 100/100, Recording CLI passes 59/59, both relevant builds have 0 warnings/errors, and diff checks are clean apart from line-ending notices.
+- No provider, network, credential, account, paid, live-state, retained-artifact, gameplay, or `src/societies/` action occurred during this offline correction. Independent deep review is FINAL GO with no unresolved P0-P3 after closing stale-generation wording and the missing JSON-token-limit regression; merged delivery remains.

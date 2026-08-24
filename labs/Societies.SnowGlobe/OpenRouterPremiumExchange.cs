@@ -766,9 +766,8 @@ internal static class OpenRouterPremiumResponseParser
         if (usage.TryGetProperty("is_byok", out JsonElement isByok)
             && (isByok.ValueKind is not (JsonValueKind.True or JsonValueKind.False) || isByok.GetBoolean()))
             throw Rejected(ParserRejection.response_usage_invalid);
-        ValidateOptionalIntegerObject(usage, "prompt_tokens_details",
-            ["cached_tokens", "cache_write_tokens", "audio_tokens"], profile.Bounds.MaximumInputTokens,
-            ParserRejection.response_usage_prompt_tokens_details_unknown_property);
+        ValidateNameAdditiveOptionalIntegerObject(
+            usage, "prompt_tokens_details", profile.Bounds.MaximumInputTokens);
         ValidateOptionalIntegerObject(usage, "completion_tokens_details",
             ["reasoning_tokens"], profile.Bounds.MaximumOutputTokens,
             ParserRejection.response_usage_completion_tokens_details_unknown_property);
@@ -967,6 +966,22 @@ internal static class OpenRouterPremiumResponseParser
         if (details.ValueKind != JsonValueKind.Object)
             throw Rejected(ParserRejection.response_usage_invalid);
         RejectUnknown(details, new HashSet<string>(allowed, StringComparer.Ordinal), unknownPropertyCode);
+        ValidateIntegerObjectValues(details, maximum);
+    }
+
+    private static void ValidateNameAdditiveOptionalIntegerObject(
+        JsonElement parent,
+        string property,
+        int maximum)
+    {
+        if (!parent.TryGetProperty(property, out JsonElement details)) return;
+        if (details.ValueKind != JsonValueKind.Object)
+            throw Rejected(ParserRejection.response_usage_invalid);
+        ValidateIntegerObjectValues(details, maximum);
+    }
+
+    private static void ValidateIntegerObjectValues(JsonElement details, int maximum)
+    {
         foreach (JsonProperty detail in details.EnumerateObject())
             if (detail.Value.ValueKind != JsonValueKind.Number
                 || !detail.Value.TryGetInt32(out int value) || value < 0 || value > maximum)

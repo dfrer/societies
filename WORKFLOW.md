@@ -1,6 +1,24 @@
 # Snow Globe provider preflight, Ollama repair, and qwen3.5 smoke handoff
 
-## Final provider-completion OpenRouter handoff
+## Generation 4 terminal and offline prompt-detail follow-up
+
+### Outcome and evidence
+
+- Location-diagnostic PR #151 merged as `63288d2` after required `build-test-smoke` passed in 4m31s. From that exact source, Release rebuilt 0/0 and the zero-I/O plan, authenticated preflight, paid `record-once`, and local validate each ran exactly once.
+- Authorization `ae157e559ce8c95a9ac5ff331766f607565aae5144b74489f6266a031e5dd9fc`; generation `g2-bcec3e99ac2a434927a118ff446a8fce0b0e1f81bb66190b118550da9322b700`; preflight artifact 2,344 bytes/SHA-256 `468e26bb5dc0ccb5aa2d401d9bcab746c04333fe093f0c7b77bd0c81a5eca914`.
+- Exactly one Azure-only ZDR exchange stopped `provider_response_rejected_response_usage_prompt_tokens_details_unknown_property`; no second slot, retry, fallback, alternate, or accepted proposal occurred.
+- Raw-free evidence is 2,279 bytes/SHA-256 `711cb320634c8606768aa860a43a8109d5dd89c80d303b9f4d37dfe9c678d398`; receipt is 793 bytes/SHA-256 `6d7d576737c4d727bda20b52e90904afcb5c41a23b3664c77efcca11698bab9e`; journal is 2,887 bytes/SHA-256 `8659c1d5dc25e010e0338afd0171e40c46cba4f5cee9634af8c040e0a1fb94a7`, final checksum `856017252e1734f7191f4e8f74ff363c4e79577b6df668644423ab614920dd7b`.
+- Submission and charge remain Unknown; trusted tokens/local settlement are zero, proposal is null, response digest is nonzero, and both consumed claims exist. The provider body and dynamic property name/value were not retained or queried.
+
+### Exact boundary and next action
+
+- Generation 4 and every stage are consumed and must never be rerun. No additional generation is authorized.
+- Official Usage Accounting documentation lists only prompt-detail members already admitted locally, so the raw-free location identifies an undocumented additive metric inside a non-authoritative detail object.
+- The red-first typed correction is implemented for `usage.prompt_tokens_details` only: every member value remains an integer from zero through the input-token bound and none is retained or trusted. Every other strict scope, all routing/ZDR/financial/proposal/history controls, and no retry/fallback/alternate behavior remain unchanged.
+- Red-first failed only the intended valid additive case while seven security/boundary cases passed; the identical loop is green 8/8. Focused parser/history/vocabulary passes 99/99 including explicit JSON-token-limit coverage, full Snow Globe 1051/1051, OpenRouter CLI/security 100/100, Recording CLI 59/59, both relevant builds 0/0, and diff checks are clean apart from line-ending notices.
+- Independent deep review is FINAL GO with no unresolved P0-P3 after closing stale-generation wording and the missing JSON-token-limit regression. Merged delivery remains. No provider, credential, account, paid, live-state, or `src/societies/` action is part of this offline follow-up.
+
+## Historical generation 3 provider-completion OpenRouter handoff
 
 ### Outcome and evidence
 
@@ -10,11 +28,11 @@
 - Raw-free evidence is 2,233 bytes/SHA-256 `f295600120bce3c4ada87dc645aeb1280d56c5cd31bd3a4f6d5afbda63c584b1`; receipt is 793 bytes/SHA-256 `b4671467bc82bb1742f7a9840952392df70db847d4e259b1aa54ecbc5ffea064`; journal is 2,864 bytes/SHA-256 `54e6ddd51417023e454c3d03a02e378db923c4d9502e6174769b6ed5b168b07b`, final checksum `9389bd3abe3e3c2b657477331090530938bdc64924c0c6d7991cbb3c7b82fcf3`.
 - Submission and charge are Unknown; trusted tokens/local settlement are zero, proposal is null, response digest is nonzero, and both tombstones exist. No provider body, property location/name/value, prompt, refusal text, exception detail, or secret was retained or queried.
 
-### Final blocker and next action
+### Historical blocker and next action
 
-- All three newly authorized generations are consumed. Exactly three Azure-only ZDR exchanges occurred in total, one per generation, with no retry/fallback/alternate and no accepted OpenRouter proposal. Aggregate authorization was capped at 54,000 microusd; only one 1,500-microusd-reserved slot dispatched per generation, but all provider charges remain unknown.
-- Current documented additive usage members are now bounded and validated, yet the same raw-free unknown-property family remained. Retained evidence cannot identify the property's location/name/value, so no further evidence-backed compatibility correction or generation is authorized.
-- Local Ollama is accepted 12/12. OpenRouter provider completion is blocked. A future continuation requires a separately reviewed location-specific raw-free diagnostic design and fresh explicit paid authority; do not rerun any consumed stage.
+- At that handoff, all three newly authorized generations were consumed. Exactly three Azure-only ZDR exchanges had occurred, one per generation, with no retry/fallback/alternate and no accepted OpenRouter proposal. Aggregate authorization was capped at 54,000 microusd; only one 1,500-microusd-reserved slot dispatched per generation, but all provider charges remained unknown.
+- The documented additive usage members were bounded and validated, yet the same broad raw-free unknown-property family remained. Retained evidence could not identify the property's location/name/value, so the next action was a separately reviewed location-specific raw-free diagnostic and fresh authority.
+- Local Ollama was accepted 12/12 and OpenRouter was blocked at that historical boundary. The generation-4 handoff above supersedes this blocker; none of the three consumed stages may be rerun.
 
 ## Current provider-completion OpenRouter generation 2 handoff
 

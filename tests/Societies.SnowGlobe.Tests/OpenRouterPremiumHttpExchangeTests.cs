@@ -75,6 +75,39 @@ public sealed class OpenRouterPremiumHttpExchangeTests
         Assert.Null(exception.InnerException);
     }
 
+    [Fact]
+    public void StrictParserRejectsResponseBeyondConfiguredJsonTokenLimitWithoutEcho()
+    {
+        const string dynamicNamePrefix = "json-token-limit-sentinel-";
+        OpenRouterPremiumProfile profile = OpenRouterPremiumProfileRegistry.Selected;
+        int propertyCount = profile.Bounds.MaximumJsonTokens / 2 + 1;
+        StringBuilder body = new("{");
+        for (int index = 0; index < propertyCount; index++)
+        {
+            if (index > 0) body.Append(',');
+            body.Append('"').Append(dynamicNamePrefix)
+                .Append(index.ToString(System.Globalization.CultureInfo.InvariantCulture))
+                .Append("\":0");
+        }
+        body.Append('}');
+        byte[] utf8 = Encoding.UTF8.GetBytes(body.ToString());
+
+        Assert.True(2 + propertyCount * 2 > profile.Bounds.MaximumJsonTokens);
+        Assert.True(utf8.Length < profile.Bounds.MaximumResponseBytes);
+        Assert.True(profile.Bounds.MaximumJsonDepth >= 1);
+        Assert.True(dynamicNamePrefix.Length + propertyCount.ToString(
+            System.Globalization.CultureInfo.InvariantCulture).Length <= 128);
+
+        OpenRouterPremiumEvidenceException exception = Assert.Throws<OpenRouterPremiumEvidenceException>(() =>
+            OpenRouterPremiumResponseParser.Parse(
+                utf8, 200, profile, "cq1", new string('d', 64)));
+
+        Assert.Equal("response_json_token_limit", exception.Code);
+        Assert.Equal("response_json_token_limit", exception.Message);
+        Assert.DoesNotContain(dynamicNamePrefix, exception.ToString(), StringComparison.Ordinal);
+        Assert.Null(exception.InnerException);
+    }
+
     [Theory]
     [MemberData(nameof(StrictResponseUnknownPropertyCases))]
     public void StrictResponseObjectAllowlistScopesEmitUniqueRawFreeDiagnostics(
@@ -225,19 +258,68 @@ public sealed class OpenRouterPremiumHttpExchangeTests
         Assert.Equal(0, handler.CallCount);
     }
 
+    [Fact]
+    public void PromptTokenDetailsEnvelope_AcceptsUnknownBoundedIntegerAsNonAuthoritative()
+    {
+        const string dynamicName = "future_cache_metric_must_not_leak";
+        string json = Encoding.UTF8.GetString(SuccessBody()).Replace(
+            "\"cost\":0.000044",
+            $"\"cost\":0.000044,\"prompt_tokens_details\":{{\"cached_tokens\":10,\"{dynamicName}\":7}}",
+            StringComparison.Ordinal);
+
+        OpenRouterPremiumSlotReceipt receipt = OpenRouterPremiumResponseParser.Parse(
+            Encoding.UTF8.GetBytes(json), 200, OpenRouterPremiumProfileRegistry.Selected,
+            "cq1", new string('d', 64));
+
+        Assert.Equal("premium_evidence_success", receipt.OutcomeCode);
+        Assert.Equal(100, receipt.PromptTokens);
+        Assert.Equal(20, receipt.CompletionTokens);
+        Assert.Equal(120, receipt.TotalTokens);
+        Assert.Equal(44, receipt.SettledMicrousd);
+        Assert.Equal(new SnowGlobeActionProposal("agent-00", SnowGlobeActionKind.GatherWood, 12), receipt.Proposal);
+        Assert.DoesNotContain(dynamicName, receipt.ToString(), StringComparison.Ordinal);
+    }
+
     [Theory]
-    [InlineData("{\"cached_tokens\":0,\"unknown\":0}", "response_usage_prompt_tokens_details_unknown_property")]
-    [InlineData("[]", "response_usage_invalid")]
-    public void StrictParserRejectsUnclosedOrWrongUsageDetails(string details, string expectedCode)
+    [InlineData("[]")]
+    [InlineData("{\"cached_tokens\":null}")]
+    [InlineData("{\"cached_tokens\":0.5}")]
+    [InlineData("{\"cached_tokens\":\"1\"}")]
+    [InlineData("{\"cached_tokens\":-1}")]
+    [InlineData("{\"cached_tokens\":4097}")]
+    public void PromptTokenDetailsEnvelope_RejectsMalformedOrOutOfRangeValues(string details)
     {
         string json = Encoding.UTF8.GetString(SuccessBody()).Replace(
             "\"cost\":0.000044", $"\"cost\":0.000044,\"prompt_tokens_details\":{details}", StringComparison.Ordinal);
 
         OpenRouterPremiumEvidenceException exception = Assert.Throws<OpenRouterPremiumEvidenceException>(() =>
-            OpenRouterPremiumResponseParser.Parse(Encoding.UTF8.GetBytes(json), 200,
-                OpenRouterPremiumProfileRegistry.Selected, "cq1", new string('d', 64)));
+            OpenRouterPremiumResponseParser.Parse(
+                Encoding.UTF8.GetBytes(json), 200, OpenRouterPremiumProfileRegistry.Selected,
+                "cq1", new string('d', 64)));
 
-        Assert.Equal(expectedCode, exception.Code);
+        Assert.Equal("response_usage_invalid", exception.Code);
+        Assert.Equal("response_usage_invalid", exception.Message);
+        Assert.Null(exception.InnerException);
+    }
+
+    [Fact]
+    public void PromptTokenDetailsEnvelope_DoesNotRelaxCompletionDetailsUnknownFields()
+    {
+        const string dynamicName = "future_completion_metric_must_not_leak";
+        string json = Encoding.UTF8.GetString(SuccessBody()).Replace(
+            "\"cost\":0.000044",
+            $"\"cost\":0.000044,\"completion_tokens_details\":{{\"{dynamicName}\":0}}",
+            StringComparison.Ordinal);
+
+        OpenRouterPremiumEvidenceException exception = Assert.Throws<OpenRouterPremiumEvidenceException>(() =>
+            OpenRouterPremiumResponseParser.Parse(
+                Encoding.UTF8.GetBytes(json), 200, OpenRouterPremiumProfileRegistry.Selected,
+                "cq1", new string('d', 64)));
+
+        Assert.Equal("response_usage_completion_tokens_details_unknown_property", exception.Code);
+        Assert.Equal("response_usage_completion_tokens_details_unknown_property", exception.Message);
+        Assert.DoesNotContain(dynamicName, exception.ToString(), StringComparison.Ordinal);
+        Assert.Null(exception.InnerException);
     }
 
     [Fact]
@@ -562,9 +644,6 @@ public sealed class OpenRouterPremiumHttpExchangeTests
         yield return ["usage", success.Replace(
             "\"usage\":{\"prompt_tokens\"", $"\"usage\":{{\"{sentinel}\":0,\"prompt_tokens\"", StringComparison.Ordinal),
             200, "response_usage_unknown_property"];
-        yield return ["usage_prompt_tokens_details", success.Replace(
-            "\"cost\":0.000044", $"\"cost\":0.000044,\"prompt_tokens_details\":{{\"{sentinel}\":0}}", StringComparison.Ordinal),
-            200, "response_usage_prompt_tokens_details_unknown_property"];
         yield return ["usage_completion_tokens_details", success.Replace(
             "\"cost\":0.000044", $"\"cost\":0.000044,\"completion_tokens_details\":{{\"{sentinel}\":0}}", StringComparison.Ordinal),
             200, "response_usage_completion_tokens_details_unknown_property"];
