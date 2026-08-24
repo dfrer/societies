@@ -1,5 +1,27 @@
 # Snow Globe provider preflight, Ollama repair, and qwen3.5 smoke handoff
 
+## Current OpenRouter sixth authorized-run handoff
+
+### Outcome and scope
+
+- Fresh authority covered one session of at most 12 sequential requests, no retry/alternate provider, and maximum aggregate `$0.018`. Operator-observed invocations were plan 1, preflight 1, record-once 1, validate 1; all are consumed and must not be rerun.
+- Source was synchronized merged `master` `80d0ab2`; Release rebuilt with 0 warnings/errors. Zero-I/O plan matched manifest v2 `eea26a92d318a2ba102c7979d0cb44563d8bef967ae00b627bc6263ff59d759d` and all frozen bounds.
+- Preflight accepted authority `16892f25b9c6fe81fcee1911295634f9cc88cf8bff633aa66678bef65fa42574`, preflight artifact `776fe3f1efe6548023328babd4391bdf58d8d5d9cd447896e6c9048eeee6c5fa`, and generation `g2-b85c3da641755eda2f07bd65978ea779ef3caebf8136537f55209d2c6f7d8e6c` after the contract's authenticated metadata checks; preflight incurred no paid inference.
+- Paid recording made one bounded Azure-only ZDR exchange and stopped terminal as `provider_response_rejected_response_finish_invalid`. No second admit/dispatch, retry, fallback, alternate, or accounting query occurred. The code identifies a finish-validation family, not the provider's exact finish value.
+
+### Evidence and review
+
+- Evidence: 2,219 bytes/SHA `8ed4027c13f90eff69600c694d0f7d03bb316fd8bc936edbd66e20c4dc644366`; one exchange, unknown submission/charge, zero trusted tokens/local settlement, null proposal, nonzero response digest.
+- Validation receipt: 793 bytes/SHA `c1416abc97142356808e57f9d57369672e7845fbc5d5ba6521e487a92e3d6c41`; local validation exited accepted and made no provider/account request.
+- Canonical four-record journal: 2,857 bytes/SHA `9455a71f7b8e38a2aa389e09a41c139e7060de934e9446857b8902f194fb6f3f`, final checksum `8ce629857708749059669ffebf93fb31af875223870c353efac6adadd9b76688`; both execution/validation tombstones exist and bind once.
+- Independent deep security/evidence review is FINAL EVIDENCE GO with no P0-P3 findings. It recomputed structural digests, journal links, file identities, and raw-free bindings, confirmed the fifth generation remains unchanged, and found no raw prompt/response/secret fields.
+
+### Limits and next action
+
+- Exact CLI invocation counts are operator-observed; durable state proves one successful preflight generation, one execution claim, and one validation claim but cannot prove marker-free plan count or rejected duplicates. The exact three metadata GET count is source-mandated rather than artifact-counted.
+- Provider HTTP status, exact finish-reason value, and charge were not retained or queried. Charge is Unknown; zero local settlement is not provider zero cost. Immutable framework-owned Bearer cleanup, owning-user/admin rewrite resistance, and whole-volume rollback resistance remain unproven.
+- No raw capture, account query, accounting follow-up, credential/anchor mutation, state cleanup, deployment, release, gameplay, or `src/societies/` change occurred. Publish the reviewed raw-free outcome, then return `master` clean and synchronized. No additional provider action is authorized.
+
 ## Current Snow Globe OpenRouter raw-free rejection-diagnostics handoff
 
 ### Outcome and scope
@@ -220,7 +242,7 @@
 - Recovery is intentionally limited to authenticated, independently flushed complete-record prefixes. A real partial filesystem write fails closed. This is ordinary deterministic restart evidence, not power-loss certification, hardware durability, cross-host coordination, a general transaction layer, or exactly-once persistence.
 - Next action: this bounded RunStore milestone is complete; select the next isolated offline Snow Globe milestone before changing provider, credential, paid, live-state, or `src/societies/` behavior.
 
-## Current OpenRouter production settlement and fifth paid-run outcome
+## Historical OpenRouter production settlement and fifth paid-run outcome
 
 The fifth authority incorporated up to 12 sequential requests, no retries or alternate providers, and maximum aggregate `$0.018`. One session ran exactly once: preflight succeeded, `record-once` ran once, and local `validate` ran once. Authorization digest `40655d2535520757b411595593deda6a714127e5366cf9afb3292aab0f3bc2d6`; generation `g2-03d00c2b41770f885e7ce27c9a4545cd9a420161b00351573fc2886b6c886df2`; manifest SHA `cd71868d349bb71b88d5b819a14e166fb520055d706f6da95025d04f33325d83`.
 

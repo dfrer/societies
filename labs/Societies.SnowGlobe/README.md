@@ -12,7 +12,13 @@ Initialization-slice chronology: full SnowGlobe passed 881/881 and full CLI/secu
 
 The fifth authority was consumed and the offline documentation and delivery review stated below superseded this historical action. `WI-GLOBAL-2026-126` remains separate.
 
-## Current fifth paid-run evidence
+## Current sixth paid-run evidence
+
+Fresh authority permitted at most 12 sequential requests, no retry or alternate provider, and maximum aggregate `$0.018`. From merged source `80d0ab2`, plan/preflight/record/validate were each operator-invoked once. Preflight accepted authority `16892f25b9c6fe81fcee1911295634f9cc88cf8bff633aa66678bef65fa42574` and generation `g2-b85c3da641755eda2f07bd65978ea779ef3caebf8136537f55209d2c6f7d8e6c`. One paid Azure-only ZDR exchange then stopped as `provider_response_rejected_response_finish_invalid`, with no second admit/dispatch, retry, fallback, or alternate.
+
+Evidence is 2,219 bytes/SHA `8ed4027c13f90eff69600c694d0f7d03bb316fd8bc936edbd66e20c4dc644366`; receipt is 793 bytes/SHA `c1416abc97142356808e57f9d57369672e7845fbc5d5ba6521e487a92e3d6c41`; journal is 2,857 bytes/SHA `9455a71f7b8e38a2aa389e09a41c139e7060de934e9446857b8902f194fb6f3f`. Submission/charge are Unknown, trusted tokens/local settlement are zero, proposal is null, and the response digest is retained. The diagnostic does not establish the provider's exact finish value, status, or charge. Independent deep review is FINAL EVIDENCE GO with no P0-P3. All stages and authority are consumed; no rerun or additional provider action is authorized.
+
+## Historical fifth paid-run evidence
 
 The fifth authority used up to 12 sequential requests, no retries or alternate providers, maximum aggregate `$0.018`; preflight, `record-once`, and local `validate` each ran exactly once. Evidence is 2,171 bytes/SHA `7d449d77c3b82ff1984a0e1d33c3026b80566321938418b2eb363ff1aa9f1bd8`, terminal `provider_response_rejected`, one exchange, `cq1` only, unknown submission/charge, zero trusted tokens, zero local settlement, null proposal. Receipt SHA `7f42dfd15ffe1e4134d7110a9f491f9dfaae1632d69e14180bf47dbc6056dc49`; journal SHA `b79acbe2cff7b2a72bee53db5c3663229de035f3700c5624b5d6f2a2dcffa161`, four records, terminal checksum `e3b987863489740096370a00a3b34374e16e7ab59d817e59743ddf2833f7b5b3`. Authority is consumed; no stage rerun, raw retention, v1 access, or accounting follow-up. No provider-side cause is claimed.
 
@@ -24,9 +30,7 @@ Red-first evidence failed all eight parser-diagnostic cases while the three unch
 
 ### One current next action
 
-The reviewed Snow Globe/OpenRouter milestone was merged through [PR #125](https://github.com/dfrer/societies/pull/125) as `f021cdc`. The residual fake-only lease-zero conformance fix is commit `399adac` in [PR #126](https://github.com/dfrer/societies/pull/126); its merge completes the follow-up. Neither PR authorizes provider, accounting, credential, or live-state action.
-
-The former residual P3 is complete: bounded fake-only evidence retains and asserts all twelve success lease-zero observations plus exact uncertain and pre-dispatch observations, and fails closed on missing, null, extra, false, or count-mismatched evidence. No credential, live v1/v2 state, provider/network, accounting, paid, or `src/societies/` access occurred.
+Publish the reviewed sixth-run raw-free evidence record and return `master` clean and synchronized. The former PR #125/#126 implementation history remains unchanged. No additional provider, accounting, credential, live-state, or `src/societies/` action is authorized.
 
 ## Current offline cognition score-summary milestone (v4)
 

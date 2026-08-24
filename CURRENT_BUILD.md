@@ -17,6 +17,14 @@ This is the only in-repo implementation that currently has:
 - a buildable C# project
 - a runnable automated validation path
 
+## Current OpenRouter sixth authorized-run outcome
+
+The fresh sixth authority used the exact approved ceiling and route: at most 12 sequential requests, one attempt per slot, no retry or alternate provider, and maximum aggregate charge `$0.018`. From merged source `80d0ab2`, Release rebuilt with 0 warnings/errors; zero-I/O `plan`, live `preflight`, paid `record-once`, and local `validate` were each operator-invoked once and are consumed. Plan/preflight/record/validate completed in 149 / 1,268 / 4,913 / 194 ms. Durable state proves exactly one completed preflight generation, one execution claim, and one validation claim; it cannot prove rejected duplicate invocations or the marker-free plan count.
+
+Preflight accepted authorization `16892f25b9c6fe81fcee1911295634f9cc88cf8bff633aa66678bef65fa42574`, artifact `776fe3f1efe6548023328babd4391bdf58d8d5d9cd447896e6c9048eeee6c5fa`, and generation `g2-b85c3da641755eda2f07bd65978ea779ef3caebf8136537f55209d2c6f7d8e6c`. It accessed the fixed anchor/stored credential and performed the contract's three authenticated metadata checks, with no paid inference. `record-once` then made one bounded Azure-only ZDR exchange and stopped terminal with `provider_response_rejected_response_finish_invalid`; there was no second admit/dispatch, retry, fallback, or alternate. This identifies the closed local finish-validation family, not the provider's exact finish-reason value.
+
+The terminal evidence is 2,219 bytes/SHA-256 `8ed4027c13f90eff69600c694d0f7d03bb316fd8bc936edbd66e20c4dc644366`: one exchange, `SubmissionUnknown` / `ChargeState.Unknown`, zero trusted tokens, zero locally settled microusd, null proposal, and a nonzero response digest. Local validation accepted receipt SHA-256 `c1416abc97142356808e57f9d57369672e7845fbc5d5ba6521e487a92e3d6c41`. The canonical four-record journal is 2,857 bytes/SHA-256 `9455a71f7b8e38a2aa389e09a41c139e7060de934e9446857b8902f194fb6f3f`, ending checksum `8ce629857708749059669ffebf93fb31af875223870c353efac6adadd9b76688`; both execution and validation tombstones exist. Charge remains unknown and zero local settlement is not a zero-cost claim. No raw prompt/response/secret, account query, accounting follow-up, credential mutation, state reset, or `src/societies/` change occurred. Independent deep security/evidence review is FINAL EVIDENCE GO with no P0-P3 findings. The sixth authority and every stage are consumed and must not be rerun.
+
 ## Current Snow Globe OpenRouter raw-free rejection-diagnostics milestone
 
 The isolated OpenRouter boundary now preserves the exact closed local parser rejection code in future terminal evidence as `provider_response_rejected_<parser-code>`. The diagnostic flows through the existing slot receipt, durable journal, evidence artifact and local validation, v1/v2 production results, and CLI output. One typed parser enum is both the construction authority and wire suffix vocabulary; undefined enum values fail closed, and exhaustive coverage prevents a future parser rule from silently falling back to the generic code. Provider text, response bodies, and exception messages are not retained.
@@ -77,7 +85,7 @@ V2 and v3 artifacts remain strict read-only inputs and are never upgraded in pla
 
 Local Release validation passes 132/132 focused RunStore tests and 914/914 full Snow Globe tests; the Release build has 0 warnings and 0 errors; `git diff --check` is clean. Independent migration/determinism review is FINAL CODE GO with no P0-P3 findings after correcting premature uncommitted-tick visibility, global-cap enforcement, authenticated-prefix recovery, header/lease binding, framing-aware adversarial tests, and continuation source lengths. Implementation commit `a41ea6b` and delivery record `f7aa9d5` were published through [PR #127](https://github.com/dfrer/societies/pull/127); required `build-test-smoke` passed in 4m17s and the PR merged to `master` as `16239d3`.
 
-## Current OpenRouter production settlement and fifth paid-run outcome
+## Historical OpenRouter production settlement and fifth paid-run outcome
 
 The fifth authority incorporated the exact terms: up to 12 sequential requests, no retries or alternate providers, and maximum aggregate charge `$0.018`. One session ran exactly once: preflight succeeded, `record-once` ran once, and local `validate` ran once. Authorization digest is `40655d2535520757b411595593deda6a714127e5366cf9afb3292aab0f3bc2d6`; generation is `g2-03d00c2b41770f885e7ce27c9a4545cd9a420161b00351573fc2886b6c886df2`, manifest SHA `cd71868d349bb71b88d5b819a14e166fb520055d706f6da95025d04f33325d83`.
 
