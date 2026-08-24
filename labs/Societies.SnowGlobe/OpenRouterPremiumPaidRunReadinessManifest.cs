@@ -629,7 +629,7 @@ internal sealed record OpenRouterPremiumPaidRunRequestContract(
                 body, 200, profile, 1, slot.ScenarioId, slot.PromptDigestSha256, requestDigest);
             if (receipt.OutcomeCode != "premium_evidence_success") throw Invalid();
             ReplaceAsciiExact(invalidFinish, "\"finish_reason\":\"stop\"", "\"finish_reason\":\"tool\"");
-            RequireParserRejection(invalidFinish, profile, slot, requestDigest, "response_finish_invalid");
+            RequireParserRejection(invalidFinish, profile, slot, requestDigest, "response_finish_reason_not_stop");
             ReplaceAsciiExact(invalidAttempt, "\"attempt\":1", "\"attempt\":2");
             RequireParserRejection(invalidAttempt, profile, slot, requestDigest, "response_routing_invalid");
         }

@@ -108,23 +108,25 @@ public sealed class OpenRouterPremiumEvidenceTests
         Assert.Equal("artifact_rejected", Assert.Throws<OpenRouterPremiumEvidenceException>(() => OpenRouterPremiumEvidenceArtifactModule.Validate(tampered)).Code);
     }
 
-    [Fact]
-    public void HistoricalGenericProviderResponseRejectionArtifactRemainsCanonicalAndValid()
+    [Theory]
+    [InlineData("provider_response_rejected")]
+    [InlineData("provider_response_rejected_response_finish_invalid")]
+    public void HistoricalProviderResponseRejectionArtifactsRemainCanonicalAndValid(string outcomeCode)
     {
         TestContext context = CreateContext();
         OpenRouterPremiumExecutionCapability capability = OpenRouterPremiumEvidenceModule.Authorize(context.Authorization);
         CognitionQualityPromptEnvelopeSlot prompt = capability.Publication.Slots[0];
         OpenRouterPremiumSlotReceipt historical = new(1, prompt.ScenarioId, prompt.PromptDigestSha256,
             new string('a', 64), new string('b', 64), SubmissionState.SubmissionUnknown, ChargeState.Unknown,
-            0, 0, 0, 0, null, "provider_response_rejected");
+            0, 0, 0, 0, null, outcomeCode);
 
         OpenRouterPremiumEvidenceArtifact artifact = OpenRouterPremiumEvidenceArtifactModule.Create(
             capability, context.Journal.Header, context.Exchange.Identity, [historical]);
         byte[] canonical = artifact.CanonicalUtf8.ToArray();
         OpenRouterPremiumEvidenceArtifact validated = OpenRouterPremiumEvidenceArtifactModule.Validate(canonical);
 
-        Assert.Equal("provider_response_rejected", validated.TerminalCode);
-        Assert.Equal("provider_response_rejected", Assert.Single(validated.Slots).OutcomeCode);
+        Assert.Equal(outcomeCode, validated.TerminalCode);
+        Assert.Equal(outcomeCode, Assert.Single(validated.Slots).OutcomeCode);
         Assert.Equal(artifact.CanonicalJson, validated.CanonicalJson);
         Assert.Equal(artifact.CanonicalDigestSha256, validated.CanonicalDigestSha256);
     }
@@ -135,6 +137,20 @@ public sealed class OpenRouterPremiumEvidenceTests
         OpenRouterPremiumResponseParserRejectionCode[] codes =
             Enum.GetValues<OpenRouterPremiumResponseParserRejectionCode>();
         Assert.Equal(codes.Length, codes.Select(code => code.ToString()).Distinct(StringComparer.Ordinal).Count());
+        HashSet<string> codeNames = codes.Select(code => code.ToString()).ToHashSet(StringComparer.Ordinal);
+        Assert.DoesNotContain("response_finish_invalid", codeNames);
+        Assert.All(new[]
+        {
+            "response_choice_index_invalid",
+            "response_finish_reason_missing",
+            "response_finish_reason_type_invalid",
+            "response_finish_reason_not_stop",
+            "response_choice_error_present",
+            "response_native_finish_reason_type_invalid",
+            "response_native_finish_reason_not_stop",
+            "response_logprobs_non_null",
+            "response_refusal_non_null"
+        }, code => Assert.Contains(code, codeNames));
         foreach (OpenRouterPremiumResponseParserRejectionCode code in codes)
         {
             OpenRouterPremiumEvidenceException exception = new(code);

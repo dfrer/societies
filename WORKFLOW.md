@@ -1,5 +1,28 @@
 # Snow Globe provider preflight, Ollama repair, and qwen3.5 smoke handoff
 
+## Current Snow Globe OpenRouter finish-diagnostic refinement handoff
+
+### Outcome and scope
+
+- Future raw-free evidence now identifies each of the nine existing finish-admission failures with a closed local code: choice index invalid; finish reason missing, wrong type, or not `stop`; choice error present; native finish reason wrong type or not `stop`; logprobs non-null; and refusal non-null.
+- The prior parser evaluation order and every accepted-response path are unchanged. Provider values, bodies, errors, refusal text, exception details, and secrets never enter evidence.
+- Historical `provider_response_rejected_response_finish_invalid` artifacts and journals remain valid without rewrite. V1 schemas/shapes, v1/v2 result propagation, validation, CLI formatting, first-terminal stop, no-retry/no-alternate behavior, unknown submission/charge, zero trusted counters/settlement, null proposal, and response-digest behavior remain unchanged.
+- The readiness manifest's only source adjustment is its internal fake-parser expectation. Its schema, fields, CLI output, request bounds, digest `eea26a92d318a2ba102c7979d0cb44563d8bef967ae00b627bc6263ff59d759d`, and `live_readiness=false` remain unchanged.
+
+### Changed files and validation
+
+- Production: `labs/Societies.SnowGlobe/OpenRouterPremiumExchange.cs` and the internal readiness-manifest self-probe in `OpenRouterPremiumPaidRunReadinessManifest.cs`.
+- Evidence: `OpenRouterPremiumHttpExchangeTests.cs`, `OpenRouterPremiumEvidenceTests.cs`, `FileOpenRouterPremiumJournalTests.cs`, `OpenRouterProductionBridgeTests.cs`, and `OpenRouterCliSecurityTests.cs`.
+- Contract/docs: `planning/active/snow-globe-openrouter-finish-diagnostic-refinement.md`, `labs/Societies.SnowGlobe/OPENROUTER_PREMIUM_EVIDENCE.md`, `labs/Societies.SnowGlobe/README.md`, `CURRENT_BUILD.md`, and this handoff.
+- Red-first evidence: the production-bridge selection failed 9 expected new diagnostics as the prior broad code while 10 unchanged cases passed. Green evidence passes bridge 19/19, finish parser 14/14, historical/exhaustive vocabulary 5/5, v2/validation/CLI 11/11, readiness manifest 4/4, focused evidence/journal/HTTP 99/99, full OpenRouter CLI/security 97/97, and full Snow Globe Release 1006/1006.
+- Both Release builds pass with 0 warnings / 0 errors and `git diff --check` is clean. Independent deep security/public-contract review is FINAL GO with no P0-P3 findings.
+
+### Limits and next action
+
+- The immutable sixth-run evidence retains its historical broad code and cannot be assigned to one of the nine new conditions. This change does not reveal its exact provider finish value, resolve unknown charge, or prove live compatibility, quality, cost, readiness, deployment, or release status.
+- No provider, network, credential, account, paid, retained-evidence, live-state, preflight, `record-once`, `validate`, gameplay, or `src/societies/` action occurred.
+- Deliver the reviewed offline slice through the current `codex/` branch, required check, and merge, then publish the exact delivery record and return `master` clean and synchronized. No additional provider action is authorized.
+
 ## Current OpenRouter sixth authorized-run handoff
 
 ### Outcome and scope

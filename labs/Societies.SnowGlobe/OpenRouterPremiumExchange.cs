@@ -513,19 +513,27 @@ internal enum OpenRouterPremiumResponseParserRejectionCode
     response_array_too_large,
     response_binding_invalid,
     response_choices_invalid,
+    response_choice_error_present,
+    response_choice_index_invalid,
     response_cost_invalid,
     response_created_invalid,
     response_error_invalid,
-    response_finish_invalid,
+    response_finish_reason_missing,
+    response_finish_reason_not_stop,
+    response_finish_reason_type_invalid,
     response_json_duplicate_property,
     response_json_invalid,
     response_json_token_limit,
     response_json_too_deep,
     response_json_unknown_property,
+    response_logprobs_non_null,
     response_message_invalid,
+    response_native_finish_reason_not_stop,
+    response_native_finish_reason_type_invalid,
     response_number_invalid,
     response_pipeline_forbidden,
     response_reasoning_invalid,
+    response_refusal_non_null,
     response_routing_invalid,
     response_shape_invalid,
     response_string_too_long,
@@ -617,21 +625,31 @@ internal static class OpenRouterPremiumResponseParser
             throw Rejected(ParserRejection.response_choices_invalid);
         JsonElement choice = choices[0];
         RejectUnknown(choice, new HashSet<string>(["index", "finish_reason", "native_finish_reason", "logprobs", "message", "error"], StringComparer.Ordinal), ParserRejection.response_json_unknown_property);
-        if (!choice.TryGetProperty("index", out JsonElement index) || !index.TryGetInt32(out int indexValue) || indexValue != 0
-            || !choice.TryGetProperty("finish_reason", out JsonElement finish) || finish.ValueKind != JsonValueKind.String
-            || !string.Equals(finish.GetString(), "stop", StringComparison.Ordinal) || choice.TryGetProperty("error", out _))
-            throw Rejected(ParserRejection.response_finish_invalid);
-        if (choice.TryGetProperty("native_finish_reason", out JsonElement nativeFinish)
-            && (nativeFinish.ValueKind != JsonValueKind.String || nativeFinish.GetString() != "stop"))
-            throw Rejected(ParserRejection.response_finish_invalid);
+        if (!choice.TryGetProperty("index", out JsonElement index) || !index.TryGetInt32(out int indexValue) || indexValue != 0)
+            throw Rejected(ParserRejection.response_choice_index_invalid);
+        if (!choice.TryGetProperty("finish_reason", out JsonElement finish))
+            throw Rejected(ParserRejection.response_finish_reason_missing);
+        if (finish.ValueKind != JsonValueKind.String)
+            throw Rejected(ParserRejection.response_finish_reason_type_invalid);
+        if (!string.Equals(finish.GetString(), "stop", StringComparison.Ordinal))
+            throw Rejected(ParserRejection.response_finish_reason_not_stop);
+        if (choice.TryGetProperty("error", out _))
+            throw Rejected(ParserRejection.response_choice_error_present);
+        if (choice.TryGetProperty("native_finish_reason", out JsonElement nativeFinish))
+        {
+            if (nativeFinish.ValueKind != JsonValueKind.String)
+                throw Rejected(ParserRejection.response_native_finish_reason_type_invalid);
+            if (!string.Equals(nativeFinish.GetString(), "stop", StringComparison.Ordinal))
+                throw Rejected(ParserRejection.response_native_finish_reason_not_stop);
+        }
         if (choice.TryGetProperty("logprobs", out JsonElement logprobs) && logprobs.ValueKind != JsonValueKind.Null)
-            throw Rejected(ParserRejection.response_finish_invalid);
+            throw Rejected(ParserRejection.response_logprobs_non_null);
         if (!choice.TryGetProperty("message", out JsonElement message) || message.ValueKind != JsonValueKind.Object)
             throw Rejected(ParserRejection.response_message_invalid);
         RejectUnknown(message, new HashSet<string>(["role", "content", "refusal", "reasoning", "reasoning_content", "reasoning_details"], StringComparer.Ordinal), ParserRejection.response_json_unknown_property);
         RequireString(message, "role", "assistant");
         if (message.TryGetProperty("refusal", out JsonElement refusal) && refusal.ValueKind != JsonValueKind.Null)
-            throw Rejected(ParserRejection.response_finish_invalid);
+            throw Rejected(ParserRejection.response_refusal_non_null);
         ValidateOptionalNullableString(message, "reasoning", profile.Bounds.MaximumStringCharacters);
         ValidateOptionalNullableString(message, "reasoning_content", profile.Bounds.MaximumStringCharacters);
         ValidateReasoningDetails(message, profile.Bounds);

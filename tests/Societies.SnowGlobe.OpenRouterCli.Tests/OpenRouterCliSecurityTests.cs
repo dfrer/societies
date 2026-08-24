@@ -72,10 +72,19 @@ public sealed class OpenRouterCliSecurityTests
         Assert.Contains("additional_attempt_authorized=false", output.ToString(), StringComparison.Ordinal);
     }
 
-    [Fact]
-    public async Task RecordOncePrintsTheExactRawFreeParserRejectionDiagnostic()
+    [Theory]
+    [InlineData("provider_response_rejected_response_choice_index_invalid")]
+    [InlineData("provider_response_rejected_response_finish_reason_missing")]
+    [InlineData("provider_response_rejected_response_finish_reason_type_invalid")]
+    [InlineData("provider_response_rejected_response_finish_reason_not_stop")]
+    [InlineData("provider_response_rejected_response_choice_error_present")]
+    [InlineData("provider_response_rejected_response_native_finish_reason_type_invalid")]
+    [InlineData("provider_response_rejected_response_native_finish_reason_not_stop")]
+    [InlineData("provider_response_rejected_response_logprobs_non_null")]
+    [InlineData("provider_response_rejected_response_refusal_non_null")]
+    [InlineData("provider_response_rejected_response_finish_invalid")]
+    public async Task RecordOncePrintsExactCurrentAndHistoricalRawFreeParserRejectionDiagnostics(string diagnostic)
     {
-        const string diagnostic = "provider_response_rejected_response_finish_invalid";
         FakeCliModule module = new(new OpenRouterCliRunResult("terminal", 1, 0, diagnostic, Digest('b')));
         StringWriter output = new(); StringWriter error = new();
 

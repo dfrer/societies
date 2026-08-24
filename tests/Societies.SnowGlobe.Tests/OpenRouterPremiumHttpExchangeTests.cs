@@ -75,6 +75,40 @@ public sealed class OpenRouterPremiumHttpExchangeTests
         Assert.Null(exception.InnerException);
     }
 
+    [Theory]
+    [InlineData("\"index\":0", "\"index\":1", "response_choice_index_invalid")]
+    [InlineData(",\"finish_reason\":\"stop\"", "", "response_finish_reason_missing")]
+    [InlineData("\"finish_reason\":\"stop\"", "\"finish_reason\":42", "response_finish_reason_type_invalid")]
+    [InlineData("\"finish_reason\":\"stop\"", "\"finish_reason\":\"raw-provider-sentinel-must-not-leak\"", "response_finish_reason_not_stop")]
+    [InlineData("\"finish_reason\":\"stop\"", "\"finish_reason\":\"stop\",\"error\":{\"message\":\"raw-provider-sentinel-must-not-leak\"}", "response_choice_error_present")]
+    [InlineData("\"finish_reason\":\"stop\"", "\"finish_reason\":\"stop\",\"native_finish_reason\":42", "response_native_finish_reason_type_invalid")]
+    [InlineData("\"finish_reason\":\"stop\"", "\"finish_reason\":\"stop\",\"native_finish_reason\":\"raw-provider-sentinel-must-not-leak\"", "response_native_finish_reason_not_stop")]
+    [InlineData("\"finish_reason\":\"stop\"", "\"finish_reason\":\"stop\",\"logprobs\":{\"marker\":\"raw-provider-sentinel-must-not-leak\"}", "response_logprobs_non_null")]
+    [InlineData("\"message\":{\"role\":\"assistant\"", "\"message\":{\"role\":\"assistant\",\"refusal\":\"raw-provider-sentinel-must-not-leak\"", "response_refusal_non_null")]
+    public void StrictParserDistinguishesEachClosedFinishAdmissionFailureWithoutProviderValues(
+        string exact,
+        string mutation,
+        string expectedCode)
+    {
+        string body = Encoding.UTF8.GetString(SuccessBody());
+        Assert.Contains(exact, body, StringComparison.Ordinal);
+
+        OpenRouterPremiumEvidenceException exception = Assert.Throws<OpenRouterPremiumEvidenceException>(() =>
+            OpenRouterPremiumResponseParser.Parse(
+                Encoding.UTF8.GetBytes(body.Replace(exact, mutation, StringComparison.Ordinal)),
+                200,
+                OpenRouterPremiumProfileRegistry.Selected,
+                "cq1",
+                new string('d', 64)));
+
+        Assert.Equal(expectedCode, exception.Code);
+        Assert.Equal(expectedCode, exception.Message);
+        Assert.Equal("provider_response_rejected_" + expectedCode,
+            OpenRouterPremiumResponseParser.ToRejectedOutcomeCode(exception));
+        Assert.DoesNotContain("raw-provider-sentinel-must-not-leak", exception.ToString(), StringComparison.Ordinal);
+        Assert.Null(exception.InnerException);
+    }
+
     [Fact]
     public void StrictParserRejectsInvalidUtf8AndOversizeWithoutEcho()
     {
@@ -217,8 +251,8 @@ public sealed class OpenRouterPremiumHttpExchangeTests
 
     [Theory]
     [InlineData("\"provider\":\"Azure\"", "\"provider\":\"Other\"", "response_binding_invalid")]
-    [InlineData("\"native_finish_reason\":\"stop\"", "\"native_finish_reason\":\"length\"", "response_finish_invalid")]
-    [InlineData("\"logprobs\":null", "\"logprobs\":{}", "response_finish_invalid")]
+    [InlineData("\"native_finish_reason\":\"stop\"", "\"native_finish_reason\":\"length\"", "response_native_finish_reason_not_stop")]
+    [InlineData("\"logprobs\":null", "\"logprobs\":{}", "response_logprobs_non_null")]
     [InlineData("\"format\":\"azure-openai-responses-v1\"", "\"format\":\"future\"", "response_reasoning_invalid")]
     [InlineData("\"index\":0}]", "\"index\":1}]", "response_reasoning_invalid")]
     public void DocumentedReasoningEnvelopeStillFailsClosedOnBindingAndShapeMutations(

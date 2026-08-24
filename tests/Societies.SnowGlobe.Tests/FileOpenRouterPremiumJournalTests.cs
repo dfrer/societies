@@ -34,8 +34,10 @@ public sealed class FileOpenRouterPremiumJournalTests
         finally { Delete(root); }
     }
 
-    [Fact]
-    public void HistoricalGenericProviderResponseRejectionJournalRemainsReadable()
+    [Theory]
+    [InlineData("provider_response_rejected")]
+    [InlineData("provider_response_rejected_response_finish_invalid")]
+    public void HistoricalProviderResponseRejectionJournalsRemainReadable(string outcomeCode)
     {
         string root = Temp();
         try
@@ -46,14 +48,14 @@ public sealed class FileOpenRouterPremiumJournalTests
                 long dispatched = journal.MarkDispatchUnknown(1, Digest('b'), admitted);
                 OpenRouterPremiumSlotReceipt historical = new(1, "cq1", Digest('a'), Digest('b'), Digest('c'),
                     SubmissionState.SubmissionUnknown, ChargeState.Unknown, 0, 0, 0, 0, null,
-                    "provider_response_rejected");
+                    outcomeCode);
                 Assert.Equal(3, journal.Complete(historical, dispatched));
             }
 
             using FileOpenRouterPremiumJournal reopened = FileOpenRouterPremiumJournal.OpenForAppend(root);
             OpenRouterPremiumJournalSlotSnapshot slot = Assert.Single(reopened.Snapshot().Slots);
-            Assert.Equal("provider_response_rejected", slot.Receipt!.OutcomeCode);
-            Assert.Contains("cq1/completed/provider_response_rejected", reopened.Snapshot().Trace);
+            Assert.Equal(outcomeCode, slot.Receipt!.OutcomeCode);
+            Assert.Contains($"cq1/completed/{outcomeCode}", reopened.Snapshot().Trace);
         }
         finally { Delete(root); }
     }
