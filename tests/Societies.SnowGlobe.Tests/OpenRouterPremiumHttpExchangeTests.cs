@@ -197,6 +197,73 @@ public sealed class OpenRouterPremiumHttpExchangeTests
         Assert.Contains(exception.Code, new[] { "response_json_unknown_property", "response_usage_invalid" });
     }
 
+    [Fact]
+    public void StrictParserAcceptsDocumentedBoundedUsageAdditionsWithoutChangingSettledCost()
+    {
+        string json = Encoding.UTF8.GetString(SuccessBody()).Replace(
+            "\"cost\":0.000044",
+            "\"cost\":0.000044,\"is_byok\":false," +
+            "\"server_tool_use_details\":{\"tool_calls_executed\":0,\"tool_calls_requested\":0}," +
+            "\"cost_details\":{\"upstream_inference_cost\":0.000040," +
+            "\"upstream_inference_prompt_cost\":0.000010,\"upstream_inference_completions_cost\":0.000020}",
+            StringComparison.Ordinal);
+
+        OpenRouterPremiumSlotReceipt receipt = OpenRouterPremiumResponseParser.Parse(
+            Encoding.UTF8.GetBytes(json), 200, OpenRouterPremiumProfileRegistry.Selected,
+            "cq1", new string('d', 64));
+
+        Assert.Equal("premium_evidence_success", receipt.OutcomeCode);
+        Assert.Equal(44, receipt.SettledMicrousd);
+        Assert.Equal(100, receipt.PromptTokens);
+        Assert.Equal(20, receipt.CompletionTokens);
+    }
+
+    [Fact]
+    public void StrictParserAcceptsDocumentedNullableUpstreamCostDetails()
+    {
+        string json = Encoding.UTF8.GetString(SuccessBody()).Replace(
+            "\"cost\":0.000044",
+            "\"cost\":0.000044,\"cost_details\":{\"upstream_inference_cost\":null," +
+            "\"upstream_inference_prompt_cost\":null,\"upstream_inference_completions_cost\":null}",
+            StringComparison.Ordinal);
+
+        OpenRouterPremiumSlotReceipt receipt = OpenRouterPremiumResponseParser.Parse(
+            Encoding.UTF8.GetBytes(json), 200, OpenRouterPremiumProfileRegistry.Selected,
+            "cq1", new string('d', 64));
+
+        Assert.Equal("premium_evidence_success", receipt.OutcomeCode);
+        Assert.Equal(44, receipt.SettledMicrousd);
+    }
+
+    [Theory]
+    [InlineData("\"is_byok\":true", "response_usage_invalid")]
+    [InlineData("\"is_byok\":null", "response_usage_invalid")]
+    [InlineData("\"server_tool_use_details\":[]", "response_usage_invalid")]
+    [InlineData("\"server_tool_use_details\":{\"tool_calls_executed\":1}", "response_usage_invalid")]
+    [InlineData("\"server_tool_use_details\":{\"tool_calls_requested\":-1}", "response_usage_invalid")]
+    [InlineData("\"server_tool_use_details\":{\"tool_calls_executed\":\"0\"}", "response_usage_invalid")]
+    [InlineData("\"server_tool_use_details\":{\"unknown\":0}", "response_json_unknown_property")]
+    [InlineData("\"cost_details\":[]", "response_usage_invalid")]
+    [InlineData("\"cost_details\":{\"unknown\":0}", "response_json_unknown_property")]
+    [InlineData("\"cost_details\":{\"upstream_inference_cost\":\"0\"}", "response_usage_invalid")]
+    [InlineData("\"cost_details\":{\"upstream_inference_prompt_cost\":-0.000001}", "response_usage_invalid")]
+    [InlineData("\"cost_details\":{\"upstream_inference_completions_cost\":0.000045}", "response_usage_invalid")]
+    [InlineData("\"cost_details\":{\"upstream_inference_prompt_cost\":0.000030,\"upstream_inference_completions_cost\":0.000030}", "response_usage_invalid")]
+    [InlineData("\"cost_details\":{\"upstream_inference_cost\":0.000020,\"upstream_inference_prompt_cost\":0.000030}", "response_usage_invalid")]
+    public void StrictParserRejectsUnsafeDocumentedUsageAdditions(string addition, string expectedCode)
+    {
+        string json = Encoding.UTF8.GetString(SuccessBody()).Replace(
+            "\"cost\":0.000044", $"\"cost\":0.000044,{addition}", StringComparison.Ordinal);
+
+        OpenRouterPremiumEvidenceException exception = Assert.Throws<OpenRouterPremiumEvidenceException>(() =>
+            OpenRouterPremiumResponseParser.Parse(
+                Encoding.UTF8.GetBytes(json), 200, OpenRouterPremiumProfileRegistry.Selected,
+                "cq1", new string('d', 64)));
+
+        Assert.Equal(expectedCode, exception.Code);
+        Assert.Null(exception.InnerException);
+    }
+
     [Theory]
     [InlineData(400, SubmissionState.SubmissionUnknown, ChargeState.Unknown)]
     [InlineData(401, SubmissionState.SubmissionUnknown, ChargeState.Unknown)]
