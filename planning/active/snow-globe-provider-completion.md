@@ -96,3 +96,44 @@ Complete the existing isolated Snow Globe cognition-recording implementations so
 - All three authorized generations and stages are consumed. Exactly three paid exchanges occurred, one per generation. Aggregate authorization was capped at 54,000 microusd; each dispatched one 1,500-microusd-reserved slot, but provider charges are Unknown and zero local settlement is not zero cost.
 - Accepted local Ollama compatibility is proven 12/12. Accepted OpenRouter compatibility is not proven. The final raw-free diagnostic remains too broad to identify the undocumented property, so the milestone is blocked at the OpenRouter provider-completion boundary.
 - No fourth generation is authorized. The one practical future action is to design, test, independently review, and deliver location-specific raw-free unknown-property diagnostics before requesting any fresh paid authority.
+
+## Resumed location-diagnostic outcome contract
+
+### User outcome and reliability gate
+
+- Resume the blocked OpenRouter completion milestone by replacing the single broad response-unknown diagnostic with a finite, raw-free code identifying only the strict response-object scope that rejected an unknown property.
+- The diagnostic may reveal the predefined parser scope, but never the provider property name, value, response body, prompt, refusal text, credential, or any other provider content.
+- Historical artifacts carrying `provider_response_rejected_response_json_unknown_property` remain canonical, readable, and unchanged.
+
+### Implementation scope and non-goals
+
+- Limit production changes to the OpenRouter response parser's existing strict allowlist boundaries and its closed terminal-code enum. Limit tests to deterministic fabricated response fixtures and historical compatibility coverage; update only the provider-completion milestone documents needed for delivery.
+- Keep the proposal schema and proposal-specific unknown-property diagnostic unchanged. Preserve routing/provider/Azure/ZDR binding, cost/token ceilings, secret handling, bounded I/O, no redirects, first-terminal stop, durable claims, evidence validation, and no retry/fallback/alternate behavior.
+- Do not touch `src/societies/`, disclose raw provider data, infer the unknown property, loosen an allowlist, add a provider or model, alter retained evidence, or invoke a live/provider stage before reviewed merged delivery.
+
+### Red-first acceptance evidence
+
+- First add a tight deterministic fixture loop that expects a distinct closed scope code at each strict response allowlist and therefore fails against the current broad diagnostic. Capture the exact filtered command and failing result before changing production code.
+- Make the smallest production correction, then rerun the identical command green. Every emitted diagnostic is selected from a predefined finite set and contains no dynamic property or path text.
+- Prove the historical broad code still validates; all existing malformed/type/range/routing/ZDR/cost/refusal/finish/security cases remain fail-closed.
+- Run the focused OpenRouter tests, full OpenRouter CLI/security tests, full Snow Globe Release suite, relevant Release builds, and `git diff --check`. Require an independent `deep_reviewer` FINAL GO with no unresolved P0-P3 findings.
+- Deliver and merge the correction through a `codex/` branch, PR, and required check before any live generation.
+
+### Newly authorized governed generation
+
+- After exact merged-source rebuild, authorize one fresh governed OpenRouter generation: Azure-only, ZDR-required, at most 12 sequential scenario slots, one attempt per slot, no retry, no fallback, no alternate provider/model, and a maximum reserved ceiling of 18,000 microusd.
+- Invoke the zero-I/O plan once, live preflight once, paid `record-once` once, and local validate once. Stop immediately after any terminal or uncertain result and inspect only the retained raw-free evidence.
+- This authorization covers exactly that one generation. It does not authorize rerunning a consumed stage or an additional generation. Provider charge remains Unknown unless independently settled; zero local settlement is never a zero-charge claim.
+
+### Offline implementation gate
+
+- Red-first Release evidence failed all fourteen fabricated response-scope expectations with `response_json_unknown_property`; the identical filtered command passes 14/14 after the direct mapping.
+- The parser now emits one finite predefined code for each of the fourteen existing strict response allowlists. No allowed-property set or evaluation order changed; proposal parsing and historical broad-code validation remain exact.
+- Focused parser/historical/exhaustive-vocabulary evidence passes 92/92. The full Snow Globe suite passes 1044/1044, OpenRouter CLI/security passes 100/100, shared Recording CLI passes 59/59, both relevant Release builds have 0 warnings/errors, and diff checks are clean apart from line-ending notices.
+- No provider, network, credential, runtime, retained-artifact, paid, account, gameplay, or `src/societies/` action occurred during implementation or validation. Independent security/public-contract review is FINAL GO with no unresolved P0-P3 findings; merged delivery remains required before the newly authorized generation.
+
+### Delivery boundary
+
+- Main task owns documentation, provider/runtime invocation, evidence inspection, full validation, Git/PR/check/merge delivery, and final repository-state reporting.
+- One bounded `security_worker` owns the parser/test correction and does not stage, commit, use credentials, call the provider, change live state, or spawn workers. One independent `deep_reviewer` reviews the complete security/public-contract diff before delivery.
+- At the resulting milestone boundary, update `CURRENT_BUILD.md`, `WORKFLOW.md`, this contract, and the Snow Globe README with facts, validation, evidence digests, provider-stage counts, charge uncertainty, runtime state, delivery state, remaining blocker, and one practical next action.
