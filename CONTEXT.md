@@ -1,6 +1,6 @@
 # Societies Domain Context
 
-## Current provider-completion continuation
+## Provider-completion result and progression
 
 Standing user authorization now covers completing both provider paths. Ollama is currently functional: the repaired runtime at `127.0.0.1:11435` and installed `qwen3.5:4b` still match the frozen identities, fresh preflight is accepted, and the v5 artifact freshly validates `Complete` with 12/12 HTTP-200 slots and zero retry/fallback/alternate. The artifact SHA-256 is `448af70b6ac262e67ddd0a6da3c76174d15faf0a2c771e2ca7a57bffb596cf57`; these checks did not create another recording.
 
@@ -11,6 +11,8 @@ Future OpenRouter work remains sequential and one-shot despite standing authoriz
 The PR #156 result and completion-detail correction described before the standing-authority paragraph are historical; the standing per-generation limits remain current. Completion-detail PR #158 merged as `5530fbc`; one governed Azure/ZDR exchange from that exact source stopped raw-free at `provider_response_rejected_response_binding_invalid`, and validation accepted the consumed generation with no second slot/retry/fallback/alternate. Submission and charge remain Unknown. The current reviewed correction partitions all eleven exact binding gates into fixed location-only codes without loosening any check. It passes 1091/1091 full Snow Globe, 100/100 CLI/security, 59/59 Recording CLI, clean builds, and independent deep review FINAL GO. No provider action has used the correction.
 
 The binding-diagnostic correction passed its required check and merged through PR #159 as `d3acce6`. One governed Azure/ZDR exchange from that exact source stopped raw-free at `provider_response_rejected_response_routing_candidate_model_binding_invalid`; validation accepted the consumed generation with no second slot/retry/fallback/alternate, and submission/charge remain Unknown. The active correction admits only the authenticated API alias or authenticated dated canonical release in actual candidate/attempt routing fields. Root/requested remain alias-only and arbitrary values fail closed. Full Snow Globe passes 1093/1093, CLI/security 100/100, Recording CLI 59/59, builds are clean, and final deep review plus PR delivery remain before another generation. Standing per-generation limits remain current.
+
+The preceding routed-model paragraph is historical pre-merge evidence and its pending next steps are superseded. Provider completion is accepted for both frozen paths. Routed-model PR #160 merged as `7897adf`; from that exact merge one plan/preflight/record/validate sequence completed all 12 Azure/ZDR exchanges and local validation accepted `complete`. OpenRouter evidence SHA-256 is `ebbcc39d8e1ab7d0ee926600753aeaa5e420f70c5b14dee62b57614945c65e51`, with 12 accepted proposals, 5,232/1,175 prompt/completion tokens, 2,460 microusd settled, no terminal code, and no retry/fallback/alternate/additional attempt. Ollama remains freshly validated 12/12 at artifact SHA-256 `448af70b6ac262e67ddd0a6da3c76174d15faf0a2c771e2ca7a57bffb596cf57`. This closes the provider-completion milestone; historical sections below remain evidence only.
 
 ## Historical sixth OpenRouter authorization outcome
 
