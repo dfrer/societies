@@ -17,6 +17,14 @@ This is the only in-repo implementation that currently has:
 - a buildable C# project
 - a runnable automated validation path
 
+## Snow Globe provider-routing policy implementation gate
+
+The isolated Snow Globe lab now has a pure synchronous `ProviderRoutingPolicyModule` that validates and digest-pins the accepted cognition-quality comparison rather than accepting caller-supplied scores or a winner string. With the accepted `openrouter_default` artifact, `preferred_online` selects OpenRouter when it is ready and no primary attempt has started. `local_only` selects Ollama when Ollama is ready. Preferred-online availability fallback selects Ollama only when OpenRouter is explicitly `not_ready`, Ollama is ready, and the primary attempt is still `not_started`.
+
+Every dispatch-started, submission-possible, submission-unknown, or completed state selects no provider. Missing, malformed, asymmetric, conditional, insufficient, unsupported, unavailable, unknown, incoherent, and undefined-enum inputs also fail closed. The returned decision is strict canonical JSON bounded to 4 KiB/depth 5 and grants no execution, provider, credential, payment, network, retry, parallel-dispatch, gameplay, or world authority. Readiness is caller-supplied and is not probed by this Module.
+
+Red-first compilation failed on the deliberately absent Module/types. Independent review then identified mutable caller-memory risk between artifact hashing and validation; red evidence was 1 failed/16 passed with five memory reads. The repair snapshots caller bytes once, hashes and validates only the owned snapshot, and zeroes it afterward. The implemented policy passes 17/17 focused Release tests, 1128/1128 full Snow Globe Release tests, 59/59 Recording CLI Release tests, 100/100 OpenRouter CLI/security tests, and three Release builds with 0 warnings/errors. Provider/security implementation and independent deep review are FINAL GO with no unresolved P0-P3; PR delivery remains the active milestone gate. No provider, credential, network, paid, live-state, or `src/societies/` action occurred.
+
 ## Snow Globe cognition-quality benchmark and provider selection
 
 The isolated Snow Globe lab now has a reviewed provider-neutral normalized-proposal schema and deterministic comparison rubric for the frozen twelve cognition scenarios. Both provider roles use the same evaluation path and the same versioned criteria: schema validity, command legality, goal relevance, deterministic resource feasibility, safe restraint, and demand-aligned useful variation. Style, verbosity, confidence, reasoning length, latency, price, and provider identity are non-scoring; human judgment is `not_recorded` and has no scoring effect. The implementation passed required validation and merged through PR #162 as `e963946`.
