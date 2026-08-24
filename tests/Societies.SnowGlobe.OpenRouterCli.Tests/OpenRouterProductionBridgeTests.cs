@@ -210,7 +210,7 @@ public sealed class OpenRouterProductionBridgeTests
     [InlineData(ScriptedResponse.NonStopFinishReason, "provider_response_rejected_response_finish_reason_not_stop")]
     [InlineData(ScriptedResponse.ChoiceErrorPresent, "provider_response_rejected_response_choice_error_present")]
     [InlineData(ScriptedResponse.WrongTypeNativeFinishReason, "provider_response_rejected_response_native_finish_reason_type_invalid")]
-    [InlineData(ScriptedResponse.NonStopNativeFinishReason, "provider_response_rejected_response_native_finish_reason_not_stop")]
+    [InlineData(ScriptedResponse.NullNativeFinishReason, "provider_response_rejected_response_native_finish_reason_type_invalid")]
     [InlineData(ScriptedResponse.NonNullLogprobs, "provider_response_rejected_response_logprobs_non_null")]
     [InlineData(ScriptedResponse.NonNullRefusal, "provider_response_rejected_response_refusal_non_null")]
     [InlineData(ScriptedResponse.InvalidRouting, "provider_response_rejected_response_routing_invalid")]
@@ -263,6 +263,37 @@ public sealed class OpenRouterProductionBridgeTests
             Assert.Equal("terminal", validation.Status); Assert.Equal(1, validation.ExchangeCount);
             await Assert.ThrowsAnyAsync<Exception>(async () => await bridge.RecordOnceAsync(preflight.AuthorizationDigestSha256));
             Assert.Equal(1, handler.CallCount);
+        }
+        finally { Delete(root); }
+    }
+
+    [Fact]
+    public async Task BoundedNonAuthoritativeNativeFinishMetadataCompletesWithoutRetryFallbackOrRetention()
+    {
+        string root = Temp();
+        ScriptedHandler handler = new(ScriptedResponse.NonStopNativeFinishReason);
+        try
+        {
+            OpenRouterPremiumProductionBridge bridge = Bridge(root,
+                new FakeCredentialStore(Account('a'), Secret()), new FakeProtector(), new FakeClock(ParsedNow), handler);
+            OpenRouterPremiumProductionPreflightResult preflight = await bridge.PreflightAsync();
+
+            OpenRouterPremiumProductionRunResult run = await bridge.RecordOnceAsync(preflight.AuthorizationDigestSha256);
+
+            Assert.Equal("complete", run.Status);
+            Assert.Equal(12, run.ExchangeCount);
+            Assert.Equal(528, run.TotalSettledMicrousd);
+            Assert.Null(run.TerminalCode);
+            Assert.Equal(12, handler.CallCount);
+            Assert.Equal(1, handler.MaximumActive);
+            byte[] evidenceBytes = File.ReadAllBytes(Path.Combine(root, OpenRouterPremiumProductionFiles.EvidenceArtifactFileName));
+            try
+            {
+                OpenRouterPremiumEvidenceArtifact artifact = OpenRouterPremiumEvidenceArtifactModule.Validate(evidenceBytes);
+                Assert.Equal("complete", artifact.Status);
+                Assert.DoesNotContain("bounded-provider-metadata", artifact.CanonicalJson, StringComparison.Ordinal);
+            }
+            finally { CryptographicOperations.ZeroMemory(evidenceBytes); }
         }
         finally { Delete(root); }
     }
@@ -1008,6 +1039,7 @@ public sealed class OpenRouterProductionBridgeTests
         NonStopFinishReason,
         ChoiceErrorPresent,
         WrongTypeNativeFinishReason,
+        NullNativeFinishReason,
         NonStopNativeFinishReason,
         NonNullLogprobs,
         NonNullRefusal,
@@ -1217,9 +1249,12 @@ public sealed class OpenRouterProductionBridgeTests
                     case ScriptedResponse.WrongTypeNativeFinishReason:
                         status = HttpStatusCode.OK; body = MutatedSuccess(value => value.Replace(
                             "\"finish_reason\":\"stop\"", "\"finish_reason\":\"stop\",\"native_finish_reason\":42", StringComparison.Ordinal)); break;
+                    case ScriptedResponse.NullNativeFinishReason:
+                        status = HttpStatusCode.OK; body = MutatedSuccess(value => value.Replace(
+                            "\"finish_reason\":\"stop\"", "\"finish_reason\":\"stop\",\"native_finish_reason\":null", StringComparison.Ordinal)); break;
                     case ScriptedResponse.NonStopNativeFinishReason:
                         status = HttpStatusCode.OK; body = MutatedSuccess(value => value.Replace(
-                            "\"finish_reason\":\"stop\"", "\"finish_reason\":\"stop\",\"native_finish_reason\":\"raw-provider-sentinel-must-not-leak\"", StringComparison.Ordinal)); break;
+                            "\"finish_reason\":\"stop\"", "\"finish_reason\":\"stop\",\"native_finish_reason\":\"bounded-provider-metadata\"", StringComparison.Ordinal)); break;
                     case ScriptedResponse.NonNullLogprobs:
                         status = HttpStatusCode.OK; body = MutatedSuccess(value => value.Replace(
                             "\"finish_reason\":\"stop\"", "\"finish_reason\":\"stop\",\"logprobs\":{\"marker\":\"raw-provider-sentinel-must-not-leak\"}", StringComparison.Ordinal)); break;
