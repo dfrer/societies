@@ -1,5 +1,14 @@
 # Snow Globe provider preflight, Ollama repair, and qwen3.5 smoke handoff
 
+## Cognition-quality benchmark milestone result
+
+- Outcome: the provider-neutral v1 evaluator scored both retained proposal batches through one deterministic path over the same frozen twelve scenarios. OpenRouter scored 8,341/10,000; Ollama scored 4,444/10,000. The 3,897-basis-point margin and OpenRouter's score above the 7,000 threshold produce `openrouter_default`. Ollama remains the isolated compatible local/offline fallback.
+- Evidence: implementation PR #162 merged as `e963946`. From that merge, the single authorized Ollama v6 sequence completed 12/12 with no retry/fallback/alternate/additional attempt. V6 is 18,641 bytes/SHA-256 `7c9f0698ba93e10745d2820095d8e4040f61de96a9509e2014efdfe196682fe6`; normalized evidence is SHA-256 `ef2a8954e0449997b3b27f1c04d5ade011df75c169f472c041d9fbbbe675acc3`. The comparison reused accepted OpenRouter evidence SHA-256 `ebbcc39d8e1ab7d0ee926600753aeaa5e420f70c5b14dee62b57614945c65e51`; no new OpenRouter request or charge occurred.
+- Artifact: `artifacts/snowglobe/cognition-quality/provider-comparison-v1.json`, SHA-256 `b3574d0b4cf94ed25a3c9e152a751dc748d4a4dcdf2fb381e5a3a0c094ddf64c`, records per-scenario criteria, category/criterion aggregates, source provenance, recommendation, excluded signals, automated/human separation, and limitations. Human judgment is absent and non-scoring.
+- Scope and limits: only the Snow Globe recording/proposal contract and frozen automated corpus are proven. Digests provide integrity, not execution authenticity. No gameplay integration, general-intelligence, price-performance, deployment, release, commercial-readiness, or world-authority claim is made; `src/societies/` is unchanged.
+- Validation and review: 1111/1111 Snow Globe Release, 59/59 Recording CLI Release, 100/100 OpenRouter CLI/security, three Release builds with 0 warnings/errors, canonical artifact validation, and clean diff checks pass. Independent `deep_reviewer` evidence review independently recomputed hashes, criterion/category aggregates, totals, margin, and recommendation and returned FINAL EVIDENCE GO with no unresolved P0-P3 findings.
+- Delivery state: the reviewed evidence/documentation PR is the only remaining milestone gate. One next action: merge that PR after its required check passes.
+
 ## Cognition-quality benchmark implementation gate
 
 - Fresh branch `codex/snowglobe-cognition-quality-benchmark` starts at provider-completion merge `1d279ea` from PR #161 and preserves the unrelated dirty main workspace.
@@ -7,7 +16,7 @@
 - The reviewed implementation adds a strict normalized-proposal schema plus one deterministic comparison Module over the exact frozen scenarios and rules. Ollama v6 retains parser-representable proposals or canonical null `no_proposal`; historical v4/v5 remain unchanged. OpenRouter needs no new call.
 - Recommendation rules are versioned and fail closed on missing/malformed/asymmetric evidence, equal inputs, exact ties, sub-500-basis-point margins, or winner scores below 7,000 basis points. Conditional routing additionally binds complementary category evidence, a 500..1,500 aggregate margin, and a 4,000-basis-point minimum for both roles.
 - Red-first repairs and final validation pass 4/4 targeted, 162/162 broad, 1111/1111 full Snow Globe Release, 59/59 Recording CLI Release, builds 0/0, and clean diff checking. Independent review is FINAL GO with no P0-P3. No provider, credential, network, runtime, paid, account, live-state, or `src/societies/` action occurred.
-- Current result remains `insufficient_evidence` until reviewed code is delivered and one governed local Ollama v6 preflight/record-once/validate sequence supplies the symmetric proposal batch. No new OpenRouter generation is indicated.
+- At that historical implementation gate the result remained `insufficient_evidence` until reviewed code was delivered and one governed local Ollama v6 sequence supplied the symmetric proposal batch. The completed evidence and `openrouter_default` result are reported above; no new OpenRouter generation was needed.
 
 ## Provider-completion result and progression
 
