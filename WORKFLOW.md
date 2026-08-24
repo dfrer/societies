@@ -1,10 +1,11 @@
 # Snow Globe provider preflight, Ollama repair, and qwen3.5 smoke handoff
 
-## Fresh post-correction generation authority checkpoint
+## Post-correction generation terminal handoff
 
-- The user granted fresh continuation authority after PR #152 and the final handoff were merged. It is narrowed to one generation: Azure-only, ZDR-required, at most 12 sequential one-attempt slots, no retry/fallback/alternate, and maximum reserved exposure of 18,000 microusd.
-- The zero-I/O plan, authenticated preflight, paid `record-once`, and local validate may each run exactly once from merged source. Stop on the first terminal or uncertain outcome; never rerun a consumed stage.
-- No stage has run under this authority at this checkpoint. It does not authorize another generation, credential mutation, account-wide setting change, accounting query, deployment, gameplay, or `src/societies/` work. Independent deep review is FINAL GO with no P0-P3 findings.
+- Fresh authority was reviewed, checked, and merged through PR #154 as `31a284b`. From that exact source, Release rebuilt 0/0 and the zero-I/O plan, authenticated preflight, paid `record-once`, and local validate each ran once under the fixed Azure-only/ZDR-required, 12-slot, no-retry/fallback/alternate, 18,000-microusd maximum-reservation contract.
+- Plan digest `eea26a92d318a2ba102c7979d0cb44563d8bef967ae00b627bc6263ff59d759d`; authorization `b73c2447a22046d36123b7615832697557567c4e1dd74c75ae37587414660fb8`; generation `g2-28a74bf64ac12fc54ff6b5ad9e1597c98a17fe3d04c74abce2c239f734a8998b`; preflight artifact 2,344 bytes/SHA-256 `ea7a19664af8039bc3b827a775293d0b0c6ec19b2403e2f500c59fec77dd52e0`.
+- Exactly one Azure-only ZDR exchange stopped `provider_error_terminal`; no second slot, retry, fallback, alternate, or accepted proposal occurred. Local validation accepted the terminal evidence. Evidence is 2,165 bytes/SHA-256 `b5b02bf6ff3be1e00dd7001f8159dddeb26c60fc543a3eb43d6a1083e45a9b69`; receipt is 793 bytes/SHA-256 `ad2bfc8a8f59b0c135f0b760770f4b537ddfd91d68cbd3665a03770908f3a73e`; journal is 2,830 bytes/SHA-256 `a279337d3edc2b4e2f71d1fc13d225bdc067bea44a7e10a3ef8cea08af3c88c6`, final checksum `cbf980f83f953661d32ff4731e509522517b67537deebc376aed800a7c406e85`.
+- Submission and charge are Unknown; trusted tokens/local settlement are zero, proposal is null, response digest is nonzero, and both claims are consumed. The local classification proves only an HTTP 200 structurally valid provider error object; exact provider code/message/metadata/body were not retained. Independent deep review is FINAL EVIDENCE GO with no P0-P3 findings after verifying the hashes, checksum chain, claim bindings, one-exchange boundary, documentation, and absence of secret-like diff material without accessing the trust-anchor credential. The authority and stages are consumed, no rerun or second generation is authorized, no exact compatibility correction is supported, and accepted OpenRouter compatibility remains unproven.
 
 ## Generation 4 terminal and offline prompt-detail follow-up
 

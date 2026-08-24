@@ -1,8 +1,8 @@
 # Societies Snow Globe Lab
 
-## Fresh post-correction generation authority
+## Post-correction generation terminal
 
-After the generation-4 correction and final handoff merged, the user granted fresh continuation authority narrowed to one Azure-only, ZDR-required generation: at most 12 sequential one-attempt slots, no retry/fallback/alternate, and an 18,000-microusd maximum reservation. Plan, preflight, paid record-once, and local validate may each run once from merged source and must stop after a terminal or uncertain outcome. No stage has run under this authority at this checkpoint, and it does not authorize another generation.
+Fresh authority was reviewed and merged through [PR #154](https://github.com/dfrer/societies/pull/154) as `31a284b`. From that exact source, plan, preflight, paid record-once, and local validate each ran once under the fixed Azure-only/ZDR-required, 12-slot, no-retry/fallback/alternate, 18,000-microusd maximum-reservation contract. Preflight accepted authorization `b73c2447a22046d36123b7615832697557567c4e1dd74c75ae37587414660fb8` and generation `g2-28a74bf64ac12fc54ff6b5ad9e1597c98a17fe3d04c74abce2c239f734a8998b`. One Azure-only ZDR exchange stopped `provider_error_terminal`; no second slot, retry, fallback, alternate, or accepted proposal occurred. Evidence is 2,165 bytes/SHA `b5b02bf6ff3be1e00dd7001f8159dddeb26c60fc543a3eb43d6a1083e45a9b69`; receipt is 793 bytes/SHA `ad2bfc8a8f59b0c135f0b760770f4b537ddfd91d68cbd3665a03770908f3a73e`; journal is 2,830 bytes/SHA `a279337d3edc2b4e2f71d1fc13d225bdc067bea44a7e10a3ef8cea08af3c88c6`, final checksum `cbf980f83f953661d32ff4731e509522517b67537deebc376aed800a7c406e85`. Submission/charge are Unknown, trusted tokens/local settlement are zero, proposal is null, and both claims are consumed. The classification establishes only an HTTP 200 structurally valid provider error object; its exact contents were not retained. No rerun, second generation, or exact local correction is authorized or justified, and accepted OpenRouter compatibility remains unproven.
 
 ## Current provider-completion generation 4
 
