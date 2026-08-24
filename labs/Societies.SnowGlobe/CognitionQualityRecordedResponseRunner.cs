@@ -171,7 +171,7 @@ public static class CognitionQualityRecordedResponseRunnerModule
             for (int index = 0; index < frozen.Length; index++)
             {
                 FrozenFixture fixture = frozen[index];
-                ParsedProposal parsed = Parse(fixture.ResponseUtf8);
+                CognitionQualityProposalResponseParseResult parsed = CognitionQualityProposalResponseContract.Parse(fixture.ResponseUtf8);
                 bindings[index] = new CognitionQualityRecordedResponseBinding(fixture.ScenarioId, fixture.ObservationDigestSha256, fixture.ResponseUtf8.Length, CognitionQualityHash.Sha256(fixture.ResponseUtf8), parsed.Outcome);
                 proposals[index] = new CognitionQualitySubmission(fixture.ScenarioId, parsed.Proposal is null ? null : parsed.Proposal with { });
             }
@@ -196,77 +196,6 @@ public static class CognitionQualityRecordedResponseRunnerModule
                 if (fixture is not null) fixture.Zero();
             }
         }
-    }
-
-    private static ParsedProposal Parse(ReadOnlySpan<byte> responseUtf8)
-    {
-        try { _ = new UTF8Encoding(false, true).GetString(responseUtf8); }
-        catch (DecoderFallbackException) { return new(null, "response_utf8_invalid"); }
-
-        try
-        {
-            Utf8JsonReader depthReader = new(responseUtf8, new JsonReaderOptions { AllowTrailingCommas = false, CommentHandling = JsonCommentHandling.Disallow, MaxDepth = 128 });
-            while (depthReader.Read())
-            {
-                if (depthReader.CurrentDepth >= 8) return new(null, "response_json_too_deep");
-            }
-        }
-        catch (JsonException) { return new(null, "response_json_invalid"); }
-
-        try
-        {
-            Utf8JsonReader reader = new(responseUtf8, new JsonReaderOptions { AllowTrailingCommas = false, CommentHandling = JsonCommentHandling.Disallow, MaxDepth = 128 });
-            if (!reader.Read() || reader.TokenType != JsonTokenType.StartObject) return new(null, "response_shape_invalid");
-
-            string? agentId = null;
-            string? actionText = null;
-            int? quantity = null;
-            HashSet<string> names = new(StringComparer.Ordinal);
-            while (true)
-            {
-                if (!reader.Read()) return new(null, "response_json_invalid");
-                if (reader.TokenType == JsonTokenType.EndObject) break;
-                if (reader.TokenType != JsonTokenType.PropertyName) return new(null, "response_shape_invalid");
-                string propertyName = reader.GetString()!;
-                if (!names.Add(propertyName)) return new(null, "response_json_duplicate_property");
-                if (propertyName is not "agent_id" and not "action" and not "quantity") return new(null, "response_shape_invalid");
-                if (!reader.Read()) return new(null, "response_json_invalid");
-                if (reader.TokenType is JsonTokenType.StartObject or JsonTokenType.StartArray or JsonTokenType.EndObject or JsonTokenType.EndArray or JsonTokenType.PropertyName)
-                    return new(null, "response_shape_invalid");
-
-                if (propertyName == "agent_id")
-                {
-                    if (reader.TokenType != JsonTokenType.String) return new(null, "response_shape_invalid");
-                    agentId = reader.GetString();
-                }
-                else if (propertyName == "action")
-                {
-                    if (reader.TokenType != JsonTokenType.String) return new(null, "response_shape_invalid");
-                    actionText = reader.GetString();
-                }
-                else
-                {
-                    if (reader.TokenType != JsonTokenType.Number) return new(null, "response_shape_invalid");
-                    if (!reader.TryGetInt32(out int parsedQuantity)) return new(null, "response_content_invalid");
-                    quantity = parsedQuantity;
-                }
-            }
-            if (names.Count != 3 || agentId is null || actionText is null || quantity is null || reader.Read()) return new(null, "response_shape_invalid");
-            if (!IsCanonicalAgentId(agentId) || !SnowGlobeRunStore.TryParseCanonicalAction(actionText, out SnowGlobeActionKind action))
-                return new(null, "response_content_invalid");
-            return new(new SnowGlobeActionProposal(agentId, action, quantity.Value), "proposal_parsed");
-        }
-        catch (JsonException) { return new(null, "response_json_invalid"); }
-    }
-
-    private static bool IsCanonicalAgentId(string value)
-    {
-        if (value.Length is < 1 or > 64) return false;
-        foreach (char character in value)
-        {
-            if (!((character >= 'a' && character <= 'z') || (character >= '0' && character <= '9') || character == '-')) return false;
-        }
-        return true;
     }
 
     private static void VerifyCoherence(CognitionQualityCorpusSnapshot corpus, CognitionQualityExecutionProvenance provenance, IReadOnlyList<CognitionQualityRecordedResponseBinding> bindings, IReadOnlyList<CognitionQualitySubmission> proposals, CognitionQualityExecutionEvidence evidence)
@@ -342,7 +271,85 @@ public static class CognitionQualityRecordedResponseRunnerModule
         internal void Zero() { if (ResponseUtf8 is not null) CryptographicOperations.ZeroMemory(ResponseUtf8); }
     }
 
-    private sealed record ParsedProposal(SnowGlobeActionProposal? Proposal, string Outcome);
+}
+
+internal sealed record CognitionQualityProposalResponseParseResult(SnowGlobeActionProposal? Proposal, string Outcome);
+
+/// <summary>The one deterministic parser for the shared proposal-response/v1 payload contract.</summary>
+internal static class CognitionQualityProposalResponseContract
+{
+    internal const string SchemaVersion = CognitionQualityRecordedResponseRunnerModule.ProposalSchemaVersion;
+
+    internal static CognitionQualityProposalResponseParseResult Parse(ReadOnlySpan<byte> responseUtf8)
+    {
+        try { _ = new UTF8Encoding(false, true).GetString(responseUtf8); }
+        catch (DecoderFallbackException) { return new(null, "response_utf8_invalid"); }
+
+        try
+        {
+            Utf8JsonReader depthReader = new(responseUtf8, new JsonReaderOptions { AllowTrailingCommas = false, CommentHandling = JsonCommentHandling.Disallow, MaxDepth = 128 });
+            while (depthReader.Read())
+            {
+                if (depthReader.CurrentDepth >= 8) return new(null, "response_json_too_deep");
+            }
+        }
+        catch (JsonException) { return new(null, "response_json_invalid"); }
+
+        try
+        {
+            Utf8JsonReader reader = new(responseUtf8, new JsonReaderOptions { AllowTrailingCommas = false, CommentHandling = JsonCommentHandling.Disallow, MaxDepth = 128 });
+            if (!reader.Read() || reader.TokenType != JsonTokenType.StartObject) return new(null, "response_shape_invalid");
+
+            string? agentId = null;
+            string? actionText = null;
+            int? quantity = null;
+            HashSet<string> names = new(StringComparer.Ordinal);
+            while (true)
+            {
+                if (!reader.Read()) return new(null, "response_json_invalid");
+                if (reader.TokenType == JsonTokenType.EndObject) break;
+                if (reader.TokenType != JsonTokenType.PropertyName) return new(null, "response_shape_invalid");
+                string propertyName = reader.GetString()!;
+                if (!names.Add(propertyName)) return new(null, "response_json_duplicate_property");
+                if (propertyName is not "agent_id" and not "action" and not "quantity") return new(null, "response_shape_invalid");
+                if (!reader.Read()) return new(null, "response_json_invalid");
+                if (reader.TokenType is JsonTokenType.StartObject or JsonTokenType.StartArray or JsonTokenType.EndObject or JsonTokenType.EndArray or JsonTokenType.PropertyName)
+                    return new(null, "response_shape_invalid");
+
+                if (propertyName == "agent_id")
+                {
+                    if (reader.TokenType != JsonTokenType.String) return new(null, "response_shape_invalid");
+                    agentId = reader.GetString();
+                }
+                else if (propertyName == "action")
+                {
+                    if (reader.TokenType != JsonTokenType.String) return new(null, "response_shape_invalid");
+                    actionText = reader.GetString();
+                }
+                else
+                {
+                    if (reader.TokenType != JsonTokenType.Number) return new(null, "response_shape_invalid");
+                    if (!reader.TryGetInt32(out int parsedQuantity)) return new(null, "response_content_invalid");
+                    quantity = parsedQuantity;
+                }
+            }
+            if (names.Count != 3 || agentId is null || actionText is null || quantity is null || reader.Read()) return new(null, "response_shape_invalid");
+            if (!IsCanonicalAgentId(agentId) || !SnowGlobeRunStore.TryParseCanonicalAction(actionText, out SnowGlobeActionKind action))
+                return new(null, "response_content_invalid");
+            return new(new SnowGlobeActionProposal(agentId, action, quantity.Value), "proposal_parsed");
+        }
+        catch (JsonException) { return new(null, "response_json_invalid"); }
+    }
+
+    private static bool IsCanonicalAgentId(string value)
+    {
+        if (value.Length is < 1 or > 64) return false;
+        foreach (char character in value)
+        {
+            if (!((character >= 'a' && character <= 'z') || (character >= '0' && character <= '9') || character == '-')) return false;
+        }
+        return true;
+    }
 }
 
 internal static class CognitionQualityRecordedResponseRunnerErrors

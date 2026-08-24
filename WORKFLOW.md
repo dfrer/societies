@@ -1,5 +1,25 @@
 # Snow Globe provider preflight, Ollama repair, and qwen3.5 smoke handoff
 
+## Current Snow Globe provider-completion implementation and local handoff
+
+### Outcome and scope
+
+- Ollama and OpenRouter now route accepted `{agent_id, action, quantity}` content through the same deterministic `snow_globe_cognition_quality_proposal_response/v1` parser. Provider output remains proposal input only and never becomes direct world authority.
+- Fresh Ollama recording is additive composition/artifact v5 at a new fixed path. The immutable v4 artifact remains readable and unchanged. Historical v4 comparison/v2 canonical output is byte-identical; v5 comparison uses a separate additive v3 identity.
+- OpenRouter finish/routing/usage/cost checks, Azure-only ZDR policy, raw-free evidence, bounded I/O, no redirects, first-terminal stop, and no retry/fallback/alternate behavior are unchanged. `src/societies` is unchanged.
+
+### Validation and local evidence
+
+- Release gates pass 172/172 changed provider/runtime/comparison tests, 59/59 Recording CLI tests, 97/97 OpenRouter CLI/security tests, and 1009/1009 full Snow Globe tests. Three Release builds have 0 warnings / 0 errors; diff checks are clean.
+- Independent deep review is FINAL GO with no unresolved P0-P3 after closing one P1 that initially changed historical v4 comparison bytes.
+- One local preflight, one record-once, and one validate completed against the exact registered Ollama 0.32.14 loopback runtime on `127.0.0.1:11435`. Raw-free v5 evidence is 16,148 bytes/SHA-256 `448af70b6ac262e67ddd0a6da3c76174d15faf0a2c771e2ca7a57bffb596cf57`, receipt `835dda47c070d60fb29376b7a51c321be8b82a5e9d63c471f9e3e1fca3a0a8b`: 12/12 complete, HTTP 200, zero retry/fallback/alternate.
+- Historical v4 evidence remains 16,148 bytes/SHA-256 `fecf71cbe8cc268dadb603d29735a816bc0152ccc79b4ea44c5a91d7e7616d3e`; its comparison/v2 report remains 8,916 bytes/SHA-256 `19f7053418471c8c70bdb9fffbfcca042f5bd87c24796a28227a672558990e56`.
+
+### Delivery state and next action
+
+- The implementation/local-evidence slice is ready for commit, PR, required checks, and merge on `codex/snowglobe-provider-completion`.
+- No fresh OpenRouter plan, preflight, paid generation, or validation has occurred. After this reviewed slice is merged, invoke the zero-I/O plan once, then exactly one governed preflight/record-once/validate generation and stop on its raw-free result.
+
 ## Current Snow Globe OpenRouter finish-diagnostic refinement handoff
 
 ### Outcome and scope

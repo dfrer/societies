@@ -238,14 +238,17 @@ public sealed class LocalPremiumComparisonTests
     {
         OllamaRecordingExecutionArtifact recording = await RecordingArtifact();
         LocalPremiumComparisonReport report = LocalPremiumComparison.Evaluate(ArtifactBytes(), recording.CanonicalUtf8);
-        Assert.Equal("3047e38591262587d343f58a0d3e8d378678276d727ad1e98ea08d8dc6a502af", report.CanonicalDigestSha256);
+        Assert.Equal("978f4c8a27b67692717d701840c197f601913e51b27dba76020f73c6008d63c1", report.CanonicalDigestSha256);
+        Assert.Equal(OllamaRecordingExecutionArtifactModule.SchemaVersion, recording.SchemaVersion);
 
         Assert.Equal("insufficient_live_premium_evidence", report.Status);
         Assert.InRange(report.CanonicalUtf8.Length, 1, LocalPremiumComparison.MaximumReportBytes);
         Assert.Equal(report.CanonicalDigestSha256, Sha256(report.CanonicalUtf8.Span));
         using JsonDocument document = JsonDocument.Parse(report.CanonicalUtf8);
         JsonElement root = document.RootElement;
-        Assert.Equal("snow_globe_local_premium_comparison/v2", root.GetProperty("schema_version").GetString());
+        Assert.Equal("snow_globe_local_premium_comparison/v3", root.GetProperty("schema_version").GetString());
+        Assert.Equal("2a4e73091cec8c687dd8c8e5cde810b85f7e2365189cfffbb59d54e48ff1d0bd",
+            root.GetProperty("comparison_contract_id").GetString());
         Assert.Equal(JsonValueKind.Null, root.GetProperty("premium").ValueKind);
         Assert.Equal(JsonValueKind.Null, root.GetProperty("premium_cost").ValueKind);
         Assert.Equal(JsonValueKind.Null, root.GetProperty("performance_delta").ValueKind);
@@ -261,7 +264,51 @@ public sealed class LocalPremiumComparisonTests
         Assert.Equal(recording.ScoreSummary!.CanonicalJson, cognitionQuality.GetRawText());
         Assert.Contains("local_benchmark_and_recording_are_separate_runs", root.GetProperty("claim_limitations").EnumerateArray().Select(static item => item.GetString()));
         Assert.Contains("no_cross_run_latency_per_quality_or_price_conclusion", root.GetProperty("claim_limitations").EnumerateArray().Select(static item => item.GetString()));
+        Assert.Contains("validated_local_recording_artifact_v5_only", root.GetProperty("claim_limitations").EnumerateArray().Select(static item => item.GetString()));
+        Assert.DoesNotContain("validated_local_recording_artifact_v4_only", root.GetProperty("claim_limitations").EnumerateArray().Select(static item => item.GetString()));
+
+        byte[] historical = ReadHistoricalV4Artifact();
+        try
+        {
+            LocalPremiumComparisonReport historicalReport = LocalPremiumComparison.Evaluate(ArtifactBytes(), historical);
+            using JsonDocument historicalDocument = JsonDocument.Parse(historicalReport.CanonicalUtf8);
+            Assert.Equal("snow_globe_local_premium_comparison/v2", historicalDocument.RootElement.GetProperty("schema_version").GetString());
+            Assert.Equal("835079e77e13aa1b2153c2badc9c23042099d40e1d09b5112c276bc9b61ada68",
+                historicalDocument.RootElement.GetProperty("comparison_contract_id").GetString());
+            Assert.NotEqual(
+                historicalDocument.RootElement.GetProperty("comparison_contract_id").GetString(),
+                root.GetProperty("comparison_contract_id").GetString());
+        }
+        finally { CryptographicOperations.ZeroMemory(historical); }
         Assert.DoesNotContain("winner\"", report.CanonicalJson, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void TwoRunOverloadAcceptsTheImmutableHistoricalV4ArtifactWithoutMutation()
+    {
+        byte[] historical = ReadHistoricalV4Artifact();
+        try
+        {
+            Assert.Equal("fecf71cbe8cc268dadb603d29735a816bc0152ccc79b4ea44c5a91d7e7616d3e", Sha256(historical));
+            LocalPremiumComparisonReport report = LocalPremiumComparison.Evaluate(ArtifactBytes(), historical);
+            using JsonDocument document = JsonDocument.Parse(report.CanonicalUtf8);
+            Assert.Equal("insufficient_live_premium_evidence", report.Status);
+            Assert.Equal(8_916, report.CanonicalUtf8.Length);
+            Assert.Equal("19f7053418471c8c70bdb9fffbfcca042f5bd87c24796a28227a672558990e56", report.CanonicalDigestSha256);
+            Assert.Equal("3c3ff4a3e97344afb80d2a6283827e3d846c73e0b7730765c5d09601db6d4acc",
+                document.RootElement.GetProperty("report_payload_digest_sha256").GetString());
+            Assert.Equal("snow_globe_local_premium_comparison/v2", document.RootElement.GetProperty("schema_version").GetString());
+            Assert.Equal("835079e77e13aa1b2153c2badc9c23042099d40e1d09b5112c276bc9b61ada68",
+                document.RootElement.GetProperty("comparison_contract_id").GetString());
+            Assert.Contains("validated_local_recording_artifact_v4_only",
+                document.RootElement.GetProperty("claim_limitations").EnumerateArray().Select(static item => item.GetString()));
+            Assert.DoesNotContain("validated_local_recording_artifact_v5_only",
+                document.RootElement.GetProperty("claim_limitations").EnumerateArray().Select(static item => item.GetString()));
+            Assert.Equal("fecf71cbe8cc268dadb603d29735a816bc0152ccc79b4ea44c5a91d7e7616d3e",
+                document.RootElement.GetProperty("local").GetProperty("recording_run").GetProperty("artifact_digest_sha256").GetString());
+            Assert.Equal("fecf71cbe8cc268dadb603d29735a816bc0152ccc79b4ea44c5a91d7e7616d3e", Sha256(historical));
+        }
+        finally { CryptographicOperations.ZeroMemory(historical); }
     }
 
     [Fact]
@@ -278,10 +325,14 @@ public sealed class LocalPremiumComparisonTests
         {
             string recordingJson = Encoding.UTF8.GetString(recording.CanonicalUtf8.Span);
             byte[] historical = Encoding.UTF8.GetBytes(recordingJson.Replace(
-                "snow_globe_ollama_recording_execution_artifact/v4",
+                OllamaRecordingExecutionArtifactModule.SchemaVersion,
                 $"snow_globe_ollama_recording_execution_artifact/v{version}", StringComparison.Ordinal));
             Assert.Equal("local_recording_artifact_rejected", Assert.Throws<LocalPremiumComparisonException>(() => LocalPremiumComparison.Evaluate(ArtifactBytes(), historical)).Code);
         }
+        byte[] future = Encoding.UTF8.GetBytes(Encoding.UTF8.GetString(recording.CanonicalUtf8.Span).Replace(
+            OllamaRecordingExecutionArtifactModule.SchemaVersion,
+            "snow_globe_ollama_recording_execution_artifact/v6", StringComparison.Ordinal));
+        Assert.Equal("local_recording_artifact_rejected", Assert.Throws<LocalPremiumComparisonException>(() => LocalPremiumComparison.Evaluate(ArtifactBytes(), future)).Code);
 
         Assert.Equal("local_recording_artifact_required", Assert.Throws<LocalPremiumComparisonException>(() => LocalPremiumComparison.Evaluate(ArtifactBytes(), ReadOnlyMemory<byte>.Empty)).Code);
         Assert.Equal("local_recording_artifact_too_large", Assert.Throws<LocalPremiumComparisonException>(() => LocalPremiumComparison.Evaluate(ArtifactBytes(), new byte[OllamaRecordingExecutionArtifactModule.MaximumArtifactBytes + 1])).Code);
@@ -321,6 +372,13 @@ public sealed class LocalPremiumComparisonTests
 
     private static byte[] ArtifactBytes() => Encoding.UTF8.GetBytes(FrozenArtifact);
 
+    private static byte[] ReadHistoricalV4Artifact()
+    {
+        string repositoryRoot = FindRepositoryRoot();
+        string path = Path.Combine(repositoryRoot, OllamaRecordingExecutionArtifactModule.LegacyRelativeArtifactPath.Replace('/', Path.DirectorySeparatorChar));
+        return File.ReadAllBytes(path);
+    }
+
     private static async Task<OllamaRecordingExecutionArtifact> RecordingArtifact()
     {
         const string root = @"C:\offline-local-premium-comparison-recording";
@@ -330,6 +388,18 @@ public sealed class LocalPremiumComparisonTests
         SnowGlobePinnedOllamaRecordingModule inner = new(new ComparisonClock(), factory);
         SnowGlobeOllamaRecordingCompositionModule module = new(root, inner, store);
         return (await module.ExecuteAndPublishOnceAsync(module.Prepare(new(777, startTicks), "comparison-recording-v1"))).Artifact!;
+    }
+
+    private static string FindRepositoryRoot()
+    {
+        DirectoryInfo? current = new(AppContext.BaseDirectory);
+        for (int depth = 0; depth < 12 && current is not null; depth++, current = current.Parent)
+        {
+            if (File.Exists(Path.Combine(current.FullName, "CURRENT_BUILD.md"))
+                && File.Exists(Path.Combine(current.FullName, "labs", "Societies.SnowGlobe", "Societies.SnowGlobe.csproj")))
+                return current.FullName;
+        }
+        throw new InvalidOperationException("repository_root_not_found");
     }
 
     private sealed class ComparisonClock : ICognitionQualityRecordingSessionClock { public long NowMilliseconds => 1; }

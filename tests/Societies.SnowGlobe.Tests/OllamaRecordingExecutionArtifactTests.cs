@@ -1,6 +1,7 @@
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using System.Security.Cryptography;
 using Xunit;
 
 namespace Societies.SnowGlobe.Tests;
@@ -14,15 +15,16 @@ public sealed class OllamaRecordingExecutionArtifactTests
     public async Task CanonicalArtifact_GoldenRoundTripsAndIsDetached()
     {
         OllamaRecordingExecutionArtifact artifact = await CreateArtifact();
-        Assert.Equal("a1c202dd2303c3fd9229ef24e21ae1c7de2099e1dc9ed767d42f06493fd32bee", artifact.CanonicalDigestSha256);
-        Assert.Equal("4175d668069dab1b224859060628b622c8b61924e8da3740ad74a97289062d50", artifact.PayloadDigestSha256);
+        Assert.Equal("f0999cd1190c6ef0135e36977ceb783ad3ad01d124f90f372aeb0f11e4693f43", artifact.CanonicalDigestSha256);
+        Assert.Equal("17fa9231737575cbb16be650c0a49c51822f71ccecdc5224abeb5037e54cdfe1", artifact.PayloadDigestSha256);
         OllamaRecordingExecutionArtifact validated = OllamaRecordingExecutionArtifactModule.Validate(artifact.CanonicalUtf8);
         Assert.Equal(artifact.CanonicalDigestSha256, validated.CanonicalDigestSha256);
         Assert.Equal(artifact.PayloadDigestSha256, validated.PayloadDigestSha256);
         Assert.InRange(artifact.CanonicalUtf8.Length, 1, OllamaRecordingExecutionArtifactModule.MaximumArtifactBytes);
         byte[] detached = artifact.CanonicalUtf8.ToArray(); detached[0] ^= 0xff;
         Assert.Equal((byte)'{', artifact.CanonicalUtf8.Span[0]);
-        Assert.Equal("snow_globe_ollama_recording_execution_artifact/v4", artifact.SchemaVersion);
+        Assert.Equal("snow_globe_ollama_recording_execution_artifact/v5", artifact.SchemaVersion);
+        Assert.Equal("artifacts/snowglobe/local-model/qwen3.5-4b-recording-execution-v5.json", artifact.RelativeArtifactPath);
         Assert.NotNull(artifact.ScoreSummary);
         Assert.Equal(artifact.ScoreSummary!.CanonicalDigestSha256, artifact.ScoreSummaryDigestSha256);
         Assert.Equal(artifact.NestedRecordingEvidenceDigestSha256, artifact.ScoreSummary.RecordingEvidenceDigestSha256);
@@ -49,6 +51,26 @@ public sealed class OllamaRecordingExecutionArtifactTests
         Assert.Contains("httpclient_exposed_framing_only_no_raw_wire_proof",
             document.RootElement.GetProperty("receipt").GetProperty("claim_limitation_codes").EnumerateArray().Select(static value => value.GetString()),
             StringComparer.Ordinal);
+    }
+
+    [Fact]
+    public void HistoricalV4Artifact_RemainsByteIdenticalAndReadableWithoutReclassification()
+    {
+        string repositoryRoot = FindRepositoryRoot();
+        string path = Path.Combine(repositoryRoot, OllamaRecordingExecutionArtifactModule.LegacyRelativeArtifactPath.Replace('/', Path.DirectorySeparatorChar));
+        byte[] bytes = File.ReadAllBytes(path);
+        try
+        {
+            Assert.Equal(16_148, bytes.Length);
+            Assert.Equal("fecf71cbe8cc268dadb603d29735a816bc0152ccc79b4ea44c5a91d7e7616d3e", Convert.ToHexString(SHA256.HashData(bytes)).ToLowerInvariant());
+            OllamaRecordingExecutionArtifact artifact = OllamaRecordingExecutionArtifactModule.Validate(bytes);
+            Assert.Equal(OllamaRecordingExecutionArtifactModule.LegacySchemaVersion, artifact.SchemaVersion);
+            Assert.Equal(OllamaRecordingExecutionArtifactModule.LegacyRelativeArtifactPath, artifact.RelativeArtifactPath);
+            Assert.Equal("Complete", artifact.OutcomeCode);
+            Assert.Equal(12, artifact.CompletedSlotCount);
+            Assert.Equal("fecf71cbe8cc268dadb603d29735a816bc0152ccc79b4ea44c5a91d7e7616d3e", artifact.CanonicalDigestSha256);
+        }
+        finally { CryptographicOperations.ZeroMemory(bytes); }
     }
 
     [Fact]
@@ -214,7 +236,7 @@ public sealed class OllamaRecordingExecutionArtifactTests
         byte[] changed = mutation switch
         {
             "unknown" => Encoding.UTF8.GetBytes(json.Replace("{\"schema_version\"", "{\"unknown\":0,\"schema_version\"", StringComparison.Ordinal)),
-            "duplicate" => Encoding.UTF8.GetBytes(json.Replace("{\"schema_version\":", "{\"schema_version\":\"snow_globe_ollama_recording_execution_artifact/v4\",\"schema_version\":", StringComparison.Ordinal)),
+            "duplicate" => Encoding.UTF8.GetBytes(json.Replace("{\"schema_version\":", $"{{\"schema_version\":\"{OllamaRecordingExecutionArtifactModule.SchemaVersion}\",\"schema_version\":", StringComparison.Ordinal)),
             "missing" => Encoding.UTF8.GetBytes(json.Replace("\"semantics\":\"raw_free_local_loopback_recording_execution_binding_only\",", string.Empty, StringComparison.Ordinal)),
             "noncanonical" => Encoding.UTF8.GetBytes(json + " "),
             "digest" => Encoding.UTF8.GetBytes(ReplaceFirstDigestCharacter(json, "\"plan_digest_sha256\":\"")),
@@ -886,6 +908,18 @@ public sealed class OllamaRecordingExecutionArtifactTests
     private static void WriteArtifact(string root, OllamaRecordingExecutionArtifact artifact)
     {
         string path = Path.Combine(root, OllamaRecordingExecutionArtifactModule.RelativeArtifactPath.Replace('/', Path.DirectorySeparatorChar)); Directory.CreateDirectory(Path.GetDirectoryName(path)!); File.WriteAllBytes(path, artifact.CanonicalUtf8.ToArray());
+    }
+
+    private static string FindRepositoryRoot()
+    {
+        DirectoryInfo? current = new(AppContext.BaseDirectory);
+        for (int depth = 0; depth < 12 && current is not null; depth++, current = current.Parent)
+        {
+            if (File.Exists(Path.Combine(current.FullName, "CURRENT_BUILD.md"))
+                && File.Exists(Path.Combine(current.FullName, "labs", "Societies.SnowGlobe", "Societies.SnowGlobe.csproj")))
+                return current.FullName;
+        }
+        throw new InvalidOperationException("repository_root_not_found");
     }
 
     private const string V2TransportContractDescriptor = "snow-globe-ollama-loopback-recording-transport-adapter/v2|http-1.1-exact|post-generate|redirect-off|decompression-off|proxy-off|cookies-off|credentials-off|max-connection-1|response-headers-read|content-type-application-json-none-or-one-charset-utf-8|content-length-required|body-8192|typed-terminal-checkpoint-policy|single-serialization|runtime-owner-before-between-after|explicit-cancellation-cause|cancel-drain-250ms|one-late-observer|poison-on-indeterminate|no-retry";
