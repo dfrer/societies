@@ -16,7 +16,8 @@
 - Official Usage Accounting documentation lists only prompt-detail members already admitted locally, so the raw-free location identifies an undocumented additive metric inside a non-authoritative detail object.
 - The red-first typed correction is implemented for `usage.prompt_tokens_details` only: every member value remains an integer from zero through the input-token bound and none is retained or trusted. Every other strict scope, all routing/ZDR/financial/proposal/history controls, and no retry/fallback/alternate behavior remain unchanged.
 - Red-first failed only the intended valid additive case while seven security/boundary cases passed; the identical loop is green 8/8. Focused parser/history/vocabulary passes 99/99 including explicit JSON-token-limit coverage, full Snow Globe 1051/1051, OpenRouter CLI/security 100/100, Recording CLI 59/59, both relevant builds 0/0, and diff checks are clean apart from line-ending notices.
-- Independent deep review is FINAL GO with no unresolved P0-P3 after closing stale-generation wording and the missing JSON-token-limit regression. Merged delivery remains. No provider, credential, account, paid, live-state, or `src/societies/` action is part of this offline follow-up.
+- Independent deep review is FINAL GO with no unresolved P0-P3 after closing stale-generation wording and the missing JSON-token-limit regression. PR #152 passed required `build-test-smoke` in 2m53s and merged the correction as `43c553a`. No provider, credential, account, paid, live-state, or `src/societies/` action is part of this offline follow-up.
+- OpenRouter accepted compatibility remains unproven. No additional generation is authorized; the one practical next action is a fresh explicit paid decision if another post-correction generation is desired.
 
 ## Historical generation 3 provider-completion OpenRouter handoff
 
