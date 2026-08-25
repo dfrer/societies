@@ -6,7 +6,8 @@ using System.Text.Json;
 
 namespace Societies.SnowGlobe;
 
-internal sealed class OpenRouterPremiumHttpMetadataVerifier : IOpenRouterPremiumProductionMetadataVerifier
+internal sealed class OpenRouterPremiumHttpMetadataVerifier : IOpenRouterPremiumProductionMetadataVerifier,
+    IOpenRouterAuthenticatedReadinessMetadataVerifier
 {
     internal const string CurrentKeyUri = "https://openrouter.ai/api/v1/key";
     internal const string ModelsUri = "https://openrouter.ai/api/v1/models?zdr=true&providers=Azure";
@@ -30,6 +31,7 @@ internal sealed class OpenRouterPremiumHttpMetadataVerifier : IOpenRouterPremium
         + $"key_expires_at=exact_utc_seconds_or_null_for_nonexpiring_with_24h_attestation\nkey_minimum_remaining_lifetime_ms={MinimumKeyRemainingLifetimeMilliseconds}\n"
         + "key_limit_policy=capped_with_at_least_0.018_remaining_or_both_limit_fields_null_for_unlimited\n"
          + "key_byok_usage_fields=optional_bounded_nonnegative_decimal_telemetry_only\n"
+         + "credential_cycle=one_owned_snapshot_for_all_three_gets_and_exact_snapshot_account_binding\n"
          + $"paid_provider_tag={OpenRouterPremiumProfile.ProviderSlug}\npaid_provider_sort=price\n"
          + $"paid_max_prompt_usd_per_million={OpenRouterPremiumProfile.ProviderMaxPromptUsdPerMillionTokens.ToString(CultureInfo.InvariantCulture)}\n"
          + $"paid_max_completion_usd_per_million={OpenRouterPremiumProfile.ProviderMaxCompletionUsdPerMillionTokens.ToString(CultureInfo.InvariantCulture)}\n"
@@ -64,24 +66,66 @@ internal sealed class OpenRouterPremiumHttpMetadataVerifier : IOpenRouterPremium
     internal bool AmbientAuthenticationAllowed => false;
     internal bool AutomaticDecompressionAllowed => false;
 
-    public async ValueTask<OpenRouterPremiumVerifiedMetadata> VerifyOnceAsync(CancellationToken cancellationToken)
+    public ValueTask<OpenRouterPremiumVerifiedMetadata> VerifyOnceAsync(CancellationToken cancellationToken) =>
+        VerifyCoreAsync(cancellationToken, null);
+
+    public async ValueTask<OpenRouterAuthenticatedMetadataReadinessResult> ObserveReadinessOnceAsync(
+        CancellationToken cancellationToken)
+    {
+        int requestCount = 0;
+        try
+        {
+            using OpenRouterPremiumVerifiedMetadata verified = await VerifyCoreAsync(
+                cancellationToken,
+                () => requestCount++).ConfigureAwait(false);
+            return new(true, "ready", requestCount, true);
+        }
+        catch (OperationCanceledException)
+        {
+            return new(false, "operation_cancelled", requestCount, false);
+        }
+        catch (OpenRouterPremiumProductionException exception)
+        {
+            return new(false, ClassifyReadinessFailure(exception.Code), requestCount, false);
+        }
+        catch
+        {
+            return new(false, "observation_failed", requestCount, false);
+        }
+    }
+
+    private async ValueTask<OpenRouterPremiumVerifiedMetadata> VerifyCoreAsync(
+        CancellationToken cancellationToken,
+        Action? requestStarted)
     {
         long observedAt = _clock.NowMilliseconds;
         using CancellationTokenSource aggregate = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         aggregate.CancelAfter(20_000);
         using HttpMessageHandler handler = _handlerFactory();
         using HttpClient client = new(handler, disposeHandler: false) { Timeout = Timeout.InfiniteTimeSpan };
+        OpenRouterPremiumStoredCredential? credential = null;
+        byte[]? credentialMaterial = null;
+        char[]? credentialCharacters = null;
+        string? managedBearer = null;
         byte[]? keyBytes = null; byte[]? modelsBytes = null; byte[]? zdrBytes = null; byte[]? bundleBytes = null;
         try
         {
+            credential = _store.Read();
+            credentialMaterial = credential.TransferOwnedMaterial();
+            if (!OpenRouterPremiumCredentialMaterial.IsValid(credentialMaterial))
+                throw new OpenRouterPremiumProductionException("credential_malformed");
+            credentialCharacters = new char[credentialMaterial.Length];
+            for (int index = 0; index < credentialMaterial.Length; index++)
+                credentialCharacters[index] = (char)credentialMaterial[index];
+            managedBearer = new string(credentialCharacters); // Documented framework-owned managed residual.
             keyBytes = await GetOnceAsync(client, CurrentKeyUri, MaximumKeyResponseBytes,
-                "metadata_key_http_status_terminal", aggregate.Token).ConfigureAwait(false);
+                "metadata_key_http_status_terminal", managedBearer, requestStarted, aggregate.Token).ConfigureAwait(false);
             KeyObservation key = ParseKey(keyBytes, observedAt);
             modelsBytes = await GetOnceAsync(client, ModelsUri, MaximumModelsResponseBytes,
-                "metadata_models_http_status_terminal", aggregate.Token).ConfigureAwait(false);
+                "metadata_models_http_status_terminal", managedBearer, requestStarted, aggregate.Token).ConfigureAwait(false);
             ModelObservation model = ParseModels(modelsBytes);
             zdrBytes = await GetOnceAsync(client, ZdrEndpointsUri, MaximumZdrResponseBytes,
-                "metadata_zdr_http_status_terminal", aggregate.Token).ConfigureAwait(false);
+                "metadata_zdr_http_status_terminal", managedBearer, requestStarted, aggregate.Token).ConfigureAwait(false);
             aggregate.Token.ThrowIfCancellationRequested();
             ZdrObservation zdr = ParseZdr(zdrBytes);
             if (model.ProviderName != zdr.ProviderName || model.ModelId != zdr.ModelId
@@ -89,7 +133,7 @@ internal sealed class OpenRouterPremiumHttpMetadataVerifier : IOpenRouterPremium
                 || model.CompletionUsdPerToken != zdr.CompletionUsdPerToken)
                 throw new OpenRouterPremiumProductionException("metadata_crosscheck_mismatch");
             aggregate.Token.ThrowIfCancellationRequested();
-            _store.BindAccount(key.AccountBindingIdentity);
+            _store.BindAccount(key.AccountBindingIdentity, credential.AccountBindingIdentity, credentialMaterial);
             bundleBytes = BuildBundle(key, model, observedAt,
                 OpenRouterPremiumCanonical.Digest(keyBytes), OpenRouterPremiumCanonical.Digest(modelsBytes), OpenRouterPremiumCanonical.Digest(zdrBytes));
             OpenRouterPremiumVerifiedMetadata result = new(bundleBytes);
@@ -105,59 +149,63 @@ internal sealed class OpenRouterPremiumHttpMetadataVerifier : IOpenRouterPremium
             if (modelsBytes is not null) CryptographicOperations.ZeroMemory(modelsBytes);
             if (zdrBytes is not null) CryptographicOperations.ZeroMemory(zdrBytes);
             if (bundleBytes is not null) CryptographicOperations.ZeroMemory(bundleBytes);
+            if (credentialMaterial is not null)
+            {
+                CryptographicOperations.ZeroMemory(credentialMaterial);
+                credential?.ZeroObserver(credentialMaterial.All(static value => value == 0));
+            }
+            if (credentialCharacters is not null) Array.Clear(credentialCharacters);
+            managedBearer = null;
+            credential?.Dispose();
         }
     }
 
     private async Task<byte[]> GetOnceAsync(HttpClient client, string exactUri, int maximumBytes,
-        string statusFailureCode, CancellationToken aggregateToken)
+        string statusFailureCode, string managedBearer, Action? requestStarted,
+        CancellationToken aggregateToken)
     {
         using CancellationTokenSource requestTimeout = CancellationTokenSource.CreateLinkedTokenSource(aggregateToken);
         requestTimeout.CancelAfter(5_000);
-        using OpenRouterPremiumStoredCredential credential = _store.Read();
-        byte[]? material = null; char[]? chars = null; string? managedBearer = null;
-        try
-        {
-            material = credential.TransferOwnedMaterial();
-            if (!OpenRouterPremiumCredentialMaterial.IsValid(material))
-                throw new OpenRouterPremiumProductionException("credential_malformed");
-            chars = new char[material.Length];
-            for (int index = 0; index < material.Length; index++) chars[index] = (char)material[index];
-            managedBearer = new string(chars); // Documented framework-owned managed residual.
-            using HttpRequestMessage request = new(HttpMethod.Get, exactUri);
-            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", managedBearer);
-            request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-            using HttpResponseMessage response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead,
-                requestTimeout.Token).ConfigureAwait(false);
-            string effective = response.RequestMessage?.RequestUri?.AbsoluteUri ?? string.Empty;
-            if (!string.Equals(effective, exactUri, StringComparison.Ordinal))
-                throw new OpenRouterPremiumProductionException("metadata_effective_uri_mismatch");
-            if ((int)response.StatusCode != 200)
-                throw new OpenRouterPremiumProductionException(statusFailureCode);
-            if (response.Content.Headers.ContentEncoding.Count != 0)
-                throw new OpenRouterPremiumProductionException("metadata_encoding_forbidden");
-            if (!string.Equals(response.Content.Headers.ContentType?.MediaType, "application/json", StringComparison.OrdinalIgnoreCase))
-                throw new OpenRouterPremiumProductionException("metadata_content_type_invalid");
-            string? charset = response.Content.Headers.ContentType?.CharSet;
-            if (charset is not null && !string.Equals(charset.Trim('"'), "utf-8", StringComparison.OrdinalIgnoreCase))
-                throw new OpenRouterPremiumProductionException("metadata_content_type_invalid");
-            if (response.Content.Headers.ContentLength is long length && length > maximumBytes)
-                throw new OpenRouterPremiumProductionException("metadata_response_too_large");
-            return await OpenRouterPremiumHardenedHttp.ReadBoundedAsync(
-                response.Content, maximumBytes,
-                static () => new OpenRouterPremiumProductionException("metadata_response_too_large"),
-                requestTimeout.Token).ConfigureAwait(false);
-        }
-        finally
-        {
-            if (material is not null)
-            {
-                CryptographicOperations.ZeroMemory(material);
-                credential.ZeroObserver(material.All(static value => value == 0));
-            }
-            if (chars is not null) Array.Clear(chars);
-            managedBearer = null;
-        }
+        using HttpRequestMessage request = new(HttpMethod.Get, exactUri);
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", managedBearer);
+        request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+        requestStarted?.Invoke();
+        using HttpResponseMessage response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead,
+            requestTimeout.Token).ConfigureAwait(false);
+        string effective = response.RequestMessage?.RequestUri?.AbsoluteUri ?? string.Empty;
+        if (!string.Equals(effective, exactUri, StringComparison.Ordinal))
+            throw new OpenRouterPremiumProductionException("metadata_effective_uri_mismatch");
+        if ((int)response.StatusCode != 200)
+            throw new OpenRouterPremiumProductionException(statusFailureCode);
+        if (response.Content.Headers.ContentEncoding.Count != 0)
+            throw new OpenRouterPremiumProductionException("metadata_encoding_forbidden");
+        if (!string.Equals(response.Content.Headers.ContentType?.MediaType, "application/json", StringComparison.OrdinalIgnoreCase))
+            throw new OpenRouterPremiumProductionException("metadata_content_type_invalid");
+        string? charset = response.Content.Headers.ContentType?.CharSet;
+        if (charset is not null && !string.Equals(charset.Trim('"'), "utf-8", StringComparison.OrdinalIgnoreCase))
+            throw new OpenRouterPremiumProductionException("metadata_content_type_invalid");
+        if (response.Content.Headers.ContentLength is long length && length > maximumBytes)
+            throw new OpenRouterPremiumProductionException("metadata_response_too_large");
+        return await OpenRouterPremiumHardenedHttp.ReadBoundedAsync(
+            response.Content, maximumBytes,
+            static () => new OpenRouterPremiumProductionException("metadata_response_too_large"),
+            requestTimeout.Token).ConfigureAwait(false);
     }
+
+    private static string ClassifyReadinessFailure(string code) => code switch
+    {
+        "credential_missing" or "credential_malformed" or "credential_account_mismatch" or
+        "key_authority_insufficient" or "key_expiry_window_invalid" => "credential_unavailable",
+        "metadata_timeout" => "observation_timeout",
+        "metadata_transport_failed" or "metadata_key_http_status_terminal" or
+        "metadata_models_http_status_terminal" or "metadata_zdr_http_status_terminal" => "provider_unavailable",
+        "key_metadata_invalid" or "model_metadata_invalid" or "model_metadata_mismatch" or
+        "zdr_metadata_invalid" or "zdr_route_mismatch" or "metadata_crosscheck_mismatch" or
+        "metadata_content_type_invalid" or "metadata_effective_uri_mismatch" or
+        "metadata_encoding_forbidden" or "metadata_parameters_invalid" or
+        "metadata_price_mismatch" or "metadata_response_too_large" or "metadata_shape_invalid" => "metadata_rejected",
+        _ => "observation_failed"
+    };
 
     private static KeyObservation ParseKey(byte[] bytes, long observedAt)
     {

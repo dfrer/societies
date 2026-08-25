@@ -1,10 +1,16 @@
 # Societies Snow Globe Lab
 
+## Authenticated provider-readiness observation
+
+The lab now has a provider-neutral, raw-free point-in-time readiness observation contract. OpenRouter readiness uses one credential snapshot across the existing hardened verifier's exact three sequential authenticated metadata GETs; Ollama readiness uses one pinned loopback `GET /api/tags` with strict registered-cell/model provenance validation. Both Adapters are one-shot and flow through the same deep Module. Post-dispatch Ollama identity rejection is unknown raced evidence, not a definitive negative. Canonical evidence retains no raw metadata, credentials, account identifiers, process identity, or dynamic errors. Observations expire after 60 seconds and have no generation, payment, routing, or world authority.
+
+The v2 readiness assessment may project a validated current observation as `ready`, `not_ready`, or `unknown`, but still reports primary attempt state `unknown`, routing issuance `not_issued`, and null routing input. No CLI/live observation is included in this offline slice. See [the authenticated readiness contract](PROVIDER_READINESS_OBSERVATION.md).
+
 ## Routing-readiness evidence
 
 The lab now has a deterministic offline assessment of the evidence needed before the routing policy may be trusted with current readiness facts. Existing successful provider artifacts remain historical; they do not prove current availability, and absence never proves a new attempt is unstarted. The current bounded result is `insufficient_current_readiness_evidence`, with no routing input issued.
 
-The assessment does not inspect files, processes, listeners, credentials, accounts, journals, state roots, or provider/network state. See [the full readiness-evidence contract](PROVIDER_ROUTING_READINESS_EVIDENCE.md).
+The historical v1 assessment does not inspect files, processes, listeners, credentials, accounts, journals, state roots, or provider/network state. See [the full readiness-evidence contract](PROVIDER_ROUTING_READINESS_EVIDENCE.md).
 
 ## Provider-routing policy
 

@@ -118,7 +118,7 @@ public sealed class ProviderRoutingReadinessEvidenceException : Exception
 }
 
 /// <summary>Pure synchronous classifier of historical evidence; it cannot issue a routing input.</summary>
-public static class ProviderRoutingReadinessEvidenceModule
+public static partial class ProviderRoutingReadinessEvidenceModule
 {
     public const string SchemaVersion = "snow_globe_provider_routing_readiness_assessment/v1";
     public const string ContractSchemaVersion = "snow_globe_provider_routing_readiness_evidence/v1";

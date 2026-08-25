@@ -1,4 +1,4 @@
-# Snow Globe provider-routing readiness evidence v1
+# Snow Globe provider-routing readiness evidence v1 and current-observation v2
 
 ## Purpose and authority boundary
 
@@ -44,4 +44,6 @@ The artifact contains no prompt, response, reasoning, proposal, provider metadat
 
 Focused tests cover the committed comparison and completed Ollama v6 artifact, structurally valid detached activation evidence with live traffic disabled, a valid historical OpenRouter terminal generation, missing and malformed evidence, duplicate/deep/oversized input, unreadable oversized memory, changing caller memory, raw-free output, canonical tampering, repeatability, detachment, and public-surface authority. Test fixture construction performs no provider, credential, network, paid, file-discovery by production code, or live-state action.
 
-This Module is not a readiness Adapter, route selector, provider preflight, attempt registry, state store, or execution gate. A future authenticated Adapter would require separately authorized current observations, freshness rules, and a durable attempt-bound aggregate before it could safely construct routing-policy facts.
+V1 remains historical-only and readable unchanged. The additive v2 assessment accepts the canonical observations defined by [the authenticated provider-readiness contract](PROVIDER_READINESS_OBSERVATION.md). V2 can report an accepted current observation as `ready`, `not_ready`, or `unknown`; missing, malformed, wrong-provider, and expired inputs remain `unknown`. Its schema is `snow_globe_provider_routing_readiness_assessment/v2`, contract schema is `snow_globe_provider_routing_readiness_evidence/v2`, and contract digest is `cbb03e6379ace033dd52becbc1314473d427330b1278b023cb3ea3f708e12e5f`.
+
+Even with two current `ready` observations, v2 remains `insufficient_current_attempt_evidence`, primary-attempt state remains `unknown`, routing issuance remains `not_issued`, and `routing_policy_input` remains null. This Module is not a route selector, provider preflight, attempt registry, state store, or execution gate. Authenticated attempt-bound aggregate state and any routing-input issuance remain separate future work.

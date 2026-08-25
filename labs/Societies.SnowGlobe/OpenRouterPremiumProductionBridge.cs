@@ -116,7 +116,10 @@ internal interface IOpenRouterPremiumCredentialStore
 {
     void Write(string accountBindingIdentity, byte[] secretMaterial);
     OpenRouterPremiumStoredCredential Read();
-    void BindAccount(string derivedAccountBindingIdentity);
+    void BindAccount(
+        string derivedAccountBindingIdentity,
+        string snapshotAccountBindingIdentity,
+        byte[] snapshotSecretMaterial);
     void Delete();
 }
 
@@ -236,16 +239,19 @@ internal sealed class OpenRouterPremiumWindowsCredentialStore : IOpenRouterPremi
         }
     }
 
-    public void BindAccount(string derivedAccountBindingIdentity)
+    public void BindAccount(
+        string derivedAccountBindingIdentity,
+        string snapshotAccountBindingIdentity,
+        byte[] snapshotSecretMaterial)
     {
         _ = new ByokAccountBindingIdentity(derivedAccountBindingIdentity);
-        using OpenRouterPremiumStoredCredential credential = Read();
-        if (credential.AccountBindingIdentity != PendingAccountBindingIdentity
-            && credential.AccountBindingIdentity != derivedAccountBindingIdentity)
+        if (snapshotAccountBindingIdentity != PendingAccountBindingIdentity
+            && snapshotAccountBindingIdentity != derivedAccountBindingIdentity)
             throw new OpenRouterPremiumProductionException("credential_account_mismatch");
-        byte[] material = credential.TransferOwnedMaterial();
-        try { Write(derivedAccountBindingIdentity, material); }
-        finally { CryptographicOperations.ZeroMemory(material); }
+        ArgumentNullException.ThrowIfNull(snapshotSecretMaterial);
+        if (!OpenRouterPremiumCredentialMaterial.IsValid(snapshotSecretMaterial))
+            throw new OpenRouterPremiumProductionException("credential_malformed");
+        Write(derivedAccountBindingIdentity, snapshotSecretMaterial);
     }
 
     public void Delete()
