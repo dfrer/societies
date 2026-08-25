@@ -85,6 +85,11 @@ namespace Societies.Core
             return PrototypeCitizenInterestEvaluator.Capture(Workers, _civicPolicy.Policy);
         }
 
+        public PrototypeCognitionObservation PublishCivicCognitionObservation(string citizenId)
+        {
+            return new PrototypeCognitionModule().PublishObservation(this, citizenId);
+        }
+
         public PrototypeDirectiveSnapshot CaptureDirectiveSnapshot()
         {
             return new PrototypeDirectiveSnapshot
@@ -1176,6 +1181,14 @@ namespace Societies.Core
         public void RecordEvent(string eventType, string message)
         {
             EventLog.Record(SimulationTick, eventType, message);
+        }
+
+        internal void RecordCivicCognitionDecision(
+            PrototypeCognitionDecisionSource source,
+            PrototypeCognitionProposal proposal)
+        {
+            RecordEvent(PrototypeEventTypes.CivicCognitionDecision,
+                PrototypeCognitionModule.BuildEventMessage(source, proposal));
         }
 
         private void SyncSettlementViews()
