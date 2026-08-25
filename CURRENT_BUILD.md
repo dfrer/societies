@@ -17,6 +17,39 @@ This is the only in-repo implementation that currently has:
 - a buildable C# project
 - a runnable automated validation path
 
+## Snow Globe provider-routing orchestration implementation gate
+
+The isolated Snow Globe lab now has one provider-neutral `ProviderRoutingOrchestrationModule` with
+only `Prepare` and `Validate` on its public instance interface. One preparation snapshots the
+accepted comparison and both caller-supplied readiness observations once, assesses them at one
+caller-supplied time, creates one authenticated `not_started` attempt, derives policy from that
+exact attempt/assessment, and conditionally claims `dispatch_started`. It reports `prepared` only
+after the claimed record is authenticated and coherent; policy no-selection retains an explicit
+authenticated `not_started` attempt and reports `not_prepared`.
+
+The versioned result binds the accepted comparison, current assessment, initial ledger record,
+routing decision, optional terminal claim record, selected closed provider code, intent, expiry,
+limitations, and payload digest. Contract schema is
+`snow_globe_provider_routing_orchestration_contract/v1`; contract digest is
+`16550d06f0eee280f4618c76bf8ff556320dc0d0198c4b15bcd8021ed29ac230`. Exact terminal
+creation/expiry carry-forward and one-time assessed/created/claimed coherence are enforced. Any
+validation, construction, embedding, size, or unexpected failure after `ClaimDispatch` returns is
+terminal/ambiguous and can never authorize a second attempt.
+
+Red-first implementation and two security-owner/deep-review repair cycles closed three P2 gaps:
+terminal validity-date splicing, incomplete contract identity for the single-time rule, and
+post-claim result construction outside the ambiguity guard. Focused orchestration validation is
+11/11, full Snow Globe Release is 1191/1191, OpenRouter CLI/security Release is 104/104, Recording
+CLI Release is 94/94, and three Release builds have 0 warnings/errors. Final independent review is
+GO with no P0-P3 findings.
+
+This is offline pre-transport evidence only. No readiness refresh, real attempt root, provider,
+credential, network, request bytes, payment, generation, retry/fallback, gameplay integration,
+deterministic-world action, or `src/societies/` change occurred. `prepared` means a durable dispatch
+claim, not provider submission or execution authority. A separately reviewed execution-security
+milestone must introduce and bind the first real provider transport Adapter; PR delivery remains
+the active gate.
+
 ## Snow Globe durable provider-routing attempt ledger implementation gate
 
 The isolated Snow Globe lab now has a provider-neutral durable attempt-ledger Module with only

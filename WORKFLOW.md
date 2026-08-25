@@ -1,5 +1,27 @@
 # Snow Globe provider preflight, Ollama repair, and qwen3.5 smoke handoff
 
+## Provider-routing orchestration implementation gate
+
+- Outcome: one deep provider-neutral Module composes the accepted comparison, caller-supplied fresh
+  readiness observations, readiness assessment, durable attempt ledger, and routing policy through
+  one `Prepare`/`Validate` interface. `prepared` is emitted only after authenticated coherent
+  `dispatch_started`; policy no-selection retains authenticated `not_started` and emits
+  `not_prepared`.
+- Security/coherence: caller evidence is bounded, snapshotted once, and zeroed. One Module instance
+  is one-shot. The result binds exact assessment, initial record, decision, claimed record, provider,
+  intent, expiry, and digests. Assessed, created, and claimed times are identical; terminal creation
+  and expiry are exact carry-forward. Any failure after claim return is terminal/ambiguous and never
+  retryable.
+- Contract/review: schema `snow_globe_provider_routing_orchestration_contract/v1`, digest
+  `16550d06f0eee280f4618c76bf8ff556320dc0d0198c4b15bcd8021ed29ac230`. Red-first work and two
+  independent review/repair cycles closed three P2 validator/classification gaps. Final deep review
+  is GO with no P0-P3 findings.
+- Evidence/scope: focused 11/11, full Snow Globe Release 1191/1191, OpenRouter CLI/security 104/104,
+  Recording CLI 94/94, three Release builds 0 warnings/errors. No readiness refresh, provider,
+  credential, real root, network, request bytes, payment, retry/fallback, gameplay, world action, or
+  `src/societies/` change occurred. Provider transport and PR delivery remain separate future/active
+  gates respectively.
+
 ## Durable provider-routing attempt ledger implementation gate
 
 - Outcome: one deep provider-neutral Module creates, inspects, claims, and validates authenticated
