@@ -1,5 +1,27 @@
 # Snow Globe provider preflight, Ollama repair, and qwen3.5 smoke handoff
 
+## Durable provider-routing attempt ledger implementation gate
+
+- Outcome: one deep provider-neutral Module creates, inspects, claims, and validates authenticated
+  routing-attempt evidence. V2 records bind the accepted comparison, exact current assessment and
+  expiry, both readiness codes, intent, opaque attempt ID, chain digest, closed provider, and
+  routing-decision digest.
+- Persistence/security: in-memory and Windows file Adapters share the Module path. The Windows
+  Adapter accepts only an injected isolated root/anchor, holds an exclusive writer lease, pins
+  identities, rejects reparse/hardlink/traversal changes, and uses CreateNew durable append-only
+  initial/tombstone/terminal evidence. Pre-tombstone failures are explicitly non-ambiguous;
+  post-tombstone uncertainty recovers only as `submission_unknown` or poisoned.
+- Review repairs: red-first implementation plus two security-owner/deep-review cycles added public
+  authenticated inspection, classified every storage claim failure, exposed restart/fault behavior
+  through the Module, and authenticated exact assessment/decision readiness coherence. Contract
+  schema is `snow_globe_provider_routing_attempt_ledger_contract/v2`, digest
+  `99694dd77536b92b537d3f95417138b35982d7304c9c20f10f48da5c9d5c2e47`.
+- Evidence/scope: focused ledger 22/22, combined routing/readiness 69/69, independent full Snow Globe
+  Release 1180/1180, Release build 0 warnings/errors, final review GO with no P0-P3. No real root,
+  provider, credential, network, transport bytes, payment, retry/fallback, gameplay, world mutation,
+  or `src/societies/` change occurred. `dispatch_started` is evidence only; orchestration and PR
+  delivery remain future/active gates respectively.
+
 ## Provider-readiness governed live evidence result
 
 - Execution: exact merged command source `a43b81a4429072d14bf751ab848dce02ef7a8a38` rebuilt in Release with 0 warnings/errors and ran exactly once with exit code 0. The terminal claim SHA-256 is `48a03f86756e61e41890ded234dd815c8efbf6e0460f93f706aa157beb1b63a8`; `additional_attempt_authorized=false`.

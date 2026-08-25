@@ -1,5 +1,25 @@
 # Societies Snow Globe Lab
 
+## Durable provider-routing attempt ledger
+
+The lab now contains a deep provider-neutral ledger Module with four bounded operations: create a
+fresh attempt, inspect authenticated current evidence, claim first dispatch once, and validate
+detached evidence. V2 records bind the accepted comparison, current readiness assessment and expiry,
+both exact readiness projections, routing intent, opaque attempt ID, record chain, selected closed
+provider, and routing-decision digest.
+
+The internal in-memory and Windows file Adapters share that Module path. The file Adapter has no
+default real root or credential-backed anchor; isolated tests inject both dependencies. Its durable
+claim tombstone precedes `dispatch_started`. A definite pre-tombstone failure remains safely
+non-ambiguous, while any terminal material or uncertain write recovers only to `submission_unknown`
+or poisoned evidence—never `not_started`. Contract digest is
+`99694dd77536b92b537d3f95417138b35982d7304c9c20f10f48da5c9d5c2e47`.
+
+This is offline persistence evidence, not a routing input or execution permit. No real root,
+provider, credential, network, request bytes, payment, retry/fallback, gameplay, or world action was
+used. A future reviewed orchestration Module must still join fresh readiness, policy, the ledger,
+and the actual pre-transport seam. See [the ledger contract](PROVIDER_ROUTING_ATTEMPT_LEDGER.md).
+
 ## One-shot provider-readiness publication
 
 The reviewed versioned one-shot command merged as exact source
