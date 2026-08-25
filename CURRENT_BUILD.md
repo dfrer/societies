@@ -17,13 +17,23 @@ This is the only in-repo implementation that currently has:
 - a buildable C# project
 - a runnable automated validation path
 
+## Snow Globe routing-readiness evidence implementation gate
+
+The isolated Snow Globe lab now has a pure synchronous `ProviderRoutingReadinessEvidenceModule` that validates the accepted cognition comparison plus optional OpenRouter activation/execution and Ollama execution artifacts, then records only what those artifacts actually prove. The accepted comparison establishes selection evidence; completed Ollama evidence remains historical compatibility; OpenRouter activation remains evaluated eligibility with live traffic disabled; and OpenRouter execution remains an identified historical generation.
+
+The deterministic v1 result is `insufficient_current_readiness_evidence`: both provider readiness values and the proposed primary-attempt state remain `unknown`, routing-input issuance is `not_issued`, and `routing_policy_input` is null. Missing evidence remains unknown rather than becoming a negative fact. A past success never becomes current readiness, and historical generation evidence never proves a different new attempt is `not_started`.
+
+The Module performs no file discovery, provider/process/listener inspection, credential/account access, journal/state-root access, network/payment action, routing decision, or execution. It grants no world authority and does not change `src/societies/`.
+
+Red-first compilation failed only on the absent assessment interface. Independent review found and closed two P2 integrity gaps: the exact accepted comparison digest could be paired with an impossible non-accepted label, and the readiness contract identity did not bind the comparison schema/SHA on which its semantics depend. Forged re-digested regressions now reject malformed/unsupported relabeling, and contract digest `80a6e228280f3d8e4e75459279452049076fded3fe5709a7e5523a61a61200be` binds the exact comparison. Final evidence is 9/9 focused Release, 1137/1137 full Snow Globe Release, 59/59 Recording CLI Release, 100/100 OpenRouter CLI/security, and three Release builds with 0 warnings/errors. Independent deep review is FINAL GO with no unresolved P0-P2; PR delivery remains the active gate.
+
 ## Snow Globe provider-routing policy implementation gate
 
 The isolated Snow Globe lab now has a pure synchronous `ProviderRoutingPolicyModule` that validates and digest-pins the accepted cognition-quality comparison rather than accepting caller-supplied scores or a winner string. With the accepted `openrouter_default` artifact, `preferred_online` selects OpenRouter when it is ready and no primary attempt has started. `local_only` selects Ollama when Ollama is ready. Preferred-online availability fallback selects Ollama only when OpenRouter is explicitly `not_ready`, Ollama is ready, and the primary attempt is still `not_started`.
 
 Every dispatch-started, submission-possible, submission-unknown, or completed state selects no provider. Missing, malformed, asymmetric, conditional, insufficient, unsupported, unavailable, unknown, incoherent, and undefined-enum inputs also fail closed. The returned decision is strict canonical JSON bounded to 4 KiB/depth 5 and grants no execution, provider, credential, payment, network, retry, parallel-dispatch, gameplay, or world authority. Readiness is caller-supplied and is not probed by this Module.
 
-Red-first compilation failed on the deliberately absent Module/types. Independent review then identified mutable caller-memory risk between artifact hashing and validation; red evidence was 1 failed/16 passed with five memory reads. The repair snapshots caller bytes once, hashes and validates only the owned snapshot, and zeroes it afterward. The implemented policy passes 17/17 focused Release tests, 1128/1128 full Snow Globe Release tests, 59/59 Recording CLI Release tests, 100/100 OpenRouter CLI/security tests, and three Release builds with 0 warnings/errors. Provider/security implementation and independent deep review are FINAL GO with no unresolved P0-P3; PR delivery remains the active milestone gate. No provider, credential, network, paid, live-state, or `src/societies/` action occurred.
+Red-first compilation failed on the deliberately absent Module/types. Independent review then identified mutable caller-memory risk between artifact hashing and validation; red evidence was 1 failed/16 passed with five memory reads. The repair snapshots caller bytes once, hashes and validates only the owned snapshot, and zeroes it afterward. The implemented policy passes 17/17 focused Release tests, 1128/1128 full Snow Globe Release tests, 59/59 Recording CLI Release tests, 100/100 OpenRouter CLI/security tests, and three Release builds with 0 warnings/errors. Provider/security implementation and independent deep review are FINAL GO with no unresolved P0-P3. Required CI passed and PR #164 merged the policy as `85b5840`. No provider, credential, network, paid, live-state, or `src/societies/` action occurred.
 
 ## Snow Globe cognition-quality benchmark and provider selection
 
@@ -36,6 +46,8 @@ The canonical comparison artifact is `artifacts/snowglobe/cognition-quality/prov
 This proves only that the accepted OpenRouter proposals outperform this fresh Ollama proposal batch under the fixed automated Snow Globe corpus and rubric. It does not prove general model quality, intelligence, long-horizon gameplay quality, price-performance, execution authenticity from digests alone, deployment or commercial readiness, or any authority over simulation state. `src/societies/` remains untouched.
 
 Final local validation is 1111/1111 Snow Globe Release, 59/59 Recording CLI Release, 100/100 OpenRouter CLI/security, three Release builds with 0 warnings/errors, canonical comparison-artifact validation, and clean staged/unstaged diff checking. Independent `deep_reviewer` evidence review independently recomputed hashes, criteria, categories, totals, margin, and recommendation and returned FINAL EVIDENCE GO with no unresolved P0-P3 findings.
+
+Required CI passed and PR #163 merged the canonical comparison evidence as `1d6bbf3`.
 
 ## Snow Globe provider-completion result and progression
 
