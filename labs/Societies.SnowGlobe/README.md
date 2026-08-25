@@ -2,23 +2,32 @@
 
 ## One-shot provider-readiness publication
 
-The lab now includes an offline-reviewed, versioned one-shot command surface that will invoke the
-merged OpenRouter and Ollama readiness Adapters sequentially and atomically retain their two
-canonical observations plus the canonical v2 assessment at fixed repository-relative paths. A
-durable raw-free claim is written before either Adapter, records the exact command-assembly source
-commit, and permanently blocks a rerun after success, partial publication, or uncertainty. The
-command accepts only the minimum non-secret Ollama PID/start-ticks binding and exposes no credential,
-provider, endpoint, model, path, retry, fallback, generation, payment, routing, or world control.
+The reviewed versioned one-shot command merged as exact source
+`a43b81a4429072d14bf751ab848dce02ef7a8a38`, rebuilt with 0 warnings/errors, and ran exactly once
+with exit code 0. Its terminal raw-free claim SHA-256 is
+`48a03f86756e61e41890ded234dd815c8efbf6e0460f93f706aa157beb1b63a8`, and it authorizes no
+additional attempt.
 
-This is an offline implementation gate only: no provider, credential, process/listener, network, or
-live-state action has used it, and no current readiness evidence is included yet. See
+The governed point-in-time cycle retained OpenRouter as `complete`/`ready` after exactly three GETs
+(1,111 bytes, SHA-256 `24b9302bf91edd894ed69125f38261c39b4d43633062f3ee3707b664415d9f74`)
+and Ollama as `complete`/`ready` after exactly one loopback metadata GET (1,090 bytes, SHA-256
+`30be811f4f011b9d4a45cf670bc94bf41657f8a702f3b31d3fe17331b5520e0a`). The 5,715-byte v2
+assessment SHA-256 `7f150a0043b616db29dd01c660053f6e0a30df385e820634e53e3c672dd0c41a`
+remains `insufficient_current_attempt_evidence`: primary state is `unknown`, routing is `not_issued`,
+and routing input is absent. Both observations were current metadata-ready within the isolated
+contract at assessment time and expire after 60 seconds; they are not continuous readiness claims.
+
+Canonical validation and a closed leakage scan found no secret, account identity, raw metadata,
+response body, prompt/reasoning, host path, process identity, or dynamic-error value. No POST, completion,
+generation, payment, retry, fallback, gameplay, or world action occurred. Routing still requires a
+durable attempt ledger that proves fresh `not_started` state and atomically claims dispatch. See
 [the one-shot publication contract](PROVIDER_READINESS_ONE_SHOT.md).
 
 ## Authenticated provider-readiness observation
 
 The lab now has a provider-neutral, raw-free point-in-time readiness observation contract. OpenRouter readiness uses one credential snapshot across the existing hardened verifier's exact three sequential authenticated metadata GETs; Ollama readiness uses one pinned loopback `GET /api/tags` with strict registered-cell/model provenance validation. Both Adapters are one-shot and flow through the same deep Module. Post-dispatch Ollama identity rejection is unknown raced evidence, not a definitive negative. Canonical evidence retains no raw metadata, credentials, account identifiers, process identity, or dynamic errors. Observations expire after 60 seconds and have no generation, payment, routing, or world authority.
 
-The v2 readiness assessment may project a validated current observation as `ready`, `not_ready`, or `unknown`, but still reports primary attempt state `unknown`, routing issuance `not_issued`, and null routing input. The offline one-shot CLI is now implemented, but it has not been invoked and no live observation is included in this slice. See [the authenticated readiness contract](PROVIDER_READINESS_OBSERVATION.md).
+The v2 readiness assessment may project a validated point-in-time observation as `ready`, `not_ready`, or `unknown`, but still reports primary attempt state `unknown`, routing issuance `not_issued`, and null routing input. The completed one-shot evidence above exercised this contract without granting dispatch. See [the authenticated readiness contract](PROVIDER_READINESS_OBSERVATION.md).
 
 ## Routing-readiness evidence
 

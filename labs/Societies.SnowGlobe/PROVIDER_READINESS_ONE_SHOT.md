@@ -1,11 +1,12 @@
 # Snow Globe provider-readiness one-shot publication contract
 
-## Current boundary
+## Completed governed evidence boundary
 
-This milestone adds an offline-reviewed invocation and retention surface. It has not invoked a
-provider, read a credential, inspected an Ollama process/listener, or produced current readiness
-evidence. Delivery and review of this surface must complete before one separately governed live
-cycle may run.
+The reviewed invocation and retention surface merged as exact command source
+`a43b81a4429072d14bf751ab848dce02ef7a8a38`, rebuilt in Release with 0 warnings/errors, and was
+invoked exactly once with exit code 0. The terminal claim remains retained with SHA-256
+`48a03f86756e61e41890ded234dd815c8efbf6e0460f93f706aa157beb1b63a8` and
+`additional_attempt_authorized=false`. No rerun is authorized.
 
 The versioned command is:
 
@@ -112,6 +113,33 @@ not an external authenticity anchor or permanent same-user tamper barrier. A lat
 perform canonical validation from its own single snapshot, and repository review/history supplies
 the durable source/evidence association. Likewise, the embedded assembly source SHA identifies the
 built source revision but is not a signature or remote attestation.
+
+## Retained evidence result
+
+The governed point-in-time cycle produced these canonical facts:
+
+- OpenRouter observation: 1,111 bytes, SHA-256
+  `24b9302bf91edd894ed69125f38261c39b4d43633062f3ee3707b664415d9f74`, `complete`/`ready`,
+  exactly three authenticated GETs.
+- Ollama observation: 1,090 bytes, SHA-256
+  `30be811f4f011b9d4a45cf670bc94bf41657f8a702f3b31d3fe17331b5520e0a`, `complete`/`ready`,
+  exactly one loopback metadata GET.
+- Routing-readiness assessment v2: 5,715 bytes, SHA-256
+  `7f150a0043b616db29dd01c660053f6e0a30df385e820634e53e3c672dd0c41a`,
+  `insufficient_current_attempt_evidence`, primary state `unknown`, routing `not_issued`, and routing
+  input absent.
+
+Both observations were current metadata-ready within the isolated contract at assessment time.
+Their 60-second expiry prevents that point-in-time fact from becoming continuous or future
+readiness. Canonical validation accepted the claim, both observations, and the assessment. A closed
+leakage scan found no credential or secret, account identity, raw metadata or response body,
+prompt/reasoning, host path, process identity, or dynamic-error value. The retained
+`same_account_bound` value is only a closed binding status and carries no account identifier.
+
+The cycle made no POST, completion, generation, payment, retry, fallback, gameplay, deterministic-
+world, quality, deployment, or commercial-readiness claim or action. A routing input cannot be
+issued until a separately reviewed durable attempt ledger proves a fresh `not_started` primary state
+and atomically claims dispatch.
 
 ## Closed output and authority
 
