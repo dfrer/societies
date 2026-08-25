@@ -1,5 +1,25 @@
 # Societies Snow Globe Lab
 
+## Provider-routing orchestration
+
+The lab now contains one provider-neutral orchestration Module with a bounded `Prepare`/`Validate`
+interface. It snapshots the accepted comparison and both caller-supplied readiness observations,
+assesses them once, creates one authenticated `not_started` ledger attempt, derives the existing
+routing policy from that exact evidence, and conditionally claims `dispatch_started`. A result is
+`prepared` only after the claim record is authenticated and coherent. A policy no-selection result
+is explicit `not_prepared` evidence retaining the authenticated unclaimed attempt.
+
+The v1 contract binds comparison, assessment, initial record, decision, optional claim record,
+provider, intent, expiry, fixed limitations, and payload digest. It enforces one assessed/created/
+claimed time, exact terminal validity carry-forward, one Module invocation, and terminal ambiguity
+for every failure after a claim returns. Contract digest is
+`16550d06f0eee280f4618c76bf8ff556320dc0d0198c4b15bcd8021ed29ac230`.
+
+This is offline pre-transport evidence. It does not refresh readiness, compose a real ledger root,
+construct request bytes, access credentials, invoke a provider, retry/fallback, pay, integrate with
+gameplay, or grant world authority. `prepared` is not provider submission. See
+[the orchestration contract](PROVIDER_ROUTING_ORCHESTRATION.md).
+
 ## Durable provider-routing attempt ledger
 
 The lab now contains a deep provider-neutral ledger Module with four bounded operations: create a
