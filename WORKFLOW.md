@@ -954,9 +954,9 @@ Implement an offline provider-neutral cognition-quality execution-evidence contr
 
 ## Outcome
 
-- W3-02 merged through PR #123 at origin/master `d9e297f`. W3-03 implementation is committed locally at `a513636` on `feature/v3-w3-03-wetland-consequences`; docs/evidence publication is pending and GitHub delivery remains pending.
+- W3-02 merged through PR #123 at `d9e297f`. W3-03 merged through PR #124 at `2a82fd0`; its implementation is `a513636` and its evidence/docs commit is `16be638`.
 - The bounded slice adds session-owned deterministic wetland consequences, exact Protect/DrawDown per-unit quota and health rules, player+AI pre-ledger enforcement, canonical events, cached exhausted planning projection, strict schema-v9 persistence with v5-v8 migration/legacy continuation, and a minimal policy/health/quota/consequence HUD.
-- W3-04+ remain inactive; another explicit **Continue V3** decision is required before activation. No LLM/fallback, restoration jobs, general law system, market, or broad UI was added.
+- This historical W3-03 boundary added no cognition contract, live model/provider, restoration job, general law system, market, or broad UI. W3-04 was later explicitly activated and is recorded below; W3-05+ remain inactive.
 
 ## Validation and evidence
 
@@ -967,6 +967,34 @@ Implement an offline provider-neutral cognition-quality execution-evidence contr
 ## Preserved context and risks
 
 W2-VIS timing/visual-readback waivers, W2-06 history, Demo 1 concept classification, and historical schema/timing facts remain unchanged. Author/external clarity smoke and browser/device certification were not performed. Raw `target_missed`, no A/B causality, and recovered performance-worker workspace replacement are residual risks; issue records are WI-SOCIETIES-2026-009 and WI-GLOBAL-2026-078.
+
+# W3-04 cognition contract and deterministic fallback handoff
+
+## Outcome and scope
+
+- W3-04 implementation is committed at `c107d18` on `codex/w3-04-cognition-contract`, based on origin/master `5620042`. W3-03 is already merged through PR #124 at `2a82fd0`.
+- Added a provider-neutral, canonical v1 civic observation/proposal contract for recording a citizen stance on an already-selected policy. The closed action set is `support_policy`/`oppose_policy`/`request_reconsideration`; payloads are bounded to 1,024 UTF-8 bytes and JSON depth 2; accepted results append exactly one `civic.cognition.decision` event.
+- Missing, invalid, cancelled, timed-out, and unavailable proposal paths use the same deterministic evaluator, validator, and event-application path. A one-use capability prevents duplicate application. `SelectCivicPolicy` remains the sole policy mutation, and schema v9 plus v5-v8 migration behavior are unchanged.
+- Observation contract SHA-256: `98bee0f1cee7b8f2e4dd6b6850ffeb80cc996cd316f2006f9b0b04dae4d64864`. Proposal contract SHA-256: `562beb9b05aa62ffbb147d9d43f8b0aff41ea61d572ba24f31c08b46b505b12d`.
+
+## Validation and evidence
+
+- Focused cognition 25/25 and civic/session regression 105/105 passed. The authoritative validation wrapper passed 467/467 .NET tests with 0 failed/skipped and Godot 23/23; Debug, Release, and ExportRelease production builds passed with zero warnings/errors.
+- Independent deep review gave FINAL CODE and acceptance-coverage GO with no remaining P0-P2 findings after parser/depth, exact-public-API, capability, identity, and immutable-evidence checks.
+- The clean canonical ExportRelease matrix passed 14/14 deterministic pairs and 354/354 hashes. Raw budget remains `target_missed`, not a safety failure: reference median p95/max is `48.0286/171.7133 ms`; soaks are `43.6284/178.7319` and `38.8121/185.1226`; forced invalidation is correct at `26.0146 ms`; c24 `152.1691/185.3862 ms` is characterization-only.
+- Evidence: [validation](planning/active/evidence/v3-w3-04-validation.json) and [performance](planning/active/evidence/v3-w3-04-performance-validation.json).
+
+## Repository, risks, and next action
+
+- The primary dirty checkout was not modified; implementation and validation used the isolated clean worktree at `C:\Users\hunte\.codex\worktrees\w304\societies`.
+- No live model/provider, network, credential, payment, retry, Snow Globe integration, policy mutation, W3-05, schema migration, broad UI, author smoke, external playtest, deployment, or release claim is included. The formal performance target remains missed, although every established W3-04 correctness and safety gate is green.
+- Active delivery boundary: publish the two W3-04 commits, pass required CI, merge the PR, and confirm both commits are ancestors of origin/master. Do not start W3-05 in this milestone.
+
+## Changed files
+
+- Implementation: `PrototypeCognitionModule.cs`, runtime/event integration, focused tests and manifest, plus the bounded outcome contract in `planning/active/v3-w3-04-cognition-contract.md`.
+- Evidence: `planning/active/evidence/v3-w3-04-validation.json` and `planning/active/evidence/v3-w3-04-performance-validation.json`.
+- Current-state documentation: `CURRENT_BUILD.md`, `README.md`, `WORKFLOW.md`, and `planning/active/v3-weeks-3-4-development-plan.md`.
 
 ## Current cognition-quality corpus handoff
 

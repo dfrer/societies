@@ -1,0 +1,113 @@
+{
+  "schemaVersion": 1,
+  "capturedUtc": "2026-08-25T23:18:40Z",
+  "scope": "V3-W3-04 cognition contract and deterministic fallback final validation",
+  "status": "pass",
+  "evidenceType": "post-commit machine-readable validation record",
+  "source": {
+    "implementationCommit": "c107d18d75642fd535be8a058c292a11ab77af77",
+    "implementationTree": "2c4df6a462b94b757ba4651c853df2ade500fa9b",
+    "baseCommit": "5620042d86e2f9ea25e7468ee045d32e098fe2c7",
+    "branch": "codex/w3-04-cognition-contract",
+    "repositoryPath": "C:\\Users\\hunte\\.codex\\worktrees\\w304\\societies",
+    "cleanAtPerformanceInvocation": true,
+    "reviewGate": "independent deep review final code and acceptance-coverage GO",
+    "reviewFindings": "no remaining P0-P2 findings"
+  },
+  "contract": {
+    "observationSchema": "societies_civic_cognition_observation/v1",
+    "proposalSchema": "societies_civic_cognition_proposal/v1",
+    "observationContractSha256": "98bee0f1cee7b8f2e4dd6b6850ffeb80cc996cd316f2006f9b0b04dae4d64864",
+    "proposalContractSha256": "562beb9b05aa62ffbb147d9d43f8b0aff41ea61d572ba24f31c08b46b505b12d",
+    "acceptedEventType": "civic.cognition.decision",
+    "closedActions": ["support_policy", "oppose_policy", "request_reconsideration"],
+    "maximumObservationBytes": 1024,
+    "maximumProposalBytes": 1024,
+    "maximumJsonDepth": 2,
+    "worldAuthority": "SelectCivicPolicy remains the sole policy mutation; cognition records a citizen stance on an already-selected policy",
+    "fallback": "missing, invalid, cancelled, timed-out, and unavailable proposal paths use the same deterministic evaluator, validator, and event-application path"
+  },
+  "results": [
+    {
+      "command": "focused PrototypeCognitionModuleTests",
+      "passed": 25,
+      "failed": 0,
+      "skipped": 0,
+      "total": 25,
+      "result": "pass"
+    },
+    {
+      "command": "focused civic-policy and runtime-session regression selection",
+      "passed": 105,
+      "failed": 0,
+      "skipped": 0,
+      "total": 105,
+      "result": "pass"
+    },
+    {
+      "command": "scripts/run-prototype-validation.ps1",
+      "exitCode": 0,
+      "result": "pass",
+      "managed": {
+        "fast": 347,
+        "integration": 11,
+        "soak": 109,
+        "passed": 467,
+        "failed": 0,
+        "skipped": 0,
+        "total": 467
+      },
+      "godotHeadless": {
+        "version": "4.6.2-stable.mono",
+        "passed": 23,
+        "failed": 0,
+        "total": 23
+      },
+      "debugBuild": {
+        "warnings": 0,
+        "errors": 0
+      }
+    },
+    {
+      "command": "dotnet build src/societies/Societies.csproj --configuration Release",
+      "warnings": 0,
+      "errors": 0,
+      "exitCode": 0,
+      "result": "pass"
+    },
+    {
+      "command": "dotnet build src/societies/Societies.sln --configuration ExportRelease",
+      "warnings": 0,
+      "errors": 0,
+      "exitCode": 0,
+      "result": "pass"
+    },
+    {
+      "command": "git diff --check",
+      "exitCode": 0,
+      "result": "pass"
+    }
+  ],
+  "review": {
+    "role": "deep_reviewer",
+    "gate": "GO",
+    "p0": 0,
+    "p1": 0,
+    "p2": 0,
+    "summary": "Final code and acceptance coverage approved after shared-parser, depth-limit, exact-public-API, capability, identity, and immutable-evidence checks."
+  },
+  "diagnostics": {
+    "productionBuildWarnings": 0,
+    "existingGeneratedTestProjectWarning": "CS0436 duplicate generated Main warning may be emitted by the test project; production builds remain zero-warning.",
+    "nonFailingGodotWarnings": [
+      "Expected backlog/frame-cap warning exercised by tests.",
+      "Optional temporary runtime-metrics artifact access warning exercised by tests."
+    ]
+  },
+  "limitations": [
+    "No live model, provider, network, credential, payment, retry, or Snow Globe integration is included.",
+    "No W3-05, schema migration, policy mutation, broad UI, restoration job, market, or general law-system expansion is included.",
+    "No author smoke, external observed playtest, device certification, deployment, or release-readiness claim was performed.",
+    "This evidence record and documentation commit were not inputs to the implementation validation commands."
+  ]
+}
