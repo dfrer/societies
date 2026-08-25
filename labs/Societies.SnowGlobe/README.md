@@ -1,10 +1,24 @@
 # Societies Snow Globe Lab
 
+## One-shot provider-readiness publication
+
+The lab now includes an offline-reviewed, versioned one-shot command surface that will invoke the
+merged OpenRouter and Ollama readiness Adapters sequentially and atomically retain their two
+canonical observations plus the canonical v2 assessment at fixed repository-relative paths. A
+durable raw-free claim is written before either Adapter, records the exact command-assembly source
+commit, and permanently blocks a rerun after success, partial publication, or uncertainty. The
+command accepts only the minimum non-secret Ollama PID/start-ticks binding and exposes no credential,
+provider, endpoint, model, path, retry, fallback, generation, payment, routing, or world control.
+
+This is an offline implementation gate only: no provider, credential, process/listener, network, or
+live-state action has used it, and no current readiness evidence is included yet. See
+[the one-shot publication contract](PROVIDER_READINESS_ONE_SHOT.md).
+
 ## Authenticated provider-readiness observation
 
 The lab now has a provider-neutral, raw-free point-in-time readiness observation contract. OpenRouter readiness uses one credential snapshot across the existing hardened verifier's exact three sequential authenticated metadata GETs; Ollama readiness uses one pinned loopback `GET /api/tags` with strict registered-cell/model provenance validation. Both Adapters are one-shot and flow through the same deep Module. Post-dispatch Ollama identity rejection is unknown raced evidence, not a definitive negative. Canonical evidence retains no raw metadata, credentials, account identifiers, process identity, or dynamic errors. Observations expire after 60 seconds and have no generation, payment, routing, or world authority.
 
-The v2 readiness assessment may project a validated current observation as `ready`, `not_ready`, or `unknown`, but still reports primary attempt state `unknown`, routing issuance `not_issued`, and null routing input. No CLI/live observation is included in this offline slice. See [the authenticated readiness contract](PROVIDER_READINESS_OBSERVATION.md).
+The v2 readiness assessment may project a validated current observation as `ready`, `not_ready`, or `unknown`, but still reports primary attempt state `unknown`, routing issuance `not_issued`, and null routing input. The offline one-shot CLI is now implemented, but it has not been invoked and no live observation is included in this slice. See [the authenticated readiness contract](PROVIDER_READINESS_OBSERVATION.md).
 
 ## Routing-readiness evidence
 

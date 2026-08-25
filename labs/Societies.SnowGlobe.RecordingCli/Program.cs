@@ -2,17 +2,27 @@ using System.Globalization;
 using System.Security.Cryptography;
 using Societies.SnowGlobe;
 
-return await OllamaRecordingCliApplication.RunAsync(
-    args,
-    ProductionOllamaRecordingCliModuleFactory.Instance,
-    Console.Out,
-    Console.Error,
-    CancellationToken.None);
+return await RecordingProgram.RunAsync(args, Console.Out, Console.Error);
 
 internal static class RecordingProgram
 {
-    internal static ValueTask<int> RunAsync(string[] args, TextWriter output, TextWriter error) =>
-        OllamaRecordingCliApplication.RunAsync(args, ProductionOllamaRecordingCliModuleFactory.Instance, output, error, CancellationToken.None);
+    internal static ValueTask<int> RunAsync(string[] args, TextWriter output, TextWriter error)
+    {
+        if (args.Length > 0
+            && string.Equals(args[0], ProviderReadinessOneShotCliApplication.CommandName, StringComparison.Ordinal))
+            return ProviderReadinessOneShotCliApplication.RunAsync(
+                args,
+                ProductionProviderReadinessOneShotCommandFactory.Instance,
+                output,
+                error,
+                CancellationToken.None);
+        return OllamaRecordingCliApplication.RunAsync(
+            args,
+            ProductionOllamaRecordingCliModuleFactory.Instance,
+            output,
+            error,
+            CancellationToken.None);
+    }
 }
 
 internal static class OllamaRecordingCliApplication
