@@ -1,11 +1,19 @@
 # Snow Globe provider preflight, Ollama repair, and qwen3.5 smoke handoff
 
+## Routing-readiness evidence implementation gate
+
+- Outcome: a pure offline readiness assessment validates existing comparison, OpenRouter activation/execution, and Ollama execution artifacts and emits a bounded canonical statement of historical evidence and missing current proof.
+- Result: `insufficient_current_readiness_evidence`; OpenRouter readiness, Ollama readiness, and current primary-attempt state are all `unknown`; routing input is `not_issued`/null. Missing evidence is unknown, not `not_ready` or `not_started`.
+- Scope: historical compatibility/eligibility/generation evidence is preserved without becoming a current provider-health or new-attempt claim. No provider, credential, network, payment, process/listener, journal/state-root, route, execution, or `src/societies/` action occurs.
+- Validation and review: red-first failed only on absent types. Review then closed two P2 integrity gaps with forged re-digested comparison-label tests and contract binding to the exact accepted comparison schema/SHA. Focused Release is 9/9, full Snow Globe Release is 1137/1137, Recording CLI is 59/59, OpenRouter CLI/security is 100/100, and three Release builds are 0 warnings/errors. Independent deep review is FINAL GO with no unresolved P0-P2.
+- Delivery state: reviewed PR delivery is the only remaining gate. One next action: merge after the required check passes.
+
 ## Provider-routing policy implementation gate
 
 - Outcome: a pure offline `ProviderRoutingPolicyModule` validates the accepted comparison artifact and emits a bounded canonical pre-dispatch decision. `preferred_online` selects OpenRouter when ready; `local_only` selects Ollama; preferred-online fallback selects Ollama only when OpenRouter is explicitly unavailable before dispatch.
 - Safety: dispatch-started, possible/unknown submission, and completed primary states deny fallback and select no provider. Missing/malformed/asymmetric/conditional/insufficient/unsupported comparison evidence, unknown readiness, unavailable providers, and undefined inputs fail closed. Decisions carry no execution, credential, payment, network, retry, gameplay, or world authority.
 - Validation: red-first failed on the absent policy surface. Review then exposed mutable caller-memory digest/validation TOCTOU; its regression failed with five memory reads before a one-snapshot/zeroing repair. Focused Release is now 17/17, full Snow Globe Release is 1128/1128, Recording CLI is 59/59, OpenRouter CLI/security is 100/100, and three Release builds are 0 warnings/errors. No provider or live-state action occurred; `src/societies/` is unchanged.
-- Delivery state: provider/security ownership and independent deep review are FINAL GO with no unresolved P0-P3. Reviewed PR delivery is the remaining gate. One next action: merge after the required check passes.
+- Delivery state: required CI passed and PR #164 merged the reviewed policy as `85b5840`. No further action is required for that milestone.
 
 ## Cognition-quality benchmark milestone result
 
@@ -14,7 +22,7 @@
 - Artifact: `artifacts/snowglobe/cognition-quality/provider-comparison-v1.json`, SHA-256 `b3574d0b4cf94ed25a3c9e152a751dc748d4a4dcdf2fb381e5a3a0c094ddf64c`, records per-scenario criteria, category/criterion aggregates, source provenance, recommendation, excluded signals, automated/human separation, and limitations. Human judgment is absent and non-scoring.
 - Scope and limits: only the Snow Globe recording/proposal contract and frozen automated corpus are proven. Digests provide integrity, not execution authenticity. No gameplay integration, general-intelligence, price-performance, deployment, release, commercial-readiness, or world-authority claim is made; `src/societies/` is unchanged.
 - Validation and review: 1111/1111 Snow Globe Release, 59/59 Recording CLI Release, 100/100 OpenRouter CLI/security, three Release builds with 0 warnings/errors, canonical artifact validation, and clean diff checks pass. Independent `deep_reviewer` evidence review independently recomputed hashes, criterion/category aggregates, totals, margin, and recommendation and returned FINAL EVIDENCE GO with no unresolved P0-P3 findings.
-- Delivery state: the reviewed evidence/documentation PR is the only remaining milestone gate. One next action: merge that PR after its required check passes.
+- Delivery state: required CI passed and PR #163 merged the canonical comparison evidence as `1d6bbf3`. No further action is required for that milestone.
 
 ## Cognition-quality benchmark implementation gate
 

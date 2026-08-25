@@ -1,5 +1,11 @@
 # Societies Snow Globe Lab
 
+## Routing-readiness evidence
+
+The lab now has a deterministic offline assessment of the evidence needed before the routing policy may be trusted with current readiness facts. Existing successful provider artifacts remain historical; they do not prove current availability, and absence never proves a new attempt is unstarted. The current bounded result is `insufficient_current_readiness_evidence`, with no routing input issued.
+
+The assessment does not inspect files, processes, listeners, credentials, accounts, journals, state roots, or provider/network state. See [the full readiness-evidence contract](PROVIDER_ROUTING_READINESS_EVIDENCE.md).
+
 ## Provider-routing policy
 
 The lab now has a deterministic, offline-only routing policy over the accepted cognition comparison. Preferred online operation selects OpenRouter when it is ready; explicit local-only operation selects Ollama; and Ollama availability fallback is allowed only when OpenRouter is explicitly unavailable before any dispatch. Once dispatch has started or submission is possible, unknown, or complete, the policy selects no provider rather than creating a retry or alternate request.
