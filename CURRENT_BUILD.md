@@ -17,6 +17,38 @@ This is the only in-repo implementation that currently has:
 - a buildable C# project
 - a runnable automated validation path
 
+## Snow Globe durable provider-routing attempt ledger implementation gate
+
+The isolated Snow Globe lab now has a provider-neutral durable attempt-ledger Module with only
+`Create`, `Inspect`, `ClaimDispatch`, and `Validate` on its public instance interface. A fresh record
+authenticates the accepted comparison digest, exact current-readiness assessment digest and expiry,
+both closed readiness projections, routing intent, creation time, and an opaque attempt identifier
+as `not_started`. A dispatch claim must match those retained readiness values, the exact current-
+record digest, selected closed provider code, and a canonical routing-decision digest.
+
+The in-memory and Windows file Adapters share the same Module path. The file Adapter has no default
+or real retained-root composition: isolated tests inject an existing absolute root and provider-
+neutral integrity anchor. It uses an exclusive writer lease, pinned directory/file identities,
+no-follow/single-link checks, CreateNew append-only records, durable flush/readback, and a claim
+tombstone before `dispatch_started`. Definite pre-tombstone failure remains a non-ambiguous storage
+failure; terminal material or uncertainty becomes `submission_unknown`/poisoned and can never be
+observed again as `not_started`.
+
+Record schema is `snow_globe_provider_routing_attempt_record/v2`; contract schema is
+`snow_globe_provider_routing_attempt_ledger_contract/v2`; contract digest is
+`99694dd77536b92b537d3f95417138b35982d7304c9c20f10f48da5c9d5c2e47`. Red-first implementation
+and two independent repair cycles close false pre-tombstone ambiguity, Module-bypassing restart
+tests, unclassified storage failures, and readiness-assessment/decision incoherence. Focused ledger
+validation is 22/22, the combined routing/readiness focus is 69/69, and independent full Snow Globe
+Release validation is 1180/1180. Release build is 0 warnings/errors; final security/deep re-review is
+GO with no P0-P3 findings.
+
+This is offline persistence evidence only. No real ledger root, provider, credential, network,
+request bytes, payment, generation, retry/fallback, gameplay integration, or deterministic-world
+action exists. `dispatch_started` is evidence, not an execution capability. A separately reviewed
+orchestration Module must still bind fresh readiness, routing policy, this ledger, and the actual
+pre-transport-byte seam before any provider dispatch can occur. PR delivery remains the active gate.
+
 ## Snow Globe provider-readiness live evidence result
 
 The reviewed `provider-readiness-record-once-v1` command merged as exact source `a43b81a4429072d14bf751ab848dce02ef7a8a38`, rebuilt in Release with 0 warnings and 0 errors, and was invoked exactly once with exit code 0. Its terminal raw-free claim SHA-256 is `48a03f86756e61e41890ded234dd815c8efbf6e0460f93f706aa157beb1b63a8`; `additional_attempt_authorized` is `false`.
