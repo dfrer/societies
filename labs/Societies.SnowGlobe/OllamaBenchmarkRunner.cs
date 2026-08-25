@@ -1037,7 +1037,6 @@ public sealed class OllamaBenchmarkRunner
 
     private static readonly JsonSerializerOptions ResponseJsonOptions = StrictJsonOptions(MaximumResponseJsonDepth);
     private static readonly JsonSerializerOptions ProposalJsonOptions = StrictJsonOptions(MaximumProposalJsonDepth);
-    private static readonly JsonSerializerOptions TagsJsonOptions = StrictJsonOptions(MaximumTagsJsonDepth);
 
     public OllamaBenchmarkRunner(
         ILocalModelBenchmarkTransport transport,
@@ -1223,124 +1222,31 @@ public sealed class OllamaBenchmarkRunner
             callerCancellationToken).ConfigureAwait(false);
         try
         {
-            InspectStructure(tagsUtf8, MaximumTagsJsonDepth, "tags_json");
-            OllamaTagsResponse? tags;
-            try
-            {
-                tags = JsonSerializer.Deserialize<OllamaTagsResponse>(tagsUtf8, TagsJsonOptions);
-            }
-            catch (JsonException exception)
-            {
-                throw new LocalModelBenchmarkException("tags_json_invalid", exception);
-            }
-
-            if (tags?.Models is null || tags.Models.Count == 0)
-            {
-                throw new LocalModelBenchmarkException("tags_models_missing");
-            }
-
-            List<OllamaTagModel> exact = new();
-            foreach (OllamaTagModel? model in tags.Models)
-            {
-                if (model is not null
-                    && (string.Equals(model.Name, runtime.RuntimeModelReference, StringComparison.Ordinal)
-                        || string.Equals(model.Model, runtime.RuntimeModelReference, StringComparison.Ordinal))
-                    && (!string.Equals(model.Name, runtime.RuntimeModelReference, StringComparison.Ordinal)
-                        || !string.Equals(model.Model, runtime.RuntimeModelReference, StringComparison.Ordinal)))
-                {
-                    throw new LocalModelBenchmarkException("runtime_model_alias_rejected");
-                }
-                ValidateTagShape(
-                    model,
-                    plan,
-                    string.Equals(model?.Name, runtime.RuntimeModelReference, StringComparison.Ordinal));
-                if (string.Equals(model!.Digest, runtime.ArtifactDigestSha256, StringComparison.Ordinal)
-                    && !string.Equals(model.Name, runtime.RuntimeModelReference, StringComparison.Ordinal))
-                {
-                    throw new LocalModelBenchmarkException("runtime_digest_alias_rejected");
-                }
-                if (string.Equals(model.Name, runtime.RuntimeModelReference, StringComparison.Ordinal))
-                {
-                    exact.Add(model);
-                }
-            }
-
-            if (exact.Count != 1)
-            {
-                throw new LocalModelBenchmarkException(exact.Count == 0
-                    ? "runtime_model_missing"
-                    : "runtime_model_duplicate");
-            }
-
-            OllamaTagModel selected = exact[0];
-            OllamaTagDetails details = selected.Details!;
-            if (!string.Equals(selected.Digest, runtime.ArtifactDigestSha256, StringComparison.Ordinal)
-                || selected.Size != runtime.ArtifactSizeBytes
-                || !string.Equals(details.Format, runtime.ArtifactFormat, StringComparison.Ordinal)
-                || !string.Equals(details.Family, runtime.ModelFamily, StringComparison.Ordinal)
-                || !string.Equals(details.ParameterSize, runtime.ParameterSize, StringComparison.Ordinal)
-                || !string.Equals(details.QuantizationLevel, runtime.QuantizationLevel, StringComparison.Ordinal)
-                || details.Families is null
-                || details.Families.Count == 0
-                || details.Families.Distinct(StringComparer.Ordinal).Count() != details.Families.Count
-                || !details.Families.Contains(runtime.ModelFamily, StringComparer.Ordinal))
-            {
-                throw new LocalModelBenchmarkException("runtime_provenance_mismatch");
-            }
+            OllamaTagsValidatedModel selected = OllamaTagsMetadataCodec.Validate(tagsUtf8,
+                new OllamaTagsExpectedModel(
+                    runtime.RuntimeModelReference,
+                    runtime.ArtifactDigestSha256,
+                    runtime.ArtifactSizeBytes,
+                    runtime.ArtifactFormat,
+                    runtime.ModelFamily,
+                    runtime.ParameterSize,
+                    runtime.QuantizationLevel,
+                    plan.ContextWindowTokens));
 
             return new OllamaVerifiedModelProvenance(
-                runtime.RuntimeModelReference,
-                runtime.ArtifactDigestSha256,
-                runtime.ArtifactSizeBytes,
-                runtime.ArtifactFormat,
-                runtime.ModelFamily,
-                runtime.ParameterSize,
-                runtime.QuantizationLevel,
+                selected.RuntimeModelReference,
+                selected.ArtifactDigestSha256,
+                selected.ArtifactSizeBytes,
+                selected.ArtifactFormat,
+                selected.ModelFamily,
+                selected.ParameterSize,
+                selected.QuantizationLevel,
                 runtime.OllamaProcessIdentity,
                 runtime.OllamaProcessId);
         }
         finally
         {
             CryptographicOperations.ZeroMemory(tagsUtf8);
-        }
-    }
-
-    private static void ValidateTagShape(
-        OllamaTagModel? model,
-        LocalModelBenchmarkPlan plan,
-        bool isSelectedModel)
-    {
-        if (model is null
-            || !OllamaBenchmarkContract.IsRuntimeReference(model.Name)
-            || OllamaBenchmarkContract.IsCloudRuntimeReference(model.Name)
-            || !string.Equals(model.Name, model.Model, StringComparison.Ordinal)
-            || string.IsNullOrEmpty(model.ModifiedAt)
-            || model.ModifiedAt.Length > 64
-            || !DateTimeOffset.TryParse(model.ModifiedAt, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out _)
-            || model.Size <= 0
-            || !OllamaBenchmarkContract.IsDigest(model.Digest)
-            || model.Capabilities is null
-            || model.Capabilities.Count == 0
-            || model.Capabilities.Count > 16
-            || model.Capabilities.Distinct(StringComparer.Ordinal).Count() != model.Capabilities.Count
-            || model.Capabilities.Any(capability =>
-                !OllamaBenchmarkContract.IsSubstantiveMetadata(capability, allowUppercase: false))
-            || isSelectedModel && !model.Capabilities.Contains("completion", StringComparer.Ordinal)
-            || model.Details is null
-            || !string.Equals(model.Details.ParentModel, string.Empty, StringComparison.Ordinal)
-            || !string.Equals(model.Details.Format, "gguf", StringComparison.Ordinal)
-            || !OllamaBenchmarkContract.IsSubstantiveMetadata(model.Details.Family, allowUppercase: false)
-            || !OllamaBenchmarkContract.IsSubstantiveMetadata(model.Details.ParameterSize, allowUppercase: true)
-            || !OllamaBenchmarkContract.IsSubstantiveMetadata(model.Details.QuantizationLevel, allowUppercase: true)
-            || model.Details.ContextLength <= 0
-            || isSelectedModel && model.Details.ContextLength < plan.ContextWindowTokens
-            || model.Details.EmbeddingLength <= 0
-            || model.Details.Families is null
-            || model.Details.Families.Count == 0
-            || model.Details.Families.Any(family =>
-                !OllamaBenchmarkContract.IsSubstantiveMetadata(family, allowUppercase: false)))
-        {
-            throw new LocalModelBenchmarkException("tags_model_invalid");
         }
     }
 
@@ -1894,34 +1800,6 @@ public sealed class OllamaBenchmarkRunner
         long EvalDurationNanoseconds,
         double ObservedSampledPeakVramMiB,
         int VramSampleCount);
-
-    private sealed record OllamaTagsResponse
-    {
-        [JsonRequired] public IReadOnlyList<OllamaTagModel?>? Models { get; init; }
-    }
-
-    private sealed record OllamaTagModel
-    {
-        [JsonRequired] public string? Name { get; init; }
-        [JsonRequired] public string? Model { get; init; }
-        [JsonRequired] public string? ModifiedAt { get; init; }
-        [JsonRequired] public long Size { get; init; }
-        [JsonRequired] public string? Digest { get; init; }
-        [JsonRequired] public OllamaTagDetails? Details { get; init; }
-        [JsonRequired] public IReadOnlyList<string>? Capabilities { get; init; }
-    }
-
-    private sealed record OllamaTagDetails
-    {
-        [JsonRequired] public string? ParentModel { get; init; }
-        [JsonRequired] public string? Format { get; init; }
-        [JsonRequired] public string? Family { get; init; }
-        [JsonRequired] public IReadOnlyList<string>? Families { get; init; }
-        [JsonRequired] public string? ParameterSize { get; init; }
-        [JsonRequired] public string? QuantizationLevel { get; init; }
-        [JsonRequired] public long ContextLength { get; init; }
-        [JsonRequired] public long EmbeddingLength { get; init; }
-    }
 
     private sealed record OllamaGenerateResponse
     {

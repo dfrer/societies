@@ -17,6 +17,16 @@ This is the only in-repo implementation that currently has:
 - a buildable C# project
 - a runnable automated validation path
 
+## Snow Globe authenticated provider-readiness offline implementation gate
+
+The current local Snow Globe branch adds an offline-only, provider-neutral readiness observation contract and an additive v2 readiness assessment. OpenRouter uses one owned credential snapshot for exactly three sequential authenticated metadata GETs and binds that exact snapshot only after all three validate. Ollama uses one pinned loopback `GET /api/tags`, strict registered-cell/model provenance, post-EOF trailer rejection, and process/listener checks. Both Adapters are one-shot. Canonical evidence is raw-free, expires after 60 seconds, and is untrusted evidence only.
+
+The v2 assessment may record validated point-in-time provider readiness, but primary-attempt state remains `unknown`, routing issuance remains `not_issued`, and `routing_policy_input` remains null. Missing, malformed, wrong-provider, expired, or raced evidence remains unknown. Post-dispatch Ollama identity rejection is `unknown/identity_race`, never a definitive `not_ready` fact.
+
+Review repairs now bind provider-specific diagnostics, their exact request-count stop points, and exact source contracts, including the Ollama tags codec and registered cell/model/runtime provenance. They also close the OpenRouter multi-read credential race, reject trailers arriving after body EOF, enforce caller-memory single snapshots and time domains, and zero the Ollama bounded reader's internal raw buffer. Observation contract digest is `361d3d2a9b07130929e106b58b87a5318f134661834c0265170a9c3e0724c1a5`; v2 assessment contract digest is `cbb03e6379ace033dd52becbc1314473d427330b1278b023cb3ea3f708e12e5f`.
+
+Focused Release validation passes 106/106 core/readiness/Ollama tests and 104/104 OpenRouter CLI/security tests. Final proportional validation passes 1158/1158 full Snow Globe Release, 104/104 OpenRouter CLI/security Release, 59/59 Recording CLI Release, and all three Release builds with 0 warnings/errors. Independent deep review is FINAL GO with no P0-P3 findings after closing the credential race, post-dispatch identity classification, exact Ollama provenance, late-trailer, time-domain, diagnostic/request-count, and one-shot coverage gaps. Reviewed pull-request delivery remains the active gate. No CLI observation command, retained current-readiness artifact, provider/credential/network/process/listener/live-state action, routing authority, or `src/societies/` change is included; any CLI/live evidence cycle remains a separate post-merge milestone.
+
 ## Snow Globe routing-readiness evidence implementation gate
 
 The isolated Snow Globe lab now has a pure synchronous `ProviderRoutingReadinessEvidenceModule` that validates the accepted cognition comparison plus optional OpenRouter activation/execution and Ollama execution artifacts, then records only what those artifacts actually prove. The accepted comparison establishes selection evidence; completed Ollama evidence remains historical compatibility; OpenRouter activation remains evaluated eligibility with live traffic disabled; and OpenRouter execution remains an identified historical generation.

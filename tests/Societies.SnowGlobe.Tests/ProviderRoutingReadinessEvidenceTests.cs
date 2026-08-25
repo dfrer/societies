@@ -265,7 +265,7 @@ public sealed class ProviderRoutingReadinessEvidenceTests
     [Fact]
     public void PublicSurfaceHasNoRoutingInputIssuanceOrExecutionAuthority()
     {
-        Assert.Equal(new[] { "Assess", "Validate" }, typeof(ProviderRoutingReadinessEvidenceModule)
+        Assert.Equal(new[] { "Assess", "AssessCurrent", "Validate", "ValidateCurrent" }, typeof(ProviderRoutingReadinessEvidenceModule)
             .GetMethods(BindingFlags.Public | BindingFlags.Static | BindingFlags.DeclaredOnly)
             .Where(method => !method.IsSpecialName)
             .Select(method => method.Name).Order(StringComparer.Ordinal));

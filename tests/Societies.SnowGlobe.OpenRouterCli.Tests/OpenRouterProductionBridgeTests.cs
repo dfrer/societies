@@ -460,8 +460,8 @@ public sealed class OpenRouterProductionBridgeTests
         Assert.All(handler.Methods, method => Assert.Equal(HttpMethod.Get, method));
         Assert.All(handler.AuthorizationSchemes, scheme => Assert.Equal("Bearer", scheme));
         Assert.All(handler.AuthorizationParameters, parameter => Assert.StartsWith("sk-or-v1-", parameter, StringComparison.Ordinal));
-        Assert.Equal(3, store.ReadCount);
-        Assert.Equal(3, store.ZeroObservationCount);
+        Assert.Equal(1, store.ReadCount);
+        Assert.Equal(1, store.ZeroObservationCount);
         Assert.True(store.AllObservedZero);
         Assert.False(verifier.RedirectsAllowed);
         Assert.False(verifier.AutomaticRetriesAllowed);
@@ -469,6 +469,104 @@ public sealed class OpenRouterProductionBridgeTests
         Assert.False(verifier.CookiesAllowed);
         Assert.False(verifier.AmbientAuthenticationAllowed);
         Assert.False(verifier.AutomaticDecompressionAllowed);
+    }
+
+    [Fact]
+    public async Task AuthenticatedMetadataVerifierUsesOneCredentialSnapshotAcrossConcurrentReplacement()
+    {
+        byte[] original = Secret();
+        byte[] replacement = Encoding.ASCII.GetBytes("sk-or-v1-" + new string('b', 48));
+        FakeCredentialStore store = new(
+            OpenRouterPremiumWindowsCredentialStore.PendingAccountBindingIdentity, original);
+        ScriptedMetadataHandler handler = new(MetadataScenario.OfficialCurrentKeyExample, call =>
+        {
+            if (call == 1)
+                store.Write(OpenRouterPremiumWindowsCredentialStore.PendingAccountBindingIdentity, replacement);
+        });
+        OpenRouterPremiumHttpMetadataVerifier verifier = OpenRouterPremiumHttpMetadataVerifier.CreateForOfflineTests(
+            store, new FakeClock(ParsedNow), () => handler);
+
+        using OpenRouterPremiumVerifiedMetadata verified = await verifier.VerifyOnceAsync(CancellationToken.None);
+
+        Assert.Equal(1, store.ReadCount);
+        Assert.Single(handler.AuthorizationParameters.Distinct(StringComparer.Ordinal));
+        Assert.Equal(Encoding.ASCII.GetString(original), handler.AuthorizationParameters[0]);
+        Assert.True(store.SecretMatches(original));
+        Assert.Equal(1, store.ZeroObservationCount);
+        Assert.True(store.AllObservedZero);
+        CryptographicOperations.ZeroMemory(original);
+        CryptographicOperations.ZeroMemory(replacement);
+    }
+
+    [Fact]
+    public async Task AuthenticatedReadinessAdapterUsesVerifierThreeGetPathAndPublishesRawFreeFact()
+    {
+        FakeCredentialStore store = new(OpenRouterPremiumWindowsCredentialStore.PendingAccountBindingIdentity, Secret());
+        ScriptedMetadataHandler handler = new(MetadataScenario.OfficialCurrentKeyExample);
+        OpenRouterPremiumHttpMetadataVerifier verifier = OpenRouterPremiumHttpMetadataVerifier.CreateForOfflineTests(
+            store, new FakeClock(ParsedNow), () => handler);
+        OpenRouterAuthenticatedReadinessAdapter adapter = new(verifier);
+
+        ProviderReadinessObservation observation = await ProviderReadinessObservationModule.ObserveAsync(
+            adapter, new FakeReadinessClock(ParsedNow), CancellationToken.None);
+
+        Assert.Equal("ready", observation.Readiness);
+        Assert.Equal(3, observation.RequestCount);
+        Assert.Equal(0, observation.GenerationRequestCount);
+        Assert.Equal("same_account_bound", observation.AccountBindingStatus);
+        Assert.Equal(3, handler.CallCount);
+        Assert.Equal(new[]
+        {
+            OpenRouterPremiumHttpMetadataVerifier.CurrentKeyUri,
+            OpenRouterPremiumHttpMetadataVerifier.ModelsUri,
+            OpenRouterPremiumHttpMetadataVerifier.ZdrEndpointsUri
+        }, handler.RequestUris);
+        Assert.All(handler.Methods, method => Assert.Equal(HttpMethod.Get, method));
+        Assert.DoesNotContain("creator-user-offline", observation.CanonicalJson, StringComparison.Ordinal);
+        Assert.DoesNotContain("snowglobe-one-shot", observation.CanonicalJson, StringComparison.Ordinal);
+        Assert.DoesNotContain("sk-or-v1", observation.CanonicalJson, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task AuthenticatedReadinessAdapterIsOneShotAndRepeatNeverDispatches()
+    {
+        FakeCredentialStore store = new(OpenRouterPremiumWindowsCredentialStore.PendingAccountBindingIdentity, Secret());
+        ScriptedMetadataHandler handler = new(MetadataScenario.OfficialCurrentKeyExample);
+        OpenRouterAuthenticatedReadinessAdapter adapter = new(
+            OpenRouterPremiumHttpMetadataVerifier.CreateForOfflineTests(
+                store, new FakeClock(ParsedNow), () => handler));
+
+        ProviderReadinessObservation first = await ProviderReadinessObservationModule.ObserveAsync(
+            adapter, new FakeReadinessClock(ParsedNow), CancellationToken.None);
+        ProviderReadinessObservation repeated = await ProviderReadinessObservationModule.ObserveAsync(
+            adapter, new FakeReadinessClock(ParsedNow), CancellationToken.None);
+
+        Assert.Equal("ready", first.Readiness);
+        Assert.Equal("unknown", repeated.Readiness);
+        Assert.Equal("observation_failed", repeated.DiagnosticCode);
+        Assert.Equal(0, repeated.RequestCount);
+        Assert.Equal(3, handler.CallCount);
+        Assert.Equal(1, store.ReadCount);
+    }
+
+    [Fact]
+    public async Task AuthenticatedReadinessAdapterStopsAtFirstMetadataFailureAndDoesNotBindAccount()
+    {
+        FakeCredentialStore store = new(OpenRouterPremiumWindowsCredentialStore.PendingAccountBindingIdentity, Secret());
+        ScriptedMetadataHandler handler = new(MetadataScenario.ModelsHttp503);
+        OpenRouterPremiumHttpMetadataVerifier verifier = OpenRouterPremiumHttpMetadataVerifier.CreateForOfflineTests(
+            store, new FakeClock(ParsedNow), () => handler);
+
+        ProviderReadinessObservation observation = await ProviderReadinessObservationModule.ObserveAsync(
+            new OpenRouterAuthenticatedReadinessAdapter(verifier),
+            new FakeReadinessClock(ParsedNow),
+            CancellationToken.None);
+
+        Assert.Equal("unavailable", observation.Readiness);
+        Assert.Equal("provider_unavailable", observation.DiagnosticCode);
+        Assert.Equal(2, observation.RequestCount);
+        Assert.Equal(OpenRouterPremiumWindowsCredentialStore.PendingAccountBindingIdentity, store.AccountForMetadata);
+        Assert.Equal(2, handler.CallCount);
     }
 
     [Fact]
@@ -935,6 +1033,11 @@ public sealed class OpenRouterProductionBridgeTests
         public long NowMilliseconds { get { cancel(); return now; } }
     }
 
+    private sealed class FakeReadinessClock(long now) : IProviderReadinessClock
+    {
+        public long NowMilliseconds => now;
+    }
+
     private sealed class FakeProtector(Action? beforeUnprotect = null) : IOpenRouterPremiumProductionProtector
     {
         internal int ProtectCalls { get; private set; }
@@ -1036,6 +1139,7 @@ public sealed class OpenRouterProductionBridgeTests
         internal int ZeroObservationCount { get; private set; }
         internal bool AllObservedZero { get; private set; } = true;
         internal string LastOperationSummary { get; private set; } = "none";
+        internal bool SecretMatches(ReadOnlySpan<byte> expected) => _secret.AsSpan().SequenceEqual(expected);
         public void Write(string accountBindingIdentity, byte[] secretMaterial)
         {
             _account = accountBindingIdentity; CryptographicOperations.ZeroMemory(_secret); _secret = secretMaterial.ToArray();
@@ -1047,12 +1151,15 @@ public sealed class OpenRouterProductionBridgeTests
             if (_missing) throw new OpenRouterPremiumProductionException("credential_missing");
             return new(_account, _secret.ToArray(), zeroed => { ZeroObservationCount++; AllObservedZero &= zeroed; });
         }
-        public void BindAccount(string derivedAccountBindingIdentity)
+        public void BindAccount(
+            string derivedAccountBindingIdentity,
+            string snapshotAccountBindingIdentity,
+            byte[] snapshotSecretMaterial)
         {
-            if (_account != OpenRouterPremiumWindowsCredentialStore.PendingAccountBindingIdentity
-                && _account != derivedAccountBindingIdentity)
+            if (snapshotAccountBindingIdentity != OpenRouterPremiumWindowsCredentialStore.PendingAccountBindingIdentity
+                && snapshotAccountBindingIdentity != derivedAccountBindingIdentity)
                 throw new OpenRouterPremiumProductionException("credential_account_mismatch");
-            _account = derivedAccountBindingIdentity;
+            Write(derivedAccountBindingIdentity, snapshotSecretMaterial);
         }
         public void Delete()
         {

@@ -1,5 +1,13 @@
 # Snow Globe provider preflight, Ollama repair, and qwen3.5 smoke handoff
 
+## Authenticated provider-readiness offline implementation gate
+
+- Outcome: one deep provider-neutral observation/validation Module emits strict, expiring, raw-free OpenRouter or Ollama readiness evidence; additive assessment v2 can consume it without issuing routing input.
+- Provider boundary: OpenRouter uses one owned credential snapshot across exactly three sequential authenticated metadata GETs and exact-snapshot account binding. Ollama performs one pinned loopback tags GET, binds the strict codec plus registered-cell/model/runtime provenance, rejects trailers after EOF, and classifies post-dispatch identity rejection as unknown race evidence. Both Adapters are one-shot and perform zero generation/retry/fallback actions.
+- Security repairs: red tests exposed three credential reads across a concurrent replacement, repeat dispatch on Adapter reuse, definitive classification of post-dispatch Ollama drift, late trailers accepted, provider-impossible diagnostics, unbound Ollama source provenance, and zero/high producer-impossible times. Hostile `MemoryManager` tests prove observation and v2 assessment inputs are read once; owned snapshots and raw buffers are zeroed. Managed Bearer-string residual remains explicitly documented.
+- Evidence: focused Release passes 106/106 core/readiness/Ollama and 104/104 OpenRouter CLI/security. Final proportional validation passes 1158/1158 full Snow Globe Release, 104/104 OpenRouter CLI/security, 59/59 Recording CLI, and three Release builds with 0 warnings/errors. Independent deep review is FINAL GO with no P0-P3 findings. Contract digests are observation `361d3d2a9b07130929e106b58b87a5318f134661834c0265170a9c3e0724c1a5` and assessment v2 `cbb03e6379ace033dd52becbc1314473d427330b1278b023cb3ea3f708e12e5f`.
+- Delivery boundary: local reviewed offline implementation only; reviewed PR delivery remains. No production CLI observation command, retained live evidence, provider/credential/network/process/listener/payment action, routing input, durable attempt state, or `src/societies/` change occurred. One next action: deliver and merge this implementation; only afterward may a separately governed CLI/live evidence milestone begin.
+
 ## Routing-readiness evidence implementation gate
 
 - Outcome: a pure offline readiness assessment validates existing comparison, OpenRouter activation/execution, and Ollama execution artifacts and emits a bounded canonical statement of historical evidence and missing current proof.
