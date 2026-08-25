@@ -5,10 +5,10 @@
     "dotnet": {
       "project": "tests/Societies.Core.Tests/Societies.Core.Tests.csproj",
       "command": "dotnet test tests/Societies.Core.Tests/Societies.Core.Tests.csproj --configuration Release",
-      "expectedTestCount": 467,
+      "expectedTestCount": 481,
       "tiers": {
         "fast": {
-          "expectedTestCount": 347,
+          "expectedTestCount": 361,
           "filter": "FullyQualifiedName!~PrototypeRuntimeSessionTests&FullyQualifiedName!~PrototypeSettlementSimulationTests&FullyQualifiedName!~SettlementDiagnosticsTests&FullyQualifiedName!~WorkOrderGenerationDiagnosticsTests&FullyQualifiedName!~OrderSelectionTests&FullyQualifiedName!~ExtractionPlanningTests&FullyQualifiedName!~NavigationRepresentationTests&FullyQualifiedName!~RouteDistanceModeDifferentialTests&FullyQualifiedName!~PrototypeCrisisReferenceTraceTests"
         },
         "integration": {
@@ -43,7 +43,7 @@
       ],
       "scene": "res://tests/HeadlessTestRunner.tscn",
       "command": "godot --headless --path src/societies res://tests/HeadlessTestRunner.tscn",
-      "expectedTestCount": 23,
+      "expectedTestCount": 24,
       "selectiveExecutionSupported": false,
       "tiers": {
         "fast": [
@@ -58,6 +58,7 @@
           "Test_MainScene_DepotContributionInputSmoke",
           "Test_MainScene_DirectiveInputSmoke",
           "Test_MainScene_CrisisHudPresentationSmoke",
+          "Test_GodotCivicDeterministicLoopSmoke",
           "Test_MainScene_CrisisPersistenceInputSmoke",
           "Test_VisualCaptureConfigurationAndHudLayout",
           "Test_MainScene_VisualCaptureContractSmoke",
@@ -107,7 +108,7 @@
         "1280x720"
       ],
       "status": "complete_by_explicit_exception_performance_failed_visual_readback_waived",
-      "note": "The manifest declares 467 .NET tests: 347 fast, 11 integration, and 109 soak; and 23 Godot tests: six fast, fifteen integration, and two soak. V3-W2-VIS implementation/functional tests are complete by explicit exception: timing-only ReleaseExport p95 55.4529 ms vs 50 ms safety (FAIL), max 142.9547 ms vs 250 ms (PASS), persistence/hash equivalence unavailable; Windows Forward+ PNG readback intermittently clips CanvasLayer glyphs/panels despite passing HUD assertions, so visual acceptance is waived, not passed. W2-05 adds schema-v7 crisis/directive/contribution persistence, bounded telemetry, strict nested-contract presence, migration/replay tests, coherent generation manifests and companion validation, pre-replacement save validation, atomic bounded public persistence and world-summary pairs, overflow guards, and a real Godot save/load/corruption interaction smoke. W2-06 adds eight stable geometric-distance-field cache lifecycle, exact-identity, invalidation, reset, five-scenario 300-tick differential, and checkpoint-resume tests. W3-01 adds 26 fast civic command, event-order, schema-v8 persistence/migration, and artifact-coherence cases while preserving the 11 integration and 109 soak declarations. W3-02 adds 34 fast derived citizen-interest, strict-or-legacy event companion, input-validation, critical-work safety, and persistence-free replay cases. W3-03 adds 31 fast wetland quota, per-unit health, health-band, player/AI ledger-ordering, neutral-baseline, cached planning projection, checkpoint-resume, schema-v9 migration/strictness, native-v9 and upgraded-v8 artifact semantics, causal ordering, and HUD presentation/layout cases. W3-04 adds 25 fast canonical cognition observation/proposal, rejection, source/fallback, typed publication failure, state-binding, persistence, replay, depth, and public-surface cases."
+      "note": "The manifest declares 481 .NET tests: 361 fast, 11 integration, and 109 soak; and 24 Godot tests: six fast, sixteen integration, and two soak. V3-W2-VIS implementation/functional tests are complete by explicit exception: timing-only ReleaseExport p95 55.4529 ms vs 50 ms safety (FAIL), max 142.9547 ms vs 250 ms (PASS), persistence/hash equivalence unavailable; Windows Forward+ PNG readback intermittently clips CanvasLayer glyphs/panels despite passing HUD assertions, so visual acceptance is waived, not passed. W2-05 adds schema-v7 crisis/directive/contribution persistence, bounded telemetry, strict nested-contract presence, migration/replay tests, coherent generation manifests and companion validation, pre-replacement save validation, atomic bounded public persistence and world-summary pairs, overflow guards, and a real Godot save/load/corruption interaction smoke. W2-06 adds eight stable geometric-distance-field cache lifecycle, exact-identity, invalidation, reset, five-scenario 300-tick differential, and checkpoint-resume tests. W3-01 adds 26 fast civic command, event-order, schema-v8 persistence/migration, and artifact-coherence cases while preserving the 11 integration and 109 soak declarations. W3-02 adds 34 fast derived citizen-interest, strict-or-legacy event companion, input-validation, critical-work safety, and persistence-free replay cases. W3-03 adds 31 fast wetland quota, per-unit health, health-band, player/AI ledger-ordering, neutral-baseline, cached planning projection, checkpoint-resume, schema-v9 migration/strictness, native-v9 and upgraded-v8 artifact semantics, causal ordering, and HUD presentation/layout cases. W3-04 adds 25 fast canonical cognition observation/proposal, rejection, source/fallback, typed publication failure, state-binding, persistence, replay, depth, and public-surface cases. W3-05 adds 14 fast cross-loop policy, fallback, rejection, exactly-once, schema-v9 resume, and no-input tests plus one Godot-hosted deterministic civic-loop smoke."
     },
     "performancePair": {
       "script": "scripts/run-performance-pair.ps1",

@@ -55,6 +55,7 @@ namespace Societies.Tests
             await Test_MainScene_DepotContributionInputSmoke();
             await Test_MainScene_DirectiveInputSmoke();
             await Test_MainScene_CrisisHudPresentationSmoke();
+            Test_GodotCivicDeterministicLoopSmoke();
             await Test_MainScene_CrisisPersistenceInputSmoke();
             Test_VisualCaptureConfigurationAndHudLayout();
             await Test_MainScene_VisualCaptureContractSmoke();
@@ -385,6 +386,78 @@ namespace Societies.Tests
                     scene.QueueFree();
                     await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
                 }
+            }
+        }
+
+        private void Test_GodotCivicDeterministicLoopSmoke()
+        {
+            try
+            {
+                foreach ((PrototypeCivicPolicy policy, int quota, int selectionHealth, int harvestHealth) scenario in new[]
+                {
+                    (PrototypeCivicPolicy.ProtectWetland, 4, 75, 74),
+                    (PrototypeCivicPolicy.DrawDownWetland, 12, 45, 43)
+                })
+                {
+                    PrototypeCatalogBundle bundle = LoadCatalogBundle();
+                    PrototypeRuntimeSession session = new(
+                        bundle.Scenarios.Resolve("balanced_basin"),
+                        bundle.RoleQuotas.Roles,
+                        resourceDefinitions: bundle.Resources.Resources);
+                    session.Initialize(8.0f);
+                    session.Workers[0].Role = PrototypeCitizenRole.Forager;
+                    session.Workers[0].Needs.Nutrition = 100.0f;
+                    session.Workers[0].Needs.Fatigue = 0.0f;
+                    session.Workers[1].Role = PrototypeCitizenRole.Builder;
+                    session.Workers[1].Needs.Nutrition = 100.0f;
+                    session.Workers[1].Needs.Fatigue = 0.0f;
+
+                    Assert(session.SelectCivicPolicy(new(scenario.policy, ExpectedVersion: 0, IssuedTick: 0)).Succeeded,
+                        "Fixed catalog civic selection should succeed at tick zero");
+                    Assert(session.CaptureCitizenInterests().Any(interest =>
+                        interest.Reason == PrototypeCitizenInterestReason.FutureReedSupply),
+                        "The civic loop should retain the forager's structured future-reed reason");
+                    Assert(session.CaptureCitizenInterests().Any(interest =>
+                        interest.Reason == PrototypeCitizenInterestReason.ImmediateShelterSupply),
+                        "The civic loop should retain the builder's structured immediate-shelter reason");
+                    Assert(session.Wetland.ReedQuotaLimit == scenario.quota &&
+                        session.Wetland.WetlandHealth == scenario.selectionHealth,
+                        "Selected policy should expose its bounded wetland consequence");
+
+                    PrototypeResourceSnapshot reeds = session.ResourceSnapshots.First(resource =>
+                        resource.ResourceId == PrototypeWetlandCatalog.ReedResourceId && resource.UnitsRemaining > 0);
+                    Assert(session.HarvestForPlayer(reeds.SiteId, 1).Succeeded,
+                        "A single reed harvest within the selected quota should succeed");
+                    Assert(session.Wetland.WetlandHealth == scenario.harvestHealth,
+                        "The reed harvest should apply the selected policy's exact health consequence");
+
+                    PrototypeCognitionModule cognition = new();
+                    PrototypeCognitionObservation observation = cognition.PublishObservation(session, session.Workers[0].WorkerId);
+                    PrototypeCognitionResolution fallback = cognition.Resolve(
+                        session,
+                        observation,
+                        PrototypeCognitionEvidence.Unavailable());
+                    int before = session.EventLog.Entries.Count(entry =>
+                        entry.EventType == PrototypeEventTypes.CivicCognitionDecision);
+                    Assert(fallback.Accepted &&
+                        fallback.Source == PrototypeCognitionDecisionSource.DeterministicFallback &&
+                        cognition.Apply(session, fallback),
+                        "Offline cognition should use the deterministic fallback event path");
+                    Assert(!cognition.Apply(session, fallback) &&
+                        session.EventLog.Entries.Count(entry =>
+                            entry.EventType == PrototypeEventTypes.CivicCognitionDecision) == before + 1,
+                        "A cognition resolution must append exactly one event and cannot mutate policy twice");
+                    Assert(PrototypeHudTextBuilder.BuildCompactWetlandText(session.Wetland).Contains(
+                        scenario.policy == PrototypeCivicPolicy.ProtectWetland ? "Policy: Protect" : "Policy: Drawdown",
+                        StringComparison.Ordinal),
+                        "The Godot presentation formatter should retain the selected policy consequence");
+                }
+
+                Pass(nameof(Test_GodotCivicDeterministicLoopSmoke));
+            }
+            catch (Exception ex)
+            {
+                Fail(nameof(Test_GodotCivicDeterministicLoopSmoke), ex);
             }
         }
 
