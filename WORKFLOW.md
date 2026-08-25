@@ -972,7 +972,7 @@ W2-VIS timing/visual-readback waivers, W2-06 history, Demo 1 concept classificat
 
 ## Outcome and scope
 
-- W3-04 implementation is committed at `c107d18` on `codex/w3-04-cognition-contract`, based on origin/master `5620042`. W3-03 is already merged through PR #124 at `2a82fd0`.
+- W3-04 implementation `c107d18` and evidence/docs `cefae37` merged through PR #171 at `ea1f7ee`, based on origin/master `5620042`. W3-03 was already merged through PR #124 at `2a82fd0`.
 - Added a provider-neutral, canonical v1 civic observation/proposal contract for recording a citizen stance on an already-selected policy. The closed action set is `support_policy`/`oppose_policy`/`request_reconsideration`; payloads are bounded to 1,024 UTF-8 bytes and JSON depth 2; accepted results append exactly one `civic.cognition.decision` event.
 - Missing, invalid, cancelled, timed-out, and unavailable proposal paths use the same deterministic evaluator, validator, and event-application path. A one-use capability prevents duplicate application. `SelectCivicPolicy` remains the sole policy mutation, and schema v9 plus v5-v8 migration behavior are unchanged.
 - Observation contract SHA-256: `98bee0f1cee7b8f2e4dd6b6850ffeb80cc996cd316f2006f9b0b04dae4d64864`. Proposal contract SHA-256: `562beb9b05aa62ffbb147d9d43f8b0aff41ea61d572ba24f31c08b46b505b12d`.
@@ -988,7 +988,7 @@ W2-VIS timing/visual-readback waivers, W2-06 history, Demo 1 concept classificat
 
 - The primary dirty checkout was not modified; implementation and validation used the isolated clean worktree at `C:\Users\hunte\.codex\worktrees\w304\societies`.
 - No live model/provider, network, credential, payment, retry, Snow Globe integration, policy mutation, W3-05, schema migration, broad UI, author smoke, external playtest, deployment, or release claim is included. The formal performance target remains missed, although every established W3-04 correctness and safety gate is green.
-- Active delivery boundary: publish the two W3-04 commits, pass required CI, merge the PR, and confirm both commits are ancestors of origin/master. Do not start W3-05 in this milestone.
+- Delivery completed through PR #171 after required `build-test-smoke` passed in 4m20s. Both W3-04 commits are ancestors of origin/master `ea1f7ee`. Do not start W3-05 without a separate continuation decision.
 
 ## Changed files
 

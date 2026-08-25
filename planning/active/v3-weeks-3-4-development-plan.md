@@ -7,12 +7,12 @@
 | Status | **Draft/Conditional** |
 | Execution window | Mon 2026-07-27 to Fri 2026-08-07 |
 | Capacity | One developer, 40-50 hours |
-| Activation | W3-03 merged via PR #124 at `2a82fd0`; W3-04 is locally validated at `c107d18`; W3-05+ remain inactive |
+| Activation | W3-04 merged via PR #171 at `ea1f7ee`; W3-05+ remain inactive |
 | Product north star | [PRODUCT-THESIS.md](../PRODUCT-THESIS.md) |
 | Current implementation truth | [CURRENT_BUILD.md](../../CURRENT_BUILD.md) |
 | Predecessor | [V3 two-week development plan](v3-two-week-development-plan.md) |
 
-W3-03 merged via PR #124 at `2a82fd0` (implementation `a513636`, evidence/docs `16be638`). W3-04 is the completed implementation slice, locally validated at `c107d18`; evidence/docs publication and GitHub delivery are active. W3-05+ and broader Weeks 3-4 remain inactive; this document does not authorize another feature.
+W3-03 merged via PR #124 at `2a82fd0` (implementation `a513636`, evidence/docs `16be638`). W3-04 merged via PR #171 at `ea1f7ee` (implementation `c107d18`, evidence/docs `cefae37`). W3-05+ and broader Weeks 3-4 remain inactive; this document does not authorize another feature.
 
 ## Entry State and Decision Rule
 
@@ -21,9 +21,9 @@ Known repository truth at drafting:
 - The Week 1 hard performance/correctness gate is green.
 - The formal performance target remains missed, and 24-citizen stress remains characterization-red.
 - W2-02 (`empty_stores` crisis contract plus atomic shared-economy contribution) is validated and merged.
-- W2-02 through W2-05 are validated and merged; W2-06 initially concluded **Stop Feature Expansion**, then the clean `478a4d9` repair cleared the hard performance safety gate. W3-01 merged at `7b747af`; W3-02 merged at `d9e297f`; W3-03 merged at `2a82fd0`; W3-04 is locally validated at `c107d18`.
+- W2-02 through W2-05 are validated and merged; W2-06 initially concluded **Stop Feature Expansion**, then the clean `478a4d9` repair cleared the hard performance safety gate. W3-01 merged at `7b747af`; W3-02 merged at `d9e297f`; W3-03 merged at `2a82fd0`; W3-04 merged at `ea1f7ee`.
 
-W2-06 hard safety gates are green at `478a4d9`; W3-01 through W3-03 are merged, and W3-04 is locally validated at `c107d18`; delivery truth remains in Git/GitHub. Keep W3-05+ and broader Weeks 3-4 inactive. Author smoke and external observed playtests were not run.
+W2-06 hard safety gates are green at `478a4d9`, and W3-01 through W3-04 are merged; delivery truth remains in Git/GitHub. Keep W3-05+ and broader Weeks 3-4 inactive. Author smoke and external observed playtests were not run.
 
 The July 27-August 7 dates are historical proposal only, not current authorization. This document remains Draft/Conditional: W3-01 through W3-04 are completed bounded implementation slices, while W3-05+ and broader Weeks 3-4 remain inactive pending an explicit continuation decision.
 
