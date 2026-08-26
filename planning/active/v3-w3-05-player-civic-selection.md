@@ -17,9 +17,10 @@ and performance optimization.
 **Value gate:** Human agency and causal legibility while retaining deterministic command/event
 ownership and the existing offline cognition behavior.
 
-**Delivery boundary:** Candidate commit `5c732b1` exists on the feature branch; this repair is an
-uncommitted candidate delta pending focused validation, final evidence binding, review, delivery,
-and human/visual author observation. No push, pull request, merge, or author-pass claim is made.
+**Delivery boundary:** Candidate `37afb1b` is locally accepted on the feature branch. Automated
+validation, the clean performance contract, and independent review are complete; push, pull
+request, CI, merge, and human/visual author observation remain pending. No author-pass claim is
+made.
 
 ## Player-facing route
 
@@ -50,18 +51,22 @@ and human/visual author observation. No push, pull request, merge, or author-pas
 
 ## Validation and observation boundary
 
-- Repair-focused managed civic/UI regression: pass; see the companion machine-readable evidence.
-- The repaired Godot-hosted input smoke passed for both policies, correctly labelled opposition,
+- The final full wrapper passes 485/485 managed tests and 25/25 Godot tests. Release and
+  ExportRelease production builds pass with zero warnings and zero errors.
+- The repaired Godot-hosted input smoke passes for both policies, correctly labelled opposition,
   combined inspector layout, duplicate policy/cognition rejection, compact wetland reading, both
   inspected interests, and the visible offline cognition event. It saves and restores through
   `GameManager`, then proves resumed `6` rejects without changing event count or policy; `F7`
-  creates a fresh session where one new event is allowed. A later final headless wrapper still
-  belongs to the delivery owner before a final full-suite claim.
-- The performance matrix is required for the milestone correctness delivery because this follow-up
-  changes production main-scene behavior. The parent delivery owner will run it after the
-  implementation commit; no performance claim is made from this worktree.
-- Automated input observation is not a human author smoke. A human-visible main-scene run and
-  visual/interaction capture remain required before claiming author or visual acceptance.
+  creates a fresh session where one new event is allowed.
+- The clean 14/14 Release matrix contract passes at production commit `edfb673`; final commit
+  `37afb1b` changes only a managed test assertion. Its raw timing budget is `safety_failure`:
+  correctness delivery is green, but this is not a performance-budget pass.
+- Deep review is GO with no P0-P2 findings, including the restored-session guard and final
+  1280x720 capacity assertion.
+- The visible `Societies (DEBUG)` window launched and was uniquely identified, but two reliable
+  state-capture attempts failed with `SetIsBorderRequired failed: No such interface supported
+  (0x80004002)`. No blind input was sent. Human-visible policy, citizen, cognition, and reed-harvest
+  observations remain required before claiming author or visual acceptance.
 
 ## Manual author-smoke instructions
 
