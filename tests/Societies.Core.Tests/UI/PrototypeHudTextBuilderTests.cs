@@ -291,5 +291,45 @@ namespace Societies.Core.Tests
             Assert.Contains("F11 next build", PrototypeHudTextBuilder.BuildCompactHelpText());
             Assert.Contains("F12 pause build", PrototypeHudTextBuilder.BuildCompactHelpText());
         }
+
+        [Theory]
+        [InlineData(PrototypeCivicPolicy.ProtectWetland, PrototypeCitizenInterestPosition.Supports, PrototypeCitizenInterestReason.FutureReedSupply, "supports Protect", "future reeds")]
+        [InlineData(PrototypeCivicPolicy.DrawDownWetland, PrototypeCitizenInterestPosition.Opposes, PrototypeCitizenInterestReason.ImmediateShelterSupply, "opposes Drawdown", "shelter now")]
+        public void BuildCompactInspectorText_SelectedCivicInterestRemainsReadable(
+            PrototypeCivicPolicy preferredPolicy,
+            PrototypeCitizenInterestPosition position,
+            PrototypeCitizenInterestReason reason,
+            string expectedStance,
+            string expectedReason)
+        {
+            PrototypeWorkerState worker = new()
+            {
+                WorkerId = "citizen-001",
+                DisplayName = "Citizen 1",
+                Role = preferredPolicy == PrototypeCivicPolicy.ProtectWetland
+                    ? PrototypeCitizenRole.Forager
+                    : PrototypeCitizenRole.Builder,
+                Needs = new PrototypeNeedState { Nutrition = 80.0f, Fatigue = 10.0f }
+            };
+            PrototypeCitizenInterest interest = new(
+                worker.WorkerId,
+                preferredPolicy,
+                position,
+                reason,
+                preferredPolicy == PrototypeCivicPolicy.ProtectWetland ? "forager" : "builder",
+                PrototypeCitizenNutritionBand.Secure,
+                PrototypeCitizenFatigueBand.Rested,
+                "role=fixture");
+
+            string inspector = PrototypeHudTextBuilder.BuildCompactInspectorText(worker, null, interest);
+
+            Assert.Contains($"Civic: {expectedStance}", inspector);
+            Assert.Contains(expectedReason, inspector);
+            Assert.True(
+                PrototypeHudLayout.Calculate(1280.0f, 720.0f)
+                    .GetTextBudget(PrototypeHudLayout.Inspector, inspector, 16)
+                    .Fits,
+                "Civic inspector text must fit the normal-play inspector card.");
+        }
     }
 }

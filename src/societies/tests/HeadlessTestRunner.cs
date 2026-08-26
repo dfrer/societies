@@ -54,6 +54,7 @@ namespace Societies.Tests
             await Test_MainScene_BootstrapSmoke();
             await Test_MainScene_DepotContributionInputSmoke();
             await Test_MainScene_DirectiveInputSmoke();
+            await Test_MainScene_CivicPolicySelectionInputSmoke();
             await Test_MainScene_CrisisHudPresentationSmoke();
             Test_GodotCivicDeterministicLoopSmoke();
             await Test_MainScene_CrisisPersistenceInputSmoke();
@@ -302,6 +303,101 @@ namespace Societies.Tests
                     await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
                 }
             }
+        }
+
+        private async Task Test_MainScene_CivicPolicySelectionInputSmoke()
+        {
+            Node? scene = null;
+
+            try
+            {
+                PackedScene packedScene = GD.Load<PackedScene>("res://scenes/main.tscn");
+                Assert(packedScene != null, "Main scene failed to load");
+                scene = packedScene!.Instantiate();
+                AddChild(scene);
+                await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+
+                GameManager manager = scene as GameManager ?? throw new Exception("Main scene root is not GameManager");
+                manager.SetProcess(false);
+                PrototypeHud hud = manager.GetNodeOrNull<PrototypeHud>("UI") ?? throw new Exception("PrototypeHud missing");
+
+                AssertCivicPolicyInput(
+                    manager,
+                    hud,
+                    Key.Key4,
+                    "Protect",
+                    "Healthy 75/100",
+                    "Reeds: 0/4, 4 left | fewer; preserved",
+                    "supports Protect",
+                    "opposes Drawdown");
+
+                manager.ResetPrototypeRun();
+                Assert(hud.CrisisText.Contains("Policy: not selected (neutral)", StringComparison.Ordinal),
+                    "F7-equivalent reset must restore a neutral player-facing civic reading");
+
+                AssertCivicPolicyInput(
+                    manager,
+                    hud,
+                    Key.Key5,
+                    "Drawdown",
+                    "Strained 45/100",
+                    "Reeds: 0/12, 12 left | more; degrades",
+                    "opposes Protect",
+                    "supports Drawdown");
+
+                Pass(nameof(Test_MainScene_CivicPolicySelectionInputSmoke));
+            }
+            catch (Exception ex)
+            {
+                Fail(nameof(Test_MainScene_CivicPolicySelectionInputSmoke), ex);
+            }
+            finally
+            {
+                if (scene != null)
+                {
+                    scene.QueueFree();
+                    await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+                }
+            }
+        }
+
+        private void AssertCivicPolicyInput(
+            GameManager manager,
+            PrototypeHud hud,
+            Key inputKey,
+            string policyLabel,
+            string healthText,
+            string quotaText,
+            string expectedFutureReedStance,
+            string expectedShelterStance)
+        {
+            manager._UnhandledInput(new InputEventKey { Pressed = true, Keycode = inputKey });
+            Assert(hud.StatusText.Contains($"Civic policy selected: {policyLabel}", StringComparison.Ordinal),
+                "Player civic input should report the accepted policy");
+            Assert(hud.CrisisText.Contains($"Policy: {policyLabel}", StringComparison.Ordinal) &&
+                hud.CrisisText.Contains(healthText, StringComparison.Ordinal) &&
+                hud.CrisisText.Contains(quotaText, StringComparison.Ordinal),
+                "Player civic input should refresh the policy, quota, wetland health, and consequence HUD");
+
+            manager._UnhandledInput(new InputEventKey { Pressed = true, Keycode = inputKey });
+            Assert(hud.StatusText.Contains("Civic policy rejected: already_selected", StringComparison.Ordinal),
+                "A duplicate player civic input must reject through the session's one-selection guard");
+
+            bool foundFutureReed = false;
+            bool foundImmediateShelter = false;
+            for (int index = 0; index < manager.CitizenCount; index++)
+            {
+                manager._UnhandledInput(new InputEventKey { Pressed = true, Keycode = Key.F3 });
+                foundFutureReed |= hud.InspectorText.Contains("future reeds", StringComparison.Ordinal) &&
+                    hud.InspectorText.Contains(expectedFutureReedStance, StringComparison.Ordinal);
+                foundImmediateShelter |= hud.InspectorText.Contains("shelter now", StringComparison.Ordinal) &&
+                    hud.InspectorText.Contains(expectedShelterStance, StringComparison.Ordinal);
+            }
+
+            Assert(foundFutureReed,
+                "Cycling the main-scene inspector should expose the future-reeds interest with its selected-policy stance");
+            Assert(foundImmediateShelter,
+                "Cycling the main-scene inspector should expose the immediate-shelter interest with its selected-policy stance");
         }
 
         private async Task Test_MainScene_CrisisHudPresentationSmoke()

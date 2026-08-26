@@ -235,6 +235,14 @@ namespace Societies.Core
                     SelectDirective(PrototypeSettlementDirective.Shelter);
                     GetViewport().SetInputAsHandled();
                     break;
+                case Key.Key4:
+                    SelectCivicPolicy(PrototypeCivicPolicy.ProtectWetland);
+                    GetViewport().SetInputAsHandled();
+                    break;
+                case Key.Key5:
+                    SelectCivicPolicy(PrototypeCivicPolicy.DrawDownWetland);
+                    GetViewport().SetInputAsHandled();
+                    break;
                 case Key.F3:
                     SelectNextInspectedCitizen();
                     GetViewport().SetInputAsHandled();
@@ -432,6 +440,38 @@ namespace Societies.Core
             {
                 string displayName = PrototypeSettlementDirectiveCatalog.GetDisplayName(result.CurrentDirective);
                 NotifyStatus(result.Changed ? $"Directive set: {displayName}" : $"Directive already set: {displayName}");
+            }
+
+            return result;
+        }
+
+        /// <summary>
+        /// Routes a player civic choice through the runtime's single authoritative policy command.
+        /// Presentation owns neither civic state nor wetland consequences.
+        /// </summary>
+        public PrototypeCivicPolicyCommandResult SelectCivicPolicy(PrototypeCivicPolicy policy)
+        {
+            if (_runtimeSession == null)
+            {
+                return new PrototypeCivicPolicyCommandResult(
+                    false,
+                    "runtime_unavailable",
+                    new PrototypeCivicPolicySnapshot());
+            }
+
+            PrototypeCivicPolicySnapshot current = _runtimeSession.CivicPolicy;
+            PrototypeCivicPolicyCommandResult result = _runtimeSession.SelectCivicPolicy(new(
+                policy,
+                current.Version,
+                _runtimeSession.SimulationTick));
+            if (result.Succeeded)
+            {
+                string displayName = policy == PrototypeCivicPolicy.ProtectWetland ? "Protect" : "Drawdown";
+                NotifyStatus($"Civic policy selected: {displayName}");
+            }
+            else
+            {
+                NotifyStatus($"Civic policy rejected: {result.FailureReason}");
             }
 
             return result;
@@ -1209,7 +1249,8 @@ namespace Societies.Core
                 _runtimeSession?.ActiveDirective ?? PrototypeSettlementDirective.Neutral,
                 _runtimeSession?.Crisis,
                 _runtimeSession?.ContributionCountsByResource,
-                _runtimeSession?.Wetland);
+                _runtimeSession?.Wetland,
+                GetSelectedCitizenInterest());
 
             UpdateSettlementPresentationFromSessionOrFallback();
         }
@@ -1523,6 +1564,19 @@ namespace Societies.Core
 
             int index = Mathf.Clamp(_selectedCitizenInspectionIndex, 0, _runtimeSession.Workers.Count - 1);
             return _runtimeSession.Workers[index];
+        }
+
+        private PrototypeCitizenInterest? GetSelectedCitizenInterest()
+        {
+            PrototypeWorkerState? selectedCitizen = GetSelectedCitizen();
+            if (_runtimeSession == null || selectedCitizen == null)
+            {
+                return null;
+            }
+
+            return PrototypeCitizenInterestEvaluator.Evaluate(
+                selectedCitizen,
+                PrototypeCivicPolicyCatalog.ParseId(_runtimeSession.CivicPolicy.PolicyId));
         }
 
         private PrototypeStructureState? GetSelectedStructure()
