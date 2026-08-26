@@ -12,6 +12,15 @@
 | Product direction | [PRODUCT-THESIS.md](../PRODUCT-THESIS.md) |
 | Superseded execution path | W3-06+ and the old Week 4 sequence remain inactive |
 
+### ER-01 local implementation checkpoint
+
+The local ER-01 candidate now has a reconciled implementation contract at
+[v3-er-01-first-believable-settlement-loop.md](v3-er-01-first-believable-settlement-loop.md) and machine-readable
+progress evidence at [v3-er-01-validation.json](evidence/v3-er-01-validation.json). Civic buttons and shortcuts share
+one contribution prerequisite, normal play exposes a world cue plus one citizen interest/response, and focused-resource
+depletion no longer leaves a callable freed-node reference. This is not a completion or user-acceptance claim: final
+main-task validation and the user-led routes remain separately gated.
+
 ## Why the Trajectory Changes Here
 
 W3-05 is a narrow engineering success and a product-experience failure.

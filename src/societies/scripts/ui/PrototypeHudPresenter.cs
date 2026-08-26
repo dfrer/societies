@@ -49,7 +49,8 @@ namespace Societies.UI
             IReadOnlyDictionary<string, long>? contributionCountsByResource = null,
             PrototypeWetlandSnapshot? wetland = null,
             PrototypeCitizenInterest? selectedCitizenInterest = null,
-            PrototypeCivicPolicy selectedCivicPolicy = PrototypeCivicPolicy.Neutral)
+            PrototypeCivicPolicy selectedCivicPolicy = PrototypeCivicPolicy.Neutral,
+            long totalContributedQuantity = 0)
         {
             hud.SetDebugText(
                 PrototypeHudTextBuilder.BuildDebugText(
@@ -93,6 +94,9 @@ namespace Societies.UI
                 contributionCountsByResource,
                 wetland));
             hud.SetInteractionText(interactionText);
+            hud.SetCivicChoiceState(
+                selectedCivicPolicy,
+                selectedCivicPolicy != PrototypeCivicPolicy.Neutral || totalContributedQuantity > 0);
             hud.SetPresentationState(directive, settlementClassification, crisis);
         }
     }

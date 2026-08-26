@@ -16,6 +16,9 @@ namespace Societies.Simulation
         private OmniLight3D? _hearthLight;
         private MeshInstance3D? _contributionBeacon;
         private Node3D? _contributionRoot;
+        private Label3D? _contributionLabel;
+        private bool _contributionFocused;
+        private Color _contributionBaseColor = new(0.26f, 0.72f, 0.91f);
         private Label3D? _label;
         private Node3D? _stockpileRoot;
         private Node3D? _woodYardRoot;
@@ -30,6 +33,20 @@ namespace Societies.Simulation
         public bool IsCampfireLit => IsHearthLit;
 
         public double AnimationPhase => _animationTime;
+
+        public bool IsContributionFocused => _contributionFocused;
+
+        /// <summary>Presentation-only depot focus; contribution eligibility remains runtime-owned.</summary>
+        public void SetContributionFocused(bool focused)
+        {
+            if (_contributionFocused == focused)
+            {
+                return;
+            }
+
+            _contributionFocused = focused;
+            ApplyContributionFocusVisual();
+        }
 
         public override void _Ready()
         {
@@ -145,9 +162,12 @@ namespace Societies.Simulation
                     PrototypeCrisisOutcome.Collapsed => new Color(0.91f, 0.25f, 0.22f),
                     _ => new Color(0.26f, 0.72f, 0.91f)
                 };
+                _contributionBaseColor = stateColor;
                 beaconMaterial.AlbedoColor = stateColor;
                 beaconMaterial.Emission = stateColor;
             }
+
+            ApplyContributionFocusVisual();
         }
 
         public void ApplyTerrainProfile(TerrainGenerator terrain, Vector3 settlementAnchorPosition)
@@ -226,7 +246,7 @@ namespace Societies.Simulation
                 EmissionEnergyMultiplier = 0.75f
             };
             _contributionRoot.AddChild(_contributionBeacon);
-            _contributionRoot.AddChild(new Label3D
+            _contributionLabel = new Label3D
             {
                 Name = "ContributionLabel",
                 Billboard = BaseMaterial3D.BillboardModeEnum.Enabled,
@@ -234,7 +254,34 @@ namespace Societies.Simulation
                 Text = "CENTRAL DEPOT\nCONTRIBUTE HERE",
                 FontSize = 18,
                 Modulate = new Color(0.80f, 0.95f, 1.0f)
-            });
+            };
+            _contributionRoot.AddChild(_contributionLabel);
+        }
+
+        private void ApplyContributionFocusVisual()
+        {
+            if (_contributionBeacon?.MaterialOverride is StandardMaterial3D beaconMaterial)
+            {
+                Color focusColor = new(1.0f, 0.82f, 0.28f);
+                beaconMaterial.AlbedoColor = _contributionFocused ? focusColor : _contributionBaseColor;
+                beaconMaterial.Emission = _contributionFocused ? focusColor : _contributionBaseColor;
+                beaconMaterial.EmissionEnergyMultiplier = _contributionFocused ? 1.35f : 0.75f;
+            }
+
+            if (_contributionRoot != null)
+            {
+                _contributionRoot.Scale = _contributionFocused ? new Vector3(1.12f, 1.12f, 1.12f) : Vector3.One;
+            }
+
+            if (_contributionLabel != null)
+            {
+                _contributionLabel.Text = _contributionFocused
+                    ? "CENTRAL DEPOT\nPRESS E TO CONTRIBUTE"
+                    : "CENTRAL DEPOT\nCONTRIBUTE HERE";
+                _contributionLabel.Modulate = _contributionFocused
+                    ? new Color(1.0f, 0.92f, 0.52f)
+                    : new Color(0.80f, 0.95f, 1.0f);
+            }
         }
 
         private static string GetCrisisText(PrototypeCrisisState? crisis) => crisis?.Outcome switch

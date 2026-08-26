@@ -253,6 +253,15 @@
         "collapseIncapacitatedCitizens": 6,
         "collapseHoldTicks": 200,
         "citizenNeedRateMultiplier": 0.0875
+      },
+      "experienceProfile": {
+        "id": "lean_stores",
+        "title": "Lean Stores",
+        "primaryNeed": "Restock meals and fuel.",
+        "resourceApproach": "Harvest berries; contribute.",
+        "immediatePressure": "Meals and hearth fuel are low.",
+        "worldCue": "Drier ground; sparse reeds.",
+        "displayOrder": 2
       }
     },
     {
@@ -313,7 +322,16 @@
         "storehouse",
         "hut",
         "kiln"
-      ]
+      ],
+      "experienceProfile": {
+        "id": "marsh_recovery",
+        "title": "Marsh Recovery",
+        "primaryNeed": "Build a safe reed reserve.",
+        "resourceApproach": "Harvest reeds; contribute.",
+        "immediatePressure": "Shelter needs thatch now.",
+        "worldCue": "Wetter ground; dense reeds.",
+        "displayOrder": 1
+      }
     }
   ]
 }

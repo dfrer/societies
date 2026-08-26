@@ -52,6 +52,7 @@ namespace Societies.Tests
             Test_SceneTree_Access();
             Test_RunOutputDirectory_IsolatedPerInvocation();
             await Test_MainScene_BootstrapSmoke();
+            await Test_MainScene_ExperienceRecoverySmoke();
             await Test_MainScene_DepotContributionInputSmoke();
             await Test_MainScene_DirectiveInputSmoke();
             await Test_MainScene_CivicPolicySelectionInputSmoke();
@@ -172,7 +173,7 @@ namespace Societies.Tests
                 EnvironmentController? envController = manager.GetNodeOrNull<EnvironmentController>("World/Environment/Environment");
                 Assert(envController != null, "EnvironmentController missing (was DayNightCycle)");
                 TerrainGenerator terrain = manager.GetNodeOrNull<TerrainGenerator>("World/Systems/Terrain") ?? throw new Exception("TerrainGenerator missing");
-                PrototypeScenarioDefinition scenario = LoadCatalogBundle().Scenarios.Resolve("balanced_basin");
+                PrototypeScenarioDefinition scenario = LoadCatalogBundle().Scenarios.Resolve("wetland_builder");
 
                 PrototypeRuntimeSnapshot snapshot = manager.CaptureSnapshot();
                 float playerSurfaceHeight = terrain.SampleHeight(snapshot.PlayerPosition.ToVector3());
@@ -208,6 +209,169 @@ namespace Societies.Tests
                 {
                     scene.QueueFree();
                     await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+                }
+            }
+        }
+
+        private async Task Test_MainScene_ExperienceRecoverySmoke()
+        {
+            Node? scene = null;
+            try
+            {
+                PackedScene packedScene = GD.Load<PackedScene>("res://scenes/main.tscn");
+                Assert(packedScene != null, "Main scene failed to load");
+                scene = packedScene!.Instantiate();
+                AddChild(scene);
+                await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+
+                GameManager manager = scene as GameManager ?? throw new Exception("Main scene root is not GameManager");
+                PrototypeHud hud = manager.GetNodeOrNull<PrototypeHud>("UI") ?? throw new Exception("PrototypeHud missing");
+                PrototypeSettlementHub hub = manager.GetNodeOrNull<PrototypeSettlementHub>("World/Environment/SettlementHub") ??
+                    throw new Exception("Settlement hub missing");
+                manager.SetProcess(false);
+
+                Assert(manager.CurrentScenarioId == "wetland_builder", "ER-01 should start in its first curated profile");
+                Assert(manager.ExperienceProfiles.Count == 2, "ER-01 should expose exactly two catalog-owned profiles");
+                Assert(hud.ProfileChoiceCount == 2 && hud.HasCivicChoiceSurface, "Normal play should expose profile and civic choice surfaces");
+                Assert(!hud.IsCivicChoiceAvailable, "The normal-play policy surface should wait for an authoritative contribution");
+                Assert(!hud.IsDiagnosticsVisible, "Dense diagnostics should be opt-in during normal play");
+                Assert(hud.GoalText.Contains("Next:", StringComparison.Ordinal) &&
+                    hud.GoalText.Contains("World: wetter ground; dense reeds", StringComparison.OrdinalIgnoreCase) &&
+                    hud.GoalText.Contains("Citizen 1:", StringComparison.Ordinal),
+                    "Normal play should lead with one actionable need, world cue, and citizen material interest");
+
+                hud.RequestCivicPolicy(PrototypeCivicPolicy.ProtectWetland);
+                Assert(manager.CaptureSnapshot().CivicPolicy?.PolicyId == "neutral" &&
+                    hud.StatusText.Contains("contribute at the central depot first", StringComparison.Ordinal),
+                    "HUD civic intent must reject before an authoritative contribution");
+
+                ResourceNode focusProbe = new() { ResourceId = "reeds", UnitsRemaining = 1 };
+                focusProbe.Position = new Vector3(10000.0f, 10000.0f, 10000.0f);
+                AddChild(focusProbe);
+                await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+                focusProbe.SetFocused(true);
+                Assert(focusProbe.IsFocused &&
+                    focusProbe.GetNode<Label3D>("ResourceLabel").Text.Contains("Press E", StringComparison.Ordinal),
+                    "An in-tree focused harvestable should expose its presentation-only focus state");
+                focusProbe.Free();
+
+                PlayerCharacter player = manager.GetNodeOrNull<PlayerCharacter>("World/Players/LocalPlayer") ??
+                    throw new Exception("LocalPlayer missing");
+                Node3D entitiesRoot = manager.GetNodeOrNull<Node3D>("World/Entities") ??
+                    throw new Exception("Entities root missing");
+                ResourceNode harvestTarget = entitiesRoot.GetChildren().OfType<ResourceNode>()
+                    .OrderBy(node => node.UnitsRemaining)
+                    .First(node => node.UnitsRemaining > 0);
+                string depletedSiteId = harvestTarget.SiteId;
+                string depletedDisplayName = harvestTarget.DisplayName;
+                int unitsToDeplete = harvestTarget.UnitsRemaining;
+                RayCast3D interactionRay = player.GetNode<RayCast3D>("CameraPivot/Camera3D/InteractionRay");
+                CollisionShape3D harvestHitbox = harvestTarget.GetNode<StaticBody3D>("Hitbox")
+                    .GetChildren()
+                    .OfType<CollisionShape3D>()
+                    .Single();
+                player.SetPhysicsProcess(false);
+                player.ResetForPrototypeRun(new Vector3(0.0f, 50.0f, 0.0f));
+                interactionRay.AddException(player);
+                Vector3 hitboxCenterOffset = harvestHitbox.GlobalPosition - harvestTarget.GlobalPosition;
+                Vector3 rayForward = -interactionRay.GlobalTransform.Basis.Z.Normalized();
+                harvestTarget.GlobalPosition = interactionRay.GlobalPosition + (rayForward * 3.0f) - hitboxCenterOffset;
+                await ToSignal(GetTree(), SceneTree.SignalName.PhysicsFrame);
+                interactionRay.TargetPosition = interactionRay.ToLocal(harvestHitbox.GlobalPosition);
+                interactionRay.ForceRaycastUpdate();
+                GodotObject rayCollider = interactionRay.GetCollider();
+                ResourceNode? rayTarget = rayCollider as ResourceNode ?? (rayCollider as Node)?.GetParent() as ResourceNode;
+                Assert(rayTarget == harvestTarget,
+                    $"The real interaction ray should hit the isolated authoritative resource presentation; collider={(rayCollider as Node)?.Name ?? "none"}");
+                player._PhysicsProcess(0.0);
+                Assert(player.GetInteractionText().Contains(depletedDisplayName, StringComparison.Ordinal),
+                    "Player targeting should focus the in-world harvestable through its ray");
+                for (int unit = 0; unit < unitsToDeplete; unit++)
+                {
+                    player.ProcessInteractionInput((ulong)(780 + unit));
+                }
+                Assert(manager.CaptureSnapshot().Resources.Any(resource =>
+                        resource.SiteId == depletedSiteId && resource.UnitsRemaining == 0),
+                    "The authoritative ledger should record the focused site depletion");
+                string postDepletionInteraction = player.GetInteractionText();
+                player._PhysicsProcess(0.0);
+                Assert(!postDepletionInteraction.Contains(depletedDisplayName, StringComparison.Ordinal) &&
+                    !player.GetInteractionText().Contains(depletedDisplayName, StringComparison.Ordinal),
+                    "The next targeting and prompt paths must not retain or call a freed resource node");
+
+                player.GlobalPosition = manager.CentralDepotPosition;
+                interactionRay.Enabled = false;
+                player._PhysicsProcess(0.0);
+                Assert(player.IsDepotFocused && hub.IsContributionFocused,
+                    "Central-depot focus should flow through player proximity and the focus event");
+                player.ProcessInteractionInput(811);
+                Assert(hud.StatusText.Contains("Contributed", StringComparison.Ordinal),
+                    "Depot feedback should come from the authoritative contribution result");
+                Assert(hud.IsCivicChoiceAvailable, "Authoritative contribution should enable the player-facing civic choice");
+
+                hud.RequestCivicPolicy(PrototypeCivicPolicy.ProtectWetland);
+                Assert(manager.CaptureSnapshot().CivicPolicy?.PolicyId == "protect_wetland", "HUD policy intent must route through GameManager into the runtime command");
+                Assert((hud.GoalText.Contains("supports Protect", StringComparison.Ordinal) ||
+                        hud.GoalText.Contains("opposes Protect", StringComparison.Ordinal)) &&
+                    hud.GoalText.Contains("Wetland:", StringComparison.Ordinal),
+                    "Normal play should show the citizen response reason and wetland consequence after the choice");
+                hud.RequestExperienceProfile("empty_stores");
+                Assert(manager.CurrentScenarioId == "empty_stores" && manager.ExperienceProfiles.Count == 2,
+                    "Profile selection must recreate the catalog-owned contrasting scenario");
+                Assert(hud.GoalText.Contains("World: drier ground; sparse reeds", StringComparison.OrdinalIgnoreCase),
+                    "The contrasting normal-play profile should expose its world-derived cue");
+
+                hud.ApplyResponsiveLayout(new Vector2(1280.0f, 720.0f));
+                await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+                AssertNormalHudControlLayout(hud, 1280.0f, 720.0f);
+
+                hud.SetDiagnosticsVisible(true);
+                Assert(hud.IsDiagnosticsVisible && hud.IsDebugVisible, "Diagnostic metrics should remain optional");
+                Pass(nameof(Test_MainScene_ExperienceRecoverySmoke));
+            }
+            catch (Exception ex)
+            {
+                Fail(nameof(Test_MainScene_ExperienceRecoverySmoke), ex);
+            }
+            finally
+            {
+                if (scene != null)
+                {
+                    scene.QueueFree();
+                    await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+                }
+            }
+        }
+
+        private void AssertNormalHudControlLayout(PrototypeHud hud, float width, float height)
+        {
+            Button[] profileButtons = hud.GetNode<Control>("HudRoot/HelpPanel")
+                .GetChildren()
+                .OfType<Button>()
+                .OrderBy(button => button.AnchorLeft)
+                .ToArray();
+            Assert(profileButtons.Length == 2,
+                "Normal HUD layout should include exactly two live experience-profile controls");
+            Control[] controls = new Control[]
+            {
+                hud.GetNode<Control>("HudRoot/CrisisPanel/SettlementGoal"),
+                hud.GetNode<Control>("HudRoot/CrisisPanel/CivicChoice_ProtectWetland"),
+                hud.GetNode<Control>("HudRoot/CrisisPanel/CivicChoice_DrawDownWetland")
+            }.Concat(profileButtons).ToArray();
+            Rect2[] rects = controls.Select(control => control.GetGlobalRect()).ToArray();
+            foreach ((Control control, Rect2 rect) in controls.Zip(rects))
+            {
+                Assert(rect.Position.X >= 0.0f && rect.Position.Y >= 0.0f &&
+                    rect.End.X <= width && rect.End.Y <= height,
+                    $"Normal HUD control {control.Name} should fit at {width}x{height}");
+            }
+
+            for (int left = 0; left < rects.Length; left++)
+            {
+                for (int right = left + 1; right < rects.Length; right++)
+                {
+                    Assert(!rects[left].Intersects(rects[right]),
+                        $"Normal HUD controls {controls[left].Name} and {controls[right].Name} should not collide at {width}x{height}");
                 }
             }
         }
@@ -376,6 +540,21 @@ namespace Societies.Tests
             string expectedFutureReedStance,
             string expectedShelterStance)
         {
+            PrototypeCivicPolicySnapshot? beforeContribution = manager.CaptureSnapshot().CivicPolicy;
+            manager._UnhandledInput(new InputEventKey { Pressed = true, Keycode = inputKey });
+            Assert(beforeContribution?.PolicyId == "neutral" &&
+                manager.CaptureSnapshot().CivicPolicy?.PolicyId == "neutral" &&
+                hud.StatusText.Contains("contribute at the central depot first", StringComparison.Ordinal),
+                "Player civic shortcut should reject before authoritative contribution");
+
+            PlayerCharacter player = manager.GetNodeOrNull<PlayerCharacter>("World/Players/LocalPlayer") ??
+                throw new Exception("LocalPlayer missing");
+            manager.Inventory.AddItem("logs", 1);
+            player.GlobalPosition = manager.CentralDepotPosition;
+            player.ProcessInteractionInput(7000UL + (ulong)inputKey);
+            Assert(manager.CaptureSnapshot().ContributionCountsByResource.Values.Sum() > 0,
+                "Civic shortcut test should establish the prerequisite through authoritative depot contribution");
+
             manager._UnhandledInput(new InputEventKey { Pressed = true, Keycode = inputKey });
             Assert(hud.StatusText.Contains($"Civic policy selected: {policyLabel}", StringComparison.Ordinal),
                 "Player civic input should report the accepted policy");
@@ -454,14 +633,25 @@ namespace Societies.Tests
             manager._UnhandledInput(new InputEventKey { Pressed = true, Keycode = Key.F7 });
             Assert(manager.CivicCognitionDecisionCount == 0,
                 "F7 should create a fresh event history for the next author action");
+            PlayerCharacter player = manager.GetNodeOrNull<PlayerCharacter>("World/Players/LocalPlayer") ??
+                throw new Exception("LocalPlayer missing after F7");
+            manager.Inventory.AddItem("logs", 1);
+            player.GlobalPosition = manager.CentralDepotPosition;
+            player.ProcessInteractionInput(9104);
+            Assert(manager.CaptureSnapshot().ContributionCountsByResource.Values.Sum() > 0,
+                "A fresh F7 session should establish the civic prerequisite through authoritative depot contribution");
             manager._UnhandledInput(new InputEventKey { Pressed = true, Keycode = Key.Key4 });
+            Assert(manager.CaptureSnapshot().CivicPolicy?.PolicyId == "protect_wetland",
+                "The fresh contributed session should accept the new Protect decision");
             manager._UnhandledInput(new InputEventKey { Pressed = true, Keycode = Key.Key6 });
+            string freshCognitionStatus = hud.StatusText;
+            int freshCognitionCount = manager.CivicCognitionDecisionCount;
             Assert(
-                hud.StatusText.Contains(
+                freshCognitionStatus.Contains(
                     "Civic cognition: deterministic_fallback | civic.cognition.decision",
                     StringComparison.Ordinal) &&
-                manager.CivicCognitionDecisionCount == 1,
-                "A fresh F7 session should permit one new deterministic fallback cognition decision");
+                freshCognitionCount == 1,
+                $"A fresh F7 session should permit one new deterministic fallback cognition decision; status='{freshCognitionStatus}', count={freshCognitionCount}");
         }
 
         private async Task Test_MainScene_CrisisHudPresentationSmoke()
@@ -1312,7 +1502,9 @@ namespace Societies.Tests
 
                 GameManager manager = scene as GameManager ?? throw new Exception("Main scene root is not GameManager");
                 Node3D agentsRoot = manager.GetNodeOrNull<Node3D>("World/Agents") ?? throw new Exception("Agents root missing");
-                PrototypeScenarioDefinition scenario = LoadCatalogBundle().Scenarios.Resolve("balanced_basin");
+                PrototypeScenarioDefinition scenario = LoadCatalogBundle().Scenarios.Resolve(manager.CurrentScenarioId);
+                Assert(scenario.Id == "wetland_builder", "Reset smoke should exercise the actual ER-01 default profile");
+                PrototypeRuntimeSnapshot initialSnapshot = manager.CaptureSnapshot();
 
                 manager.StepSimulationTicks(320);
                 manager.SaveSnapshotToDisk();
@@ -1322,17 +1514,28 @@ namespace Societies.Tests
                 PrototypeRuntimeSnapshot resetSnapshot = manager.CaptureSnapshot();
 
                 Assert(resetSnapshot.SimulationTick == 0, "Reset should zero simulation ticks");
+                Assert(resetSnapshot.ScenarioId == scenario.Id, "Reset should preserve the active default profile");
                 Assert(resetSnapshot.Inventory.Count == 0, "Reset should clear player inventory");
-                Assert(resetSnapshot.Stockpile.Values.Sum() >= scenario.StartingStock.Values.Sum(), "Reset should restore starting settlement reserves");
-                Assert(resetSnapshot.Workers.Count == scenario.InitialCitizens, "Reset should rebuild citizens");
-                Assert(resetSnapshot.Resources.Count == savedSnapshot.Resources.Count, "Reset should respawn the initial resource set");
-                Assert(agentsRoot.GetChildCount() == scenario.InitialCitizens, "Reset should rebuild citizen visuals");
+                Assert(resetSnapshot.Stockpile.OrderBy(pair => pair.Key).SequenceEqual(initialSnapshot.Stockpile.OrderBy(pair => pair.Key)),
+                    "Reset should restore the authoritative post-bootstrap settlement reserves");
+                Assert(resetSnapshot.Workers.Count == initialSnapshot.Workers.Count &&
+                    initialSnapshot.Workers.Count == scenario.InitialCitizens,
+                    "Reset should rebuild the default profile's citizens");
+                Assert(resetSnapshot.Resources
+                        .OrderBy(resource => resource.SiteId)
+                        .Select(resource => (resource.SiteId, resource.UnitsRemaining))
+                        .SequenceEqual(initialSnapshot.Resources
+                            .OrderBy(resource => resource.SiteId)
+                            .Select(resource => (resource.SiteId, resource.UnitsRemaining))),
+                    "Reset should respawn the exact authoritative initial resource projection");
+                Assert(agentsRoot.GetChildCount() == initialSnapshot.Workers.Count, "Reset should rebuild citizen visuals");
 
                 bool loaded = manager.LoadLatestSnapshotFromDisk();
                 Assert(loaded, "Snapshot load should succeed after reset");
 
                 PrototypeRuntimeSnapshot restoredSnapshot = manager.CaptureSnapshot();
                 Assert(restoredSnapshot.SimulationTick == savedSnapshot.SimulationTick, "Load should restore tick count");
+                Assert(restoredSnapshot.ScenarioId == scenario.Id, "Load should restore the saved default profile identity");
                 Assert(
                     restoredSnapshot.Stockpile.OrderBy(pair => pair.Key).SequenceEqual(savedSnapshot.Stockpile.OrderBy(pair => pair.Key)),
                     "Load should restore stockpile");

@@ -53,6 +53,11 @@ namespace Societies.Simulation
             return _settlementHub;
         }
 
+        public void SetCentralDepotFocused(bool focused)
+        {
+            EnsureSettlementHub().SetContributionFocused(focused);
+        }
+
         public void UpdateTerrain(TerrainGenerator terrain)
         {
             _terrain = terrain;

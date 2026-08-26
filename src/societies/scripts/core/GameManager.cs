@@ -21,7 +21,7 @@ namespace Societies.Core
         private const int MaxTicksPerFrame = 12;
         private const double BacklogWarningCooldownSeconds = 5.0;
         private const string RuntimeMetricsEnvironmentVariable = "SOCIETIES_PERF_METRICS";
-        private const string DefaultScenarioId = "balanced_basin";
+        private const string DefaultScenarioId = "wetland_builder";
         private const string ExactBranchAndBoundSelectorMode = "exact_branch_and_bound";
         private const string ExhaustiveReferenceSelectorMode = "exhaustive_reference";
         private const string ExactBoundedExtractionMode = "exact_bounded";
@@ -119,6 +119,10 @@ namespace Societies.Core
         public TerrainOverlayMode CurrentOverlayMode => _overlayMode;
 
         public string CurrentScenarioId => _scenario?.Id ?? _scenarioId;
+
+        /// <summary>Immutable capability projection used only to render the two ER-01 start buttons.</summary>
+        public IReadOnlyList<PrototypeExperienceProfileOption> ExperienceProfiles =>
+            _catalogs?.Scenarios.GetExperienceProfileOptions() ?? Array.Empty<PrototypeExperienceProfileOption>();
 
         public int CurrentWorldSeed => _runtimeSession?.WorldSeed ?? 0;
 
@@ -227,6 +231,10 @@ namespace Societies.Core
 
             switch (keyEvent.Keycode)
             {
+                case Key.F1:
+                    _hud?.ToggleDiagnostics();
+                    GetViewport().SetInputAsHandled();
+                    break;
                 case Key.Key1:
                     TryCraftRecipe("stone_axe");
                     GetViewport().SetInputAsHandled();
@@ -240,11 +248,11 @@ namespace Societies.Core
                     GetViewport().SetInputAsHandled();
                     break;
                 case Key.Key4:
-                    SelectCivicPolicy(PrototypeCivicPolicy.ProtectWetland);
+                    TrySelectPlayerCivicPolicy(PrototypeCivicPolicy.ProtectWetland);
                     GetViewport().SetInputAsHandled();
                     break;
                 case Key.Key5:
-                    SelectCivicPolicy(PrototypeCivicPolicy.DrawDownWetland);
+                    TrySelectPlayerCivicPolicy(PrototypeCivicPolicy.DrawDownWetland);
                     GetViewport().SetInputAsHandled();
                     break;
                 case Key.Key6:
@@ -454,8 +462,9 @@ namespace Societies.Core
         }
 
         /// <summary>
-        /// Routes a player civic choice through the runtime's single authoritative policy command.
-        /// Presentation owns neither civic state nor wetland consequences.
+        /// Direct application command seam for validated callers and deterministic tests.
+        /// <see cref="TrySelectPlayerCivicPolicy"/> owns the player-intent prerequisite while
+        /// the runtime remains the sole owner of civic state and wetland consequences.
         /// </summary>
         public PrototypeCivicPolicyCommandResult SelectCivicPolicy(PrototypeCivicPolicy policy)
         {
@@ -483,6 +492,30 @@ namespace Societies.Core
             }
 
             return result;
+        }
+
+        /// <summary>
+        /// Applies the one player-facing prerequisite to both HUD and keyboard intents before
+        /// delegating to the existing authoritative civic command.
+        /// </summary>
+        public PrototypeCivicPolicyCommandResult TrySelectPlayerCivicPolicy(PrototypeCivicPolicy policy)
+        {
+            if (_runtimeSession == null)
+            {
+                return SelectCivicPolicy(policy);
+            }
+
+            if (_runtimeSession.TotalContributedQuantity <= 0)
+            {
+                PrototypeCivicPolicyCommandResult rejected = new(
+                    false,
+                    "contribution_required",
+                    _runtimeSession.CivicPolicy);
+                NotifyStatus("Civic policy unavailable: contribute at the central depot first");
+                return rejected;
+            }
+
+            return SelectCivicPolicy(policy);
         }
 
         /// <summary>
@@ -697,6 +730,23 @@ namespace Societies.Core
                 _hud?.SetStatusText($"Scenario set to {scenario.DisplayName}");
                 UpdateHud();
             }
+        }
+
+        /// <summary>
+        /// Selects one of the catalog-owned ER-01 starts. This is a scenario restart, not a
+        /// second world-state path; all seed and runtime facts remain catalog/session owned.
+        /// </summary>
+        public bool SelectExperienceProfile(string scenarioId)
+        {
+            if (_catalogs?.Scenarios.GetExperienceProfileOptions().Any(candidate =>
+                    string.Equals(candidate.ScenarioId, scenarioId, StringComparison.OrdinalIgnoreCase)) != true)
+            {
+                NotifyStatus("Settlement profile rejected");
+                return false;
+            }
+
+            SetScenario(scenarioId);
+            return true;
         }
 
         public void ToggleWeatherState()
@@ -947,6 +997,8 @@ namespace Societies.Core
             _player.HarvestRequested += OnPlayerHarvestRequested;
             _player.ContributionRequested -= OnPlayerContributionRequested;
             _player.ContributionRequested += OnPlayerContributionRequested;
+            _player.DepotFocusChanged -= OnPlayerDepotFocusChanged;
+            _player.DepotFocusChanged += OnPlayerDepotFocusChanged;
             _player.Terrain = _terrain;
             _player.SetControlEnabled(_cameraMode == CameraMode.Player);
 
@@ -965,6 +1017,10 @@ namespace Societies.Core
             if (_hud != null)
             {
                 PrototypeHudPresenter.Initialize(_hud);
+                _hud.CivicPolicyRequested -= OnHudCivicPolicyRequested;
+                _hud.CivicPolicyRequested += OnHudCivicPolicyRequested;
+                _hud.ExperienceProfileRequested -= OnHudExperienceProfileRequested;
+                _hud.ExperienceProfileRequested += OnHudExperienceProfileRequested;
             }
         }
 
@@ -1008,6 +1064,7 @@ namespace Societies.Core
 
             _selectedCitizenInspectionIndex = 0;
             _selectedStructureInspectionIndex = 0;
+            ConfigureExperienceHud();
             NotifyStatus("Prototype V2 M3 ready");
         }
 
@@ -1309,7 +1366,14 @@ namespace Societies.Core
                 _runtimeSession?.ContributionCountsByResource,
                 _runtimeSession?.Wetland,
                 GetSelectedCitizenInterest(),
-                GetCurrentCivicPolicy());
+                GetCurrentCivicPolicy(),
+                _runtimeSession?.TotalContributedQuantity ?? 0);
+            _hud.SetGoalText(PrototypeHudTextBuilder.BuildExperienceGoalText(
+                _scenario?.ExperienceProfile,
+                GetCurrentCivicPolicy(),
+                _runtimeSession?.Wetland,
+                GetSelectedCitizen(),
+                GetSelectedCitizenInterest()));
 
             UpdateSettlementPresentationFromSessionOrFallback();
         }
@@ -1431,12 +1495,17 @@ namespace Societies.Core
         {
             if (_runtimeSession == null || !_runtimeSession.TryHarvestForPlayer(siteId, amount, out string itemId, out int harvestedAmount))
             {
-                _hud?.SetStatusText("Resource unavailable");
+                _hud?.SetStatusText("Harvest rejected: resource unavailable");
+                UpdateHud();
                 return;
             }
 
             SyncResourcePresentationIfChanged();
-            _hud?.SetStatusText($"Harvested {InventoryComponent.FormatItemName(itemId)} x{harvestedAmount}");
+            bool depleted = _runtimeSession.ResourceSnapshots.Any(resource =>
+                string.Equals(resource.SiteId, siteId, StringComparison.Ordinal) && resource.UnitsRemaining == 0);
+            _hud?.SetStatusText(depleted
+                ? $"Harvested {InventoryComponent.FormatItemName(itemId)} x{harvestedAmount}; site depleted"
+                : $"Harvested {InventoryComponent.FormatItemName(itemId)} x{harvestedAmount}");
             UpdateHud();
         }
 
@@ -1481,6 +1550,31 @@ namespace Societies.Core
                 _ => "Contribution rejected"
             };
             _hud?.SetStatusText(statusText);
+            UpdateHud();
+        }
+
+        private void OnPlayerDepotFocusChanged(bool focused)
+        {
+            _scenePresenter?.SetCentralDepotFocused(focused);
+        }
+
+        private void ConfigureExperienceHud()
+        {
+            IReadOnlyList<PrototypeExperienceProfileOption> profiles = ExperienceProfiles;
+            if (_hud != null && profiles.Count == 2)
+            {
+                _hud.SetExperienceProfiles(profiles, _scenario?.Id);
+            }
+        }
+
+        private void OnHudCivicPolicyRequested(PrototypeCivicPolicy policy)
+        {
+            TrySelectPlayerCivicPolicy(policy);
+        }
+
+        private void OnHudExperienceProfileRequested(string scenarioId)
+        {
+            SelectExperienceProfile(scenarioId);
         }
 
         private void SyncResourcePresentationIfChanged(bool force = false)
@@ -1669,6 +1763,13 @@ namespace Societies.Core
             {
                 _player.HarvestRequested -= OnPlayerHarvestRequested;
                 _player.ContributionRequested -= OnPlayerContributionRequested;
+                _player.DepotFocusChanged -= OnPlayerDepotFocusChanged;
+            }
+
+            if (_hud != null)
+            {
+                _hud.CivicPolicyRequested -= OnHudCivicPolicyRequested;
+                _hud.ExperienceProfileRequested -= OnHudExperienceProfileRequested;
             }
 
             Instance = null;

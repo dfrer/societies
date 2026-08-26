@@ -1,0 +1,98 @@
+{
+  "schemaVersion": 1,
+  "milestone": "ER-01",
+  "status": "technical_validation_passed_manual_acceptance_pending",
+  "baseCommit": "399e47db992e260ffc0d1fbae00f350a93d30245",
+  "scope": {
+    "profiles": [
+      { "scenarioId": "wetland_builder", "profileId": "marsh_recovery", "seed": 8192 },
+      { "scenarioId": "empty_stores", "profileId": "lean_stores", "seed": 1701 }
+    ],
+    "authority": "PrototypeRuntimeSession and existing validated commands/events remain sole world authority. GameManager applies one TotalContributedQuantity player-intent prerequisite to both civic buttons and shortcuts, then delegates to SelectCivicPolicy. GameManager and the HUD exchange only immutable PrototypeExperienceProfileOption values containing scenario identity and profile display fields; mutable scenario/world definitions remain inside the catalog/runtime boundary. UI copy is derived from read-only worker, citizen-interest, wetland, command-result, and profile-option projections.",
+    "nonGoals": ["W3-06+", "former_week_4", "providers", "snow_globe", "markets", "multiplayer", "schema_expansion"]
+  },
+  "checks": [
+    {
+      "command": "dotnet build src/societies/Societies.csproj --configuration Release --no-restore",
+      "result": "passed",
+      "warnings": 0,
+      "errors": 0
+    },
+    {
+      "command": "dotnet build src/societies/Societies.sln --configuration ExportRelease --no-restore",
+      "result": "passed",
+      "warnings": 0,
+      "errors": 0
+    },
+    {
+      "command": "dotnet test tests/Societies.Core.Tests/Societies.Core.Tests.csproj --configuration Release --no-restore --filter FullyQualifiedName~ExperienceRecoveryEr01Tests|FullyQualifiedName~PrototypeHud",
+      "result": "passed",
+      "passed": 28,
+      "failed": 0,
+      "note": "Includes conservative 1280x720 budgets at the live 17px goal font and default 16px civic/profile button font, plus immutable read-only profile-option surface assertions."
+    },
+    {
+      "command": "dotnet test tests/Societies.Core.Tests/Societies.Core.Tests.csproj --configuration Release --no-restore --list-tests; repeat with manifest fast filter",
+      "result": "passed",
+      "discoveredManaged": 489,
+      "discoveredFast": 369,
+      "er01Cases": 4
+    },
+    {
+      "command": ".\\scripts\\run-prototype-validation.ps1 (main authoritative wrapper before final test-route reconciliation)",
+      "result": "failed",
+      "managedPassed": 489,
+      "managedFailed": 0,
+      "godotPassed": 24,
+      "godotFailed": 2,
+      "exitCode": 1,
+      "failures": [
+        "Test_MainScene_ExperienceRecoverySmoke: Player targeting should focus the in-world harvestable through its ray",
+        "Test_MainScene_CivicPolicySelectionInputSmoke: A fresh F7 session should permit one new deterministic fallback cognition decision"
+      ],
+      "note": "This is the authoritative pre-fix wrapper truth supplied by the main validation owner; it must not be represented as green."
+    },
+    {
+      "command": "Godot 4.6.2 --headless --path src/societies res://tests/HeadlessTestRunner.tscn (transient test-only selector for the two affected routes, removed after the run)",
+      "result": "passed",
+      "passed": 2,
+      "failed": 0,
+      "exitCode": 0,
+      "note": "After a Debug build, the real in-tree ray focused an existing authoritative ResourceNode presentation positioned three metres ahead, authoritative depletion exercised the invalid-reference regression, and the post-F7 player contribution enabled Key4 before the fresh civic cognition decision. This focused result does not replace a full wrapper rerun."
+    },
+    {
+      "command": ".\\scripts\\run-prototype-validation.ps1 (final authoritative wrapper)",
+      "result": "passed",
+      "managedPassed": 489,
+      "managedFailed": 0,
+      "managedSkipped": 0,
+      "godotPassed": 26,
+      "godotFailed": 0,
+      "exitCode": 0,
+      "note": "The final full run rebuilt the Debug assembly before Godot execution. Both previously failing routes passed in the complete suite."
+    },
+    {
+      "command": "dotnet build src/societies/Societies.csproj --configuration Release",
+      "result": "passed",
+      "warnings": 0,
+      "errors": 0
+    },
+    {
+      "command": "dotnet build src/societies/Societies.csproj --configuration ExportRelease",
+      "result": "passed",
+      "warnings": 0,
+      "errors": 0
+    },
+    {
+      "command": "independent deep review of the final implementation and test-route reconciliation",
+      "result": "go",
+      "p0ToP3Findings": 0
+    }
+  ],
+  "manualAcceptance": "pending_user_run",
+  "limitations": [
+    "Headless checks do not prove rendered readability or user-led acceptance.",
+    "Automated layout budgets and headless input do not establish the user-led agency, interaction-quality, causal-clarity, HUD-hierarchy, or meaningful-variation gate.",
+    "Clean-commit performance characterization remains pending before draft delivery."
+  ]
+}

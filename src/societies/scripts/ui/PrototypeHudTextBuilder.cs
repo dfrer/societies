@@ -10,6 +10,76 @@ namespace Societies.UI
     /// </summary>
     public static class PrototypeHudTextBuilder
     {
+        /// <summary>
+        /// The normal-play reading is deliberately short: it names the active profile's need,
+        /// the next physical action, and the current shared consequence without owning state.
+        /// </summary>
+        public static string BuildExperienceGoalText(
+            PrototypeExperienceProfileDefinition? profile,
+            PrototypeCivicPolicy civicPolicy,
+            PrototypeWetlandSnapshot? wetland,
+            PrototypeWorkerState? citizen = null,
+            PrototypeCitizenInterest? citizenInterest = null)
+        {
+            if (profile == null)
+            {
+                return "Settlement need\nFind a resource, bring it to the central depot, then make the wetland choice.";
+            }
+
+            if (civicPolicy == PrototypeCivicPolicy.Neutral)
+            {
+                string citizenReading = BuildNormalCitizenCivicText(citizen, citizenInterest, civicPolicy);
+                return $"{profile.Title}\n" +
+                       $"Need: {TrimSentence(profile.PrimaryNeed)}\n" +
+                       $"Next: {TrimSentence(profile.ResourceApproach)}\n" +
+                       $"World: {TrimSentence(profile.WorldCue)}\n" +
+                       $"{citizenReading}\n" +
+                       "Choice: preserve / take more reeds.";
+            }
+
+            string policyReading = civicPolicy == PrototypeCivicPolicy.ProtectWetland
+                ? "Result: wetland protected; reeds limited."
+                : "Result: more reeds now; wetland strained.";
+            string wetlandReading = wetland == null
+                ? "Wetland: outcome pending."
+                : $"Wetland: {wetland.WetlandHealthBand} {wetland.WetlandHealth}/100.";
+            string responseReading = BuildNormalCitizenCivicText(citizen, citizenInterest, civicPolicy);
+            return $"{profile.Title}\n" +
+                   $"Need: {TrimSentence(profile.ImmediatePressure)}\n" +
+                   $"World: {TrimSentence(profile.WorldCue)}\n" +
+                   $"{responseReading}\n{policyReading}\n{wetlandReading}";
+        }
+
+        /// <summary>One read-only citizen interest before the choice and its stance afterward.</summary>
+        public static string BuildNormalCitizenCivicText(
+            PrototypeWorkerState? citizen,
+            PrototypeCitizenInterest? interest,
+            PrototypeCivicPolicy selectedPolicy)
+        {
+            if (citizen == null || interest == null ||
+                !string.Equals(citizen.WorkerId, interest.WorkerId, System.StringComparison.Ordinal))
+            {
+                return "Citizen: interest unavailable.";
+            }
+
+            string reason = FormatCivicReason(interest.Reason);
+            if (selectedPolicy == PrototypeCivicPolicy.Neutral)
+            {
+                string preference = interest.PreferredPolicy == PrototypeCivicPolicy.ProtectWetland
+                    ? "Protect"
+                    : "Drawdown";
+                return $"{citizen.DisplayName}: {preference}; {reason}.";
+            }
+
+            string stance = interest.Position == PrototypeCitizenInterestPosition.Supports
+                ? "supports"
+                : interest.Position == PrototypeCitizenInterestPosition.Opposes
+                    ? "opposes"
+                    : "is undecided on";
+            string selected = selectedPolicy == PrototypeCivicPolicy.ProtectWetland ? "Protect" : "Drawdown";
+            return $"{citizen.DisplayName} {stance} {selected}: {reason}.";
+        }
+
         /// <summary>Two-line normal-play help that remains readable in the compact HUD.</summary>
         public static string BuildCompactHelpText()
         {
@@ -502,6 +572,8 @@ namespace Societies.UI
                 _ => throw new System.ArgumentOutOfRangeException(nameof(reason), reason, "Unknown civic interest reason.")
             };
         }
+
+        private static string TrimSentence(string value) => value.Trim().TrimEnd('.');
 
         private static string FormatStoreSummary(PrototypeResourceStoreState store)
         {

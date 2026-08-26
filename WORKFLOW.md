@@ -1134,3 +1134,24 @@ The offline Cognition Quality Corpus v1 is implemented in the isolated Snow Glob
 ## Continue with
 
 - Start ER-01 from a fresh clean isolated worktree after reading the recovery plan and handoff. Do not begin W3-06+ or add systems merely to increase breadth. The next milestone is complete only after automated authority/replay checks and the separate user-led product gate are honestly recorded.
+
+# ER-01 First Believable Settlement Loop technical candidate
+
+## Outcome and scope
+
+- Implemented one bounded orientation -> harvest -> contribute -> two-policy choice -> citizen response -> shared wetland consequence route without adding a second gameplay authority.
+- Curated exactly two starts through the existing catalog and seeds: Marsh Recovery (`wetland_builder`, `8192`) and Lean Stores (`empty_stores`, `1701`). Their resource approach, immediate pressure, and generated wetland/resource cue differ.
+- Reworked the normal HUD around one need, one contextual prompt, concise result feedback, visible profile and policy buttons, and one readable citizen response. F1 retains diagnostics as an optional layer.
+- Added presentation-only resource/depot focus plus authoritative success, rejection, and depletion feedback. Both visible policy buttons and `4`/`5` enter through `GameManager` and the existing `PrototypeRuntimeSession.SelectCivicPolicy` command; presentation stores no simulation state.
+- W3-06+, former Week 4, providers/Snow Globe, live cognition, broad governance, markets, multiplayer, combat, terrain replacement, and generalized quest/UI systems remain out of scope.
+
+## Validation and repository state
+
+- Focused ER-01/HUD validation passed 28/28. The final authoritative wrapper passed 489/489 managed and 26/26 Godot tests.
+- Production Release and ExportRelease builds passed with zero warnings and zero errors. Independent deep review is GO with no P0-P3 findings after the final test-route reconciliation.
+- Work was isolated in `C:\Users\hunte\.codex\worktrees\er01\societies` on `feature/er-01-first-believable-settlement-loop`, based on planning commit `399e47db992e260ffc0d1fbae00f350a93d30245`. The dirty primary checkout and all unrelated Snow Globe/provider/lab work were preserved.
+- Clean-commit performance characterization and draft-PR delivery remain pending. Automated tests do not establish rendered quality or user-led product acceptance.
+
+## Continue with
+
+- From the delivered draft candidate, the user plays both routes in [the ER-01 route](planning/active/v3-er-01-first-believable-settlement-loop.md) and accepts or rejects agency, interaction quality, causal clarity, HUD hierarchy, and meaningful profile variation. ER-01 remains incomplete until that result is recorded honestly.

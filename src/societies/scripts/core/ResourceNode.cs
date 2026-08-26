@@ -14,6 +14,9 @@ namespace Societies.Core
 
         private Node3D? _visualRoot;
         private Label3D? _stateLabel;
+        private bool _isFocused;
+
+        public bool IsFocused => _isFocused;
 
         public override void _Ready()
         {
@@ -37,6 +40,18 @@ namespace Societies.Core
         public void ApplyProjection(int unitsRemaining)
         {
             UnitsRemaining = Mathf.Max(0, unitsRemaining);
+            UpdateVisualState();
+        }
+
+        /// <summary>Presentation-only targeting state; resource authority stays in the runtime ledger.</summary>
+        public void SetFocused(bool focused)
+        {
+            if (_isFocused == focused)
+            {
+                return;
+            }
+
+            _isFocused = focused;
             UpdateVisualState();
         }
 
@@ -178,10 +193,16 @@ namespace Societies.Core
             }
 
             float normalized = Mathf.Clamp(UnitsRemaining / 6.0f, 0.2f, 1.0f);
-            _visualRoot.Scale = new Vector3(1.0f, normalized, 1.0f);
+            float focusScale = _isFocused ? 1.12f : 1.0f;
+            _visualRoot.Scale = new Vector3(focusScale, normalized * focusScale, focusScale);
             if (_stateLabel != null)
             {
-                _stateLabel.Text = $"{DisplayName}\n{UnitsRemaining} available";
+                _stateLabel.Text = _isFocused
+                    ? $"▶ {DisplayName}\nPress E — {UnitsRemaining} available"
+                    : $"{DisplayName}\n{UnitsRemaining} available";
+                _stateLabel.Modulate = _isFocused
+                    ? new Color(0.72f, 0.96f, 1.0f)
+                    : new Color(0.95f, 0.94f, 0.84f);
             }
         }
 

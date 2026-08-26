@@ -1,6 +1,9 @@
 using Godot;
+using Societies.Core;
 using Societies.Simulation;
+using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace Societies.UI
 {
@@ -26,7 +29,11 @@ namespace Societies.UI
         private Label? _worldLabel;
         private Label? _inspectorLabel;
         private Label? _crisisLabel;
+        private Label? _goalLabel;
         private Label? _crosshairLabel;
+        private Button? _protectWetlandButton;
+        private Button? _drawDownWetlandButton;
+        private readonly List<Button> _profileButtons = new();
         private Panel? _inventoryPanel;
         private Panel? _debugPanel;
         private Panel? _interactionPanel;
@@ -42,6 +49,9 @@ namespace Societies.UI
         private PrototypeSettlementDirective _directive = PrototypeSettlementDirective.Neutral;
         private PrototypeSettlementClassification _classification = PrototypeSettlementClassification.Strained;
         private PrototypeCrisisState? _crisis;
+        private PrototypeCivicPolicy _selectedCivicPolicy;
+        private bool _civicChoiceAvailable;
+        private bool _diagnosticsVisible;
         private static readonly Dictionary<(PrototypeHudCue Cue, bool Emphasized), StyleBoxFlat> CardStyleCache = new();
 
         public string DebugText => _debugLabel?.Text ?? string.Empty;
@@ -53,11 +63,22 @@ namespace Societies.UI
         public string WorldText => _worldLabel?.Text ?? string.Empty;
         public string InspectorText => _inspectorLabel?.Text ?? string.Empty;
         public string CrisisText => _crisisLabel?.Text ?? string.Empty;
+        public string GoalText => _goalLabel?.Text ?? string.Empty;
         public bool IsInventoryVisible => _inventoryPanel?.Visible ?? false;
         public bool IsDebugVisible => _debugPanel?.Visible ?? false;
+        public bool IsDiagnosticsVisible => _diagnosticsVisible;
+        public int ProfileChoiceCount => _profileButtons.Count;
+        public bool HasCivicChoiceSurface => _protectWetlandButton != null && _drawDownWetlandButton != null;
+        public bool IsCivicChoiceAvailable => _civicChoiceAvailable;
         public PrototypeHudLayout Layout { get; private set; } = PrototypeHudLayout.Calculate(1920.0f, 1080.0f);
         public IReadOnlyDictionary<string, PrototypeHudBounds> LayoutBounds => Layout.Bounds;
         public PrototypeHudPresentationState PresentationState { get; private set; }
+
+        /// <summary>Intent-only UI event; GameManager remains the command seam.</summary>
+        public event Action<PrototypeCivicPolicy>? CivicPolicyRequested;
+
+        /// <summary>Intent-only UI event; selected scenario data remains authoritative.</summary>
+        public event Action<string>? ExperienceProfileRequested;
 
         public override void _Ready()
         {
@@ -160,6 +181,88 @@ namespace Societies.UI
             }
         }
 
+        public void SetGoalText(string text)
+        {
+            if (_goalLabel != null)
+            {
+                _goalLabel.Text = text;
+            }
+        }
+
+        public void SetCivicChoiceState(PrototypeCivicPolicy selectedCivicPolicy, bool choiceAvailable)
+        {
+            _selectedCivicPolicy = selectedCivicPolicy;
+            _civicChoiceAvailable = choiceAvailable;
+            if (_protectWetlandButton != null) _protectWetlandButton.Disabled = !choiceAvailable;
+            if (_drawDownWetlandButton != null) _drawDownWetlandButton.Disabled = !choiceAvailable;
+            ApplyDiagnosticsVisibility();
+        }
+
+        /// <summary>
+        /// Builds the two catalog-owned profile buttons. The buttons contain no profile state;
+        /// they only ask the GameManager to recreate the selected scenario.
+        /// </summary>
+        public void SetExperienceProfiles(
+            IReadOnlyList<PrototypeExperienceProfileOption> profiles,
+            string? activeScenarioId)
+        {
+            if (profiles.Count != 2)
+            {
+                throw new ArgumentException("ER-01 requires exactly two curated experience profiles.", nameof(profiles));
+            }
+
+            foreach (Button button in _profileButtons)
+            {
+                button.QueueFree();
+            }
+            _profileButtons.Clear();
+
+            if (_helpPanel == null)
+            {
+                return;
+            }
+
+            foreach ((PrototypeExperienceProfileOption profile, int index) in profiles
+                .OrderBy(candidate => candidate.DisplayOrder)
+                .ThenBy(candidate => candidate.ScenarioId, StringComparer.Ordinal)
+                .Select((profile, index) => (profile, index)))
+            {
+                Button button = new()
+                {
+                    Name = $"ExperienceProfile_{profile.ProfileId}",
+                    Text = $"{profile.Title}: {profile.ResourceApproach}",
+                    TooltipText = $"{profile.ImmediatePressure} {profile.WorldCue}",
+                    Disabled = string.Equals(profile.ScenarioId, activeScenarioId, StringComparison.OrdinalIgnoreCase),
+                    MouseFilter = Control.MouseFilterEnum.Stop,
+                    AnchorLeft = index == 0 ? 0.0f : 0.5f,
+                    AnchorRight = index == 0 ? 0.5f : 1.0f,
+                    AnchorTop = 0.0f,
+                    AnchorBottom = 1.0f,
+                    OffsetLeft = index == 0 ? 8.0f : 3.0f,
+                    OffsetTop = 8.0f,
+                    OffsetRight = index == 0 ? -3.0f : -8.0f,
+                    OffsetBottom = -8.0f
+                };
+                button.Pressed += () => ExperienceProfileRequested?.Invoke(profile.ScenarioId);
+                _helpPanel.AddChild(button);
+                _profileButtons.Add(button);
+            }
+
+            ApplyDiagnosticsVisibility();
+        }
+
+        public void ToggleDiagnostics() => SetDiagnosticsVisible(!_diagnosticsVisible);
+
+        public void SetDiagnosticsVisible(bool visible)
+        {
+            _diagnosticsVisible = visible;
+            ApplyDiagnosticsVisibility();
+        }
+
+        public void RequestCivicPolicy(PrototypeCivicPolicy policy) => CivicPolicyRequested?.Invoke(policy);
+
+        public void RequestExperienceProfile(string scenarioId) => ExperienceProfileRequested?.Invoke(scenarioId);
+
         public void SetDebugVisible(bool visible)
         {
             if (_debugPanel != null)
@@ -219,6 +322,26 @@ namespace Societies.UI
             root.AddChild(_helpPanel);
             _crisisPanel = CreateCard("CrisisPanel", 16, out _crisisLabel);
             root.AddChild(_crisisPanel);
+            _goalLabel = CreateLabel(17);
+            _goalLabel.Name = "SettlementGoal";
+            _goalLabel.OffsetBottom = -94.0f;
+            _crisisPanel.AddChild(_goalLabel);
+            _protectWetlandButton = CreateCivicChoiceButton("Protect wetland", PrototypeCivicPolicy.ProtectWetland);
+            _protectWetlandButton.AnchorTop = 1.0f;
+            _protectWetlandButton.AnchorBottom = 1.0f;
+            _protectWetlandButton.OffsetLeft = 12.0f;
+            _protectWetlandButton.OffsetTop = -88.0f;
+            _protectWetlandButton.OffsetRight = -12.0f;
+            _protectWetlandButton.OffsetBottom = -52.0f;
+            _crisisPanel.AddChild(_protectWetlandButton);
+            _drawDownWetlandButton = CreateCivicChoiceButton("Draw down wetland", PrototypeCivicPolicy.DrawDownWetland);
+            _drawDownWetlandButton.AnchorTop = 1.0f;
+            _drawDownWetlandButton.AnchorBottom = 1.0f;
+            _drawDownWetlandButton.OffsetLeft = 12.0f;
+            _drawDownWetlandButton.OffsetTop = -46.0f;
+            _drawDownWetlandButton.OffsetRight = -12.0f;
+            _drawDownWetlandButton.OffsetBottom = -10.0f;
+            _crisisPanel.AddChild(_drawDownWetlandButton);
             _inspectorPanel = CreateCard("InspectorPanel", 16, out _inspectorLabel);
             root.AddChild(_inspectorPanel);
             _worldPanel = CreateCard("WorldPanel", 15, out _worldLabel);
@@ -279,6 +402,26 @@ namespace Societies.UI
             ApplyCardStyle(_worldPanel, PrototypeHudCue.Neutral, false);
             ApplyCardStyle(_helpPanel, PrototypeHudCue.Neutral, false);
             ApplyCardStyle(_debugPanel, PrototypeHudCue.Neutral, false);
+            ApplyDiagnosticsVisibility();
+        }
+
+        private void ApplyDiagnosticsVisibility()
+        {
+            bool normalPlay = !_diagnosticsVisible;
+            if (_debugPanel != null) _debugPanel.Visible = _diagnosticsVisible;
+            if (_inventoryPanel != null) _inventoryPanel.Visible = _diagnosticsVisible;
+            if (_settlementPanel != null) _settlementPanel.Visible = _diagnosticsVisible;
+            if (_worldPanel != null) _worldPanel.Visible = _diagnosticsVisible;
+            if (_inspectorPanel != null) _inspectorPanel.Visible = _diagnosticsVisible;
+            if (_crisisLabel != null) _crisisLabel.Visible = _diagnosticsVisible;
+            if (_goalLabel != null) _goalLabel.Visible = normalPlay;
+            if (_protectWetlandButton != null) _protectWetlandButton.Visible = normalPlay && _selectedCivicPolicy == PrototypeCivicPolicy.Neutral;
+            if (_drawDownWetlandButton != null) _drawDownWetlandButton.Visible = normalPlay && _selectedCivicPolicy == PrototypeCivicPolicy.Neutral;
+            if (_helpLabel != null) _helpLabel.Visible = _diagnosticsVisible;
+            foreach (Button button in _profileButtons)
+            {
+                button.Visible = normalPlay;
+            }
         }
 
         private void ApplyBounds(Control? control, string key)
@@ -324,6 +467,21 @@ namespace Societies.UI
             return label;
         }
 
+        private Button CreateCivicChoiceButton(string text, PrototypeCivicPolicy policy)
+        {
+            Button button = new()
+            {
+                Name = $"CivicChoice_{policy}",
+                Text = text,
+                TooltipText = policy == PrototypeCivicPolicy.ProtectWetland
+                    ? "Reserve reeds now to preserve future wetland supply."
+                    : "Allow more reeds now at a shared wetland cost.",
+                MouseFilter = Control.MouseFilterEnum.Stop
+            };
+            button.Pressed += () => CivicPolicyRequested?.Invoke(policy);
+            return button;
+        }
+
         private static void ApplyCardStyle(Panel? panel, PrototypeHudCue cue, bool emphasized)
         {
             if (panel == null)
@@ -342,6 +500,7 @@ namespace Societies.UI
                     PrototypeHudCue.Collapsed => new Color(0.92f, 0.29f, 0.24f),
                     PrototypeHudCue.BlockedInteraction => new Color(0.96f, 0.39f, 0.22f),
                     PrototypeHudCue.ContributionSuccess => new Color(0.42f, 0.88f, 0.55f),
+                    PrototypeHudCue.DepletedInteraction => new Color(0.63f, 0.66f, 0.70f),
                     _ => new Color(0.42f, 0.76f, 0.72f)
                 };
                 style = new StyleBoxFlat

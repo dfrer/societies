@@ -117,6 +117,42 @@ namespace Societies.Core
             return Resolve(DefaultScenarioId);
         }
 
+        /// <summary>
+        /// Returns the deliberately small ER-01 profile set. Profiles are scenario metadata,
+        /// so selecting one still recreates the normal catalog-owned scenario and seed.
+        /// </summary>
+        public IReadOnlyList<PrototypeScenarioDefinition> GetExperienceProfiles()
+        {
+            return Scenarios
+                .Where(candidate => candidate.ExperienceProfile != null)
+                .OrderBy(candidate => candidate.ExperienceProfile!.DisplayOrder)
+                .ThenBy(candidate => candidate.Id, StringComparer.Ordinal)
+                .ToList();
+        }
+
+        /// <summary>
+        /// Immutable, capability-shaped projection for the player-facing start selector.
+        /// It intentionally excludes mutable scenario/world configuration.
+        /// </summary>
+        public IReadOnlyList<PrototypeExperienceProfileOption> GetExperienceProfileOptions()
+        {
+            PrototypeExperienceProfileOption[] options = GetExperienceProfiles()
+                .Select(scenario =>
+                {
+                    PrototypeExperienceProfileDefinition profile = scenario.ExperienceProfile!;
+                    return new PrototypeExperienceProfileOption(
+                        scenario.Id,
+                        profile.Id,
+                        profile.Title,
+                        profile.ResourceApproach,
+                        profile.ImmediatePressure,
+                        profile.WorldCue,
+                        profile.DisplayOrder);
+                })
+                .ToArray();
+            return Array.AsReadOnly(options);
+        }
+
         public void Validate()
         {
             PrototypeCatalogValidation.ValidateUniqueIds(
@@ -226,6 +262,11 @@ namespace Societies.Core
                     throw new InvalidOperationException($"Scenario '{scenario.Id}' contains invalid starting hearth fuel.");
                 }
 
+                if (scenario.ExperienceProfile != null)
+                {
+                    ValidateExperienceProfile(scenario);
+                }
+
                 if (scenario.PathBuildPolicy.CorridorBudget <= 0)
                 {
                     throw new InvalidOperationException($"Scenario '{scenario.Id}' must define a positive corridor budget.");
@@ -238,6 +279,13 @@ namespace Societies.Core
                 }
 
                 ValidateCrisis(scenario);
+            }
+
+            int experienceProfileCount = GetExperienceProfiles().Count;
+            if (experienceProfileCount != 0 && experienceProfileCount != 2)
+            {
+                throw new InvalidOperationException(
+                    $"Prototype experience profiles must be absent or contain exactly two curated starts; found {experienceProfileCount}.");
             }
         }
 
@@ -283,6 +331,21 @@ namespace Societies.Core
                 crisis.CitizenNeedRateMultiplier > 1.0f)
             {
                 throw new InvalidOperationException($"Scenario '{scenario.Id}' crisis stability thresholds are invalid.");
+            }
+        }
+
+        private static void ValidateExperienceProfile(PrototypeScenarioDefinition scenario)
+        {
+            PrototypeExperienceProfileDefinition profile = scenario.ExperienceProfile!;
+            if (string.IsNullOrWhiteSpace(profile.Id) ||
+                string.IsNullOrWhiteSpace(profile.Title) ||
+                string.IsNullOrWhiteSpace(profile.PrimaryNeed) ||
+                string.IsNullOrWhiteSpace(profile.ResourceApproach) ||
+                string.IsNullOrWhiteSpace(profile.ImmediatePressure) ||
+                string.IsNullOrWhiteSpace(profile.WorldCue) ||
+                profile.DisplayOrder < 0)
+            {
+                throw new InvalidOperationException($"Scenario '{scenario.Id}' has an invalid experience profile.");
             }
         }
     }
@@ -336,7 +399,43 @@ namespace Societies.Core
         public int StressPopulationOverride { get; set; }
 
         public PrototypeCrisisDefinition? Crisis { get; set; }
+
+        /// <summary>
+        /// Presentation metadata for the two curated ER-01 starts. It has no simulation
+        /// authority: world facts continue to come from this scenario's existing seed/data.
+        /// </summary>
+        public PrototypeExperienceProfileDefinition? ExperienceProfile { get; set; }
     }
+
+    public sealed class PrototypeExperienceProfileDefinition
+    {
+        public string Id { get; set; } = string.Empty;
+
+        public string Title { get; set; } = string.Empty;
+
+        public string PrimaryNeed { get; set; } = string.Empty;
+
+        public string ResourceApproach { get; set; } = string.Empty;
+
+        public string ImmediatePressure { get; set; } = string.Empty;
+
+        public string WorldCue { get; set; } = string.Empty;
+
+        public int DisplayOrder { get; set; }
+    }
+
+    /// <summary>
+    /// The complete and immutable presentation capability for one ER-01 start button.
+    /// Scenario definitions and world-generation settings never cross into the HUD.
+    /// </summary>
+    public sealed record PrototypeExperienceProfileOption(
+        string ScenarioId,
+        string ProfileId,
+        string Title,
+        string ResourceApproach,
+        string ImmediatePressure,
+        string WorldCue,
+        int DisplayOrder);
 
     public sealed class PrototypeCrisisDefinition
     {

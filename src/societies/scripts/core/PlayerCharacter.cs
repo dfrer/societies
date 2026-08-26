@@ -17,15 +17,18 @@ namespace Societies.Core
 
         public TerrainGenerator? Terrain { get; set; }
         public bool ControlsEnabled => _controlsEnabled;
+        public bool IsDepotFocused => _isDepotFocused;
         public Vector3 ContributionDepotPosition { get; set; }
 
         public event Action<string, int>? HarvestRequested;
         public event Action<Vector3, ulong>? ContributionRequested;
+        public event Action<bool>? DepotFocusChanged;
 
         private Node3D? _cameraPivot;
         private Camera3D? _camera;
         private RayCast3D? _interactionRay;
         private ResourceNode? _focusedResource;
+        private bool _isDepotFocused;
         private bool _controlsEnabled = true;
 
         public override void _Ready()
@@ -79,14 +82,15 @@ namespace Societies.Core
 
         public string GetInteractionText()
         {
-            if (_focusedResource == null)
+            ResourceNode? focusedResource = GetValidFocusedResource();
+            if (focusedResource == null)
             {
-                return IsWithinContributionRange()
-                    ? "Press E to contribute all raw resources to the central depot"
+                return _isDepotFocused
+                    ? "Central depot focused — Press E to contribute raw resources"
                     : "Look at a resource node and press E";
             }
 
-            return $"Press E to harvest {_focusedResource.DisplayName} ({_focusedResource.UnitsRemaining} left)";
+            return $"Press E to harvest {focusedResource.DisplayName} ({focusedResource.UnitsRemaining} left)";
         }
 
         public void ResetForPrototypeRun(Vector3 position)
@@ -94,7 +98,10 @@ namespace Societies.Core
             Velocity = Vector3.Zero;
             Position = position;
             Rotation = Vector3.Zero;
+            ResourceNode? focusedResource = GetValidFocusedResource();
+            focusedResource?.SetFocused(false);
             _focusedResource = null;
+            SetDepotFocus(false);
 
             if (_cameraPivot != null)
             {
@@ -156,16 +163,21 @@ namespace Societies.Core
 
         private void UpdateInteractionTarget()
         {
+            ResourceNode? previousFocusedResource = GetValidFocusedResource();
             _focusedResource = null;
 
             if (_interactionRay == null)
             {
+                previousFocusedResource?.SetFocused(false);
+                SetDepotFocus(IsWithinContributionRange());
                 return;
             }
 
             _interactionRay.ForceRaycastUpdate();
             if (!_interactionRay.IsColliding())
             {
+                previousFocusedResource?.SetFocused(false);
+                SetDepotFocus(IsWithinContributionRange());
                 return;
             }
 
@@ -173,23 +185,33 @@ namespace Societies.Core
             if (collider is ResourceNode resource)
             {
                 _focusedResource = resource;
-                return;
             }
-
-            if (collider is Node colliderNode)
+            else if (collider is Node colliderNode)
             {
                 _focusedResource = colliderNode.GetParent() as ResourceNode;
             }
+
+            if (previousFocusedResource != null && previousFocusedResource != _focusedResource &&
+                GodotObject.IsInstanceValid(previousFocusedResource))
+            {
+                previousFocusedResource.SetFocused(false);
+            }
+            ResourceNode? focusedResource = GetValidFocusedResource();
+            focusedResource?.SetFocused(true);
+            SetDepotFocus(_focusedResource == null && IsWithinContributionRange());
         }
 
         private void TryHarvest()
         {
-            if (_focusedResource == null)
+            ResourceNode? focusedResource = GetValidFocusedResource();
+            if (focusedResource == null)
             {
                 return;
             }
 
-            HarvestRequested?.Invoke(_focusedResource.SiteId, 1);
+            string siteId = focusedResource.SiteId;
+            HarvestRequested?.Invoke(siteId, 1);
+            _ = GetValidFocusedResource();
         }
 
         public bool ApplyCaptureCameraPose(Vector3 cameraPosition, Vector3 lookAt, float fieldOfView)
@@ -207,7 +229,7 @@ namespace Societies.Core
 
         public void ProcessInteractionInput(ulong inputFrame)
         {
-            if (_focusedResource != null)
+            if (GetValidFocusedResource() != null)
             {
                 TryHarvest();
                 return;
@@ -219,9 +241,30 @@ namespace Societies.Core
             }
         }
 
+        private ResourceNode? GetValidFocusedResource()
+        {
+            if (_focusedResource != null && !GodotObject.IsInstanceValid(_focusedResource))
+            {
+                _focusedResource = null;
+            }
+
+            return _focusedResource;
+        }
+
         private bool IsWithinContributionRange()
         {
             return GlobalPosition.DistanceTo(ContributionDepotPosition) <= ContributionRangeMeters;
+        }
+
+        private void SetDepotFocus(bool focused)
+        {
+            if (_isDepotFocused == focused)
+            {
+                return;
+            }
+
+            _isDepotFocused = focused;
+            DepotFocusChanged?.Invoke(focused);
         }
 
         private void ClampToWorld()

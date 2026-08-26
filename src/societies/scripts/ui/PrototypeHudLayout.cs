@@ -42,12 +42,28 @@ namespace Societies.UI
         public const string Help = "Help";
         public const string Debug = "Debug";
         public const string Crosshair = "Crosshair";
+        public const string Goal = "Goal";
+        public const string ProtectChoice = "ProtectChoice";
+        public const string DrawDownChoice = "DrawDownChoice";
+        public const string MarshProfileChoice = "MarshProfileChoice";
+        public const string LeanProfileChoice = "LeanProfileChoice";
 
         private PrototypeHudLayout(float viewportWidth, float viewportHeight, Dictionary<string, PrototypeHudBounds> bounds)
         {
             ViewportWidth = viewportWidth;
             ViewportHeight = viewportHeight;
             Bounds = bounds;
+            PrototypeHudBounds crisis = bounds[Crisis];
+            PrototypeHudBounds help = bounds[Help];
+            float halfHelpWidth = help.Width * 0.5f;
+            NormalControlBounds = new Dictionary<string, PrototypeHudBounds>(StringComparer.Ordinal)
+            {
+                [Goal] = new(crisis.X + 12.0f, crisis.Y + 10.0f, crisis.Width - 24.0f, crisis.Height - 104.0f),
+                [ProtectChoice] = new(crisis.X + 12.0f, crisis.Bottom - 88.0f, crisis.Width - 24.0f, 36.0f),
+                [DrawDownChoice] = new(crisis.X + 12.0f, crisis.Bottom - 46.0f, crisis.Width - 24.0f, 36.0f),
+                [MarshProfileChoice] = new(help.X + 8.0f, help.Y + 8.0f, halfHelpWidth - 11.0f, help.Height - 16.0f),
+                [LeanProfileChoice] = new(help.X + halfHelpWidth + 3.0f, help.Y + 8.0f, halfHelpWidth - 11.0f, help.Height - 16.0f)
+            };
         }
 
         public float ViewportWidth { get; }
@@ -57,6 +73,8 @@ namespace Societies.UI
         public bool IsCompact => ViewportHeight <= 800.0f;
 
         public IReadOnlyDictionary<string, PrototypeHudBounds> Bounds { get; }
+
+        public IReadOnlyDictionary<string, PrototypeHudBounds> NormalControlBounds { get; }
 
         public PrototypeHudBounds this[string key] => Bounds[key];
 
@@ -69,9 +87,53 @@ namespace Societies.UI
                 throw new ArgumentOutOfRangeException(nameof(fontSize));
             }
 
-            PrototypeHudBounds bounds = this[key];
-            float innerWidth = MathF.Max(1.0f, bounds.Width - 24.0f);
-            float innerHeight = MathF.Max(1.0f, bounds.Height - 20.0f);
+            return CalculateTextBudget(this[key], text, fontSize, 24.0f, 20.0f);
+        }
+
+        public PrototypeHudTextBudget GetNormalControlTextBudget(string key, string text, int fontSize)
+        {
+            ArgumentException.ThrowIfNullOrWhiteSpace(key);
+            ArgumentNullException.ThrowIfNull(text);
+            if (fontSize <= 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(fontSize));
+            }
+
+            return CalculateTextBudget(NormalControlBounds[key], text, fontSize, 0.0f, 0.0f);
+        }
+
+        public bool HasNormalControlOverlaps()
+        {
+            PrototypeHudBounds[] controls = new PrototypeHudBounds[NormalControlBounds.Count];
+            int index = 0;
+            foreach (PrototypeHudBounds control in NormalControlBounds.Values)
+            {
+                controls[index++] = control;
+            }
+
+            for (int left = 0; left < controls.Length; left++)
+            {
+                for (int right = left + 1; right < controls.Length; right++)
+                {
+                    if (controls[left].Overlaps(controls[right]))
+                    {
+                        return true;
+                    }
+                }
+            }
+
+            return false;
+        }
+
+        private static PrototypeHudTextBudget CalculateTextBudget(
+            PrototypeHudBounds bounds,
+            string text,
+            int fontSize,
+            float horizontalPadding,
+            float verticalPadding)
+        {
+            float innerWidth = MathF.Max(1.0f, bounds.Width - horizontalPadding);
+            float innerHeight = MathF.Max(1.0f, bounds.Height - verticalPadding);
             int charactersPerLine = Math.Max(1, (int)MathF.Floor(innerWidth / (fontSize * 0.70f)));
             int availableLines = Math.Max(0, (int)MathF.Floor(innerHeight / (fontSize * 1.35f)));
             int estimatedLines = EstimateWrappedLines(text, charactersPerLine);
@@ -85,9 +147,12 @@ namespace Societies.UI
             bool compact = height <= 800.0f;
             float margin = Clamp(width * 0.012f, 14.0f, 24.0f);
             float gap = compact ? 12.0f : 16.0f;
-            float leftWidth = Clamp(width * 0.34f, 435.0f, 540.0f);
+            float leftGap = compact ? 0.0f : gap;
+            float leftWidth = Clamp(width * 0.34f, 500.0f, 540.0f);
             float rightWidth = Clamp(width * 0.26f, 320.0f, 380.0f);
-            float crisisHeight = compact ? 224.0f : 250.0f;
+            // The compact normal goal reserves six short 17px lines above its two civic buttons.
+            // Smaller compact gaps preserve the existing inspector text budget below it.
+            float crisisHeight = compact ? 248.0f : 250.0f;
             float inspectorHeight = compact ? 190.0f : 230.0f;
             // Compact world text retains two conservative 15px lines (50px inner height),
             // freeing enough vertical space for the two 18px one-line feedback cards.
@@ -112,8 +177,8 @@ namespace Societies.UI
             Dictionary<string, PrototypeHudBounds> bounds = new(StringComparer.Ordinal)
             {
                 [Crisis] = new(margin, margin, leftWidth, crisisHeight),
-                [Inspector] = new(margin, margin + crisisHeight + gap, leftWidth, inspectorHeight),
-                [World] = new(margin, margin + crisisHeight + gap + inspectorHeight + gap, leftWidth, worldHeight),
+                [Inspector] = new(margin, margin + crisisHeight + leftGap, leftWidth, inspectorHeight),
+                [World] = new(margin, margin + crisisHeight + leftGap + inspectorHeight + leftGap, leftWidth, worldHeight),
                 [Inventory] = new(rightX, margin, rightWidth, inventoryHeight),
                 [Settlement] = new(rightX, margin + inventoryHeight + gap, rightWidth, settlementHeight),
                 [Interaction] = new((width - 560.0f) * 0.5f, interactionY, 560.0f, interactionHeight),
@@ -182,7 +247,8 @@ namespace Societies.UI
         Stable,
         Collapsed,
         BlockedInteraction,
-        ContributionSuccess
+        ContributionSuccess,
+        DepletedInteraction
     }
 
     /// <summary>Pure state-to-cue mapping used by the live HUD and focused tests.</summary>
@@ -215,6 +281,8 @@ namespace Societies.UI
             string feedback = $"{statusText} {interactionText}";
             PrototypeHudCue interactionCue = Contains(feedback, "contributed")
                 ? PrototypeHudCue.ContributionSuccess
+                : Contains(feedback, "depleted")
+                    ? PrototypeHudCue.DepletedInteraction
                 : Contains(feedback, "unavailable") || Contains(feedback, "cannot") ||
                   Contains(feedback, "rejected") || Contains(feedback, "no eligible") ||
                   Contains(feedback, "no resources to contribute") || Contains(feedback, "nothing to contribute") ||
