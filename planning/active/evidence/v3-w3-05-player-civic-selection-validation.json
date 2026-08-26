@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "capturedUtc": "2026-08-26T01:32:16.3321707Z",
+  "capturedUtc": "2026-08-26T01:41:06Z",
   "workItem": "W3-05-follow-up-player-civic-selection",
-  "status": "automated_acceptance_pass_author_smoke_observation_blocked_delivery_pending",
+  "status": "merged_automated_acceptance_pass_author_smoke_observation_blocked",
   "source": {
     "baseCommit": "ed94b1f2ab016c53988f86902e0e28b7f28849df",
     "implementationCommit": "5c732b1672397c552a0ce6d0b4f0b162006d79a1",
@@ -139,9 +139,17 @@
     "claim": "Automated main-scene input smoke passed, but author or visual acceptance is not claimed."
   },
   "delivery": {
-    "status": "local_acceptance_complete_push_pr_ci_merge_pending",
-    "pullRequest": null,
-    "merge": null
+    "status": "merged",
+    "headCommit": "155b4e6cc61f7478c008709adcaf521a1b0008ed",
+    "pullRequest": 175,
+    "requiredCheck": {
+      "name": "build-test-smoke",
+      "result": "pass",
+      "duration": "4m13s",
+      "run": 32919607942
+    },
+    "mergedAt": "2026-08-26T01:41:06Z",
+    "mergeCommit": "36c445bc594daa3c6eabce49aa7a98e1f558dd87"
   },
   "inactiveScope": [
     "W3-06+",
