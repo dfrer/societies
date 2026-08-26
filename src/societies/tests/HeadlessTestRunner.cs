@@ -54,6 +54,7 @@ namespace Societies.Tests
             await Test_MainScene_BootstrapSmoke();
             await Test_MainScene_DepotContributionInputSmoke();
             await Test_MainScene_DirectiveInputSmoke();
+            await Test_MainScene_CivicPolicySelectionInputSmoke();
             await Test_MainScene_CrisisHudPresentationSmoke();
             Test_GodotCivicDeterministicLoopSmoke();
             await Test_MainScene_CrisisPersistenceInputSmoke();
@@ -302,6 +303,165 @@ namespace Societies.Tests
                     await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
                 }
             }
+        }
+
+        private async Task Test_MainScene_CivicPolicySelectionInputSmoke()
+        {
+            Node? scene = null;
+            string outputDirectory = CreateRunOutputDirectory(nameof(Test_MainScene_CivicPolicySelectionInputSmoke));
+
+            try
+            {
+                System.Environment.SetEnvironmentVariable("SOCIETIES_RUN_OUTPUT_DIR", outputDirectory);
+                PackedScene packedScene = GD.Load<PackedScene>("res://scenes/main.tscn");
+                Assert(packedScene != null, "Main scene failed to load");
+                scene = packedScene!.Instantiate();
+                AddChild(scene);
+                await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+
+                GameManager manager = scene as GameManager ?? throw new Exception("Main scene root is not GameManager");
+                manager.SetProcess(false);
+                PrototypeHud hud = manager.GetNodeOrNull<PrototypeHud>("UI") ?? throw new Exception("PrototypeHud missing");
+
+                AssertCivicPolicyInput(
+                    manager,
+                    hud,
+                    Key.Key4,
+                    "Protect",
+                    "Healthy 75/100",
+                    "Reeds: 0/4, 4 left | fewer; preserved",
+                    "supports Protect",
+                    "opposes Protect");
+
+                manager.ResetPrototypeRun();
+                Assert(hud.CrisisText.Contains("Policy: not selected (neutral)", StringComparison.Ordinal),
+                    "F7-equivalent reset must restore a neutral player-facing civic reading");
+
+                AssertCivicPolicyInput(
+                    manager,
+                    hud,
+                    Key.Key5,
+                    "Drawdown",
+                    "Strained 45/100",
+                    "Reeds: 0/12, 12 left | more; degrades",
+                    "opposes Drawdown",
+                    "supports Drawdown");
+
+                AssertCivicCognitionSaveLoadGuard(manager, hud, outputDirectory);
+
+                Pass(nameof(Test_MainScene_CivicPolicySelectionInputSmoke));
+            }
+            catch (Exception ex)
+            {
+                Fail(nameof(Test_MainScene_CivicPolicySelectionInputSmoke), ex);
+            }
+            finally
+            {
+                System.Environment.SetEnvironmentVariable("SOCIETIES_RUN_OUTPUT_DIR", null);
+                if (scene != null)
+                {
+                    scene.QueueFree();
+                    await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+                }
+            }
+        }
+
+        private void AssertCivicPolicyInput(
+            GameManager manager,
+            PrototypeHud hud,
+            Key inputKey,
+            string policyLabel,
+            string healthText,
+            string quotaText,
+            string expectedFutureReedStance,
+            string expectedShelterStance)
+        {
+            manager._UnhandledInput(new InputEventKey { Pressed = true, Keycode = inputKey });
+            Assert(hud.StatusText.Contains($"Civic policy selected: {policyLabel}", StringComparison.Ordinal),
+                "Player civic input should report the accepted policy");
+            Assert(hud.CrisisText.Contains($"Policy: {policyLabel}", StringComparison.Ordinal) &&
+                hud.CrisisText.Contains(healthText, StringComparison.Ordinal) &&
+                hud.CrisisText.Contains(quotaText, StringComparison.Ordinal),
+                "Player civic input should refresh the policy, quota, wetland health, and consequence HUD");
+
+            manager._UnhandledInput(new InputEventKey { Pressed = true, Keycode = inputKey });
+            Assert(hud.StatusText.Contains("Civic policy rejected: already_selected", StringComparison.Ordinal),
+                "A duplicate player civic input must reject through the session's one-selection guard");
+
+            bool foundFutureReed = false;
+            bool foundImmediateShelter = false;
+            for (int index = 0; index < manager.CitizenCount; index++)
+            {
+                manager._UnhandledInput(new InputEventKey { Pressed = true, Keycode = Key.F3 });
+                foundFutureReed |= hud.InspectorText.Contains("future reeds", StringComparison.Ordinal) &&
+                    hud.InspectorText.Contains(expectedFutureReedStance, StringComparison.Ordinal);
+                foundImmediateShelter |= hud.InspectorText.Contains("shelter now", StringComparison.Ordinal) &&
+                    hud.InspectorText.Contains(expectedShelterStance, StringComparison.Ordinal);
+            }
+
+            Assert(foundFutureReed,
+                "Cycling the main-scene inspector should expose the future-reeds interest with its selected-policy stance");
+            Assert(foundImmediateShelter,
+                "Cycling the main-scene inspector should expose the immediate-shelter interest with its selected-policy stance");
+
+            int cognitionEventsBefore = manager.CivicCognitionDecisionCount;
+            PrototypeRuntimeSnapshot beforeCognition = manager.CaptureSnapshot();
+            string policyBeforeCognition = beforeCognition.CivicPolicy?.PolicyId
+                ?? throw new Exception("Civic snapshot must contain the selected policy");
+            manager._UnhandledInput(new InputEventKey { Pressed = true, Keycode = Key.Key6 });
+            PrototypeRuntimeSnapshot afterCognition = manager.CaptureSnapshot();
+            Assert(hud.StatusText.Contains(
+                    "Civic cognition: deterministic_fallback | civic.cognition.decision",
+                    StringComparison.Ordinal) &&
+                manager.CivicCognitionDecisionCount == cognitionEventsBefore + 1 &&
+                afterCognition.CivicPolicy?.PolicyId == policyBeforeCognition,
+                "Key 6 should record exactly one offline fallback cognition event without changing policy");
+            manager._UnhandledInput(new InputEventKey { Pressed = true, Keycode = Key.Key6 });
+            Assert(hud.StatusText.Contains("Civic cognition rejected: already applied", StringComparison.Ordinal) &&
+                manager.CivicCognitionDecisionCount == cognitionEventsBefore + 1,
+                "A duplicate Key 6 input must fail closed from the authoritative cognition event history");
+        }
+
+        private void AssertCivicCognitionSaveLoadGuard(
+            GameManager manager,
+            PrototypeHud hud,
+            string outputDirectory)
+        {
+            PrototypeRuntimeSnapshot beforeSave = manager.CaptureSnapshot();
+            string policyBeforeSave = beforeSave.CivicPolicy?.PolicyId
+                ?? throw new Exception("Civic snapshot must contain the selected policy before save");
+            int cognitionEventsBeforeSave = manager.CivicCognitionDecisionCount;
+            string snapshotPath = manager.SaveSnapshotToDisk();
+            Assert(File.Exists(snapshotPath) && Path.GetDirectoryName(snapshotPath) == outputDirectory,
+                "The civic cognition smoke must save through the isolated GameManager artifact route");
+
+            Assert(manager.LoadLatestSnapshotFromDisk(),
+                "GameManager should restore the saved civic cognition artifact generation");
+            PrototypeRuntimeSnapshot afterLoad = manager.CaptureSnapshot();
+            Assert(
+                manager.CivicCognitionDecisionCount == cognitionEventsBeforeSave &&
+                afterLoad.CivicPolicy?.PolicyId == policyBeforeSave,
+                "Schema-v9 load must preserve both the cognition decision history and selected policy");
+
+            manager._UnhandledInput(new InputEventKey { Pressed = true, Keycode = Key.Key6 });
+            PrototypeRuntimeSnapshot afterRejectedResume = manager.CaptureSnapshot();
+            Assert(
+                hud.StatusText.Contains("Civic cognition rejected: already applied", StringComparison.Ordinal) &&
+                manager.CivicCognitionDecisionCount == cognitionEventsBeforeSave &&
+                afterRejectedResume.CivicPolicy?.PolicyId == policyBeforeSave,
+                "A resumed Key 6 must reject without adding an event or changing policy");
+
+            manager._UnhandledInput(new InputEventKey { Pressed = true, Keycode = Key.F7 });
+            Assert(manager.CivicCognitionDecisionCount == 0,
+                "F7 should create a fresh event history for the next author action");
+            manager._UnhandledInput(new InputEventKey { Pressed = true, Keycode = Key.Key4 });
+            manager._UnhandledInput(new InputEventKey { Pressed = true, Keycode = Key.Key6 });
+            Assert(
+                hud.StatusText.Contains(
+                    "Civic cognition: deterministic_fallback | civic.cognition.decision",
+                    StringComparison.Ordinal) &&
+                manager.CivicCognitionDecisionCount == 1,
+                "A fresh F7 session should permit one new deterministic fallback cognition decision");
         }
 
         private async Task Test_MainScene_CrisisHudPresentationSmoke()

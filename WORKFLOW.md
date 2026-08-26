@@ -1079,3 +1079,32 @@ The offline Cognition Quality Corpus v1 is implemented in the isolated Snow Glob
 - Tests: `tests/Societies.Core.Tests/Core/PrototypeW305CivicLoopTests.cs`, `src/societies/tests/HeadlessTestRunner.cs`, and `tests/test-manifest.json`.
 - Evidence/truth: `planning/active/v3-w3-05-targeted-tests-author-smoke.md`, `planning/active/evidence/v3-w3-05-validation.json`, `CURRENT_BUILD.md`, `README.md`, `WORKFLOW.md`, and `planning/active/v3-weeks-3-4-development-plan.md`.
 - Delivery is complete for this test/evidence slice. Next decision: either authorize a separate player-facing civic-selection/clarity slice to make the author smoke runnable, or stop here with interactive/visual acceptance explicitly incomplete. W3-06+, W4, and live-provider work remain inactive.
+
+# W3-05 follow-up player-facing civic selection (local acceptance handoff)
+
+## Outcome and scope
+
+- Candidate `37afb1b` maps `4` to Protect and `5` to Drawdown. Both inputs call `GameManager.SelectCivicPolicy`, which derives a current command and routes only through `PrototypeRuntimeSession.SelectCivicPolicy`. Civic labels name the selected policy.
+- The existing wetland card remains the read-only policy, quota, health/band, and consequence presentation. The F3 inspector preserves assignment and civic reasons within the real combined citizen/structure seven-line budget; no citizen or civic state is stored by presentation.
+- `6` publishes the inspected citizen's existing observation, resolves only `PrototypeCognitionEvidence.Unavailable()`, and applies the existing Module once. Status reports `deterministic_fallback | civic.cognition.decision`; duplicate protection derives from restored `civic.cognition.decision` history, so a resumed press rejects without another event or policy mutation.
+- No cognition schema/digest/vocabulary/fallback, schema/migration, persistence, provider, network, credential, payment, retry, Snow Globe, new-policy, W3-06+, W4, broad-UI, or performance-optimization work is included.
+
+## Changed files
+
+- Runtime/presentation: `src/societies/scripts/core/GameManager.cs`, `src/societies/scripts/ui/PrototypeHudPresenter.cs`, and `src/societies/scripts/ui/PrototypeHudTextBuilder.cs`.
+- Focused checks: `src/societies/tests/HeadlessTestRunner.cs`, `tests/Societies.Core.Tests/UI/PrototypeHudTextBuilderTests.cs`, and `tests/test-manifest.json`.
+- Handoff evidence: `planning/active/v3-w3-05-player-civic-selection.md`, `planning/active/evidence/v3-w3-05-player-civic-selection-validation.json`, `CURRENT_BUILD.md`, `README.md`, this file, and the active Weeks 3-4 plan.
+
+## Evidence and gate state
+
+- Final `scripts/run-prototype-validation.ps1` passes 485/485 managed tests and 25/25 Godot tests. The production Debug build has 0 warnings and 0 errors.
+- Release and ExportRelease production builds pass at `37afb1b` with 0 warnings and 0 errors. The test project retains its existing generated `Main` CS0436 warning only.
+- `Test_MainScene_CivicPolicySelectionInputSmoke` passes inside the full Godot suite, covering both key routes, selected-policy labels, seven-line capacity, duplicate policy/cognition rejection, reset, policy/quota/health/consequence reading, both F3 civic-interest readings, one visible offline fallback event, GameManager schema-v9 save/load rejection, and a fresh F7 allowance.
+- The clean canonical Release matrix at production commit `edfb673` passes its 14/14 correctness/evidence contract, Release identity, cold/warm equivalence, soak determinism, and forced-invalidation gates. Its raw budget is `safety_failure`: reference safety fails and 24-citizen stress characterization misses target. Final `37afb1b` changes only a managed UI-budget assertion; production inputs are unchanged.
+- Independent deep review is GO with no P0-P2 findings, and the final test-only capacity correction is GO with no findings.
+- Visible author smoke is incomplete. The unique `Societies (DEBUG)` window launched, but two state-capture attempts failed with `SetIsBorderRequired failed: No such interface supported (0x80004002)`. No blind input was sent. Protect/Drawdown visuals, both inspected interests, the visible cognition status, and one ordinary reed harvest remain a manual acceptance boundary.
+- Local acceptance is complete. Push, PR, CI, merge, and post-merge truth recording remain pending; W3-06+, W4, Snow Globe integration, and live-provider work stay inactive.
+
+## Continue with
+
+- Parent delivery owner: commit the bound evidence, push the feature branch, open and monitor the pull request, merge only after required CI passes, then record actual Git/GitHub delivery state. Human-visible `4`/`5`, `F3`, `6`, reed-harvest, and `F7` observation remains the one manual product-acceptance boundary. Keep W3-06+, W4, Snow Globe integration, and live-provider work inactive.

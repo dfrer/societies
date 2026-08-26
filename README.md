@@ -69,9 +69,9 @@ Attempt-001 through Attempt-004 chronology and v1-v3 artifacts remain preserved;
 ## Current Prototype
 
 See [CURRENT_BUILD.md](CURRENT_BUILD.md) for the up-to-date prototype scope, validation commands, and implementation details.
-Current implemented reality includes W2-04/W2-05, W2-06, W3-01 through W3-03 merged through PRs #122-#124, W3-04 merged through PR #171 at `ea1f7ee` (implementation `c107d18`, evidence/docs `cefae37`), and the W3-05 test/evidence slice merged through PR #173 at `f8eb222` (implementation/tests `616600e`, evidence/docs `a394a8f`). W3-06+ remain inactive.
+Current implemented reality includes W2-04/W2-05, W2-06, W3-01 through W3-03 merged through PRs #122-#124, W3-04 merged through PR #171 at `ea1f7ee` (implementation `c107d18`, evidence/docs `cefae37`), and the W3-05 test/evidence slice merged through PR #173 at `f8eb222` (implementation/tests `616600e`, evidence/docs `a394a8f`). The W3-05 player-selection follow-up is locally accepted at `37afb1b`; delivery and visual author acceptance remain pending. W3-06+ remain inactive.
 
-W2-04/W2-05 remain historical merged milestones; see [CURRENT_BUILD.md](CURRENT_BUILD.md), [W3-03 validation evidence](planning/active/evidence/v3-w3-03-validation.json), [W3-04 validation evidence](planning/active/evidence/v3-w3-04-validation.json), and [W3-05 validation evidence](planning/active/evidence/v3-w3-05-validation.json). W3-04 adds a provider-neutral bounded observation/proposal contract and deterministic fallback for recording a citizen stance on an already-selected civic policy. `SelectCivicPolicy` remains the sole policy mutation path. W3-05 adds no production change; its automated civic-loop tests and CI pass, while interactive author smoke remains incomplete because the main scene has no player-facing civic-policy selection control. No live model/provider, credentials, network path, Snow Globe integration, cognition-driven policy mutation, restoration jobs, general law, markets, or broad UI were added. Git/GitHub remains authoritative for delivery/merge state.
+W2-04/W2-05 remain historical merged milestones; see [CURRENT_BUILD.md](CURRENT_BUILD.md), [W3-03 validation evidence](planning/active/evidence/v3-w3-03-validation.json), [W3-04 validation evidence](planning/active/evidence/v3-w3-04-validation.json), [W3-05 validation evidence](planning/active/evidence/v3-w3-05-validation.json), and [the player-selection follow-up evidence](planning/active/evidence/v3-w3-05-player-civic-selection-validation.json). W3-04 adds a provider-neutral bounded observation/proposal contract and deterministic fallback for recording a citizen stance on an already-selected civic policy. `SelectCivicPolicy` remains the sole policy mutation path. Local candidate `37afb1b` exposes `4` Protect, `5` Drawdown, and `6` for one existing `deterministic_fallback | civic.cognition.decision` result, with restored-history duplicate rejection. Automated acceptance is green, but visible author smoke and reed harvest remain unverified after the local window-observation surface failed. No playability, deployment, certification, or release-readiness claim is made. No live model/provider, credentials, network path, Snow Globe integration, cognition-driven policy mutation, restoration jobs, general law, markets, or broad UI were added. Git/GitHub remains authoritative for delivery/merge state.
 
 
 ## Planning vs Code
@@ -85,6 +85,9 @@ Treat planning documents as aspirational unless they are confirmed by the curren
 - `1`: craft Stone Axe
 - `2`: select Food & Fuel directive
 - `3`: select Shelter directive
+- `4`: select Protect the wetland
+- `5`: select Draw down the wetland
+- `6`: record the inspected citizen's offline civic fallback once per run
 - `F3`: inspect citizen
 - `F4`: inspect structure
 - `F5`: toggle weather

@@ -7,7 +7,7 @@
 | Status | **Draft/Conditional** |
 | Execution window | Mon 2026-07-27 to Fri 2026-08-07 |
 | Capacity | One developer, 40-50 hours |
-| Activation | W3-05 test/evidence slice merged via PR #173 at `f8eb222`; W3-06+ remain inactive |
+| Activation | W3-05 test/evidence slice merged via PR #173 at `f8eb222`; local player-selection follow-up is in validation; W3-06+ remain inactive |
 | Product north star | [PRODUCT-THESIS.md](../PRODUCT-THESIS.md) |
 | Current implementation truth | [CURRENT_BUILD.md](../../CURRENT_BUILD.md) |
 | Predecessor | [V3 two-week development plan](v3-two-week-development-plan.md) |
@@ -23,7 +23,7 @@ Known repository truth at drafting:
 - W2-02 (`empty_stores` crisis contract plus atomic shared-economy contribution) is validated and merged.
 - W2-02 through W2-05 are validated and merged; W2-06 initially concluded **Stop Feature Expansion**, then the clean `478a4d9` repair cleared the hard performance safety gate. W3-01 merged at `7b747af`; W3-02 merged at `d9e297f`; W3-03 merged at `2a82fd0`; W3-04 merged at `ea1f7ee`.
 
-W2-06 hard safety gates are green at `478a4d9`, and W3-01 through W3-05 are merged; delivery truth remains in Git/GitHub. Keep W3-06+ and broader Weeks 3-4 inactive. The interactive author smoke and external observed playtests were not run because the main scene does not expose a civic-policy input/control.
+W2-06 hard safety gates are green at `478a4d9`, and W3-01 through W3-05 are merged; delivery truth remains in Git/GitHub. Keep W3-06+ and broader Weeks 3-4 inactive. Local candidate `37afb1b` carries the `4`/`5` civic input, F3 interest inspection, and one-use `6` offline cognition path with restored-history duplicate rejection. Automated acceptance is green; delivery and visible author/reed-harvest observation remain incomplete.
 
 The July 27-August 7 dates are historical proposal only, not current authorization. This document remains Draft/Conditional: W3-01 through W3-05 are completed bounded slices, and W3-06+ plus broader Weeks 3-4 remain inactive pending another continuation decision.
 
@@ -55,7 +55,7 @@ Evidence: [validation](evidence/v3-w3-04-validation.json) and [performance](evid
 
 The W3-05 test-only slice adds 14 cross-loop managed cases and one Godot-hosted deterministic civic-loop smoke. It exercises both selected policies, conflicting structured citizen reasons, valid proposal and every closed fallback source, rejection/inertness cases, exactly-once cognition events without policy mutation, schema-v9 checkpoint/resume, and no-input continuation. The new suite is 14/14; selected W3-01 through W3-04 civic regressions are 107/107; the full wrapper passes 481/481 managed and 24/24 Godot tests; and Release/ExportRelease production builds have zero warnings/errors. The Godot smoke passed for Protect and DrawDown. See [validation evidence](evidence/v3-w3-05-validation.json).
 
-The player-facing author smoke is incomplete, not waived: `GameManager` has no civic-policy input, public selection method, or HUD control, so an interactive player cannot currently choose a policy from the main scene. The local main scene launched, but Windows frame capture failed twice with `SetIsBorderRequired` error `0x80004002`, so no visual claim is made. No production change was made under this test/evidence-only boundary. Independent review and required CI passed before PR #173 merged; W3-04 performance evidence is preserved because runtime behavior is unchanged.
+The historical test/evidence boundary had no player-facing policy input. Candidate `37afb1b` supplies `GameManager` key routes (`4` Protect, `5` Drawdown) that call only `PrototypeRuntimeSession.SelectCivicPolicy`, selected-policy labels within the seven-line inspector capacity, and `6` to apply one existing `Unavailable()` deterministic fallback for the inspected citizen. The duplicate guard derives from restored `civic.cognition.decision` history, so a schema-v9 resumed Key `6` fails closed without policy or event mutation while F7 permits one fresh action. The HUD reuses the existing policy/quota/health/consequence text, and the F3 inspector exposes future-reeds and shelter-now support/opposition. The full wrapper passes 485/485 managed and 25/25 Godot tests; both production builds are warning-free; deep review is GO. The clean 14-pair matrix contract passes with raw budget `safety_failure`. Reliable visible-window capture failed, so author/visual acceptance and ordinary reed harvest remain a manual boundary. See [the outcome contract](v3-w3-05-player-civic-selection.md) and [evidence](evidence/v3-w3-05-player-civic-selection-validation.json). Delivery remains pending.
 
 ### Draft/Conditional Demo 1 foundation direction
 

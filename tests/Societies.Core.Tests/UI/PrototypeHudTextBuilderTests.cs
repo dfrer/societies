@@ -291,5 +291,54 @@ namespace Societies.Core.Tests
             Assert.Contains("F11 next build", PrototypeHudTextBuilder.BuildCompactHelpText());
             Assert.Contains("F12 pause build", PrototypeHudTextBuilder.BuildCompactHelpText());
         }
+
+        [Theory]
+        [InlineData(PrototypeCivicPolicy.ProtectWetland, PrototypeCivicPolicy.ProtectWetland, PrototypeCitizenInterestPosition.Supports, PrototypeCitizenInterestReason.FutureReedSupply, "supports Protect", "future reeds")]
+        [InlineData(PrototypeCivicPolicy.ProtectWetland, PrototypeCivicPolicy.DrawDownWetland, PrototypeCitizenInterestPosition.Opposes, PrototypeCitizenInterestReason.ImmediateShelterSupply, "opposes Protect", "shelter now")]
+        [InlineData(PrototypeCivicPolicy.DrawDownWetland, PrototypeCivicPolicy.ProtectWetland, PrototypeCitizenInterestPosition.Opposes, PrototypeCitizenInterestReason.FutureReedSupply, "opposes Drawdown", "future reeds")]
+        [InlineData(PrototypeCivicPolicy.DrawDownWetland, PrototypeCivicPolicy.DrawDownWetland, PrototypeCitizenInterestPosition.Supports, PrototypeCitizenInterestReason.ImmediateShelterSupply, "supports Drawdown", "shelter now")]
+        public void BuildCompactInspectorText_SelectedCivicInterestRemainsReadable(
+            PrototypeCivicPolicy selectedPolicy,
+            PrototypeCivicPolicy preferredPolicy,
+            PrototypeCitizenInterestPosition position,
+            PrototypeCitizenInterestReason reason,
+            string expectedStance,
+            string expectedReason)
+        {
+            PrototypeWorkerState worker = new()
+            {
+                WorkerId = "citizen-001",
+                DisplayName = "Citizen 1",
+                Role = preferredPolicy == PrototypeCivicPolicy.ProtectWetland
+                    ? PrototypeCitizenRole.Forager
+                    : PrototypeCitizenRole.Builder,
+                Needs = new PrototypeNeedState { Nutrition = 80.0f, Fatigue = 10.0f }
+            };
+            PrototypeCitizenInterest interest = new(
+                worker.WorkerId,
+                preferredPolicy,
+                position,
+                reason,
+                preferredPolicy == PrototypeCivicPolicy.ProtectWetland ? "forager" : "builder",
+                PrototypeCitizenNutritionBand.Secure,
+                PrototypeCitizenFatigueBand.Rested,
+                "role=fixture");
+
+            string inspector = PrototypeHudTextBuilder.BuildCompactInspectorText(
+                worker,
+                new PrototypeStructureState { DisplayName = "Hut", IsBuilt = true },
+                interest,
+                selectedPolicy);
+
+            Assert.Contains($"Civic: {expectedStance}", inspector);
+            Assert.Contains(expectedReason, inspector);
+            Assert.Contains("Why: none", inspector);
+            Assert.Contains("Structure: Hut (built)", inspector);
+            PrototypeHudTextBudget budget = PrototypeHudLayout.Calculate(1280.0f, 720.0f)
+                .GetTextBudget(PrototypeHudLayout.Inspector, inspector, 16);
+            Assert.True(budget.Fits, "Civic inspector text must fit the normal-play inspector card.");
+            Assert.Equal(7, budget.EstimatedRenderedLines);
+            Assert.Equal(7, budget.AvailableLines);
+        }
     }
 }
