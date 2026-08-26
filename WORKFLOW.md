@@ -1103,8 +1103,8 @@ The offline Cognition Quality Corpus v1 is implemented in the isolated Snow Glob
 - The clean canonical Release matrix at production commit `edfb673` passes its 14/14 correctness/evidence contract, Release identity, cold/warm equivalence, soak determinism, and forced-invalidation gates. Its raw budget is `safety_failure`: reference safety fails and 24-citizen stress characterization misses target. Final `37afb1b` changes only a managed UI-budget assertion; production inputs are unchanged.
 - Independent deep review is GO with no P0-P2 findings, and the final test-only capacity correction is GO with no findings.
 - Visible author smoke is incomplete. The unique `Societies (DEBUG)` window launched, but two state-capture attempts failed with `SetIsBorderRequired failed: No such interface supported (0x80004002)`. No blind input was sent. Protect/Drawdown visuals, both inspected interests, the visible cognition status, and one ordinary reed harvest remain a manual acceptance boundary.
-- Local acceptance is complete. Push, PR, CI, merge, and post-merge truth recording remain pending; W3-06+, W4, Snow Globe integration, and live-provider work stay inactive.
+- Delivery is complete. Evidence/docs head `155b4e6` was published through PR #175; required `build-test-smoke` passed in 4m13s, and the PR merged to `master` as `36c445b`. W3-06+, W4, Snow Globe integration, and live-provider work stay inactive.
 
 ## Continue with
 
-- Parent delivery owner: commit the bound evidence, push the feature branch, open and monitor the pull request, merge only after required CI passes, then record actual Git/GitHub delivery state. Human-visible `4`/`5`, `F3`, `6`, reed-harvest, and `F7` observation remains the one manual product-acceptance boundary. Keep W3-06+, W4, Snow Globe integration, and live-provider work inactive.
+- No code-delivery action remains. Human-visible `4`/`5`, `F3`, `6`, reed-harvest, and `F7` observation remains the one manual product-acceptance boundary. Keep W3-06+, W4, Snow Globe integration, and live-provider work inactive.

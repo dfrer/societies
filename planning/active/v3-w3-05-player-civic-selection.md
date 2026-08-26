@@ -17,10 +17,10 @@ and performance optimization.
 **Value gate:** Human agency and causal legibility while retaining deterministic command/event
 ownership and the existing offline cognition behavior.
 
-**Delivery boundary:** Candidate `37afb1b` is locally accepted on the feature branch. Automated
-validation, the clean performance contract, and independent review are complete; push, pull
-request, CI, merge, and human/visual author observation remain pending. No author-pass claim is
-made.
+**Delivery boundary:** Candidate `37afb1b` and evidence/docs `155b4e6` merged through PR #175 at
+`36c445b` after required `build-test-smoke` passed in 4m13s. Automated validation, the clean
+performance contract, independent review, and code delivery are complete. Human/visual author
+observation remains pending; no author-pass claim is made.
 
 ## Player-facing route
 
