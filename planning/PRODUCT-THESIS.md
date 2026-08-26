@@ -42,10 +42,10 @@ Offline operation, model failure, invalid model output, timeout, or unavailable 
 | LLMs | No live model integration | Structured interpretation, deliberation, communication, memory summaries, and action proposals |
 | Networking | Not authoritative | Shared human/AI society experience, only when deterministic authority remains intact |
 
-W2-02 through W2-05 are validated and merged. W2-06 records **Stop Feature Expansion** because the clean performance safety gate remains red; the next potential multi-week increment remains inactive pending a bounded performance repair and fresh decision. See [the validation report](../V3_SPRINT_VALIDATION_REPORT.md) and [V3 Weeks 3-4](active/v3-weeks-3-4-development-plan.md).
+W2-02 through W2-05 and W3-01 through W3-05 are delivered as bounded deterministic engineering slices. The user-led play assessment on 2026-08-26 nevertheless failed: the current experience feels on rails, visually repetitive, and unfinished relative to this thesis. The next active question is therefore experience depth, not system breadth. See [ER-01 First Believable Settlement Loop](active/v3-experience-recovery-plan.md), [the validation report](../V3_SPRINT_VALIDATION_REPORT.md), and [V3 Weeks 3-4](active/v3-weeks-3-4-development-plan.md).
 
 ## Near-Term Product Question
 
-Can AI citizens hold understandable material interests and participate with a human in one consequential civic decision?
+Can one existing deterministic settlement loop feel intentional, embodied, variable, and consequential enough that the player wants to continue?
 
-The smallest credible test is a bounded deterministic civic-policy loop, not general laws, markets, multiplayer, social graphs, or live LLM integration.
+The civic-policy machinery is necessary but no longer sufficient evidence. The smallest credible next test is an 8-10 minute loop connecting resource interaction, contribution, a deliberate civic choice, a readable citizen response, and a visible shared consequence across two contrasting deterministic starts. General laws, markets, multiplayer, social graphs, and live LLM integration remain deferred.

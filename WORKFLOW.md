@@ -1108,3 +1108,29 @@ The offline Cognition Quality Corpus v1 is implemented in the isolated Snow Glob
 ## Continue with
 
 - No code-delivery action remains. Human-visible `4`/`5`, `F3`, `6`, reed-harvest, and `F7` observation remains the one manual product-acceptance boundary. Keep W3-06+, W4, Snow Globe integration, and live-provider work inactive.
+
+# V3 experience-recovery trajectory and ER-01 handoff
+
+## Outcome and scope
+
+- Reviewed current repository truth, the product thesis, active Weeks 3-4 plan, current runtime input/presentation seams, scenario/seed machinery, and the existing user-approved long-range concept material without changing the dirty primary checkout.
+- Recorded the 2026-08-26 user-led play assessment as a product **Fail**: despite W3-05 engineering delivery, the experience is exceptionally basic/non-functional relative to the goal, on rails, visually repetitive, and unfinished in its HUD, interactions, and objects.
+- Added [the V3 Experience Recovery plan](planning/active/v3-experience-recovery-plan.md). ER-01 First Believable Settlement Loop is the only ready gameplay scope. It connects orientation, resource interaction, contribution, a deliberate civic choice, a readable citizen response, one visible shared consequence, HUD hierarchy, and exactly two contrasting deterministic starts.
+- Added [the new-session handoff](planning/active/v3-experience-recovery-handoff.md). It explicitly forbids Computer Use, preserves the dirty primary checkout, keeps deterministic authority singular, and makes the final play gate user-led.
+- Reconciled `CURRENT_BUILD.md`, `README.md`, `planning/PRODUCT-THESIS.md`, `planning/active/README.md`, and the Weeks 3-4 plan. W3-06+, the former Week 4 sequence, live cognition integration, providers, broad governance, markets, multiplayer, and terrain replacement remain inactive.
+
+## Architecture and product gates
+
+- `PrototypeRuntimeSession` remains the deep gameplay Module and sole authority. `GameManager` remains the intent-to-command Seam. `PlayerCharacter`, HUD, resource, and scene presentation remain Adapters over authoritative state/results.
+- Shared presentation needs should use one immutable pure projection if necessary, not copied gameplay state. Scenario contrast uses the existing catalog/seed Seam rather than a second randomization path.
+- Automated authority, replay, regression, build, and performance evidence remains required but cannot pass the product gate. The user must manually run both deterministic profiles and accept agency, interaction quality, causal readability, HUD hierarchy, and meaningful contrast.
+
+## Validation and repository state
+
+- Documentation-only planning change; gameplay tests and production builds were not rerun because no executable contract changed.
+- Validation is limited to documentation link/path checks, `git diff --check`, and clean branch status before commit.
+- Work occurred in isolated worktree `C:\Users\hunte\.codex\worktrees\experience-trajectory\societies` on `codex/experience-trajectory-planning`, based on `origin/master` `7b9e588e695dccac971f80d312fb1c133bfb388d`. The dirty primary checkout was read only and not modified.
+
+## Continue with
+
+- Start ER-01 from a fresh clean isolated worktree after reading the recovery plan and handoff. Do not begin W3-06+ or add systems merely to increase breadth. The next milestone is complete only after automated authority/replay checks and the separate user-led product gate are honestly recorded.

@@ -7,12 +7,12 @@
 | Status | **Draft/Conditional** |
 | Execution window | Mon 2026-07-27 to Fri 2026-08-07 |
 | Capacity | One developer, 40-50 hours |
-| Activation | W3-05 player-selection follow-up merged via PR #175 at `36c445b`; W3-06+ remain inactive |
+| Activation | W3-01 through W3-05 are historical delivered slices; W3-06+ are superseded by the ER-01 experience gate |
 | Product north star | [PRODUCT-THESIS.md](../PRODUCT-THESIS.md) |
 | Current implementation truth | [CURRENT_BUILD.md](../../CURRENT_BUILD.md) |
 | Predecessor | [V3 two-week development plan](v3-two-week-development-plan.md) |
 
-W3-03 merged via PR #124 at `2a82fd0` (implementation `a513636`, evidence/docs `16be638`). W3-04 merged via PR #171 at `ea1f7ee` (implementation `c107d18`, evidence/docs `cefae37`). The W3-05 test/evidence slice merged via PR #173 at `f8eb222`; the player-selection follow-up merged via PR #175 at `36c445b`. W3-06+ and broader Weeks 3-4 remain inactive; this document does not authorize another feature.
+W3-03 merged via PR #124 at `2a82fd0` (implementation `a513636`, evidence/docs `16be638`). W3-04 merged via PR #171 at `ea1f7ee` (implementation `c107d18`, evidence/docs `cefae37`). The W3-05 test/evidence slice merged via PR #173 at `f8eb222`; the player-selection follow-up merged via PR #175 at `36c445b`. The user-led play assessment on 2026-08-26 failed substantially despite that green engineering evidence. [ER-01 First Believable Settlement Loop](v3-experience-recovery-plan.md) is now the active path. W3-06+ and the former Week 4 sequence remain inactive; this document does not authorize another feature.
 
 ## Entry State and Decision Rule
 
@@ -26,6 +26,12 @@ Known repository truth at drafting:
 W2-06 hard safety gates are green at `478a4d9`, and W3-01 through W3-05 plus the player-selection follow-up are merged; delivery truth remains in Git/GitHub. Keep W3-06+ and broader Weeks 3-4 inactive. PR #175 carries the `4`/`5` civic input, F3 interest inspection, and one-use `6` offline cognition path with restored-history duplicate rejection. Automated acceptance and delivery are green; visible author/reed-harvest observation remains incomplete.
 
 The July 27-August 7 dates are historical proposal only, not current authorization. This document remains Draft/Conditional: W3-01 through W3-05 are completed bounded slices, and W3-06+ plus broader Weeks 3-4 remain inactive pending another continuation decision.
+
+### 2026-08-26 product acceptance decision
+
+The manual play gate returned **Fail**. The current build was judged exceptionally basic/non-functional relative to the north star, on rails, visually repetitive, and unfinished in its HUD, interactions, and objects. This is authoritative product evidence, not a contradiction of the deterministic test results.
+
+The old instruction to proceed from civic proof into Week 4 clarity/reliability work is superseded. The project must first pass ER-01, which deepens one 8-10 minute settlement loop, introduces a deliberate choice surface, makes resource/depot interaction readable, restores HUD hierarchy, and supplies two contrasting deterministic starts. Only a user-led play pass may unlock the next experience milestone. Headless or automated interaction evidence cannot substitute for that decision.
 
 ### W3-01 accepted bounded exception
 

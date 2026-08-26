@@ -366,6 +366,8 @@ That statement is future intent. Current implementation facts remain limited to 
 
 Current milestone truth: W2-02 through W2-05 are validated and merged. W2-06 is locally accepted at `478a4d9`. W3-01 merged through PR #122 at `7b747af`; W3-02 merged through PR #123 at `d9e297f`; W3-03 merged through PR #124 at `2a82fd0` (implementation `a513636`, evidence/docs `16be638`). W3-04 merged through PR #171 at `ea1f7ee` (implementation `c107d18`, evidence/docs `cefae37`). The W3-05 test/evidence slice merged through PR #173 at `f8eb222` (implementation/tests `616600e`, evidence/docs `a394a8f`). The W3-05 player-selection follow-up merged through PR #175 at `36c445b` (implementation `5c732b1`, clarity `013ccfe`, persistence repair `edfb673`, test contract `37afb1b`, evidence/docs `155b4e6`); required `build-test-smoke` passed in 4m13s. Local validation is 485/485 managed and 25/25 Godot tests with warning-free Release/ExportRelease builds and deep-review GO. Its clean Release matrix at production commit `edfb673` passes the 14/14 correctness contract but retains raw budget `safety_failure`. Reliable visible-window capture failed with `0x80004002`, so author/visual acceptance and the real reed-harvest observation remain explicitly incomplete. W3-06+ remain inactive.
 
+Manual product acceptance is now **failed**, not merely incomplete. On 2026-08-26 the user played the current experience and judged it exceptionally basic/non-functional relative to the product goal, on rails, visually repetitive, and unfinished in its HUD, interactions, and world objects. That result does not invalidate the deterministic W3-05 engineering evidence, but it blocks further feature expansion. The active next path is [ER-01 First Believable Settlement Loop](planning/active/v3-experience-recovery-plan.md): deepen one existing loop through readable interaction, HUD hierarchy, agency, causal feedback, and two bounded deterministic starting profiles. W3-06+, the former Week 4 sequence, and live cognition integration remain inactive until user-led ER-01 acceptance passes.
+
 ### a713267 documentation handoff (authoritative local state)
 
 Commit `a713267` is locally committed and not pushed, in a PR, or deployed. It changes exactly six code/test files: `labs/Societies.SnowGlobe/OfflineOllamaRecordingCodec.cs` (codec/profile and internal port), `labs/Societies.SnowGlobe/OllamaLoopbackRecording.cs` (facade/session), `labs/Societies.SnowGlobe/OllamaLoopbackRecordingTransport.cs` (transport/verifier), `tests/Societies.SnowGlobe.Tests/OfflineOllamaRecordingCodecTests.cs`, `tests/Societies.SnowGlobe.Tests/OllamaLoopbackRecordingTests.cs`, and `tests/Societies.SnowGlobe.Tests/OllamaLoopbackRecordingTransportTests.cs`.
@@ -413,7 +415,7 @@ Deferred or not implemented as authoritative runtime systems yet:
 - pathfinding-based collision avoidance or crowd simulation
 - markets, trade, and broader governance systems beyond the bounded W3-01 policy contract
 - live LLM/model providers, credentials, network inference, Snow Globe integration, restoration jobs, general law-system expansion, markets, and broad UI
-- W3-05 interactive author smoke and its later milestones
+- W3-05 manual product acceptance failed; W3-06+, the former Week 4 sequence, and later gameplay milestones are gated by ER-01
 - combat and social simulation
 
 ## Validation Commands
