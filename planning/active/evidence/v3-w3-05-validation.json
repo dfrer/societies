@@ -133,6 +133,19 @@
     "p3ResolvedBeforeCommit": 1,
     "summary": "Independent acceptance-coverage review found no P0-P2 findings. The only P3 was a changed-file inventory omission, corrected before commit."
   },
+  "delivery": {
+    "pullRequest": 173,
+    "pullRequestUrl": "https://github.com/dfrer/societies/pull/173",
+    "headCommit": "a394a8fcd7f14aed571ed4b5060e3daac76a894a",
+    "requiredCheck": "build-test-smoke",
+    "requiredCheckRunId": 32913214826,
+    "requiredCheckJobId": 98011363262,
+    "requiredCheckResult": "pass",
+    "requiredCheckDuration": "4m22s",
+    "mergeCommit": "f8eb2223d0d5884501147ef479d4df57b1bb150c",
+    "mergedUtc": "2026-08-26T00:04:40Z",
+    "implementationAndEvidenceAreAncestorsOfMerge": true
+  },
   "authorSmoke": {
     "status": "incomplete_manual_boundary",
     "commit": "616600ec445bf4059e6f396ca9683f4bba728fc3; validation ran against identical production and test sources before commit",
@@ -154,6 +167,6 @@
   "limitations": [
     "No live model/provider, network, credential, payment, retry, Snow Globe, schema, migration, broad UI, or production runtime change occurred.",
     "W3-04 performance evidence is preserved because runtime behavior is unchanged; this record makes no new performance claim.",
-    "Delivery, required CI, and merge remain incomplete."
+    "Interactive author and visual acceptance remain incomplete; merge completion does not create a playability, deployment, certification, or release-readiness claim."
   ]
 }
