@@ -308,9 +308,11 @@ namespace Societies.Tests
         private async Task Test_MainScene_CivicPolicySelectionInputSmoke()
         {
             Node? scene = null;
+            string outputDirectory = CreateRunOutputDirectory(nameof(Test_MainScene_CivicPolicySelectionInputSmoke));
 
             try
             {
+                System.Environment.SetEnvironmentVariable("SOCIETIES_RUN_OUTPUT_DIR", outputDirectory);
                 PackedScene packedScene = GD.Load<PackedScene>("res://scenes/main.tscn");
                 Assert(packedScene != null, "Main scene failed to load");
                 scene = packedScene!.Instantiate();
@@ -345,6 +347,8 @@ namespace Societies.Tests
                     "opposes Drawdown",
                     "supports Drawdown");
 
+                AssertCivicCognitionSaveLoadGuard(manager, hud, outputDirectory);
+
                 Pass(nameof(Test_MainScene_CivicPolicySelectionInputSmoke));
             }
             catch (Exception ex)
@@ -353,6 +357,7 @@ namespace Societies.Tests
             }
             finally
             {
+                System.Environment.SetEnvironmentVariable("SOCIETIES_RUN_OUTPUT_DIR", null);
                 if (scene != null)
                 {
                     scene.QueueFree();
@@ -414,7 +419,49 @@ namespace Societies.Tests
             manager._UnhandledInput(new InputEventKey { Pressed = true, Keycode = Key.Key6 });
             Assert(hud.StatusText.Contains("Civic cognition rejected: already applied", StringComparison.Ordinal) &&
                 manager.CivicCognitionDecisionCount == cognitionEventsBefore + 1,
-                "A duplicate Key 6 input must fail closed through the consumed cognition resolution capability");
+                "A duplicate Key 6 input must fail closed from the authoritative cognition event history");
+        }
+
+        private void AssertCivicCognitionSaveLoadGuard(
+            GameManager manager,
+            PrototypeHud hud,
+            string outputDirectory)
+        {
+            PrototypeRuntimeSnapshot beforeSave = manager.CaptureSnapshot();
+            string policyBeforeSave = beforeSave.CivicPolicy?.PolicyId
+                ?? throw new Exception("Civic snapshot must contain the selected policy before save");
+            int cognitionEventsBeforeSave = manager.CivicCognitionDecisionCount;
+            string snapshotPath = manager.SaveSnapshotToDisk();
+            Assert(File.Exists(snapshotPath) && Path.GetDirectoryName(snapshotPath) == outputDirectory,
+                "The civic cognition smoke must save through the isolated GameManager artifact route");
+
+            Assert(manager.LoadLatestSnapshotFromDisk(),
+                "GameManager should restore the saved civic cognition artifact generation");
+            PrototypeRuntimeSnapshot afterLoad = manager.CaptureSnapshot();
+            Assert(
+                manager.CivicCognitionDecisionCount == cognitionEventsBeforeSave &&
+                afterLoad.CivicPolicy?.PolicyId == policyBeforeSave,
+                "Schema-v9 load must preserve both the cognition decision history and selected policy");
+
+            manager._UnhandledInput(new InputEventKey { Pressed = true, Keycode = Key.Key6 });
+            PrototypeRuntimeSnapshot afterRejectedResume = manager.CaptureSnapshot();
+            Assert(
+                hud.StatusText.Contains("Civic cognition rejected: already applied", StringComparison.Ordinal) &&
+                manager.CivicCognitionDecisionCount == cognitionEventsBeforeSave &&
+                afterRejectedResume.CivicPolicy?.PolicyId == policyBeforeSave,
+                "A resumed Key 6 must reject without adding an event or changing policy");
+
+            manager._UnhandledInput(new InputEventKey { Pressed = true, Keycode = Key.F7 });
+            Assert(manager.CivicCognitionDecisionCount == 0,
+                "F7 should create a fresh event history for the next author action");
+            manager._UnhandledInput(new InputEventKey { Pressed = true, Keycode = Key.Key4 });
+            manager._UnhandledInput(new InputEventKey { Pressed = true, Keycode = Key.Key6 });
+            Assert(
+                hud.StatusText.Contains(
+                    "Civic cognition: deterministic_fallback | civic.cognition.decision",
+                    StringComparison.Ordinal) &&
+                manager.CivicCognitionDecisionCount == 1,
+                "A fresh F7 session should permit one new deterministic fallback cognition decision");
         }
 
         private async Task Test_MainScene_CrisisHudPresentationSmoke()

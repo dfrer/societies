@@ -42,7 +42,9 @@ and human/visual author observation. No push, pull request, merge, or author-pas
 - Existing cognition resolution/apply remains exactly once and non-mutating for policy state.
   Key `6` publishes the selected citizen observation, resolves the existing `Unavailable()` path,
   applies it once, and visibly reports `deterministic_fallback | civic.cognition.decision`.
-  Repeating `6` reuses the consumed resolution and fails closed without a second event.
+  Repeating `6` fails closed from authoritative `civic.cognition.decision` event history, which
+  is restored by the existing schema-v9 artifact route without changing its schema or module
+  semantics.
 - Schema-v9 persistence/replay/resume, reset, and no-input/offline behavior are unchanged; the
   existing W3-05 cross-loop suite remains the authority for those contracts.
 
@@ -51,8 +53,10 @@ and human/visual author observation. No push, pull request, merge, or author-pas
 - Repair-focused managed civic/UI regression: pass; see the companion machine-readable evidence.
 - The repaired Godot-hosted input smoke passed for both policies, correctly labelled opposition,
   combined inspector layout, duplicate policy/cognition rejection, compact wetland reading, both
-  inspected interests, and the visible offline cognition event. A later final headless wrapper
-  still belongs to the delivery owner before a final full-suite claim.
+  inspected interests, and the visible offline cognition event. It saves and restores through
+  `GameManager`, then proves resumed `6` rejects without changing event count or policy; `F7`
+  creates a fresh session where one new event is allowed. A later final headless wrapper still
+  belongs to the delivery owner before a final full-suite claim.
 - The performance matrix is required for the milestone correctness delivery because this follow-up
   changes production main-scene behavior. The parent delivery owner will run it after the
   implementation commit; no performance claim is made from this worktree.
@@ -70,8 +74,11 @@ and human/visual author observation. No push, pull request, merge, or author-pas
 4. With a policy selected and a citizen inspected, press `6`; record the visible
    `deterministic_fallback | civic.cognition.decision` result. Press `6` again and record its
    rejection without a second event.
-5. Harvest exactly one reed through the ordinary player interaction route, then record the updated
+5. Press `F6`, `F7`, and `F9`, then press `6` again. Record that the restored session rejects it
+   without selecting another policy or recording another cognition decision; press `F7`, choose a
+   policy, and confirm one fresh `6` action is available.
+6. Harvest exactly one reed through the ordinary player interaction route, then record the updated
    quota/health reading. This is a manual observation boundary: the author must confirm the real
    resource target and interaction before claiming it.
-6. Record the exact candidate commit, scenario, seed, actions, HUD/inspector observations, and any
+7. Record the exact candidate commit, scenario, seed, actions, HUD/inspector observations, and any
    visual or interaction limitation. Do not mark this passed from automated/headless output alone.

@@ -61,7 +61,6 @@ namespace Societies.Core
         private readonly FixedStepAccumulator _fixedStepAccumulator = new(TickIntervalSeconds, MaxTicksPerFrame);
         private readonly PrototypeContributionInteraction _contributionInteraction = new();
         private PrototypeCognitionModule _civicCognitionModule = new();
-        private PrototypeCognitionResolution? _lastInspectedCognitionResolution;
         private readonly RuntimeMetricsCollector? _runtimeMetrics = CreateRuntimeMetricsCollector();
         private double _backlogWarningCooldownSeconds;
         private CameraMode _cameraMode = CameraMode.Player;
@@ -499,11 +498,10 @@ namespace Societies.Core
                 return false;
             }
 
-            if (_lastInspectedCognitionResolution != null)
+            // The event history is restored with schema-v9 artifacts, so it is the
+            // authoritative one-author-action guard across uninterrupted and resumed runs.
+            if (CivicCognitionDecisionCount > 0)
             {
-                // Re-applying the original resolution deliberately exercises the existing
-                // module-owned one-use capability rather than creating a second decision.
-                _ = _civicCognitionModule.Apply(_runtimeSession, _lastInspectedCognitionResolution);
                 NotifyStatus("Civic cognition rejected: already applied");
                 return false;
             }
@@ -517,7 +515,6 @@ namespace Societies.Core
                     _runtimeSession,
                     observation,
                     PrototypeCognitionEvidence.Unavailable());
-                _lastInspectedCognitionResolution = resolution;
                 if (!resolution.Accepted ||
                     resolution.Source != PrototypeCognitionDecisionSource.DeterministicFallback ||
                     !_civicCognitionModule.Apply(_runtimeSession, resolution))
@@ -1648,7 +1645,6 @@ namespace Societies.Core
         private void ResetCivicCognitionAction()
         {
             _civicCognitionModule = new PrototypeCognitionModule();
-            _lastInspectedCognitionResolution = null;
         }
 
         private PrototypeStructureState? GetSelectedStructure()

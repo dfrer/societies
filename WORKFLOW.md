@@ -1086,7 +1086,7 @@ The offline Cognition Quality Corpus v1 is implemented in the isolated Snow Glob
 
 - Candidate `5c732b1` maps `4` to Protect and `5` to Drawdown. Both inputs call `GameManager.SelectCivicPolicy`, which derives a current command and routes only through `PrototypeRuntimeSession.SelectCivicPolicy`. The uncommitted review repair corrects civic labels so support/opposition always names that selected policy.
 - The existing wetland card remains the read-only policy, quota, health/band, and consequence presentation. The F3 inspector preserves assignment and civic reasons within the real combined citizen/structure seven-line budget; no citizen or civic state is stored by presentation.
-- `6` publishes the inspected citizen's existing observation, resolves only `PrototypeCognitionEvidence.Unavailable()`, and applies the existing Module once. Status reports `deterministic_fallback | civic.cognition.decision`; a second press reuses the consumed module resolution and rejects without another event.
+- `6` publishes the inspected citizen's existing observation, resolves only `PrototypeCognitionEvidence.Unavailable()`, and applies the existing Module once. Status reports `deterministic_fallback | civic.cognition.decision`; duplicate protection derives from restored `civic.cognition.decision` history, so a resumed press rejects without another event or policy mutation.
 - No cognition schema/digest/vocabulary/fallback, schema/migration, persistence, provider, network, credential, payment, retry, Snow Globe, new-policy, W3-06+, W4, broad-UI, or performance-optimization work is included.
 
 ## Changed files
@@ -1099,7 +1099,7 @@ The offline Cognition Quality Corpus v1 is implemented in the isolated Snow Glob
 
 - `dotnet build src/societies/Societies.csproj --configuration Debug` passed with 0 warnings and 0 errors.
 - The repair-focused managed civic/UI regression passed 118/118. The test project emitted its pre-existing generated `Main` CS0436 warning; the repaired production Debug build was warning-free.
-- The repaired `Test_MainScene_CivicPolicySelectionInputSmoke` passed under Godot 4.6.2 headless, covering both key routes, selected-policy labels, seven-line combined inspector layout, duplicate policy/cognition rejection, reset, policy/quota/health/consequence reading, both F3 civic-interest readings, and one visible offline fallback event. The focused runner did not produce a final wrapper summary, so the repaired full headless suite is deliberately not claimed passed.
+- The repaired `Test_MainScene_CivicPolicySelectionInputSmoke` passed under Godot 4.6.2 headless, covering both key routes, selected-policy labels, seven-line combined inspector layout, duplicate policy/cognition rejection, reset, policy/quota/health/consequence reading, both F3 civic-interest readings, one visible offline fallback event, and GameManager schema-v9 save/load rejection with a fresh F7 allowance. The runner was stopped while unrelated tests continued, so the repaired full headless suite is deliberately not claimed passed.
 - The milestone correctness delivery requires a fresh canonical performance matrix because production main-scene behavior changed. The parent delivery task owns that post-commit run; this worktree makes no performance claim. The full gates, human author smoke, independent review, commit, PR, merge, and visual acceptance remain incomplete.
 
 ## Continue with
