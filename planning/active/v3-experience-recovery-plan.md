@@ -4,7 +4,7 @@
 
 | Field | Value |
 |---|---|
-| Status | **Ready** |
+| Status | **ER-01 technical candidate ready; user acceptance pending** |
 | Decision date | 2026-08-26 |
 | Activation | User-directed after the W3-05 manual play assessment failed |
 | First milestone | **ER-01 First Believable Settlement Loop** |
@@ -18,8 +18,10 @@ The local ER-01 candidate now has a reconciled implementation contract at
 [v3-er-01-first-believable-settlement-loop.md](v3-er-01-first-believable-settlement-loop.md) and machine-readable
 progress evidence at [v3-er-01-validation.json](evidence/v3-er-01-validation.json). Civic buttons and shortcuts share
 one contribution prerequisite, normal play exposes a world cue plus one citizen interest/response, and focused-resource
-depletion no longer leaves a callable freed-node reference. This is not a completion or user-acceptance claim: final
-main-task validation and the user-led routes remain separately gated.
+depletion no longer leaves a callable freed-node reference. The final wrapper is 489/489 managed and 26/26 Godot,
+both production builds are warning-free, deep review is GO, and the clean 14/14 Release matrix passes hard safety while
+remaining `target_missed`. This is not a completion or user-acceptance claim: draft delivery and the user-led routes
+remain separately gated.
 
 ## Why the Trajectory Changes Here
 
@@ -192,6 +194,7 @@ player's powers. Those are separate milestones.
 
 ## Practical Next Action
 
-Start a clean isolated worktree from live `origin/master`, read this plan and `CURRENT_BUILD.md`, then
-implement only **ER-01 First Believable Settlement Loop**. The primary checkout contains unrelated
-dirty work and must remain untouched.
+Use the delivered ER-01 draft candidate to play both curated routes in
+[the ER-01 manual route](v3-er-01-first-believable-settlement-loop.md). Record whether agency,
+interaction quality, causal clarity, HUD hierarchy, and meaningful variation pass. Do not begin ER-02,
+W3-06+, or former Week 4 work until that user-led gate is accepted.

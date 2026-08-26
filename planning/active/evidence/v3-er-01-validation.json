@@ -87,12 +87,51 @@
       "command": "independent deep review of the final implementation and test-route reconciliation",
       "result": "go",
       "p0ToP3Findings": 0
+    },
+    {
+      "command": ".\\scripts\\run-performance-baseline-matrix.ps1",
+      "result": "passed",
+      "sourceCommit": "f6eab718a2e8514a3ed46d5819a1a1fbe00db000",
+      "cleanSource": true,
+      "pairsPassed": 14,
+      "pairsTotal": 14,
+      "contractStatus": "pass",
+      "budgetStatus": "target_missed",
+      "reference": {
+        "trialCount": 3,
+        "medianP95Milliseconds": 48.5517,
+        "medianMaximumMilliseconds": 169.351,
+        "safetyPassed": true,
+        "targetPassed": false
+      },
+      "soak": {
+        "deterministicRepeat": true,
+        "p95Milliseconds": [42.1914, 46.1146],
+        "maximumMilliseconds": [182.6881, 169.7445],
+        "safetyPassed": true,
+        "targetPassed": false
+      },
+      "stress": {
+        "classification": "characterization",
+        "p95Milliseconds": 152.0242,
+        "maximumMilliseconds": 189.584,
+        "targetPassed": false,
+        "safetyGateApplied": false
+      },
+      "forcedInvalidation": {
+        "transitionCorrect": true,
+        "commitToFirstCorrectLookupMilliseconds": 21.9172,
+        "safetyPassed": true,
+        "targetPassed": true
+      },
+      "artifactRoot": "artifacts/performance/w103c-release-20260826-213025-363",
+      "note": "The correctness/evidence contract and hard safety gate are green. The aspirational performance target is not green, and the 24-citizen result is characterization-only."
     }
   ],
   "manualAcceptance": "pending_user_run",
   "limitations": [
     "Headless checks do not prove rendered readability or user-led acceptance.",
     "Automated layout budgets and headless input do not establish the user-led agency, interaction-quality, causal-clarity, HUD-hierarchy, or meaningful-variation gate.",
-    "Clean-commit performance characterization remains pending before draft delivery."
+    "Performance hard safety passed, but the aspirational budget remains target_missed and 24-citizen stress remains characterization-red."
   ]
 }

@@ -1150,7 +1150,8 @@ The offline Cognition Quality Corpus v1 is implemented in the isolated Snow Glob
 - Focused ER-01/HUD validation passed 28/28. The final authoritative wrapper passed 489/489 managed and 26/26 Godot tests.
 - Production Release and ExportRelease builds passed with zero warnings and zero errors. Independent deep review is GO with no P0-P3 findings after the final test-route reconciliation.
 - Work was isolated in `C:\Users\hunte\.codex\worktrees\er01\societies` on `feature/er-01-first-believable-settlement-loop`, based on planning commit `399e47db992e260ffc0d1fbae00f350a93d30245`. The dirty primary checkout and all unrelated Snow Globe/provider/lab work were preserved.
-- Clean-commit performance characterization and draft-PR delivery remain pending. Automated tests do not establish rendered quality or user-led product acceptance.
+- The clean canonical Release matrix at implementation commit `f6eab718a2e8514a3ed46d5819a1a1fbe00db000` passed 14/14 contracts and the hard safety gate. Reference median p95/max is `48.5517/169.351 ms`; both soaks are safe/deterministic; forced invalidation is correct. The overall budget remains `target_missed`, and 24-citizen stress is characterization-red at `152.0242/189.584 ms`.
+- Draft-PR delivery remains pending. Automated tests do not establish rendered quality or user-led product acceptance.
 
 ## Continue with
 
