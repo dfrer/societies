@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "milestone": "ER-01",
-  "status": "technical_validation_passed_manual_acceptance_pending",
+  "status": "technical_validation_passed_manual_acceptance_failed",
   "baseCommit": "399e47db992e260ffc0d1fbae00f350a93d30245",
   "scope": {
     "profiles": [
@@ -128,10 +128,28 @@
       "note": "The correctness/evidence contract and hard safety gate are green. The aspirational performance target is not green, and the 24-citizen result is characterization-only."
     }
   ],
-  "manualAcceptance": "pending_user_run",
+  "manualAcceptance": {
+    "result": "failed",
+    "observedDate": "2026-08-26",
+    "userStatements": [
+      "Its looking okay, still needs massive work",
+      "all of those are weak but the HUD and ineractions are probably the weakest"
+    ],
+    "axes": {
+      "agency": "weak",
+      "interactionQuality": "weak_priority",
+      "causalClarity": "weak",
+      "hudHierarchy": "weak_priority",
+      "meaningfulVariation": "weak"
+    },
+    "accepted": false,
+    "deliveryDecision": "keep_pr_177_draft_and_unmerged",
+    "iterationBoundary": "One further narrow ER-01 iteration may be proposed around HUD and interactions; implementation requires a separate explicit request."
+  },
   "limitations": [
     "Headless checks do not prove rendered readability or user-led acceptance.",
     "Automated layout budgets and headless input do not establish the user-led agency, interaction-quality, causal-clarity, HUD-hierarchy, or meaningful-variation gate.",
-    "Performance hard safety passed, but the aspirational budget remains target_missed and 24-citizen stress remains characterization-red."
+    "Performance hard safety passed, but the aspirational budget remains target_missed and 24-citizen stress remains characterization-red.",
+    "The user-led product gate failed across all five axes; HUD hierarchy and interaction quality were identified as the weakest areas."
   ]
 }

@@ -1155,4 +1155,5 @@ The offline Cognition Quality Corpus v1 is implemented in the isolated Snow Glob
 
 ## Continue with
 
-- From the delivered draft candidate, the user plays both routes in [the ER-01 route](planning/active/v3-er-01-first-believable-settlement-loop.md) and accepts or rejects agency, interaction quality, causal clarity, HUD hierarchy, and meaningful profile variation. ER-01 remains incomplete until that result is recorded honestly.
+- The 2026-08-26 user assessment is **Fail**: all five gates were judged weak, with HUD hierarchy and interaction quality weakest. PR #177 remains draft and unmerged; technical validation stays green but does not override the product result.
+- Propose one further narrow ER-01 iteration focused on HUD and interactions without adding new authority, systems, or milestone breadth. Implementation requires a separate explicit request; keep ER-02, W3-06+, former Week 4, providers, and Snow Globe integration inactive.

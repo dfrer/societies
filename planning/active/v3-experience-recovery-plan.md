@@ -4,7 +4,7 @@
 
 | Field | Value |
 |---|---|
-| Status | **ER-01 technical candidate ready; user acceptance pending** |
+| Status | **ER-01 technical candidate rejected at user acceptance; focused revision required** |
 | Decision date | 2026-08-26 |
 | Activation | User-directed after the W3-05 manual play assessment failed |
 | First milestone | **ER-01 First Believable Settlement Loop** |
@@ -20,8 +20,8 @@ progress evidence at [v3-er-01-validation.json](evidence/v3-er-01-validation.jso
 one contribution prerequisite, normal play exposes a world cue plus one citizen interest/response, and focused-resource
 depletion no longer leaves a callable freed-node reference. The final wrapper is 489/489 managed and 26/26 Godot,
 both production builds are warning-free, deep review is GO, and the clean 14/14 Release matrix passes hard safety while
-remaining `target_missed`. This is not a completion or user-acceptance claim: draft delivery and the user-led routes
-remain separately gated.
+remaining `target_missed`. The 2026-08-26 user-led assessment subsequently failed all five product gates; HUD and
+interactions were identified as the weakest areas. PR #177 remains draft and unmerged.
 
 ## Why the Trajectory Changes Here
 
@@ -194,7 +194,6 @@ player's powers. Those are separate milestones.
 
 ## Practical Next Action
 
-Use the delivered ER-01 draft candidate to play both curated routes in
-[the ER-01 manual route](v3-er-01-first-believable-settlement-loop.md). Record whether agency,
-interaction quality, causal clarity, HUD hierarchy, and meaningful variation pass. Do not begin ER-02,
-W3-06+, or former Week 4 work until that user-led gate is accepted.
+Define one further narrow ER-01 iteration around the failed HUD-hierarchy and interaction-quality gates, while
+keeping authority, profiles, and broader scope unchanged. Implementation requires a separate explicit request.
+Do not merge PR #177 or begin ER-02, W3-06+, or former Week 4 work until the user-led gate is accepted.

@@ -44,6 +44,12 @@ inside the catalog/runtime boundary.
 3. Confirm that the starting pressure, resource route, and world cue differ from Marsh Recovery while the same interaction/authority rules hold.
 4. Record whether the goal, interaction, citizen response, choice, and consequence were understandable without a developer key list.
 
+## User-led acceptance result
+
+**Fail — 2026-08-26.** The user reported: “Its looking okay, still needs massive work,” followed by “all of those are weak but the HUD and ineractions are probably the weakest.” This fails all five required gates: agency, interaction quality, causal clarity, HUD hierarchy, and meaningful variation. HUD hierarchy and interaction quality are the priority defects.
+
+The technical evidence remains valid, but ER-01 is not accepted and draft PR #177 must remain unmerged. One further narrow ER-01 iteration may be proposed around HUD and interactions; no implementation expansion is authorized by this assessment alone.
+
 ## Validation boundary
 
 Focused automated checks cover generated wetness/biome/resource contrasts, starting pressure, same-profile replay of harvest/contribution/civic commands, contribution-gated button/key intent, the immutable profile-option surface, in-tree focus and post-depletion safety, normal citizen response copy, optional diagnostics, and conservative 1280x720 goal/profile/civic fit and collision budgets at the live 17px goal and default 16px button fonts. They do not establish rendered visual quality or user acceptance; that requires the manual routes above.
