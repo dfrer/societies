@@ -7,12 +7,12 @@
 | Status | **Draft/Conditional** |
 | Execution window | Mon 2026-07-27 to Fri 2026-08-07 |
 | Capacity | One developer, 40-50 hours |
-| Activation | W3-04 merged via PR #171 at `ea1f7ee`; W3-05+ remain inactive |
+| Activation | W3-04 merged via PR #171 at `ea1f7ee`; W3-05 has a local test-only evidence boundary; W3-06+ remain inactive |
 | Product north star | [PRODUCT-THESIS.md](../PRODUCT-THESIS.md) |
 | Current implementation truth | [CURRENT_BUILD.md](../../CURRENT_BUILD.md) |
 | Predecessor | [V3 two-week development plan](v3-two-week-development-plan.md) |
 
-W3-03 merged via PR #124 at `2a82fd0` (implementation `a513636`, evidence/docs `16be638`). W3-04 merged via PR #171 at `ea1f7ee` (implementation `c107d18`, evidence/docs `cefae37`). W3-05+ and broader Weeks 3-4 remain inactive; this document does not authorize another feature.
+W3-03 merged via PR #124 at `2a82fd0` (implementation `a513636`, evidence/docs `16be638`). W3-04 merged via PR #171 at `ea1f7ee` (implementation `c107d18`, evidence/docs `cefae37`). W3-05 test-only implementation is committed locally at `616600e`, based on `8406b2056feb1285670dd8b89fd959e31413a1fa`, and adds no feature/runtime scope; delivery is incomplete. W3-06+ and broader Weeks 3-4 remain inactive; this document does not authorize another feature.
 
 ## Entry State and Decision Rule
 
@@ -23,9 +23,9 @@ Known repository truth at drafting:
 - W2-02 (`empty_stores` crisis contract plus atomic shared-economy contribution) is validated and merged.
 - W2-02 through W2-05 are validated and merged; W2-06 initially concluded **Stop Feature Expansion**, then the clean `478a4d9` repair cleared the hard performance safety gate. W3-01 merged at `7b747af`; W3-02 merged at `d9e297f`; W3-03 merged at `2a82fd0`; W3-04 merged at `ea1f7ee`.
 
-W2-06 hard safety gates are green at `478a4d9`, and W3-01 through W3-04 are merged; delivery truth remains in Git/GitHub. Keep W3-05+ and broader Weeks 3-4 inactive. Author smoke and external observed playtests were not run.
+W2-06 hard safety gates are green at `478a4d9`, and W3-01 through W3-04 are merged; delivery truth remains in Git/GitHub. W3-05 automated tests are local only; keep W3-06+ and broader Weeks 3-4 inactive. The interactive author smoke and external observed playtests were not run because the main-scene does not expose a civic-policy input/control.
 
-The July 27-August 7 dates are historical proposal only, not current authorization. This document remains Draft/Conditional: W3-01 through W3-04 are completed bounded implementation slices, while W3-05+ and broader Weeks 3-4 remain inactive pending an explicit continuation decision.
+The July 27-August 7 dates are historical proposal only, not current authorization. This document remains Draft/Conditional: W3-01 through W3-04 are completed bounded implementation slices, W3-05 is active only for the explicitly authorized test/evidence boundary, and W3-06+ plus broader Weeks 3-4 remain inactive pending another continuation decision.
 
 ### W3-01 accepted bounded exception
 
@@ -50,6 +50,12 @@ Implementation commit `c107d18` adds a provider-neutral v1 observation/proposal 
 Validation: focused cognition 25/25; focused civic/session regression 105/105; full 467/467 .NET with 0 failed/skipped; Godot 23/23; Debug, Release, and ExportRelease production builds with zero warnings/errors; independent deep review FINAL CODE and acceptance-coverage GO with no remaining P0-P2 findings. The clean performance matrix passes all 14/14 pairs and 354/354 hashes. Raw status remains `target_missed`, while the established safety gate is green at reference median p95/max `48.0286/171.7133 ms`; both soaks and forced invalidation are green/deterministic, and c24 is non-gating characterization.
 
 Evidence: [validation](evidence/v3-w3-04-validation.json) and [performance](evidence/v3-w3-04-performance-validation.json). This slice includes no live model/provider, credentials, network path, Snow Globe integration, policy mutation, W3-05, or author/external smoke.
+
+### W3-05 local targeted-tests boundary
+
+Local W3-05 test-only work adds 14 cross-loop managed cases and one Godot-hosted deterministic civic-loop smoke. It exercises both selected policies, conflicting structured citizen reasons, valid proposal and every closed fallback source, rejection/inertness cases, exactly-once cognition events without policy mutation, schema-v9 checkpoint/resume, and no-input continuation. The new suite is 14/14; selected W3-01 through W3-04 civic regressions are 107/107; the full wrapper passes 481/481 managed and 24/24 Godot tests; and Release/ExportRelease production builds have zero warnings/errors. The Godot smoke passed for Protect and DrawDown. See [local evidence](evidence/v3-w3-05-validation.json).
+
+The player-facing author smoke is incomplete, not waived: `GameManager` has no civic-policy input, public selection method, or HUD control, so an interactive player cannot currently choose a policy from the main scene. The local main scene launched, but Windows frame capture failed twice with `SetIsBorderRequired` error `0x80004002`, so no visual claim is made. No production change was made under this test/evidence-only boundary. Review, CI, delivery, and merge remain separate gates; W3-04 performance evidence is preserved because runtime behavior is unchanged.
 
 ### Draft/Conditional Demo 1 foundation direction
 

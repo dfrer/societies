@@ -1060,3 +1060,22 @@ The offline Cognition Quality Corpus v1 is implemented in the isolated Snow Glob
 
 - Response association and identity are caller-attested. This envelope proves neither prompt delivery nor model execution and records no provider status, retry, or charge evidence. It makes no model-quality, general-intelligence, winner, or cost claim and grants no network, provider, credential, payment, journal, file, authoritative-world, or live-action authority. `src/societies/` is unchanged.
 - The previous recording-evidence action is historical/completed. The recording-session action is now also complete in `8256512`; its historical next action is superseded by the dedicated current section above.
+
+# W3-05 local targeted-tests and author-smoke handoff
+
+## Outcome and scope
+
+- Added tests/evidence only in `feature/v3-w3-05-targeted-tests-smoke`, based on `8406b2056`; implementation/tests commit `616600e`. No production runtime, schema, migration, performance, provider, or Snow Globe code changed.
+- The cross-loop tests exercise fixed-catalog Protect and DrawDown selections, conflicting structured reasons, wetland consequences, accepted and fallback cognition paths, rejection/inertness, one-use event application, schema-v9 checkpoint/resume, and no-input/offline continuation.
+
+## Evidence and boundary
+
+- Focused W3-05 managed tests: 14/14 passed. Relevant W3-01 through W3-04 civic/cognition/wetland regressions: 107/107 passed. The full wrapper passed 481/481 managed and 24/24 Godot tests; Debug, Release, and ExportRelease production builds have 0 warnings/errors; `git diff --check` passed.
+- The Godot-hosted `Test_GodotCivicDeterministicLoopSmoke` passed for both policy paths. The manifest now declares 481 managed tests and 24 Godot tests. Independent deep review is GO with no P0-P2 findings; CI and delivery remain pending.
+- Interactive author smoke is incomplete, not passed or waived: `GameManager._UnhandledInput` has no civic-policy command, and `GameManager` has no public selection method or HUD control. A human cannot select Protect/DrawDown from the current main scene. The exact boundary and future manual observation instructions are in [v3-w3-05-validation.json](planning/active/evidence/v3-w3-05-validation.json).
+
+## Changed files
+
+- Tests: `tests/Societies.Core.Tests/Core/PrototypeW305CivicLoopTests.cs`, `src/societies/tests/HeadlessTestRunner.cs`, and `tests/test-manifest.json`.
+- Evidence/truth: `planning/active/v3-w3-05-targeted-tests-author-smoke.md`, `planning/active/evidence/v3-w3-05-validation.json`, `CURRENT_BUILD.md`, `README.md`, `WORKFLOW.md`, and `planning/active/v3-weeks-3-4-development-plan.md`.
+- Next action: keep the deterministic tests/evidence separate from a later authorized player-facing civic-selection/clarity slice; do not claim interactive author smoke or delivery until that boundary is resolved and review/CI/merge complete.

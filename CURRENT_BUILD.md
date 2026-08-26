@@ -364,7 +364,7 @@ The product north star is: "A deterministic civilization/ecology simulation wher
 
 That statement is future intent. Current implementation facts remain limited to the scope below. The deterministic simulation owns facts and all world-changing outcomes; any future LLM layer is limited to interpreting structured state, deliberating, communicating, summarizing memory, and proposing actions. Validated deterministic commands/events remain the only state-change path. Humans must stay consequential, and offline/model-failure fallback must preserve simulation and replay. See [planning/PRODUCT-THESIS.md](planning/PRODUCT-THESIS.md).
 
-Current milestone truth: W2-02 through W2-05 are validated and merged. W2-06 is locally accepted at `478a4d9`. W3-01 merged through PR #122 at `7b747af`; W3-02 merged through PR #123 at `d9e297f`; W3-03 merged through PR #124 at `2a82fd0` (implementation `a513636`, evidence/docs `16be638`). W3-04 merged through PR #171 at `ea1f7ee` (implementation `c107d18`, evidence/docs `cefae37`). W3-05+ remain inactive.
+Current milestone truth: W2-02 through W2-05 are validated and merged. W2-06 is locally accepted at `478a4d9`. W3-01 merged through PR #122 at `7b747af`; W3-02 merged through PR #123 at `d9e297f`; W3-03 merged through PR #124 at `2a82fd0` (implementation `a513636`, evidence/docs `16be638`). W3-04 merged through PR #171 at `ea1f7ee` (implementation `c107d18`, evidence/docs `cefae37`). W3-05 implementation/tests are committed locally at `616600e` on `feature/v3-w3-05-targeted-tests-smoke`, based on `8406b2056`; it is not delivered or merged, and W3-06+ remain inactive.
 
 ### a713267 documentation handoff (authoritative local state)
 
@@ -413,7 +413,7 @@ Deferred or not implemented as authoritative runtime systems yet:
 - pathfinding-based collision avoidance or crowd simulation
 - markets, trade, and broader governance systems beyond the bounded W3-01 policy contract
 - live LLM/model providers, credentials, network inference, Snow Globe integration, restoration jobs, general law-system expansion, markets, and broad UI
-- W3-05 targeted author smoke and its later milestones
+- W3-05 interactive author smoke and its later milestones
 - combat and social simulation
 
 ## Validation Commands
@@ -456,6 +456,7 @@ Historical W1 profiling bullets below may mention runtime metrics CSV v4 or earl
 - W3-03 performance evidence is [v3-w3-03-performance-validation.json](planning/active/evidence/v3-w3-03-performance-validation.json): clean 14/14 pairs and 354/354 hashes; raw matrix status is `target_missed` (not a safety failure). The established milestone gate is green: reference median p95/max `43.1679/213.4861 ms`, soaks `38.8865/164.2170` and `41.3155/175.9617`, forced invalidation `21.9538 ms` correct, and c24 `144.4787/190.5471 ms` characterization-only. W3-02 comparison is non-causal; no same-session A/B was run.
 - W3-04 final validation is recorded in [v3-w3-04-validation.json](planning/active/evidence/v3-w3-04-validation.json): focused cognition 25/25, focused civic/session regression 105/105, full 467/467 .NET with 0 failed/skipped, Godot 4.6.2 23/23, and Debug/Release/ExportRelease production builds with zero warnings/errors. Independent deep review gave FINAL CODE and acceptance-coverage GO with no remaining P0-P2 findings.
 - W3-04 performance evidence is [v3-w3-04-performance-validation.json](planning/active/evidence/v3-w3-04-performance-validation.json): clean 14/14 pairs and 354/354 hashes; raw matrix status remains `target_missed`, with no hard-safety or determinism failure. The established milestone gate is green: reference median p95/max `48.0286/171.7133 ms`, soaks `43.6284/178.7319` and `38.8121/185.1226`, forced invalidation `26.0146 ms` correct, and c24 `152.1691/185.3862 ms` characterization-only. No causal W3-03 comparison was performed.
+- Local W3-05 test-only evidence is [v3-w3-05-validation.json](planning/active/evidence/v3-w3-05-validation.json): the new cross-loop suite is 14/14, the W3-01 through W3-04 civic regression selection is 107/107, the full wrapper passes 481/481 .NET and 24/24 Godot tests, and Release/ExportRelease production builds have zero warnings/errors. No runtime behavior changed, so W3-04 performance evidence remains authoritative. The interactive author smoke is incomplete because the main-scene `GameManager` exposes no civic-policy player input/API or HUD control; Windows frame capture also failed with `SetIsBorderRequired` error `0x80004002`. This is a presentation/input and observation boundary, not evidence of a deterministic simulation defect.
 - W2-06 final evidence remains historical milestone context; W2-VIS timing/visual-readback waivers, Demo 1 concept classification, playtest gaps, and historical schema/timing facts remain unchanged.
 - The earlier BuildWorkOrders profile remains diagnostic historical context only; it does not override the clean canonical matrix or authorize a separate optimization path.
 
