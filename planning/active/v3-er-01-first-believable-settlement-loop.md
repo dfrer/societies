@@ -6,7 +6,7 @@
 - **Owned boundary:** catalog profile metadata plus Godot input/presentation adapters. `PrototypeRuntimeSession` remains the only owner of resources, contributions, civic policy, citizen interests, wetland state, event history, persistence, and replay.
 - **Non-goals:** W3-06+, former Week 4 work, general governance, providers/Snow Globe, markets, multiplayer, combat, new simulation state, schema changes, and a generalized UI framework.
 - **Value gate:** normal play leads with one need, one contextual prompt, concise authoritative feedback, and a deliberate policy surface; debug metrics are optional.
-- **Delivery boundary:** reviewed technical candidate with authoritative local validation and clean-commit performance evidence. Draft-PR delivery remains before handoff; user-led play acceptance remains required before ER-01 can be called complete.
+- **Delivery boundary:** reviewed technical candidate delivered in draft PR #177 with authoritative local validation, clean-commit performance evidence, and green required CI. The draft must not merge until user-led play acceptance passes; ER-01 cannot be called complete before that gate.
 
 ## Implemented design
 
@@ -51,3 +51,5 @@ Focused automated checks cover generated wetness/biome/resource contrasts, start
 The final authoritative local wrapper passes 489/489 managed tests and 26/26 Godot tests. Production Release and ExportRelease builds both complete with zero warnings and zero errors. Independent deep review is GO with no P0-P3 findings. These checks prove the bounded command ownership, replay, interaction-state, and layout contracts; they do not prove that the route feels believable or that the rendered hierarchy is acceptable.
 
 The clean canonical Release matrix at implementation commit `f6eab718a2e8514a3ed46d5819a1a1fbe00db000` passes all 14/14 correctness/evidence contracts and the hard safety gate. The reference median p95/max is `48.5517/169.351 ms`; both soaks are safe and deterministic; forced invalidation is correct at `21.9172 ms`. The overall budget is still `target_missed`, and non-gating 24-citizen stress remains characterization-red at `152.0242/189.584 ms`. This is safety evidence, not a performance-target claim.
+
+Draft PR #177 carries executable/evidence head `18705380d1014dd3dc9da39c5b1fc9a45b46a112`; required `build-test-smoke` passed in 9m54s. The PR remains deliberately draft and unmerged pending the two manual routes above.
