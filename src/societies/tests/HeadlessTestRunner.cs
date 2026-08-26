@@ -329,7 +329,7 @@ namespace Societies.Tests
                     "Healthy 75/100",
                     "Reeds: 0/4, 4 left | fewer; preserved",
                     "supports Protect",
-                    "opposes Drawdown");
+                    "opposes Protect");
 
                 manager.ResetPrototypeRun();
                 Assert(hud.CrisisText.Contains("Policy: not selected (neutral)", StringComparison.Ordinal),
@@ -342,7 +342,7 @@ namespace Societies.Tests
                     "Drawdown",
                     "Strained 45/100",
                     "Reeds: 0/12, 12 left | more; degrades",
-                    "opposes Protect",
+                    "opposes Drawdown",
                     "supports Drawdown");
 
                 Pass(nameof(Test_MainScene_CivicPolicySelectionInputSmoke));
@@ -398,6 +398,23 @@ namespace Societies.Tests
                 "Cycling the main-scene inspector should expose the future-reeds interest with its selected-policy stance");
             Assert(foundImmediateShelter,
                 "Cycling the main-scene inspector should expose the immediate-shelter interest with its selected-policy stance");
+
+            int cognitionEventsBefore = manager.CivicCognitionDecisionCount;
+            PrototypeRuntimeSnapshot beforeCognition = manager.CaptureSnapshot();
+            string policyBeforeCognition = beforeCognition.CivicPolicy?.PolicyId
+                ?? throw new Exception("Civic snapshot must contain the selected policy");
+            manager._UnhandledInput(new InputEventKey { Pressed = true, Keycode = Key.Key6 });
+            PrototypeRuntimeSnapshot afterCognition = manager.CaptureSnapshot();
+            Assert(hud.StatusText.Contains(
+                    "Civic cognition: deterministic_fallback | civic.cognition.decision",
+                    StringComparison.Ordinal) &&
+                manager.CivicCognitionDecisionCount == cognitionEventsBefore + 1 &&
+                afterCognition.CivicPolicy?.PolicyId == policyBeforeCognition,
+                "Key 6 should record exactly one offline fallback cognition event without changing policy");
+            manager._UnhandledInput(new InputEventKey { Pressed = true, Keycode = Key.Key6 });
+            Assert(hud.StatusText.Contains("Civic cognition rejected: already applied", StringComparison.Ordinal) &&
+                manager.CivicCognitionDecisionCount == cognitionEventsBefore + 1,
+                "A duplicate Key 6 input must fail closed through the consumed cognition resolution capability");
         }
 
         private async Task Test_MainScene_CrisisHudPresentationSmoke()

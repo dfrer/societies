@@ -1080,12 +1080,13 @@ The offline Cognition Quality Corpus v1 is implemented in the isolated Snow Glob
 - Evidence/truth: `planning/active/v3-w3-05-targeted-tests-author-smoke.md`, `planning/active/evidence/v3-w3-05-validation.json`, `CURRENT_BUILD.md`, `README.md`, `WORKFLOW.md`, and `planning/active/v3-weeks-3-4-development-plan.md`.
 - Delivery is complete for this test/evidence slice. Next decision: either authorize a separate player-facing civic-selection/clarity slice to make the author smoke runnable, or stop here with interactive/visual acceptance explicitly incomplete. W3-06+, W4, and live-provider work remain inactive.
 
-# W3-05 follow-up player-facing civic selection (local handoff)
+# W3-05 follow-up player-facing civic selection (candidate repair handoff)
 
 ## Outcome and scope
 
-- The authoritative Godot main scene now maps `4` to Protect and `5` to Drawdown. Both inputs call `GameManager.SelectCivicPolicy`, which derives a current command and routes only through `PrototypeRuntimeSession.SelectCivicPolicy`.
-- The existing wetland card remains the read-only policy, quota, health/band, and consequence presentation. The F3 inspector adds the selected citizen's derived civic support/opposition and concise material reason; no citizen or civic state is stored by presentation.
+- Candidate `5c732b1` maps `4` to Protect and `5` to Drawdown. Both inputs call `GameManager.SelectCivicPolicy`, which derives a current command and routes only through `PrototypeRuntimeSession.SelectCivicPolicy`. The uncommitted review repair corrects civic labels so support/opposition always names that selected policy.
+- The existing wetland card remains the read-only policy, quota, health/band, and consequence presentation. The F3 inspector preserves assignment and civic reasons within the real combined citizen/structure seven-line budget; no citizen or civic state is stored by presentation.
+- `6` publishes the inspected citizen's existing observation, resolves only `PrototypeCognitionEvidence.Unavailable()`, and applies the existing Module once. Status reports `deterministic_fallback | civic.cognition.decision`; a second press reuses the consumed module resolution and rejects without another event.
 - No cognition schema/digest/vocabulary/fallback, schema/migration, persistence, provider, network, credential, payment, retry, Snow Globe, new-policy, W3-06+, W4, broad-UI, or performance-optimization work is included.
 
 ## Changed files
@@ -1097,10 +1098,10 @@ The offline Cognition Quality Corpus v1 is implemented in the isolated Snow Glob
 ## Evidence and gate state
 
 - `dotnet build src/societies/Societies.csproj --configuration Debug` passed with 0 warnings and 0 errors.
-- The focused managed civic/UI regression passed 116/116. The test project emitted its pre-existing generated `Main` CS0436 warning; the production Debug build was warning-free.
-- The new `Test_MainScene_CivicPolicySelectionInputSmoke` passed under Godot 4.6.2 headless, covering both key routes, duplicate rejection, reset, policy/quota/health/consequence reading, and both F3 civic-interest readings. The initial full runner did not produce a final summary, so the full headless suite is deliberately not claimed passed.
+- The repair-focused managed civic/UI regression passed 118/118. The test project emitted its pre-existing generated `Main` CS0436 warning; the repaired production Debug build was warning-free.
+- The repaired `Test_MainScene_CivicPolicySelectionInputSmoke` passed under Godot 4.6.2 headless, covering both key routes, selected-policy labels, seven-line combined inspector layout, duplicate policy/cognition rejection, reset, policy/quota/health/consequence reading, both F3 civic-interest readings, and one visible offline fallback event. The focused runner did not produce a final wrapper summary, so the repaired full headless suite is deliberately not claimed passed.
 - The milestone correctness delivery requires a fresh canonical performance matrix because production main-scene behavior changed. The parent delivery task owns that post-commit run; this worktree makes no performance claim. The full gates, human author smoke, independent review, commit, PR, merge, and visual acceptance remain incomplete.
 
 ## Continue with
 
-- Parent delivery owner: commit this coherent slice, run the fresh canonical matrix and remaining required full gates, then perform a human-visible author smoke using the documented `4`/`5`, `F3`, and `F7` path. Keep W3-06+, W4, and live-provider work inactive.
+- Parent delivery owner: commit this coherent repair, bind final evidence to that repair commit, run remaining required full gates, and perform a human-visible author smoke using `4`/`5`, `F3`, `6`, reed harvest, and `F7`. The baseline matrix on candidate `5c732b1` is 14/14 contract pass with raw `safety_failure`; preserve that raw result separately and do not treat it as repaired-final evidence. Keep W3-06+, W4, and live-provider work inactive.

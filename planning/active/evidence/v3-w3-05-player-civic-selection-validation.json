@@ -1,10 +1,12 @@
 {
   "schemaVersion": 1,
-  "capturedUtc": "2026-08-26T00:31:48.8496857Z",
+  "capturedUtc": "2026-08-26T01:15:00Z",
   "workItem": "W3-05-follow-up-player-civic-selection",
-  "status": "implementation_local_validation_in_progress",
+  "status": "repair_candidate_focused_validation_pass_final_evidence_pending",
   "source": {
     "baseCommit": "ed94b1f2ab016c53988f86902e0e28b7f28849df",
+    "candidateCommit": "5c732b1",
+    "repairCommit": null,
     "branch": "feature/v3-w3-05-player-civic-selection",
     "worktree": "C:\\Users\\hunte\\.codex\\worktrees\\w305-followup\\societies",
     "productionRuntimeChanged": true,
@@ -29,7 +31,8 @@
       "wetland health and band",
       "material consequence",
       "future reeds support/opposition",
-      "shelter now support/opposition"
+      "shelter now support/opposition",
+      "one-use visible deterministic_fallback civic.cognition.decision"
     ],
     "preservedRegressionContracts": [
       "duplicate player selection rejection",
@@ -50,17 +53,17 @@
     {
       "command": "dotnet test tests/Societies.Core.Tests/Societies.Core.Tests.csproj --configuration Release --filter FullyQualifiedName~PrototypeHudTextBuilderTests|FullyQualifiedName~PrototypeCivicPolicyTests|FullyQualifiedName~PrototypeCitizenInterestTests|FullyQualifiedName~PrototypeWetlandConsequenceTests|FullyQualifiedName~PrototypeCognitionModuleTests|FullyQualifiedName~PrototypeW305CivicLoopTests",
       "result": "pass",
-      "passed": 116,
+      "passed": 118,
       "failed": 0,
       "skipped": 0,
-      "note": "The test project emitted its existing generated Main CS0436 warning; the production build had no warnings."
+      "note": "The test project emitted its existing generated Main CS0436 warning; the repaired production Debug build had no warnings."
     },
     {
       "command": "Godot_v4.6.2-stable_mono_win64_console.exe --headless --path src/societies res://tests/HeadlessTestRunner.tscn",
-      "result": "partial_pass_full_wrapper_incomplete",
+      "result": "focused_new_smoke_pass_full_wrapper_not_claimed",
       "newSmoke": "Test_MainScene_CivicPolicySelectionInputSmoke passed",
-      "observedCoverage": "both key routes, duplicate rejection, HUD consequence, reset, and F3 inspection of future-reeds and shelter-now positions",
-      "limitation": "The runner did not return a final summary during the initial invocation; do not claim the full headless suite passed."
+      "observedCoverage": "both key routes, selected-policy support/opposition labels, 7-line inspector layout with structure, duplicate policy rejection, HUD consequence, reset, F3 inspection, one offline deterministic_fallback civic.cognition.decision, and duplicate cognition capability rejection",
+      "limitation": "The focused invocation observed the new smoke pass but did not return a final wrapper summary; do not claim the repaired full headless suite passed."
     }
   ],
   "authorSmoke": {
@@ -69,8 +72,8 @@
     "claim": "Automated input smoke is distinct from human author or visual acceptance."
   },
   "delivery": {
-    "status": "local_only",
-    "commit": null,
+    "status": "candidate_5c732b1_repair_pending_final_evidence",
+    "commit": "5c732b1 is the pre-repair candidate; no reviewed repair commit is bound yet",
     "pullRequest": null,
     "merge": null
   }

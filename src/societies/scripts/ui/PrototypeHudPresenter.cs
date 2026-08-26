@@ -48,7 +48,8 @@ namespace Societies.UI
             PrototypeCrisisState? crisis = null,
             IReadOnlyDictionary<string, long>? contributionCountsByResource = null,
             PrototypeWetlandSnapshot? wetland = null,
-            PrototypeCitizenInterest? selectedCitizenInterest = null)
+            PrototypeCitizenInterest? selectedCitizenInterest = null,
+            PrototypeCivicPolicy selectedCivicPolicy = PrototypeCivicPolicy.Neutral)
         {
             hud.SetDebugText(
                 PrototypeHudTextBuilder.BuildDebugText(
@@ -84,7 +85,8 @@ namespace Societies.UI
             hud.SetInspectorText(PrototypeHudTextBuilder.BuildCompactInspectorText(
                 selectedCitizen,
                 selectedStructure,
-                selectedCitizenInterest));
+                selectedCitizenInterest,
+                selectedCivicPolicy));
             hud.SetCrisisText(PrototypeHudTextBuilder.BuildCompactCrisisText(
                 crisis,
                 directive,

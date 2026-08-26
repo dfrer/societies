@@ -13,14 +13,14 @@ namespace Societies.UI
         /// <summary>Two-line normal-play help that remains readable in the compact HUD.</summary>
         public static string BuildCompactHelpText()
         {
-            return "WASD move  E harvest  Tab inventory  2 Food/Fuel  3 Shelter  4 Protect  5 Drawdown\n" +
+            return "WASD move  E harvest  Tab inventory  2 Food/Fuel  3 Shelter  4 Protect  5 Drawdown  6 civic fallback\n" +
                    "F3 citizen  F4 structure  F11 next build  F12 pause build  Esc mouse";
         }
 
         public static string BuildHelpText()
         {
             return "WASD move  Shift sprint  Space jump  Mouse look  E harvest\n" +
-                   "Tab inventory  1 craft Stone Axe  2 Food & Fuel  3 Shelter  4 Protect wetland  5 Draw down wetland  F3 cycle citizen  F4 cycle structure  F5 toggle weather  F6 save snapshot  F7 reset run\n" +
+                   "Tab inventory  1 craft Stone Axe  2 Food & Fuel  3 Shelter  4 Protect wetland  5 Draw down wetland  6 civic fallback  F3 cycle citizen  F4 cycle structure  F5 toggle weather  F6 save snapshot  F7 reset run\n" +
                    "F8 observer  F9 load snapshot  F10 overlays (terrain/routes/depots)  F11 next build  F12 pause build  Esc mouse";
         }
 
@@ -313,18 +313,17 @@ namespace Societies.UI
         public static string BuildCompactInspectorText(
             PrototypeWorkerState? selectedCitizen,
             PrototypeStructureState? selectedStructure,
-            PrototypeCitizenInterest? selectedCitizenInterest = null)
+            PrototypeCitizenInterest? selectedCitizenInterest = null,
+            PrototypeCivicPolicy selectedCivicPolicy = PrototypeCivicPolicy.Neutral)
         {
             List<string> lines = new() { "Inspector" };
             if (selectedCitizen != null)
             {
-                string order = selectedCitizen.CurrentOrderKind?.ToString() ?? selectedCitizen.Phase.ToString();
                 string reason = string.IsNullOrWhiteSpace(selectedCitizen.CurrentOrderReason)
                     ? "none"
                     : selectedCitizen.CurrentOrderReason ?? "none";
                 lines.Add($"Citizen: {selectedCitizen.DisplayName} [{selectedCitizen.Role}]");
                 lines.Add($"Needs: nutrition {selectedCitizen.Needs.Nutrition:0} | fatigue {selectedCitizen.Needs.Fatigue:0}");
-                lines.Add($"Order: {order}");
                 lines.Add($"Why: {reason}");
                 if (selectedCitizenInterest != null)
                 {
@@ -334,9 +333,11 @@ namespace Societies.UI
                         PrototypeCitizenInterestPosition.Opposes => "opposes",
                         _ => "uncommitted"
                     };
-                    string policy = selectedCitizenInterest.PreferredPolicy == PrototypeCivicPolicy.ProtectWetland
+                    string policy = selectedCivicPolicy == PrototypeCivicPolicy.ProtectWetland
                         ? "Protect"
-                        : "Drawdown";
+                        : selectedCivicPolicy == PrototypeCivicPolicy.DrawDownWetland
+                            ? "Drawdown"
+                            : "none";
                     lines.Add($"Civic: {position} {policy}; {FormatCivicReason(selectedCitizenInterest.Reason)}");
                 }
                 lines.Add($"Route: {selectedCitizen.Navigation.CurrentRouteLengthMeters:0.0} m | {selectedCitizen.Navigation.CurrentRouteTravelTicks} ticks");

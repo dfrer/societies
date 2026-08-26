@@ -60,6 +60,8 @@ namespace Societies.Core
         private readonly InventoryComponent _fallbackInventory = new();
         private readonly FixedStepAccumulator _fixedStepAccumulator = new(TickIntervalSeconds, MaxTicksPerFrame);
         private readonly PrototypeContributionInteraction _contributionInteraction = new();
+        private PrototypeCognitionModule _civicCognitionModule = new();
+        private PrototypeCognitionResolution? _lastInspectedCognitionResolution;
         private readonly RuntimeMetricsCollector? _runtimeMetrics = CreateRuntimeMetricsCollector();
         private double _backlogWarningCooldownSeconds;
         private CameraMode _cameraMode = CameraMode.Player;
@@ -101,6 +103,9 @@ namespace Societies.Core
 
         public PrototypeSettlementDirective CurrentDirective =>
             _runtimeSession?.ActiveDirective ?? PrototypeSettlementDirective.Neutral;
+
+        public int CivicCognitionDecisionCount => _runtimeSession?.EventLog.Entries.Count(entry =>
+            entry.EventType == PrototypeEventTypes.CivicCognitionDecision) ?? 0;
 
         public double? PerformanceBootstrapMilliseconds { get; private set; }
 
@@ -241,6 +246,10 @@ namespace Societies.Core
                     break;
                 case Key.Key5:
                     SelectCivicPolicy(PrototypeCivicPolicy.DrawDownWetland);
+                    GetViewport().SetInputAsHandled();
+                    break;
+                case Key.Key6:
+                    ResolveInspectedCitizenOfflineCognition();
                     GetViewport().SetInputAsHandled();
                     break;
                 case Key.F3:
@@ -475,6 +484,56 @@ namespace Societies.Core
             }
 
             return result;
+        }
+
+        /// <summary>
+        /// Applies the existing offline cognition fallback once for the inspected citizen. It
+        /// publishes no provider request and exposes only the existing bounded event outcome.
+        /// </summary>
+        public bool ResolveInspectedCitizenOfflineCognition()
+        {
+            PrototypeWorkerState? selectedCitizen = GetSelectedCitizen();
+            if (_runtimeSession == null || selectedCitizen == null)
+            {
+                NotifyStatus("Civic cognition rejected: no inspected citizen");
+                return false;
+            }
+
+            if (_lastInspectedCognitionResolution != null)
+            {
+                // Re-applying the original resolution deliberately exercises the existing
+                // module-owned one-use capability rather than creating a second decision.
+                _ = _civicCognitionModule.Apply(_runtimeSession, _lastInspectedCognitionResolution);
+                NotifyStatus("Civic cognition rejected: already applied");
+                return false;
+            }
+
+            try
+            {
+                PrototypeCognitionObservation observation = _civicCognitionModule.PublishObservation(
+                    _runtimeSession,
+                    selectedCitizen.WorkerId);
+                PrototypeCognitionResolution resolution = _civicCognitionModule.Resolve(
+                    _runtimeSession,
+                    observation,
+                    PrototypeCognitionEvidence.Unavailable());
+                _lastInspectedCognitionResolution = resolution;
+                if (!resolution.Accepted ||
+                    resolution.Source != PrototypeCognitionDecisionSource.DeterministicFallback ||
+                    !_civicCognitionModule.Apply(_runtimeSession, resolution))
+                {
+                    NotifyStatus($"Civic cognition rejected: {resolution.ErrorCode}");
+                    return false;
+                }
+
+                NotifyStatus("Civic cognition: deterministic_fallback | civic.cognition.decision");
+                return true;
+            }
+            catch (PrototypeCognitionException exception)
+            {
+                NotifyStatus($"Civic cognition rejected: {exception.Code}");
+                return false;
+            }
         }
 
         internal PrototypePerformanceProbeSnapshot CapturePerformanceProbeState()
@@ -713,6 +772,7 @@ namespace Societies.Core
             _scenario = scenario;
             ApplyScenarioDefaults(scenario);
             _runtimeSession = candidateSession;
+            ResetCivicCognitionAction();
             ResetFrameScheduler();
 
             _scenePresenter?.ResetDynamicNodes();
@@ -925,6 +985,7 @@ namespace Societies.Core
                 ? System.Diagnostics.Stopwatch.GetTimestamp()
                 : 0;
             _runtimeSession!.Initialize(_environmentController.StartHour);
+            ResetCivicCognitionAction();
             ResetFrameScheduler();
 
             _scenePresenter.ResetDynamicNodes();
@@ -1250,7 +1311,8 @@ namespace Societies.Core
                 _runtimeSession?.Crisis,
                 _runtimeSession?.ContributionCountsByResource,
                 _runtimeSession?.Wetland,
-                GetSelectedCitizenInterest());
+                GetSelectedCitizenInterest(),
+                GetCurrentCivicPolicy());
 
             UpdateSettlementPresentationFromSessionOrFallback();
         }
@@ -1576,7 +1638,17 @@ namespace Societies.Core
 
             return PrototypeCitizenInterestEvaluator.Evaluate(
                 selectedCitizen,
-                PrototypeCivicPolicyCatalog.ParseId(_runtimeSession.CivicPolicy.PolicyId));
+                GetCurrentCivicPolicy());
+        }
+
+        private PrototypeCivicPolicy GetCurrentCivicPolicy() => _runtimeSession == null
+            ? PrototypeCivicPolicy.Neutral
+            : PrototypeCivicPolicyCatalog.ParseId(_runtimeSession.CivicPolicy.PolicyId);
+
+        private void ResetCivicCognitionAction()
+        {
+            _civicCognitionModule = new PrototypeCognitionModule();
+            _lastInspectedCognitionResolution = null;
         }
 
         private PrototypeStructureState? GetSelectedStructure()

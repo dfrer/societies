@@ -293,9 +293,12 @@ namespace Societies.Core.Tests
         }
 
         [Theory]
-        [InlineData(PrototypeCivicPolicy.ProtectWetland, PrototypeCitizenInterestPosition.Supports, PrototypeCitizenInterestReason.FutureReedSupply, "supports Protect", "future reeds")]
-        [InlineData(PrototypeCivicPolicy.DrawDownWetland, PrototypeCitizenInterestPosition.Opposes, PrototypeCitizenInterestReason.ImmediateShelterSupply, "opposes Drawdown", "shelter now")]
+        [InlineData(PrototypeCivicPolicy.ProtectWetland, PrototypeCivicPolicy.ProtectWetland, PrototypeCitizenInterestPosition.Supports, PrototypeCitizenInterestReason.FutureReedSupply, "supports Protect", "future reeds")]
+        [InlineData(PrototypeCivicPolicy.ProtectWetland, PrototypeCivicPolicy.DrawDownWetland, PrototypeCitizenInterestPosition.Opposes, PrototypeCitizenInterestReason.ImmediateShelterSupply, "opposes Protect", "shelter now")]
+        [InlineData(PrototypeCivicPolicy.DrawDownWetland, PrototypeCivicPolicy.ProtectWetland, PrototypeCitizenInterestPosition.Opposes, PrototypeCitizenInterestReason.FutureReedSupply, "opposes Drawdown", "future reeds")]
+        [InlineData(PrototypeCivicPolicy.DrawDownWetland, PrototypeCivicPolicy.DrawDownWetland, PrototypeCitizenInterestPosition.Supports, PrototypeCitizenInterestReason.ImmediateShelterSupply, "supports Drawdown", "shelter now")]
         public void BuildCompactInspectorText_SelectedCivicInterestRemainsReadable(
+            PrototypeCivicPolicy selectedPolicy,
             PrototypeCivicPolicy preferredPolicy,
             PrototypeCitizenInterestPosition position,
             PrototypeCitizenInterestReason reason,
@@ -321,15 +324,21 @@ namespace Societies.Core.Tests
                 PrototypeCitizenFatigueBand.Rested,
                 "role=fixture");
 
-            string inspector = PrototypeHudTextBuilder.BuildCompactInspectorText(worker, null, interest);
+            string inspector = PrototypeHudTextBuilder.BuildCompactInspectorText(
+                worker,
+                new PrototypeStructureState { DisplayName = "Hut", IsBuilt = true },
+                interest,
+                selectedPolicy);
 
             Assert.Contains($"Civic: {expectedStance}", inspector);
             Assert.Contains(expectedReason, inspector);
-            Assert.True(
-                PrototypeHudLayout.Calculate(1280.0f, 720.0f)
-                    .GetTextBudget(PrototypeHudLayout.Inspector, inspector, 16)
-                    .Fits,
-                "Civic inspector text must fit the normal-play inspector card.");
+            Assert.Contains("Why: none", inspector);
+            Assert.Contains("Structure: Hut (built)", inspector);
+            PrototypeHudTextBudget budget = PrototypeHudLayout.Calculate(1280.0f, 720.0f)
+                .GetTextBudget(PrototypeHudLayout.Inspector, inspector, 16);
+            Assert.True(budget.Fits, "Civic inspector text must fit the normal-play inspector card.");
+            Assert.Equal(7, budget.EstimatedRenderedLines);
+            Assert.Equal(7, budget.AvailableLines);
         }
     }
 }

@@ -17,20 +17,22 @@ and performance optimization.
 **Value gate:** Human agency and causal legibility while retaining deterministic command/event
 ownership and the existing offline cognition behavior.
 
-**Delivery boundary:** Local implementation and validation only. No commit, push, pull request,
-merge, or visual/author-pass claim is made by this worktree.
+**Delivery boundary:** Candidate commit `5c732b1` exists on the feature branch; this repair is an
+uncommitted candidate delta pending focused validation, final evidence binding, review, delivery,
+and human/visual author observation. No push, pull request, merge, or author-pass claim is made.
 
 ## Player-facing route
 
-- `4` requests **Protect the wetland** and `5` requests **Draw down the wetland**.
+- `4` requests **Protect the wetland**, `5` requests **Draw down the wetland**, and `6` records
+  one existing deterministic offline cognition fallback for the currently inspected citizen.
 - `GameManager.SelectCivicPolicy` derives the current simulation tick and policy version, then
   calls only `PrototypeRuntimeSession.SelectCivicPolicy`. It does not write civic, wetland,
   event-log, citizen, or persistence state itself.
 - The existing compact wetland HUD remains the source of the selected policy, reed quota,
   wetland health/band, and consequence text.
-- `F3` continues to cycle citizens. The inspector now shows a read-only civic stance and plain
-  material reason, including a forager's future-reeds interest and a builder's shelter-now
-  interest with support/opposition after selection.
+- `F3` continues to cycle citizens. The inspector now shows a read-only civic stance toward the
+  **selected** policy and a plain material reason, including a forager's future-reeds interest and
+  a builder's shelter-now interest with support/opposition after selection.
 
 ## Preserved contracts
 
@@ -38,16 +40,19 @@ merge, or visual/author-pass claim is made by this worktree.
   rejects through the existing one-selection guard; stale command rejection remains covered by
   the existing session tests.
 - Existing cognition resolution/apply remains exactly once and non-mutating for policy state.
-  Missing/offline evidence still uses deterministic fallback.
+  Key `6` publishes the selected citizen observation, resolves the existing `Unavailable()` path,
+  applies it once, and visibly reports `deterministic_fallback | civic.cognition.decision`.
+  Repeating `6` reuses the consumed resolution and fails closed without a second event.
 - Schema-v9 persistence/replay/resume, reset, and no-input/offline behavior are unchanged; the
   existing W3-05 cross-loop suite remains the authority for those contracts.
 
 ## Validation and observation boundary
 
-- Focused managed civic/UI regression: pass; see the companion machine-readable evidence.
-- The new Godot-hosted input smoke passed for both policies, duplicate rejection, compact wetland
-  reading, and both inspected interests. A later full headless wrapper must still complete before
-  a full-suite claim.
+- Repair-focused managed civic/UI regression: pass; see the companion machine-readable evidence.
+- The repaired Godot-hosted input smoke passed for both policies, correctly labelled opposition,
+  combined inspector layout, duplicate policy/cognition rejection, compact wetland reading, both
+  inspected interests, and the visible offline cognition event. A later final headless wrapper
+  still belongs to the delivery owner before a final full-suite claim.
 - The performance matrix is required for the milestone correctness delivery because this follow-up
   changes production main-scene behavior. The parent delivery owner will run it after the
   implementation commit; no performance claim is made from this worktree.
@@ -62,5 +67,11 @@ merge, or visual/author-pass claim is made by this worktree.
    support and opposition.
 3. Press `F7`, then `5`; verify Drawdown, `0/12`, `Strained 45/100`, and the degrading-material
    consequence, with the two citizen stances reversed.
-4. Record the exact commit, scenario, seed, actions, HUD/inspector observations, and any visual or
-   interaction limitation. Do not mark this passed from automated/headless output alone.
+4. With a policy selected and a citizen inspected, press `6`; record the visible
+   `deterministic_fallback | civic.cognition.decision` result. Press `6` again and record its
+   rejection without a second event.
+5. Harvest exactly one reed through the ordinary player interaction route, then record the updated
+   quota/health reading. This is a manual observation boundary: the author must confirm the real
+   resource target and interaction before claiming it.
+6. Record the exact candidate commit, scenario, seed, actions, HUD/inspector observations, and any
+   visual or interaction limitation. Do not mark this passed from automated/headless output alone.
