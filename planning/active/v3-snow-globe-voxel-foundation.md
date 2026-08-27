@@ -2,52 +2,51 @@
 
 ## Status
 
-**Implemented candidate under repair; human acceptance failed and retest remains open.** This authorized reset replaces the old exploratory voxel spike with one finite, deterministic, editable world authority. It is not a claim of human visual, play, performance, or release acceptance.
+**Technical grounding recovery validated; human retest remains open.** Two user-led attempts failed because the player appeared in or below the terrain and could fall out of the world. Those failures override earlier automated confidence. The repaired candidate is not a claim of human visual, play, performance, or release acceptance.
 
 ## Bounded outcome
 
-- One town-sized editable world now; citizen, settlement, and navigation simulation are intentionally absent from this foundation. The architecture may host up to three town sites later.
+- One town-sized editable world now; citizen, settlement, and navigation simulation remain outside this foundation.
 - The selected world is `voxel_v1`, never a mirrored edit layer over `WorldMapState`.
 - World bounds are `[-64,64) x [0,32) x [-64,64)`: 64 eager `16x32x16` chunks.
 - Material ids are closed and persisted: Air 0, Soil 1, Stone 2, Wood 3, Bedrock 4.
-- `PrototypeRuntimeSession.ExecuteVoxelEdit` is the mutation seam. A command has actor, tick, expected revision, expected material, edit kind, coordinate, and after material. Failure is inert; success emits one typed change and increments revision once.
-- Snapshot schema v10 is only for voxel scenarios. It retains the complete chunk payload, identities, bounds, revisions, per-chunk hashes, and root hash. Legacy v5-v9 remain heightfield snapshots and are not converted.
+- `PrototypeRuntimeSession.ExecuteVoxelEdit` is the mutation seam. `GameManager`, player, HUD, presenter, and scene remain intent or presentation adapters.
+- Snapshot schema v10 is voxel-only and preserves complete chunk identity, hashes, ordered edit events, and replay. Legacy v5-v9 remain heightfield snapshots and are not converted.
 
-## Player evidence implemented
+## Grounding and interaction recovery
 
-The dedicated `snow_globe_voxel_foundation.tscn` scene presents engine-neutral indexed chunk geometry and one bounded heightmap grounding shape per chunk from immutable projections. Left-click raycast intent removes a hit block and right-click places Wood on the hit face. Both paths cross `GameManager` into `PrototypeRuntimeSession.ExecuteVoxelEdit`; Godot never owns voxel state. Godot coverage includes scene startup, outside collision, remove/place, Wood material, mesh normals/material, grounded player lifecycle, save/load, reset, and voxel/heightfield switching. Managed tests cover chunk-edge dirtiness, save/restore/replay identity, malformed-state rejection, exact 10,000-edit persistence capacity, and inert rejection of edit 10,001.
+The dedicated `snow_globe_voxel_foundation.tscn` scene now presents authoritative indexed chunk geometry plus immutable vertical occupied-run projections. `VoxelWorldPresenter` coalesces those runs into exact solid box collision, including legacy gaps and overhangs, instead of treating a ray-hittable hollow mesh or top-only heightmap as sufficient character ground. A baseline world has 64 collision bodies and 12,777 shapes; dirty chunk replacement is bounded and leak-tested.
 
-## Manual play failure and collision repair
+Generation v2 creates a deterministic `9x9` spawn clearing and selects a strict safe spawn from its central `5x5`. Saved positions are validated from the actual capsule foot, not the body center: a grounded valid save is restored exactly, while a below-surface or unsafe save recovers to the authoritative spawn. Historical generator-v1 identity and event replay remain intact, including a truthful minimum-relief fallback for old worlds.
 
-The first user-led play on 2026-08-27 failed immediately because the player fell through the map. The original automated outside-ray smoke did not prove that a `CharacterBody3D` could stand on the generated collision. A real-scene regression reproduced the player at `Y=-77.306` below an authoritative `Y=15.000` surface after 180 physics frames.
+New edits are surface-bound: removal rejects interior/non-top blocks and placement rejects unsupported floating blocks. Left click and right click still cross `GameManager -> PrototypeRuntimeSession.ExecuteVoxelEdit`; the Godot layer never creates a second voxel state. The dedicated scene no longer renders the unrelated legacy heightfield settlement, resources, or panels. Its compact HUD reports the voxel interaction contract and preserves transient authoritative feedback across scenario-mode transitions.
 
-The confirmed cause was the use of hollow concave trimesh collision as player ground. Collision layers matched, the player capsule was valid, extra physics-registration frames did not help, and substituting solid support grounded the same player. The repair retains the visual voxel mesh but derives one `HeightMapShape3D` from each chunk's highest authoritative exposed surface: 64 static bodies and 64 shapes total. This is intentionally compatible with the current no-caves/no-overhang foundation and is not a generalized voxel collision solution.
+## Failure evidence and diagnostic isolation
 
-The new regression uses the real dedicated scene and player. It proves initial spawn clearance and 180-frame grounding, then moves the player over an exposed editable column, removes and replaces its top block through `GameManager`, verifies the authoritative surface and heightmap sample/resource change, and proves grounding after each mutation. It also verifies that exact edited column after save/load, plus reset and heightfield-to-voxel lifecycle. The repaired candidate is automated-review green; the user has not yet retested it.
+The first user play fell through the map. The second user report found the player apparently under or in the terrain and the settlement apparently below the map. A rendered scene diagnostic confirmed mismatched spawn/collision presentation and legacy-scene leakage. It also exposed a testing defect: an ordinary Godot window could take focus and consume the user's live mouse even when launched offscreen or marked no-focus.
 
-## Citizen boundary
+Rendered diagnostics now fail closed unless launched through `run-sg-vx-scene-diagnostic.ps1`. The launcher creates a private Windows desktop, starts Godot on that desktop, places the complete descendant process tree in a kill-on-close Job Object before resume, verifies the active input desktop is different, and records exact source, assembly, log, camera, and encoded-PNG hashes. The runner disables live player and manager input and drives the real `PlayerCharacter` controller with synthetic actions. True headless Godot remains the route for non-rendered tests; it cannot supply renderer pixels.
 
-Do not introduce `PersonalityArchetype` or fixed `GoalTemplate` enums. Future citizens use seed-derived identity/circumstances and continuous situational state. An LLM may create an open-ended persisted goal receipt; it only proposes a bounded deterministic capability. Session validation accepts or rejects it, records the normalized receipt/event, and replay never recalls a model. Deterministic survival/work fallback continues when no model is available.
+The final isolated run captured launch, spawn, wide, cutaway, and post-controller/edit views. It proves the tested build placed the player above the clearing, removed legacy settlement presentation, matched rendered/collision surfaces, and completed grounded controller traversal. Screenshot inspection does **not** establish visual quality or human play acceptance; the present terrain and lighting remain a crude technical foundation.
 
-## Deliberate non-goals
+## Validation result
 
-No fluids, caves, infinite streaming, LOD, networking, multiplayer, live providers, ecology expansion, market/governance expansion, legacy save conversion, or final art are included.
+- Focused managed voxel and persistence coverage passes 17/17.
+- The authoritative wrapper passes 498/498 managed tests in 6m06s and 28/28 Godot tests with exit 0.
+- Release and ExportRelease builds pass with 0 warnings and 0 errors.
+- Godot coverage includes strict and legacy-fallback spawn contracts, exact grounded-save restoration, v1 replay/resave identity, vertical-run collision, scenario-scoped HUD/culling, a 16-cycle dirty-edit leak soak, finite-edge inward traversal, and landing that requires `IsOnFloor`, settled velocity, and foot-to-surface agreement.
+- Independent deep review of the final provenance-bound diagnostic and implementation returns GO with no P0-P3 findings.
 
-## Design references
+## Performance safety
 
-- Microsoft’s [world-generation overview](https://learn.microsoft.com/en-us/minecraft/creator/documents/world-generation?view=minecraft-bedrock-stable) informs explicit seed-bound staged passes.
-- Eco documents finite configured seeded worlds and simulation feedback: [WorldGenerator](https://wiki.play.eco/en/Server_Configuration/WorldGenerator.eco), [EcoSim](https://wiki.play.eco/en/Server_Configuration/EcoSim.eco), and [Pollution](https://wiki.play.eco/en/Pollution).
-- Godot’s [SurfaceTool](https://docs.godotengine.org/en/stable/tutorials/3d/procedural_geometry/surfacetool.html) and [ArrayMesh](https://docs.godotengine.org/en/stable/classes/class_arraymesh.html) describe the planned CPU indexed mesh path.
+This is characterization, not representative performance acceptance. The authoritative run measured startup at 946.293 ms and the 16-cycle dirty-edit soak at 720.162 ms, with 64 bodies, 12,777 baseline shapes, and 12,779 maximum shapes. The isolated rendered diagnostic took about 13.2 seconds. The approximately 12.8k collision-shape baseline remains a scaling risk, and the predecessor 51.9392 ms safety failure is still unresolved and unattributed.
 
-## Architecture result
+## Citizen boundary and non-goals
 
-The registered `snow_globe_voxel` scenario selects one immutable world model at session construction. Voxel initialization does not generate a heightfield or create the legacy resource ledger, settlement simulation, or navigation simulation. A small read-only terrain-query adapter supplies surface height, spawn, and immutable world identity to existing presentation call sites without becoming a second authority. Legacy scenarios continue through the unchanged heightfield adapter.
+Do not introduce fixed citizen personality or goal-template enums. Future citizens may use seed-derived identity and circumstances plus continuous situational state; an LLM may propose bounded deterministic capabilities, but replay never recalls a model and deterministic fallback remains mandatory.
 
-Schema v10 is voxel-only. It binds scenario/outer/nested seed and world identity, canonical culture-invariant hashes, ordered authoritative edit ticks, exact revision/event counts, the zero-heightfield shell, chunk payload segments, and the full typed edit journal. Public deserialize, artifact preflight, and session apply share the same validation before any mutation or write. V5-v9 remain the frozen heightfield compatibility path and are not converted.
+No citizen/settlement integration, live providers, fluids, caves, infinite streaming, LOD, networking, multiplayer, ecology expansion, markets, broad governance, final art, or generalized voxel framework is included here.
 
-## Remaining gates and next slice
+## Remaining gate and one next action
 
-- The repaired authoritative wrapper and production builds are recorded in evidence; repair commit `909d528` is pushed to PR #180.
-- The scene is a technical interaction proof, not an accepted visual direction or a complete game loop. The original human play failed; post-repair visual/play acceptance is open.
-- Representative frame-time, edit latency, chunk rebuild, memory, and save-size performance were not measured. The predecessor `51.9392 ms` safety failure remains unresolved and cannot be attributed to this slice.
-- Citizen, settlement, resource, ecology, and navigation participation are absent. The next slice should design the deterministic citizen/world participation contract over voxel standability before adding open-ended LLM goals. Do not treat the current top-solid terrain query as that navigation contract.
+Implementation commit `9a0edaa1d8066431c7869f011c5fc7aaab12fc0c` is the repaired technical candidate on PR #180. The user should retest the dedicated scene and explicitly confirm or reject: spawn above terrain, no ordinary fall-through, collision/render agreement, absence of the legacy settlement, stable camera/input behavior, and basic remove/place readability. Do not merge or begin citizen/world participation work until that result is recorded.

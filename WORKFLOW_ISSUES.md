@@ -168,6 +168,26 @@ Statuses: **Open**, **Monitoring**, **Resolved**, **Deferred**, **Rejected**.
 
 ## Resolved entries
 
+### WI-SOCIETIES-2026-016 - Rendered Godot diagnostics captured the active desktop and live mouse
+
+- **Tier:** T1
+- **Status:** Resolved
+- **Scope/project:** `C:\Users\hunte\.codex\worktrees\snow-globe-voxel\societies`; SG-VX-01 rendered scene diagnostics
+- **Category:** desktop isolation and validation reliability
+- **First seen:** 2026-08-27 (America/Vancouver)
+- **Last seen:** 2026-08-27 (America/Vancouver)
+- **Occurrences:** Multiple active-desktop diagnostic launches, including one offscreen/no-focus attempt that still acquired focus
+- **Reporter:** user and main orchestrator
+- **Symptom:** Godot diagnostic windows interrupted the user's work, and the user's live mouse movement changed the test camera angle.
+- **Impact:** User activity was disrupted and screenshots could not be trusted as deterministic evidence because ambient input could alter the captured scene.
+- **Evidence:** A normal rendered Godot process reported an owned/focused window despite scene-level no-focus controls; true headless Godot used the dummy renderer and could not produce pixels. The final isolated run placed PID 3720 on `SocietiesVoxelDiagnostic_d444a4a2fb0a4f27a31724dcbe074ebf` while the active input desktop remained `Default`, retained descendant custody, exited 0, and produced five source- and PNG-hash-bound captures.
+- **Workaround:** Never run rendered Godot diagnostics on the active desktop. Use headless mode for non-rendered tests and the private-desktop launcher only when pixels are required.
+- **Root cause:** A normal Godot window can acquire OS focus and the production player captures the mouse during startup before scene-level diagnostic input suppression is sufficient.
+- **Proposed fix:** Completed. The launcher now uses `CreateDesktop`, suspended `CreateProcess` with `lpDesktop`, pre-resume Job Object assignment, kill-on-close process-tree custody, active-input-desktop comparison, exact cleanup, disabled live player/manager input, and source/assembly/log/camera/PNG provenance.
+- **Auto-fix eligibility/rationale:** No - T1 desktop and process-boundary behavior requires reviewed, fail-closed handling.
+- **Resolution/validation:** Resolved. Normal and forced-timeout Job Object cleanup tests pass; direct diagnostic invocation without the one-time isolation marker fails closed; the final hidden-desktop run passed and independent provenance review returned GO with no P0-P3 findings.
+- **Linked entry:** WI-GLOBAL-2026-149 in `C:\Users\hunte\Documents\Codex\WORKFLOW_ISSUES.md`.
+
 ### WI-SOCIETIES-2026-012 — Frozen canonical-manifest fixture inherited checkout line endings
 
 - **Tier:** T1

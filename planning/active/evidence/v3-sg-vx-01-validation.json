@@ -1,78 +1,65 @@
 {
-  "schemaVersion": 1,
-  "capturedUtc": "2026-08-27T18:21:51Z",
+  "schemaVersion": 2,
+  "capturedUtc": "2026-08-27T21:02:42Z",
   "workItem": "SG-VX-01-editable-voxel-world-foundation",
-  "status": "manual_acceptance_failed_grounding_repair_validated_retest_open",
+  "status": "technical_grounding_recovery_validated_human_retest_open",
   "source": {
     "baseCommit": "75b23e9de20be4797a233cb78ff8e8e1b3cd4daf",
     "implementationCommit": "e64b655d4a9a38c551908ef659f5205bd1f35651",
-    "groundingRepairCommit": "909d52897728bbb7c86e1c32e7cd1f760e817116",
+    "firstGroundingRepairCommit": "909d52897728bbb7c86e1c32e7cd1f760e817116",
+    "secondGroundingAndDiagnosticRepairCommit": "9a0edaa1d8066431c7869f011c5fc7aaab12fc0c",
     "branch": "codex/snow-globe-voxel-foundation",
     "worktree": "C:\\Users\\hunte\\.codex\\worktrees\\snow-globe-voxel\\societies",
-    "productionRuntimeChanged": true,
-    "schemaOrMigrationChanged": true,
+    "authority": "PrototypeRuntimeSession is the sole mutation, event, snapshot, and replay authority; GameManager and Godot nodes are intent/presentation adapters",
     "runtimeSnapshotSchema": 10,
     "legacySnapshotSchemasPreserved": [5, 6, 7, 8, 9]
   },
-  "scope": {
-    "world": "finite eager 128x32x128 voxel authority in 64 16x32x16 chunks",
-    "scenario": "snow_globe_voxel",
-    "scene": "res://scenes/snow_globe_voxel_foundation.tscn",
-    "authority": "GameManager translates pointer intent; PrototypeRuntimeSession owns VoxelWorldModule and is the sole mutation, event, snapshot, and replay authority",
-    "playerInteraction": {
-      "leftMouse": "remove the hit voxel",
-      "rightMouse": "place Wood on the hit face"
-    },
-    "citizens": "zero; citizen, settlement, resource, ecology, and navigation simulation are outside this foundation"
-  },
-  "coverage": [
-    "seed and culture-invariant deterministic generation",
-    "finite bounds and negative chunk coordinates",
-    "revision, material, edit-kind, tick, bedrock, and capacity rejection without mutation",
-    "typed ordered edit events and continuous versus save-resume equality",
-    "chunk-edge dirty projection and bounded invalid projection scope",
-    "clockwise Godot mesh winding, flat normals, vertex-color material, and outside heightmap collision",
-    "schema-v10 segmented chunk payloads, canonical zero-heightfield shell, nested seed and identity binding, root hashes, ordered event ticks, exact revision counts, and rejection before mutation or artifact write",
-    "exact 10000-edit save, load, and apply boundary; edit 10001 rejected inert",
-    "real CharacterBody spawn and 180-frame grounding, edited-column heightmap replacement, save-load-reset grounding, and heightfield-to-voxel lifecycle",
-    "legacy heightfield scenarios and frozen v5-v9 persistence requirements"
-  ],
-  "review": {
-    "role": "deep_reviewer",
-    "result": "GO",
-    "findings": "initial outside-ray smoke missed player fall-through; repair review closes hollow-concave-grounding and dirty-edit evidence findings with no remaining P0-P2",
-    "notAClaim": [
-      "human visual acceptance",
-      "human play acceptance",
-      "citizen or settlement simulation readiness",
-      "representative performance safety",
-      "release readiness"
+  "repair": {
+    "observedFailures": [
+      "first user play fell through the map",
+      "second user play appeared under or inside terrain and the legacy settlement appeared below the map",
+      "active-desktop screenshot runs interrupted user work and live mouse input altered camera pose"
+    ],
+    "production": [
+      "generator-v2 deterministic 9x9 spawn clearing and strict central 5x5 safe spawn",
+      "exact immutable vertical occupied-run collision with bounded dirty-chunk replacement",
+      "capsule-foot grounded-save validation and exact valid-position restoration",
+      "surface-only live remove/place contract while preserving authenticated generator-v1 replay",
+      "voxel-scoped settlement, resource, panel, body, and camera presentation",
+      "voxel HUD transition and authoritative transient-feedback preservation"
+    ],
+    "diagnostic": [
+      "private Windows desktop distinct from the active input desktop",
+      "suspended CreateProcess assigned to kill-on-close Job Object before resume",
+      "complete descendant-tree custody and cleanup on success, timeout, and exception",
+      "live input disabled; real PlayerCharacter controller driven with synthetic actions",
+      "exact launcher, runner, scene, assembly, log, camera, and encoded-PNG provenance"
     ]
   },
   "results": [
     {
-      "command": "dotnet test tests/Societies.Core.Tests/Societies.Core.Tests.csproj --configuration Release --no-restore --filter focused_voxel_and_persistence",
+      "scope": "focused managed voxel and persistence coverage",
       "result": "pass",
-      "passed": 74,
+      "passed": 17,
       "failed": 0
     },
     {
       "command": "scripts/run-prototype-validation.ps1",
       "result": "pass",
       "exitCode": 0,
-      "managed": { "passed": 494, "failed": 0, "skipped": 0, "duration": "5m13s" },
-      "godot": { "passed": 27, "failed": 0 },
+      "managed": { "passed": 498, "failed": 0, "skipped": 0, "duration": "6m06s" },
+      "godot": { "passed": 28, "failed": 0 },
       "productionDebugBuild": { "warnings": 0, "errors": 0 },
-      "note": "The Godot suite intentionally exercises a frame-backlog warning and a denied optional-metrics write; both tests passed."
+      "note": "The Godot suite intentionally exercises a frame-backlog warning and a denied optional-metrics write; both tests pass."
     },
     {
-      "command": "dotnet build src/societies/Societies.csproj --configuration Release --no-restore",
+      "command": "dotnet build src/societies/Societies.csproj --configuration Release --nologo",
       "result": "pass",
       "warnings": 0,
       "errors": 0
     },
     {
-      "command": "dotnet build src/societies/Societies.sln --configuration ExportRelease --no-restore",
+      "command": "dotnet build src/societies/Societies.csproj --configuration ExportRelease --nologo",
       "result": "pass",
       "warnings": 0,
       "errors": 0
@@ -83,41 +70,59 @@
       "note": "Only line-ending normalization notices were emitted."
     }
   ],
+  "isolatedRenderedDiagnostic": {
+    "result": "pass",
+    "artifactDirectory": "C:\\Users\\hunte\\.codex\\visualizations\\2026\\08\\26\\01a03fa5-edf5-7692-821c-2991b166d935\\sg-vx-hidden-desktop-final",
+    "processId": 3720,
+    "processDesktop": "SocietiesVoxelDiagnostic_d444a4a2fb0a4f27a31724dcbe074ebf",
+    "activeInputDesktop": "Default",
+    "windowObserved": true,
+    "descendantCustody": true,
+    "exitCode": 0,
+    "logResult": "SG_VX_SCENE_DIAGNOSTIC PASS",
+    "sourceSha256": {
+      "launcher": "8a8e3ecc65bf41b36b4e66db85c9649fedfa736f2b708318935cadb458682ca0",
+      "runnerSource": "4091d5abb89373271b56ace1b1ad90f28ea7d8af4e9de894a58071fe596c8a97",
+      "runnerScene": "2f3757eb24ee961e8f1589bbe4dff4b52ef6a483dd02cd5f8e829ef9451022ef",
+      "debugAssembly": "efd25d5065b7cffb6f448b4105561e30a188288fe05ac9693eab8577f62caa05"
+    },
+    "pngSha256": {
+      "launchPlayerView": "1da3c6d75a35ae5a93ae8f4aba2cfe06017e7e8811d04ad3eb38fda1eee92488",
+      "spawn": "396efb3bd1bb7b90a2c77c9cd911c57e29a8a35c107049df898757cfb17a09f9",
+      "wide": "b4e318cb6e4cfd0ce327bd742f8d286955089c871d709ebb9597b480daa2929c",
+      "cutaway": "c2e5605baf54d72e7eea0aa15c4fb13dcc9d004a875fcb5d41128edd6ffba322",
+      "postControllerEdit": "eed6aa66790838f2a14f742880c3888704b8a5ba1ba4b2cc35b30d53cef660a5"
+    },
+    "review": "independent fixed-point provenance review GO with no P0-P3 findings",
+    "notAClaim": ["human visual acceptance", "human play acceptance", "representative performance safety"]
+  },
   "performance": {
-    "status": "unmeasured",
-    "collisionShapeCount": 64,
-    "focusedLifecycleCharacterization": "15.76 seconds for one real-scene test covering initial 180 frames plus edit, save-load, reset, and model-switch phases",
-    "claim": "No representative frame-time, edit latency, dirty-chunk rebuild, memory, or snapshot-size profile was run. The focused lifecycle wall time is not a rebuild or performance pass. The predecessor 51.9392 ms safety failure remains unresolved and is not attributed to SG-VX-01."
+    "status": "characterized_not_accepted",
+    "startupMilliseconds": 946.293,
+    "dirtyEditSoak": { "cycles": 16, "milliseconds": 720.162 },
+    "collisionBodies": 64,
+    "baselineCollisionShapes": 12777,
+    "maximumCollisionShapesDuringSoak": 12779,
+    "isolatedRenderedDiagnosticSeconds": 13.2,
+    "risk": "Approximately 12.8k collision shapes remain a scaling risk. The predecessor 51.9392 ms safety failure remains unresolved and is not attributed to SG-VX-01."
   },
   "manualAcceptance": {
-    "status": "failed_original_candidate_retest_repair_open",
-    "observedFailure": "User fell through the map immediately on the first play attempt.",
-    "reproduction": "After 180 physics frames the real player reached Y=-77.306 below authoritative surface Y=15.000.",
-    "rootCause": "Hollow concave trimesh collision was ray-hittable but unsuitable as CharacterBody ground.",
-    "repair": "Retain visual mesh; derive one HeightMapShape3D per chunk from the highest authoritative exposed surface.",
-    "route": [
-      "launch res://scenes/snow_globe_voxel_foundation.tscn",
-      "walk and look around the generated finite terrain",
-      "left click several exposed blocks, including a visible edge or step",
-      "right click to place Wood and confirm collision changes",
-      "press F6 to save, make another edit, press F9 to load, and confirm the saved shape returns",
-      "press F7 to reset and confirm the original seeded world returns"
-    ],
-    "acceptanceQuestions": [
-      "Does removal and placement feel readable and responsive?",
-      "Does the terrain scale support a small contained Snow Globe world?",
-      "Are collision and block targeting understandable?",
-      "Is this foundation worth carrying into citizen and settlement integration?"
+    "status": "failed_twice_current_repair_retest_pending",
+    "requiredChecks": [
+      "player begins visibly above the clearing and does not fall through during ordinary movement",
+      "rendered terrain and collision agree at the clearing and nearby steps",
+      "legacy settlement and resource presentation is absent",
+      "camera and input remain stable during the user's run",
+      "surface removal, supported Wood placement, and rejection feedback are understandable"
     ]
   },
   "delivery": {
-    "status": "open_stacked_pull_request",
+    "status": "open_stacked_pull_request_publication_pending",
     "pullRequest": 180,
     "pullRequestUrl": "https://github.com/dfrer/societies/pull/180",
     "basePullRequest": 178,
-    "mergeState": "CLEAN",
-    "headCommit": "909d52897728bbb7c86e1c32e7cd1f760e817116",
     "hostedCi": "no_check_run_on_stacked_base",
-    "humanAcceptance": "failed_original_candidate_post_repair_retest_pending"
+    "merge": "not_authorized",
+    "humanAcceptance": "pending"
   }
 }

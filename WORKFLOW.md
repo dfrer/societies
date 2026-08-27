@@ -1173,39 +1173,40 @@ The offline Cognition Quality Corpus v1 is implemented in the isolated Snow Glob
 
 - Superseded by the SG-VX-01 implementation handoff below.
 
-# SG-VX-01 editable voxel-world foundation
+# SG-VX-01 editable voxel-world foundation and grounding recovery
 
 ## Outcome and scope
 
 - Replaced the exploratory voxel spike with one finite deterministic `voxel_v1` Module owned only by `PrototypeRuntimeSession`: 64 eager `16 x 32 x 16` chunks, fixed `[-64,64) x [0,32) x [-64,64)` bounds, stable materials, validated revision/tick-bound edits, typed events, immutable mesh/walkability projections, and strict schema-v10 persistence/replay.
 - Added a read-only terrain-query Seam with concrete heightfield and voxel Adapters. Session construction freezes the selected world model and creates exactly one authority; the voxel scenario does not create the legacy heightfield, resource ledger, settlement simulation, or navigation simulation.
-- Added the dedicated `snow_globe_voxel_foundation.tscn` scene. Left click removes a hit voxel and right click places Wood through `GameManager -> PrototypeRuntimeSession -> VoxelWorldModule`; the presenter rebuilds only authoritative dirty chunks and owns no simulation state.
+- Added the dedicated `snow_globe_voxel_foundation.tscn` scene. Left click removes an exposed top voxel and right click places supported Wood through `GameManager -> PrototypeRuntimeSession -> VoxelWorldModule`; the presenter rebuilds only authoritative dirty chunks and owns no simulation state.
 - Preserved all legacy heightfield scenarios and schema-v5-v9 compatibility. Voxel schema v10 binds outer/nested seed and identity, canonical hashes, ordered edit ticks, exact revision/event counts, bounded segmented chunk data, a canonical zero-heightfield shell, and a shared 10,000-edit/save capacity.
 - Citizen/settlement/navigation simulation, LLM/provider integration, fluids, caves, streaming, ecology expansion, final art, and general voxel frameworks remain out of scope.
 
 ## Validation and review state
 
-- Focused voxel/persistence Release checks pass 74/74. After the collision repair, the authoritative wrapper passes 494/494 managed tests in 5m13s and 27/27 Godot tests with exit 0.
-- Godot coverage includes startup, outside collision, remove/place Wood, mesh normals/material, real-player spawn/grounding, authoritative edited-column heightmap replacement, save/restore at that column, reset, and voxel/heightfield lifecycle. The deliberate frame-backlog warning and denied optional-metrics write are exercised warning paths, not production build warnings or failed tests.
+- Focused managed voxel/persistence repair coverage passes 17/17. The authoritative wrapper passes 498/498 managed tests in 6m06s and 28/28 Godot tests with exit 0.
+- Godot coverage includes startup, remove/place and rejection feedback, strict and legacy-fallback spawn, actual-capsule-foot save validation, exact valid-save restoration, immutable vertical occupied-run collision, v1 replay/resave identity, scenario-scoped HUD/culling, 16 dirty-edit replacement cycles without body/shape leakage, finite-edge inward controller traversal, reset, and voxel/heightfield lifecycle. The deliberate frame-backlog warning and denied optional-metrics write are exercised warning paths, not production build warnings or failed tests.
 - Production Release and ExportRelease builds pass with 0 warnings/errors; `git diff --check` passes aside from line-ending notices.
-- Independent deep review found and closed mesh winding/collision, material/normals, presenter lifecycle, persistence-size, malformed-command, locale-hash, seed-binding, event-capacity, shell-validation, tick-authority, and projection-scope defects. Final re-review is GO with no remaining P0-P2 findings.
-- Performance safety is unproven. No representative frame-time, edit, rebuild, memory, or save-size profile was run; the predecessor `51.9392 ms` safety failure remains unresolved. Automated checks do not establish human visual/play acceptance.
+- Independent review found and closed mesh winding/collision, material/normals, presenter lifecycle, persistence-size, malformed-command, locale-hash, seed-binding, event-capacity, shell-validation, tick-authority, projection-scope, historical v1 replay, saved-position, HUD-transition, culling-scope, landing-assertion, process-custody, image-hash, and exact-provenance defects. Final re-review is GO with no P0-P3 findings.
+- Performance is characterized, not accepted. Authoritative startup was 946.293 ms; the 16-cycle dirty-edit soak was 720.162 ms with 64 bodies, 12,777 baseline shapes, and 12,779 maximum shapes. The approximately 12.8k-shape baseline remains a scaling risk, and the predecessor `51.9392 ms` safety failure remains unresolved. Automated checks do not establish human visual/play acceptance.
 
-## Manual failure and grounding repair
+## Two manual failures and full grounding/diagnostic recovery
 
-- The first user-led SG-VX-01 play failed immediately: the player fell through the map. This overrides the prior automated collision confidence and leaves product acceptance failed.
-- A deterministic real-scene regression reproduced `playerY=-77.306` below authoritative `surfaceY=15.000` after 180 physics frames.
-- Collision masks and the player capsule were valid; additional registration frames did not help. A solid-support control grounded the same player, confirming that hollow concave trimesh collision was unsuitable as `CharacterBody3D` ground.
-- `VoxelWorldPresenter` now keeps the visual voxel mesh but builds exactly one `HeightMapShape3D` per chunk from the highest authoritative exposed surface: 64 static bodies and 64 collision shapes total. This is deliberately limited to the no-caves/no-overhang foundation.
-- The final regression proves initial grounding, real remove/place collision replacement under the player, exact heightmap sample/resource change, save/load at the edited column, reset, and heightfield-to-voxel switching. Focused lifecycle time was 15.76s end-to-end; this is test characterization, not a rebuild or performance-safety claim.
-- Independent review is GO with no P0-P2 findings. The repair is not human accepted until the user retests it.
+- The first user-led play fell through the map. The second reported the player apparently under or inside terrain and the legacy settlement apparently below the map. Both override earlier automated confidence; product acceptance remains failed pending a new user run.
+- The initial hollow-trimesh repair was insufficient. A rendered diagnostic found that the saved/spawn position contract did not use the actual capsule foot, top-only heightmaps could not represent all persisted voxel geometry, the generator could select a visually enclosed pocket, and the dedicated scene retained legacy heightfield presentation.
+- Generator v2 now creates a deterministic `9x9` clearing and selects a strict central `5x5` safe spawn. Valid grounded saves restore exactly; unsafe or below-surface saves recover through authoritative session state. Historical generator-v1 identity, replay, resave, and fallback behavior remain compatible.
+- `VoxelWorldPresenter` now coalesces authoritative vertical occupied runs into exact solid boxes, including legacy gaps and overhangs. Live edits are surface-only, so accepted commands cannot create interior removals or unsupported floating placements that the current player interaction contract cannot read.
+- The dedicated voxel scene suppresses legacy settlement/resource presentation, scopes player body/camera culling correctly, and uses a compact voxel interaction HUD without duplicating simulation state.
+- Rendered diagnostics no longer use the active desktop. A fail-closed launcher creates a private Windows desktop, assigns Godot and descendants to a kill-on-close Job Object before resume, disables live input, and binds source/assembly/log/camera/PNG hashes. The final isolated run used PID 3720 on a desktop distinct from `Default`, exited 0, produced five verified captures, and received independent provenance GO. This prevents the diagnostic from interrupting the user's work or allowing the user's live mouse to alter the camera.
+- The captures and automated controller prove only the tested placement/grounding path. They do not establish acceptable visuals, interaction feel, or human play quality.
 
 ## Repository and delivery state
 
 - Work is isolated in `C:\Users\hunte\.codex\worktrees\snow-globe-voxel\societies` on `codex/snow-globe-voxel-foundation`, based on PR #178 head `75b23e9de20be4797a233cb78ff8e8e1b3cd4daf`.
 - The dirty primary checkout and unrelated Snow Globe/provider/lab work were preserved. Nothing in the primary checkout was edited, cleaned, staged, reset, or stashed.
-- Implementation/evidence commit `e64b655d4a9a38c551908ef659f5205bd1f35651` and grounding repair commit `909d52897728bbb7c86e1c32e7cd1f760e817116` are pushed. Open stacked PR #180 targets `codex/snow-globe-frontend-recovery-plan`; GitHub reports `CLEAN`. No hosted checks are attached because the stacked base does not trigger the current workflow. Merge and post-repair human acceptance remain open. Validation evidence is [v3-sg-vx-01-validation.json](planning/active/evidence/v3-sg-vx-01-validation.json).
+- Earlier implementation/evidence commit `e64b655d4a9a38c551908ef659f5205bd1f35651` and first repair `909d52897728bbb7c86e1c32e7cd1f760e817116` are already pushed. Full grounding and isolated-diagnostic repair `9a0edaa1d8066431c7869f011c5fc7aaab12fc0c` is locally validated for publication to open stacked PR #180, which targets `codex/snow-globe-frontend-recovery-plan`. No hosted checks were attached to the previous stacked head. Merge and human acceptance remain open. Validation evidence is [v3-sg-vx-01-validation.json](planning/active/evidence/v3-sg-vx-01-validation.json).
 
 ## Continue with
 
-- Ask the user to retest the dedicated scene from repair commit `909d528`. Do not merge or expand into citizens until the user confirms the immediate fall-through is gone and reports the next observed interaction/collision failures.
+- Ask the user to retest the dedicated scene from repair commit `9a0edaa`. Do not merge or expand into citizen/world participation until the user confirms spawn above terrain, no ordinary fall-through, collision/render agreement, absence of the legacy settlement, stable camera/input behavior, and readable basic remove/place feedback.
