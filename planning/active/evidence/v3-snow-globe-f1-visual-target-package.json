@@ -5,7 +5,11 @@
   "date": "2026-08-26",
   "repository": {
     "baseCommit": "75b23e9de20be4797a233cb78ff8e8e1b3cd4daf",
+    "implementationCommit": "8820734ecc8afd1a592c9077a9e441c5c4467d5d",
     "branch": "codex/snow-globe-f1-visual-target",
+    "pullRequest": "https://github.com/dfrer/societies/pull/179",
+    "pullRequestBase": "codex/snow-globe-frontend-recovery-plan",
+    "deliveryState": "pushed_stacked_pull_request_open_ci_pending",
     "worktree": "C:\\Users\\hunte\\.codex\\worktrees\\f1-visual-target\\societies",
     "primaryCheckoutPreserved": true
   },
