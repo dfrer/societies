@@ -22,6 +22,7 @@ namespace Societies.Core
         private PrototypeSettlementSimulation? _settlementSimulation;
         private WorldGenerationResult? _world;
         private VoxelWorldModule? _voxelWorld;
+        private WorldcraftConstructionState? _worldcraft;
         private IPrototypeRuntimeTerrainQuery? _terrainQuery;
         private PrototypeResourceLedger? _resourceLedger;
         private PrototypeCrisisState? _crisisState;
@@ -95,6 +96,13 @@ namespace Societies.Core
 
         public string VoxelStateHash => _voxelWorld?.RootHash ?? string.Empty;
 
+        public long ConstructionRevision => _worldcraft?.Revision ?? 0;
+
+        public IReadOnlyList<WorldcraftPieceSnapshot> ConstructionPieces =>
+            _worldcraft?.CapturePieces() ?? System.Array.Empty<WorldcraftPieceSnapshot>();
+
+        public IReadOnlyList<string> VoxelHotbarItems => VoxelWorldcraftCatalog.HotbarOrder;
+
         public VoxelMaterialId GetVoxelMaterial(VoxelCoord coord)
         {
             if (_voxelWorld == null)
@@ -130,8 +138,84 @@ namespace Societies.Core
                     WorldRevision = _voxelWorld.WorldRevision
                 };
             }
+            if (_worldcraft != null && !_worldcraft.CanTrackVoxelEdit)
+                return new VoxelEditResult { Rejection = VoxelEditRejection.EventCapacityReached, WorldRevision = _voxelWorld.WorldRevision };
+            if (_worldcraft != null && command.Kind == VoxelEditKind.Remove && _worldcraft.WouldOrphanAfterVoxelRemoval(_voxelWorld, command.Coord))
+                return new VoxelEditResult { Rejection = VoxelEditRejection.OrphanedConstruction, WorldRevision = _voxelWorld.WorldRevision };
+            if (_worldcraft != null && command.Kind == VoxelEditKind.Place && _worldcraft.IsOccupiedByPiece(command.Coord))
+                return new VoxelEditResult { Rejection = VoxelEditRejection.PieceOccupied, WorldRevision = _voxelWorld.WorldRevision };
 
-            return _voxelWorld.Execute(command);
+            VoxelEditResult result = _voxelWorld.Execute(command);
+            if (result.Accepted) _worldcraft?.RecordVoxelEdit(result.Change!);
+            return result;
+        }
+
+        /// <summary>Atomically removes one exposed harvestable voxel and grants its catalog material.</summary>
+        public WorldcraftGatherResult GatherVoxel(VoxelCoord coord, string actorId = "player")
+        {
+            if (_voxelWorld == null || _worldcraft == null) throw new InvalidOperationException("The active scenario does not own a voxel world.");
+            if (string.IsNullOrWhiteSpace(actorId)) return new WorldcraftGatherResult { Rejection = WorldcraftRejection.InvalidActor };
+            if (!_worldcraft.CanRecordEvent) return new WorldcraftGatherResult { Rejection = WorldcraftRejection.EventCapacityReached };
+            VoxelMaterialId material = _voxelWorld.GetMaterial(coord);
+            string? itemId = VoxelWorldcraftCatalog.ItemFor(material);
+            if (itemId == null || !Inventory.CanAddItem(itemId, 1))
+            {
+                return new WorldcraftGatherResult { Rejection = itemId == null ? WorldcraftRejection.OutOfBounds : WorldcraftRejection.InventoryFull, ItemId = itemId ?? string.Empty };
+            }
+            if (_worldcraft.WouldOrphanAfterVoxelRemoval(_voxelWorld, coord))
+            {
+                return new WorldcraftGatherResult { Rejection = WorldcraftRejection.OrphanedSupport, ItemId = itemId };
+            }
+            VoxelEditResult result = _voxelWorld.Execute(new VoxelEditCommand
+            {
+                ActorId = actorId, Tick = SimulationTick, ExpectedWorldRevision = _voxelWorld.WorldRevision,
+                Kind = VoxelEditKind.Remove, Coord = coord, ExpectedBefore = material, After = VoxelMaterialId.Air
+            });
+            if (result.Accepted && !Inventory.TryAddItem(itemId, 1))
+            {
+                throw new InvalidOperationException("Validated voxel gather could not reserve bounded inventory capacity.");
+            }
+            if (result.Accepted) { _worldcraft.RecordGather(SimulationTick, coord, itemId, result.WorldRevision); RecordEvent("worldcraft.gather", $"{itemId}:{coord.X},{coord.Y},{coord.Z}"); }
+            return new WorldcraftGatherResult { Accepted = result.Accepted, Rejection = result.Accepted ? WorldcraftRejection.None : WorldcraftRejection.OutOfBounds, VoxelEdit = result, VoxelRejection = result.Rejection, ItemId = itemId };
+        }
+
+        public WorldcraftPlacementEvaluation EvaluateWorldcraftPlacement(WorldcraftPlacementCommand command)
+        {
+            if (_voxelWorld == null || _worldcraft == null) throw new InvalidOperationException("The active scenario does not own a voxel world.");
+            if (command == null || command.Tick != SimulationTick)
+                return new WorldcraftPlacementEvaluation { Rejection = WorldcraftRejection.TickMismatch };
+            return _worldcraft.Evaluate(command, _voxelWorld, Inventory);
+        }
+
+        public WorldcraftCommandResult PlaceWorldcraftPiece(WorldcraftPlacementCommand command)
+        {
+            if (_voxelWorld == null || _worldcraft == null) throw new InvalidOperationException("The active scenario does not own a voxel world.");
+            if (command == null || command.Tick != SimulationTick) return new() { Rejection = WorldcraftRejection.TickMismatch, ConstructionRevision = _worldcraft.Revision };
+            WorldcraftPlacementEvaluation evaluation = _worldcraft.Evaluate(command, _voxelWorld, Inventory);
+            if (!evaluation.IsValid) return new() { Rejection = evaluation.Rejection, ConstructionRevision = _worldcraft.Revision };
+            WorldcraftPieceDefinition definition = evaluation.Definition!;
+            if (!Inventory.TryRemoveItems(definition.Cost)) throw new InvalidOperationException("Validated construction cost vanished before commit.");
+            WorldcraftPieceSnapshot piece = _worldcraft.Place(command, _voxelWorld.WorldRevision);
+            RecordEvent("worldcraft.place", $"{piece.InstanceId}:{piece.PieceId}");
+            return new() { Accepted = true, ConstructionRevision = _worldcraft.Revision, Piece = piece, ChangedItemIds = definition.Cost.Keys.OrderBy(id => id, StringComparer.Ordinal).ToArray() };
+        }
+
+        public WorldcraftCommandResult DismantleWorldcraftPiece(WorldcraftDismantleCommand command)
+        {
+            if (_voxelWorld == null || _worldcraft == null) throw new InvalidOperationException("The active scenario does not own a voxel world.");
+            if (command == null || string.IsNullOrWhiteSpace(command.ActorId)) return new() { Rejection = WorldcraftRejection.InvalidActor, ConstructionRevision = _worldcraft.Revision };
+            if (command.Tick != SimulationTick) return new() { Rejection = WorldcraftRejection.TickMismatch, ConstructionRevision = _worldcraft.Revision };
+            if (command.ExpectedConstructionRevision != _worldcraft.Revision) return new() { Rejection = WorldcraftRejection.StaleRevision, ConstructionRevision = _worldcraft.Revision };
+            if (!_worldcraft.CanRecordEvent) return new() { Rejection = WorldcraftRejection.EventCapacityReached, ConstructionRevision = _worldcraft.Revision };
+            if (!_worldcraft.TryGet(command.PieceInstanceId, out WorldcraftPieceSnapshot? piece)) return new() { Rejection = WorldcraftRejection.UnknownPieceInstance, ConstructionRevision = _worldcraft.Revision };
+            int distance = Math.Max(Math.Abs(piece!.Anchor.X - command.ActorCell.X), Math.Max(Math.Abs(piece.Anchor.Y - command.ActorCell.Y), Math.Abs(piece.Anchor.Z - command.ActorCell.Z)));
+            if (distance > VoxelWorldcraftCatalog.BuildRangeCells) return new() { Rejection = WorldcraftRejection.OutOfRange, ConstructionRevision = _worldcraft.Revision };
+            if (_worldcraft.WouldOrphanAfterDismantle(_voxelWorld, piece.InstanceId)) return new() { Rejection = WorldcraftRejection.OrphanedSupport, ConstructionRevision = _worldcraft.Revision };
+            WorldcraftPieceDefinition definition = VoxelWorldcraftCatalog.FindPiece(piece.PieceId)!;
+            if (!Inventory.CanAddItems(definition.Cost)) return new() { Rejection = WorldcraftRejection.InventoryFull, ConstructionRevision = _worldcraft.Revision };
+            if (!Inventory.TryAddItems(definition.Cost)) throw new InvalidOperationException("Validated dismantle recovery could not reserve bounded inventory capacity.");
+            _worldcraft.Dismantle(piece, command.Tick, _voxelWorld.WorldRevision); RecordEvent("worldcraft.dismantle", piece.InstanceId);
+            return new() { Accepted = true, ConstructionRevision = _worldcraft.Revision, Piece = piece, ChangedItemIds = definition.Cost.Keys.OrderBy(id => id, StringComparer.Ordinal).ToArray() };
         }
 
         public VoxelWorldProjection CaptureVoxelProjection(IEnumerable<VoxelChunkCoord>? scope = null)
@@ -396,6 +480,7 @@ namespace Societies.Core
             Stockpile.ReplaceContents(new Dictionary<string, int>());
             _world = null;
             _voxelWorld = null;
+            _worldcraft = null;
             _terrainQuery = null;
             _resourceLedger = null;
             _settlementSimulation = null;
@@ -403,6 +488,8 @@ namespace Societies.Core
             if (UsesVoxelWorld)
             {
                 _voxelWorld = new VoxelWorldModule(Scenario.SimulationSeed);
+                Inventory.ConfigureBoundedStorage(VoxelWorldcraftCatalog.HotbarSlots, VoxelWorldcraftCatalog.StackLimit, VoxelWorldcraftCatalog.HotbarOrder);
+                _worldcraft = new WorldcraftConstructionState();
                 _terrainQuery = new VoxelRuntimeTerrainQuery(_voxelWorld);
             }
             else
@@ -1137,7 +1224,7 @@ namespace Societies.Core
 
             return new PrototypeRuntimeSnapshot
             {
-                SchemaVersion = UsesVoxelWorld ? 10 : 9,
+                SchemaVersion = UsesVoxelWorld ? 11 : 9,
                 ScenarioId = Scenario.Id,
                 WorldSeed = WorldSeed,
                 WorldGenerationAttempt = WorldGenerationAttempt,
@@ -1164,7 +1251,8 @@ namespace Societies.Core
                 CivicPolicy = _civicPolicy.CaptureSnapshot(),
                 Wetland = _wetland.CaptureSnapshot(),
                 WorldModel = _terrainQuery.WorldModel,
-                VoxelWorld = _voxelWorld?.CaptureSnapshot()
+                VoxelWorld = _voxelWorld?.CaptureSnapshot(),
+                Construction = _worldcraft?.CaptureSnapshot()
             };
         }
 
@@ -1185,14 +1273,15 @@ namespace Societies.Core
 
             WorldGenerationResult? candidateWorld = null;
             VoxelWorldModule? candidateVoxelWorld = null;
+            WorldcraftConstructionState? candidateWorldcraft = null;
             IPrototypeRuntimeTerrainQuery candidateTerrainQuery;
             PrototypeResourceLedger? candidateLedger = null;
             PrototypeSettlementSimulation? candidateSettlement = null;
             if (UsesVoxelWorld)
             {
-                if (snapshot.SchemaVersion != 10)
+                if (snapshot.SchemaVersion is not (10 or 11))
                 {
-                    throw new InvalidDataException("Voxel scenarios require a schema-v10 runtime snapshot.");
+                    throw new InvalidDataException("Voxel scenarios require a schema-v10 or schema-v11 runtime snapshot.");
                 }
 
                 try
@@ -1206,6 +1295,16 @@ namespace Societies.Core
                 }
 
                 candidateTerrainQuery = new VoxelRuntimeTerrainQuery(candidateVoxelWorld);
+                try
+                {
+                    candidateWorldcraft = snapshot.SchemaVersion == 11
+                        ? WorldcraftConstructionState.Restore(snapshot.Construction ?? throw new InvalidDataException("Voxel construction payload is missing."), candidateVoxelWorld, snapshot.Inventory, snapshot.SimulationTick)
+                        : new WorldcraftConstructionState(candidateVoxelWorld.WorldRevision);
+                }
+                catch (InvalidOperationException exception)
+                {
+                    throw new InvalidDataException("Voxel construction snapshot payload is invalid.", exception);
+                }
                 int expectedSeed = _voxelWorld?.Seed ?? Scenario.SimulationSeed;
                 if (snapshot.WorldSeed != expectedSeed || candidateVoxelWorld.Seed != snapshot.WorldSeed ||
                     snapshot.WorldGenerationAttempt != 0 ||
@@ -1313,12 +1412,19 @@ namespace Societies.Core
                 }
             }
 
+            if (UsesVoxelWorld)
+            {
+                Inventory.ReplaceContentsAndConfigureBoundedStorage(snapshot.Inventory,
+                    VoxelWorldcraftCatalog.HotbarSlots, VoxelWorldcraftCatalog.StackLimit, VoxelWorldcraftCatalog.HotbarOrder);
+            }
+
             _simulationSeed = snapshot.SimulationSeed;
             SimulationTick = snapshot.SimulationTick;
             CurrentHour = snapshot.CurrentHour;
             RunStartHour = snapshot.CurrentHour;
             _world = candidateWorld;
             _voxelWorld = candidateVoxelWorld;
+            _worldcraft = candidateWorldcraft;
             _terrainQuery = candidateTerrainQuery;
             _resourceLedger = candidateLedger;
             InvalidatePlanningResourceProjection();
@@ -1329,7 +1435,7 @@ namespace Societies.Core
             _civicPolicy = candidateCivicPolicy;
             _wetland = candidateWetland;
             _telemetry = candidateTelemetry;
-            Inventory.ReplaceContents(snapshot.Inventory);
+            if (!UsesVoxelWorld) Inventory.ReplaceContents(snapshot.Inventory);
             Stockpile.ReplaceContents(snapshot.Stockpile);
             _contributionCountsByResource.Clear();
             foreach ((string resourceId, long count) in candidateContributionCounts)
@@ -1375,10 +1481,10 @@ namespace Societies.Core
 
         private static void ValidateSnapshot(PrototypeRuntimeSnapshot snapshot)
         {
-            if (snapshot.SchemaVersion is not (5 or 6 or 7 or 8 or 9 or 10))
+            if (snapshot.SchemaVersion is not (5 or 6 or 7 or 8 or 9 or 10 or 11))
             {
                 throw new InvalidDataException(
-                    $"Unsupported runtime snapshot schema {snapshot.SchemaVersion}; expected 5, 6, 7, 8, 9, or 10.");
+                    $"Unsupported runtime snapshot schema {snapshot.SchemaVersion}; expected 5, 6, 7, 8, 9, 10, or 11.");
             }
 
             if (snapshot.Inventory == null || snapshot.Stockpile == null || snapshot.Workers == null ||
@@ -1387,7 +1493,8 @@ namespace Societies.Core
                 snapshot.Telemetry == null ||
                 (snapshot.SchemaVersion >= 8 && snapshot.CivicPolicy == null) ||
                 (snapshot.SchemaVersion >= 9 && snapshot.Wetland == null) ||
-                (snapshot.SchemaVersion == 10 && (snapshot.WorldModel != PrototypeWorldModels.Voxel || snapshot.VoxelWorld == null)))
+                (snapshot.SchemaVersion is 10 or 11 && (snapshot.WorldModel != PrototypeWorldModels.Voxel || snapshot.VoxelWorld == null)) ||
+                (snapshot.SchemaVersion == 11 && snapshot.Construction == null))
             {
                 throw new InvalidDataException("Runtime snapshot required collections cannot be null.");
             }
@@ -1403,7 +1510,7 @@ namespace Societies.Core
             ValidateCountMap(snapshot.Inventory, "inventory");
             ValidateCountMap(snapshot.Stockpile, "stockpile");
 
-            if (snapshot.SchemaVersion == 10)
+            if (snapshot.SchemaVersion is 10 or 11)
             {
                 PrototypeVoxelSnapshotValidator.ValidateCanonicalShell(snapshot);
                 return;

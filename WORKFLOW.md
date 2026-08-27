@@ -1210,3 +1210,38 @@ The offline Cognition Quality Corpus v1 is implemented in the isolated Snow Glob
 ## Continue with
 
 - Ask the user to retest the dedicated scene from repair commit `9a0edaa`. Do not merge or expand into citizen/world participation until the user confirms spawn above terrain, no ordinary fall-through, collision/render agreement, absence of the legacy settlement, stable camera/input behavior, and readable basic remove/place feedback.
+# EB-01 founder worldcraft technical candidate and failed product gate (2026-08-27)
+
+## Outcome and scope
+
+- Implemented one authoritative gather-to-build slice on the finite Snow Globe voxel world: exposed-voxel rewards, bounded eight-slot inventory, floor/wall/post selection and rotation, cost/support/overlap/range validation, targeted dismantle and recovery, schema-v11 persistence/replay, and schema-v10 migration.
+- Replaced legacy voxel-mode key conflicts with `1`/`2`/`3` construction selection, `B` build mode, `R` rotation, `X` targeted dismantle, and `Tab` inventory suppression. UI and presenter state remain non-authoritative.
+- Added directional lighting/shadow-capable materials, construction meshes/ghosts, a compact HUD hierarchy, a private-desktop ten-frame diagnostic route, and a launch helper that locates Godot without requiring it on `PATH`.
+- Recorded the Project Sid paper/repository study. Its outcome is pattern study only: adopt authoritative action-result feedback and frozen ablations; reject dependency/code-reuse claims, shared unversioned state, LLM world/institution authority, and live-provider-only progression.
+
+## Validation and review
+
+- Final independent review: GO, no P0-P3 findings after two repair cycles.
+- Focused affected managed validation: 19/19.
+- Replay cap regression: one generator pass and exactly 10,000 applied events for a 10,000-event history.
+- Authoritative wrapper: exit 0; 507/507 managed and 28/28 Godot tests.
+- Release and ExportRelease builds: 0 warnings, 0 errors.
+- Private-desktop diagnostic: exit 0; ten 960x540 PNGs hash-verified; alternate desktop distinct from `Default`; live input disabled; descendant custody verified.
+- Launch-helper verification mode: passed. `git diff --check` passes apart from Windows line-ending notices.
+
+## Product result
+
+- Failed. The captures prove the tested technical route only. They show shadows, but terrain/material/landmark repetition remains severe; inventory is still a small text list; valid/invalid ghost state is not visually clear; placed pieces do not read as a recognizable construction; and the HUD remains prototype-grade.
+- No human play acceptance was performed. World readability, HUD hierarchy, inventory usability, construction clarity, and interaction feel remain unaccepted.
+- Performance remains characterization-only: 875.528 ms startup and roughly 12.8k collision shapes; the historical 51.9392 ms safety failure remains unresolved.
+
+## Repository and delivery state
+
+- Isolated worktree: `C:\Users\hunte\.codex\worktrees\eco-baseline\societies`.
+- Branch: `codex/snow-globe-eco-baseline`, based on `c8e4f758588e7c8a04f465034489a53a56fb1e8e`.
+- The dirty primary checkout and unrelated Snow Globe/provider/lab work remained untouched.
+- At this documentation point the slice is uncommitted and unpublished; update this section with exact commit/PR state after delivery.
+
+## Continue with
+
+- Start the next session with an EB-01 visual and interaction replacement pass. Do not begin EB-02 or citizen/provider expansion until the user plays the route and scores all five product gates at least 4/5.

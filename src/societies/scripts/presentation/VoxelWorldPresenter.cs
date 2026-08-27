@@ -110,21 +110,35 @@ namespace Societies.Core
             for (int index = 0; index < chunk.Vertices.Count; index++)
             {
                 VoxelVertex vertex = chunk.Vertices[index]; vertices[index] = new Vector3(vertex.X, vertex.Y, vertex.Z);
-                colors[index] = vertex.Material switch { VoxelMaterialId.Soil => new Color("76523a"), VoxelMaterialId.Stone => new Color("777777"), VoxelMaterialId.Wood => new Color("704421"), _ => new Color("444444") };
             }
             for (int faceStart = 0; faceStart < vertices.Length; faceStart += 4)
             {
                 Vector3 inward = (vertices[faceStart + 2] - vertices[faceStart]).Cross(vertices[faceStart + 1] - vertices[faceStart]).Normalized();
                 Vector3 outward = -inward;
-                for (int corner = 0; corner < 4; corner++) normals[faceStart + corner] = outward;
+                for (int corner = 0; corner < 4; corner++)
+                {
+                    normals[faceStart + corner] = outward;
+                    VoxelMaterialId material = chunk.Vertices[faceStart + corner].Material;
+                    colors[faceStart + corner] = material switch
+                    {
+                        VoxelMaterialId.Soil when outward.Y > 0.5f => new Color("4f7a3d"),
+                        VoxelMaterialId.Soil => new Color("755039"),
+                        VoxelMaterialId.Stone when Math.Abs(outward.Y) < 0.5f => new Color("697078"),
+                        VoxelMaterialId.Stone => new Color("8b9093"),
+                        VoxelMaterialId.Wood when Math.Abs(outward.X) > 0.5f => new Color("80552f"),
+                        VoxelMaterialId.Wood => new Color("9b6a3c"),
+                        _ => new Color("444444")
+                    };
+                }
             }
             arrays[(int)ArrayMesh.ArrayType.Vertex] = vertices; arrays[(int)ArrayMesh.ArrayType.Normal] = normals; arrays[(int)ArrayMesh.ArrayType.Color] = colors; arrays[(int)ArrayMesh.ArrayType.Index] = chunk.Indices.ToArray();
             ArrayMesh mesh = new(); mesh.AddSurfaceFromArrays(Mesh.PrimitiveType.Triangles, arrays);
             mesh.SurfaceSetMaterial(0, new StandardMaterial3D
             {
                 VertexColorUseAsAlbedo = true,
-                ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded,
-                Roughness = 1.0f
+                ShadingMode = BaseMaterial3D.ShadingModeEnum.PerPixel,
+                Roughness = 0.92f,
+                Metallic = 0.0f
             });
             return mesh;
         }

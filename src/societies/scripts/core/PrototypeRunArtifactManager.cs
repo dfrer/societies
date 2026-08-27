@@ -132,7 +132,7 @@ namespace Societies.Core
                 "world summary");
             _ = PrototypePersistenceService.DeserializeWorldSummary(
                 Encoding.UTF8.GetString(worldSummaryBytes));
-            if (snapshot.SchemaVersion is 7 or 8 or 9 or 10)
+            if (snapshot.SchemaVersion is 7 or 8 or 9 or 10 or 11)
             {
                 PrototypeRuntimeSnapshot validatedSnapshot = DeserializeAndValidateSnapshotPayload(
                     snapshotBytes);
@@ -207,7 +207,7 @@ namespace Societies.Core
             byte[] snapshotBytes = ReadBoundedFile(paths.LegacySnapshotPath, MaximumSnapshotBytes, "snapshot");
             PrototypeRuntimeSnapshot snapshot = DeserializeAndValidateSnapshotPayload(snapshotBytes);
 
-            if (snapshot.SchemaVersion is 7 or 8 or 9 or 10)
+            if (snapshot.SchemaVersion is 7 or 8 or 9 or 10 or 11)
             {
                 return LoadCommittedArtifacts(paths, snapshot, snapshotBytes);
             }
@@ -394,7 +394,7 @@ namespace Societies.Core
 
             if (!Guid.TryParseExact(manifest.GenerationId, "N", out _) ||
                 manifest.RuntimeSchemaVersion != snapshot.SchemaVersion ||
-                manifest.RuntimeSchemaVersion is not (7 or 8 or 9 or 10) ||
+                manifest.RuntimeSchemaVersion is not (7 or 8 or 9 or 10 or 11) ||
                 !string.Equals(manifest.ScenarioId, snapshot.ScenarioId, StringComparison.Ordinal) ||
                 manifest.SimulationTick != snapshot.SimulationTick ||
                 manifest.EventCount < 0 ||
@@ -628,7 +628,7 @@ namespace Societies.Core
                 snapshot.Telemetry == null ||
                 (snapshot.SchemaVersion >= 8 && snapshot.CivicPolicy == null) ||
                 (snapshot.SchemaVersion >= 9 && snapshot.Wetland == null) ||
-                (snapshot.SchemaVersion == 10 &&
+                (snapshot.SchemaVersion is 10 or 11 &&
                     (!string.Equals(snapshot.WorldModel, PrototypeWorldModels.Voxel, StringComparison.Ordinal) ||
                      snapshot.VoxelWorld == null)) ||
                 snapshot.Workers.Count > PrototypePersistenceBounds.MaximumSnapshotRows ||
@@ -641,7 +641,7 @@ namespace Societies.Core
             ValidateDictionaryBounds(snapshot.Stockpile);
             ValidateDictionaryBounds(snapshot.ContributionCountsByResource);
 
-            if (snapshot.SchemaVersion == 10)
+            if (snapshot.SchemaVersion is 10 or 11)
             {
                 PrototypeVoxelSnapshotValidator.ValidateCanonicalShell(snapshot);
                 try
@@ -711,7 +711,7 @@ namespace Societies.Core
         internal static void ValidateStandaloneRunSummary(PrototypeRunSummary summary)
         {
             ValidateSummaryBounds(summary);
-            if (summary.SchemaVersion is not (5 or 6 or 7 or 8 or 9 or 10) ||
+            if (summary.SchemaVersion is not (5 or 6 or 7 or 8 or 9 or 10 or 11) ||
                 summary.SimulationTick < 0)
             {
                 throw new InvalidDataException(

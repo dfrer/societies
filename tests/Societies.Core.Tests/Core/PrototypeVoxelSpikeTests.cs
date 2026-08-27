@@ -187,6 +187,15 @@ namespace Societies.Core.Tests
             Assert.Equal(restored.RootHash, reloaded.RootHash);
             Assert.Equal(VoxelMaterialId.Air, reloaded.GetMaterial(interior));
             Assert.Equal(VoxelMaterialId.Wood, reloaded.GetMaterial(floating));
+
+            VoxelWorldModule.ReplayCursor cursor = restored.CreateReplayCursor(1);
+            Assert.Equal(VoxelWorldModule.LegacyGeneratorIdentity, cursor.World.CaptureSnapshot().Generator);
+            Assert.Equal(VoxelMaterialId.Air, cursor.World.GetMaterial(interior));
+            Assert.Equal(VoxelMaterialId.Air, cursor.World.GetMaterial(floating));
+            cursor.AdvanceTo(2);
+            Assert.Equal(1, cursor.WorldGenerationCount);
+            Assert.Equal(2, cursor.AppliedEventCount);
+            Assert.Equal(restored.RootHash, cursor.World.RootHash);
         }
 
         [Fact]

@@ -16,7 +16,8 @@ namespace Societies.Core
         [Export] public float ContributionRangeMeters { get; set; } = 4.5f;
 
         public TerrainGenerator? Terrain { get; set; }
-        public bool ControlsEnabled => _controlsEnabled;
+        public bool ControlsEnabled => _controlsEnabled && !_inputSuppressed;
+        public bool InputSuppressed => _inputSuppressed;
         public Vector3 ContributionDepotPosition { get; set; }
 
         public event Action<string, int>? HarvestRequested;
@@ -27,6 +28,7 @@ namespace Societies.Core
         private RayCast3D? _interactionRay;
         private ResourceNode? _focusedResource;
         private bool _controlsEnabled = true;
+        private bool _inputSuppressed;
 
         public override void _Ready()
         {
@@ -36,7 +38,7 @@ namespace Societies.Core
 
         public override void _Input(InputEvent @event)
         {
-            if (!_controlsEnabled)
+            if (!ControlsEnabled)
             {
                 return;
             }
@@ -63,7 +65,7 @@ namespace Societies.Core
 
         public override void _PhysicsProcess(double delta)
         {
-            if (!_controlsEnabled)
+            if (!ControlsEnabled)
             {
                 return;
             }
@@ -109,6 +111,16 @@ namespace Societies.Core
             if (_camera != null)
             {
                 _camera.Current = enabled;
+            }
+        }
+
+        public void SetInputSuppressed(bool suppressed)
+        {
+            _inputSuppressed = suppressed;
+            if (suppressed)
+            {
+                Velocity = Vector3.Zero;
+                _focusedResource = null;
             }
         }
 

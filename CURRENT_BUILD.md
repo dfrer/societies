@@ -17,6 +17,16 @@ This is the only in-repo implementation that currently has:
 - a buildable C# project
 - a runnable automated validation path
 
+## Snow Globe EB-01 Eco-like baseline recovery
+
+EB-01 now has a technically coherent founder-worldcraft path on isolated branch `codex/snow-globe-eco-baseline`, based on `c8e4f758588e7c8a04f465034489a53a56fb1e8e`. `PrototypeRuntimeSession` remains sole authority for exposed-voxel gathering, bounded inventory, floor/wall/post placement, rotation, support/overlap/range rejection, dismantle/material recovery, schema-v11 persistence, and exact replay. `GameManager` remains the input-to-command seam; HUD, inventory, ghost, mesh, collision, and scene code remain presentation adapters.
+
+The authoritative wrapper passes 507/507 managed and 28/28 Godot tests. Release and ExportRelease builds have zero warnings/errors. The 10,000-event replay cap uses one world generation and one ordered 10,000-event pass rather than regenerating the world per event. Final independent review is GO with no P0-P3 findings. The launch helper is `scripts/play-snow-globe-eco-baseline.ps1`.
+
+The product gate is failed. A provenance-bound private-desktop run captured ten 960x540 frames with live input disabled and no active-desktop targeting. Visual inspection found shadows but an unreadably repetitive terrain field, weak material/landmark hierarchy, a text-list inventory, placement ghosts that do not communicate valid versus invalid clearly, and floor/wall/post silhouettes that do not read as a small construction. Automated evidence does not establish human interaction quality or acceptance.
+
+Performance is characterization-only: the diagnostic recorded 875.528 ms startup, 64 collision bodies, 12,777 initial shapes, and 12,781 after the edit. The predecessor 51.9392 ms safety failure and collision-shape scaling risk remain unresolved. Do not start EB-02, citizen integration, or live provider work from this branch. The next action is an EB-01 visual/interaction replacement pass followed by user play and five scores of at least 4/5. Evidence is [v3-sg-eb-01-validation.json](planning/active/evidence/v3-sg-eb-01-validation.json); Project Sid implications are recorded in [r9-project-sid-architecture-study.md](planning/research/completed/r9-project-sid-architecture-study.md).
+
 ## Snow Globe provider-routing orchestration implementation gate
 
 The isolated Snow Globe lab now has one provider-neutral `ProviderRoutingOrchestrationModule` with

@@ -99,10 +99,16 @@ namespace Societies.Core.Tests
         {
             Assert.Throws<InvalidDataException>(() =>
                 PrototypePersistenceService.DeserializeRunSummary("null"));
+
+            PrototypeRunSummary currentSummary = PrototypePersistenceService.DeserializeRunSummary(
+                PrototypePersistenceService.SerializeRunSummary(
+                    new PrototypeRunSummary { SchemaVersion = 11 }));
+            Assert.Equal(11, currentSummary.SchemaVersion);
+
             Assert.Throws<InvalidDataException>(() =>
                 PrototypePersistenceService.DeserializeRunSummary(
                     PrototypePersistenceService.SerializeRunSummary(
-                        new PrototypeRunSummary { SchemaVersion = 11 })));
+                        new PrototypeRunSummary { SchemaVersion = 12 })));
             Assert.Throws<InvalidDataException>(() =>
                 PrototypePersistenceService.DeserializeRunSummary(
                     PrototypePersistenceService.SerializeRunSummary(

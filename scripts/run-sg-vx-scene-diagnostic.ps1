@@ -380,7 +380,19 @@ try {
         throw 'Runner isolation evidence does not match the native launcher boundary.'
     }
     $verifiedCaptureHashes = [ordered]@{}
-    foreach ($name in @('launch-player-view.png', 'spawn.png', 'settlement-terrain-wide.png', 'side-surface-diagnostic.png', 'after-physics-traversal.png')) {
+    $expectedCaptures = @(
+        'launch-player-view.png',
+        'spawn.png',
+        'settlement-terrain-wide.png',
+        'side-surface-diagnostic.png',
+        'after-physics-traversal.png',
+        'worldcraft-gather-hud.png',
+        'worldcraft-inventory-grid.png',
+        'worldcraft-valid-ghost.png',
+        'worldcraft-invalid-ghost.png',
+        'worldcraft-piece-overview.png'
+    )
+    foreach ($name in $expectedCaptures) {
         $capture = Get-Item -LiteralPath (Join-Path $outputRoot $name) -ErrorAction Stop
         if ($capture.Length -le 1024) { throw "Rendered capture is empty or truncated: $name" }
         $expectedHashProperty = $evidence.captures.psobject.Properties[$name]
@@ -415,7 +427,7 @@ try {
         LauncherEvidencePath = $launcherEvidencePath
         EvidencePath = $evidencePath
         LogPath = $logPath
-        CaptureCount = 5
+        CaptureCount = $expectedCaptures.Count
         CameraPoseCount = @($evidence.cameraPoses.psobject.Properties).Count
     } | ConvertTo-Json -Depth 4
 }

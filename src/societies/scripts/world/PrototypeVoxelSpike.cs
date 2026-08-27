@@ -14,7 +14,7 @@ namespace Societies.Core
     { public int CompareTo(VoxelChunkCoord other) => X != other.X ? X.CompareTo(other.X) : Z != other.Z ? Z.CompareTo(other.Z) : Y.CompareTo(other.Y); public override string ToString() => FormattableString.Invariant($"{X}:{Y}:{Z}"); }
     public readonly record struct VoxelCoord(int X, int Y, int Z);
     public enum VoxelEditKind { Remove, Place }
-    public enum VoxelEditRejection { None, StaleRevision, OutOfBounds, InvalidActor, InvalidTick, InvalidEditKind, InvalidMaterial, CellMismatch, ImmutableBedrock, RemoveAir, PlaceNonAir, NoOp, EventCapacityReached, TickMismatch, NonSurfaceEdit, UnsupportedPlacement }
+    public enum VoxelEditRejection { None, StaleRevision, OutOfBounds, InvalidActor, InvalidTick, InvalidEditKind, InvalidMaterial, CellMismatch, ImmutableBedrock, RemoveAir, PlaceNonAir, NoOp, EventCapacityReached, TickMismatch, NonSurfaceEdit, UnsupportedPlacement, OrphanedConstruction, PieceOccupied }
     public sealed class VoxelEditCommand { public string ActorId { get; init; } = string.Empty; public long Tick { get; init; } public long ExpectedWorldRevision { get; init; } public VoxelEditKind Kind { get; init; } public VoxelCoord Coord { get; init; } public VoxelMaterialId ExpectedBefore { get; init; } public VoxelMaterialId After { get; init; } }
     public sealed record VoxelChangeEvent(long Sequence, long Tick, string ActorId, VoxelEditKind Kind, VoxelCoord Coord, VoxelMaterialId Before, VoxelMaterialId After, long Revision);
     public sealed class VoxelEditResult { public bool Accepted { get; init; } public VoxelEditRejection Rejection { get; init; } public long WorldRevision { get; init; } public VoxelChangeEvent? Change { get; init; } public IReadOnlyList<VoxelChunkCoord> DirtyChunks { get; init; } = Array.Empty<VoxelChunkCoord>(); }
@@ -69,6 +69,48 @@ namespace Societies.Core
         public VoxelWorldProjection CaptureProjection(IEnumerable<VoxelChunkCoord>? scope = null)
         { IReadOnlyList<VoxelChunkCoord> selected = (scope ?? _chunks.Keys).Where(_chunks.ContainsKey).Distinct().OrderBy(value => value).ToArray(); return new(WorldRevision, selected.Select(BuildGeometry).ToArray(), BuildWalkableSpans(selected)); }
         public IReadOnlyList<VoxelWalkableSpan> CaptureWalkableSpans() => BuildWalkableSpans(_chunks.Keys.OrderBy(value => value).ToArray());
+        internal sealed class ReplayCursor
+        {
+            private readonly VoxelWorldModule _source;
+
+            internal ReplayCursor(VoxelWorldModule source, long revision)
+            {
+                if (revision < 0 || revision > source.WorldRevision) throw new ArgumentOutOfRangeException(nameof(revision));
+                _source = source;
+                World = new VoxelWorldModule(source.Seed, source._generatorIdentity);
+                AdvanceTo(revision);
+            }
+
+            internal VoxelWorldModule World { get; }
+            internal long WorldGenerationCount => 1;
+            internal long AppliedEventCount { get; private set; }
+
+            internal void AdvanceTo(long revision)
+            {
+                if (revision < World.WorldRevision || revision > _source.WorldRevision)
+                    throw new ArgumentOutOfRangeException(nameof(revision));
+                while (World.WorldRevision < revision)
+                {
+                    VoxelChangeEvent value = _source._events[checked((int)World.WorldRevision)];
+                    VoxelEditResult result = World.ExecuteValidated(new VoxelEditCommand
+                    {
+                        ActorId = value.ActorId, Tick = value.Tick, ExpectedWorldRevision = value.Sequence - 1,
+                        Kind = value.Kind, Coord = value.Coord, ExpectedBefore = value.Before, After = value.After
+                    }, _source._generatorIdentity == LegacyGeneratorIdentity);
+                    if (!result.Accepted || result.Change != value)
+                        throw new InvalidOperationException("Voxel history could not replay to requested revision.");
+                    AppliedEventCount = checked(AppliedEventCount + 1);
+                }
+            }
+        }
+        internal ReplayCursor CreateReplayCursor(long revision) => new(this, revision);
+        internal VoxelChangeEvent GetEventAtRevision(long revision)
+        {
+            if (revision <= 0 || revision > WorldRevision) throw new ArgumentOutOfRangeException(nameof(revision));
+            VoxelChangeEvent value = _events[checked((int)revision - 1)];
+            if (value.Revision != revision) throw new InvalidOperationException("Voxel history revision index is invalid.");
+            return value;
+        }
         public VoxelSafeSpawn FindSafePlayerSpawn()
         {
             if (_generatorIdentity == GeneratorIdentity)

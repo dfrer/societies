@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Text.Json;
 using Societies.Simulation;
@@ -6,7 +7,7 @@ using Societies.Simulation;
 namespace Societies.Core
 {
     /// <summary>
-    /// Enforces the schema-v10 shell shared by public persistence, artifact preflight,
+    /// Enforces the schema-v10/v11 shell shared by public persistence, artifact preflight,
     /// and runtime restore. Voxel authority cannot carry ignored heightfield state.
     /// </summary>
     internal static class PrototypeVoxelSnapshotValidator
@@ -43,7 +44,17 @@ namespace Societies.Core
                 previousEventTick = voxelEvent.Tick;
             }
 
-            if (snapshot.Inventory.Count != 0 || snapshot.Stockpile.Count != 0 || snapshot.Resources.Count != 0 ||
+            bool isWorldcraft = snapshot.SchemaVersion == 11;
+            if (isWorldcraft)
+            {
+                ValidateWorldcraftInventory(snapshot.Inventory);
+                if (snapshot.Construction == null)
+                {
+                    throw new InvalidDataException("Schema-v11 voxel runtime snapshot is missing construction state.");
+                }
+            }
+
+            if ((!isWorldcraft && snapshot.Inventory.Count != 0) || snapshot.Stockpile.Count != 0 || snapshot.Resources.Count != 0 ||
                 snapshot.Workers.Count != 0 || snapshot.ContributionCountsByResource.Count != 0 || snapshot.Crisis != null ||
                 !string.Equals(snapshot.Directive.DirectiveId, "neutral", StringComparison.Ordinal) ||
                 settlement.Citizens.Count != 0 || settlement.SiteCaches.Count != 0 ||
@@ -67,6 +78,23 @@ namespace Societies.Core
                 !string.Equals(JsonSerializer.Serialize(snapshot.Wetland), JsonSerializer.Serialize(new PrototypeWetlandSnapshot()), StringComparison.Ordinal))
             {
                 throw new InvalidDataException("Voxel runtime snapshots cannot carry heightfield settlement or resource state.");
+            }
+        }
+
+        private static void ValidateWorldcraftInventory(IReadOnlyDictionary<string, int> inventory)
+        {
+            long slots = 0;
+            foreach ((string itemId, int amount) in inventory)
+            {
+                if (!VoxelWorldcraftCatalog.IsKnownItem(itemId) || amount <= 0)
+                {
+                    throw new InvalidDataException("Schema-v11 voxel inventory contains an unknown item or non-positive stack.");
+                }
+                slots += (amount + (long)VoxelWorldcraftCatalog.StackLimit - 1) / VoxelWorldcraftCatalog.StackLimit;
+                if (slots > VoxelWorldcraftCatalog.HotbarSlots)
+                {
+                    throw new InvalidDataException("Schema-v11 voxel inventory exceeds its bounded hotbar capacity.");
+                }
             }
         }
     }

@@ -1,6 +1,9 @@
 using Godot;
+using Societies.Core;
 using Societies.Simulation;
+using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace Societies.UI
 {
@@ -27,6 +30,10 @@ namespace Societies.UI
         private Label? _inspectorLabel;
         private Label? _crisisLabel;
         private Label? _crosshairLabel;
+        private Label? _voxelHotbarLabel;
+        private Label? _voxelBuildLabel;
+        private Panel? _voxelHotbarPanel;
+        private Panel? _voxelBuildPanel;
         private Panel? _inventoryPanel;
         private Panel? _debugPanel;
         private Panel? _interactionPanel;
@@ -46,6 +53,8 @@ namespace Societies.UI
         private bool _heightfieldSettlementVisible;
         private bool _heightfieldInspectorVisible;
         private bool _heightfieldCrisisVisible;
+        private bool _heightfieldWorldVisible;
+        private bool _heightfieldHelpVisible;
         private static readonly Dictionary<(PrototypeHudCue Cue, bool Emphasized), StyleBoxFlat> CardStyleCache = new();
 
         public string DebugText => _debugLabel?.Text ?? string.Empty;
@@ -61,8 +70,15 @@ namespace Societies.UI
         public bool IsInventoryVisible => _inventoryPanel?.Visible ?? false;
         public bool IsDebugVisible => _debugPanel?.Visible ?? false;
         public bool IsVoxelFoundationMode { get; private set; }
+        public string VoxelHotbarText => _voxelHotbarLabel?.Text ?? string.Empty;
+        public string VoxelBuildText => _voxelBuildLabel?.Text ?? string.Empty;
         public bool HasVisibleLegacySettlementPanels => (_inventoryPanel?.Visible ?? false) ||
             (_settlementPanel?.Visible ?? false) || (_inspectorPanel?.Visible ?? false) || (_crisisPanel?.Visible ?? false);
+        public bool HasVisibleLegacyVoxelCards => (_settlementPanel?.Visible ?? false) || (_inspectorPanel?.Visible ?? false) ||
+            (_crisisPanel?.Visible ?? false) || (_worldPanel?.Visible ?? false) || (_helpPanel?.Visible ?? false);
+        public int VoxelInventorySlotLines => IsVoxelFoundationMode && IsInventoryVisible
+            ? InventoryText.Split('\n', StringSplitOptions.RemoveEmptyEntries).Count(line => line.TrimStart().StartsWith("[", StringComparison.Ordinal))
+            : 0;
         public PrototypeHudLayout Layout { get; private set; } = PrototypeHudLayout.Calculate(1920.0f, 1080.0f);
         public IReadOnlyDictionary<string, PrototypeHudBounds> LayoutBounds => Layout.Bounds;
         public PrototypeHudPresentationState PresentationState { get; private set; }
@@ -76,7 +92,7 @@ namespace Societies.UI
 
         public void ToggleInventory()
         {
-            if (!IsVoxelFoundationMode && _inventoryPanel != null)
+            if (_inventoryPanel != null)
             {
                 _inventoryPanel.Visible = !_inventoryPanel.Visible;
             }
@@ -190,15 +206,22 @@ namespace Societies.UI
                 _heightfieldInspectorVisible = _inspectorPanel?.Visible ?? false;
                 _heightfieldCrisisVisible = _crisisPanel?.Visible ?? false;
                 _heightfieldInventoryVisible = _inventoryPanel?.Visible ?? false;
+                _heightfieldWorldVisible = _worldPanel?.Visible ?? false;
+                _heightfieldHelpVisible = _helpPanel?.Visible ?? false;
                 IsVoxelFoundationMode = true;
                 if (_settlementPanel != null) _settlementPanel.Visible = false;
                 if (_inspectorPanel != null) _inspectorPanel.Visible = false;
                 if (_crisisPanel != null) _crisisPanel.Visible = false;
                 if (_inventoryPanel != null) _inventoryPanel.Visible = false;
-                SetHelpText("WASD move  Shift sprint  Space jump  Esc mouse\nLeft click remove voxel  Right click place Wood  F6 save  F7 reset  F9 load");
-                SetInteractionText("Edit the visible voxel terrain: left removes, right places Wood");
-                SetStatusText("Snow Globe voxel foundation: terrain-only deterministic session");
-                SetWorldText("World: voxel_v1 | terrain edit enabled | settlement presentation disabled");
+                if (_worldPanel != null) _worldPanel.Visible = false;
+                if (_helpPanel != null) _helpPanel.Visible = false;
+                if (_craftingLabel != null) _craftingLabel.Visible = false;
+                if (_voxelHotbarPanel != null) _voxelHotbarPanel.Visible = true;
+                if (_voxelBuildPanel != null) _voxelBuildPanel.Visible = true;
+                SetHelpText("WASD move · B build/gather · 1 floor · 2 wall · 3 post · R rotate · X dismantle · Tab pack");
+                SetInteractionText("Gather exposed terrain · B build · Tab pack");
+                SetStatusText("Founder field kit ready");
+                SetWorldText("Founder worldcraft · tactile field workshop");
                 return;
             }
 
@@ -207,6 +230,55 @@ namespace Societies.UI
             if (_inspectorPanel != null) _inspectorPanel.Visible = _heightfieldInspectorVisible;
             if (_crisisPanel != null) _crisisPanel.Visible = _heightfieldCrisisVisible;
             if (_inventoryPanel != null) _inventoryPanel.Visible = _heightfieldInventoryVisible;
+            if (_worldPanel != null) _worldPanel.Visible = _heightfieldWorldVisible;
+            if (_helpPanel != null) _helpPanel.Visible = _heightfieldHelpVisible;
+            if (_craftingLabel != null) _craftingLabel.Visible = true;
+            if (_voxelHotbarPanel != null) _voxelHotbarPanel.Visible = false;
+            if (_voxelBuildPanel != null) _voxelBuildPanel.Visible = false;
+        }
+
+        public void SetVoxelWorldcraftState(InventoryComponent inventory, bool buildMode, string pieceId, int rotation, long constructionRevision)
+        {
+            if (!IsVoxelFoundationMode) return;
+            string[] slots = new string[VoxelWorldcraftCatalog.HotbarSlots];
+            int slot = 0;
+            foreach (string itemId in VoxelWorldcraftCatalog.HotbarOrder)
+            {
+                int remaining = inventory.GetCount(itemId);
+                while (remaining > 0 && slot < slots.Length)
+                {
+                    int stack = Math.Min(remaining, VoxelWorldcraftCatalog.StackLimit);
+                    slots[slot++] = $"[{slot}] {InventoryComponent.FormatItemName(itemId),-8} {stack,2}/{VoxelWorldcraftCatalog.StackLimit}";
+                    remaining -= stack;
+                }
+            }
+            while (slot < slots.Length) { slots[slot] = $"[{slot + 1}] Empty"; slot++; }
+            SetInventoryText("FIELD PACK · 8 STACK SLOTS\n" + string.Join("\n", slots));
+            if (_voxelHotbarLabel != null)
+            {
+                _voxelHotbarLabel.Text = $"MATERIALS  {inventory.UsedSlots}/{inventory.SlotLimit} stacks  ·  " +
+                    string.Join("   ", VoxelWorldcraftCatalog.HotbarOrder.Select(id =>
+                        $"{Capitalize(InventoryComponent.FormatItemName(id))} {inventory.GetCount(id)}"));
+            }
+            if (_voxelBuildLabel != null)
+            {
+                WorldcraftPieceDefinition definition = VoxelWorldcraftCatalog.FindPiece(pieceId) ?? VoxelWorldcraftCatalog.Pieces[0];
+                string cost = string.Join(" + ", definition.Cost.OrderBy(pair => pair.Key, StringComparer.Ordinal)
+                    .Select(pair => $"{pair.Value} {Capitalize(InventoryComponent.FormatItemName(pair.Key))}"));
+                string affordable = inventory.HasItems(definition.Cost) ? "READY" : "NEED MATERIALS";
+                string selector = string.Join("   ", VoxelWorldcraftCatalog.Pieces.Select((piece, index) =>
+                    $"{(piece.Id == pieceId ? "▶" : " ")}[{index + 1}] {Capitalize(InventoryComponent.FormatItemName(piece.Id.Replace("wood_", string.Empty, StringComparison.Ordinal)))}"));
+                _voxelBuildLabel.Text = buildMode
+                    ? $"BUILD  {selector}  ·  {rotation * 90}°  ·  COST {cost}  ·  {affordable}"
+                    : $"GATHER  {selector}  ·  SELECTED COST {cost}  ·  {affordable}  ·  B to build  ·  X dismantles targeted piece";
+            }
+        }
+
+        public void SetVoxelInventoryVisible(bool visible)
+        {
+            if (!IsVoxelFoundationMode) return;
+            if (_inventoryPanel != null) _inventoryPanel.Visible = visible;
+            if (_crosshairLabel != null) _crosshairLabel.Visible = !visible;
         }
 
         public void SetPresentationState(
@@ -234,6 +306,13 @@ namespace Societies.UI
             ApplyBounds(_helpPanel, PrototypeHudLayout.Help);
             ApplyBounds(_debugPanel, PrototypeHudLayout.Debug);
             ApplyBounds(_crosshairLabel, PrototypeHudLayout.Crosshair);
+            if (_voxelHotbarPanel != null) { _voxelHotbarPanel.Position = new Vector2(Mathf.Max(20.0f, (viewportSize.X - 760.0f) * 0.5f), viewportSize.Y - 108.0f); _voxelHotbarPanel.Size = new Vector2(Mathf.Min(760.0f, viewportSize.X - 40.0f), 58.0f); }
+            if (_voxelBuildPanel != null) { _voxelBuildPanel.Position = new Vector2(Mathf.Max(20.0f, (viewportSize.X - 560.0f) * 0.5f), viewportSize.Y - 164.0f); _voxelBuildPanel.Size = new Vector2(Mathf.Min(560.0f, viewportSize.X - 40.0f), 44.0f); }
+            if (IsVoxelFoundationMode && _inventoryPanel != null)
+            {
+                _inventoryPanel.Position = new Vector2(Mathf.Max(20.0f, (viewportSize.X - 420.0f) * 0.5f), Mathf.Max(30.0f, (viewportSize.Y - 390.0f) * 0.5f));
+                _inventoryPanel.Size = new Vector2(Mathf.Min(420.0f, viewportSize.X - 40.0f), Mathf.Min(390.0f, viewportSize.Y - 60.0f));
+            }
         }
 
         private void BuildHud()
@@ -291,6 +370,11 @@ namespace Societies.UI
             _crosshairLabel.AddThemeFontSizeOverride("font_size", 24);
             root.AddChild(_crosshairLabel);
 
+            _voxelBuildPanel = CreateCard("VoxelBuildStrip", 15, out _voxelBuildLabel);
+            _voxelBuildPanel.Visible = false; root.AddChild(_voxelBuildPanel);
+            _voxelHotbarPanel = CreateCard("VoxelHotbar", 16, out _voxelHotbarLabel);
+            _voxelHotbarPanel.Visible = false; root.AddChild(_voxelHotbarPanel);
+
             ApplyResponsiveLayout(GetViewport().GetVisibleRect().Size);
             ApplyPresentationState();
         }
@@ -320,6 +404,8 @@ namespace Societies.UI
             ApplyCardStyle(_worldPanel, PrototypeHudCue.Neutral, false);
             ApplyCardStyle(_helpPanel, PrototypeHudCue.Neutral, false);
             ApplyCardStyle(_debugPanel, PrototypeHudCue.Neutral, false);
+            ApplyCardStyle(_voxelHotbarPanel, PrototypeHudCue.Shelter, true);
+            ApplyCardStyle(_voxelBuildPanel, PrototypeHudCue.Neutral, false);
         }
 
         private void ApplyBounds(Control? control, string key)
@@ -364,6 +450,10 @@ namespace Societies.UI
             label.AddThemeFontSizeOverride("font_size", fontSize);
             return label;
         }
+
+        private static string Capitalize(string value) => string.IsNullOrEmpty(value)
+            ? value
+            : char.ToUpperInvariant(value[0]) + value[1..];
 
         private static void ApplyCardStyle(Panel? panel, PrototypeHudCue cue, bool emphasized)
         {

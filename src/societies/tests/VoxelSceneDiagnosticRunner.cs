@@ -16,7 +16,7 @@ namespace Societies.Tests
 {
     /// <summary>
     /// Deterministic scene-level SG-VX-01 diagnostic. It exercises the dedicated scene rather than a
-    /// synthetic physics fixture and writes four review frames through Godot's viewport API.
+    /// synthetic physics fixture and writes isolated review frames through Godot's viewport API.
     /// </summary>
     public partial class VoxelSceneDiagnosticRunner : Node
     {
@@ -128,7 +128,7 @@ namespace Societies.Tests
                 await TraverseAndAssertAsync(player, world, presenter, spawnColumn);
                 VoxelCoord editableTop = FindExposedTopVoxel(world, spawnColumn);
                 PositionAbove(player, editableTop, GetSurfaceY(world, ColumnCenter(editableTop)));
-                Require(manager.ApplyVoxelPlayerIntent(VoxelEditKind.Remove, editableTop).Accepted,
+                Require(manager.ApplyVoxelGatherIntent(editableTop).Accepted,
                     "Authoritative remove at the tested traversal column was rejected.");
                 await ToSignal(GetTree(), SceneTree.SignalName.PhysicsFrame);
                 GD.Print($"SG_VX_SCENE_DIAGNOSTIC collision after-edit bodies={presenter.GetChildren().OfType<StaticBody3D>().Count()} shapes={presenter.GetChildren().OfType<StaticBody3D>().SelectMany(body => body.GetChildren().OfType<CollisionShape3D>()).Count()}");
@@ -142,12 +142,79 @@ namespace Societies.Tests
                 SetCamera(camera, "after-physics-traversal", player.GlobalPosition + new Vector3(13.0f, 22.0f, 16.0f), player.GlobalPosition);
                 await CaptureAsync(outputDirectory, "after-physics-traversal.png");
                 GD.Print($"SG_VX_SCENE_DIAGNOSTIC state playerY={player.GlobalPosition.Y:F3} spawnSurfaceY={spawnSurfaceY:F3} removedSurfaceY={removedSurfaceY:F3}");
+
+                await CaptureWorldcraftStatesAsync(outputDirectory, manager, camera, player, spawnColumn);
             }
             finally
             {
                 manager.QueueFree();
                 await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
             }
+        }
+
+        private async Task CaptureWorldcraftStatesAsync(string outputDirectory, GameManager manager, Camera3D camera,
+            PlayerCharacter player, Vector3 spawnColumn)
+        {
+            VoxelWorldcraftPresenter construction = manager.GetNode<VoxelWorldcraftPresenter>("World/VoxelWorldcraftPresenter");
+            PrototypeHud hud = manager.GetNode<PrototypeHud>("UI");
+            for (int amount = 0; amount < 5; amount++)
+            {
+                VoxelWorldModule current = VoxelWorldModule.Restore(manager.CaptureSnapshot().VoxelWorld!);
+                VoxelCoord wood = FindExposedVoxel(current, VoxelMaterialId.Wood);
+                player.GlobalPosition = new Vector3(wood.X + 0.5f, wood.Y + 1.2f, wood.Z + 0.5f);
+                Require(manager.ApplyVoxelGatherIntent(wood).Accepted, "Worldcraft diagnostic could not gather required wood through the real route.");
+            }
+            Require(hud.VoxelHotbarText.Contains("Wood 5", StringComparison.OrdinalIgnoreCase),
+                "Gather HUD did not expose recovered construction material.");
+            SetCamera(camera, "worldcraft-gather-hud", player.GlobalPosition + new Vector3(9.0f, 8.0f, 11.0f), player.GlobalPosition);
+            await CaptureAsync(outputDirectory, "worldcraft-gather-hud.png");
+
+            manager.SetVoxelInventoryOpen(true);
+            Require(hud.IsInventoryVisible && hud.VoxelInventorySlotLines == 8 && player.InputSuppressed,
+                "Worldcraft diagnostic pack did not open as a suppressing eight-slot grid.");
+            await CaptureAsync(outputDirectory, "worldcraft-inventory-grid.png");
+            manager.SetVoxelInventoryOpen(false);
+            // The diagnostic permanently disables live input above; restoring gameplay suppression
+            // here changes only the production state machine, never the isolation/input gates.
+            player.SetProcessInput(false);
+            player.SetProcessUnhandledInput(false);
+            Input.MouseMode = Input.MouseModeEnum.Visible;
+
+            VoxelWorldModule world = VoxelWorldModule.Restore(manager.CaptureSnapshot().VoxelWorld!);
+            int centerX = Mathf.FloorToInt(spawnColumn.X);
+            int centerZ = Mathf.FloorToInt(spawnColumn.Z);
+            (VoxelCoord floorAnchor, VoxelCoord floorSecond) = FindFlatFloorPad(world, centerX, centerZ);
+            VoxelCoord wallAnchor = FindTopVoxel(world, centerX - 2, centerZ + 1);
+            VoxelCoord postAnchor = FindTopVoxel(world, centerX + 1, centerZ + 1);
+            foreach (VoxelCoord cell in new[] { floorAnchor, floorSecond, wallAnchor, postAnchor })
+                Require(manager.ApplyVoxelGatherIntent(cell).Accepted, "Worldcraft diagnostic build pad gather failed.");
+
+            player.GlobalPosition = new Vector3(centerX + 0.5f, floorAnchor.Y + 1.2f, centerZ + 0.5f);
+            Require(manager.SelectWorldcraftPiece("wood_floor"), "Worldcraft diagnostic could not select floor.");
+            WorldcraftPlacementEvaluation valid = manager.EvaluateWorldcraftPlacementIntent(floorAnchor);
+            Require(valid.IsValid, $"Expected valid floor preview was rejected: {valid.Rejection}.");
+            construction.ShowGhost(valid);
+            SetCamera(camera, "worldcraft-valid-ghost", new Vector3(centerX + 8.0f, floorAnchor.Y + 7.0f, centerZ + 9.0f),
+                new Vector3(centerX, floorAnchor.Y + 0.8f, centerZ));
+            await CaptureAsync(outputDirectory, "worldcraft-valid-ghost.png");
+            Require(manager.ApplyWorldcraftPlacementIntent(floorAnchor).Accepted, "Worldcraft diagnostic floor placement failed.");
+            WorldcraftPlacementEvaluation invalid = manager.EvaluateWorldcraftPlacementIntent(floorAnchor);
+            Require(!invalid.IsValid, "Occupied floor preview must be invalid.");
+            construction.ShowGhost(invalid);
+            await CaptureAsync(outputDirectory, "worldcraft-invalid-ghost.png");
+            construction.HideGhost();
+
+            Require(manager.SelectWorldcraftPiece("wood_wall"), "Worldcraft diagnostic could not select wall.");
+            manager._UnhandledInput(new InputEventKey { Keycode = Key.R, PhysicalKeycode = Key.R, Pressed = true });
+            Require(manager.ApplyWorldcraftPlacementIntent(wallAnchor).Accepted, "Worldcraft diagnostic wall placement failed.");
+            Require(manager.SelectWorldcraftPiece("wood_post"), "Worldcraft diagnostic could not select post.");
+            Require(manager.ApplyWorldcraftPlacementIntent(postAnchor).Accepted, "Worldcraft diagnostic post placement failed.");
+            Require(manager.CaptureSnapshot().Construction!.Pieces.Select(piece => piece.PieceId).OrderBy(id => id, StringComparer.Ordinal)
+                .SequenceEqual(new[] { "wood_floor", "wood_post", "wood_wall" }),
+                "Worldcraft overview must contain exactly floor, wall, and post.");
+            SetCamera(camera, "worldcraft-piece-overview", new Vector3(centerX + 10.0f, floorAnchor.Y + 9.0f, centerZ + 11.0f),
+                new Vector3(centerX, floorAnchor.Y + 1.0f, centerZ));
+            await CaptureAsync(outputDirectory, "worldcraft-piece-overview.png");
         }
 
         private async Task TraverseAndAssertAsync(PlayerCharacter player, VoxelWorldModule world, VoxelWorldPresenter presenter, Vector3 spawnColumn)
@@ -414,6 +481,47 @@ namespace Societies.Tests
             }
 
             throw new InvalidOperationException("No exposed editable voxel found for diagnostic.");
+        }
+
+        private static VoxelCoord FindExposedVoxel(VoxelWorldModule world, VoxelMaterialId material)
+        {
+            for (int x = VoxelWorldModule.MinX; x < VoxelWorldModule.MaxXExclusive; x++)
+            for (int z = VoxelWorldModule.MinZ; z < VoxelWorldModule.MaxZExclusive; z++)
+            for (int y = VoxelWorldModule.MaxYExclusive - 1; y >= VoxelWorldModule.MinY; y--)
+            {
+                VoxelCoord coord = new(x, y, z);
+                if (world.GetMaterial(coord) == material && world.GetMaterial(coord with { Y = y + 1 }) == VoxelMaterialId.Air)
+                    return coord;
+            }
+            throw new InvalidOperationException($"No exposed {material} voxel exists for diagnostic.");
+        }
+
+        private static VoxelCoord FindTopVoxel(VoxelWorldModule world, int x, int z)
+        {
+            int surfaceY = Mathf.FloorToInt(GetSurfaceY(world, new Vector3(x + 0.5f, 0.0f, z + 0.5f)));
+            VoxelCoord coord = new(x, surfaceY - 1, z);
+            return VoxelWorldcraftCatalog.ItemFor(world.GetMaterial(coord)) != null
+                ? coord
+                : throw new InvalidOperationException("Diagnostic build pad has no gatherable top voxel.");
+        }
+
+        private static (VoxelCoord Anchor, VoxelCoord Second) FindFlatFloorPad(
+            VoxelWorldModule world,
+            int centerX,
+            int centerZ)
+        {
+            for (int z = centerZ - 3; z <= centerZ + 3; z++)
+            for (int x = centerX - 3; x < centerX + 3; x++)
+            {
+                VoxelCoord anchor = FindTopVoxel(world, x, z);
+                VoxelCoord second = FindTopVoxel(world, x + 1, z);
+                if (anchor.Y == second.Y)
+                {
+                    return (anchor, second);
+                }
+            }
+
+            throw new InvalidOperationException("Diagnostic clearing has no flat two-cell floor pad.");
         }
 
         private static float GetSurfaceY(VoxelWorldModule world, Vector3 position)
