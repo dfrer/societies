@@ -1,0 +1,96 @@
+{
+  "schemaVersion": 1,
+  "milestone": "F1_visual_and_interaction_target",
+  "status": "candidate_package_ready_human_acceptance_required",
+  "date": "2026-08-26",
+  "repository": {
+    "baseCommit": "75b23e9de20be4797a233cb78ff8e8e1b3cd4daf",
+    "branch": "codex/snow-globe-f1-visual-target",
+    "worktree": "C:\\Users\\hunte\\.codex\\worktrees\\f1-visual-target\\societies",
+    "primaryCheckoutPreserved": true
+  },
+  "fixedMoment": "resident_founder_at_failing_wetland_causeway_with_mara_ivo_sena_and_labor_evidence_defer_responses",
+  "assetProvenance": {
+    "source": "built_in_image_generation_tool_new_outputs_2026_08_26",
+    "thirdPartySourcedArt": false,
+    "usageStatus": "internal_concept_comparison_only",
+    "productionOrPublicReleaseClearanceClaimed": false,
+    "nextGate": "selected_direction_asset_provenance_and_license_review_or_replacement"
+  },
+  "directions": [
+    {
+      "id": "reedwork_foundry",
+      "position": "weathered_ecological_futurism",
+      "asset": "planning/active/assets/f1-visual-targets/direction-a-reedwork-foundry.png",
+      "width": 1672,
+      "height": 941,
+      "bytes": 2452906,
+      "sha256": "f02c35bc8d840074b945b7036b2c3dab7ee66d355d80b83762fd33ae684ca2e5"
+    },
+    {
+      "id": "floodplain_commons",
+      "position": "civic_fieldcraft",
+      "asset": "planning/active/assets/f1-visual-targets/direction-b-floodplain-commons.png",
+      "width": 1672,
+      "height": 941,
+      "bytes": 2727569,
+      "sha256": "ab52ef1a0f8226342dccf170981c20d1d7189510f9eaedbf4cc570f640ed016c"
+    },
+    {
+      "id": "sluice_observatory",
+      "position": "hydrological_instrumentalism",
+      "asset": "planning/active/assets/f1-visual-targets/direction-c-sluice-observatory.png",
+      "width": 1536,
+      "height": 1024,
+      "bytes": 2549002,
+      "sha256": "64aa5902d567984ff0a8b370b419bf357e1a393a744ac840382367f402fbe2c6"
+    }
+  ],
+  "inEngineStudy": {
+    "scene": "src/societies/scenes/f1_visual_target_study.tscn",
+    "presentationOnly": true,
+    "simulationMutation": false,
+    "providerOrModelCall": false,
+    "directions": 3,
+    "responses": ["offer_labor", "ask_for_evidence", "defer"],
+    "states": ["awaiting", "pending", "refused", "consequence"],
+    "reducedMotion": true,
+    "supportedStudyViewports": ["1920x1080", "1280x720", "960x540"]
+  },
+  "validation": {
+    "focusedTests": {
+      "passed": 11,
+      "failed": 0
+    },
+    "fastManifestTests": {
+      "passed": 376,
+      "failed": 0
+    },
+    "authoritativeWrapper": {
+      "managedPassed": 496,
+      "managedFailed": 0,
+      "godotPassed": 25,
+      "godotFailed": 0
+    },
+    "releaseBuild": {
+      "warnings": 0,
+      "errors": 0
+    },
+    "exportReleaseBuild": {
+      "warnings": 0,
+      "errors": 0
+    },
+    "headlessSceneSmoke": "passed_clean_load",
+    "diffCheck": "passed_pre_commit",
+    "humanVisualAcceptance": false,
+    "humanPlayAcceptance": false
+  },
+  "performance": {
+    "measuredForStudy": false,
+    "productionTarget": "stable_60_hz_at_1920x1080_on_reference_machine_unproven",
+    "knownPredecessorSafetyStatus": "safety_failure",
+    "knownPredecessorReferenceMedianP95Milliseconds": 51.9392,
+    "knownSafetyLineMilliseconds": 50.0
+  },
+  "nextAction": "User runs the standalone study, compares all three directions and states, and selects one dominant direction or a precise bounded blend."
+}

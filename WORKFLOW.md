@@ -1171,4 +1171,6 @@ The offline Cognition Quality Corpus v1 is implemented in the isolated Snow Glob
 
 ## Continue with
 
-- Start F1 by showing the accepted arrival, contribution, citizen counter-offer, and water-control consequence in three materially different visual/interaction directions. The next user gate is one accepted direction and in-engine target frame, not another HUD-only recovery.
+- The F1 Candidate package now shows the accepted causeway moment as Reedwork Foundry, Floodplain Commons, and Sluice Observatory through three generated frames and one standalone presentation-only Godot study. It adds no runtime authority, simulation state, cognition, provider, credential, network, or payment action.
+- Local focused presentation tests pass 11/11; the authoritative wrapper passes 496/496 managed and 25/25 Godot tests; the standalone headless scene loads cleanly; Release/ExportRelease builds have 0 warnings/errors. Evidence JSON assertions, asset hash checks, documentation links, and the final diff check complete the technical gate. They do not establish visual/play acceptance.
+- Continue by having the user run all three directions and select one dominant visual grammar or a precise bounded blend. Complete the selected direction's five-view target package before F2.

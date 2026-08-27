@@ -4,7 +4,7 @@
 
 | Field | Value |
 |---|---|
-| Status | **Foundation Gate F0 accepted; Visual Gate F1 is the active production gate** |
+| Status | **Foundation Gate F0 accepted; F1 three-direction Candidate package ready for user selection** |
 | Decision date | 2026-08-26 |
 | Trigger | ER-01 and its HUD/interaction recovery remained unacceptable in quality, gameplay, visuals, and overall experience |
 | Product relationship | **Societies is the embodied player-facing frontend for Snow Globe** |
@@ -316,6 +316,11 @@ the latency, operational, or provider cost.
 
 **Timebox:** 4-6 working days after F0.
 
+**Current state:** the [F1 Candidate package](v3-snow-globe-f1-visual-target-package.md) now compares Reedwork
+Foundry, Floodplain Commons, and Sluice Observatory through three generated style frames and one standalone
+in-engine study. This is delivered comparison evidence, not an accepted art bible. The user must run the study
+and select one dominant direction before the complete five-view target package or F2 begins.
+
 Produce three meaningfully different visual directions. Each must show the same accepted gameplay moment
 from gameplay camera, close interaction, settlement overview, citizen encounter, and decision/consequence
 views. At least one direction should develop the recommended weathered ecological futurism; the others must
@@ -527,7 +532,7 @@ Never cut:
 
 ## Immediate Next Action
 
-Start F1 with three materially different visual/interaction directions for the same accepted arrival,
-resource contribution, citizen counter-offer, and water-control consequence. Each direction must include an
-embodied conversation surface and one disposable in-engine target-frame study. The next user decision is one
-accepted direction—not another HUD implementation pass.
+Run the [F1 comparison route](v3-snow-globe-f1-visual-target-package.md#standalone-review-route), compare all
+three directions in open, pending, refusal, consequence, and reduced-motion states, and select one dominant
+direction or a precise bounded blend. The selected direction then receives the complete five-view target
+package and normal-play in-engine target needed to pass F1.
