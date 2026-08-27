@@ -133,6 +133,11 @@ namespace Societies.Core
 
         private static string ClassifySettlement(PrototypeRuntimeSnapshot snapshot)
         {
+            if (string.Equals(snapshot.WorldModel, PrototypeWorldModels.Voxel, System.StringComparison.Ordinal))
+            {
+                return "not_applicable";
+            }
+
             if (!string.IsNullOrWhiteSpace(snapshot.Settlement?.Classification))
             {
                 return snapshot.Settlement.Classification;

@@ -142,9 +142,26 @@ namespace Societies.Core
                     throw new InvalidOperationException($"Scenario '{scenario.Id}' is missing a display name.");
                 }
 
-                if (scenario.InitialTrees < 0 || scenario.InitialRocks < 0 || scenario.InitialBerryBushes < 0 || scenario.InitialWorkers <= 0)
+                bool usesVoxelWorld = string.Equals(scenario.WorldModel, PrototypeWorldModels.Voxel, StringComparison.Ordinal);
+                if (scenario.InitialTrees < 0 || scenario.InitialRocks < 0 || scenario.InitialBerryBushes < 0 || scenario.InitialWorkers < 0)
                 {
                     throw new InvalidOperationException($"Scenario '{scenario.Id}' contains invalid starting counts.");
+                }
+
+                if (usesVoxelWorld &&
+                    (scenario.InitialTrees != 0 || scenario.InitialRocks != 0 || scenario.InitialBerryBushes != 0 ||
+                     scenario.InitialClayDeposits != 0 || scenario.InitialReedBeds != 0 || scenario.InitialWorkers != 0 ||
+                     scenario.StressPopulationOverride != 0 || scenario.InitialHearthFuel != 0 ||
+                     scenario.StartingStock.Count != 0 || scenario.StartingStructures.Count != 0 ||
+                     scenario.StartingBuildQueue.Count != 0 || scenario.Crisis != null))
+                {
+                    throw new InvalidOperationException(
+                        $"Voxel scenario '{scenario.Id}' cannot declare heightfield settlement, citizen, resource, stock, or crisis state.");
+                }
+
+                if (!usesVoxelWorld && scenario.InitialWorkers == 0)
+                {
+                    throw new InvalidOperationException($"Heightfield scenario '{scenario.Id}' must define at least one starting citizen.");
                 }
 
                 if (scenario.InitialClayDeposits < 0 || scenario.InitialReedBeds < 0)
@@ -155,6 +172,13 @@ namespace Societies.Core
                 if (scenario.WorldSize <= 0.0f)
                 {
                     throw new InvalidOperationException($"Scenario '{scenario.Id}' must define a positive world size.");
+                }
+
+                if (!string.Equals(scenario.WorldModel, PrototypeWorldModels.Heightfield, StringComparison.Ordinal) &&
+                    !usesVoxelWorld)
+                {
+                    throw new InvalidOperationException(
+                        $"Scenario '{scenario.Id}' selects unsupported world model '{scenario.WorldModel}'.");
                 }
 
                 if (scenario.WorldGen == null)
@@ -206,12 +230,14 @@ namespace Societies.Core
                     throw new InvalidOperationException($"Scenario '{scenario.Id}' resource cluster counts must be positive.");
                 }
 
-                if (scenario.StartingStructures.Count == 0)
+                if (scenario.StartingStructures.Count == 0 &&
+                    !usesVoxelWorld)
                 {
                     throw new InvalidOperationException($"Scenario '{scenario.Id}' must define at least one starting structure.");
                 }
 
-                if (scenario.StartingBuildQueue.Count == 0)
+                if (scenario.StartingBuildQueue.Count == 0 &&
+                    !string.Equals(scenario.WorldModel, PrototypeWorldModels.Voxel, StringComparison.Ordinal))
                 {
                     throw new InvalidOperationException($"Scenario '{scenario.Id}' must define an initial build queue.");
                 }
@@ -316,6 +342,9 @@ namespace Societies.Core
         public int InitialReedBeds { get; set; } = 10;
 
         public float WorldSize { get; set; } = 500.0f;
+
+        /// <summary>Closed world authority selection. Existing scenarios remain heightfield-backed.</summary>
+        public string WorldModel { get; set; } = PrototypeWorldModels.Heightfield;
 
         public WorldGenerationDefinition WorldGen { get; set; } = new();
 

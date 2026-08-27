@@ -39,6 +39,15 @@ namespace Societies.Core
             RebuildTerrain();
         }
 
+        public void ClearWorldPresentation()
+        {
+            _currentWorld = null;
+            foreach (Node child in GetChildren())
+            {
+                child.Free();
+            }
+        }
+
         public void RebuildTerrain()
         {
             foreach (Node child in GetChildren())

@@ -57,6 +57,7 @@ namespace Societies.Core
         private PrototypeRunArtifactManager? _artifactManager;
         private PrototypeRuntimeSession? _runtimeSession;
         private PrototypeSettlementScenePresenter? _scenePresenter;
+        private VoxelWorldPresenter? _voxelPresenter;
         private readonly InventoryComponent _fallbackInventory = new();
         private readonly FixedStepAccumulator _fixedStepAccumulator = new(TickIntervalSeconds, MaxTicksPerFrame);
         private readonly PrototypeContributionInteraction _contributionInteraction = new();
@@ -121,6 +122,10 @@ namespace Societies.Core
         public string CurrentScenarioId => _scenario?.Id ?? _scenarioId;
 
         public int CurrentWorldSeed => _runtimeSession?.WorldSeed ?? 0;
+
+        public bool UsesVoxelWorld => _runtimeSession?.UsesVoxelWorld == true;
+
+        public long VoxelWorldRevision => _runtimeSession?.VoxelWorldRevision ?? 0;
 
         public RuntimeMetricsCollector? RuntimeMetrics => _runtimeMetrics;
 
@@ -213,6 +218,13 @@ namespace Societies.Core
 
         public override void _UnhandledInput(InputEvent @event)
         {
+            if (@event is InputEventMouseButton mouseButton && mouseButton.Pressed && !mouseButton.DoubleClick &&
+                TryHandleVoxelPointerInput(mouseButton))
+            {
+                GetViewport().SetInputAsHandled();
+                return;
+            }
+
             if (@event is not InputEventKey keyEvent || !keyEvent.Pressed || keyEvent.Echo)
             {
                 return;
@@ -317,6 +329,21 @@ namespace Societies.Core
             _scenarioId = PrototypeVisualCaptureConfiguration.ScenarioId;
             _simulationSeed = PrototypeVisualCaptureConfiguration.SimulationSeed;
             _visualCaptureConfigured = true;
+        }
+
+        /// <summary>Sets a catalog scenario before this node enters the scene tree.</summary>
+        public void ConfigureScenarioStartup(string scenarioId)
+        {
+            if (_readyStarted)
+            {
+                throw new InvalidOperationException("Scenario startup must be configured before the game manager enters the scene tree.");
+            }
+            if (string.IsNullOrWhiteSpace(scenarioId))
+            {
+                throw new ArgumentException("Scenario id is required.", nameof(scenarioId));
+            }
+
+            _scenarioId = scenarioId;
         }
 
         /// <summary>Resets a ready manager to the catalog-owned canonical capture scenario.</summary>
@@ -932,6 +959,13 @@ namespace Societies.Core
                 _terrain);
             _scenePresenter.EnsureSettlementHub();
 
+            _voxelPresenter = _worldRoot?.GetNodeOrNull<VoxelWorldPresenter>("VoxelWorldPresenter");
+            if (_scenario?.WorldModel == PrototypeWorldModels.Voxel && _voxelPresenter == null)
+            {
+                _voxelPresenter = new VoxelWorldPresenter { Name = "VoxelWorldPresenter" };
+                _worldRoot!.AddChild(_voxelPresenter);
+            }
+
             _player = _playersRoot.GetNodeOrNull<PlayerCharacter>("LocalPlayer");
             if (_player == null || !IsInstanceValid(_player))
             {
@@ -991,7 +1025,7 @@ namespace Societies.Core
 
             RecordEvent(PrototypeEventTypes.WorldSeeded, $"Spawned world for scenario {_runtimeSession.Scenario.Id} using world seed {_runtimeSession.WorldSeed}");
 
-            if (resetPlayerPosition && _player != null && _terrain != null)
+            if (resetPlayerPosition && _player != null)
             {
                 _player.ResetForPrototypeRun(BuildPlayerSpawnPoint());
             }
@@ -1058,7 +1092,7 @@ namespace Societies.Core
         {
             if (_player != null)
             {
-                _player.Terrain = _terrain;
+                _player.Terrain = _runtimeSession?.UsesVoxelWorld == true ? null : _terrain;
                 _player.ContributionDepotPosition = CentralDepotPosition;
                 _player.SetControlEnabled(_cameraMode == CameraMode.Player);
             }
@@ -1321,11 +1355,34 @@ namespace Societies.Core
 
         private void ApplyWorldToScene()
         {
-            if (_runtimeSession?.World == null || _terrain == null || _scenePresenter == null)
+            if (_runtimeSession == null || _terrain == null || _scenePresenter == null)
             {
                 return;
             }
 
+            if (_runtimeSession.UsesVoxelWorld)
+            {
+                _terrain.ClearWorldPresentation();
+                _terrain.Visible = false;
+                if (_voxelPresenter == null || !IsInstanceValid(_voxelPresenter))
+                {
+                    _voxelPresenter = GetOrCreateChild<VoxelWorldPresenter>(_worldRoot!, "VoxelWorldPresenter");
+                }
+                _voxelPresenter.SetActive(true);
+                _voxelPresenter.Apply(_runtimeSession.CaptureVoxelProjection());
+                return;
+            }
+
+            if (_runtimeSession.World == null)
+            {
+                return;
+            }
+
+            _terrain.Visible = true;
+            if (_voxelPresenter != null)
+            {
+                _voxelPresenter.SetActive(false);
+            }
             _terrain.ApplyWorld(_runtimeSession.World.WorldMap, _overlayMode);
             _scenePresenter.UpdateTerrain(_terrain);
             _scenePresenter.ApplyWorld(_runtimeSession.World);
@@ -1346,12 +1403,21 @@ namespace Societies.Core
 
         private Vector3 BuildPlayerSpawnPoint()
         {
-            if (_terrain == null || _runtimeSession?.World == null)
+            if (_runtimeSession == null)
             {
                 return Vector3.Zero;
             }
 
             Vector3 desiredPosition = _runtimeSession.SettlementAnchorPosition + new Vector3(0.0f, 0.0f, -8.0f);
+            if (_runtimeSession.UsesVoxelWorld)
+            {
+                return _runtimeSession.ProjectToTerrainSurface(desiredPosition) + new Vector3(0.0f, 2.0f, 0.0f);
+            }
+
+            if (_terrain == null || _runtimeSession.World == null)
+            {
+                return Vector3.Zero;
+            }
             return _terrain.GetPlayerSpawnPoint(desiredPosition);
         }
 
@@ -1425,6 +1491,85 @@ namespace Societies.Core
             }
 
             return _catalogs.Scenarios.ResolveDefault();
+        }
+
+        public VoxelWorldProjection CaptureVoxelProjection()
+        {
+            if (_runtimeSession?.UsesVoxelWorld != true)
+            {
+                throw new InvalidOperationException("The active scenario does not own a voxel world.");
+            }
+
+            return _runtimeSession.CaptureVoxelProjection();
+        }
+
+        /// <summary>Translates one player remove/place intent into the authoritative runtime command path.</summary>
+        public VoxelEditResult ApplyVoxelPlayerIntent(
+            VoxelEditKind kind,
+            VoxelCoord coord,
+            VoxelMaterialId placeMaterial = VoxelMaterialId.Wood)
+        {
+            if (_runtimeSession?.UsesVoxelWorld != true)
+            {
+                throw new InvalidOperationException("The active scenario does not own a voxel world.");
+            }
+
+            VoxelMaterialId before = _runtimeSession.GetVoxelMaterial(coord);
+            VoxelEditCommand command = new()
+            {
+                ActorId = "player",
+                Tick = _runtimeSession.SimulationTick,
+                ExpectedWorldRevision = _runtimeSession.VoxelWorldRevision,
+                Kind = kind,
+                Coord = coord,
+                ExpectedBefore = before,
+                After = kind == VoxelEditKind.Remove ? VoxelMaterialId.Air : placeMaterial
+            };
+            VoxelEditResult result = _runtimeSession.ExecuteVoxelEdit(command);
+            if (!result.Accepted)
+            {
+                _hud?.SetStatusText($"Voxel edit rejected: {result.Rejection}");
+                return result;
+            }
+
+            _voxelPresenter?.Apply(_runtimeSession.CaptureVoxelProjection(result.DirtyChunks));
+            _hud?.SetStatusText(
+                $"{(kind == VoxelEditKind.Remove ? "Removed" : "Placed")} voxel at {coord.X}, {coord.Y}, {coord.Z}");
+            return result;
+        }
+
+        private bool TryHandleVoxelPointerInput(InputEventMouseButton mouseButton)
+        {
+            if (_runtimeSession?.UsesVoxelWorld != true ||
+                mouseButton.ButtonIndex is not (MouseButton.Left or MouseButton.Right))
+            {
+                return false;
+            }
+
+            RayCast3D? ray = _player?.GetNodeOrNull<RayCast3D>("CameraPivot/Camera3D/InteractionRay");
+            if (ray == null)
+            {
+                return false;
+            }
+
+            ray.ForceRaycastUpdate();
+            if (!ray.IsColliding())
+            {
+                return false;
+            }
+
+            VoxelEditKind kind = mouseButton.ButtonIndex == MouseButton.Left
+                ? VoxelEditKind.Remove
+                : VoxelEditKind.Place;
+            Vector3 collisionPoint = ray.GetCollisionPoint();
+            Vector3 collisionNormal = ray.GetCollisionNormal();
+            Vector3 cellPoint = collisionPoint + collisionNormal * (kind == VoxelEditKind.Place ? 0.01f : -0.01f);
+            VoxelCoord coord = new(
+                Mathf.FloorToInt(cellPoint.X),
+                Mathf.FloorToInt(cellPoint.Y),
+                Mathf.FloorToInt(cellPoint.Z));
+            _ = ApplyVoxelPlayerIntent(kind, coord, VoxelMaterialId.Wood);
+            return true;
         }
 
         private void OnPlayerHarvestRequested(string siteId, int amount)

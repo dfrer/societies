@@ -52,6 +52,7 @@ namespace Societies.Tests
             Test_SceneTree_Access();
             Test_RunOutputDirectory_IsolatedPerInvocation();
             await Test_MainScene_BootstrapSmoke();
+            await Test_SnowGlobeVoxelFoundationSmoke();
             await Test_MainScene_DepotContributionInputSmoke();
             await Test_MainScene_DirectiveInputSmoke();
             await Test_MainScene_CivicPolicySelectionInputSmoke();
@@ -210,6 +211,98 @@ namespace Societies.Tests
                     await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
                 }
             }
+        }
+
+        private async Task Test_SnowGlobeVoxelFoundationSmoke()
+        {
+            GameManager? manager = null;
+            try
+            {
+                PackedScene packedScene = GD.Load<PackedScene>("res://scenes/snow_globe_voxel_foundation.tscn");
+                Assert(packedScene != null, "Voxel foundation scene failed to load");
+                manager = packedScene!.Instantiate<GameManager>();
+                AddChild(manager);
+                await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+                await ToSignal(GetTree(), SceneTree.SignalName.PhysicsFrame);
+
+                Assert(manager.CurrentScenarioId == "snow_globe_voxel", "Voxel foundation must select its catalog scenario");
+                Assert(manager.UsesVoxelWorld, "Voxel foundation must select voxel authority");
+                Assert(manager.CitizenCount == 0, "SG-VX-01 intentionally excludes citizen simulation");
+                TerrainGenerator terrain = manager.GetNode<TerrainGenerator>("World/Systems/Terrain");
+                VoxelWorldPresenter presenter = manager.GetNode<VoxelWorldPresenter>("World/VoxelWorldPresenter");
+                Assert(!terrain.Visible && terrain.GetChildCount() == 0, "Heightfield presentation must be inactive in the voxel scenario");
+                Assert(presenter.GetChildCount() > 0, "Voxel presenter must publish chunk mesh and collision nodes");
+                Assert(presenter.HasLitVertexColorMaterial(), "Voxel meshes must publish normals and a vertex-color material");
+
+                PrototypeRuntimeSnapshot before = manager.CaptureSnapshot();
+                Assert(before.SchemaVersion == 10 && before.WorldModel == PrototypeWorldModels.Voxel, "Voxel runtime snapshot identity mismatch");
+                Assert(before.Workers.Count == 0 && before.Resources.Count == 0, "Voxel snapshot must not smuggle heightfield settlement state");
+                VoxelWorldModule snapshotWorld = VoxelWorldModule.Restore(before.VoxelWorld!);
+                VoxelCoord target = FindEditableVoxel(snapshotWorld, 0, 0);
+
+                PhysicsRayQueryParameters3D query = PhysicsRayQueryParameters3D.Create(
+                    new Vector3(target.X + 0.5f, VoxelWorldModule.MaxYExclusive + 4.0f, target.Z + 0.5f),
+                    new Vector3(target.X + 0.5f, VoxelWorldModule.MinY - 2.0f, target.Z + 0.5f));
+                Godot.Collections.Dictionary hit = presenter.GetWorld3D().DirectSpaceState.IntersectRay(query);
+                Assert(hit.Count > 0, "Outside ray must hit clockwise voxel collision geometry");
+                Node collider = hit["collider"].AsGodotObject() as Node ?? throw new Exception("Voxel ray collider missing");
+                Assert(collider.Name.ToString().StartsWith("VoxelCollision_", StringComparison.Ordinal), "Outside ray hit non-voxel collision");
+
+                VoxelEditResult removed = manager.ApplyVoxelPlayerIntent(VoxelEditKind.Remove, target);
+                Assert(removed.Accepted && manager.VoxelWorldRevision == 1, "Player remove intent did not cross the authoritative runtime path");
+                PrototypeRuntimeSnapshot afterRemove = manager.CaptureSnapshot();
+                Assert(afterRemove.WorldHash == before.WorldHash, "Voxel edit must preserve immutable world identity");
+                Assert(afterRemove.VoxelWorld!.RootHash != before.VoxelWorld!.RootHash, "Voxel edit must change mutable state hash");
+                Assert(VoxelWorldModule.Restore(afterRemove.VoxelWorld).GetMaterial(target) == VoxelMaterialId.Air, "Removed voxel remained solid");
+                Assert(removed.DirtyChunks.All(chunk => presenter.HasChunkGeometryAndCollision(chunk)), "Dirty chunk mesh/collision was not rebuilt");
+
+                VoxelEditResult placed = manager.ApplyVoxelPlayerIntent(VoxelEditKind.Place, target);
+                Assert(placed.Accepted && manager.VoxelWorldRevision == 2, "Player place intent did not cross the authoritative runtime path");
+                Assert(VoxelWorldModule.Restore(manager.CaptureSnapshot().VoxelWorld!).GetMaterial(target) == VoxelMaterialId.Wood, "Pointer placement must authoritatively place wood");
+
+                manager.SetScenario("balanced_basin");
+                await ToSignal(GetTree(), SceneTree.SignalName.PhysicsFrame);
+                Assert(!manager.UsesVoxelWorld && terrain.Visible, "Switching to a legacy scenario must restore heightfield presentation");
+                Assert(!presenter.HasActiveCollisions, "Voxel collision shapes remained enabled in heightfield mode");
+                Godot.Collections.Dictionary heightfieldHit = presenter.GetWorld3D().DirectSpaceState.IntersectRay(query);
+                if (heightfieldHit.Count > 0)
+                {
+                    Node heightfieldCollider = heightfieldHit["collider"].AsGodotObject() as Node ?? throw new Exception("Heightfield ray collider missing");
+                    Assert(!heightfieldCollider.Name.ToString().StartsWith("VoxelCollision_", StringComparison.Ordinal), "Disabled voxel collision remained ray-visible in heightfield mode");
+                }
+                manager.SetScenario("snow_globe_voxel");
+                await ToSignal(GetTree(), SceneTree.SignalName.PhysicsFrame);
+                presenter = manager.GetNode<VoxelWorldPresenter>("World/VoxelWorldPresenter");
+                Assert(manager.UsesVoxelWorld && presenter.Visible && presenter.HasLitVertexColorMaterial(), "Voxel presenter lifecycle failed after model switch");
+
+                Pass(nameof(Test_SnowGlobeVoxelFoundationSmoke));
+            }
+            catch (Exception ex)
+            {
+                Fail(nameof(Test_SnowGlobeVoxelFoundationSmoke), ex);
+            }
+            finally
+            {
+                if (manager != null)
+                {
+                    manager.QueueFree();
+                    await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+                }
+            }
+        }
+
+        private static VoxelCoord FindEditableVoxel(VoxelWorldModule world, int x, int z)
+        {
+            for (int y = 1; y < VoxelWorldModule.MaxYExclusive; y++)
+            {
+                VoxelCoord coord = new(x, y, z);
+                if (world.GetMaterial(coord) is VoxelMaterialId.Soil or VoxelMaterialId.Stone or VoxelMaterialId.Wood)
+                {
+                    return coord;
+                }
+            }
+
+            throw new InvalidOperationException("Voxel smoke column has no editable cell.");
         }
 
         private async Task Test_MainScene_DepotContributionInputSmoke()

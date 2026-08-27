@@ -1171,4 +1171,32 @@ The offline Cognition Quality Corpus v1 is implemented in the isolated Snow Glob
 
 ## Continue with
 
-- Start F1 by showing the accepted arrival, contribution, citizen counter-offer, and water-control consequence in three materially different visual/interaction directions. The next user gate is one accepted direction and in-engine target frame, not another HUD-only recovery.
+- Superseded by the SG-VX-01 implementation handoff below.
+
+# SG-VX-01 editable voxel-world foundation
+
+## Outcome and scope
+
+- Replaced the exploratory voxel spike with one finite deterministic `voxel_v1` Module owned only by `PrototypeRuntimeSession`: 64 eager `16 x 32 x 16` chunks, fixed `[-64,64) x [0,32) x [-64,64)` bounds, stable materials, validated revision/tick-bound edits, typed events, immutable mesh/walkability projections, and strict schema-v10 persistence/replay.
+- Added a read-only terrain-query Seam with concrete heightfield and voxel Adapters. Session construction freezes the selected world model and creates exactly one authority; the voxel scenario does not create the legacy heightfield, resource ledger, settlement simulation, or navigation simulation.
+- Added the dedicated `snow_globe_voxel_foundation.tscn` scene. Left click removes a hit voxel and right click places Wood through `GameManager -> PrototypeRuntimeSession -> VoxelWorldModule`; the presenter rebuilds only authoritative dirty chunks and owns no simulation state.
+- Preserved all legacy heightfield scenarios and schema-v5-v9 compatibility. Voxel schema v10 binds outer/nested seed and identity, canonical hashes, ordered edit ticks, exact revision/event counts, bounded segmented chunk data, a canonical zero-heightfield shell, and a shared 10,000-edit/save capacity.
+- Citizen/settlement/navigation simulation, LLM/provider integration, fluids, caves, streaming, ecology expansion, final art, and general voxel frameworks remain out of scope.
+
+## Validation and review state
+
+- Focused voxel/persistence Release checks pass 74/74. The authoritative wrapper passes 494/494 managed tests in 5m40s and 26/26 Godot tests with exit 0.
+- Godot coverage includes startup, outside collision, remove/place Wood, mesh normals/material, save/restore, and voxel/heightfield lifecycle. The deliberate frame-backlog warning and denied optional-metrics write are exercised warning paths, not production build warnings or failed tests.
+- Production Release and ExportRelease builds pass with 0 warnings/errors; `git diff --check` passes aside from line-ending notices.
+- Independent deep review found and closed mesh winding/collision, material/normals, presenter lifecycle, persistence-size, malformed-command, locale-hash, seed-binding, event-capacity, shell-validation, tick-authority, and projection-scope defects. Final re-review is GO with no remaining P0-P2 findings.
+- Performance safety is unproven. No representative frame-time, edit, rebuild, memory, or save-size profile was run; the predecessor `51.9392 ms` safety failure remains unresolved. Automated checks do not establish human visual/play acceptance.
+
+## Repository and delivery state
+
+- Work is isolated in `C:\Users\hunte\.codex\worktrees\snow-globe-voxel\societies` on `codex/snow-globe-voxel-foundation`, based on PR #178 head `75b23e9de20be4797a233cb78ff8e8e1b3cd4daf`.
+- The dirty primary checkout and unrelated Snow Globe/provider/lab work were preserved. Nothing in the primary checkout was edited, cleaned, staged, reset, or stashed.
+- Commit, push, PR creation, hosted CI, and human acceptance remain open at this checkpoint. Validation evidence is [v3-sg-vx-01-validation.json](planning/active/evidence/v3-sg-vx-01-validation.json).
+
+## Continue with
+
+- Commit and deliver the stacked PR, then ask the user to play the dedicated scene. The next engineering slice should define voxel standability/navigation plus seeded open-ended citizen participation without fixed personality or goal archetype enums.

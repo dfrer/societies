@@ -21,12 +21,15 @@ namespace Societies.Core
         private PrototypeWeatherSimulation? _weatherSimulation;
         private PrototypeSettlementSimulation? _settlementSimulation;
         private WorldGenerationResult? _world;
+        private VoxelWorldModule? _voxelWorld;
+        private IPrototypeRuntimeTerrainQuery? _terrainQuery;
         private PrototypeResourceLedger? _resourceLedger;
         private PrototypeCrisisState? _crisisState;
         private int _simulationSeed;
         private readonly PrototypeOrderSelectionMode _orderSelectionMode;
         private readonly PrototypeExtractionPlanningMode _extractionPlanningMode;
         private readonly PrototypeRouteDistanceMode _routeDistanceMode;
+        private readonly string _selectedWorldModel;
         private readonly HashSet<string> _eligibleContributionResourceIds;
         private readonly Dictionary<string, long> _contributionCountsByResource = new(StringComparer.Ordinal);
         private PrototypeSettlementDirective _activeDirective = PrototypeSettlementDirective.Neutral;
@@ -47,6 +50,12 @@ namespace Societies.Core
             IReadOnlyList<PrototypeResourceDefinition>? resourceDefinitions = null)
         {
             Scenario = scenario;
+            _selectedWorldModel = scenario.WorldModel;
+            if (!string.Equals(_selectedWorldModel, PrototypeWorldModels.Heightfield, StringComparison.Ordinal) &&
+                !string.Equals(_selectedWorldModel, PrototypeWorldModels.Voxel, StringComparison.Ordinal))
+            {
+                throw new ArgumentException($"Scenario '{scenario.Id}' selects unsupported world model '{_selectedWorldModel}'.", nameof(scenario));
+            }
             Inventory = new InventoryComponent();
             Stockpile = new InventoryComponent();
             EventLog = new PrototypeEventLog();
@@ -79,6 +88,71 @@ namespace Societies.Core
         public PrototypeCivicPolicySnapshot CivicPolicy => _civicPolicy.CaptureSnapshot();
 
         public PrototypeWetlandSnapshot Wetland => _wetland.CaptureSnapshot();
+
+        public bool UsesVoxelWorld => string.Equals(_selectedWorldModel, PrototypeWorldModels.Voxel, StringComparison.Ordinal);
+
+        public long VoxelWorldRevision => _voxelWorld?.WorldRevision ?? 0;
+
+        public string VoxelStateHash => _voxelWorld?.RootHash ?? string.Empty;
+
+        public VoxelMaterialId GetVoxelMaterial(VoxelCoord coord)
+        {
+            if (_voxelWorld == null)
+            {
+                throw new InvalidOperationException("The active scenario does not own a voxel world.");
+            }
+
+            return _voxelWorld.GetMaterial(coord);
+        }
+
+        /// <summary>Only authoritative entry point for a bounded voxel mutation.</summary>
+        public VoxelEditResult ExecuteVoxelEdit(VoxelEditCommand command)
+        {
+            if (_voxelWorld == null)
+            {
+                throw new InvalidOperationException("The active scenario does not own a voxel world.");
+            }
+
+            if (command == null)
+            {
+                return new VoxelEditResult
+                {
+                    Rejection = VoxelEditRejection.InvalidActor,
+                    WorldRevision = _voxelWorld.WorldRevision
+                };
+            }
+
+            if (command.Tick != SimulationTick)
+            {
+                return new VoxelEditResult
+                {
+                    Rejection = VoxelEditRejection.TickMismatch,
+                    WorldRevision = _voxelWorld.WorldRevision
+                };
+            }
+
+            return _voxelWorld.Execute(command);
+        }
+
+        public VoxelWorldProjection CaptureVoxelProjection(IEnumerable<VoxelChunkCoord>? scope = null)
+        {
+            if (_voxelWorld == null)
+            {
+                throw new InvalidOperationException("The active scenario does not own a voxel world.");
+            }
+
+            return _voxelWorld.CaptureProjection(scope);
+        }
+
+        public IReadOnlyList<VoxelWalkableSpan> CaptureVoxelWalkableSpans()
+        {
+            if (_voxelWorld == null)
+            {
+                throw new InvalidOperationException("The active scenario does not own a voxel world.");
+            }
+
+            return _voxelWorld.CaptureWalkableSpans();
+        }
 
         public IReadOnlyList<PrototypeCitizenInterest> CaptureCitizenInterests()
         {
@@ -234,13 +308,16 @@ namespace Societies.Core
 
         public long ResourceRevision => _resourceLedger?.Revision ?? 0;
 
-        public int WorldSeed => _world?.WorldSeed ?? 0;
+        public int WorldSeed => _terrainQuery?.WorldSeed ?? 0;
 
-        public int WorldGenerationAttempt => _world?.WorldGenerationAttempt ?? 0;
+        public int WorldGenerationAttempt => _terrainQuery?.WorldGenerationAttempt ?? 0;
 
-        public string WorldHash => _world?.WorldHash ?? string.Empty;
+        public string WorldHash => _terrainQuery?.WorldHash ?? string.Empty;
 
-        public Vector3 SettlementAnchorPosition => _world?.SettlementSpawn.AnchorPosition ?? Vector3.Zero;
+        public Vector3 SettlementAnchorPosition => _terrainQuery?.SettlementAnchorPosition ?? Vector3.Zero;
+
+        public Vector3 ProjectToTerrainSurface(Vector3 horizontalPosition) =>
+            _terrainQuery?.ProjectToSurface(horizontalPosition) ?? horizontalPosition;
 
         public PrototypePerformanceProbeSnapshot CapturePerformanceProbeState()
         {
@@ -284,17 +361,32 @@ namespace Societies.Core
             _telemetry = new PrototypeRuntimeTelemetrySnapshot();
             Inventory.ReplaceContents(new Dictionary<string, int>());
             Stockpile.ReplaceContents(new Dictionary<string, int>());
-            _world = PrototypeWorldGenerator.Generate(Scenario);
-            _resourceLedger = PrototypeResourceLedger.Create(_world);
+            _world = null;
+            _voxelWorld = null;
+            _terrainQuery = null;
+            _resourceLedger = null;
+            _settlementSimulation = null;
+
+            if (UsesVoxelWorld)
+            {
+                _voxelWorld = new VoxelWorldModule(Scenario.SimulationSeed);
+                _terrainQuery = new VoxelRuntimeTerrainQuery(_voxelWorld);
+            }
+            else
+            {
+                _world = PrototypeWorldGenerator.Generate(Scenario);
+                _terrainQuery = new HeightfieldRuntimeTerrainQuery(_world);
+                _resourceLedger = PrototypeResourceLedger.Create(_world);
+                _settlementSimulation = new PrototypeSettlementSimulation(
+                    Scenario,
+                    _roleQuotas,
+                    _world,
+                    orderSelectionMode: _orderSelectionMode,
+                    extractionPlanningMode: _extractionPlanningMode,
+                    routeDistanceMode: _routeDistanceMode);
+            }
             InvalidatePlanningResourceProjection();
             _weatherSimulation = new PrototypeWeatherSimulation(_simulationSeed);
-            _settlementSimulation = new PrototypeSettlementSimulation(
-                Scenario,
-                _roleQuotas,
-                _world,
-                orderSelectionMode: _orderSelectionMode,
-                extractionPlanningMode: _extractionPlanningMode,
-                routeDistanceMode: _routeDistanceMode);
             _crisisState = Scenario.Crisis == null ? null : new PrototypeCrisisState(Scenario.Crisis);
             SyncSettlementViews();
         }
@@ -953,7 +1045,9 @@ namespace Societies.Core
 
         public PrototypeRuntimeSnapshot CaptureSnapshot(Vector3 playerPosition)
         {
-            if (_world == null || _resourceLedger == null || _weatherSimulation == null || _settlementSimulation == null)
+            if (_terrainQuery == null || _weatherSimulation == null ||
+                (!UsesVoxelWorld && (_world == null || _resourceLedger == null || _settlementSimulation == null)) ||
+                (UsesVoxelWorld && _voxelWorld == null))
             {
                 throw new InvalidOperationException("Runtime session must be initialized before capturing a snapshot.");
             }
@@ -1002,12 +1096,15 @@ namespace Societies.Core
                     RouteWaypoints = worker.Navigation.RouteWaypoints.ToList()
                 })
                 .ToList();
-            PrototypeSettlementSnapshot settlement = _settlementSimulation.CaptureSnapshot(SimulationTick);
+            PrototypeSettlementSnapshot settlement = _settlementSimulation?.CaptureSnapshot(SimulationTick) ?? new PrototypeSettlementSnapshot
+            {
+                TotalTicks = checked((int)SimulationTick)
+            };
             CanonicalizeSettlementDictionaries(settlement);
 
             return new PrototypeRuntimeSnapshot
             {
-                SchemaVersion = 9,
+                SchemaVersion = UsesVoxelWorld ? 10 : 9,
                 ScenarioId = Scenario.Id,
                 WorldSeed = WorldSeed,
                 WorldGenerationAttempt = WorldGenerationAttempt,
@@ -1032,7 +1129,9 @@ namespace Societies.Core
                 Crisis = _crisisState?.CaptureSnapshot(),
                 Telemetry = CaptureTelemetrySnapshot(),
                 CivicPolicy = _civicPolicy.CaptureSnapshot(),
-                Wetland = _wetland.CaptureSnapshot()
+                Wetland = _wetland.CaptureSnapshot(),
+                WorldModel = _terrainQuery.WorldModel,
+                VoxelWorld = _voxelWorld?.CaptureSnapshot()
             };
         }
 
@@ -1045,30 +1144,75 @@ namespace Societies.Core
                 throw new InvalidDataException("Runtime snapshot metadata is malformed or targets a different scenario.");
             }
 
-            WorldGenerationResult candidateWorld = PrototypeWorldGenerator.Regenerate(Scenario, snapshot.WorldSeed, snapshot.WorldGenerationAttempt);
-            if (!string.Equals(candidateWorld.WorldHash, snapshot.WorldHash, System.StringComparison.Ordinal))
+            string expectedWorldModel = UsesVoxelWorld ? PrototypeWorldModels.Voxel : PrototypeWorldModels.Heightfield;
+            if (!string.Equals(snapshot.WorldModel, expectedWorldModel, StringComparison.Ordinal))
             {
-                throw new InvalidDataException("Runtime snapshot world hash does not match the regenerated world.");
+                throw new InvalidDataException("Runtime snapshot world model does not match the active scenario.");
             }
 
-            PrototypeResourceLedger candidateLedger = PrototypeResourceLedger.Restore(candidateWorld, snapshot);
-            int derivedNavigationRulesVersion = 1 + snapshot.Settlement!.PathSegments.Count(segment => segment.IsBuilt);
-            if (snapshot.SchemaVersion >= 6 && snapshot.Settlement.NavigationRulesVersion != derivedNavigationRulesVersion)
+            WorldGenerationResult? candidateWorld = null;
+            VoxelWorldModule? candidateVoxelWorld = null;
+            IPrototypeRuntimeTerrainQuery candidateTerrainQuery;
+            PrototypeResourceLedger? candidateLedger = null;
+            PrototypeSettlementSimulation? candidateSettlement = null;
+            if (UsesVoxelWorld)
             {
-                throw new InvalidDataException(
-                    $"Runtime snapshot navigation rules version {snapshot.Settlement.NavigationRulesVersion} does not match built path derivation {derivedNavigationRulesVersion}.");
+                if (snapshot.SchemaVersion != 10)
+                {
+                    throw new InvalidDataException("Voxel scenarios require a schema-v10 runtime snapshot.");
+                }
+
+                try
+                {
+                    candidateVoxelWorld = VoxelWorldModule.Restore(
+                        snapshot.VoxelWorld ?? throw new InvalidDataException("Voxel snapshot payload is missing."));
+                }
+                catch (InvalidOperationException exception)
+                {
+                    throw new InvalidDataException("Voxel snapshot payload is invalid.", exception);
+                }
+
+                candidateTerrainQuery = new VoxelRuntimeTerrainQuery(candidateVoxelWorld);
+                int expectedSeed = _voxelWorld?.Seed ?? Scenario.SimulationSeed;
+                string expectedWorldIdentity = VoxelWorldModule.GetWorldIdentity(expectedSeed);
+                if (snapshot.WorldSeed != expectedSeed || candidateVoxelWorld.Seed != snapshot.WorldSeed ||
+                    snapshot.WorldGenerationAttempt != 0 ||
+                    !string.Equals(candidateVoxelWorld.WorldIdentity, expectedWorldIdentity, StringComparison.Ordinal) ||
+                    !string.Equals(candidateTerrainQuery.WorldHash, snapshot.WorldHash, StringComparison.Ordinal))
+                {
+                    throw new InvalidDataException("Runtime snapshot voxel identity does not match the active scenario.");
+                }
             }
+            else
+            {
+                candidateWorld = PrototypeWorldGenerator.Regenerate(Scenario, snapshot.WorldSeed, snapshot.WorldGenerationAttempt);
+                candidateTerrainQuery = new HeightfieldRuntimeTerrainQuery(candidateWorld);
+                if (!string.Equals(candidateWorld.WorldHash, snapshot.WorldHash, StringComparison.Ordinal))
+                {
+                    throw new InvalidDataException("Runtime snapshot world hash does not match the regenerated world.");
+                }
+
+                candidateLedger = PrototypeResourceLedger.Restore(candidateWorld, snapshot);
+                int derivedNavigationRulesVersion = 1 + snapshot.Settlement!.PathSegments.Count(segment => segment.IsBuilt);
+                if (snapshot.SchemaVersion >= 6 && snapshot.Settlement.NavigationRulesVersion != derivedNavigationRulesVersion)
+                {
+                    throw new InvalidDataException(
+                        $"Runtime snapshot navigation rules version {snapshot.Settlement.NavigationRulesVersion} does not match built path derivation {derivedNavigationRulesVersion}.");
+                }
+
+                candidateSettlement = new PrototypeSettlementSimulation(
+                    Scenario,
+                    _roleQuotas,
+                    candidateWorld,
+                    orderSelectionMode: _orderSelectionMode,
+                    extractionPlanningMode: _extractionPlanningMode,
+                    routeDistanceMode: _routeDistanceMode);
+                candidateSettlement.LoadState(snapshot.Settlement, derivedNavigationRulesVersion);
+            }
+
             PrototypeWeather candidateWeather = ParseWeatherStrict(snapshot.CurrentWeather);
             PrototypeWeatherSimulation candidateWeatherSimulation = new(snapshot.SimulationSeed, candidateWeather);
             candidateWeatherSimulation.SetState(candidateWeather, snapshot.TimeUntilNextWeatherShift, snapshot.WeatherRandomState);
-            PrototypeSettlementSimulation candidateSettlement = new(
-                Scenario,
-                _roleQuotas,
-                candidateWorld,
-                orderSelectionMode: _orderSelectionMode,
-                extractionPlanningMode: _extractionPlanningMode,
-                routeDistanceMode: _routeDistanceMode);
-            candidateSettlement.LoadState(snapshot.Settlement, derivedNavigationRulesVersion);
 
             PrototypeSettlementDirective candidateDirective = PrototypeSettlementDirective.Neutral;
             Dictionary<string, long> candidateContributionCounts = new(StringComparer.Ordinal);
@@ -1125,7 +1269,7 @@ namespace Societies.Core
                     }
                 }
 
-                candidateWetland = snapshot.SchemaVersion == 9
+                candidateWetland = snapshot.SchemaVersion >= 9
                     ? PrototypeWetlandState.PrepareRestore(snapshot.Wetland!, candidateCivicPolicy)
                     : PrototypeWetlandState.MigrateFromCivicPolicy(candidateCivicPolicy);
             }
@@ -1143,6 +1287,8 @@ namespace Societies.Core
             CurrentHour = snapshot.CurrentHour;
             RunStartHour = snapshot.CurrentHour;
             _world = candidateWorld;
+            _voxelWorld = candidateVoxelWorld;
+            _terrainQuery = candidateTerrainQuery;
             _resourceLedger = candidateLedger;
             InvalidatePlanningResourceProjection();
             _weatherSimulation = candidateWeatherSimulation;
@@ -1198,10 +1344,10 @@ namespace Societies.Core
 
         private static void ValidateSnapshot(PrototypeRuntimeSnapshot snapshot)
         {
-            if (snapshot.SchemaVersion is not (5 or 6 or 7 or 8 or 9))
+            if (snapshot.SchemaVersion is not (5 or 6 or 7 or 8 or 9 or 10))
             {
                 throw new InvalidDataException(
-                    $"Unsupported runtime snapshot schema {snapshot.SchemaVersion}; expected 5, 6, 7, 8, or 9.");
+                    $"Unsupported runtime snapshot schema {snapshot.SchemaVersion}; expected 5, 6, 7, 8, 9, or 10.");
             }
 
             if (snapshot.Inventory == null || snapshot.Stockpile == null || snapshot.Workers == null ||
@@ -1209,7 +1355,8 @@ namespace Societies.Core
                 snapshot.Directive == null || snapshot.ContributionCountsByResource == null ||
                 snapshot.Telemetry == null ||
                 (snapshot.SchemaVersion >= 8 && snapshot.CivicPolicy == null) ||
-                (snapshot.SchemaVersion == 9 && snapshot.Wetland == null))
+                (snapshot.SchemaVersion >= 9 && snapshot.Wetland == null) ||
+                (snapshot.SchemaVersion == 10 && (snapshot.WorldModel != PrototypeWorldModels.Voxel || snapshot.VoxelWorld == null)))
             {
                 throw new InvalidDataException("Runtime snapshot required collections cannot be null.");
             }
@@ -1224,6 +1371,12 @@ namespace Societies.Core
 
             ValidateCountMap(snapshot.Inventory, "inventory");
             ValidateCountMap(snapshot.Stockpile, "stockpile");
+
+            if (snapshot.SchemaVersion == 10)
+            {
+                PrototypeVoxelSnapshotValidator.ValidateCanonicalShell(snapshot);
+                return;
+            }
 
             PrototypeSettlementSnapshot settlement = snapshot.Settlement;
             if (settlement.CentralDepot == null || settlement.SiteCaches == null || settlement.Structures == null ||

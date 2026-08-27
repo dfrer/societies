@@ -85,12 +85,24 @@ namespace Societies.Core.Tests
                 Assert.True(scenario.ResourceClusters.BerryClusters > 0);
                 Assert.True(scenario.ResourceClusters.ClayClusters > 0);
                 Assert.True(scenario.ResourceClusters.ReedClusters > 0);
-                Assert.True(scenario.InitialCitizens > 0);
+                if (scenario.WorldModel == PrototypeWorldModels.Voxel)
+                {
+                    Assert.Equal(0, scenario.InitialCitizens);
+                    Assert.Equal(0, scenario.InitialTrees);
+                    Assert.Equal(0, scenario.InitialRocks);
+                    Assert.Equal(0, scenario.InitialBerryBushes);
+                    Assert.Empty(scenario.StartingStructures);
+                    Assert.Empty(scenario.StartingBuildQueue);
+                }
+                else
+                {
+                    Assert.True(scenario.InitialCitizens > 0);
+                    Assert.NotEmpty(scenario.StartingStructures);
+                    Assert.NotEmpty(scenario.StartingBuildQueue);
+                }
                 Assert.True(scenario.PathBuildPolicy.CorridorBudget > 0);
                 Assert.True(scenario.RemoteDepotPolicy.ActivationDistanceMeters > 0.0f);
                 Assert.True(scenario.RemoteDepotPolicy.PlacementRadiusMeters > 0.0f);
-                Assert.NotEmpty(scenario.StartingStructures);
-                Assert.NotEmpty(scenario.StartingBuildQueue);
             });
         }
 

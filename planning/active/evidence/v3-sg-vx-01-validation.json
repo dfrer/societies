@@ -1,0 +1,111 @@
+{
+  "schemaVersion": 1,
+  "capturedUtc": "2026-08-27T17:40:13Z",
+  "workItem": "SG-VX-01-editable-voxel-world-foundation",
+  "status": "local_automated_validation_pass_delivery_and_human_acceptance_open",
+  "source": {
+    "baseCommit": "75b23e9de20be4797a233cb78ff8e8e1b3cd4daf",
+    "branch": "codex/snow-globe-voxel-foundation",
+    "worktree": "C:\\Users\\hunte\\.codex\\worktrees\\snow-globe-voxel\\societies",
+    "productionRuntimeChanged": true,
+    "schemaOrMigrationChanged": true,
+    "runtimeSnapshotSchema": 10,
+    "legacySnapshotSchemasPreserved": [5, 6, 7, 8, 9]
+  },
+  "scope": {
+    "world": "finite eager 128x32x128 voxel authority in 64 16x32x16 chunks",
+    "scenario": "snow_globe_voxel",
+    "scene": "res://scenes/snow_globe_voxel_foundation.tscn",
+    "authority": "GameManager translates pointer intent; PrototypeRuntimeSession owns VoxelWorldModule and is the sole mutation, event, snapshot, and replay authority",
+    "playerInteraction": {
+      "leftMouse": "remove the hit voxel",
+      "rightMouse": "place Wood on the hit face"
+    },
+    "citizens": "zero; citizen, settlement, resource, ecology, and navigation simulation are outside this foundation"
+  },
+  "coverage": [
+    "seed and culture-invariant deterministic generation",
+    "finite bounds and negative chunk coordinates",
+    "revision, material, edit-kind, tick, bedrock, and capacity rejection without mutation",
+    "typed ordered edit events and continuous versus save-resume equality",
+    "chunk-edge dirty projection and bounded invalid projection scope",
+    "clockwise Godot mesh winding, flat normals, vertex-color material, and outside trimesh collision",
+    "schema-v10 segmented chunk payloads, canonical zero-heightfield shell, nested seed and identity binding, root hashes, ordered event ticks, exact revision counts, and rejection before mutation or artifact write",
+    "exact 10000-edit save, load, and apply boundary; edit 10001 rejected inert",
+    "heightfield-to-voxel and voxel-to-heightfield presenter and collision lifecycle",
+    "legacy heightfield scenarios and frozen v5-v9 persistence requirements"
+  ],
+  "review": {
+    "role": "deep_reviewer",
+    "result": "GO",
+    "findings": "no remaining P0-P2 findings",
+    "notAClaim": [
+      "human visual acceptance",
+      "human play acceptance",
+      "citizen or settlement simulation readiness",
+      "representative performance safety",
+      "release readiness"
+    ]
+  },
+  "results": [
+    {
+      "command": "dotnet test tests/Societies.Core.Tests/Societies.Core.Tests.csproj --configuration Release --no-restore --filter focused_voxel_and_persistence",
+      "result": "pass",
+      "passed": 74,
+      "failed": 0
+    },
+    {
+      "command": "scripts/run-prototype-validation.ps1",
+      "result": "pass",
+      "exitCode": 0,
+      "managed": { "passed": 494, "failed": 0, "skipped": 0, "duration": "5m40s" },
+      "godot": { "passed": 26, "failed": 0 },
+      "productionDebugBuild": { "warnings": 0, "errors": 0 },
+      "note": "The Godot suite intentionally exercises a frame-backlog warning and a denied optional-metrics write; both tests passed."
+    },
+    {
+      "command": "dotnet build src/societies/Societies.csproj --configuration Release --no-restore",
+      "result": "pass",
+      "warnings": 0,
+      "errors": 0
+    },
+    {
+      "command": "dotnet build src/societies/Societies.sln --configuration ExportRelease --no-restore",
+      "result": "pass",
+      "warnings": 0,
+      "errors": 0
+    },
+    {
+      "command": "git diff --check",
+      "result": "pass",
+      "note": "Only line-ending normalization notices were emitted."
+    }
+  ],
+  "performance": {
+    "status": "unmeasured",
+    "claim": "No representative frame-time, edit latency, dirty-chunk rebuild, memory, or snapshot-size profile was run. The predecessor 51.9392 ms safety failure remains unresolved and is not attributed to SG-VX-01."
+  },
+  "manualAcceptance": {
+    "status": "open",
+    "route": [
+      "launch res://scenes/snow_globe_voxel_foundation.tscn",
+      "walk and look around the generated finite terrain",
+      "left click several exposed blocks, including a visible edge or step",
+      "right click to place Wood and confirm collision changes",
+      "press F6 to save, make another edit, press F9 to load, and confirm the saved shape returns",
+      "press F7 to reset and confirm the original seeded world returns"
+    ],
+    "acceptanceQuestions": [
+      "Does removal and placement feel readable and responsive?",
+      "Does the terrain scale support a small contained Snow Globe world?",
+      "Are collision and block targeting understandable?",
+      "Is this foundation worth carrying into citizen and settlement integration?"
+    ]
+  },
+  "delivery": {
+    "status": "uncommitted_local_candidate",
+    "pullRequest": null,
+    "hostedCi": "not_run",
+    "humanAcceptance": "not_run"
+  }
+}

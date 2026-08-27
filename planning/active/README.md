@@ -7,7 +7,8 @@ Documents in this directory are short-horizon execution plans grounded in the au
 The July 13-24, 2026 execution window is historical. W3-01 through W3-05 were later delivered as bounded engineering slices, but both ER-01 and its HUD/interaction recovery failed the product bar. The active path now defines and rebuilds the player-facing Snow Globe experience before any further feature expansion.
 
 - **Stopped/Closed:** [V3 two-week development plan](v3-two-week-development-plan.md) — July 13–24, 2026; W2-06 concluded Stop Feature Expansion with required gates unmet.
-- **Active recovery plan:** [Snow Globe Frontend Product Recovery Plan](v3-snow-globe-frontend-recovery-plan.md) — F0 resident-founder foundation accepted; F1 visual/interaction target is next, followed by a replacement Golden Three/Golden Fifteen path with cognition integrated through one provider-neutral Interface.
+- **Implemented local candidate:** [Snow Globe voxel foundation](v3-snow-globe-voxel-foundation.md) — SG-VX-01 replaces the old spike with a finite deterministic editable world authority and dedicated interaction scene; delivery, citizen integration, performance, and human acceptance remain separately gated.
+- **Active recovery plan:** [Snow Globe Frontend Product Recovery Plan](v3-snow-globe-frontend-recovery-plan.md) — the product reset now proceeds through the bounded voxel foundation before visual/player evidence.
 - **Superseded/Failed:** [V3 Experience Recovery plan](v3-experience-recovery-plan.md) — ER-01 and its recovery refined the old demo without reaching the required product quality.
 - **Draft/Conditional historical plan:** [V3 Weeks 3-4 development plan](v3-weeks-3-4-development-plan.md) - W3-01 through W3-05 are historical deliveries; W3-06+ and the former Week 4 path remain inactive.
 

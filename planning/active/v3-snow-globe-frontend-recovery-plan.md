@@ -4,7 +4,7 @@
 
 | Field | Value |
 |---|---|
-| Status | **Foundation Gate F0 accepted; Visual Gate F1 is the active production gate** |
+| Status | **F0 accepted; SG-VX-01 local candidate implemented; delivery and Visual Gate F1 remain open** |
 | Decision date | 2026-08-26 |
 | Trigger | ER-01 and its HUD/interaction recovery remained unacceptable in quality, gameplay, visuals, and overall experience |
 | Product relationship | **Societies is the embodied player-facing frontend for Snow Globe** |
@@ -13,6 +13,8 @@
 | Supersedes | `v3-experience-recovery-plan.md`, ER-01, W3-06+, and the former Week 4 path |
 
 ## Reset Decision
+
+The user-authorized SG-VX-01 reset now has a local implementation candidate: the exploratory voxel spike is replaced by one finite deterministic editable Snow Globe authority with a dedicated remove/place scene. It is a town-sized zero-citizen foundation, not a simulated settlement, a substitute for F1 visual selection, or representative human play acceptance. See [the voxel foundation plan](v3-snow-globe-voxel-foundation.md).
 
 The previous recovery strategy failed. It improved controls and HUD organization inside the existing
 prototype, but did not materially refine the product concept or establish a credible quality bar. The
