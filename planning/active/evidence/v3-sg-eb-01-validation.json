@@ -5,6 +5,9 @@
   "status": "technical_candidate_product_gate_failed",
   "base_commit": "c8e4f758588e7c8a04f465034489a53a56fb1e8e",
   "branch": "codex/snow-globe-eco-baseline",
+  "implementation_commit": "f0a8b5071c385a333208e45e0dbbcdc53b62ef2b",
+  "pull_request": 181,
+  "pull_request_base": "codex/snow-globe-voxel-foundation",
   "authority": {
     "runtime": "PrototypeRuntimeSession",
     "intent_seam": "GameManager",

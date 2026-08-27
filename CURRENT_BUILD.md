@@ -19,7 +19,7 @@ This is the only in-repo implementation that currently has:
 
 ## Snow Globe EB-01 Eco-like baseline recovery
 
-EB-01 now has a technically coherent founder-worldcraft path on isolated branch `codex/snow-globe-eco-baseline`, based on `c8e4f758588e7c8a04f465034489a53a56fb1e8e`. `PrototypeRuntimeSession` remains sole authority for exposed-voxel gathering, bounded inventory, floor/wall/post placement, rotation, support/overlap/range rejection, dismantle/material recovery, schema-v11 persistence, and exact replay. `GameManager` remains the input-to-command seam; HUD, inventory, ghost, mesh, collision, and scene code remain presentation adapters.
+EB-01 now has a technically coherent founder-worldcraft path on isolated branch `codex/snow-globe-eco-baseline`, based on `c8e4f758588e7c8a04f465034489a53a56fb1e8e`. Implementation/evidence commit `f0a8b5071c385a333208e45e0dbbcdc53b62ef2b` is pushed in stacked PR #181, targeting `codex/snow-globe-voxel-foundation` / PR #180. `PrototypeRuntimeSession` remains sole authority for exposed-voxel gathering, bounded inventory, floor/wall/post placement, rotation, support/overlap/range rejection, dismantle/material recovery, schema-v11 persistence, and exact replay. `GameManager` remains the input-to-command seam; HUD, inventory, ghost, mesh, collision, and scene code remain presentation adapters.
 
 The authoritative wrapper passes 507/507 managed and 28/28 Godot tests. Release and ExportRelease builds have zero warnings/errors. The 10,000-event replay cap uses one world generation and one ordered 10,000-event pass rather than regenerating the world per event. Final independent review is GO with no P0-P3 findings. The launch helper is `scripts/play-snow-globe-eco-baseline.ps1`.
 

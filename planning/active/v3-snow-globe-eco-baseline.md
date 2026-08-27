@@ -125,4 +125,4 @@ No live provider calls, credentials, paid traffic, broad LLM UI, markets, govern
 
 ## Delivery boundary and next action
 
-Work is isolated on `codex/snow-globe-eco-baseline`, based on SG-VX-01 evidence head `c8e4f758588e7c8a04f465034489a53a56fb1e8e`. EB-01 is the only active implementation milestone. The next action is to implement its authoritative gather/inventory/building path and new voxel presentation shell, then run an isolated rendered review before asking the user to play it.
+Work is isolated on `codex/snow-globe-eco-baseline`, based on SG-VX-01 evidence head `c8e4f758588e7c8a04f465034489a53a56fb1e8e`. Implementation/evidence commit `f0a8b5071c385a333208e45e0dbbcdc53b62ef2b` is pushed in open stacked PR #181 against `codex/snow-globe-voxel-foundation` / PR #180. EB-01 remains the only active implementation milestone, and its product gate is failed. The next action is an EB-01 visual and interaction replacement pass, followed by user play; do not begin EB-02 before acceptance.

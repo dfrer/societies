@@ -1240,7 +1240,7 @@ The offline Cognition Quality Corpus v1 is implemented in the isolated Snow Glob
 - Isolated worktree: `C:\Users\hunte\.codex\worktrees\eco-baseline\societies`.
 - Branch: `codex/snow-globe-eco-baseline`, based on `c8e4f758588e7c8a04f465034489a53a56fb1e8e`.
 - The dirty primary checkout and unrelated Snow Globe/provider/lab work remained untouched.
-- At this documentation point the slice is uncommitted and unpublished; update this section with exact commit/PR state after delivery.
+- Implementation/evidence commit `f0a8b5071c385a333208e45e0dbbcdc53b62ef2b` is pushed in open stacked PR #181, targeting `codex/snow-globe-voxel-foundation` / PR #180. Merge, hosted checks, product acceptance, and performance acceptance remain open.
 
 ## Continue with
 
