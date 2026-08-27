@@ -1,17 +1,54 @@
 {
   "schemaVersion": 1,
   "milestone": "ER-01",
-  "status": "technical_validation_passed_manual_acceptance_failed",
+  "status": "functional_validation_passed_performance_safety_failed_manual_reassessment_pending",
   "baseCommit": "399e47db992e260ffc0d1fbae00f350a93d30245",
+  "implementationCommit": "d73c4e45bb18289852ee21347549e564d1f36063",
   "scope": {
     "profiles": [
       { "scenarioId": "wetland_builder", "profileId": "marsh_recovery", "seed": 8192 },
       { "scenarioId": "empty_stores", "profileId": "lean_stores", "seed": 1701 }
     ],
-    "authority": "PrototypeRuntimeSession and existing validated commands/events remain sole world authority. GameManager applies one TotalContributedQuantity player-intent prerequisite to both civic buttons and shortcuts, then delegates to SelectCivicPolicy. GameManager and the HUD exchange only immutable PrototypeExperienceProfileOption values containing scenario identity and profile display fields; mutable scenario/world definitions remain inside the catalog/runtime boundary. UI copy is derived from read-only worker, citizen-interest, wetland, command-result, and profile-option projections.",
-    "nonGoals": ["W3-06+", "former_week_4", "providers", "snow_globe", "markets", "multiplayer", "schema_expansion"]
+    "recovery": [
+      "compact field-board HUD with one immediate need and a derived GATHER / DEPOT / DECIDE rail",
+      "one range-aware contextual interaction prompt separated from the previous authoritative result",
+      "contribution-gated mouse-readable Protect/Draw down policy surface with number-key shortcuts retained",
+      "focused, too-far, success, rejection, and depletion presentation for resources and the central depot",
+      "profile switching and dense diagnostics kept behind F1"
+    ],
+    "authority": "PrototypeRuntimeSession and existing validated commands/events remain sole world authority. GameManager remains the player intent-to-command seam and the sole Escape surface owner. PlayerCharacter, ObserverCameraRig, ResourceNode, and the HUD remain input or presentation adapters. The HUD rail is independently derived from read-only carried-resource, total-contribution, and selected-policy facts and cannot invent prior simulation history.",
+    "nonGoals": ["W3-06+", "former_week_4", "providers", "snow_globe", "markets", "multiplayer", "schema_expansion", "generalized_ui_framework"]
   },
   "checks": [
+    {
+      "command": "dotnet test tests/Societies.Core.Tests/Societies.Core.Tests.csproj --configuration Release --no-restore --filter FullyQualifiedName~ExperienceRecoveryEr01Tests|FullyQualifiedName~PrototypeHud",
+      "result": "passed",
+      "passed": 30,
+      "failed": 0,
+      "note": "Covers both profile contrasts and replay, independent settlement-step derivation, HUD hierarchy, prompt/result separation, policy affordance, and command ownership. One existing generated CS0436 warning was present in the test project."
+    },
+    {
+      "command": ".\\scripts\\run-prototype-validation.ps1 (first recovery wrapper)",
+      "result": "failed",
+      "managedPassed": 491,
+      "managedFailed": 0,
+      "godotPassed": 25,
+      "godotFailed": 1,
+      "exitCode": 1,
+      "failure": "The main-scene recovery smoke exposed competing Escape handling after the decision surface opened.",
+      "note": "This red run is retained as the real pre-fix result. Escape ownership was then centralized in GameManager."
+    },
+    {
+      "command": ".\\scripts\\run-prototype-validation.ps1 (final authoritative wrapper)",
+      "result": "passed",
+      "managedPassed": 491,
+      "managedFailed": 0,
+      "managedSkipped": 0,
+      "godotPassed": 26,
+      "godotFailed": 0,
+      "exitCode": 0,
+      "note": "The wrapper also emitted the known frame-cap backlog diagnostic and a non-fatal temp-path denial for the optional runtime-metrics artifact; the owning tests passed."
+    },
     {
       "command": "dotnet build src/societies/Societies.csproj --configuration Release --no-restore",
       "result": "passed",
@@ -19,137 +56,90 @@
       "errors": 0
     },
     {
-      "command": "dotnet build src/societies/Societies.sln --configuration ExportRelease --no-restore",
+      "command": "dotnet build src/societies/Societies.csproj --configuration ExportRelease --no-restore",
       "result": "passed",
       "warnings": 0,
       "errors": 0
     },
     {
-      "command": "dotnet test tests/Societies.Core.Tests/Societies.Core.Tests.csproj --configuration Release --no-restore --filter FullyQualifiedName~ExperienceRecoveryEr01Tests|FullyQualifiedName~PrototypeHud",
-      "result": "passed",
-      "passed": 28,
-      "failed": 0,
-      "note": "Includes conservative 1280x720 budgets at the live 17px goal font and default 16px civic/profile button font, plus immutable read-only profile-option surface assertions."
-    },
-    {
-      "command": "dotnet test tests/Societies.Core.Tests/Societies.Core.Tests.csproj --configuration Release --no-restore --list-tests; repeat with manifest fast filter",
-      "result": "passed",
-      "discoveredManaged": 489,
-      "discoveredFast": 369,
-      "er01Cases": 4
-    },
-    {
-      "command": ".\\scripts\\run-prototype-validation.ps1 (main authoritative wrapper before final test-route reconciliation)",
-      "result": "failed",
-      "managedPassed": 489,
-      "managedFailed": 0,
-      "godotPassed": 24,
-      "godotFailed": 2,
-      "exitCode": 1,
-      "failures": [
-        "Test_MainScene_ExperienceRecoverySmoke: Player targeting should focus the in-world harvestable through its ray",
-        "Test_MainScene_CivicPolicySelectionInputSmoke: A fresh F7 session should permit one new deterministic fallback cognition decision"
-      ],
-      "note": "This is the authoritative pre-fix wrapper truth supplied by the main validation owner; it must not be represented as green."
-    },
-    {
-      "command": "Godot 4.6.2 --headless --path src/societies res://tests/HeadlessTestRunner.tscn (transient test-only selector for the two affected routes, removed after the run)",
-      "result": "passed",
-      "passed": 2,
-      "failed": 0,
-      "exitCode": 0,
-      "note": "After a Debug build, the real in-tree ray focused an existing authoritative ResourceNode presentation positioned three metres ahead, authoritative depletion exercised the invalid-reference regression, and the post-F7 player contribution enabled Key4 before the fresh civic cognition decision. This focused result does not replace a full wrapper rerun."
-    },
-    {
-      "command": ".\\scripts\\run-prototype-validation.ps1 (final authoritative wrapper)",
-      "result": "passed",
-      "managedPassed": 489,
-      "managedFailed": 0,
-      "managedSkipped": 0,
-      "godotPassed": 26,
-      "godotFailed": 0,
-      "exitCode": 0,
-      "note": "The final full run rebuilt the Debug assembly before Godot execution. Both previously failing routes passed in the complete suite."
-    },
-    {
-      "command": "dotnet build src/societies/Societies.csproj --configuration Release",
-      "result": "passed",
-      "warnings": 0,
-      "errors": 0
-    },
-    {
-      "command": "dotnet build src/societies/Societies.csproj --configuration ExportRelease",
-      "result": "passed",
-      "warnings": 0,
-      "errors": 0
-    },
-    {
-      "command": "independent deep review of the final implementation and test-route reconciliation",
+      "command": "independent deep review after Escape ownership reconciliation",
       "result": "go",
-      "p0ToP3Findings": 0
+      "p0ToP3Findings": 0,
+      "note": "Review confirmed GameManager owns Escape, no test-only production seams remain, headless cursor assertions are qualified, and runtime authority is unchanged."
     },
     {
       "command": ".\\scripts\\run-performance-baseline-matrix.ps1",
-      "result": "passed",
-      "sourceCommit": "f6eab718a2e8514a3ed46d5819a1a1fbe00db000",
+      "result": "safety_failure",
+      "runnerStatus": "pass",
+      "sourceCommit": "d73c4e45bb18289852ee21347549e564d1f36063",
       "cleanSource": true,
       "pairsPassed": 14,
       "pairsTotal": 14,
       "contractStatus": "pass",
-      "budgetStatus": "target_missed",
+      "budgetStatus": "safety_failure",
       "reference": {
         "trialCount": 3,
-        "medianP95Milliseconds": 48.5517,
-        "medianMaximumMilliseconds": 169.351,
-        "safetyPassed": true,
+        "medianBootstrapMilliseconds": 716.9858,
+        "medianP95Milliseconds": 51.9392,
+        "medianP99Milliseconds": 141.6197,
+        "medianMaximumMilliseconds": 191.8185,
+        "medianTotalMilliseconds": 6255.8281,
+        "safetyP95LimitMilliseconds": 50.0,
+        "safetyMaximumLimitMilliseconds": 250.0,
+        "safetyPassed": false,
         "targetPassed": false
       },
       "soak": {
         "deterministicRepeat": true,
-        "p95Milliseconds": [42.1914, 46.1146],
-        "maximumMilliseconds": [182.6881, 169.7445],
+        "p95Milliseconds": [49.6365, 43.3379],
+        "maximumMilliseconds": [187.008, 225.3955],
         "safetyPassed": true,
         "targetPassed": false
       },
       "stress": {
         "classification": "characterization",
-        "p95Milliseconds": 152.0242,
-        "maximumMilliseconds": 189.584,
+        "p95Milliseconds": 153.159,
+        "maximumMilliseconds": 195.5762,
         "targetPassed": false,
         "safetyGateApplied": false
       },
       "forcedInvalidation": {
         "transitionCorrect": true,
-        "commitToFirstCorrectLookupMilliseconds": 21.9172,
+        "commitToFirstCorrectLookupMilliseconds": 24.0009,
         "safetyPassed": true,
         "targetPassed": true
       },
-      "artifactRoot": "artifacts/performance/w103c-release-20260826-213025-363",
-      "note": "The correctness/evidence contract and hard safety gate are green. The aspirational performance target is not green, and the 24-citizen result is characterization-only."
+      "artifactRoot": "artifacts/performance/w103c-release-20260827-012245-012",
+      "note": "All deterministic correctness/evidence contracts pass, but the reference median p95 exceeds the hard safety limit by 1.9392 ms. No causal attribution to the HUD pass is claimed, and the canonical run was not repeated to chase a green sample."
     }
   ],
   "manualAcceptance": {
-    "result": "failed",
+    "priorResult": "failed",
     "observedDate": "2026-08-26",
     "userStatements": [
       "Its looking okay, still needs massive work",
       "all of those are weak but the HUD and ineractions are probably the weakest"
     ],
-    "axes": {
+    "priorAxes": {
       "agency": "weak",
       "interactionQuality": "weak_priority",
       "causalClarity": "weak",
       "hudHierarchy": "weak_priority",
       "meaningfulVariation": "weak"
     },
+    "recoveryReassessment": "pending",
     "accepted": false,
     "deliveryDecision": "keep_pr_177_draft_and_unmerged",
-    "iterationBoundary": "One further narrow ER-01 iteration may be proposed around HUD and interactions; implementation requires a separate explicit request."
+    "route": [
+      "Play Marsh Recovery with diagnostics closed; test too-far, harvest, depletion, depot contribution, and one mouse-selected policy.",
+      "Open F1, switch to Lean Stores, close diagnostics, repeat with berries, and select the opposite policy.",
+      "Judge agency, interaction quality, causal clarity, HUD hierarchy, and meaningful variation."
+    ]
   },
   "limitations": [
-    "Headless checks do not prove rendered readability or user-led acceptance.",
-    "Automated layout budgets and headless input do not establish the user-led agency, interaction-quality, causal-clarity, HUD-hierarchy, or meaningful-variation gate.",
-    "Performance hard safety passed, but the aspirational budget remains target_missed and 24-citizen stress remains characterization-red.",
-    "The user-led product gate failed across all five axes; HUD hierarchy and interaction quality were identified as the weakest areas."
+    "Headless checks do not prove rendered readability, physical cursor behavior, or user-led acceptance.",
+    "The performance evidence contract passed, but the clean canonical budget is a hard safety failure rather than a green or target-missed result.",
+    "The prior user-led product failure remains authoritative until both recovery routes are replayed and a new result is recorded.",
+    "The candidate is not merged, deployed, packaged, or release-ready."
   ]
 }

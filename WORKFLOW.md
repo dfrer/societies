@@ -1135,25 +1135,27 @@ The offline Cognition Quality Corpus v1 is implemented in the isolated Snow Glob
 
 - Start ER-01 from a fresh clean isolated worktree after reading the recovery plan and handoff. Do not begin W3-06+ or add systems merely to increase breadth. The next milestone is complete only after automated authority/replay checks and the separate user-led product gate are honestly recorded.
 
-# ER-01 First Believable Settlement Loop technical candidate
+# ER-01 HUD and interaction recovery revision
 
 ## Outcome and scope
 
-- Implemented one bounded orientation -> harvest -> contribute -> two-policy choice -> citizen response -> shared wetland consequence route without adding a second gameplay authority.
+- Recovered the bounded orientation -> harvest -> contribute -> two-policy choice -> citizen response -> shared wetland consequence route without adding a second gameplay authority.
 - Curated exactly two starts through the existing catalog and seeds: Marsh Recovery (`wetland_builder`, `8192`) and Lean Stores (`empty_stores`, `1701`). Their resource approach, immediate pressure, and generated wetland/resource cue differ.
-- Reworked the normal HUD around one need, one contextual prompt, concise result feedback, visible profile and policy buttons, and one readable citizen response. F1 retains diagnostics as an optional layer.
-- Added presentation-only resource/depot focus plus authoritative success, rejection, and depletion feedback. Both visible policy buttons and `4`/`5` enter through `GameManager` and the existing `PrototypeRuntimeSession.SelectCivicPolicy` command; presentation stores no simulation state.
+- Reworked the normal HUD into an organic field board: one need, a read-only `GATHER / DEPOT / DECIDE` rail, one center-bottom contextual prompt, and a separate authoritative result. Profile controls and dense diagnostics remain behind F1.
+- The policy surface appears only after a real contribution, releases the cursor, and presents Protect/Draw down as clickable tradeoffs; `4`/`5` remain shortcuts. Escape ownership is centralized in `GameManager`.
+- Resource and depot presentation now distinguishes focus, too-far, success, rejection, and depletion. The current prompt cannot inherit stale success color from the prior command result.
+- Both visible policy buttons and `4`/`5` still enter through `GameManager` and the existing `PrototypeRuntimeSession.SelectCivicPolicy` command. `PlayerCharacter`, `ObserverCameraRig`, `ResourceNode`, and the HUD remain input/presentation adapters and store no simulation state.
 - W3-06+, former Week 4, providers/Snow Globe, live cognition, broad governance, markets, multiplayer, combat, terrain replacement, and generalized quest/UI systems remain out of scope.
 
 ## Validation and repository state
 
-- Focused ER-01/HUD validation passed 28/28. The final authoritative wrapper passed 489/489 managed and 26/26 Godot tests.
-- Production Release and ExportRelease builds passed with zero warnings and zero errors. Independent deep review is GO with no P0-P3 findings after the final test-route reconciliation.
+- Focused ER-01/HUD validation passed 30/30. The first authoritative recovery wrapper retained a real red result at 491/491 managed and 25/26 Godot because Escape had competing owners; after centralizing it in `GameManager`, the final wrapper passed 491/491 and 26/26.
+- Production Release and ExportRelease builds passed with zero warnings and zero errors. Independent deep review is GO with no P0-P3 findings after the final input-ownership reconciliation.
 - Work was isolated in `C:\Users\hunte\.codex\worktrees\er01\societies` on `feature/er-01-first-believable-settlement-loop`, based on planning commit `399e47db992e260ffc0d1fbae00f350a93d30245`. The dirty primary checkout and all unrelated Snow Globe/provider/lab work were preserved.
-- The clean canonical Release matrix at implementation commit `f6eab718a2e8514a3ed46d5819a1a1fbe00db000` passed 14/14 contracts and the hard safety gate. Reference median p95/max is `48.5517/169.351 ms`; both soaks are safe/deterministic; forced invalidation is correct. The overall budget remains `target_missed`, and 24-citizen stress is characterization-red at `152.0242/189.584 ms`.
-- Draft PR #177 is open from `feature/er-01-first-believable-settlement-loop`; required `build-test-smoke` passed in 9m54s at executable/evidence head `18705380d1014dd3dc9da39c5b1fc9a45b46a112`. The PR remains draft and unmerged. Automated tests do not establish rendered quality or user-led product acceptance.
+- The clean canonical Release matrix at implementation commit `d73c4e45bb18289852ee21347549e564d1f36063` completed 14/14 deterministic contracts but reported `safety_failure`: reference median p95 `51.9392 ms` exceeds the `50 ms` safety line, while median maximum `191.8185 ms`, both deterministic soaks, and forced invalidation remain safe. No causal attribution to the HUD pass is made, and the run was not repeated to chase a green sample. Artifacts are under `artifacts/performance/w103c-release-20260827-012245-012`.
+- Draft PR #177 remains open from `feature/er-01-first-believable-settlement-loop`, deliberately draft and unmerged. Exact pushed head and required CI are recorded after delivery. Automated tests do not establish rendered quality, physical cursor behavior, or user-led product acceptance.
 
 ## Continue with
 
-- The 2026-08-26 user assessment is **Fail**: all five gates were judged weak, with HUD hierarchy and interaction quality weakest. PR #177 remains draft and unmerged; technical validation stays green but does not override the product result.
-- Propose one further narrow ER-01 iteration focused on HUD and interactions without adding new authority, systems, or milestone breadth. Implementation requires a separate explicit request; keep ER-02, W3-06+, former Week 4, providers, and Snow Globe integration inactive.
+- The 2026-08-26 user assessment remains **Fail** until the revision is replayed. In Marsh Recovery, test too-far, harvest, depletion, depot contribution, and one mouse-selected policy. Then use F1 to switch to Lean Stores, close diagnostics, repeat with berries, and choose the opposite policy.
+- Record agency, interaction quality, causal clarity, HUD hierarchy, and meaningful variation. Keep PR #177 draft/unmerged and ER-02, W3-06+, former Week 4, providers, and Snow Globe integration inactive until user acceptance passes and the performance safety failure is resolved or explicitly dispositioned.
