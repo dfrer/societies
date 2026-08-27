@@ -47,7 +47,7 @@ Schema v10 is voxel-only. It binds scenario/outer/nested seed and world identity
 
 ## Remaining gates and next slice
 
-- The repaired authoritative wrapper and production builds are recorded in evidence; repair commit/PR delivery remains to be updated.
+- The repaired authoritative wrapper and production builds are recorded in evidence; repair commit `909d528` is pushed to PR #180.
 - The scene is a technical interaction proof, not an accepted visual direction or a complete game loop. The original human play failed; post-repair visual/play acceptance is open.
 - Representative frame-time, edit latency, chunk rebuild, memory, and save-size performance were not measured. The predecessor `51.9392 ms` safety failure remains unresolved and cannot be attributed to this slice.
 - Citizen, settlement, resource, ecology, and navigation participation are absent. The next slice should design the deterministic citizen/world participation contract over voxel standability before adding open-ended LLM goals. Do not treat the current top-solid terrain query as that navigation contract.

@@ -6,6 +6,7 @@
   "source": {
     "baseCommit": "75b23e9de20be4797a233cb78ff8e8e1b3cd4daf",
     "implementationCommit": "e64b655d4a9a38c551908ef659f5205bd1f35651",
+    "groundingRepairCommit": "909d52897728bbb7c86e1c32e7cd1f760e817116",
     "branch": "codex/snow-globe-voxel-foundation",
     "worktree": "C:\\Users\\hunte\\.codex\\worktrees\\snow-globe-voxel\\societies",
     "productionRuntimeChanged": true,
@@ -115,6 +116,7 @@
     "pullRequestUrl": "https://github.com/dfrer/societies/pull/180",
     "basePullRequest": 178,
     "mergeState": "CLEAN",
+    "headCommit": "909d52897728bbb7c86e1c32e7cd1f760e817116",
     "hostedCi": "no_check_run_on_stacked_base",
     "humanAcceptance": "failed_original_candidate_post_repair_retest_pending"
   }
