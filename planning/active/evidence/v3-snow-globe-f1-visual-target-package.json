@@ -9,7 +9,12 @@
     "branch": "codex/snow-globe-f1-visual-target",
     "pullRequest": "https://github.com/dfrer/societies/pull/179",
     "pullRequestBase": "codex/snow-globe-frontend-recovery-plan",
-    "deliveryState": "pushed_stacked_pull_request_open_ci_pending",
+    "deliveryState": "pushed_stacked_pull_request_open_ci_not_triggered_for_non_default_base",
+    "ci": {
+      "status": "not_reported",
+      "reason": "tests_workflow_pull_request_filter_accepts_only_master_or_main_bases",
+      "nextGate": "retarget_after_parent_merge_or_separately_authorize_stacked_pr_ci_support"
+    },
     "worktree": "C:\\Users\\hunte\\.codex\\worktrees\\f1-visual-target\\societies",
     "primaryCheckoutPreserved": true
   },

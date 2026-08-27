@@ -247,3 +247,22 @@ Statuses: **Open**, **Monitoring**, **Resolved**, **Deferred**, **Rejected**.
 - **Auto-fix eligibility/rationale:** No — T1; artifact identity, path safety, and canonical evidence required independent review.
 - **Resolution/validation:** Resolved. Final independent review reported no P0–P3 findings, and the clean repaired canonical matrix completed 14/14 pairs with contract status `pass`. The separate performance budget remained red and is a product gate, not a recurrence of this tooling defect.
 - **Linked entry:** WI-GLOBAL-2026-073 in `C:\Users\hunte\Documents\Codex\WORKFLOW_ISSUES.md`.
+### WI-SOCIETIES-2026-013 — Stacked pull requests do not trigger the repository test workflow
+
+- **Tier:** T2
+- **Status:** Open
+- **Scope/project:** `C:\Users\hunte\.codex\worktrees\f1-visual-target\societies`; F1 stacked PR delivery
+- **Category:** CI coverage
+- **First seen:** 2026-08-26 (America/Vancouver)
+- **Last seen:** 2026-08-26 (America/Vancouver)
+- **Occurrences:** 1 stacked PR (#179)
+- **Reporter:** main orchestrator
+- **Symptom:** PR #179 is based on `codex/snow-globe-frontend-recovery-plan`, so GitHub reports no checks; `.github/workflows/tests.yml` accepts pull-request events only for `master` or `main` bases.
+- **Impact:** The stacked candidate has no GitHub-hosted check until it is retargeted after its parent merges, even though the exact local candidate passed the authoritative wrapper and production builds.
+- **Evidence:** `gh pr view 179` returned an empty `statusCheckRollup`; `gh pr checks 179` returned `no checks reported`; the workflow declares `pull_request.branches: [master, main]`.
+- **Workaround:** Keep the PR stacked and report CI as not triggered, not passed. Retarget after PR #178 merges, then require the normal check before merge.
+- **Root cause:** The repository workflow intentionally filters PR base branches and has no dispatch route for stacked candidates.
+- **Proposed fix:** In a separately scoped CI change, decide whether to support stacked bases or a safe manual validation dispatch without weakening required checks.
+- **Auto-fix eligibility/rationale:** No — workflow trigger and required-check policy changes need explicit CI review.
+- **Resolution/validation:** Open; local validation is complete but does not substitute for a GitHub check.
+- **Linked entry:** WI-GLOBAL-2026-144 in `C:\Users\hunte\Documents\Codex\WORKFLOW_ISSUES.md`.
