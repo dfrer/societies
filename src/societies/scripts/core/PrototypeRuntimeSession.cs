@@ -319,6 +319,39 @@ namespace Societies.Core
         public Vector3 ProjectToTerrainSurface(Vector3 horizontalPosition) =>
             _terrainQuery?.ProjectToSurface(horizontalPosition) ?? horizontalPosition;
 
+        public Vector3 GetVoxelSafePlayerSpawnPoint()
+        {
+            if (_terrainQuery is not VoxelRuntimeTerrainQuery voxelTerrain)
+            {
+                throw new InvalidOperationException("Safe voxel spawn is unavailable for a heightfield runtime.");
+            }
+
+            VoxelSafeSpawn spawn = voxelTerrain.FindSafePlayerSpawn();
+            return new Vector3(spawn.X + 0.5f, spawn.SurfaceY + 2.0f, spawn.Z + 0.5f);
+        }
+
+        internal Vector3 ResolvePlayerPositionAfterSnapshot(Vector3 savedPosition, float playerFootOffset)
+        {
+            if (_terrainQuery is not VoxelRuntimeTerrainQuery)
+            {
+                return savedPosition;
+            }
+
+            if (!float.IsFinite(playerFootOffset) || playerFootOffset <= 0.0f)
+            {
+                throw new ArgumentOutOfRangeException(nameof(playerFootOffset), "Player foot offset must be finite and positive.");
+            }
+
+            int x = Mathf.FloorToInt(savedPosition.X);
+            int z = Mathf.FloorToInt(savedPosition.Z);
+            bool insideFiniteWorld = x >= VoxelWorldModule.MinX && x < VoxelWorldModule.MaxXExclusive &&
+                z >= VoxelWorldModule.MinZ && z < VoxelWorldModule.MaxZExclusive;
+            float surfaceY = insideFiniteWorld ? ProjectToTerrainSurface(savedPosition).Y : float.PositiveInfinity;
+            return insideFiniteWorld && savedPosition.Y - playerFootOffset >= surfaceY - 0.05f
+                ? savedPosition
+                : GetVoxelSafePlayerSpawnPoint();
+        }
+
         public PrototypePerformanceProbeSnapshot CapturePerformanceProbeState()
         {
             return _settlementSimulation?.CapturePerformanceProbeState() ?? default;
@@ -1174,10 +1207,8 @@ namespace Societies.Core
 
                 candidateTerrainQuery = new VoxelRuntimeTerrainQuery(candidateVoxelWorld);
                 int expectedSeed = _voxelWorld?.Seed ?? Scenario.SimulationSeed;
-                string expectedWorldIdentity = VoxelWorldModule.GetWorldIdentity(expectedSeed);
                 if (snapshot.WorldSeed != expectedSeed || candidateVoxelWorld.Seed != snapshot.WorldSeed ||
                     snapshot.WorldGenerationAttempt != 0 ||
-                    !string.Equals(candidateVoxelWorld.WorldIdentity, expectedWorldIdentity, StringComparison.Ordinal) ||
                     !string.Equals(candidateTerrainQuery.WorldHash, snapshot.WorldHash, StringComparison.Ordinal))
                 {
                     throw new InvalidDataException("Runtime snapshot voxel identity does not match the active scenario.");

@@ -96,6 +96,134 @@ namespace Societies.Core.Tests
         }
 
         [Fact]
+        public void EditContract_RejectsGapFormingAndFloatingEditsButAllowsSurfaceRoundTrip()
+        {
+            VoxelWorldModule world = new(73);
+            VoxelCoord top = FindEditable(world, 0, 0);
+            VoxelCoord interior = top with { Y = top.Y - 1 };
+            Assert.NotEqual(VoxelMaterialId.Air, world.GetMaterial(interior));
+
+            VoxelEditResult interiorRemove = world.Execute(new VoxelEditCommand
+            {
+                ActorId = "player",
+                Tick = 0,
+                ExpectedWorldRevision = 0,
+                Kind = VoxelEditKind.Remove,
+                Coord = interior,
+                ExpectedBefore = world.GetMaterial(interior),
+                After = VoxelMaterialId.Air
+            });
+            Assert.False(interiorRemove.Accepted);
+            Assert.Equal(VoxelEditRejection.NonSurfaceEdit, interiorRemove.Rejection);
+
+            VoxelCoord floating = top with { Y = top.Y + 2 };
+            VoxelEditResult floatingPlace = world.Execute(new VoxelEditCommand
+            {
+                ActorId = "player",
+                Tick = 0,
+                ExpectedWorldRevision = 0,
+                Kind = VoxelEditKind.Place,
+                Coord = floating,
+                ExpectedBefore = VoxelMaterialId.Air,
+                After = VoxelMaterialId.Wood
+            });
+            Assert.False(floatingPlace.Accepted);
+            Assert.Equal(VoxelEditRejection.UnsupportedPlacement, floatingPlace.Rejection);
+
+            VoxelMaterialId original = world.GetMaterial(top);
+            Assert.True(world.Execute(new VoxelEditCommand
+            {
+                ActorId = "player",
+                Tick = 0,
+                ExpectedWorldRevision = 0,
+                Kind = VoxelEditKind.Remove,
+                Coord = top,
+                ExpectedBefore = original,
+                After = VoxelMaterialId.Air
+            }).Accepted);
+            Assert.True(world.Execute(new VoxelEditCommand
+            {
+                ActorId = "player",
+                Tick = 0,
+                ExpectedWorldRevision = 1,
+                Kind = VoxelEditKind.Place,
+                Coord = top,
+                ExpectedBefore = VoxelMaterialId.Air,
+                After = original
+            }).Accepted);
+            Assert.Equal(original, world.GetMaterial(top));
+        }
+
+        [Fact]
+        public void LegacyV1Events_RestoreGapAndOverhangAsExactOccupiedRuns()
+        {
+            VoxelWorldModule legacy = CreateLegacyV1World(260827);
+            VoxelCoord top = FindEditable(legacy, 0, 0);
+            VoxelCoord interior = top with { Y = top.Y - 1 };
+            VoxelCoord floating = top with { Y = top.Y + 2 };
+            Assert.True(ExecuteLegacyFixture(legacy, new VoxelEditCommand
+            {
+                ActorId = "legacy-player", Tick = 0, ExpectedWorldRevision = 0,
+                Kind = VoxelEditKind.Remove, Coord = interior,
+                ExpectedBefore = legacy.GetMaterial(interior), After = VoxelMaterialId.Air
+            }).Accepted);
+            Assert.True(ExecuteLegacyFixture(legacy, new VoxelEditCommand
+            {
+                ActorId = "legacy-player", Tick = 1, ExpectedWorldRevision = 1,
+                Kind = VoxelEditKind.Place, Coord = floating,
+                ExpectedBefore = VoxelMaterialId.Air, After = VoxelMaterialId.Wood
+            }).Accepted);
+
+            VoxelWorldModule restored = VoxelWorldModule.Restore(legacy.CaptureSnapshot());
+            VoxelChunkGeometryProjection chunk = Assert.Single(restored.CaptureProjection(new[] { new VoxelChunkCoord(0, 0, 0) }).Chunks);
+            VoxelVerticalRunProjection[] columnRuns = chunk.OccupiedRuns.Where(run => run.X == 0 && run.Z == 0).ToArray();
+            Assert.Contains(columnRuns, run => run.MinYInclusive <= interior.Y - 1 && run.MaxYExclusive == interior.Y);
+            Assert.Contains(columnRuns, run => run.MinYInclusive == interior.Y + 1 && run.MaxYExclusive == top.Y + 1);
+            Assert.Contains(columnRuns, run => run.MinYInclusive == floating.Y && run.MaxYExclusive == floating.Y + 1);
+
+            VoxelWorldSnapshot resaved = restored.CaptureSnapshot();
+            Assert.Equal(VoxelWorldModule.LegacyGeneratorIdentity, resaved.Generator);
+            VoxelWorldModule reloaded = VoxelWorldModule.Restore(resaved);
+            Assert.Equal(restored.RootHash, reloaded.RootHash);
+            Assert.Equal(VoxelMaterialId.Air, reloaded.GetMaterial(interior));
+            Assert.Equal(VoxelMaterialId.Wood, reloaded.GetMaterial(floating));
+        }
+
+        [Fact]
+        public void LegacyV1SafeSpawn_UsesDeterministicMinimumReliefFallback()
+        {
+            VoxelWorldModule legacy = CreateLegacyV1World(260827);
+            VoxelSafeSpawn actual = legacy.FindSafePlayerSpawn();
+            Assert.Equal(VoxelSafeSpawnContract.MinimumReliefFallback, actual.Contract);
+
+            var candidates = Enumerable.Range(VoxelWorldModule.MinX + 2, VoxelWorldModule.MaxXExclusive - VoxelWorldModule.MinX - 4)
+                .SelectMany(x => Enumerable.Range(VoxelWorldModule.MinZ + 2, VoxelWorldModule.MaxZExclusive - VoxelWorldModule.MinZ - 4)
+                    .Select(z => EvaluateFallbackCandidate(legacy, x, z)))
+                .Where(candidate => candidate.MaximumNeighborRise <= 1 && candidate.CameraClearanceCells >= 2)
+                .OrderBy(candidate => candidate.Relief)
+                .ThenBy(candidate => (candidate.X * candidate.X) + (candidate.Z * candidate.Z))
+                .ThenBy(candidate => candidate.Z)
+                .ThenBy(candidate => candidate.X)
+                .ToArray();
+            Assert.NotEmpty(candidates);
+            var expected = candidates[0];
+            Assert.Equal((expected.X, expected.Z, expected.SurfaceY), (actual.X, actual.Z, actual.SurfaceY));
+            Assert.Equal(expected.Relief, actual.NeighborhoodRelief);
+            Assert.Equal(expected.MaximumNeighborRise, actual.MaximumNeighborRise);
+            Assert.True(actual.CameraClearanceCells >= 2);
+            Assert.Equal(VoxelMaterialId.Air, legacy.GetMaterial(new VoxelCoord(actual.X, actual.SurfaceY, actual.Z)));
+            Assert.Equal(VoxelMaterialId.Air, legacy.GetMaterial(new VoxelCoord(actual.X, actual.SurfaceY + 1, actual.Z)));
+
+            VoxelWorldModule currentWorld = new(260827);
+            VoxelSafeSpawn current = currentWorld.FindSafePlayerSpawn();
+            Assert.Equal(VoxelSafeSpawnContract.StrictFiveByFiveClearing, current.Contract);
+            Assert.Equal(0, current.NeighborhoodRelief);
+            for (int x = -VoxelWorldModule.SpawnClearingRadius; x <= VoxelWorldModule.SpawnClearingRadius; x++)
+                for (int z = -VoxelWorldModule.SpawnClearingRadius; z <= VoxelWorldModule.SpawnClearingRadius; z++)
+                    Assert.Equal(current.SurfaceY, FindSurfaceY(currentWorld, x, z));
+        }
+
+        [Fact]
         public void Projection_HasIndexedVisibleFacesAndCrossChunkWalkability()
         {
             VoxelWorldModule world = new(18); VoxelWorldProjection projection = world.CaptureProjection(new[] { new VoxelChunkCoord(-1, 0, -1), new VoxelChunkCoord(0, 0, 0) });
@@ -141,7 +269,7 @@ namespace Societies.Core.Tests
 
         private static VoxelCoord FindEditable(VoxelWorldModule world, int x, int z)
         {
-            for (int y = 1; y < VoxelWorldModule.MaxYExclusive; y++) if (world.GetMaterial(new(x, y, z)) is VoxelMaterialId.Soil or VoxelMaterialId.Stone or VoxelMaterialId.Wood) return new(x, y, z);
+            for (int y = VoxelWorldModule.MaxYExclusive - 1; y >= 1; y--) if (world.GetMaterial(new(x, y, z)) is VoxelMaterialId.Soil or VoxelMaterialId.Stone or VoxelMaterialId.Wood) return new(x, y, z);
             throw new InvalidOperationException("Test seed unexpectedly has no editable material.");
         }
 
@@ -149,6 +277,37 @@ namespace Societies.Core.Tests
         {
             for (int y = VoxelWorldModule.MaxYExclusive - 1; y >= 1; y--) if (world.GetMaterial(new(x, y, z)) == VoxelMaterialId.Air) return new(x, y, z);
             throw new InvalidOperationException("Test seed unexpectedly has no air cell.");
+        }
+
+        private static VoxelWorldModule CreateLegacyV1World(int seed)
+        {
+            ConstructorInfo constructor = typeof(VoxelWorldModule).GetConstructor(
+                BindingFlags.Instance | BindingFlags.NonPublic, null, new[] { typeof(int), typeof(string) }, null)
+                ?? throw new InvalidOperationException("Legacy fixture constructor is unavailable.");
+            return (VoxelWorldModule)constructor.Invoke(new object[] { seed, VoxelWorldModule.LegacyGeneratorIdentity });
+        }
+
+        private static VoxelEditResult ExecuteLegacyFixture(VoxelWorldModule world, VoxelEditCommand command)
+        {
+            MethodInfo method = typeof(VoxelWorldModule).GetMethod("ExecuteValidated", BindingFlags.Instance | BindingFlags.NonPublic)
+                ?? throw new InvalidOperationException("Legacy fixture edit seam is unavailable.");
+            return (VoxelEditResult)method.Invoke(world, new object[] { command, true })!;
+        }
+
+        private static (int X, int Z, int SurfaceY, int Relief, int MaximumNeighborRise, int CameraClearanceCells) EvaluateFallbackCandidate(VoxelWorldModule world, int x, int z)
+        {
+            int surface = FindSurfaceY(world, x, z);
+            int[] neighborhood = Enumerable.Range(-2, 5).SelectMany(dx => Enumerable.Range(-2, 5).Select(dz => FindSurfaceY(world, x + dx, z + dz))).ToArray();
+            int clearance = 0;
+            for (int y = surface; y < VoxelWorldModule.MaxYExclusive && world.GetMaterial(new VoxelCoord(x, y, z)) == VoxelMaterialId.Air; y++) clearance++;
+            return (x, z, surface, neighborhood.Max() - neighborhood.Min(), neighborhood.Max() - surface, clearance);
+        }
+
+        private static int FindSurfaceY(VoxelWorldModule world, int x, int z)
+        {
+            for (int y = VoxelWorldModule.MaxYExclusive - 1; y >= VoxelWorldModule.MinY; y--)
+                if (world.GetMaterial(new VoxelCoord(x, y, z)) != VoxelMaterialId.Air) return y + 1;
+            return VoxelWorldModule.MinY;
         }
     }
 }

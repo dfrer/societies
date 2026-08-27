@@ -9,7 +9,7 @@ namespace Societies.Core
     public partial class VoxelWorldPresenter : Node3D
     {
         private readonly Dictionary<VoxelChunkCoord, MeshInstance3D> _meshes = new();
-        private readonly Dictionary<VoxelChunkCoord, CollisionShape3D> _colliders = new();
+        private readonly Dictionary<VoxelChunkCoord, StaticBody3D> _collisionBodies = new();
         private bool _active = true;
 
         public void Apply(VoxelWorldProjection projection)
@@ -20,18 +20,14 @@ namespace Societies.Core
                 if (!_meshes.TryGetValue(chunk.Coord, out MeshInstance3D? instance))
                 {
                     instance = new MeshInstance3D { Name = $"VoxelChunk_{chunk.Coord}" };
-                    AddChild(instance); _meshes.Add(chunk.Coord, instance);
-                    StaticBody3D body = new() { Name = $"VoxelCollision_{chunk.Coord}" }; AddChild(body);
-                    CollisionShape3D shape = new(); body.AddChild(shape); _colliders.Add(chunk.Coord, shape);
+                    AddChild(instance);
+                    _meshes.Add(chunk.Coord, instance);
+                    StaticBody3D body = new() { Name = $"VoxelCollision_{chunk.Coord}" };
+                    AddChild(body);
+                    _collisionBodies.Add(chunk.Coord, body);
                 }
                 instance.Mesh = mesh;
-                CollisionShape3D collider = _colliders[chunk.Coord];
-                collider.Shape = BuildGroundingCollision(chunk);
-                collider.Position = new Vector3(
-                    (chunk.Coord.X * VoxelWorldModule.ChunkWidth) + (VoxelWorldModule.ChunkWidth * 0.5f),
-                    0.0f,
-                    (chunk.Coord.Z * VoxelWorldModule.ChunkDepth) + (VoxelWorldModule.ChunkDepth * 0.5f));
-                collider.Disabled = !_active;
+                ReplaceGroundingCollisions(_collisionBodies[chunk.Coord], chunk);
             }
         }
 
@@ -39,7 +35,7 @@ namespace Societies.Core
         {
             _active = active;
             Visible = active;
-            foreach (CollisionShape3D collider in _colliders.Values)
+            foreach (CollisionShape3D collider in _collisionBodies.Values.SelectMany(body => body.GetChildren().OfType<CollisionShape3D>()))
             {
                 collider.Disabled = !active;
             }
@@ -47,14 +43,48 @@ namespace Societies.Core
 
         public bool HasChunkGeometryAndCollision(VoxelChunkCoord coord) =>
             _meshes.TryGetValue(coord, out MeshInstance3D? mesh) && mesh.Mesh != null &&
-            _colliders.TryGetValue(coord, out CollisionShape3D? collider) && collider.Shape != null && !collider.Disabled;
+            _collisionBodies.TryGetValue(coord, out StaticBody3D? body) &&
+            body.GetChildren().OfType<CollisionShape3D>().Any(collider => collider.Shape != null && !collider.Disabled);
 
-        public bool HasActiveCollisions => _colliders.Values.Any(collider => collider.Shape != null && !collider.Disabled);
+        public bool HasActiveCollisions => _collisionBodies.Values
+            .SelectMany(body => body.GetChildren().OfType<CollisionShape3D>())
+            .Any(collider => collider.Shape != null && !collider.Disabled);
 
-        public HeightMapShape3D? GetGroundingCollision(VoxelChunkCoord coord) =>
-            _colliders.TryGetValue(coord, out CollisionShape3D? collider)
-                ? collider.Shape as HeightMapShape3D
-                : null;
+        public int GetGroundingCollisionCount(VoxelChunkCoord coord) =>
+            _collisionBodies.TryGetValue(coord, out StaticBody3D? body)
+                ? body.GetChildren().OfType<CollisionShape3D>().Count()
+                : 0;
+
+        public float? GetGroundingCollisionSurface(VoxelCoord coord)
+        {
+            VoxelChunkCoord chunk = new(
+                ToChunkCoordinate(coord.X, VoxelWorldModule.ChunkWidth),
+                0,
+                ToChunkCoordinate(coord.Z, VoxelWorldModule.ChunkDepth));
+            if (!_collisionBodies.TryGetValue(chunk, out StaticBody3D? body))
+            {
+                return null;
+            }
+
+            float? highest = null;
+            foreach (CollisionShape3D candidate in body.GetChildren().OfType<CollisionShape3D>())
+            {
+                if (candidate.Shape is not BoxShape3D box)
+                {
+                    continue;
+                }
+
+                Vector3 minimum = candidate.Position - (box.Size * 0.5f);
+                Vector3 maximum = candidate.Position + (box.Size * 0.5f);
+                if (coord.X + 0.5f >= minimum.X && coord.X + 0.5f <= maximum.X &&
+                    coord.Z + 0.5f >= minimum.Z && coord.Z + 0.5f <= maximum.Z)
+                {
+                    highest = highest.HasValue ? Math.Max(highest.Value, maximum.Y) : maximum.Y;
+                }
+            }
+
+            return highest;
+        }
 
         public bool HasLitVertexColorMaterial()
         {
@@ -90,53 +120,76 @@ namespace Societies.Core
             }
             arrays[(int)ArrayMesh.ArrayType.Vertex] = vertices; arrays[(int)ArrayMesh.ArrayType.Normal] = normals; arrays[(int)ArrayMesh.ArrayType.Color] = colors; arrays[(int)ArrayMesh.ArrayType.Index] = chunk.Indices.ToArray();
             ArrayMesh mesh = new(); mesh.AddSurfaceFromArrays(Mesh.PrimitiveType.Triangles, arrays);
-            mesh.SurfaceSetMaterial(0, new StandardMaterial3D { VertexColorUseAsAlbedo = true, Roughness = 1.0f });
+            mesh.SurfaceSetMaterial(0, new StandardMaterial3D
+            {
+                VertexColorUseAsAlbedo = true,
+                ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded,
+                Roughness = 1.0f
+            });
             return mesh;
         }
 
-        private static HeightMapShape3D BuildGroundingCollision(VoxelChunkGeometryProjection chunk)
+        private void ReplaceGroundingCollisions(StaticBody3D body, VoxelChunkGeometryProjection chunk)
         {
-            const int width = VoxelWorldModule.ChunkWidth;
-            const int depth = VoxelWorldModule.ChunkDepth;
-            float[] cellHeights = new float[width * depth];
-            Array.Fill(cellHeights, VoxelWorldModule.MinY);
-
-            for (int faceStart = 0; faceStart < chunk.Indices.Count; faceStart += 6)
+            foreach (Node child in body.GetChildren())
             {
-                Vector3 a = ToVector3(chunk.Vertices[chunk.Indices[faceStart]]);
-                Vector3 b = ToVector3(chunk.Vertices[chunk.Indices[faceStart + 1]]);
-                Vector3 c = ToVector3(chunk.Vertices[chunk.Indices[faceStart + 2]]);
-                if ((b - a).Cross(c - a).Y >= -0.5f)
-                {
-                    continue;
-                }
-
-                int localX = Mathf.FloorToInt(Mathf.Min(a.X, Mathf.Min(b.X, c.X))) - (chunk.Coord.X * width);
-                int localZ = Mathf.FloorToInt(Mathf.Min(a.Z, Mathf.Min(b.Z, c.Z))) - (chunk.Coord.Z * depth);
-                if ((uint)localX < width && (uint)localZ < depth)
-                {
-                    cellHeights[(localZ * width) + localX] = Math.Max(cellHeights[(localZ * width) + localX], a.Y);
-                }
+                child.Free();
             }
 
-            HeightMapShape3D collision = new()
+            foreach (IGrouping<(int MinY, int MaxY), VoxelVerticalRunProjection> interval in chunk.OccupiedRuns
+                .GroupBy(run => (MinY: run.MinYInclusive, MaxY: run.MaxYExclusive))
+                .OrderBy(group => group.Key.MinY)
+                .ThenBy(group => group.Key.MaxY))
             {
-                MapWidth = width + 1,
-                MapDepth = depth + 1
-            };
-            float[] heights = new float[(width + 1) * (depth + 1)];
-            for (int z = 0; z <= depth; z++)
-            {
-                for (int x = 0; x <= width; x++)
+                HashSet<(int X, int Z)> occupied = interval.Select(run => (run.X, run.Z)).ToHashSet();
+                HashSet<(int X, int Z)> consumed = new();
+                for (int localZ = 0; localZ < VoxelWorldModule.ChunkDepth; localZ++)
                 {
-                    heights[(z * (width + 1)) + x] = cellHeights[(Math.Min(z, depth - 1) * width) + Math.Min(x, width - 1)];
+                    for (int localX = 0; localX < VoxelWorldModule.ChunkWidth; localX++)
+                    {
+                        int worldX = (chunk.Coord.X * VoxelWorldModule.ChunkWidth) + localX;
+                        int worldZ = (chunk.Coord.Z * VoxelWorldModule.ChunkDepth) + localZ;
+                        if (!occupied.Contains((worldX, worldZ)) || consumed.Contains((worldX, worldZ)))
+                        {
+                            continue;
+                        }
+
+                        int spanWidth = 1;
+                        while (localX + spanWidth < VoxelWorldModule.ChunkWidth &&
+                            occupied.Contains((worldX + spanWidth, worldZ)) &&
+                            !consumed.Contains((worldX + spanWidth, worldZ)))
+                        {
+                            spanWidth++;
+                        }
+
+                        int spanDepth = 1;
+                        while (localZ + spanDepth < VoxelWorldModule.ChunkDepth &&
+                            Enumerable.Range(0, spanWidth).All(offset =>
+                                occupied.Contains((worldX + offset, worldZ + spanDepth)) &&
+                                !consumed.Contains((worldX + offset, worldZ + spanDepth))))
+                        {
+                            spanDepth++;
+                        }
+
+                        for (int consumedZ = 0; consumedZ < spanDepth; consumedZ++)
+                            for (int consumedX = 0; consumedX < spanWidth; consumedX++)
+                                consumed.Add((worldX + consumedX, worldZ + consumedZ));
+
+                        float height = interval.Key.MaxY - interval.Key.MinY;
+                        CollisionShape3D collider = new()
+                        {
+                            Name = $"VoxelRun_{worldX}_{interval.Key.MinY}_{worldZ}",
+                            Shape = new BoxShape3D { Size = new Vector3(spanWidth, height, spanDepth) },
+                            Position = new Vector3(worldX + (spanWidth * 0.5f), interval.Key.MinY + (height * 0.5f), worldZ + (spanDepth * 0.5f)),
+                            Disabled = !_active
+                        };
+                        body.AddChild(collider);
+                    }
                 }
             }
-            collision.MapData = heights;
-            return collision;
         }
 
-        private static Vector3 ToVector3(VoxelVertex vertex) => new(vertex.X, vertex.Y, vertex.Z);
+        private static int ToChunkCoordinate(int value, int size) => value >= 0 ? value / size : ((value + 1) / size) - 1;
 
     }
 }

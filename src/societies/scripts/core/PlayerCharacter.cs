@@ -112,6 +112,27 @@ namespace Societies.Core
             }
         }
 
+        public void SetFirstPersonBodyHidden(bool hidden)
+        {
+            MeshInstance3D? body = GetNodeOrNull<MeshInstance3D>("Body");
+            if (body != null)
+            {
+                body.Layers = hidden ? 2u : 1u;
+            }
+
+            if (_camera != null)
+            {
+                _camera.CullMask = hidden ? uint.MaxValue & ~2u : uint.MaxValue;
+            }
+        }
+
+        public float GetGroundingFootOffset()
+        {
+            CapsuleShape3D capsule = GetNode<CollisionShape3D>("Collision").Shape as CapsuleShape3D
+                ?? throw new InvalidOperationException("Player grounding capsule is unavailable.");
+            return capsule.Height * 0.5f;
+        }
+
         private void HandleMovement(float delta)
         {
             Vector2 input = Input.GetVector("move_left", "move_right", "move_forward", "move_backward");

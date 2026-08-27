@@ -78,6 +78,8 @@ namespace Societies.Core
 
             return new Vector3(horizontalPosition.X, VoxelWorldModule.MinY, horizontalPosition.Z);
         }
+
+        public VoxelSafeSpawn FindSafePlayerSpawn() => _world.FindSafePlayerSpawn();
     }
 
     public static class PrototypeWorldModels

@@ -3,6 +3,7 @@ using System;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 using System.Text.Json.Nodes;
 using Xunit;
@@ -157,6 +158,40 @@ namespace Societies.Core.Tests
             Assert.False(stale.Accepted);
             Assert.Equal(VoxelEditRejection.StaleRevision, stale.Rejection);
             Assert.Equal(inertHash, resumed.VoxelStateHash);
+        }
+
+        [Fact]
+        public void LegacyV1Snapshot_RecoversUnsafePlayerAndResavesWithCoherentIdentity()
+        {
+            PrototypeCatalogBundle bundle = LoadCatalogs();
+            PrototypeRuntimeSession source = CreateVoxelSession(bundle);
+            source.Initialize(8.0f);
+            PrototypeRuntimeSnapshot legacySnapshot = source.CaptureSnapshot(new Vector3(0.5f, 1.0f, 0.5f));
+            VoxelWorldModule legacyWorld = CreateLegacyV1World(legacySnapshot.WorldSeed);
+            legacySnapshot.VoxelWorld = legacyWorld.CaptureSnapshot();
+            legacySnapshot.WorldHash = legacyWorld.WorldIdentity;
+
+            PrototypeRuntimeSession restored = CreateVoxelSession(bundle);
+            restored.ApplySnapshot(PrototypePersistenceService.DeserializeSnapshot(
+                PrototypePersistenceService.SerializeSnapshot(legacySnapshot)));
+            const float footOffset = 0.55f;
+            Vector3 recovered = restored.ResolvePlayerPositionAfterSnapshot(legacySnapshot.PlayerPosition.ToVector3(), footOffset);
+            Assert.Equal(restored.GetVoxelSafePlayerSpawnPoint(), recovered);
+            Assert.True(recovered.Y - footOffset >= restored.ProjectToTerrainSurface(recovered).Y);
+
+            Vector3 grounded = new(recovered.X, restored.ProjectToTerrainSurface(recovered).Y + footOffset, recovered.Z);
+            Assert.Equal(grounded, restored.ResolvePlayerPositionAfterSnapshot(grounded, footOffset));
+
+            PrototypeRuntimeSnapshot resaved = restored.CaptureSnapshot(recovered);
+            Assert.Equal(VoxelWorldModule.LegacyGeneratorIdentity, resaved.VoxelWorld!.Generator);
+            Assert.Equal(legacyWorld.WorldIdentity, resaved.WorldHash);
+            Assert.Equal(legacyWorld.WorldIdentity, resaved.VoxelWorld.WorldIdentity);
+
+            PrototypeRuntimeSession reloaded = CreateVoxelSession(bundle);
+            reloaded.ApplySnapshot(PrototypePersistenceService.DeserializeSnapshot(
+                PrototypePersistenceService.SerializeSnapshot(resaved)));
+            Assert.Equal(restored.WorldHash, reloaded.WorldHash);
+            Assert.Equal(recovered, reloaded.ResolvePlayerPositionAfterSnapshot(resaved.PlayerPosition.ToVector3(), footOffset));
         }
 
         [Fact]
@@ -328,7 +363,7 @@ namespace Societies.Core.Tests
 
         private static VoxelCoord FindEditable(PrototypeRuntimeSession session, int x, int z)
         {
-            for (int y = 1; y < VoxelWorldModule.MaxYExclusive; y++)
+            for (int y = VoxelWorldModule.MaxYExclusive - 1; y >= 1; y--)
             {
                 VoxelCoord coord = new(x, y, z);
                 if (session.GetVoxelMaterial(coord) is VoxelMaterialId.Soil or VoxelMaterialId.Stone or VoxelMaterialId.Wood)
@@ -338,6 +373,16 @@ namespace Societies.Core.Tests
             }
 
             throw new InvalidOperationException("Voxel scenario unexpectedly has no editable material.");
+        }
+
+        private static VoxelWorldModule CreateLegacyV1World(int seed)
+        {
+            ConstructorInfo constructor = typeof(VoxelWorldModule).GetConstructor(
+                BindingFlags.Instance | BindingFlags.NonPublic,
+                binder: null,
+                new[] { typeof(int), typeof(string) },
+                modifiers: null) ?? throw new InvalidOperationException("Legacy voxel fixture constructor is unavailable.");
+            return (VoxelWorldModule)constructor.Invoke(new object[] { seed, VoxelWorldModule.LegacyGeneratorIdentity });
         }
 
         private static string ProjectionFingerprint(VoxelWorldProjection projection)

@@ -8,6 +8,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Threading.Tasks;
 
 namespace Societies.Tests
@@ -53,6 +54,7 @@ namespace Societies.Tests
             Test_RunOutputDirectory_IsolatedPerInvocation();
             await Test_MainScene_BootstrapSmoke();
             await Test_SnowGlobeVoxelFoundationSmoke();
+            Test_LegacyVoxelVerticalRunCollision();
             await Test_SnowGlobeVoxelPlayerGroundingRegression();
             await Test_MainScene_DepotContributionInputSmoke();
             await Test_MainScene_DirectiveInputSmoke();
@@ -219,11 +221,13 @@ namespace Societies.Tests
             GameManager? manager = null;
             try
             {
+                long startupTimestamp = System.Diagnostics.Stopwatch.GetTimestamp();
                 PackedScene packedScene = GD.Load<PackedScene>("res://scenes/snow_globe_voxel_foundation.tscn");
                 Assert(packedScene != null, "Voxel foundation scene failed to load");
                 manager = packedScene!.Instantiate<GameManager>();
                 AddChild(manager);
                 await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+                GD.Print($"SG_VX_HEADLESS_TIMING startup_ms={System.Diagnostics.Stopwatch.GetElapsedTime(startupTimestamp).TotalMilliseconds:F3}");
                 AssertVoxelPlayerSpawnClearance(manager, "initial scene setup");
                 await ToSignal(GetTree(), SceneTree.SignalName.PhysicsFrame);
 
@@ -233,11 +237,26 @@ namespace Societies.Tests
                 TerrainGenerator terrain = manager.GetNode<TerrainGenerator>("World/Systems/Terrain");
                 VoxelWorldPresenter presenter = manager.GetNode<VoxelWorldPresenter>("World/VoxelWorldPresenter");
                 Assert(!terrain.Visible && terrain.GetChildCount() == 0, "Heightfield presentation must be inactive in the voxel scenario");
+                PrototypeHud voxelHud = manager.GetNode<PrototypeHud>("UI");
+                Assert(voxelHud.IsVoxelFoundationMode && !voxelHud.HasVisibleLegacySettlementPanels,
+                    "Voxel foundation must hide unavailable legacy settlement HUD panels");
+                Assert(!voxelHud.HelpText.Contains("harvest", StringComparison.OrdinalIgnoreCase) &&
+                    !voxelHud.InteractionText.Contains("resource node", StringComparison.OrdinalIgnoreCase) &&
+                    !voxelHud.StatusText.Contains("Prototype V2", StringComparison.OrdinalIgnoreCase),
+                    "Voxel foundation HUD must not advertise unavailable legacy resource or settlement interactions");
+                PlayerCharacter routePlayer = manager.GetNode<PlayerCharacter>("World/Players/LocalPlayer");
+                MeshInstance3D routeBody = routePlayer.GetNode<MeshInstance3D>("Body");
+                Camera3D routeCamera = routePlayer.GetNode<Camera3D>("CameraPivot/Camera3D");
+                Assert(routeBody.Layers == 2u && (routeCamera.CullMask & 2u) == 0,
+                    "Voxel route must hide only the local first-person body from its camera");
                 Assert(presenter.GetChildCount() > 0, "Voxel presenter must publish chunk mesh and collision nodes");
                 StaticBody3D[] collisionBodies = presenter.GetChildren().OfType<StaticBody3D>().ToArray();
                 Assert(collisionBodies.Length == VoxelWorldModule.ChunkCount, "Voxel presenter must keep one physics body per finite chunk");
-                Assert(collisionBodies.All(body => body.GetChildren().OfType<CollisionShape3D>().Count() == 1 &&
-                    body.GetChild<CollisionShape3D>(0).Shape is HeightMapShape3D), "Each voxel chunk must use one bounded heightmap grounding shape");
+                Assert(collisionBodies.All(body => body.GetChildren().OfType<CollisionShape3D>().Count() > 0 &&
+                    body.GetChildren().OfType<CollisionShape3D>().Count() <=
+                    VoxelWorldModule.ChunkWidth * VoxelWorldModule.ChunkDepth &&
+                    body.GetChildren().OfType<CollisionShape3D>().All(shape => shape.Shape is BoxShape3D)),
+                    "Each voxel chunk must use bounded coalesced solid supports for rendered terrain cells");
                 Assert(presenter.HasLitVertexColorMaterial(), "Voxel meshes must publish normals and a vertex-color material");
 
                 PrototypeRuntimeSnapshot before = manager.CaptureSnapshot();
@@ -249,6 +268,10 @@ namespace Societies.Tests
                 PhysicsRayQueryParameters3D query = PhysicsRayQueryParameters3D.Create(
                     new Vector3(target.X + 0.5f, VoxelWorldModule.MaxYExclusive + 4.0f, target.Z + 0.5f),
                     new Vector3(target.X + 0.5f, VoxelWorldModule.MinY - 2.0f, target.Z + 0.5f));
+                query.Exclude = new Godot.Collections.Array<Rid>
+                {
+                    manager.GetNode<PlayerCharacter>("World/Players/LocalPlayer").GetRid()
+                };
                 Godot.Collections.Dictionary hit = presenter.GetWorld3D().DirectSpaceState.IntersectRay(query);
                 Assert(hit.Count > 0, "Outside ray must hit clockwise voxel collision geometry");
                 Node collider = hit["collider"].AsGodotObject() as Node ?? throw new Exception("Voxel ray collider missing");
@@ -269,6 +292,12 @@ namespace Societies.Tests
                 manager.SetScenario("balanced_basin");
                 await ToSignal(GetTree(), SceneTree.SignalName.PhysicsFrame);
                 Assert(!manager.UsesVoxelWorld && terrain.Visible, "Switching to a legacy scenario must restore heightfield presentation");
+                Assert(!voxelHud.IsVoxelFoundationMode && voxelHud.HasVisibleLegacySettlementPanels && voxelHud.IsInventoryVisible,
+                    "Heightfield transition must restore the pre-voxel HUD panel state");
+                Assert(routeBody.Layers == 1u && routeCamera.CullMask == uint.MaxValue,
+                    "Heightfield route must retain its normal player-body layer and camera culling contract");
+                voxelHud.ToggleInventory();
+                Assert(!voxelHud.IsInventoryVisible, "Heightfield inventory toggle precondition failed");
                 Assert(!presenter.HasActiveCollisions, "Voxel collision shapes remained enabled in heightfield mode");
                 Godot.Collections.Dictionary heightfieldHit = presenter.GetWorld3D().DirectSpaceState.IntersectRay(query);
                 if (heightfieldHit.Count > 0)
@@ -280,6 +309,13 @@ namespace Societies.Tests
                 await ToSignal(GetTree(), SceneTree.SignalName.PhysicsFrame);
                 presenter = manager.GetNode<VoxelWorldPresenter>("World/VoxelWorldPresenter");
                 Assert(manager.UsesVoxelWorld && presenter.Visible && presenter.HasLitVertexColorMaterial(), "Voxel presenter lifecycle failed after model switch");
+                Assert(!voxelHud.HasVisibleLegacySettlementPanels, "Voxel re-entry must hide heightfield panels");
+                manager.SetScenario("balanced_basin");
+                await ToSignal(GetTree(), SceneTree.SignalName.PhysicsFrame);
+                Assert(!voxelHud.IsInventoryVisible && voxelHud.HasVisibleLegacySettlementPanels,
+                    "Voxel-to-heightfield transition must preserve the user's hidden inventory toggle");
+                manager.SetScenario("snow_globe_voxel");
+                await ToSignal(GetTree(), SceneTree.SignalName.PhysicsFrame);
 
                 Pass(nameof(Test_SnowGlobeVoxelFoundationSmoke));
             }
@@ -299,7 +335,7 @@ namespace Societies.Tests
 
         private static VoxelCoord FindEditableVoxel(VoxelWorldModule world, int x, int z)
         {
-            for (int y = 1; y < VoxelWorldModule.MaxYExclusive; y++)
+            for (int y = VoxelWorldModule.MaxYExclusive - 1; y >= 1; y--)
             {
                 VoxelCoord coord = new(x, y, z);
                 if (world.GetMaterial(coord) is VoxelMaterialId.Soil or VoxelMaterialId.Stone or VoxelMaterialId.Wood)
@@ -309,6 +345,44 @@ namespace Societies.Tests
             }
 
             throw new InvalidOperationException("Voxel smoke column has no editable cell.");
+        }
+
+        private void Test_LegacyVoxelVerticalRunCollision()
+        {
+            VoxelWorldPresenter? presenter = null;
+            try
+            {
+                ConstructorInfo constructor = typeof(VoxelWorldModule).GetConstructor(BindingFlags.Instance | BindingFlags.NonPublic, null, new[] { typeof(int), typeof(string) }, null)
+                    ?? throw new Exception("Legacy voxel constructor unavailable");
+                MethodInfo executeLegacy = typeof(VoxelWorldModule).GetMethod("ExecuteValidated", BindingFlags.Instance | BindingFlags.NonPublic)
+                    ?? throw new Exception("Legacy voxel replay seam unavailable");
+                VoxelWorldModule world = (VoxelWorldModule)constructor.Invoke(new object[] { 260827, VoxelWorldModule.LegacyGeneratorIdentity });
+                VoxelCoord top = FindEditableVoxel(world, 0, 0);
+                VoxelCoord interior = top with { Y = top.Y - 1 };
+                VoxelCoord floating = top with { Y = top.Y + 2 };
+                Assert(((VoxelEditResult)executeLegacy.Invoke(world, new object[] { new VoxelEditCommand { ActorId = "legacy", Tick = 0, ExpectedWorldRevision = 0, Kind = VoxelEditKind.Remove, Coord = interior, ExpectedBefore = world.GetMaterial(interior), After = VoxelMaterialId.Air }, true })!).Accepted,
+                    "Legacy interior removal fixture failed");
+                Assert(((VoxelEditResult)executeLegacy.Invoke(world, new object[] { new VoxelEditCommand { ActorId = "legacy", Tick = 1, ExpectedWorldRevision = 1, Kind = VoxelEditKind.Place, Coord = floating, ExpectedBefore = VoxelMaterialId.Air, After = VoxelMaterialId.Wood }, true })!).Accepted,
+                    "Legacy floating placement fixture failed");
+
+                VoxelChunkGeometryProjection chunk = world.CaptureProjection(new[] { new VoxelChunkCoord(0, 0, 0) }).Chunks.Single();
+                presenter = new VoxelWorldPresenter { Name = "LegacyRunPresenter" };
+                AddChild(presenter);
+                presenter.Apply(new VoxelWorldProjection(world.WorldRevision, new[] { chunk }, Array.Empty<VoxelWalkableSpan>()));
+                StaticBody3D body = presenter.GetChildren().OfType<StaticBody3D>().Single();
+                (float Min, float Max)[] actual = body.GetChildren().OfType<CollisionShape3D>()
+                    .Where(shape => shape.Shape is BoxShape3D box &&
+                        0.5f >= shape.Position.X - box.Size.X * 0.5f && 0.5f <= shape.Position.X + box.Size.X * 0.5f &&
+                        0.5f >= shape.Position.Z - box.Size.Z * 0.5f && 0.5f <= shape.Position.Z + box.Size.Z * 0.5f)
+                    .Select(shape => (shape.Position.Y - ((BoxShape3D)shape.Shape).Size.Y * 0.5f, shape.Position.Y + ((BoxShape3D)shape.Shape).Size.Y * 0.5f))
+                    .OrderBy(run => run.Item1).ToArray();
+                (float Min, float Max)[] expected = chunk.OccupiedRuns.Where(run => run.X == 0 && run.Z == 0)
+                    .Select(run => ((float)run.MinYInclusive, (float)run.MaxYExclusive)).OrderBy(run => run.Item1).ToArray();
+                Assert(actual.SequenceEqual(expected), "Legacy occupied vertical runs did not map exactly to collision intervals");
+                Pass(nameof(Test_LegacyVoxelVerticalRunCollision));
+            }
+            catch (Exception ex) { Fail(nameof(Test_LegacyVoxelVerticalRunCollision), ex); }
+            finally { presenter?.Free(); }
         }
 
         private async Task Test_SnowGlobeVoxelPlayerGroundingRegression()
@@ -326,65 +400,113 @@ namespace Societies.Tests
 
                 PrototypeRuntimeSnapshot snapshot = manager.CaptureSnapshot();
                 VoxelWorldModule world = VoxelWorldModule.Restore(snapshot.VoxelWorld!);
+                VoxelSafeSpawn initialSafeSpawn = world.FindSafePlayerSpawn();
+                AssertVoxelSafeSpawn(manager, world, initialSafeSpawn, "initial scene setup");
                 await AssertVoxelPlayerGrounded(manager, "initial scene setup", 180);
 
                 VoxelCoord target = FindExposedEditableTopVoxel(world);
                 VoxelChunkCoord targetChunk = GetVoxelChunk(target);
                 VoxelWorldPresenter presenter = manager.GetNode<VoxelWorldPresenter>("World/VoxelWorldPresenter");
-                HeightMapShape3D beforeEditCollision = presenter.GetGroundingCollision(targetChunk) ??
-                    throw new Exception("Target chunk has no heightmap grounding collision");
-                float[] beforeEditMap = beforeEditCollision.MapData;
-                int targetSampleIndex = GetHeightMapSampleIndex(target);
+                float beforeEditCollisionSurface = presenter.GetGroundingCollisionSurface(target) ??
+                    throw new Exception("Target column has no solid grounding collision");
                 float restoredSurfaceY = GetVoxelSurfaceY(world, GetVoxelColumnCenter(target));
                 PositionPlayerAboveVoxelColumn(manager, target, restoredSurfaceY);
 
                 Assert(manager.ApplyVoxelPlayerIntent(VoxelEditKind.Remove, target).Accepted, "Voxel remove must rebuild player collision safely");
                 await ToSignal(GetTree(), SceneTree.SignalName.PhysicsFrame);
-                HeightMapShape3D removedCollision = presenter.GetGroundingCollision(targetChunk) ??
-                    throw new Exception("Target chunk lost heightmap grounding collision after remove");
-                float[] removedMap = removedCollision.MapData;
+                float removedCollisionSurface = presenter.GetGroundingCollisionSurface(target) ??
+                    throw new Exception("Target column lost solid grounding collision after remove");
                 PrototypeRuntimeSnapshot removedSnapshot = manager.CaptureSnapshot();
                 VoxelWorldModule removedWorld = VoxelWorldModule.Restore(removedSnapshot.VoxelWorld!);
                 float removedSurfaceY = GetVoxelSurfaceY(removedWorld, GetVoxelColumnCenter(target));
                 Assert(removedSurfaceY < restoredSurfaceY, "Removing the exposed top voxel must lower the authoritative support surface");
-                Assert(!ReferenceEquals(beforeEditCollision, removedCollision) && beforeEditMap[targetSampleIndex] != removedMap[targetSampleIndex],
-                    "Voxel remove must replace the affected chunk heightmap sample");
+                Assert(removedCollisionSurface == removedSurfaceY && removedCollisionSurface < beforeEditCollisionSurface,
+                    "Voxel remove must replace and lower the affected solid collision column");
                 await AssertVoxelPlayerGroundedAtColumn(manager, target, removedSurfaceY, "dirty collision rebuild after remove", 90);
 
                 Assert(manager.ApplyVoxelPlayerIntent(VoxelEditKind.Place, target).Accepted, "Voxel place must rebuild player collision safely");
                 await ToSignal(GetTree(), SceneTree.SignalName.PhysicsFrame);
-                HeightMapShape3D restoredCollision = presenter.GetGroundingCollision(targetChunk) ??
-                    throw new Exception("Target chunk lost heightmap grounding collision after place");
-                float[] restoredMap = restoredCollision.MapData;
+                float restoredCollisionSurface = presenter.GetGroundingCollisionSurface(target) ??
+                    throw new Exception("Target column lost solid grounding collision after place");
                 PrototypeRuntimeSnapshot restoredSnapshot = manager.CaptureSnapshot();
                 VoxelWorldModule restoredWorld = VoxelWorldModule.Restore(restoredSnapshot.VoxelWorld!);
                 float placedSurfaceY = GetVoxelSurfaceY(restoredWorld, GetVoxelColumnCenter(target));
                 Assert(placedSurfaceY == restoredSurfaceY, "Replacing the exposed voxel must restore the authoritative support surface");
-                Assert(!ReferenceEquals(removedCollision, restoredCollision) && restoredMap[targetSampleIndex] == beforeEditMap[targetSampleIndex],
-                    "Voxel place must replace and restore the affected chunk heightmap sample");
-                float restoredHeightMapSample = restoredMap[targetSampleIndex];
+                Assert(restoredCollisionSurface == placedSurfaceY && restoredCollisionSurface == beforeEditCollisionSurface,
+                    "Voxel place must replace and restore the affected solid collision column");
+                float restoredCollisionHeight = restoredCollisionSurface;
                 PositionPlayerAboveVoxelColumn(manager, target, placedSurfaceY);
                 await AssertVoxelPlayerGroundedAtColumn(manager, target, placedSurfaceY, "dirty collision rebuild after place", 90);
+                PlayerCharacter groundedPlayer = manager.GetNode<PlayerCharacter>("World/Players/LocalPlayer");
+                Vector3 groundedBeforeSave = groundedPlayer.Position;
 
                 Assert(!string.IsNullOrWhiteSpace(manager.SaveSnapshotToDisk()), "Voxel snapshot save failed");
+                string savedFeedback = manager.GetNode<PrototypeHud>("UI").StatusText;
+                manager.StepSimulationTicks(1);
+                Assert(manager.GetNode<PrototypeHud>("UI").StatusText == savedFeedback && savedFeedback.Contains("Saved snapshot", StringComparison.Ordinal),
+                    "Voxel HUD refresh must preserve transient save feedback");
                 Assert(manager.LoadLatestSnapshotFromDisk(), "Voxel snapshot load failed");
-                HeightMapShape3D loadedCollision = presenter.GetGroundingCollision(targetChunk) ??
-                    throw new Exception("Target chunk lost heightmap grounding collision after snapshot load");
+                Assert(groundedPlayer.Position.IsEqualApprox(groundedBeforeSave),
+                    $"Grounded voxel player position changed across load: before={groundedBeforeSave}, after={groundedPlayer.Position}");
+                float loadedCollisionSurface = presenter.GetGroundingCollisionSurface(target) ??
+                    throw new Exception("Target column lost solid grounding collision after snapshot load");
                 PrototypeRuntimeSnapshot loadedSnapshot = manager.CaptureSnapshot();
                 VoxelWorldModule loadedWorld = VoxelWorldModule.Restore(loadedSnapshot.VoxelWorld!);
                 float loadedSurfaceY = GetVoxelSurfaceY(loadedWorld, GetVoxelColumnCenter(target));
-                Assert(loadedSurfaceY == placedSurfaceY && loadedCollision.MapData[targetSampleIndex] == restoredHeightMapSample,
-                    "Snapshot load must restore the edited column's authoritative surface and heightmap sample");
+                Assert(loadedSurfaceY == placedSurfaceY && loadedCollisionSurface == restoredCollisionHeight,
+                    "Snapshot load must restore the edited column's authoritative surface and collision height");
+                Assert(loadedWorld.FindSafePlayerSpawn() == initialSafeSpawn,
+                    "Save/load must preserve the deterministic safe voxel spawn selection");
+                int baselineBodies = presenter.GetChildren().OfType<StaticBody3D>().Count();
+                int baselineShapes = presenter.GetChildren().OfType<StaticBody3D>().SelectMany(body => body.GetChildren().OfType<CollisionShape3D>()).Count();
+                int? removedShapeCount = null;
+                int maximumShapeCount = baselineShapes;
+                long dirtySoakTimestamp = System.Diagnostics.Stopwatch.GetTimestamp();
+                for (int cycle = 0; cycle < 16; cycle++)
+                {
+                    Assert(manager.ApplyVoxelPlayerIntent(VoxelEditKind.Remove, target).Accepted, $"Dirty-edit soak remove {cycle} failed");
+                    await ToSignal(GetTree(), SceneTree.SignalName.PhysicsFrame);
+                    int afterRemoveShapes = presenter.GetChildren().OfType<StaticBody3D>().SelectMany(body => body.GetChildren().OfType<CollisionShape3D>()).Count();
+                    removedShapeCount ??= afterRemoveShapes;
+                    Assert(afterRemoveShapes == removedShapeCount.Value, $"Dirty-edit remove leaked collision shapes at cycle {cycle}");
+                    maximumShapeCount = Math.Max(maximumShapeCount, afterRemoveShapes);
+                    Assert(manager.ApplyVoxelPlayerIntent(VoxelEditKind.Place, target).Accepted, $"Dirty-edit soak place {cycle} failed");
+                    await ToSignal(GetTree(), SceneTree.SignalName.PhysicsFrame);
+                    int afterPlaceShapes = presenter.GetChildren().OfType<StaticBody3D>().SelectMany(body => body.GetChildren().OfType<CollisionShape3D>()).Count();
+                    Assert(afterPlaceShapes == baselineShapes, $"Dirty-edit place leaked collision shapes at cycle {cycle}");
+                    Assert(presenter.GetChildren().OfType<StaticBody3D>().Count() == baselineBodies, $"Dirty-edit soak leaked collision bodies at cycle {cycle}");
+                    maximumShapeCount = Math.Max(maximumShapeCount, afterPlaceShapes);
+                }
+                double dirtySoakMilliseconds = System.Diagnostics.Stopwatch.GetElapsedTime(dirtySoakTimestamp).TotalMilliseconds;
+                GD.Print($"SG_VX_HEADLESS_TIMING dirty_edit_soak_ms={dirtySoakMilliseconds:F3} cycles=16 bodies={baselineBodies} baseline_shapes={baselineShapes} max_shapes={maximumShapeCount}");
                 PositionPlayerAboveVoxelColumn(manager, target, loadedSurfaceY);
                 await AssertVoxelPlayerGroundedAtColumn(manager, target, loadedSurfaceY, "snapshot load", 90);
 
                 manager.ResetPrototypeRun();
+                Assert(manager.GetNode<PrototypeHud>("UI").StatusText == "Prototype run reset",
+                    "Voxel HUD refresh must preserve transient reset feedback");
                 AssertVoxelPlayerSpawnClearance(manager, "reset");
+                AssertVoxelSafeSpawn(manager, VoxelWorldModule.Restore(manager.CaptureSnapshot().VoxelWorld!), initialSafeSpawn, "reset");
                 await AssertVoxelPlayerGrounded(manager, "reset", 90);
+                VoxelWorldModule resetWorld = VoxelWorldModule.Restore(manager.CaptureSnapshot().VoxelWorld!);
+                VoxelCoord edge = FindTopVoxel(resetWorld, VoxelWorldModule.MinX, 0);
+                float edgeSurface = GetVoxelSurfaceY(resetWorld, GetVoxelColumnCenter(edge));
+                PositionPlayerAboveVoxelColumn(manager, edge, edgeSurface);
+                await AssertVoxelPlayerGroundedAtColumn(manager, edge, edgeSurface, "finite edge landing", 90);
+                float edgeStartX = groundedPlayer.GlobalPosition.X;
+                SendSyntheticAction("move_right", true);
+                for (int frame = 0; frame < 4; frame++) await ToSignal(GetTree(), SceneTree.SignalName.PhysicsFrame);
+                SendSyntheticAction("move_right", false);
+                await ToSignal(GetTree(), SceneTree.SignalName.PhysicsFrame);
+                Assert(groundedPlayer.GlobalPosition.X > edgeStartX && groundedPlayer.GlobalPosition.X < VoxelWorldModule.MaxXExclusive,
+                    "Finite-edge controller input did not move inward within voxel bounds");
+                Assert(GetPlayerFootY(groundedPlayer) >= GetVoxelSurfaceY(resetWorld, groundedPlayer.GlobalPosition) - 0.05f,
+                    "Finite-edge controller traversal crossed below voxel support");
                 manager.SetScenario("balanced_basin");
                 await ToSignal(GetTree(), SceneTree.SignalName.PhysicsFrame);
                 manager.SetScenario("snow_globe_voxel");
                 AssertVoxelPlayerSpawnClearance(manager, "heightfield to voxel lifecycle");
+                AssertVoxelSafeSpawn(manager, VoxelWorldModule.Restore(manager.CaptureSnapshot().VoxelWorld!), initialSafeSpawn, "heightfield to voxel lifecycle");
                 await AssertVoxelPlayerGrounded(manager, "heightfield to voxel lifecycle", 90);
                 Pass(nameof(Test_SnowGlobeVoxelPlayerGroundingRegression));
             }
@@ -442,17 +564,24 @@ namespace Societies.Tests
             throw new InvalidOperationException("Voxel world has no safe exposed editable top cell.");
         }
 
+        private static VoxelCoord FindTopVoxel(VoxelWorldModule world, int x, int z)
+        {
+            int surfaceY = Mathf.FloorToInt(GetVoxelSurfaceY(world, new Vector3(x + 0.5f, 0.0f, z + 0.5f)));
+            VoxelCoord result = new(x, surfaceY - 1, z);
+            return world.GetMaterial(result) is VoxelMaterialId.Soil or VoxelMaterialId.Stone or VoxelMaterialId.Wood
+                ? result
+                : throw new InvalidOperationException("Requested finite-edge column has no editable top voxel.");
+        }
+
+        private static void SendSyntheticAction(string action, bool pressed)
+        {
+            Input.ParseInputEvent(new InputEventAction { Action = action, Pressed = pressed, Strength = pressed ? 1.0f : 0.0f });
+        }
+
         private static VoxelChunkCoord GetVoxelChunk(VoxelCoord coord) => new(
             ToChunkCoordinate(coord.X, VoxelWorldModule.ChunkWidth),
             0,
             ToChunkCoordinate(coord.Z, VoxelWorldModule.ChunkDepth));
-
-        private static int GetHeightMapSampleIndex(VoxelCoord coord)
-        {
-            int localX = coord.X - (ToChunkCoordinate(coord.X, VoxelWorldModule.ChunkWidth) * VoxelWorldModule.ChunkWidth);
-            int localZ = coord.Z - (ToChunkCoordinate(coord.Z, VoxelWorldModule.ChunkDepth) * VoxelWorldModule.ChunkDepth);
-            return (localZ * (VoxelWorldModule.ChunkWidth + 1)) + localX;
-        }
 
         private static int ToChunkCoordinate(int value, int size) => value >= 0 ? value / size : ((value + 1) / size) - 1;
 
@@ -470,7 +599,7 @@ namespace Societies.Tests
             PlayerCharacter player = manager.GetNode<PlayerCharacter>("World/Players/LocalPlayer");
             PrototypeRuntimeSnapshot snapshot = manager.CaptureSnapshot();
             VoxelWorldModule world = VoxelWorldModule.Restore(snapshot.VoxelWorld!);
-            Vector3 spawnColumn = snapshot.SettlementAnchorPosition.ToVector3() + new Vector3(0.0f, 0.0f, -8.0f);
+            Vector3 spawnColumn = new(player.GlobalPosition.X, 0.0f, player.GlobalPosition.Z);
             float surfaceY = GetVoxelSurfaceY(world, spawnColumn);
             for (int frame = 0; frame < physicsFrames; frame++)
             {
@@ -478,8 +607,8 @@ namespace Societies.Tests
             }
 
             Assert(
-                player.GlobalPosition.Y >= surfaceY,
-                $"Voxel player crossed below its authoritative spawn surface during {phase}: playerY={player.GlobalPosition.Y:F3}, surfaceY={surfaceY:F3}");
+                GetPlayerFootY(player) >= surfaceY - 0.05f,
+                $"Voxel player crossed below its authoritative spawn surface during {phase}: playerFootY={GetPlayerFootY(player):F3}, surfaceY={surfaceY:F3}");
         }
 
         private async Task AssertVoxelPlayerGroundedAtColumn(
@@ -496,8 +625,8 @@ namespace Societies.Tests
             }
 
             Assert(
-                player.GlobalPosition.Y >= surfaceY,
-                $"Voxel player crossed below the edited column's authoritative surface during {phase}: playerY={player.GlobalPosition.Y:F3}, surfaceY={surfaceY:F3}, column={column.X},{column.Z}");
+                GetPlayerFootY(player) >= surfaceY - 0.05f,
+                $"Voxel player crossed below the edited column's authoritative surface during {phase}: playerFootY={GetPlayerFootY(player):F3}, surfaceY={surfaceY:F3}, column={column.X},{column.Z}");
         }
 
         private void AssertVoxelPlayerSpawnClearance(GameManager manager, string phase)
@@ -505,11 +634,36 @@ namespace Societies.Tests
             PlayerCharacter player = manager.GetNode<PlayerCharacter>("World/Players/LocalPlayer");
             PrototypeRuntimeSnapshot snapshot = manager.CaptureSnapshot();
             VoxelWorldModule world = VoxelWorldModule.Restore(snapshot.VoxelWorld!);
-            Vector3 spawnColumn = snapshot.SettlementAnchorPosition.ToVector3() + new Vector3(0.0f, 0.0f, -8.0f);
+            Vector3 spawnColumn = new(player.GlobalPosition.X, 0.0f, player.GlobalPosition.Z);
             float surfaceY = GetVoxelSurfaceY(world, spawnColumn);
             Assert(
-                player.GlobalPosition.Y >= surfaceY + 1.5f,
-                $"Voxel player spawned without clearance during {phase}: playerY={player.GlobalPosition.Y:F3}, surfaceY={surfaceY:F3}");
+                GetPlayerFootY(player) >= surfaceY + 0.5f,
+                $"Voxel player spawned without clearance during {phase}: playerFootY={GetPlayerFootY(player):F3}, surfaceY={surfaceY:F3}");
+        }
+
+        private void AssertVoxelSafeSpawn(GameManager manager, VoxelWorldModule world, VoxelSafeSpawn expected, string phase)
+        {
+            PlayerCharacter player = manager.GetNode<PlayerCharacter>("World/Players/LocalPlayer");
+            VoxelSafeSpawn actual = world.FindSafePlayerSpawn();
+            Assert(actual == expected, $"Voxel safe spawn drifted during {phase}");
+            Assert(Mathf.IsEqualApprox(player.GlobalPosition.X, actual.X + 0.5f) && Mathf.IsEqualApprox(player.GlobalPosition.Z, actual.Z + 0.5f),
+                $"Player did not spawn at the authoritative safe voxel cell during {phase}");
+            for (int offsetX = -2; offsetX <= 2; offsetX++)
+            {
+                for (int offsetZ = -2; offsetZ <= 2; offsetZ++)
+                {
+                    float neighborSurfaceY = GetVoxelSurfaceY(world, new Vector3(actual.X + offsetX + 0.5f, 0.0f, actual.Z + offsetZ + 0.5f));
+                    Assert(Mathf.Abs(neighborSurfaceY - actual.SurfaceY) <= 1.0f,
+                        $"Voxel safe spawn neighborhood became occluded during {phase}");
+                }
+            }
+        }
+
+        private static float GetPlayerFootY(PlayerCharacter player)
+        {
+            CapsuleShape3D capsule = player.GetNode<CollisionShape3D>("Collision").Shape as CapsuleShape3D
+                ?? throw new Exception("Local player capsule is missing");
+            return player.GlobalPosition.Y - (capsule.Height * 0.5f);
         }
 
         private async Task Test_MainScene_DepotContributionInputSmoke()

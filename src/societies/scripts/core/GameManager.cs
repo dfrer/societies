@@ -808,7 +808,8 @@ namespace Societies.Core
             if (_player != null)
             {
                 _player.Velocity = Vector3.Zero;
-                _player.Position = artifacts.Snapshot.PlayerPosition.ToVector3();
+                _player.Position = _runtimeSession.ResolvePlayerPositionAfterSnapshot(
+                    artifacts.Snapshot.PlayerPosition.ToVector3(), _player.GetGroundingFootOffset());
             }
 
             BindPlayerToRuntime();
@@ -957,7 +958,10 @@ namespace Societies.Core
                 _entitiesRoot,
                 _environmentRoot,
                 _terrain);
-            _scenePresenter.EnsureSettlementHub();
+            if (_scenario?.WorldModel != PrototypeWorldModels.Voxel)
+            {
+                _scenePresenter.EnsureSettlementHub();
+            }
 
             _voxelPresenter = _worldRoot?.GetNodeOrNull<VoxelWorldPresenter>("VoxelWorldPresenter");
             if (_scenario?.WorldModel == PrototypeWorldModels.Voxel && _voxelPresenter == null)
@@ -1094,6 +1098,7 @@ namespace Societies.Core
             {
                 _player.Terrain = _runtimeSession?.UsesVoxelWorld == true ? null : _terrain;
                 _player.ContributionDepotPosition = CentralDepotPosition;
+                _player.SetFirstPersonBodyHidden(_runtimeSession?.UsesVoxelWorld == true);
                 _player.SetControlEnabled(_cameraMode == CameraMode.Player);
             }
 
@@ -1231,7 +1236,7 @@ namespace Societies.Core
 
         private void UpdateSettlementPresentationFromSession()
         {
-            if (_scenePresenter == null || _runtimeSession == null)
+            if (_scenePresenter == null || _runtimeSession == null || _runtimeSession.UsesVoxelWorld)
             {
                 return;
             }
@@ -1255,7 +1260,7 @@ namespace Societies.Core
 
         private void UpdateSettlementPresentationFromSessionOrFallback()
         {
-            if (_scenePresenter == null)
+            if (_scenePresenter == null || _runtimeSession?.UsesVoxelWorld == true)
             {
                 return;
             }
@@ -1299,6 +1304,15 @@ namespace Societies.Core
             {
                 return;
             }
+
+            if (_runtimeSession?.UsesVoxelWorld == true)
+            {
+                _hud.SetVoxelFoundationMode(true);
+                UpdateSettlementPresentationFromSessionOrFallback();
+                return;
+            }
+
+            _hud.SetVoxelFoundationMode(false);
 
             string timeText = _runtimeSession != null
                 ? FormatTime(_runtimeSession.CurrentHour)
@@ -1362,6 +1376,7 @@ namespace Societies.Core
 
             if (_runtimeSession.UsesVoxelWorld)
             {
+                _scenePresenter.ClearForVoxelWorld();
                 _terrain.ClearWorldPresentation();
                 _terrain.Visible = false;
                 if (_voxelPresenter == null || !IsInstanceValid(_voxelPresenter))
@@ -1411,7 +1426,7 @@ namespace Societies.Core
             Vector3 desiredPosition = _runtimeSession.SettlementAnchorPosition + new Vector3(0.0f, 0.0f, -8.0f);
             if (_runtimeSession.UsesVoxelWorld)
             {
-                return _runtimeSession.ProjectToTerrainSurface(desiredPosition) + new Vector3(0.0f, 2.0f, 0.0f);
+                return _runtimeSession.GetVoxelSafePlayerSpawnPoint();
             }
 
             if (_terrain == null || _runtimeSession.World == null)

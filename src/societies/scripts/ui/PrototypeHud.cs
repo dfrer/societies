@@ -42,12 +42,17 @@ namespace Societies.UI
         private PrototypeSettlementDirective _directive = PrototypeSettlementDirective.Neutral;
         private PrototypeSettlementClassification _classification = PrototypeSettlementClassification.Strained;
         private PrototypeCrisisState? _crisis;
+        private bool _heightfieldInventoryVisible;
+        private bool _heightfieldSettlementVisible;
+        private bool _heightfieldInspectorVisible;
+        private bool _heightfieldCrisisVisible;
         private static readonly Dictionary<(PrototypeHudCue Cue, bool Emphasized), StyleBoxFlat> CardStyleCache = new();
 
         public string DebugText => _debugLabel?.Text ?? string.Empty;
         public string InventoryText => _inventoryLabel?.Text ?? string.Empty;
         public string CraftingText => _craftingLabel?.Text ?? string.Empty;
         public string StatusText => _statusLabel?.Text ?? string.Empty;
+        public string InteractionText => _interactionLabel?.Text ?? string.Empty;
         public string HelpText => _helpLabel?.Text ?? string.Empty;
         public string SettlementText => _settlementLabel?.Text ?? string.Empty;
         public string WorldText => _worldLabel?.Text ?? string.Empty;
@@ -55,6 +60,9 @@ namespace Societies.UI
         public string CrisisText => _crisisLabel?.Text ?? string.Empty;
         public bool IsInventoryVisible => _inventoryPanel?.Visible ?? false;
         public bool IsDebugVisible => _debugPanel?.Visible ?? false;
+        public bool IsVoxelFoundationMode { get; private set; }
+        public bool HasVisibleLegacySettlementPanels => (_inventoryPanel?.Visible ?? false) ||
+            (_settlementPanel?.Visible ?? false) || (_inspectorPanel?.Visible ?? false) || (_crisisPanel?.Visible ?? false);
         public PrototypeHudLayout Layout { get; private set; } = PrototypeHudLayout.Calculate(1920.0f, 1080.0f);
         public IReadOnlyDictionary<string, PrototypeHudBounds> LayoutBounds => Layout.Bounds;
         public PrototypeHudPresentationState PresentationState { get; private set; }
@@ -68,7 +76,7 @@ namespace Societies.UI
 
         public void ToggleInventory()
         {
-            if (_inventoryPanel != null)
+            if (!IsVoxelFoundationMode && _inventoryPanel != null)
             {
                 _inventoryPanel.Visible = !_inventoryPanel.Visible;
             }
@@ -166,6 +174,39 @@ namespace Societies.UI
             {
                 _debugPanel.Visible = visible;
             }
+        }
+
+        /// <summary>Keeps the voxel-only foundation free of unavailable settlement/resource guidance.</summary>
+        public void SetVoxelFoundationMode(bool enabled)
+        {
+            if (enabled == IsVoxelFoundationMode)
+            {
+                return;
+            }
+
+            if (enabled)
+            {
+                _heightfieldSettlementVisible = _settlementPanel?.Visible ?? false;
+                _heightfieldInspectorVisible = _inspectorPanel?.Visible ?? false;
+                _heightfieldCrisisVisible = _crisisPanel?.Visible ?? false;
+                _heightfieldInventoryVisible = _inventoryPanel?.Visible ?? false;
+                IsVoxelFoundationMode = true;
+                if (_settlementPanel != null) _settlementPanel.Visible = false;
+                if (_inspectorPanel != null) _inspectorPanel.Visible = false;
+                if (_crisisPanel != null) _crisisPanel.Visible = false;
+                if (_inventoryPanel != null) _inventoryPanel.Visible = false;
+                SetHelpText("WASD move  Shift sprint  Space jump  Esc mouse\nLeft click remove voxel  Right click place Wood  F6 save  F7 reset  F9 load");
+                SetInteractionText("Edit the visible voxel terrain: left removes, right places Wood");
+                SetStatusText("Snow Globe voxel foundation: terrain-only deterministic session");
+                SetWorldText("World: voxel_v1 | terrain edit enabled | settlement presentation disabled");
+                return;
+            }
+
+            IsVoxelFoundationMode = false;
+            if (_settlementPanel != null) _settlementPanel.Visible = _heightfieldSettlementVisible;
+            if (_inspectorPanel != null) _inspectorPanel.Visible = _heightfieldInspectorVisible;
+            if (_crisisPanel != null) _crisisPanel.Visible = _heightfieldCrisisVisible;
+            if (_inventoryPanel != null) _inventoryPanel.Visible = _heightfieldInventoryVisible;
         }
 
         public void SetPresentationState(
