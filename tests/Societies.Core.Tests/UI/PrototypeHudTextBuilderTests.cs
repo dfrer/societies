@@ -9,6 +9,58 @@ namespace Societies.Core.Tests
     public class PrototypeHudTextBuilderTests
     {
         [Fact]
+        public void BuildExperienceGoalText_NormalPlayKeepsOneNeedAndOneNextActionInThePrimaryCard()
+        {
+            PrototypeExperienceProfileDefinition profile = new()
+            {
+                Id = "field_board_fixture",
+                Title = "Marsh Settlement",
+                PrimaryNeed = "Keep the hearth supplied.",
+                ResourceApproach = "Harvest reeds and bring them to the central depot.",
+                ImmediatePressure = "Fuel is low.",
+                WorldCue = "Wetter ground; dense reeds.",
+                DisplayOrder = 1
+            };
+            PrototypeWorkerState citizen = new()
+            {
+                WorkerId = "citizen-001",
+                DisplayName = "Citizen 1"
+            };
+            PrototypeCitizenInterest interest = new(
+                citizen.WorkerId,
+                PrototypeCivicPolicy.ProtectWetland,
+                PrototypeCitizenInterestPosition.Uncommitted,
+                PrototypeCitizenInterestReason.FutureReedSupply,
+                "forager",
+                PrototypeCitizenNutritionBand.Secure,
+                PrototypeCitizenFatigueBand.Rested,
+                "fixture");
+
+            string neutral = PrototypeHudTextBuilder.BuildExperienceGoalText(
+                profile,
+                PrototypeCivicPolicy.Neutral,
+                null,
+                citizen,
+                interest);
+            string selected = PrototypeHudTextBuilder.BuildExperienceGoalText(
+                profile,
+                PrototypeCivicPolicy.ProtectWetland,
+                new PrototypeWetlandSnapshot { WetlandHealthBand = "healthy", WetlandHealth = 75 },
+                citizen,
+                interest);
+
+            Assert.Equal(5, neutral.Split('\n').Length);
+            Assert.Contains("Need: Keep the hearth supplied", neutral);
+            Assert.Contains("Next: Harvest reeds and bring them to the central depot", neutral);
+            Assert.Contains("World: Wetter ground; dense reeds", neutral);
+            Assert.Contains("Citizen 1: Protect; future reeds.", neutral);
+            Assert.DoesNotContain("Choice:", neutral);
+            Assert.Equal(5, selected.Split('\n').Length);
+            Assert.Contains("Result: wetland protected; reeds limited.", selected);
+            Assert.Contains("Wetland: healthy 75/100.", selected);
+        }
+
+        [Fact]
         public void BuildHelpText_IncludesSnapshotControls()
         {
             string helpText = PrototypeHudTextBuilder.BuildHelpText();

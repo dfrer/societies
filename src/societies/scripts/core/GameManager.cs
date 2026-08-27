@@ -231,6 +231,13 @@ namespace Societies.Core
 
             switch (keyEvent.Keycode)
             {
+                case Key.Escape:
+                    if (_hud?.HandleEscapeForActiveSurface() != true)
+                    {
+                        Input.MouseMode = ResolveOrdinaryEscapeMouseMode(Input.MouseMode);
+                    }
+                    GetViewport().SetInputAsHandled();
+                    break;
                 case Key.F1:
                     _hud?.ToggleDiagnostics();
                     GetViewport().SetInputAsHandled();
@@ -731,6 +738,11 @@ namespace Societies.Core
                 UpdateHud();
             }
         }
+
+        internal static Input.MouseModeEnum ResolveOrdinaryEscapeMouseMode(Input.MouseModeEnum currentMode) =>
+            currentMode == Input.MouseModeEnum.Captured
+                ? Input.MouseModeEnum.Visible
+                : Input.MouseModeEnum.Captured;
 
         /// <summary>
         /// Selects one of the catalog-owned ER-01 starts. This is a scenario restart, not a
@@ -1367,7 +1379,8 @@ namespace Societies.Core
                 _runtimeSession?.Wetland,
                 GetSelectedCitizenInterest(),
                 GetCurrentCivicPolicy(),
-                _runtimeSession?.TotalContributedQuantity ?? 0);
+                _runtimeSession?.TotalContributedQuantity ?? 0,
+                HasCarriedRawResource());
             _hud.SetGoalText(PrototypeHudTextBuilder.BuildExperienceGoalText(
                 _scenario?.ExperienceProfile,
                 GetCurrentCivicPolicy(),
@@ -1735,6 +1748,18 @@ namespace Societies.Core
         private PrototypeCivicPolicy GetCurrentCivicPolicy() => _runtimeSession == null
             ? PrototypeCivicPolicy.Neutral
             : PrototypeCivicPolicyCatalog.ParseId(_runtimeSession.CivicPolicy.PolicyId);
+
+        private bool HasCarriedRawResource()
+        {
+            if (_catalogs == null)
+            {
+                return false;
+            }
+
+            return _catalogs.Resources.Resources.Any(resource =>
+                string.Equals(resource.Category, "raw", StringComparison.OrdinalIgnoreCase) &&
+                Inventory.GetCount(resource.Id) > 0);
+        }
 
         private void ResetCivicCognitionAction()
         {

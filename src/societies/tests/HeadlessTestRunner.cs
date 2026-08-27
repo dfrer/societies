@@ -228,13 +228,28 @@ namespace Societies.Tests
                 PrototypeHud hud = manager.GetNodeOrNull<PrototypeHud>("UI") ?? throw new Exception("PrototypeHud missing");
                 PrototypeSettlementHub hub = manager.GetNodeOrNull<PrototypeSettlementHub>("World/Environment/SettlementHub") ??
                     throw new Exception("Settlement hub missing");
+                Panel helpPanel = hud.GetNode<Panel>("HudRoot/HelpPanel");
+                Panel debugPanel = hud.GetNode<Panel>("HudRoot/DebugPanel");
+                Label helpLabel = helpPanel.GetChildren().OfType<Label>().Single();
+                Label interactionLabel = hud.GetNode<Panel>("HudRoot/InteractionPanel").GetChildren().OfType<Label>().Single();
+                Label decisionRail = hud.GetNode<Label>("HudRoot/CrisisPanel/DecisionRail");
+                Button protectChoice = hud.GetNode<Button>("HudRoot/CrisisPanel/CivicChoice_ProtectWetland");
+                Button drawDownChoice = hud.GetNode<Button>("HudRoot/CrisisPanel/CivicChoice_DrawDownWetland");
+                Button[] profileButtons = helpPanel.GetChildren().OfType<Button>().ToArray();
+                bool isHeadlessDisplay = string.Equals(DisplayServer.GetName(), "headless", StringComparison.OrdinalIgnoreCase);
                 manager.SetProcess(false);
 
                 Assert(manager.CurrentScenarioId == "wetland_builder", "ER-01 should start in its first curated profile");
                 Assert(manager.ExperienceProfiles.Count == 2, "ER-01 should expose exactly two catalog-owned profiles");
-                Assert(hud.ProfileChoiceCount == 2 && hud.HasCivicChoiceSurface, "Normal play should expose profile and civic choice surfaces");
-                Assert(!hud.IsCivicChoiceAvailable, "The normal-play policy surface should wait for an authoritative contribution");
-                Assert(!hud.IsDiagnosticsVisible, "Dense diagnostics should be opt-in during normal play");
+                Assert(profileButtons.Length == 2, "ER-01 should retain exactly two profile controls and one civic choice surface");
+                Assert(profileButtons.All(button => !button.Visible), "Profile selection should stay out of the normal-play hierarchy");
+                Assert(!protectChoice.Visible && !drawDownChoice.Visible && protectChoice.Disabled && drawDownChoice.Disabled,
+                    "The normal-play policy surface should wait for an authoritative contribution");
+                Assert(!debugPanel.Visible, "Dense diagnostics should be opt-in during normal play");
+                Assert(!helpPanel.Visible && !helpLabel.Visible,
+                    "Normal play should hide the entire help card rather than leave an empty strip");
+                Assert(decisionRail.Text == "GATHER / DEPOT / DECIDE",
+                    "Pre-harvest presentation must not invent gather completion");
                 Assert(hud.GoalText.Contains("Next:", StringComparison.Ordinal) &&
                     hud.GoalText.Contains("World: wetter ground; dense reeds", StringComparison.OrdinalIgnoreCase) &&
                     hud.GoalText.Contains("Citizen 1:", StringComparison.Ordinal),
@@ -249,10 +264,13 @@ namespace Societies.Tests
                 focusProbe.Position = new Vector3(10000.0f, 10000.0f, 10000.0f);
                 AddChild(focusProbe);
                 await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
-                focusProbe.SetFocused(true);
+                focusProbe.SetFocusReadiness(ResourceFocusReadiness.Ready);
                 Assert(focusProbe.IsFocused &&
-                    focusProbe.GetNode<Label3D>("ResourceLabel").Text.Contains("Press E", StringComparison.Ordinal),
+                    focusProbe.GetNode<Label3D>("ResourceLabel").Text.Contains("[E] Harvest", StringComparison.Ordinal),
                     "An in-tree focused harvestable should expose its presentation-only focus state");
+                focusProbe.ApplyProjection(0);
+                Assert(focusProbe.GetNode<Label3D>("ResourceLabel").Text.Contains("Depleted", StringComparison.Ordinal),
+                    "A depleted projection should override focused readiness in the world label");
                 focusProbe.Free();
 
                 PlayerCharacter player = manager.GetNodeOrNull<PlayerCharacter>("World/Players/LocalPlayer") ??
@@ -275,7 +293,9 @@ namespace Societies.Tests
                 interactionRay.AddException(player);
                 Vector3 hitboxCenterOffset = harvestHitbox.GlobalPosition - harvestTarget.GlobalPosition;
                 Vector3 rayForward = -interactionRay.GlobalTransform.Basis.Z.Normalized();
-                harvestTarget.GlobalPosition = interactionRay.GlobalPosition + (rayForward * 3.0f) - hitboxCenterOffset;
+                int unitsBeforeOutOfRangeInput = manager.CaptureSnapshot().Resources
+                    .Single(resource => resource.SiteId == depletedSiteId).UnitsRemaining;
+                harvestTarget.GlobalPosition = interactionRay.GlobalPosition + (rayForward * 5.5f) - hitboxCenterOffset;
                 await ToSignal(GetTree(), SceneTree.SignalName.PhysicsFrame);
                 interactionRay.TargetPosition = interactionRay.ToLocal(harvestHitbox.GlobalPosition);
                 interactionRay.ForceRaycastUpdate();
@@ -284,8 +304,25 @@ namespace Societies.Tests
                 Assert(rayTarget == harvestTarget,
                     $"The real interaction ray should hit the isolated authoritative resource presentation; collider={(rayCollider as Node)?.Name ?? "none"}");
                 player._PhysicsProcess(0.0);
-                Assert(player.GetInteractionText().Contains(depletedDisplayName, StringComparison.Ordinal),
-                    "Player targeting should focus the in-world harvestable through its ray");
+                manager._Process(0.0);
+                Assert(player.GetInteractionText().Contains("move closer", StringComparison.OrdinalIgnoreCase) &&
+                    interactionLabel.Text.Contains("move closer", StringComparison.OrdinalIgnoreCase) &&
+                    harvestTarget.GetNode<Label3D>("ResourceLabel").Text.Contains("Move closer", StringComparison.Ordinal),
+                    "A real target beyond 4.5m but within the 7m ray should agree across world label and HUD");
+                player.ProcessInteractionInput(779);
+                Assert(manager.CaptureSnapshot().Resources.Single(resource => resource.SiteId == depletedSiteId).UnitsRemaining == unitsBeforeOutOfRangeInput,
+                    "Out-of-range interaction input must be a no-op before runtime harvest authority");
+
+                harvestTarget.GlobalPosition = interactionRay.GlobalPosition + (rayForward * 3.0f) - hitboxCenterOffset;
+                await ToSignal(GetTree(), SceneTree.SignalName.PhysicsFrame);
+                interactionRay.TargetPosition = interactionRay.ToLocal(harvestHitbox.GlobalPosition);
+                player._PhysicsProcess(0.0);
+                manager._Process(0.0);
+                Assert(player.GetInteractionText().Contains(depletedDisplayName, StringComparison.Ordinal) &&
+                    player.GetInteractionText().Contains("[E] Harvest", StringComparison.Ordinal) &&
+                    interactionLabel.Text.Contains("[E] Harvest", StringComparison.Ordinal) &&
+                    harvestTarget.GetNode<Label3D>("ResourceLabel").Text.Contains("[E] Harvest", StringComparison.Ordinal),
+                    "A real target at 3m should agree across world label, HUD, and player input readiness");
                 for (int unit = 0; unit < unitsToDeplete; unit++)
                 {
                     player.ProcessInteractionInput((ulong)(780 + unit));
@@ -298,35 +335,107 @@ namespace Societies.Tests
                 Assert(!postDepletionInteraction.Contains(depletedDisplayName, StringComparison.Ordinal) &&
                     !player.GetInteractionText().Contains(depletedDisplayName, StringComparison.Ordinal),
                     "The next targeting and prompt paths must not retain or call a freed resource node");
+                Assert(hud.StatusText.Contains("site depleted", StringComparison.Ordinal),
+                    "Authoritative harvest feedback should make depletion readable after the focused node is removed");
+                Assert(decisionRail.Text == "GATHER ✓ / DEPOT / DECIDE",
+                    "An authoritative carried raw-resource count should complete only the gather phase");
 
                 player.GlobalPosition = manager.CentralDepotPosition;
                 interactionRay.Enabled = false;
                 player._PhysicsProcess(0.0);
                 Assert(player.IsDepotFocused && hub.IsContributionFocused,
                     "Central-depot focus should flow through player proximity and the focus event");
+                Assert(player.GetInteractionText().Contains("CENTRAL DEPOT", StringComparison.Ordinal) &&
+                    player.GetInteractionText().Contains("[E] Contribute", StringComparison.Ordinal),
+                    "Depot focus should name the action and its control in the contextual prompt");
                 player.ProcessInteractionInput(811);
                 Assert(hud.StatusText.Contains("Contributed", StringComparison.Ordinal),
                     "Depot feedback should come from the authoritative contribution result");
-                Assert(hud.IsCivicChoiceAvailable, "Authoritative contribution should enable the player-facing civic choice");
+                Assert(protectChoice.Visible && drawDownChoice.Visible &&
+                    Input.MouseMode == Input.MouseModeEnum.Visible &&
+                    decisionRail.Text == "GATHER ✓ / DEPOT ✓ / DECIDE — click or [4]/[5]",
+                    "Contribution should release the cursor and make the clickable/shortcut choice discoverable");
+                InputEventKey escape = new() { Keycode = Key.Escape, Pressed = true };
+                player._Input(escape);
+                Assert(protectChoice.Visible && drawDownChoice.Visible && Input.MouseMode == Input.MouseModeEnum.Visible,
+                    "Player input must leave active-surface Escape ownership to GameManager");
+                manager._UnhandledInput(escape);
+                Assert(!protectChoice.Visible && !drawDownChoice.Visible &&
+                    PrototypeHud.ResolvePointerMode(debugPanel.Visible, decisionSurfaceActive: false) == Input.MouseModeEnum.Captured &&
+                    (isHeadlessDisplay || Input.MouseMode == Input.MouseModeEnum.Captured),
+                    $"Escape should provide an explicit close path back to captured play without selecting; " +
+                    $"protectVisible={protectChoice.Visible}; drawVisible={drawDownChoice.Visible}; " +
+                    $"mouseMode={Input.MouseMode}; display={DisplayServer.GetName()}");
+                player._Input(escape);
+                Assert(!protectChoice.Visible && !drawDownChoice.Visible &&
+                    PrototypeHud.ResolvePointerMode(debugPanel.Visible, decisionSurfaceActive: false) == Input.MouseModeEnum.Captured &&
+                    (isHeadlessDisplay || Input.MouseMode == Input.MouseModeEnum.Captured),
+                    "Player input must not toggle ordinary mouse mode before GameManager reopens the surface");
+                manager._UnhandledInput(escape);
+                Assert(protectChoice.Visible && drawDownChoice.Visible && Input.MouseMode == Input.MouseModeEnum.Visible,
+                    "Escape should reopen the pending clickable choice without affecting existing civic shortcuts");
 
-                hud.RequestCivicPolicy(PrototypeCivicPolicy.ProtectWetland);
-                Assert(manager.CaptureSnapshot().CivicPolicy?.PolicyId == "protect_wetland", "HUD policy intent must route through GameManager into the runtime command");
+                protectChoice.EmitSignal(Button.SignalName.Pressed);
+                Assert(manager.CaptureSnapshot().CivicPolicy?.PolicyId == "protect_wetland",
+                    "Button.Pressed must emit intent through GameManager into the runtime command");
+                Assert(!protectChoice.Visible && !drawDownChoice.Visible &&
+                    PrototypeHud.ResolvePointerMode(debugPanel.Visible, decisionSurfaceActive: false) == Input.MouseModeEnum.Captured &&
+                    (isHeadlessDisplay || Input.MouseMode == Input.MouseModeEnum.Captured),
+                    "A successful authoritative civic selection should restore captured play");
+                Assert(
+                    GameManager.ResolveOrdinaryEscapeMouseMode(Input.MouseModeEnum.Captured) == Input.MouseModeEnum.Visible &&
+                    GameManager.ResolveOrdinaryEscapeMouseMode(Input.MouseModeEnum.Visible) == Input.MouseModeEnum.Captured,
+                    "GameManager should own both directions of ordinary Escape mouse-mode resolution");
+                manager._UnhandledInput(escape);
+                Assert(isHeadlessDisplay || Input.MouseMode == Input.MouseModeEnum.Visible,
+                    "Escape should retain the ordinary mouse-release behavior when no HUD pointer surface is active");
+                manager._UnhandledInput(escape);
+                Assert(isHeadlessDisplay || Input.MouseMode == Input.MouseModeEnum.Captured,
+                    "A second ordinary Escape should restore captured play");
                 Assert((hud.GoalText.Contains("supports Protect", StringComparison.Ordinal) ||
-                        hud.GoalText.Contains("opposes Protect", StringComparison.Ordinal)) &&
+                         hud.GoalText.Contains("opposes Protect", StringComparison.Ordinal)) &&
                     hud.GoalText.Contains("Wetland:", StringComparison.Ordinal),
                     "Normal play should show the citizen response reason and wetland consequence after the choice");
+                Assert(decisionRail.Text == "GATHER ✓ / DEPOT ✓ / DECIDE ✓",
+                    "The normal-play field rail should reflect the authoritative contribution and civic choice");
                 hud.RequestExperienceProfile("empty_stores");
                 Assert(manager.CurrentScenarioId == "empty_stores" && manager.ExperienceProfiles.Count == 2,
                     "Profile selection must recreate the catalog-owned contrasting scenario");
                 Assert(hud.GoalText.Contains("World: drier ground; sparse reeds", StringComparison.OrdinalIgnoreCase),
                     "The contrasting normal-play profile should expose its world-derived cue");
 
+                manager.Inventory.AddItem("logs", 1);
+                player.GlobalPosition = manager.CentralDepotPosition;
+                player.ProcessInteractionInput(812);
+                Assert(protectChoice.Visible && Input.MouseMode == Input.MouseModeEnum.Visible,
+                    "A second authoritative contribution should reopen the pending decision surface");
+                InputEventKey f1 = new() { Keycode = Key.F1, Pressed = true };
+                manager._UnhandledInput(f1);
+                Assert(debugPanel.Visible && Input.MouseMode == Input.MouseModeEnum.Visible,
+                    "F1 should keep the diagnostics pointer surface usable while a decision is pending");
+                Button enabledProfileChoice = helpPanel.GetChildren().OfType<Button>()
+                    .Single(button => button.Visible && !button.Disabled);
+                enabledProfileChoice.EmitSignal(Button.SignalName.Pressed);
+                Assert(manager.CurrentScenarioId == "wetland_builder" && debugPanel.Visible &&
+                    Input.MouseMode == Input.MouseModeEnum.Visible,
+                    "An actual profile-button reset must not recapture while diagnostics remains active");
+                manager._UnhandledInput(f1);
+                Assert(!debugPanel.Visible &&
+                    PrototypeHud.ResolvePointerMode(diagnosticsVisible: false, decisionSurfaceActive: false) == Input.MouseModeEnum.Captured &&
+                    (isHeadlessDisplay || Input.MouseMode == Input.MouseModeEnum.Captured),
+                    "Closing diagnostics after the reset should return to captured play");
+
                 hud.ApplyResponsiveLayout(new Vector2(1280.0f, 720.0f));
                 await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
-                AssertNormalHudControlLayout(hud, 1280.0f, 720.0f);
+                AssertHudControlLayout(hud, 1280.0f, 720.0f, diagnostics: false);
 
-                hud.SetDiagnosticsVisible(true);
-                Assert(hud.IsDiagnosticsVisible && hud.IsDebugVisible, "Diagnostic metrics should remain optional");
+                manager._UnhandledInput(f1);
+                Button[] refreshedProfileButtons = helpPanel.GetChildren().OfType<Button>().ToArray();
+                Assert(debugPanel.Visible &&
+                    refreshedProfileButtons.Length == 2 && refreshedProfileButtons.All(button => button.Visible) &&
+                    helpPanel.Visible && !helpLabel.Visible && Input.MouseMode == Input.MouseModeEnum.Visible,
+                    "Diagnostic metrics and profile selection should remain opt-in");
+                AssertHudControlLayout(hud, 1280.0f, 720.0f, diagnostics: true);
                 Pass(nameof(Test_MainScene_ExperienceRecoverySmoke));
             }
             catch (Exception ex)
@@ -343,21 +452,29 @@ namespace Societies.Tests
             }
         }
 
-        private void AssertNormalHudControlLayout(PrototypeHud hud, float width, float height)
+        private void AssertHudControlLayout(PrototypeHud hud, float width, float height, bool diagnostics)
         {
-            Button[] profileButtons = hud.GetNode<Control>("HudRoot/HelpPanel")
+            Panel helpPanel = hud.GetNode<Panel>("HudRoot/HelpPanel");
+            Label helpLabel = helpPanel.GetNode<Label>("HelpLabel");
+            Button[] profileButtons = helpPanel
                 .GetChildren()
                 .OfType<Button>()
                 .OrderBy(button => button.AnchorLeft)
                 .ToArray();
             Assert(profileButtons.Length == 2,
-                "Normal HUD layout should include exactly two live experience-profile controls");
-            Control[] controls = new Control[]
-            {
-                hud.GetNode<Control>("HudRoot/CrisisPanel/SettlementGoal"),
-                hud.GetNode<Control>("HudRoot/CrisisPanel/CivicChoice_ProtectWetland"),
-                hud.GetNode<Control>("HudRoot/CrisisPanel/CivicChoice_DrawDownWetland")
-            }.Concat(profileButtons).ToArray();
+                "HUD layout should retain exactly two live experience-profile controls");
+            Assert(helpPanel.Visible == diagnostics && !helpLabel.Visible,
+                $"Help nodes should have coherent visibility in diagnostics={diagnostics}");
+            Assert(profileButtons.All(button => button.Visible == diagnostics),
+                $"Profile controls should be visible only in diagnostics={diagnostics}");
+
+            Control[] controls = diagnostics
+                ? profileButtons
+                : hud.GetNode<Control>("HudRoot/CrisisPanel")
+                    .GetChildren()
+                    .OfType<Control>()
+                    .Where(control => control.Visible)
+                    .ToArray();
             Rect2[] rects = controls.Select(control => control.GetGlobalRect()).ToArray();
             foreach ((Control control, Rect2 rect) in controls.Zip(rects))
             {

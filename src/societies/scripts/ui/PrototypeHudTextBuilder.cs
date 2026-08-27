@@ -33,8 +33,7 @@ namespace Societies.UI
                        $"Need: {TrimSentence(profile.PrimaryNeed)}\n" +
                        $"Next: {TrimSentence(profile.ResourceApproach)}\n" +
                        $"World: {TrimSentence(profile.WorldCue)}\n" +
-                       $"{citizenReading}\n" +
-                       "Choice: preserve / take more reeds.";
+                       citizenReading;
             }
 
             string policyReading = civicPolicy == PrototypeCivicPolicy.ProtectWetland
@@ -46,8 +45,9 @@ namespace Societies.UI
             string responseReading = BuildNormalCitizenCivicText(citizen, citizenInterest, civicPolicy);
             return $"{profile.Title}\n" +
                    $"Need: {TrimSentence(profile.ImmediatePressure)}\n" +
-                   $"World: {TrimSentence(profile.WorldCue)}\n" +
-                   $"{responseReading}\n{policyReading}\n{wetlandReading}";
+                   $"{responseReading}\n" +
+                   $"{policyReading}\n" +
+                   wetlandReading;
         }
 
         /// <summary>One read-only citizen interest before the choice and its stance afterward.</summary>

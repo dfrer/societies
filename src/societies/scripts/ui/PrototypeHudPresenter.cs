@@ -50,7 +50,8 @@ namespace Societies.UI
             PrototypeWetlandSnapshot? wetland = null,
             PrototypeCitizenInterest? selectedCitizenInterest = null,
             PrototypeCivicPolicy selectedCivicPolicy = PrototypeCivicPolicy.Neutral,
-            long totalContributedQuantity = 0)
+            long totalContributedQuantity = 0,
+            bool hasCarriedRawResource = false)
         {
             hud.SetDebugText(
                 PrototypeHudTextBuilder.BuildDebugText(
@@ -96,7 +97,8 @@ namespace Societies.UI
             hud.SetInteractionText(interactionText);
             hud.SetCivicChoiceState(
                 selectedCivicPolicy,
-                selectedCivicPolicy != PrototypeCivicPolicy.Neutral || totalContributedQuantity > 0);
+                totalContributedQuantity,
+                hasCarriedRawResource);
             hud.SetPresentationState(directive, settlementClassification, crisis);
         }
     }

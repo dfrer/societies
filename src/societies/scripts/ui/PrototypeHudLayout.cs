@@ -1,3 +1,4 @@
+using Societies.Core;
 using Societies.Simulation;
 using System;
 using System.Collections.Generic;
@@ -43,6 +44,7 @@ namespace Societies.UI
         public const string Debug = "Debug";
         public const string Crosshair = "Crosshair";
         public const string Goal = "Goal";
+        public const string DecisionRail = "DecisionRail";
         public const string ProtectChoice = "ProtectChoice";
         public const string DrawDownChoice = "DrawDownChoice";
         public const string MarshProfileChoice = "MarshProfileChoice";
@@ -58,7 +60,8 @@ namespace Societies.UI
             float halfHelpWidth = help.Width * 0.5f;
             NormalControlBounds = new Dictionary<string, PrototypeHudBounds>(StringComparer.Ordinal)
             {
-                [Goal] = new(crisis.X + 12.0f, crisis.Y + 10.0f, crisis.Width - 24.0f, crisis.Height - 104.0f),
+                [Goal] = new(crisis.X + 12.0f, crisis.Y + 10.0f, crisis.Width - 24.0f, crisis.Height - 130.0f),
+                [DecisionRail] = new(crisis.X + 12.0f, crisis.Bottom - 116.0f, crisis.Width - 24.0f, 22.0f),
                 [ProtectChoice] = new(crisis.X + 12.0f, crisis.Bottom - 88.0f, crisis.Width - 24.0f, 36.0f),
                 [DrawDownChoice] = new(crisis.X + 12.0f, crisis.Bottom - 46.0f, crisis.Width - 24.0f, 36.0f),
                 [MarshProfileChoice] = new(help.X + 8.0f, help.Y + 8.0f, halfHelpWidth - 11.0f, help.Height - 16.0f),
@@ -150,8 +153,8 @@ namespace Societies.UI
             float leftGap = compact ? 0.0f : gap;
             float leftWidth = Clamp(width * 0.34f, 500.0f, 540.0f);
             float rightWidth = Clamp(width * 0.26f, 320.0f, 380.0f);
-            // The compact normal goal reserves six short 17px lines above its two civic buttons.
-            // Smaller compact gaps preserve the existing inspector text budget below it.
+            // The compact normal goal reserves its short need reading above the decision rail
+            // and two civic buttons. Smaller compact gaps preserve the diagnostics below it.
             float crisisHeight = compact ? 248.0f : 250.0f;
             float inspectorHeight = compact ? 190.0f : 230.0f;
             // Compact world text retains two conservative 15px lines (50px inner height),
@@ -251,11 +254,43 @@ namespace Societies.UI
         DepletedInteraction
     }
 
+    /// <summary>
+    /// Immutable presentation reading derived from authoritative inventory, contribution, and
+    /// selected-policy projections. It grants no command or progression authority.
+    /// </summary>
+    public readonly record struct PrototypeHudLoopProgress(
+        bool HasCarriedRawResource,
+        bool HasContributed,
+        bool HasSelectedPolicy)
+    {
+        public static PrototypeHudLoopProgress Create(
+            bool hasCarriedRawResource,
+            long totalContributedQuantity,
+            PrototypeCivicPolicy selectedPolicy) =>
+            new(
+                hasCarriedRawResource,
+                totalContributedQuantity > 0,
+                selectedPolicy != PrototypeCivicPolicy.Neutral);
+
+        public string DecisionRailText
+        {
+            get
+            {
+                string gather = HasCarriedRawResource || HasContributed ? "GATHER ✓" : "GATHER";
+                string depot = HasContributed ? "DEPOT ✓" : "DEPOT";
+                string decide = HasSelectedPolicy ? "DECIDE ✓" : "DECIDE";
+                string instruction = HasContributed && !HasSelectedPolicy ? " — click or [4]/[5]" : string.Empty;
+                return $"{gather} / {depot} / {decide}{instruction}";
+            }
+        }
+    }
+
     /// <summary>Pure state-to-cue mapping used by the live HUD and focused tests.</summary>
     public readonly record struct PrototypeHudPresentationState(
         PrototypeHudCue DirectiveCue,
         PrototypeHudCue SettlementCue,
-        PrototypeHudCue InteractionCue)
+        PrototypeHudCue InteractionCue,
+        PrototypeHudCue StatusCue)
     {
         public static PrototypeHudPresentationState Create(
             PrototypeSettlementDirective directive,
@@ -278,21 +313,28 @@ namespace Societies.UI
                 _ when classification == PrototypeSettlementClassification.Stable => PrototypeHudCue.Stable,
                 _ => directiveCue
             };
-            string feedback = $"{statusText} {interactionText}";
-            PrototypeHudCue interactionCue = Contains(feedback, "contributed")
-                ? PrototypeHudCue.ContributionSuccess
-                : Contains(feedback, "depleted")
-                    ? PrototypeHudCue.DepletedInteraction
-                : Contains(feedback, "unavailable") || Contains(feedback, "cannot") ||
-                  Contains(feedback, "rejected") || Contains(feedback, "no eligible") ||
-                  Contains(feedback, "no resources to contribute") || Contains(feedback, "nothing to contribute") ||
-                  Contains(feedback, "move closer") || Contains(feedback, "out of range")
+            PrototypeHudCue interactionCue = Contains(interactionText, "depleted")
+                ? PrototypeHudCue.DepletedInteraction
+                : IsBlocked(interactionText)
                     ? PrototypeHudCue.BlockedInteraction
                     : directiveCue;
-            return new PrototypeHudPresentationState(directiveCue, settlementCue, interactionCue);
+            PrototypeHudCue statusCue = Contains(statusText, "contributed")
+                ? PrototypeHudCue.ContributionSuccess
+                : Contains(statusText, "depleted")
+                    ? PrototypeHudCue.DepletedInteraction
+                    : IsBlocked(statusText)
+                        ? PrototypeHudCue.BlockedInteraction
+                        : directiveCue;
+            return new PrototypeHudPresentationState(directiveCue, settlementCue, interactionCue, statusCue);
         }
 
-        private static bool Contains(string value, string fragment) =>
-            value.Contains(fragment, StringComparison.OrdinalIgnoreCase);
+        private static bool IsBlocked(string? value) =>
+            Contains(value, "unavailable") || Contains(value, "cannot") ||
+            Contains(value, "rejected") || Contains(value, "no eligible") ||
+            Contains(value, "no resources to contribute") || Contains(value, "nothing to contribute") ||
+            Contains(value, "move closer") || Contains(value, "out of range");
+
+        private static bool Contains(string? value, string fragment) =>
+            value != null && value.Contains(fragment, StringComparison.OrdinalIgnoreCase);
     }
 }

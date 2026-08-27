@@ -30,6 +30,7 @@ namespace Societies.UI
         private Label? _inspectorLabel;
         private Label? _crisisLabel;
         private Label? _goalLabel;
+        private Label? _decisionRailLabel;
         private Label? _crosshairLabel;
         private Button? _protectWetlandButton;
         private Button? _drawDownWetlandButton;
@@ -51,6 +52,8 @@ namespace Societies.UI
         private PrototypeCrisisState? _crisis;
         private PrototypeCivicPolicy _selectedCivicPolicy;
         private bool _civicChoiceAvailable;
+        private bool _decisionSurfaceOpen;
+        private PrototypeHudLoopProgress _loopProgress;
         private bool _diagnosticsVisible;
         private static readonly Dictionary<(PrototypeHudCue Cue, bool Emphasized), StyleBoxFlat> CardStyleCache = new();
 
@@ -189,13 +192,31 @@ namespace Societies.UI
             }
         }
 
-        public void SetCivicChoiceState(PrototypeCivicPolicy selectedCivicPolicy, bool choiceAvailable)
+        public void SetCivicChoiceState(
+            PrototypeCivicPolicy selectedCivicPolicy,
+            long totalContributedQuantity,
+            bool hasCarriedRawResource)
         {
+            bool wasUnresolved = HasUnresolvedCivicChoice;
             _selectedCivicPolicy = selectedCivicPolicy;
-            _civicChoiceAvailable = choiceAvailable;
-            if (_protectWetlandButton != null) _protectWetlandButton.Disabled = !choiceAvailable;
-            if (_drawDownWetlandButton != null) _drawDownWetlandButton.Disabled = !choiceAvailable;
+            _loopProgress = PrototypeHudLoopProgress.Create(
+                hasCarriedRawResource,
+                totalContributedQuantity,
+                selectedCivicPolicy);
+            _civicChoiceAvailable = _loopProgress.HasContributed;
+            if (!wasUnresolved && HasUnresolvedCivicChoice)
+            {
+                _decisionSurfaceOpen = true;
+            }
+            else if (!HasUnresolvedCivicChoice)
+            {
+                _decisionSurfaceOpen = false;
+            }
+            if (_protectWetlandButton != null) _protectWetlandButton.Disabled = !HasUnresolvedCivicChoice;
+            if (_drawDownWetlandButton != null) _drawDownWetlandButton.Disabled = !HasUnresolvedCivicChoice;
+            ApplyDecisionRailState();
             ApplyDiagnosticsVisibility();
+            ApplyPointerMode();
         }
 
         /// <summary>
@@ -257,6 +278,30 @@ namespace Societies.UI
         {
             _diagnosticsVisible = visible;
             ApplyDiagnosticsVisibility();
+            ApplyPointerMode();
+        }
+
+        /// <summary>
+        /// Handles the explicit close/reopen path for the currently active pointer surface.
+        /// Returns false when Escape should retain the player's ordinary mouse-mode behavior.
+        /// </summary>
+        public bool HandleEscapeForActiveSurface()
+        {
+            if (_diagnosticsVisible)
+            {
+                SetDiagnosticsVisible(false);
+                return true;
+            }
+
+            if (!HasUnresolvedCivicChoice)
+            {
+                return false;
+            }
+
+            _decisionSurfaceOpen = !_decisionSurfaceOpen;
+            ApplyDiagnosticsVisibility();
+            ApplyPointerMode();
+            return true;
         }
 
         public void RequestCivicPolicy(PrototypeCivicPolicy policy) => CivicPolicyRequested?.Invoke(policy);
@@ -319,14 +364,30 @@ namespace Societies.UI
             _statusPanel = CreateCard("StatusPanel", 18, out _statusLabel);
             root.AddChild(_statusPanel);
             _helpPanel = CreateCard("HelpPanel", 15, out _helpLabel);
+            _helpLabel.Name = "HelpLabel";
             root.AddChild(_helpPanel);
             _crisisPanel = CreateCard("CrisisPanel", 16, out _crisisLabel);
             root.AddChild(_crisisPanel);
             _goalLabel = CreateLabel(17);
             _goalLabel.Name = "SettlementGoal";
-            _goalLabel.OffsetBottom = -94.0f;
+            _goalLabel.OffsetBottom = -120.0f;
             _crisisPanel.AddChild(_goalLabel);
-            _protectWetlandButton = CreateCivicChoiceButton("Protect wetland", PrototypeCivicPolicy.ProtectWetland);
+            _decisionRailLabel = new Label
+            {
+                Name = "DecisionRail",
+                MouseFilter = Control.MouseFilterEnum.Ignore,
+                AnchorTop = 1.0f,
+                AnchorBottom = 1.0f,
+                OffsetLeft = 12.0f,
+                OffsetTop = -116.0f,
+                OffsetRight = -12.0f,
+                OffsetBottom = -94.0f,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center
+            };
+            _decisionRailLabel.AddThemeFontSizeOverride("font_size", 13);
+            _crisisPanel.AddChild(_decisionRailLabel);
+            _protectWetlandButton = CreateCivicChoiceButton("[4] Protect wetland", PrototypeCivicPolicy.ProtectWetland);
             _protectWetlandButton.AnchorTop = 1.0f;
             _protectWetlandButton.AnchorBottom = 1.0f;
             _protectWetlandButton.OffsetLeft = 12.0f;
@@ -334,7 +395,7 @@ namespace Societies.UI
             _protectWetlandButton.OffsetRight = -12.0f;
             _protectWetlandButton.OffsetBottom = -52.0f;
             _crisisPanel.AddChild(_protectWetlandButton);
-            _drawDownWetlandButton = CreateCivicChoiceButton("Draw down wetland", PrototypeCivicPolicy.DrawDownWetland);
+            _drawDownWetlandButton = CreateCivicChoiceButton("[5] Draw down wetland", PrototypeCivicPolicy.DrawDownWetland);
             _drawDownWetlandButton.AnchorTop = 1.0f;
             _drawDownWetlandButton.AnchorBottom = 1.0f;
             _drawDownWetlandButton.OffsetLeft = 12.0f;
@@ -396,12 +457,13 @@ namespace Societies.UI
             ApplyCardStyle(_crisisPanel, PresentationState.SettlementCue, true);
             ApplyCardStyle(_settlementPanel, PresentationState.SettlementCue, true);
             ApplyCardStyle(_interactionPanel, PresentationState.InteractionCue, true);
-            ApplyCardStyle(_statusPanel, PresentationState.InteractionCue, false);
+            ApplyCardStyle(_statusPanel, PresentationState.StatusCue, false);
             ApplyCardStyle(_inventoryPanel, PrototypeHudCue.Shelter, false);
             ApplyCardStyle(_inspectorPanel, PresentationState.DirectiveCue, false);
             ApplyCardStyle(_worldPanel, PrototypeHudCue.Neutral, false);
             ApplyCardStyle(_helpPanel, PrototypeHudCue.Neutral, false);
             ApplyCardStyle(_debugPanel, PrototypeHudCue.Neutral, false);
+            ApplyDecisionRailState();
             ApplyDiagnosticsVisibility();
         }
 
@@ -413,16 +475,55 @@ namespace Societies.UI
             if (_settlementPanel != null) _settlementPanel.Visible = _diagnosticsVisible;
             if (_worldPanel != null) _worldPanel.Visible = _diagnosticsVisible;
             if (_inspectorPanel != null) _inspectorPanel.Visible = _diagnosticsVisible;
+            if (_helpPanel != null) _helpPanel.Visible = _diagnosticsVisible;
             if (_crisisLabel != null) _crisisLabel.Visible = _diagnosticsVisible;
             if (_goalLabel != null) _goalLabel.Visible = normalPlay;
-            if (_protectWetlandButton != null) _protectWetlandButton.Visible = normalPlay && _selectedCivicPolicy == PrototypeCivicPolicy.Neutral;
-            if (_drawDownWetlandButton != null) _drawDownWetlandButton.Visible = normalPlay && _selectedCivicPolicy == PrototypeCivicPolicy.Neutral;
-            if (_helpLabel != null) _helpLabel.Visible = _diagnosticsVisible;
+            if (_decisionRailLabel != null) _decisionRailLabel.Visible = normalPlay;
+            if (_protectWetlandButton != null) _protectWetlandButton.Visible = normalPlay && IsDecisionSurfaceActive;
+            if (_drawDownWetlandButton != null) _drawDownWetlandButton.Visible = normalPlay && IsDecisionSurfaceActive;
+            if (_helpLabel != null) _helpLabel.Visible = _diagnosticsVisible && _profileButtons.Count == 0;
             foreach (Button button in _profileButtons)
             {
-                button.Visible = normalPlay;
+                // The two deterministic starts are an opt-in diagnostics surface. The help
+                // label is hidden while these controls are visible so the nodes never overlap.
+                button.Visible = _diagnosticsVisible;
             }
         }
+
+        /// <summary>
+        /// A presentation-only reading of existing inventory, contribution, and policy
+        /// projections supplied by the authoritative runtime through the HUD presenter.
+        /// </summary>
+        private void ApplyDecisionRailState()
+        {
+            if (_decisionRailLabel == null)
+            {
+                return;
+            }
+
+            _decisionRailLabel.Text = _loopProgress.DecisionRailText;
+            _decisionRailLabel.Modulate = _loopProgress.HasSelectedPolicy
+                ? new Color(0.36f, 0.82f, 0.73f)
+                : _loopProgress.HasContributed
+                    ? new Color(0.95f, 0.73f, 0.31f)
+                    : new Color(0.76f, 0.70f, 0.56f);
+        }
+
+        private bool HasUnresolvedCivicChoice =>
+            _civicChoiceAvailable && _selectedCivicPolicy == PrototypeCivicPolicy.Neutral;
+
+        private bool IsDecisionSurfaceActive =>
+            HasUnresolvedCivicChoice && _decisionSurfaceOpen;
+
+        private void ApplyPointerMode()
+        {
+            Input.MouseMode = ResolvePointerMode(_diagnosticsVisible, IsDecisionSurfaceActive);
+        }
+
+        internal static Input.MouseModeEnum ResolvePointerMode(bool diagnosticsVisible, bool decisionSurfaceActive) =>
+            diagnosticsVisible || decisionSurfaceActive
+                ? Input.MouseModeEnum.Visible
+                : Input.MouseModeEnum.Captured;
 
         private void ApplyBounds(Control? control, string key)
         {
@@ -494,20 +595,23 @@ namespace Societies.UI
             {
                 Color accent = cue switch
                 {
-                    PrototypeHudCue.FoodAndFuel => new Color(0.94f, 0.63f, 0.22f),
-                    PrototypeHudCue.Shelter => new Color(0.33f, 0.70f, 0.92f),
-                    PrototypeHudCue.Stable => new Color(0.34f, 0.82f, 0.48f),
-                    PrototypeHudCue.Collapsed => new Color(0.92f, 0.29f, 0.24f),
-                    PrototypeHudCue.BlockedInteraction => new Color(0.96f, 0.39f, 0.22f),
-                    PrototypeHudCue.ContributionSuccess => new Color(0.42f, 0.88f, 0.55f),
+                    // The bounded normal-play palette is intentionally closer to a weathered
+                    // field board than a debug overlay: reed-gold for active work, wetland teal
+                    // for shared consequence, and rust only when a command cannot proceed.
+                    PrototypeHudCue.FoodAndFuel => new Color(0.95f, 0.73f, 0.31f),
+                    PrototypeHudCue.Shelter => new Color(0.36f, 0.82f, 0.73f),
+                    PrototypeHudCue.Stable => new Color(0.42f, 0.84f, 0.59f),
+                    PrototypeHudCue.Collapsed => new Color(0.90f, 0.36f, 0.27f),
+                    PrototypeHudCue.BlockedInteraction => new Color(0.91f, 0.39f, 0.27f),
+                    PrototypeHudCue.ContributionSuccess => new Color(0.95f, 0.73f, 0.31f),
                     PrototypeHudCue.DepletedInteraction => new Color(0.63f, 0.66f, 0.70f),
-                    _ => new Color(0.42f, 0.76f, 0.72f)
+                    _ => new Color(0.36f, 0.82f, 0.73f)
                 };
                 style = new StyleBoxFlat
                 {
                     // Capture and normal play need the same unambiguous reading. Opaque cards
                     // prevent dark 3D placeholder geometry from visually bleeding through text.
-                    BgColor = new Color(0.035f, 0.065f, 0.075f, 1.0f),
+                    BgColor = new Color(0.075f, 0.065f, 0.047f, 1.0f),
                     BorderColor = accent,
                     CornerRadiusTopLeft = 6,
                     CornerRadiusTopRight = 6,

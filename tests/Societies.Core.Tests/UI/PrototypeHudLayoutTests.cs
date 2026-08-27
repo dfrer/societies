@@ -46,13 +46,22 @@ namespace Societies.Core.Tests
                 null,
                 "Contributed logs x3",
                 string.Empty);
+            PrototypeHudPresentationState harvested = PrototypeHudPresentationState.Create(
+                PrototypeSettlementDirective.Neutral,
+                PrototypeSettlementClassification.Strained,
+                null,
+                "Harvested reeds x1; site depleted",
+                "TARGET: Reed Bed — depleted; find another node");
 
             Assert.Equal(PrototypeHudCue.FoodAndFuel, blocked.DirectiveCue);
             Assert.Equal(PrototypeHudCue.FoodAndFuel, blocked.SettlementCue);
-            Assert.Equal(PrototypeHudCue.BlockedInteraction, blocked.InteractionCue);
+            Assert.Equal(PrototypeHudCue.FoodAndFuel, blocked.InteractionCue);
+            Assert.Equal(PrototypeHudCue.BlockedInteraction, blocked.StatusCue);
             Assert.Equal(PrototypeHudCue.Shelter, contributed.DirectiveCue);
             Assert.Equal(PrototypeHudCue.Stable, contributed.SettlementCue);
-            Assert.Equal(PrototypeHudCue.ContributionSuccess, contributed.InteractionCue);
+            Assert.Equal(PrototypeHudCue.ContributionSuccess, contributed.StatusCue);
+            Assert.Equal(PrototypeHudCue.DepletedInteraction, harvested.InteractionCue);
+            Assert.Equal(PrototypeHudCue.DepletedInteraction, harvested.StatusCue);
 
             PrototypeHudPresentationState noResources = PrototypeHudPresentationState.Create(
                 PrototypeSettlementDirective.Neutral,
@@ -60,7 +69,52 @@ namespace Societies.Core.Tests
                 null,
                 "No resources to contribute. Harvest raw resources first.",
                 string.Empty);
-            Assert.Equal(PrototypeHudCue.BlockedInteraction, noResources.InteractionCue);
+            Assert.Equal(PrototypeHudCue.BlockedInteraction, noResources.StatusCue);
+
+            PrototypeHudPresentationState mixed = PrototypeHudPresentationState.Create(
+                PrototypeSettlementDirective.Neutral,
+                PrototypeSettlementClassification.Strained,
+                null,
+                "Contributed reeds x1",
+                "TARGET: Reed Bed  ·  move closer to harvest");
+            Assert.Equal(PrototypeHudCue.BlockedInteraction, mixed.InteractionCue);
+            Assert.Equal(PrototypeHudCue.ContributionSuccess, mixed.StatusCue);
+        }
+
+        [Fact]
+        public void LoopProgress_UsesInventoryContributionAndPolicyProjectionsWithoutRegressing()
+        {
+            PrototypeHudLoopProgress preHarvest = PrototypeHudLoopProgress.Create(
+                hasCarriedRawResource: false,
+                totalContributedQuantity: 0,
+                PrototypeCivicPolicy.Neutral);
+            PrototypeHudLoopProgress carried = PrototypeHudLoopProgress.Create(
+                hasCarriedRawResource: true,
+                totalContributedQuantity: 0,
+                PrototypeCivicPolicy.Neutral);
+            PrototypeHudLoopProgress contributed = PrototypeHudLoopProgress.Create(
+                hasCarriedRawResource: false,
+                totalContributedQuantity: 1,
+                PrototypeCivicPolicy.Neutral);
+            PrototypeHudLoopProgress selected = PrototypeHudLoopProgress.Create(
+                hasCarriedRawResource: false,
+                totalContributedQuantity: 1,
+                PrototypeCivicPolicy.ProtectWetland);
+            PrototypeHudLoopProgress selectedWithoutContribution = PrototypeHudLoopProgress.Create(
+                hasCarriedRawResource: false,
+                totalContributedQuantity: 0,
+                PrototypeCivicPolicy.ProtectWetland);
+            PrototypeHudLoopProgress noLongerCarried = PrototypeHudLoopProgress.Create(
+                hasCarriedRawResource: false,
+                totalContributedQuantity: 0,
+                PrototypeCivicPolicy.Neutral);
+
+            Assert.Equal("GATHER / DEPOT / DECIDE", preHarvest.DecisionRailText);
+            Assert.Equal("GATHER ✓ / DEPOT / DECIDE", carried.DecisionRailText);
+            Assert.Equal("GATHER ✓ / DEPOT ✓ / DECIDE — click or [4]/[5]", contributed.DecisionRailText);
+            Assert.Equal("GATHER ✓ / DEPOT ✓ / DECIDE ✓", selected.DecisionRailText);
+            Assert.Equal("GATHER / DEPOT / DECIDE ✓", selectedWithoutContribution.DecisionRailText);
+            Assert.Equal("GATHER / DEPOT / DECIDE", noLongerCarried.DecisionRailText);
         }
 
         [Theory]

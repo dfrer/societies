@@ -39,13 +39,6 @@ namespace Societies.Core
                 Rotation = new Vector3(_pitch, Rotation.Y, Rotation.Z);
             }
 
-            if (@event.IsActionPressed("escape"))
-            {
-                Input.MouseMode = Input.MouseMode == Input.MouseModeEnum.Captured
-                    ? Input.MouseModeEnum.Visible
-                    : Input.MouseModeEnum.Captured;
-            }
-
             if (@event is InputEventMouseButton mouseButton && mouseButton.Pressed)
             {
                 if (mouseButton.ButtonIndex == MouseButton.WheelUp)

@@ -106,7 +106,7 @@ namespace Societies.Core.Tests
             Assert.Contains("World: wetter ground; dense reeds", goal, StringComparison.OrdinalIgnoreCase);
             Assert.Contains(citizen.DisplayName, goal);
             Assert.Contains("Citizen 1:", goal);
-            Assert.Contains("Choice: preserve / take more reeds", goal, StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain("Choice:", goal, StringComparison.OrdinalIgnoreCase);
 
             PrototypeCitizenInterest protectResponse = PrototypeCitizenInterestEvaluator.Evaluate(
                 citizen,
@@ -135,8 +135,12 @@ namespace Societies.Core.Tests
             PrototypeHudTextBudget selectedBudget = layout.GetNormalControlTextBudget(PrototypeHudLayout.Goal, selectedGoal, 17);
             Assert.True(neutralBudget.Fits, $"Neutral goal needs {neutralBudget.EstimatedRenderedLines}/{neutralBudget.AvailableLines} lines.");
             Assert.True(selectedBudget.Fits, $"Selected goal needs {selectedBudget.EstimatedRenderedLines}/{selectedBudget.AvailableLines} lines.");
-            Assert.True(layout.GetNormalControlTextBudget(PrototypeHudLayout.ProtectChoice, "Protect wetland", 16).Fits);
-            Assert.True(layout.GetNormalControlTextBudget(PrototypeHudLayout.DrawDownChoice, "Draw down wetland", 16).Fits);
+            Assert.True(layout.GetNormalControlTextBudget(PrototypeHudLayout.ProtectChoice, "[4] Protect wetland", 16).Fits);
+            Assert.True(layout.GetNormalControlTextBudget(PrototypeHudLayout.DrawDownChoice, "[5] Draw down wetland", 16).Fits);
+            Assert.True(layout.GetNormalControlTextBudget(
+                PrototypeHudLayout.DecisionRail,
+                "GATHER ✓ / DEPOT ✓ / DECIDE — click or [4]/[5]",
+                13).Fits);
             Assert.True(layout.GetNormalControlTextBudget(
                 PrototypeHudLayout.MarshProfileChoice,
                 $"{experienceProfile.Title}: {experienceProfile.ResourceApproach}",
@@ -152,7 +156,7 @@ namespace Societies.Core.Tests
                     PrototypeSettlementClassification.Strained,
                     null,
                     "Contributed reeds x1",
-                    string.Empty).InteractionCue);
+                    string.Empty).StatusCue);
             Assert.Equal(
                 PrototypeHudCue.BlockedInteraction,
                 PrototypeHudPresentationState.Create(
@@ -160,7 +164,7 @@ namespace Societies.Core.Tests
                     PrototypeSettlementClassification.Strained,
                     null,
                     "Harvest rejected: resource unavailable",
-                    string.Empty).InteractionCue);
+                    string.Empty).StatusCue);
             Assert.Equal(
                 PrototypeHudCue.DepletedInteraction,
                 PrototypeHudPresentationState.Create(
@@ -168,7 +172,7 @@ namespace Societies.Core.Tests
                     PrototypeSettlementClassification.Strained,
                     null,
                     "Harvested reeds x1; site depleted",
-                    string.Empty).InteractionCue);
+                    string.Empty).StatusCue);
         }
 
         private static (string snapshot, string events, int contributed) RunLoopTrace(

@@ -2,6 +2,14 @@ using Godot;
 
 namespace Societies.Core
 {
+    /// <summary>Presentation-only readiness supplied by the player targeting adapter.</summary>
+    public enum ResourceFocusReadiness
+    {
+        None,
+        MoveCloser,
+        Ready
+    }
+
     /// <summary>
     /// Harvestable world node for settlement-economy resources.
     /// </summary>
@@ -14,9 +22,9 @@ namespace Societies.Core
 
         private Node3D? _visualRoot;
         private Label3D? _stateLabel;
-        private bool _isFocused;
+        private ResourceFocusReadiness _focusReadiness;
 
-        public bool IsFocused => _isFocused;
+        public bool IsFocused => _focusReadiness != ResourceFocusReadiness.None;
 
         public override void _Ready()
         {
@@ -43,15 +51,18 @@ namespace Societies.Core
             UpdateVisualState();
         }
 
-        /// <summary>Presentation-only targeting state; resource authority stays in the runtime ledger.</summary>
-        public void SetFocused(bool focused)
+        /// <summary>
+        /// Applies player-measured targeting readiness to the world label. This state can only
+        /// change presentation; resource and harvest-command authority stay in the runtime ledger.
+        /// </summary>
+        public void SetFocusReadiness(ResourceFocusReadiness readiness)
         {
-            if (_isFocused == focused)
+            if (_focusReadiness == readiness)
             {
                 return;
             }
 
-            _isFocused = focused;
+            _focusReadiness = readiness;
             UpdateVisualState();
         }
 
@@ -193,16 +204,24 @@ namespace Societies.Core
             }
 
             float normalized = Mathf.Clamp(UnitsRemaining / 6.0f, 0.2f, 1.0f);
-            float focusScale = _isFocused ? 1.12f : 1.0f;
+            bool focused = IsFocused;
+            float focusScale = focused ? 1.12f : 1.0f;
             _visualRoot.Scale = new Vector3(focusScale, normalized * focusScale, focusScale);
             if (_stateLabel != null)
             {
-                _stateLabel.Text = _isFocused
-                    ? $"▶ {DisplayName}\nPress E — {UnitsRemaining} available"
-                    : $"{DisplayName}\n{UnitsRemaining} available";
-                _stateLabel.Modulate = _isFocused
-                    ? new Color(0.72f, 0.96f, 1.0f)
-                    : new Color(0.95f, 0.94f, 0.84f);
+                bool depleted = UnitsRemaining <= 0;
+                _stateLabel.Text = depleted
+                    ? $"{DisplayName}\nDepleted"
+                    : _focusReadiness == ResourceFocusReadiness.Ready
+                        ? $"▶ {DisplayName}\n[E] Harvest — {UnitsRemaining} available"
+                        : _focusReadiness == ResourceFocusReadiness.MoveCloser
+                            ? $"▶ {DisplayName}\nMove closer — {UnitsRemaining} available"
+                            : $"{DisplayName}\n{UnitsRemaining} available";
+                _stateLabel.Modulate = depleted
+                    ? new Color(0.68f, 0.65f, 0.60f)
+                    : focused
+                        ? new Color(0.95f, 0.78f, 0.38f)
+                        : new Color(0.95f, 0.94f, 0.84f);
             }
         }
 

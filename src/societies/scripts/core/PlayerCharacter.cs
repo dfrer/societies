@@ -13,6 +13,7 @@ namespace Societies.Core
         [Export] public float JumpVelocity { get; set; } = 5.5f;
         [Export] public float Gravity { get; set; } = 18.0f;
         [Export] public float MouseSensitivity { get; set; } = 0.0025f;
+        [Export] public float InteractionRangeMeters { get; set; } = 4.5f;
         [Export] public float ContributionRangeMeters { get; set; } = 4.5f;
 
         public TerrainGenerator? Terrain { get; set; }
@@ -56,12 +57,6 @@ namespace Societies.Core
                 }
             }
 
-            if (@event.IsActionPressed("escape"))
-            {
-                Input.MouseMode = Input.MouseMode == Input.MouseModeEnum.Captured
-                    ? Input.MouseModeEnum.Visible
-                    : Input.MouseModeEnum.Captured;
-            }
         }
 
         public override void _PhysicsProcess(double delta)
@@ -83,14 +78,29 @@ namespace Societies.Core
         public string GetInteractionText()
         {
             ResourceNode? focusedResource = GetValidFocusedResource();
-            if (focusedResource == null)
+            if (focusedResource != null)
             {
-                return _isDepotFocused
-                    ? "Central depot focused — Press E to contribute raw resources"
-                    : "Look at a resource node and press E";
+                if (focusedResource.UnitsRemaining <= 0)
+                {
+                    return $"TARGET: {focusedResource.DisplayName} — depleted; find another node";
+                }
+
+                return IsWithinInteractionRange(focusedResource)
+                    ? $"TARGET: {focusedResource.DisplayName}  ·  [E] Harvest  ·  {focusedResource.UnitsRemaining} available"
+                    : $"TARGET: {focusedResource.DisplayName}  ·  move closer to harvest";
             }
 
-            return $"Press E to harvest {focusedResource.DisplayName} ({focusedResource.UnitsRemaining} left)";
+            if (_isDepotFocused)
+            {
+                return "CENTRAL DEPOT  ·  [E] Contribute carried raw resources";
+            }
+
+            if (IsWithinDepotAwarenessRange())
+            {
+                return "CENTRAL DEPOT  ·  move closer to contribute";
+            }
+
+            return "LOOK FOR A RESOURCE  ·  aim at a node, then press [E]";
         }
 
         public void ResetForPrototypeRun(Vector3 position)
@@ -99,7 +109,7 @@ namespace Societies.Core
             Position = position;
             Rotation = Vector3.Zero;
             ResourceNode? focusedResource = GetValidFocusedResource();
-            focusedResource?.SetFocused(false);
+            focusedResource?.SetFocusReadiness(ResourceFocusReadiness.None);
             _focusedResource = null;
             SetDepotFocus(false);
 
@@ -168,7 +178,7 @@ namespace Societies.Core
 
             if (_interactionRay == null)
             {
-                previousFocusedResource?.SetFocused(false);
+                previousFocusedResource?.SetFocusReadiness(ResourceFocusReadiness.None);
                 SetDepotFocus(IsWithinContributionRange());
                 return;
             }
@@ -176,7 +186,7 @@ namespace Societies.Core
             _interactionRay.ForceRaycastUpdate();
             if (!_interactionRay.IsColliding())
             {
-                previousFocusedResource?.SetFocused(false);
+                previousFocusedResource?.SetFocusReadiness(ResourceFocusReadiness.None);
                 SetDepotFocus(IsWithinContributionRange());
                 return;
             }
@@ -194,17 +204,19 @@ namespace Societies.Core
             if (previousFocusedResource != null && previousFocusedResource != _focusedResource &&
                 GodotObject.IsInstanceValid(previousFocusedResource))
             {
-                previousFocusedResource.SetFocused(false);
+                previousFocusedResource.SetFocusReadiness(ResourceFocusReadiness.None);
             }
             ResourceNode? focusedResource = GetValidFocusedResource();
-            focusedResource?.SetFocused(true);
+            focusedResource?.SetFocusReadiness(IsWithinInteractionRange(focusedResource)
+                ? ResourceFocusReadiness.Ready
+                : ResourceFocusReadiness.MoveCloser);
             SetDepotFocus(_focusedResource == null && IsWithinContributionRange());
         }
 
         private void TryHarvest()
         {
             ResourceNode? focusedResource = GetValidFocusedResource();
-            if (focusedResource == null)
+            if (focusedResource == null || !IsWithinInteractionRange(focusedResource))
             {
                 return;
             }
@@ -254,6 +266,16 @@ namespace Societies.Core
         private bool IsWithinContributionRange()
         {
             return GlobalPosition.DistanceTo(ContributionDepotPosition) <= ContributionRangeMeters;
+        }
+
+        private bool IsWithinInteractionRange(ResourceNode resource)
+        {
+            return GlobalPosition.DistanceTo(resource.GlobalPosition) <= InteractionRangeMeters;
+        }
+
+        private bool IsWithinDepotAwarenessRange()
+        {
+            return GlobalPosition.DistanceTo(ContributionDepotPosition) <= ContributionRangeMeters + 6.0f;
         }
 
         private void SetDepotFocus(bool focused)
@@ -337,7 +359,10 @@ namespace Societies.Core
             _interactionRay = new RayCast3D
             {
                 Name = "InteractionRay",
-                TargetPosition = new Vector3(0.0f, 0.0f, -4.5f),
+                // Targeting can see the object slightly before it is usable. The input adapter
+                // then uses the same measured range as its prompt, while the runtime remains the
+                // only authority for accepted harvest commands.
+                TargetPosition = new Vector3(0.0f, 0.0f, -7.0f),
                 Enabled = true
             };
             _camera.AddChild(_interactionRay);
