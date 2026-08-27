@@ -6,10 +6,11 @@
   "repository": {
     "baseCommit": "75b23e9de20be4797a233cb78ff8e8e1b3cd4daf",
     "priorCandidateHead": "fef1441b4b69e374572178b324d6c12a2a5fa888",
+    "replacementImplementationCommit": "a92e82915d636861a51d3c71ac3a7acacaa5c7a0",
     "branch": "codex/snow-globe-f1-visual-target",
     "pullRequest": "https://github.com/dfrer/societies/pull/179",
     "pullRequestBase": "codex/snow-globe-frontend-recovery-plan",
-    "deliveryState": "replacement_validated_working_tree_uncommitted",
+    "deliveryState": "replacement_validated_and_pushed_to_stacked_pull_request",
     "ci": {
       "status": "not_reported",
       "reason": "tests_workflow_pull_request_filter_accepts_only_master_or_main_bases",
@@ -133,7 +134,7 @@
       "source": "main_confirmed"
     },
     "headlessSceneSmoke": "passed_main_confirmed",
-    "diffCheck": "pending_final_commit",
+    "diffCheck": "passed_before_implementation_commit",
     "humanVisualAcceptance": false,
     "humanPlayAcceptance": false
   },
