@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "capturedUtc": "2026-08-27T17:40:13Z",
+  "capturedUtc": "2026-08-27T18:21:51Z",
   "workItem": "SG-VX-01-editable-voxel-world-foundation",
-  "status": "pushed_pr_open_automated_validation_pass_human_acceptance_open",
+  "status": "manual_acceptance_failed_grounding_repair_validated_retest_open",
   "source": {
     "baseCommit": "75b23e9de20be4797a233cb78ff8e8e1b3cd4daf",
     "implementationCommit": "e64b655d4a9a38c551908ef659f5205bd1f35651",
@@ -30,16 +30,16 @@
     "revision, material, edit-kind, tick, bedrock, and capacity rejection without mutation",
     "typed ordered edit events and continuous versus save-resume equality",
     "chunk-edge dirty projection and bounded invalid projection scope",
-    "clockwise Godot mesh winding, flat normals, vertex-color material, and outside trimesh collision",
+    "clockwise Godot mesh winding, flat normals, vertex-color material, and outside heightmap collision",
     "schema-v10 segmented chunk payloads, canonical zero-heightfield shell, nested seed and identity binding, root hashes, ordered event ticks, exact revision counts, and rejection before mutation or artifact write",
     "exact 10000-edit save, load, and apply boundary; edit 10001 rejected inert",
-    "heightfield-to-voxel and voxel-to-heightfield presenter and collision lifecycle",
+    "real CharacterBody spawn and 180-frame grounding, edited-column heightmap replacement, save-load-reset grounding, and heightfield-to-voxel lifecycle",
     "legacy heightfield scenarios and frozen v5-v9 persistence requirements"
   ],
   "review": {
     "role": "deep_reviewer",
     "result": "GO",
-    "findings": "no remaining P0-P2 findings",
+    "findings": "initial outside-ray smoke missed player fall-through; repair review closes hollow-concave-grounding and dirty-edit evidence findings with no remaining P0-P2",
     "notAClaim": [
       "human visual acceptance",
       "human play acceptance",
@@ -59,8 +59,8 @@
       "command": "scripts/run-prototype-validation.ps1",
       "result": "pass",
       "exitCode": 0,
-      "managed": { "passed": 494, "failed": 0, "skipped": 0, "duration": "5m40s" },
-      "godot": { "passed": 26, "failed": 0 },
+      "managed": { "passed": 494, "failed": 0, "skipped": 0, "duration": "5m13s" },
+      "godot": { "passed": 27, "failed": 0 },
       "productionDebugBuild": { "warnings": 0, "errors": 0 },
       "note": "The Godot suite intentionally exercises a frame-backlog warning and a denied optional-metrics write; both tests passed."
     },
@@ -84,10 +84,16 @@
   ],
   "performance": {
     "status": "unmeasured",
-    "claim": "No representative frame-time, edit latency, dirty-chunk rebuild, memory, or snapshot-size profile was run. The predecessor 51.9392 ms safety failure remains unresolved and is not attributed to SG-VX-01."
+    "collisionShapeCount": 64,
+    "focusedLifecycleCharacterization": "15.76 seconds for one real-scene test covering initial 180 frames plus edit, save-load, reset, and model-switch phases",
+    "claim": "No representative frame-time, edit latency, dirty-chunk rebuild, memory, or snapshot-size profile was run. The focused lifecycle wall time is not a rebuild or performance pass. The predecessor 51.9392 ms safety failure remains unresolved and is not attributed to SG-VX-01."
   },
   "manualAcceptance": {
-    "status": "open",
+    "status": "failed_original_candidate_retest_repair_open",
+    "observedFailure": "User fell through the map immediately on the first play attempt.",
+    "reproduction": "After 180 physics frames the real player reached Y=-77.306 below authoritative surface Y=15.000.",
+    "rootCause": "Hollow concave trimesh collision was ray-hittable but unsuitable as CharacterBody ground.",
+    "repair": "Retain visual mesh; derive one HeightMapShape3D per chunk from the highest authoritative exposed surface.",
     "route": [
       "launch res://scenes/snow_globe_voxel_foundation.tscn",
       "walk and look around the generated finite terrain",
@@ -110,6 +116,6 @@
     "basePullRequest": 178,
     "mergeState": "CLEAN",
     "hostedCi": "no_check_run_on_stacked_base",
-    "humanAcceptance": "not_run"
+    "humanAcceptance": "failed_original_candidate_post_repair_retest_pending"
   }
 }

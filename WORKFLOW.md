@@ -1185,11 +1185,20 @@ The offline Cognition Quality Corpus v1 is implemented in the isolated Snow Glob
 
 ## Validation and review state
 
-- Focused voxel/persistence Release checks pass 74/74. The authoritative wrapper passes 494/494 managed tests in 5m40s and 26/26 Godot tests with exit 0.
-- Godot coverage includes startup, outside collision, remove/place Wood, mesh normals/material, save/restore, and voxel/heightfield lifecycle. The deliberate frame-backlog warning and denied optional-metrics write are exercised warning paths, not production build warnings or failed tests.
+- Focused voxel/persistence Release checks pass 74/74. After the collision repair, the authoritative wrapper passes 494/494 managed tests in 5m13s and 27/27 Godot tests with exit 0.
+- Godot coverage includes startup, outside collision, remove/place Wood, mesh normals/material, real-player spawn/grounding, authoritative edited-column heightmap replacement, save/restore at that column, reset, and voxel/heightfield lifecycle. The deliberate frame-backlog warning and denied optional-metrics write are exercised warning paths, not production build warnings or failed tests.
 - Production Release and ExportRelease builds pass with 0 warnings/errors; `git diff --check` passes aside from line-ending notices.
 - Independent deep review found and closed mesh winding/collision, material/normals, presenter lifecycle, persistence-size, malformed-command, locale-hash, seed-binding, event-capacity, shell-validation, tick-authority, and projection-scope defects. Final re-review is GO with no remaining P0-P2 findings.
 - Performance safety is unproven. No representative frame-time, edit, rebuild, memory, or save-size profile was run; the predecessor `51.9392 ms` safety failure remains unresolved. Automated checks do not establish human visual/play acceptance.
+
+## Manual failure and grounding repair
+
+- The first user-led SG-VX-01 play failed immediately: the player fell through the map. This overrides the prior automated collision confidence and leaves product acceptance failed.
+- A deterministic real-scene regression reproduced `playerY=-77.306` below authoritative `surfaceY=15.000` after 180 physics frames.
+- Collision masks and the player capsule were valid; additional registration frames did not help. A solid-support control grounded the same player, confirming that hollow concave trimesh collision was unsuitable as `CharacterBody3D` ground.
+- `VoxelWorldPresenter` now keeps the visual voxel mesh but builds exactly one `HeightMapShape3D` per chunk from the highest authoritative exposed surface: 64 static bodies and 64 collision shapes total. This is deliberately limited to the no-caves/no-overhang foundation.
+- The final regression proves initial grounding, real remove/place collision replacement under the player, exact heightmap sample/resource change, save/load at the edited column, reset, and heightfield-to-voxel switching. Focused lifecycle time was 15.76s end-to-end; this is test characterization, not a rebuild or performance-safety claim.
+- Independent review is GO with no P0-P2 findings. The repair is not human accepted until the user retests it.
 
 ## Repository and delivery state
 
@@ -1199,4 +1208,4 @@ The offline Cognition Quality Corpus v1 is implemented in the isolated Snow Glob
 
 ## Continue with
 
-- Ask the user to play the dedicated scene. If the foundation is accepted, merge the stack and define the next slice for voxel standability/navigation plus seeded open-ended citizen participation without fixed personality or goal archetype enums.
+- Commit and push the grounding repair, then ask the user to retest the dedicated scene. Do not merge or expand into citizens until the user confirms the immediate fall-through is gone and reports the next observed interaction/collision failures.

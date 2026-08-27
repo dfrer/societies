@@ -1,10 +1,11 @@
 using Godot;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 
 namespace Societies.Core
 {
-    /// <summary>Godot-only projection consumer. One mesh/collision node is created per chunk, never per voxel.</summary>
+    /// <summary>Godot-only projection consumer. One mesh and collision shape are created per chunk.</summary>
     public partial class VoxelWorldPresenter : Node3D
     {
         private readonly Dictionary<VoxelChunkCoord, MeshInstance3D> _meshes = new();
@@ -24,8 +25,13 @@ namespace Societies.Core
                     CollisionShape3D shape = new(); body.AddChild(shape); _colliders.Add(chunk.Coord, shape);
                 }
                 instance.Mesh = mesh;
-                _colliders[chunk.Coord].Shape = mesh.CreateTrimeshShape();
-                _colliders[chunk.Coord].Disabled = !_active;
+                CollisionShape3D collider = _colliders[chunk.Coord];
+                collider.Shape = BuildGroundingCollision(chunk);
+                collider.Position = new Vector3(
+                    (chunk.Coord.X * VoxelWorldModule.ChunkWidth) + (VoxelWorldModule.ChunkWidth * 0.5f),
+                    0.0f,
+                    (chunk.Coord.Z * VoxelWorldModule.ChunkDepth) + (VoxelWorldModule.ChunkDepth * 0.5f));
+                collider.Disabled = !_active;
             }
         }
 
@@ -44,6 +50,11 @@ namespace Societies.Core
             _colliders.TryGetValue(coord, out CollisionShape3D? collider) && collider.Shape != null && !collider.Disabled;
 
         public bool HasActiveCollisions => _colliders.Values.Any(collider => collider.Shape != null && !collider.Disabled);
+
+        public HeightMapShape3D? GetGroundingCollision(VoxelChunkCoord coord) =>
+            _colliders.TryGetValue(coord, out CollisionShape3D? collider)
+                ? collider.Shape as HeightMapShape3D
+                : null;
 
         public bool HasLitVertexColorMaterial()
         {
@@ -82,5 +93,50 @@ namespace Societies.Core
             mesh.SurfaceSetMaterial(0, new StandardMaterial3D { VertexColorUseAsAlbedo = true, Roughness = 1.0f });
             return mesh;
         }
+
+        private static HeightMapShape3D BuildGroundingCollision(VoxelChunkGeometryProjection chunk)
+        {
+            const int width = VoxelWorldModule.ChunkWidth;
+            const int depth = VoxelWorldModule.ChunkDepth;
+            float[] cellHeights = new float[width * depth];
+            Array.Fill(cellHeights, VoxelWorldModule.MinY);
+
+            for (int faceStart = 0; faceStart < chunk.Indices.Count; faceStart += 6)
+            {
+                Vector3 a = ToVector3(chunk.Vertices[chunk.Indices[faceStart]]);
+                Vector3 b = ToVector3(chunk.Vertices[chunk.Indices[faceStart + 1]]);
+                Vector3 c = ToVector3(chunk.Vertices[chunk.Indices[faceStart + 2]]);
+                if ((b - a).Cross(c - a).Y >= -0.5f)
+                {
+                    continue;
+                }
+
+                int localX = Mathf.FloorToInt(Mathf.Min(a.X, Mathf.Min(b.X, c.X))) - (chunk.Coord.X * width);
+                int localZ = Mathf.FloorToInt(Mathf.Min(a.Z, Mathf.Min(b.Z, c.Z))) - (chunk.Coord.Z * depth);
+                if ((uint)localX < width && (uint)localZ < depth)
+                {
+                    cellHeights[(localZ * width) + localX] = Math.Max(cellHeights[(localZ * width) + localX], a.Y);
+                }
+            }
+
+            HeightMapShape3D collision = new()
+            {
+                MapWidth = width + 1,
+                MapDepth = depth + 1
+            };
+            float[] heights = new float[(width + 1) * (depth + 1)];
+            for (int z = 0; z <= depth; z++)
+            {
+                for (int x = 0; x <= width; x++)
+                {
+                    heights[(z * (width + 1)) + x] = cellHeights[(Math.Min(z, depth - 1) * width) + Math.Min(x, width - 1)];
+                }
+            }
+            collision.MapData = heights;
+            return collision;
+        }
+
+        private static Vector3 ToVector3(VoxelVertex vertex) => new(vertex.X, vertex.Y, vertex.Z);
+
     }
 }
