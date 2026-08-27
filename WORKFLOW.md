@@ -1195,8 +1195,8 @@ The offline Cognition Quality Corpus v1 is implemented in the isolated Snow Glob
 
 - Work is isolated in `C:\Users\hunte\.codex\worktrees\snow-globe-voxel\societies` on `codex/snow-globe-voxel-foundation`, based on PR #178 head `75b23e9de20be4797a233cb78ff8e8e1b3cd4daf`.
 - The dirty primary checkout and unrelated Snow Globe/provider/lab work were preserved. Nothing in the primary checkout was edited, cleaned, staged, reset, or stashed.
-- Commit, push, PR creation, hosted CI, and human acceptance remain open at this checkpoint. Validation evidence is [v3-sg-vx-01-validation.json](planning/active/evidence/v3-sg-vx-01-validation.json).
+- Implementation/evidence commit `e64b655d4a9a38c551908ef659f5205bd1f35651` is pushed. Open stacked PR #180 targets `codex/snow-globe-frontend-recovery-plan`; GitHub reports `CLEAN`. No hosted checks are attached because the stacked base does not trigger the current workflow. Merge and human acceptance remain open. Validation evidence is [v3-sg-vx-01-validation.json](planning/active/evidence/v3-sg-vx-01-validation.json).
 
 ## Continue with
 
-- Commit and deliver the stacked PR, then ask the user to play the dedicated scene. The next engineering slice should define voxel standability/navigation plus seeded open-ended citizen participation without fixed personality or goal archetype enums.
+- Ask the user to play the dedicated scene. If the foundation is accepted, merge the stack and define the next slice for voxel standability/navigation plus seeded open-ended citizen participation without fixed personality or goal archetype enums.

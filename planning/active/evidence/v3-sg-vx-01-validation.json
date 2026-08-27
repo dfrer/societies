@@ -2,9 +2,10 @@
   "schemaVersion": 1,
   "capturedUtc": "2026-08-27T17:40:13Z",
   "workItem": "SG-VX-01-editable-voxel-world-foundation",
-  "status": "local_automated_validation_pass_delivery_and_human_acceptance_open",
+  "status": "pushed_pr_open_automated_validation_pass_human_acceptance_open",
   "source": {
     "baseCommit": "75b23e9de20be4797a233cb78ff8e8e1b3cd4daf",
+    "implementationCommit": "e64b655d4a9a38c551908ef659f5205bd1f35651",
     "branch": "codex/snow-globe-voxel-foundation",
     "worktree": "C:\\Users\\hunte\\.codex\\worktrees\\snow-globe-voxel\\societies",
     "productionRuntimeChanged": true,
@@ -103,9 +104,12 @@
     ]
   },
   "delivery": {
-    "status": "uncommitted_local_candidate",
-    "pullRequest": null,
-    "hostedCi": "not_run",
+    "status": "open_stacked_pull_request",
+    "pullRequest": 180,
+    "pullRequestUrl": "https://github.com/dfrer/societies/pull/180",
+    "basePullRequest": 178,
+    "mergeState": "CLEAN",
+    "hostedCi": "no_check_run_on_stacked_base",
     "humanAcceptance": "not_run"
   }
 }
