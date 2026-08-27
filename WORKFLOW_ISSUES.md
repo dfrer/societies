@@ -286,3 +286,23 @@ Statuses: **Open**, **Monitoring**, **Resolved**, **Deferred**, **Rejected**.
 - **Auto-fix eligibility/rationale:** Yes — test placement and pure-policy extraction are bounded, reversible, and do not change world authority.
 - **Resolution/validation:** Resolved by the final validation evidence above.
 - **Linked entry:** WI-GLOBAL-2026-145 in `C:\Users\hunte\Documents\Codex\WORKFLOW_ISSUES.md`.
+
+### WI-SOCIETIES-2026-015 — GitHub CLI pull-request edit failed on deprecated Projects classic fields
+
+- **Tier:** T2
+- **Status:** Monitoring
+- **Scope/project:** `C:\Users\hunte\.codex\worktrees\f1-visual-target\societies`; F1 pull-request handoff
+- **Category:** delivery tooling
+- **First seen:** 2026-08-26 (America/Vancouver)
+- **Last seen:** 2026-08-26 (America/Vancouver)
+- **Occurrences:** 1 PR metadata update
+- **Reporter:** main orchestrator
+- **Symptom:** `gh pr edit 179` returned a GraphQL Projects classic deprecation error, reported process success, and left the title/body unchanged.
+- **Impact:** PR #179 temporarily displayed the rejected-v1 directions and obsolete validation counts after the replacement branch was pushed.
+- **Evidence:** A follow-up `gh pr view` still returned the old title. A bounded REST `PATCH repos/dfrer/societies/pulls/179` then returned the new title and exact head SHA `9c4ae804e7e92ae8d85737ed0e1a5115dcbf750f`.
+- **Workaround:** Use the GitHub pull-request REST update endpoint for title/body changes when the installed CLI's GraphQL edit path requests deprecated Projects classic fields, then verify with a fresh read.
+- **Root cause:** The installed GitHub CLI edit path queries deprecated `projectCards` data unrelated to title/body mutation.
+- **Proposed fix:** Prefer a future CLI version without the deprecated query; retain the verified REST fallback for bounded metadata updates.
+- **Auto-fix eligibility/rationale:** Yes — metadata-only command routing with a required readback; no source, merge, release, or required-check policy change.
+- **Resolution/validation:** Monitoring. The REST fallback updated PR #179 successfully; the CLI behavior may recur.
+- **Linked entry:** WI-GLOBAL-2026-146 in `C:\Users\hunte\Documents\Codex\WORKFLOW_ISSUES.md`.
