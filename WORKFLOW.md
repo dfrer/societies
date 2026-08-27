@@ -1141,19 +1141,27 @@ The offline Cognition Quality Corpus v1 is implemented in the isolated Snow Glob
 
 - Recorded the ER-01 strategy as failed after its authorized HUD/interaction recovery remained unacceptable in concept refinement, gameplay, visuals, quality, and overall experience.
 - Draft PR #177 remains unmerged. Its technical head `81b72b4cda17457cec6aeabebeb2d292494162ad` and green CI do not override the product rejection; its clean matrix retained `safety_failure` at reference median p95 `51.9392 ms` against the `50 ms` safety line.
-- Established Societies as the embodied player-facing frontend for Snow Globe. The Godot client owns presentation and input; `PrototypeRuntimeSession` remains sole world authority; Snow Globe may later supply bounded cognition and communication proposals through a small validated seam.
+- Established Societies as the embodied player-facing frontend for Snow Globe. The Godot client owns presentation and input; `PrototypeRuntimeSession` remains sole world authority; Snow Globe supplies bounded cognition and communication proposals through a small validated seam.
 - Added the [Snow Globe Frontend Product Recovery Plan](planning/active/v3-snow-globe-frontend-recovery-plan.md). It supersedes ER-01, W3-06+, and the former Week 4 path for future execution.
 - The reset is planning-only. It performs no gameplay, scene, asset, provider, credential, paid, network, Snow Globe runtime-integration, or dirty-primary-checkout mutation.
 
 ## Recovery sequence and gates
 
-- F0 resolves player identity, power and risk, citizen cooperation/refusal, and the smallest shared consequence. Implementation is blocked until the user accepts those decisions.
-- F1 compares three real visual directions and requires one accepted in-engine target frame, plus camera, interaction, animation, audio, UI, accessibility, asset-kit, and performance direction.
-- F2 builds a replacement Golden Three scene over the deterministic runtime to prove movement, atmosphere, interaction feel, citizen presence, and world identity.
-- F3 builds a non-rail Golden Fifteen with three viable first actions, three named citizens, one production chain, one negotiable/refusable request, and one persistent shared consequence.
-- F4 adds one bounded Snow Globe-enhanced citizen moment through recorded/offline evidence first; any live provider remains separately authorized.
-- F5 adds one genuinely different starting situation; F6 owns performance, authoritative validation, CI, and user-led acceptance.
+- F0 is accepted in `CON-009`: the player is an embodied resident-founder with limited formal power; contribution, commitments, persuasion, and judged outcomes create influence; citizens may negotiate or refuse; the first shared consequence is a failing wetland causeway and water-control commitment.
+- F1 compares three real visual directions and requires one accepted in-engine target frame, plus camera, embodied conversation, interaction, animation, audio, UI, accessibility, asset-kit, and performance direction.
+- F2 builds a replacement Golden Three scene and the real provider-neutral experience-cognition Interface, exercised through deterministic and recorded-response Adapters.
+- F3 builds a non-rail Golden Fifteen with three viable first actions, three named citizens, one production chain, one negotiable/refusable request, bounded commitment memory, and one persistent shared consequence.
+- F4 is the governed live Snow Globe pilot over the already-accepted Interface. Local/premium execution, credentials, network calls, and any cost remain separately authorized; replay records normalized receipts and never re-calls a model.
+- F5 adds one genuinely different starting situation and bounded multi-citizen cognition; F6 owns performance, authoritative validation, fallback/provider evidence, CI, and user-led acceptance.
 - Human scorecards gate each playable milestone. Headless tests, screenshots, and automated input cannot establish gameplay or visual acceptance.
+
+## Cognition architecture and boundary
+
+- The existing civic `PrototypeCognitionModule` remains unchanged as strict predecessor evidence; its closed actions and 64-character canonical summary are not stretched into a dialogue system.
+- The new additive experience contract separates a closed action proposal from bounded non-authoritative communication. The runtime validates proposals and owns world events; Godot renders sanitized projections only.
+- Citizen observations are knowledge-bounded and may include only visible state, authoritative recent events, commitments, and currently allowed proposals. Provider/model identity, raw output, credentials, routing, billing, and payment state remain outside the UI.
+- Deterministic, recorded-response, local-live, and any authorized premium Adapter use the same Interface. Timeout, cancellation, malformed/stale output, and provider failure preserve play through deterministic fallback.
+- This planning update performs no inference, provider, credential, paid, network, scene, asset, or gameplay action.
 
 ## Repository and delivery state
 
@@ -1163,4 +1171,4 @@ The offline Cognition Quality Corpus v1 is implemented in the isolated Snow Glob
 
 ## Continue with
 
-- Run the F0 Product Foundation session. The recommended Candidate is an embodied resident-founder with limited formal power who earns influence through contribution, commitments, and persuasion; the user must accept, revise, or reject it before implementation.
+- Start F1 by showing the accepted arrival, contribution, citizen counter-offer, and water-control consequence in three materially different visual/interaction directions. The next user gate is one accepted direction and in-engine target frame, not another HUD-only recovery.

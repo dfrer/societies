@@ -14,7 +14,7 @@ The simulation is the authoritative owner of facts, time, resources, ecology, po
 
 ### AI and LLM responsibilities
 
-AI citizens may use deterministic systems and, later, LLM-assisted capabilities to:
+AI citizens use deterministic systems and may use LLM-assisted capabilities to:
 
 - interpret structured, read-only world and citizen state;
 - deliberate over material interests and stated preferences;
@@ -47,17 +47,20 @@ provider or orchestration mechanics.
 | World simulation | Local deterministic settlement, logistics, resource ledger, and `empty_stores` crisis contract | Civilization/ecology simulation with shared consequences |
 | Citizens | Deterministic needs and work assignment | Understandable material interests, negotiation, governance participation, and communication |
 | Human agency | Local harvesting and validated atomic contribution to the shared settlement stockpile | Consequential participation in trade, negotiation, and governance |
-| LLMs | No live model integration | Structured interpretation, deliberation, communication, memory summaries, and action proposals |
+| LLMs | Strict civic cognition contract and deterministic fallback exist; Snow Globe lab has offline/live evidence machinery, but no gameplay-facing Snow Globe Interface or live client integration exists | Structured interpretation, deliberation, communication, bounded memory summaries, and validated action proposals embedded in play |
 | Networking | Not authoritative | Shared human/AI society experience, only when deterministic authority remains intact |
 
-W2-02 through W2-05 and W3-01 through W3-05 are delivered as bounded deterministic engineering slices. The user-led play assessment on 2026-08-26 failed, and the later ER-01 HUD/interaction recovery remained unacceptable: the project refined the old demo without materially resolving its concept, gameplay, visuals, or overall experience. The next active question is product foundation, not feature depth or breadth. See the [Snow Globe Frontend Product Recovery Plan](active/v3-snow-globe-frontend-recovery-plan.md).
+W2-02 through W2-05 and W3-01 through W3-05 are delivered as bounded deterministic engineering slices. The user-led play assessment on 2026-08-26 failed, and the later ER-01 HUD/interaction recovery remained unacceptable: the project refined the old demo without materially resolving its concept, gameplay, visuals, or overall experience. Foundation Gate F0 is now accepted around an embodied resident-founder, autonomous citizens, and a negotiated wetland water-control consequence. The next active question is how F1 expresses that foundation at an accepted visual and interaction quality bar. See the [Snow Globe Frontend Product Recovery Plan](active/v3-snow-globe-frontend-recovery-plan.md).
 
-## Near-Term Product Question
+## Near-Term Product Direction
 
-Who is the player in this society, what gives and limits their influence, why do citizens cooperate or refuse,
-and what smallest shared consequence proves that Snow Globe makes the embodied world meaningfully richer?
+The player is an embodied resident-founder with limited formal power. Contribution, commitments, persuasion,
+and visible outcomes create influence; citizens may negotiate, counter, refuse, withdraw labor, or proceed
+without the player. The first shared consequence is a failing wetland causeway and a negotiated water-control
+commitment that changes ecology, resources, work, trust, and the next day's situation.
 
 The civic-policy machinery and current presentation are reusable evidence, not the product template. The next
-credible step is Foundation Gate F0 followed by an accepted visual target and a new Golden Three/Golden Fifteen
-presentation shell. General laws, markets, multiplayer, social graphs, and live provider integration remain
-deferred.
+credible step is Visual Gate F1 followed by a new Golden Three/Golden Fifteen presentation shell. The real
+provider-neutral cognition Interface enters with Golden Three through deterministic and recorded-response
+Adapters; the live Snow Globe pilot follows only after the offline experience passes. General laws, markets,
+multiplayer, social graphs, and uncontrolled provider integration remain deferred.

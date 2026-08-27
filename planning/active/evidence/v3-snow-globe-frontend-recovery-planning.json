@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "plan": "v3-snow-globe-frontend-recovery",
-  "status": "planning_reset_active_implementation_blocked_at_f0",
+  "status": "f0_direction_accepted_f1_visual_gate_active",
   "decisionDate": "2026-08-26",
   "repository": {
     "basePlanningCommit": "399e47db992e260ffc0d1fbae00f350a93d30245",
@@ -42,6 +42,43 @@
     "worldAuthority": "PrototypeRuntimeSession_and_validated_commands_events",
     "providerBoundary": "offline_or_recorded_adapter_first_live_provider_separately_authorized"
   },
+  "acceptedFoundation": {
+    "decision": "CON-009",
+    "player": "embodied_resident_founder_with_limited_formal_power",
+    "influence": [
+      "visible_contribution",
+      "kept_commitments",
+      "materially_grounded_persuasion",
+      "judged_outcomes"
+    ],
+    "citizenAutonomy": [
+      "negotiate",
+      "counter_propose",
+      "delay",
+      "refuse",
+      "withdraw_labor",
+      "proceed_without_player"
+    ],
+    "firstSharedConsequence": "failing_wetland_causeway_and_negotiated_water_control_commitment",
+    "userAcceptedDate": "2026-08-26"
+  },
+  "llmIntegration": {
+    "crossCutting": true,
+    "currentGameplayIntegrationImplemented": false,
+    "existingAuthorityPredecessor": "PrototypeCognitionModule_civic_v1",
+    "requiredInterface": "provider_neutral_experience_cognition_interface",
+    "outputChannels": [
+      "closed_validated_action_proposal",
+      "bounded_non_authoritative_communication_act"
+    ],
+    "offlineAdaptersFirst": [
+      "deterministic_fallback",
+      "recorded_response"
+    ],
+    "replayRule": "record_normalized_receipt_and_validation_outcome_never_recall_model_during_replay",
+    "livePilotPhase": "F4",
+    "liveProviderExecutionAuthorized": false
+  },
   "gates": [
     "F0_product_foundation",
     "F1_visual_and_interaction_target",
@@ -52,5 +89,6 @@
     "F6_acceptance_performance_delivery"
   ],
   "implementationAuthorized": false,
-  "nextAction": "Run F0 and obtain explicit user acceptance of player role, power and risk, citizen cooperation or refusal, and the smallest shared consequence."
+  "implementationBoundary": "F1_disposable_in_engine_target_studies_only_until_visual_direction_acceptance",
+  "nextAction": "Produce three materially different F1 visual and interaction directions for the accepted arrival, contribution, citizen counter-offer, and water-control consequence, including embodied cognition presentation and one disposable in-engine target-frame study per viable direction."
 }
