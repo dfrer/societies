@@ -1,10 +1,15 @@
 # Societies V3 Experience Recovery Plan
 
+> **Superseded and failed.** ER-01 and its authorized HUD/interaction recovery remained unacceptable in
+> gameplay, visuals, concept refinement, and overall experience. Do not continue this plan or merge draft
+> PR #177. The active replacement is the
+> [Snow Globe Frontend Product Recovery Plan](v3-snow-globe-frontend-recovery-plan.md).
+
 ## Document Control
 
 | Field | Value |
 |---|---|
-| Status | **Ready** |
+| Status | **Superseded — ER-01 recovery strategy failed** |
 | Decision date | 2026-08-26 |
 | Activation | User-directed after the W3-05 manual play assessment failed |
 | First milestone | **ER-01 First Believable Settlement Loop** |
@@ -183,6 +188,6 @@ player's powers. Those are separate milestones.
 
 ## Practical Next Action
 
-Start a clean isolated worktree from live `origin/master`, read this plan and `CURRENT_BUILD.md`, then
-implement only **ER-01 First Believable Settlement Loop**. The primary checkout contains unrelated
-dirty work and must remain untouched.
+Do not run another ER-01 refinement. Start Foundation Gate F0 in the
+[Snow Globe Frontend Product Recovery Plan](v3-snow-globe-frontend-recovery-plan.md). Resolve the player role,
+power, citizen relationship, and smallest shared consequence before any further presentation or gameplay code.

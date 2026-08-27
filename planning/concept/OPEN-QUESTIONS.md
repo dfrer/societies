@@ -6,10 +6,10 @@ Questions are ordered by their ability to change the product, architecture, or n
 
 | Priority | ID | Question | Why it matters | Status |
 |---|---|---|---|---|
-| P0 | Q-001 | Who is the human player inside the society? | Determines camera, verbs, authority, progression, failure, and relationship to citizens. | Next interview |
-| P0 | Q-002 | What formal and informal power does the player begin with, earn, and risk losing? | Distinguishes participant, founder, official, employer, landholder, or hidden manager fantasies. | Open |
-| P0 | Q-003 | Why do AI citizens cooperate with, challenge, or resist the player? | Defines legitimacy, autonomy, negotiation, and whether citizens feel like participants. | Open |
-| P0 | Q-004 | What is the smallest shared consequence that demonstrates the full product promise? | Defines the decisive vertical slice and future planning gate. | Open |
+| P0 | Q-001 | Who is the human player inside the society? | Determines camera, verbs, authority, progression, failure, and relationship to citizens. | Foundation Gate F0 — blocks implementation |
+| P0 | Q-002 | What formal and informal power does the player begin with, earn, and risk losing? | Distinguishes participant, founder, official, employer, landholder, or hidden manager fantasies. | Foundation Gate F0 — blocks implementation |
+| P0 | Q-003 | Why do AI citizens cooperate with, challenge, or resist the player? | Defines legitimacy, autonomy, negotiation, and whether citizens feel like participants. | Foundation Gate F0 — blocks implementation |
+| P0 | Q-004 | What is the smallest shared consequence that demonstrates the full product promise? | Defines the decisive vertical slice and future planning gate. | Foundation Gate F0 — blocks implementation |
 | P1 | Q-005 | What ecological timescale should the player perceive directly? | Controls feedback speed, simulation compression, and long-term consequence. | Open |
 | P1 | Q-006 | What can be owned, shared, traded, owed, or withheld? | Defines economy, property, labor, contracts, and conflict. | Open |
 | P1 | Q-007 | How is civic legitimacy created and lost? | Determines who may propose, decide, enforce, appeal, or ignore policy. | Open |

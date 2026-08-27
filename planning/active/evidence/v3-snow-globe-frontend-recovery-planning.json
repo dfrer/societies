@@ -1,0 +1,56 @@
+{
+  "schemaVersion": 1,
+  "plan": "v3-snow-globe-frontend-recovery",
+  "status": "planning_reset_active_implementation_blocked_at_f0",
+  "decisionDate": "2026-08-26",
+  "repository": {
+    "basePlanningCommit": "399e47db992e260ffc0d1fbae00f350a93d30245",
+    "originMaster": "7b9e588e695dccac971f80d312fb1c133bfb388d",
+    "branch": "codex/snow-globe-frontend-recovery-plan",
+    "worktree": "C:\\Users\\hunte\\.codex\\worktrees\\frontend-recovery\\societies",
+    "primaryCheckoutPreserved": true
+  },
+  "rejectedDelivery": {
+    "pullRequest": 177,
+    "head": "81b72b4cda17457cec6aeabebeb2d292494162ad",
+    "state": "open_draft_unmerged",
+    "requiredCi": "passed",
+    "productAccepted": false,
+    "performance": {
+      "contractStatus": "pass",
+      "budgetStatus": "safety_failure",
+      "referenceMedianP95Milliseconds": 51.9392,
+      "safetyLimitMilliseconds": 50.0
+    }
+  },
+  "authoritativeProductEvidence": {
+    "result": "failed",
+    "statement": "The ER-01 recovery did not materially improve or refine the concept and remains unacceptable in quality, gameplay, visuals, and overall experience.",
+    "interpretation": "foundation_failure_not_polish_request"
+  },
+  "currentPresentationInventory": {
+    "godotScenes": 4,
+    "csharpScripts": 56,
+    "trackedImages": 1,
+    "trackedAudioFiles": 0,
+    "trackedImported3dModels": 0,
+    "note": "Counts describe the tracked src/societies tree at the planning base; the image is the application icon."
+  },
+  "productRelationship": {
+    "societies": "embodied_player_facing_frontend",
+    "snowGlobe": "bounded_cognition_deliberation_communication_substrate",
+    "worldAuthority": "PrototypeRuntimeSession_and_validated_commands_events",
+    "providerBoundary": "offline_or_recorded_adapter_first_live_provider_separately_authorized"
+  },
+  "gates": [
+    "F0_product_foundation",
+    "F1_visual_and_interaction_target",
+    "F2_golden_three_minutes",
+    "F3_golden_fifteen_minutes",
+    "F4_snow_globe_embodied_citizen",
+    "F5_meaningful_variation",
+    "F6_acceptance_performance_delivery"
+  ],
+  "implementationAuthorized": false,
+  "nextAction": "Run F0 and obtain explicit user acceptance of player role, power and risk, citizen cooperation or refusal, and the smallest shared consequence."
+}

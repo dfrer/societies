@@ -32,6 +32,14 @@ Human choices must have readable, material consequences that citizens and the sh
 
 Offline operation, model failure, invalid model output, timeout, or unavailable provider must preserve simulation progress and deterministic replay. The deterministic fallback must select from the same valid action vocabulary and expose that fallback clearly enough for diagnosis.
 
+### Societies is Snow Globe's embodied frontend
+
+Societies is the player-facing world in which Snow Globe's bounded citizen cognition becomes tangible.
+Snow Globe may support deliberation, communication, negotiation, and memory summaries through constrained
+proposals, but it is not a separate dashboard and never becomes world authority. The Godot client must present
+citizens, labor, ecology, choices, and consequences as a cohesive playable experience rather than expose
+provider or orchestration mechanics.
+
 ## Current Reality vs. Intent
 
 | Area | Current implemented reality | Future intent |
@@ -42,10 +50,14 @@ Offline operation, model failure, invalid model output, timeout, or unavailable 
 | LLMs | No live model integration | Structured interpretation, deliberation, communication, memory summaries, and action proposals |
 | Networking | Not authoritative | Shared human/AI society experience, only when deterministic authority remains intact |
 
-W2-02 through W2-05 and W3-01 through W3-05 are delivered as bounded deterministic engineering slices. The user-led play assessment on 2026-08-26 nevertheless failed: the current experience feels on rails, visually repetitive, and unfinished relative to this thesis. The next active question is therefore experience depth, not system breadth. See [ER-01 First Believable Settlement Loop](active/v3-experience-recovery-plan.md), [the validation report](../V3_SPRINT_VALIDATION_REPORT.md), and [V3 Weeks 3-4](active/v3-weeks-3-4-development-plan.md).
+W2-02 through W2-05 and W3-01 through W3-05 are delivered as bounded deterministic engineering slices. The user-led play assessment on 2026-08-26 failed, and the later ER-01 HUD/interaction recovery remained unacceptable: the project refined the old demo without materially resolving its concept, gameplay, visuals, or overall experience. The next active question is product foundation, not feature depth or breadth. See the [Snow Globe Frontend Product Recovery Plan](active/v3-snow-globe-frontend-recovery-plan.md).
 
 ## Near-Term Product Question
 
-Can one existing deterministic settlement loop feel intentional, embodied, variable, and consequential enough that the player wants to continue?
+Who is the player in this society, what gives and limits their influence, why do citizens cooperate or refuse,
+and what smallest shared consequence proves that Snow Globe makes the embodied world meaningfully richer?
 
-The civic-policy machinery is necessary but no longer sufficient evidence. The smallest credible next test is an 8-10 minute loop connecting resource interaction, contribution, a deliberate civic choice, a readable citizen response, and a visible shared consequence across two contrasting deterministic starts. General laws, markets, multiplayer, social graphs, and live LLM integration remain deferred.
+The civic-policy machinery and current presentation are reusable evidence, not the product template. The next
+credible step is Foundation Gate F0 followed by an accepted visual target and a new Golden Three/Golden Fifteen
+presentation shell. General laws, markets, multiplayer, social graphs, and live provider integration remain
+deferred.

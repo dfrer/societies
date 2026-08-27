@@ -12,6 +12,11 @@
 | Current implementation truth | [CURRENT_BUILD.md](../../CURRENT_BUILD.md) |
 | Predecessor | [V3 two-week development plan](v3-two-week-development-plan.md) |
 
+> **Superseded for future execution.** W3-01 through W3-05 remain valid historical engineering deliveries,
+> but ER-01 and its recovery did not establish an acceptable product experience. Future implementation is
+> governed by the [Snow Globe Frontend Product Recovery Plan](v3-snow-globe-frontend-recovery-plan.md), not
+> W3-06+, the former Week 4 sequence, or another ER-01 patch.
+
 W3-03 merged via PR #124 at `2a82fd0` (implementation `a513636`, evidence/docs `16be638`). W3-04 merged via PR #171 at `ea1f7ee` (implementation `c107d18`, evidence/docs `cefae37`). The W3-05 test/evidence slice merged via PR #173 at `f8eb222`; the player-selection follow-up merged via PR #175 at `36c445b`. The user-led play assessment on 2026-08-26 failed substantially despite that green engineering evidence. [ER-01 First Believable Settlement Loop](v3-experience-recovery-plan.md) is now the active path. W3-06+ and the former Week 4 sequence remain inactive; this document does not authorize another feature.
 
 ## Entry State and Decision Rule

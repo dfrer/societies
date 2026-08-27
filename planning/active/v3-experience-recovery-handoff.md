@@ -1,5 +1,10 @@
 # New-Session Handoff: Continue Societies with ER-01
 
+> **Superseded — do not execute this prompt.** ER-01 and its HUD/interaction recovery remained
+> unacceptable. Continue from the
+> [Snow Globe Frontend Product Recovery Plan](v3-snow-globe-frontend-recovery-plan.md), beginning with
+> Foundation Gate F0. Draft PR #177 must remain unmerged.
+
 Use the prompt below in a new Codex session.
 
 ---

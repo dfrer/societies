@@ -18,7 +18,7 @@ This is future intent, not current implementation scope. Deterministic simulatio
 - The current default branch in this repository is `master`
 - Use `CURRENT_BUILD.md` as the repo-truth summary before assuming stale planning still reflects implementation
 - Treat `planning/` as aspirational unless the current Godot code confirms it
-- W2-02 through W2-04 are validated and merged; W2-04 landed through PR #117 at master `d519d4d`. W2-05 is merged through PR #119 at master `f0e88f0` and locally validated on its feature branch. V3-W2-VIS is complete only by its explicit timing and visual-readback waivers: performance safety remains red, persistence/hash equivalence is unavailable, and visual acceptance is waived, not passed. W2-06 records **Stop Feature Expansion** in `V3_SPRINT_VALIDATION_REPORT.md`; Weeks 3-4 remain Draft/Conditional and inactive pending a future green performance boundary.
+- W2-02 through W3-05 are historical validated engineering deliveries. Human acceptance later failed, and the ER-01 HUD/interaction recovery on draft PR #177 remained unacceptable in concept refinement, gameplay, visuals, quality, and overall experience. Do not merge PR #177 or continue patching its old presentation. The active path is [the Snow Globe Frontend Product Recovery Plan](planning/active/v3-snow-globe-frontend-recovery-plan.md): Societies is the embodied player-facing frontend, `PrototypeRuntimeSession` remains sole world authority, and implementation is blocked until F0 product definition and F1 visual-target acceptance. W3-06+, the former Week 4 path, live providers, broad systems, and unbounded content production remain inactive.
 
 ## Tech Stack
 

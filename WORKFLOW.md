@@ -1131,6 +1131,36 @@ The offline Cognition Quality Corpus v1 is implemented in the isolated Snow Glob
 - Validation is limited to documentation link/path checks, `git diff --check`, and clean branch status before commit.
 - Work occurred in isolated worktree `C:\Users\hunte\.codex\worktrees\experience-trajectory\societies` on `codex/experience-trajectory-planning`, based on `origin/master` `7b9e588e695dccac971f80d312fb1c133bfb388d`. The dirty primary checkout was read only and not modified.
 
+## Historical continuation instruction
+
+- Superseded: the former instruction was to start ER-01 from a clean isolated worktree. ER-01 and its authorized recovery later failed the product bar; use the Snow Globe frontend product-foundation reset below.
+
+# Snow Globe frontend product-foundation reset
+
+## Outcome and scope
+
+- Recorded the ER-01 strategy as failed after its authorized HUD/interaction recovery remained unacceptable in concept refinement, gameplay, visuals, quality, and overall experience.
+- Draft PR #177 remains unmerged. Its technical head `81b72b4cda17457cec6aeabebeb2d292494162ad` and green CI do not override the product rejection; its clean matrix retained `safety_failure` at reference median p95 `51.9392 ms` against the `50 ms` safety line.
+- Established Societies as the embodied player-facing frontend for Snow Globe. The Godot client owns presentation and input; `PrototypeRuntimeSession` remains sole world authority; Snow Globe may later supply bounded cognition and communication proposals through a small validated seam.
+- Added the [Snow Globe Frontend Product Recovery Plan](planning/active/v3-snow-globe-frontend-recovery-plan.md). It supersedes ER-01, W3-06+, and the former Week 4 path for future execution.
+- The reset is planning-only. It performs no gameplay, scene, asset, provider, credential, paid, network, Snow Globe runtime-integration, or dirty-primary-checkout mutation.
+
+## Recovery sequence and gates
+
+- F0 resolves player identity, power and risk, citizen cooperation/refusal, and the smallest shared consequence. Implementation is blocked until the user accepts those decisions.
+- F1 compares three real visual directions and requires one accepted in-engine target frame, plus camera, interaction, animation, audio, UI, accessibility, asset-kit, and performance direction.
+- F2 builds a replacement Golden Three scene over the deterministic runtime to prove movement, atmosphere, interaction feel, citizen presence, and world identity.
+- F3 builds a non-rail Golden Fifteen with three viable first actions, three named citizens, one production chain, one negotiable/refusable request, and one persistent shared consequence.
+- F4 adds one bounded Snow Globe-enhanced citizen moment through recorded/offline evidence first; any live provider remains separately authorized.
+- F5 adds one genuinely different starting situation; F6 owns performance, authoritative validation, CI, and user-led acceptance.
+- Human scorecards gate each playable milestone. Headless tests, screenshots, and automated input cannot establish gameplay or visual acceptance.
+
+## Repository and delivery state
+
+- Planning work is isolated in `C:\Users\hunte\.codex\worktrees\frontend-recovery\societies` on `codex/snow-globe-frontend-recovery-plan`, based on planning commit `399e47db992e260ffc0d1fbae00f350a93d30245` atop `origin/master` `7b9e588e695dccac971f80d312fb1c133bfb388d`.
+- The dirty primary checkout, draft PR #177 branch, and unrelated Snow Globe/provider/lab work were read only and preserved.
+- Documentation validation covers required-link resolution, JSON parsing, scope wording, and `git diff --check`. Gameplay tests and builds are not rerun because this reset changes no executable contract.
+
 ## Continue with
 
-- Start ER-01 from a fresh clean isolated worktree after reading the recovery plan and handoff. Do not begin W3-06+ or add systems merely to increase breadth. The next milestone is complete only after automated authority/replay checks and the separate user-led product gate are honestly recorded.
+- Run the F0 Product Foundation session. The recommended Candidate is an embodied resident-founder with limited formal power who earns influence through contribution, commitments, and persuasion; the user must accept, revise, or reject it before implementation.
