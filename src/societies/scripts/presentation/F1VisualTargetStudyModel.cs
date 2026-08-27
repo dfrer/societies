@@ -9,9 +9,9 @@ namespace Societies.Presentation
     /// </summary>
     public enum F1StudyDirection
     {
-        ReedworkFoundry,
-        FloodplainCommons,
-        SluiceObservatory
+        HearthwoodCauseway,
+        ReedKilnWetlands,
+        PaintedSluiceToyworks
     }
 
     public enum F1StudyResponse
@@ -32,9 +32,9 @@ namespace Societies.Presentation
 
     public enum F1InteractionSurfaceStyle
     {
-        InstrumentStack,
-        PublicNotice,
-        CalibrationRail
+        HandboundLedger,
+        KilnTileNotice,
+        PaintedControlRail
     }
 
     public sealed record F1DirectionTreatment(
@@ -48,7 +48,9 @@ namespace Societies.Presentation
         string EvidenceControl,
         string DeferControl,
         string PrimaryMaterial,
-        string VisualCue);
+        string VisualCue,
+        IReadOnlyList<string> MiniatureStyleTokens,
+        IReadOnlyList<string> AvoidedVisualTokens);
 
     public sealed record F1ResponsePresentation(
         F1StudyState State,
@@ -69,6 +71,11 @@ namespace Societies.Presentation
             Margin >= 12.0f && HeaderHeight > 0.0f && SurfaceWidth <= width - Margin * 2.0f &&
             SurfaceHeight <= height - Margin * 2.0f;
     }
+
+    public sealed record F1DirectionSurfaceLayout(
+        float SurfaceWidth,
+        float SurfaceHeight,
+        bool UsesHorizontalPhysicalRail);
 
     public sealed record F1PressedControlColors(string BackgroundHex, string ForegroundHex)
     {
@@ -104,56 +111,82 @@ namespace Societies.Presentation
         }
     }
 
+    public sealed record F1PhysicalControlColors(
+        string NormalBackgroundHex,
+        string NormalForegroundHex,
+        string HoverBackgroundHex,
+        string HoverForegroundHex,
+        string PressedBackgroundHex,
+        string PressedForegroundHex)
+    {
+        public double NormalContrastRatio => CalculateContrastRatio(NormalBackgroundHex, NormalForegroundHex);
+        public double HoverContrastRatio => CalculateContrastRatio(HoverBackgroundHex, HoverForegroundHex);
+        public double PressedContrastRatio => CalculateContrastRatio(PressedBackgroundHex, PressedForegroundHex);
+
+        private static double CalculateContrastRatio(string first, string second)
+        {
+            return new F1PressedControlColors(first, second).ContrastRatio;
+        }
+    }
+
+    public sealed record F1StudyMaterialProfile(float Roughness, float Metallic, bool UsesAlphaTransparency);
+
     public static class F1VisualTargetStudyModel
     {
         private static readonly IReadOnlyDictionary<F1StudyDirection, F1DirectionTreatment> Treatments =
             new Dictionary<F1StudyDirection, F1DirectionTreatment>
             {
-                [F1StudyDirection.ReedworkFoundry] = new(
-                    F1StudyDirection.ReedworkFoundry,
-                    "REEDWORK FOUNDRY",
-                    "WEATHERED ECOLOGICAL FUTURISM",
-                    "SOUTH SPAN / REED LINE",
-                    "WORK ORDER: CAUSEWAY",
-                    F1InteractionSurfaceStyle.InstrumentStack,
-                    "Q  TAKE THE BRACE",
-                    "W  READ THE GAUGE",
-                    "E  HOLD BACK",
-                    "reed fibre / oxidized iron / amber work light",
-                    "Layered reed ribs hold against a cold, reflective marsh."),
-                [F1StudyDirection.FloodplainCommons] = new(
-                    F1StudyDirection.FloodplainCommons,
-                    "FLOODPLAIN COMMONS",
-                    "CIVIC FIELDCRAFT",
-                    "LOW WATER NOTICE / SOUTH SPAN",
-                    "NOTICE / SPEAK INTO RECORD",
-                    F1InteractionSurfaceStyle.PublicNotice,
-                    "Q  SIGN ON FOR LABOR",
-                    "W  READ THE WATER MARKS",
-                    "E  POST A DEFERRAL",
-                    "timber / canvas / enamel marks / safety orange",
-                    "A public repair is posted in view of the depot and its witnesses."),
-                [F1StudyDirection.SluiceObservatory] = new(
-                    F1StudyDirection.SluiceObservatory,
-                    "SLUICE OBSERVATORY",
-                    "HYDROLOGICAL INSTRUMENTALISM",
-                    "BASIN 03 / SOUTH CAUSEWAY",
-                    "FLOW POSITION: CAUSEWAY",
-                    F1InteractionSurfaceStyle.CalibrationRail,
-                    "Q  COMMIT HANDS",
-                    "W  REQUEST MEASURE",
-                    "E  HOLD POSITION",
-                    "limewash / ceramic / blue-green gauge glass",
-                    "Measured water, a hard horizon, and a deliberately quiet decision surface.")
+                [F1StudyDirection.HearthwoodCauseway] = new(
+                    F1StudyDirection.HearthwoodCauseway,
+                    "A  HEARTHWOOD CAUSEWAY",
+                    "CHUNKY HAND-CARVED COMMONWORK",
+                    "SOUTH SPAN / HEARTHWOOD TABLE",
+                    "HANDWORK LEDGER / CAUSEWAY",
+                    F1InteractionSurfaceStyle.HandboundLedger,
+                    "Q  TAKE THE WOOD BRACE",
+                    "W  READ THE CLAY MARKS",
+                    "E  SET WORK ASIDE",
+                    "hand-carved wood / terracotta clay / wool felt",
+                    "Broad peg-planks, a terracotta split marker, and a felt work mat make the shared repair tactile.",
+                    new[] { "miniature", "chunky proportions", "shallow tabletop", "matte tactile", "simplified citizens" },
+                    new[] { "photorealism", "realistic PBR", "realistic human anatomy", "cinematic fog", "generic survival HUD", "toy-store childishness" }),
+                [F1StudyDirection.ReedKilnWetlands] = new(
+                    F1StudyDirection.ReedKilnWetlands,
+                    "B  REED-KILN WETLANDS",
+                    "EARTHENWARE WETLAND CRAFT",
+                    "SOUTH SPAN / KILN MIRE TABLE",
+                    "KILN TILE / WITNESS MARKS",
+                    F1InteractionSurfaceStyle.KilnTileNotice,
+                    "Q  LIFT THE KILN BRACE",
+                    "W  TRACE THE WET MARKS",
+                    "E  LEAVE A VISIBLE DEFER",
+                    "rough earthenware / reed matting / scorched wood",
+                    "Uneven clay islands, woven reed mats, and scorched braces hold a wetland repair in deliberate asymmetry.",
+                    new[] { "miniature", "chunky proportions", "shallow tabletop", "matte tactile", "organic asymmetry", "simplified citizens" },
+                    new[] { "photorealism", "realistic PBR", "realistic human anatomy", "cinematic fog", "generic survival HUD", "toy-store childishness" }),
+                [F1StudyDirection.PaintedSluiceToyworks] = new(
+                    F1StudyDirection.PaintedSluiceToyworks,
+                    "C  PAINTED SLUICE TOYWORKS",
+                    "GRAPHIC CIVIC CAUSE AND EFFECT",
+                    "SOUTH SPAN / PAINTED FLOW TABLE",
+                    "PAINTED CONTROL RAIL / CAUSEWAY",
+                    F1InteractionSurfaceStyle.PaintedControlRail,
+                    "Q  PLACE THE HAND BLOCK",
+                    "W  CHECK THE GLAZED GAUGE",
+                    "E  PARK THE SLUICE TOKEN",
+                    "painted wood blocks / glazed clay channels / dial gauges",
+                    "Cool painted blocks route a glazed clay channel through a visible wheel, so each civic response reads as a mechanism.",
+                    new[] { "miniature", "chunky proportions", "shallow tabletop", "matte tactile", "graphic mechanism", "simplified citizens" },
+                    new[] { "photorealism", "realistic PBR", "realistic human anatomy", "cinematic fog", "generic survival HUD", "toy-store childishness" })
             };
 
         public static F1DirectionTreatment GetTreatment(F1StudyDirection direction) => Treatments[direction];
 
         public static IReadOnlyList<F1StudyDirection> OrderedDirections { get; } = new[]
         {
-            F1StudyDirection.ReedworkFoundry,
-            F1StudyDirection.FloodplainCommons,
-            F1StudyDirection.SluiceObservatory
+            F1StudyDirection.HearthwoodCauseway,
+            F1StudyDirection.ReedKilnWetlands,
+            F1StudyDirection.PaintedSluiceToyworks
         };
 
         public static F1StudyLayout CalculateLayout(float width, float height)
@@ -166,15 +199,44 @@ namespace Societies.Presentation
             return new F1StudyLayout(margin, headerHeight, surfaceWidth, surfaceHeight, compact);
         }
 
-        /// <summary>Shared by the mesh factory so translucent atmosphere is never silently rendered opaque.</summary>
+        public static F1DirectionSurfaceLayout CalculateDirectionSurfaceLayout(F1StudyDirection direction, float width, float height)
+        {
+            F1StudyLayout layout = CalculateLayout(width, height);
+            float maximumWidth = width - layout.Margin * 2.0f;
+            return direction switch
+            {
+                F1StudyDirection.HearthwoodCauseway => new F1DirectionSurfaceLayout(
+                    MathF.Min(layout.SurfaceWidth, maximumWidth), layout.SurfaceHeight, false),
+                F1StudyDirection.ReedKilnWetlands => new F1DirectionSurfaceLayout(
+                    MathF.Min(layout.IsCompact ? 520.0f : 660.0f, maximumWidth), layout.SurfaceHeight + 34.0f, true),
+                F1StudyDirection.PaintedSluiceToyworks => new F1DirectionSurfaceLayout(
+                    MathF.Min(layout.IsCompact ? 560.0f : 780.0f, maximumWidth), layout.SurfaceHeight + 34.0f, true),
+                _ => throw new ArgumentOutOfRangeException(nameof(direction), direction, "Unknown F1 direction.")
+            };
+        }
+
+        /// <summary>Shared by the mesh factory so translucent tabletop-water accents are never silently rendered opaque.</summary>
         public static bool ShouldUseAlphaTransparency(float alpha) => alpha < 0.999f;
+
+        /// <summary>Pure material policy for unit tests; Godot resources are constructed only by the running engine.</summary>
+        public static F1StudyMaterialProfile GetMaterialProfile(float alpha) =>
+            new(0.93f, 0.0f, ShouldUseAlphaTransparency(alpha));
 
         /// <summary>Opaque pressed-state pairs with WCAG normal-text contrast at or above 4.5:1.</summary>
         public static F1PressedControlColors GetPressedControlColors(F1StudyDirection direction) => direction switch
         {
-            F1StudyDirection.ReedworkFoundry => new F1PressedControlColors("1B2423", "D8E8DB"),
-            F1StudyDirection.FloodplainCommons => new F1PressedControlColors("2A3029", "FFF2CE"),
-            F1StudyDirection.SluiceObservatory => new F1PressedControlColors("102125", "EFF5E8"),
+            F1StudyDirection.HearthwoodCauseway => new F1PressedControlColors("3A241B", "FFF3DB"),
+            F1StudyDirection.ReedKilnWetlands => new F1PressedControlColors("30251F", "FFF1D0"),
+            F1StudyDirection.PaintedSluiceToyworks => new F1PressedControlColors("16303A", "F4F7E9"),
+            _ => throw new ArgumentOutOfRangeException(nameof(direction), direction, "Unknown F1 direction.")
+        };
+
+        /// <summary>Contrast-checked colors used directly by the world-space carved control pieces.</summary>
+        public static F1PhysicalControlColors GetPhysicalControlColors(F1StudyDirection direction) => direction switch
+        {
+            F1StudyDirection.HearthwoodCauseway => new F1PhysicalControlColors("352119", "F7E5C5", "6A3B25", "FFF3DB", "3A241B", "FFF3DB"),
+            F1StudyDirection.ReedKilnWetlands => new F1PhysicalControlColors("30251F", "FFF0CF", "554235", "FFF1D0", "30251F", "FFF1D0"),
+            F1StudyDirection.PaintedSluiceToyworks => new F1PhysicalControlColors("16303A", "F4F7E9", "315666", "F4F7E9", "16303A", "F4F7E9"),
             _ => throw new ArgumentOutOfRangeException(nameof(direction), direction, "Unknown F1 direction.")
         };
 

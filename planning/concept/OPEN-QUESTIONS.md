@@ -16,7 +16,7 @@ Questions are ordered by their ability to change the product, architecture, or n
 | P1 | Q-008 | What does success, failure, recovery, or continuation mean? | Prevents the simulation from becoming either aimless or artificially gamey. | First-slice answer accepted in CON-009; long-term progression remains open |
 | P1 | Q-009 | What should an AI citizen remember, forget, and disclose? | Defines bounded memory, privacy, identity, and cost controls. | F3/F4 blocker: bounded event/commitment ledger accepted; exact horizon and disclosure rules open |
 | P2 | Q-010 | What changes when multiple humans share the society? | Establishes the eventual multiplayer authority and social model. | Deferred until local loop proves fun |
-| P1 | Q-011 | Which embodied conversation language best preserves play rhythm and accessibility without becoming a chat window? | Controls input surface, animation, subtitles, pacing, and how Snow Globe feels native to the world. | F1 Candidate package ready; user selection required |
+| P1 | Q-011 | Which embodied conversation language best preserves play rhythm and accessibility without becoming a chat window? | Controls input surface, animation, subtitles, pacing, and how Snow Globe feels native to the world. | Tactile miniature selected; replacement treatment review required |
 | P1 | Q-012 | What live-model latency, invocation budget, and quality improvement justify using a provider instead of fallback? | Prevents prose novelty from adding unacceptable wait, cost, or operational risk. | F4 live-pilot decision; offline Interface work may proceed |
 
 ## Interview Discipline
@@ -29,8 +29,9 @@ Questions are ordered by their ability to change the product, architecture, or n
 
 ## Next Interview
 
-F0 is accepted. The F1 Candidate package now asks the user to answer Q-011 by comparing the same interaction
-in Reedwork Foundry, Floodplain Commons, and Sluice Observatory:
+F0 is accepted. The realistic-adjacent F1 package failed. The tactile miniature replacement now asks the user
+to answer Q-011 by comparing the same interaction in Hearthwood Causeway, Reed-Kiln Wetlands, and Painted
+Sluice Toyworks:
 
 > How does the player approach, listen to, answer, and understand a citizen counter-offer while staying inside
 > the world rather than opening a generic dialogue application?

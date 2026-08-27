@@ -1,79 +1,96 @@
-# F1 Snow Globe Visual and Interaction Target Package
+# F1 Snow Globe Tactile Miniature Visual and Interaction Target
 
 ## Status and boundary
 
-**Status:** three-direction Candidate package ready; F1 remains incomplete until the user selects and accepts
-one direction after viewing the style frames and running the standalone in-engine study.
+**Status:** tactile clay-and-wood miniature selected as the dominant F1 language; three replacement treatments
+are ready for user review. F1 remains incomplete until the user accepts one treatment or a precise bounded
+blend after running the replacement in-engine study.
 
-This package compares presentation for the accepted resident-founder causeway moment. It does not replace the
-main scene, add simulation state, integrate a live model/provider, or establish visual/play acceptance.
-`PrototypeRuntimeSession` and the existing validated commands/events remain untouched.
+The first Reedwork Foundry / Floodplain Commons / Sluice Observatory frames were rejected by the user on
+2026-08-26 as far too realistic. Their generated assets remain in the repository only as explicit failed
+comparison evidence. They are not an art target and must not guide production.
+
+This package changes presentation only. It does not replace the main scene, add simulation state, integrate a
+model/provider, or establish visual/play acceptance. `PrototypeRuntimeSession` and the existing validated
+commands/events remain untouched.
+
+## Locked visual language
+
+The world should feel like a society physically assembled by its residents:
+
+- hand-pinched clay, carved wood, woven reed, felt, twine, pegs, paint, and repair marks;
+- chunky adult silhouettes and deliberately simplified faces rather than realistic anatomy;
+- shallow, readable tabletop composition with strong foreground/midground/background staging;
+- matte tactile surfaces, broad material marks, limited palettes, and visible hand construction;
+- mature civic warmth and ecological stakes without grim survival realism or preschool cuteness; and
+- world-integrated wooden, clay, or woven interaction pieces rather than floating software chrome.
+
+Hard visual rejects: photorealism, realistic PBR, realistic humans/skin, cinematic fog, photographic depth of
+field, glossy plastic, generic survival HUD, chat windows, dialogue boxes, quest lists, minimaps, health bars,
+neon holograms, toy packaging, and childish preschool proportions.
 
 ## Fixed comparison moment
 
-Every direction shows the same product situation:
+Every treatment shows the same resident-founder situation:
 
 - first-person arrival at the failing wetland causeway;
 - Mara offers a materially grounded counter-position;
 - Ivo visibly braces the repair while Sena works near the depot;
 - the player carries one modest repair bundle;
 - the response surface offers **labor**, **evidence**, or **defer**;
-- pending, refusal, and consequence are expressed with both words and marks; and
+- pending, refusal, and consequence use words plus graphic marks; and
 - the interface remains subordinate to citizen, work, water, and consequence.
 
-The style frames are visual targets, not screenshots of the current Godot implementation.
+The generated frames are visual targets, not screenshots of the Godot implementation.
 
-## Direction A — Reedwork Foundry
+## A — Hearthwood Causeway
 
-![Reedwork Foundry](assets/f1-visual-targets/direction-a-reedwork-foundry.png)
+![Hearthwood Causeway](assets/f1-visual-targets/direction-a-hearthwood-causeway-v3.png)
 
-**Position:** weathered ecological futurism. Layered reed fibre, oxidized fasteners, wet timber, battered
-biocomposite ribs, cool marsh fog, and localized amber work light.
+**Position:** warm hand-carved commonwork. Honey-colored peg planks, thumb-pressed terracotta banks, wool-felt
+reeds, braided cord, cream clay, indigo cloth, and small safety-orange repair marks.
 
-**Interaction language:** a tactile field instrument—one need marker, one narrow response ribbon, one recent
-result. No generic survival dashboard or chat window.
+**Interaction language:** a handbound work ledger expressed as three carved clay-and-wood tabs.
 
-**Strength:** strongest atmosphere, wetland materiality, urgency, and contrast between human warmth and a cold
-living environment.
+**Strength:** strongest resident warmth, material charm, and immediate readability without losing the causeway
+crisis.
 
-**Risk:** can become muddy, visually expensive, or generic post-collapse craft if silhouettes, color hierarchy,
-and civic identity are not rigorously authored.
+**Risk:** can become cozy to the point of low urgency unless damage, labor, water pressure, and consequence are
+exaggerated graphically.
 
-## Direction B — Floodplain Commons
+## B — Reed-Kiln Wetlands
 
-![Floodplain Commons](assets/f1-visual-targets/direction-b-floodplain-commons.png)
+![Reed-Kiln Wetlands](assets/f1-visual-targets/direction-b-reed-kiln-wetlands-v3.png)
 
-**Position:** civic fieldcraft. Heavy timber, patched canvas, enamel gauges, dyed cloth, painted communal
-symbols, baskets, ceramic pipes, and warm overcast light.
+**Position:** earthenware wetland craft. Rough coil-built clay, woven reed mats, scorched braces, cork mud
+islands, fiber rope, ceramic water marks, and organic asymmetry.
 
-**Interaction language:** a stitched field note or public work notice—one primary condition, three hand-stamped
-responses, and one witnessed-result seal.
+**Interaction language:** pinned kiln-fired seals on a woven notice mat, with the player's position visibly
+entered into the shared work record.
 
-**Strength:** clearest settlement warmth, collective ownership, citizen legibility, and approachable human
-stakes.
+**Strength:** strongest ecological identity and clearest sense that the settlement is built from the wetland
+itself.
 
-**Risk:** can drift toward a familiar rustic survival village unless the water infrastructure, civic marks,
-and Snow Globe citizen behavior carry a distinctive identity.
+**Risk:** can become tonally muddy or visually noisy unless silhouettes and state colors stay unusually bold.
 
-## Direction C — Sluice Observatory
+## C — Painted Sluice Toyworks
 
-![Sluice Observatory](assets/f1-visual-targets/direction-c-sluice-observatory.png)
+![Painted Sluice Toyworks](assets/f1-visual-targets/direction-c-painted-sluice-toyworks-v3.png)
 
-**Position:** hydrological instrumentalism. Limewashed floodworks, dark stone, ceramic sluice parts, oxidized
-brass, blue-green level glass, geometric water channels, luminous fog, and precise warm work lights.
+**Position:** graphic civic cause-and-effect. Interlocking painted wood blocks, glazed clay water channels,
+chunky sluice wheels, peg-built causeway pieces, ceramic gauges, chipped paint, and simplified mechanisms.
 
-**Interaction language:** a restrained calibrated rail—one breach-aligned condition gauge, three geometric
-response controls, and one consequence trace.
+**Interaction language:** a narrow wooden control rail with inset choice tiles and clay state beads.
 
-**Strength:** most distinctive architectural signature, clearest cause-and-effect geometry, and strongest
-potential for a recognizable Snow Globe visual identity.
+**Strength:** clearest causal readability and most distinctive systems language; the player can see how water,
+work, and public decisions fit together.
 
-**Risk:** can feel sterile or authoritarian if wear, resident customization, vegetation, and human warmth do
-not visibly interrupt the measured forms.
+**Risk:** can become sterile or toy-like unless residents leave repairs, personal marks, wear, cloth, and
+vegetation across the mechanism.
 
 ## Shared interaction contract
 
-The standalone study uses fixed presentation data only. It deliberately exercises the surface that a future
+The standalone study uses fixed presentation data only. It exercises the surface that a future
 experience-cognition Interface will drive without pretending to be that Interface.
 
 | State | Required presentation |
@@ -81,21 +98,19 @@ experience-cognition Interface will drive without pretending to be that Interfac
 | Open | Mara's position, causeway need, visible work, and three grounded responses; no instruction wall. |
 | Labor pending | Immediate acknowledgement, explicit `LABOR ENTERED`, motion-safe pending mark, and no blocked camera/world tick. |
 | Evidence pending | Mara exposes the water marks in the world; the response names what is being checked. |
-| Defer/refusal | `DEFERRED / NOT NEUTRAL`, a distinct `!` mark, and the repair visibly proceeding without player commitment. |
+| Defer/refusal | `DEFERRED / NOT NEUTRAL`, a distinct `!` mark, and the repair proceeding without player commitment. |
 | Consequence | A named result, a `✓` mark, citizen response, and a physical/state consequence statement. |
 
-Accessibility requirements shared by all directions:
+Accessibility requirements:
 
 - words and glyphs accompany color for every state;
-- response controls remain keyboard-focusable;
-- layouts fit the supported 1920×1080, 1280×720, and 960×540 study viewports;
-- reduced-motion mode freezes the subtle atmospheric drift without hiding state;
-- subtitles and speaker names remain readable against the world; and
-- no required information depends on audio, hue, animation, or provider diagnostics alone.
+- controls remain pointer-activatable and keyboard-operable through documented shortcuts, with at least 4.5:1 normal-text contrast;
+- layouts fit 1920×1080, 1280×720, and 960×540 study viewports;
+- reduced motion freezes the subtle tabletop drift without hiding state;
+- speaker names remain readable against every material treatment; and
+- no required information depends on audio, hue, animation, or diagnostics alone.
 
 ## Standalone review route
-
-Run from this worktree:
 
 ```powershell
 cd C:\Users\hunte\.codex\worktrees\f1-visual-target\societies
@@ -104,82 +119,78 @@ cd C:\Users\hunte\.codex\worktrees\f1-visual-target\societies
 
 Controls:
 
-- `1`, `2`, `3`: switch Reedwork Foundry, Floodplain Commons, and Sluice Observatory.
+- `1`, `2`, `3`: Hearthwood Causeway, Reed-Kiln Wetlands, Painted Sluice Toyworks.
 - `Q`: offer labor.
 - `W`: ask for evidence.
 - `E`: defer and observe refusal.
 - `Space`: advance or reset the selected response cycle.
 - `R`: toggle the static-safe reduced-motion view.
+- `D`: show or hide the optional diagnostic detail panel; it is hidden by default.
 
-For each direction, inspect the open state, one pending path, refusal, consequence, and reduced-motion view.
-Record 1–5 plus one sentence for:
+For each treatment, inspect open, pending, refusal, consequence, and reduced-motion states. Record 1–5 plus one
+sentence for:
 
-1. distinctive world identity;
-2. citizen presence and social credibility;
-3. causeway/wetland consequence readability;
-4. interaction/HUD hierarchy;
-5. accessibility and comfort; and
+1. unmistakable clay/wood miniature identity;
+2. mature rather than childish tone;
+3. citizen presence and social credibility;
+4. causeway/wetland consequence readability;
+5. interaction hierarchy and accessibility; and
 6. desire to inhabit and continue.
 
-F1 passes only when the user selects one direction, identifies any required blend, and accepts a normal-play
-in-engine target. The selected direction then receives the complete five-view target package before F2.
+F1 passes only when the user selects one treatment or names a bounded blend and accepts a normal-play in-engine
+target. The selected treatment then receives the complete five-view target package before F2.
 
 ## Production and performance direction
 
-- Keep the first asset kit bounded to one wetland terrain/water set, causeway, depot, two support structures,
-  three citizen silhouettes, one carried material, one tool family, and required state effects.
-- Author silhouettes and material breakup before prop density. Extra clutter cannot substitute for readable
-  work and consequence.
-- Favor opaque geometry, reused materials, bounded local lights, and cheap fog layers. Transparencies,
-  reflection breadth, particle density, and overlapping shadow lights are explicit budget risks.
-- Target a stable 60 Hz presentation at 1920×1080 on the existing RTX 2070 SUPER reference machine, but treat
-  that as an unproven F2 production target. The rejected ER-01 branch's `51.9392 ms` reference median p95
-  remains a safety failure and is not repaired by this study.
+- Build the first kit from reusable low-poly clay masses, peg/plank modules, reed/felt cards, rope pieces,
+  painted state tiles, and three simplified citizen bodies.
+- Use silhouette, paint blocks, and material seams before prop density.
+- Keep materials matte and non-metallic; reserve glaze for water channels and gauges.
+- Prefer opaque geometry, repeated meshes/materials, one broad key light, cheap contact shadowing, and no
+  cinematic volumetric fog.
+- Treat visible fingerprints, broad tool grooves, chipped paint, stitched edges, and repair joints as authored
+  graphic marks rather than dense texture detail.
+- Target stable 60 Hz at 1920×1080 on the RTX 2070 SUPER reference machine, but keep that target explicitly
+  unproven until the selected production slice is measured. The rejected ER-01 `51.9392 ms` median p95 remains
+  a predecessor safety failure.
 
 ## Generated-frame provenance and final prompt set
 
-The three PNG frames were generated with the built-in image-generation tool on 2026-08-26 and copied into the
-repository. They are ideation/target assets, not captured gameplay and not acceptance evidence. All prompts
-used the `stylized-concept` game-environment target-frame mode and the same subject/composition invariants.
+The three replacement PNG frames were generated with the built-in image-generation tool on 2026-08-26 and
+copied into the repository. They are internal concept targets, not captured gameplay or acceptance evidence.
+No independent public-release license clearance is claimed; selected-direction asset provenance review or
+replacement remains a later production gate.
 
-**Source and usage status:** these are newly generated outputs, not sourced third-party art. They are committed
-only for internal concept comparison. No independent production/public-release license clearance is claimed;
-that review, replacement decision, and any required attribution record remain part of the selected direction's
-asset-production gate.
+All prompts used `stylized-concept`, the same causeway/character/action invariants, a 16:9 gameplay frame,
+a compact icon-led three-choice surface, uniform crisp focus across the full tabletop, broad flat-diffuse game
+lighting, and these shared constraints:
 
-### Shared prompt
+> Unmistakably non-photoreal stylized 3D game art made from hand-pinched clay, carved wood, felt, twine,
+> woven reed, pegs, and matte paint. Use chunky simplified adult citizens, shallow tabletop staging, broad
+> graphic marks, visible hand construction, and mature civic warmth. Avoid photorealism, realistic PBR,
+> realistic anatomy or skin, cinematic fog, photographic depth of field, glossy plastic, generic survival
+> HUD, chat windows, quest UI, minimaps, health bars, holograms, toy packaging, and preschool proportions.
 
-> Create a polished, production-minded gameplay-camera target frame for Societies / Snow Globe. Show the same
-> first-person resident-founder moment at a failing wetland causeway: Mara presents a counter-position toward
-> the reed nursery, Ivo repairs the causeway, Sena works beside the depot, and the player's hands carry one
-> modest repair bundle. Use achievable high-quality stylized 3D game art, strong silhouettes, visible water
-> and labor, a restrained three-choice contextual surface, and no readable text. Avoid chat windows, dialogue
-> boxes, quest lists, minimaps, health bars, spreadsheets, floating exclamation marks, sci-fi holograms,
-> combat/fantasy gear, neon cyberpunk, generic survival HUD, empty plazas, logos, and watermarks.
+Direction additions:
 
-### Direction-specific prompt A
+- **A:** honey wood, terracotta, felt reeds, braided cord, warm diffuse light, and three carved work tabs.
+- **B:** rough earthenware, reed matting, scorched braces, cork mud, fiber rope, overcast light, and pinned clay
+  seals on a woven notice mat.
+- **C:** painted wood blocks, glazed clay channels, chunky sluice gears, graphic cause-and-effect, cool teal /
+  cream / brick / mustard, and an inset wooden control rail with clay state beads.
 
-> `REEDWORK FOUNDRY`: weathered ecological futurism; woven reed-fiber panels, battered biocomposite beams,
-> oxidized fasteners, wet timber, patched canvas, cool blue-green marsh fog, and localized amber work lights.
-> The interface feels like a tactile field instrument with one need marker, one icon-led response ribbon, and
-> one recent-result mark.
+## Rejected v1 evidence
 
-### Direction-specific prompt B
+The following frames remain only to preserve the failed user evaluation:
 
-> `FLOODPLAIN COMMONS`: human civic fieldcraft; heavy timber trestles, repaired canvas, cream enamel gauges,
-> woven baskets, painted communal symbols, rope lashings, chalk marks, ceramic pipes, clay red, faded ochre,
-> indigo, and small safety-orange marks under warm after-rain sunset. The interface feels like a stitched field
-> note/public work notice with three hand-stamped choices and one witnessed-result seal.
+- [Reedwork Foundry](assets/f1-visual-targets/direction-a-reedwork-foundry.png)
+- [Floodplain Commons](assets/f1-visual-targets/direction-b-floodplain-commons.png)
+- [Sluice Observatory](assets/f1-visual-targets/direction-c-sluice-observatory.png)
 
-### Direction-specific prompt C
-
-> `SLUICE OBSERVATORY`: austere hydrological instrumentalism softened by residents and wetland growth;
-> limewashed floodwalls, dark stone paths, ribbed ceramic sluice parts, oxidized brass, blue-green level glass,
-> geometric channels, luminous cool fog, and precise warm work lights. The interface is one breach-aligned
-> condition gauge, one narrow three-choice response rail, and one consequence trace; avoid sterile or
-> spaceship-like architecture.
+They were technically valid candidate assets but too realistic for the selected product language. Do not blend
+their realistic lighting, human treatment, PBR material density, or survival-concept-art tone into v2.
 
 ## Next decision
 
-The user selects **A**, **B**, **C**, or a precise blend naming one base direction and at most two elements to
-borrow. Do not silently average all three; the selected product needs one dominant visual grammar.
+The user reviews **A**, **B**, and **C** inside the selected tactile miniature language, then chooses one base
+treatment or a precise blend naming one base and at most two borrowed elements.

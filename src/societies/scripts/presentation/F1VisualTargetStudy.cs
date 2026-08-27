@@ -1,6 +1,7 @@
 using Godot;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Societies.Presentation;
 
 namespace Societies.Presentation
@@ -14,19 +15,23 @@ namespace Societies.Presentation
     {
         private readonly Dictionary<F1StudyDirection, DirectionPalette> _palettes = new()
         {
-            [F1StudyDirection.ReedworkFoundry] = new(
-                new Color("17262A"), new Color("2A4A4A"), new Color("65714F"), new Color("9A4E31"),
-                new Color("E0A34C"), new Color("D8E8DB"), new Color("1B2423"), new Color("405C56")),
-            [F1StudyDirection.FloodplainCommons] = new(
-                new Color("6B796C"), new Color("63765E"), new Color("7B5837"), new Color("CA5F31"),
-                new Color("E9B24D"), new Color("FFF2CE"), new Color("2A3029"), new Color("304A6B")),
-            [F1StudyDirection.SluiceObservatory] = new(
-                new Color("102731"), new Color("1E5D69"), new Color("D9D7C6"), new Color("798E85"),
-                new Color("86D8C8"), new Color("EFF5E8"), new Color("102125"), new Color("3F7378"))
+            [F1StudyDirection.HearthwoodCauseway] = new(
+                new Color("463226"), new Color("6D918F"), new Color("718158"), new Color("6A3B25"),
+                new Color("B85B37"), new Color("F7E5C5"), new Color("352119"), new Color("B8CFB0"),
+                new Color("8A5A35"), new Color("C96A43"), new Color("D49A62"), new Color("8A6752")),
+            [F1StudyDirection.ReedKilnWetlands] = new(
+                new Color("3C3930"), new Color("627D78"), new Color("9D9D63"), new Color("4A342A"),
+                new Color("D27743"), new Color("FFF0CF"), new Color("30251F"), new Color("AFC9AD"),
+                new Color("554235"), new Color("9A6545"), new Color("A8643C"), new Color("6D7D58")),
+            [F1StudyDirection.PaintedSluiceToyworks] = new(
+                new Color("243B46"), new Color("5C9DA6"), new Color("779A83"), new Color("315666"),
+                new Color("E7B34D"), new Color("F4F7E9"), new Color("16303A"), new Color("B9D8CD"),
+                new Color("35515B"), new Color("D86A4B"), new Color("66B8BC"), new Color("5C78A1"))
         };
 
         private Node3D? _worldRoot;
-        private Node3D? _mistRoot;
+        private Node3D? _waterAccentRoot;
+        private Camera3D? _tabletopCamera;
         private Control? _uiRoot;
         private Label? _directionLabel;
         private Label? _straplineLabel;
@@ -39,13 +44,91 @@ namespace Societies.Presentation
         private Label? _consequenceLine;
         private Label? _hintLabel;
         private Panel? _surface;
-        private Button? _advanceButton;
+        private readonly Dictionary<string, PhysicalControlPiece> _physicalControls = new();
+        private string? _hoveredPhysicalControl;
         private Vector2 _lastViewportSize;
         private double _visualTime;
-        private F1StudyDirection _direction = F1StudyDirection.ReedworkFoundry;
+        private F1StudyDirection _direction = F1StudyDirection.HearthwoodCauseway;
         private F1StudyResponse _response = F1StudyResponse.None;
         private F1StudyState _state = F1StudyState.Awaiting;
         private bool _reducedMotion;
+        private bool _diagnosticsVisible;
+
+        public F1StudyState CurrentStudyState => _state;
+        public bool IsReducedMotion => _reducedMotion;
+        public bool DiagnosticsVisible => _diagnosticsVisible;
+        public IReadOnlyCollection<string> PhysicalControlIds => _physicalControls.Keys;
+        public bool HasPointerControlSurface => _tabletopCamera != null && _physicalControls.Count == 7;
+
+        /// <summary>Engine-safe deterministic activation seam for the Godot-hosted study regression.</summary>
+        public bool ActivatePhysicalControlForTest(string controlId) => TryActivatePhysicalControl(controlId);
+
+        /// <summary>Engine-safe reduced-motion seam for the Godot-hosted study regression.</summary>
+        public void SetReducedMotionForTest(bool reducedMotion)
+        {
+            _reducedMotion = reducedMotion;
+            UpdateReducedMotionHint();
+        }
+
+        /// <summary>Engine-safe diagnostics toggle seam; it never reaches simulation or provider state.</summary>
+        public void ToggleDiagnosticsForTest() => ToggleDiagnostics();
+
+        /// <summary>Actual visible Canvas occluder rects, used with camera projection in the Godot-hosted regression.</summary>
+        public IReadOnlyList<Rect2> GetVisibleCanvasOccluderRectsForTest()
+        {
+            List<Rect2> rects = new();
+            if (_uiRoot == null)
+            {
+                return rects;
+            }
+            foreach (string nodeName in new[] { "Header", "ResponseSurface", "Hint" })
+            {
+                if (_uiRoot.GetNodeOrNull<Control>(nodeName) is Control control && control.Visible)
+                {
+                    rects.Add(control.GetGlobalRect());
+                }
+            }
+            return rects;
+        }
+
+        /// <summary>Screen-space bounds of the actual world hit pieces under the active orthographic camera.</summary>
+        public IReadOnlyList<Rect2> GetPhysicalControlProjectedRectsForTest()
+        {
+            List<Rect2> rects = new();
+            if (_tabletopCamera == null)
+            {
+                return rects;
+            }
+            foreach (PhysicalControlPiece piece in _physicalControls.Values)
+            {
+                Vector3 halfSize = piece.HitSize * 0.5f;
+                Vector2 minimum = new(float.MaxValue, float.MaxValue);
+                Vector2 maximum = new(float.MinValue, float.MinValue);
+                for (int x = -1; x <= 1; x += 2)
+                {
+                    for (int y = -1; y <= 1; y += 2)
+                    {
+                        for (int z = -1; z <= 1; z += 2)
+                        {
+                            Vector3 worldPoint = piece.HitTarget.GlobalTransform * new Vector3(halfSize.X * x, halfSize.Y * y, halfSize.Z * z);
+                            Vector2 screenPoint = _tabletopCamera.UnprojectPosition(worldPoint);
+                            minimum = minimum.Min(screenPoint);
+                            maximum = maximum.Max(screenPoint);
+                        }
+                    }
+                }
+                rects.Add(new Rect2(minimum, maximum - minimum).Grow(14.0f));
+            }
+            return rects;
+        }
+
+        public bool ArePhysicalControlsUnobscuredByVisibleCanvasForTest()
+        {
+            IReadOnlyList<Rect2> controlRects = GetPhysicalControlProjectedRectsForTest();
+            IReadOnlyList<Rect2> canvasRects = GetVisibleCanvasOccluderRectsForTest();
+            return controlRects.Count == 7 && controlRects.All(control => control.Size.X > 0.0f && control.Size.Y > 0.0f) &&
+                controlRects.All(control => canvasRects.All(canvas => !canvas.Intersects(control)));
+        }
 
         public override void _Ready()
         {
@@ -63,17 +146,33 @@ namespace Societies.Presentation
                 ApplyLayout(viewportSize);
             }
 
-            if (_reducedMotion || _mistRoot == null)
+            if (_reducedMotion || _waterAccentRoot == null)
             {
                 return;
             }
 
             _visualTime += delta;
-            _mistRoot.Position = new Vector3(Mathf.Sin((float)_visualTime * 0.22f) * 0.25f, 0.0f, 0.0f);
+            // A small tabletop-water shift, not atmosphere or cinematic motion.
+            _waterAccentRoot.Position = new Vector3(Mathf.Sin((float)_visualTime * 0.42f) * 0.07f, 0.0f, 0.0f);
         }
 
         public override void _Input(InputEvent @event)
         {
+            if (@event is InputEventMouseMotion motion)
+            {
+                SetHoveredPhysicalControl(ResolvePhysicalControlAt(motion.Position));
+                return;
+            }
+
+            if (@event is InputEventMouseButton mouse && mouse.ButtonIndex == MouseButton.Left && mouse.Pressed)
+            {
+                if (TryActivatePhysicalControl(ResolvePhysicalControlAt(mouse.Position)))
+                {
+                    GetViewport().SetInputAsHandled();
+                }
+                return;
+            }
+
             if (@event is not InputEventKey key || !key.Pressed || key.Echo)
             {
                 return;
@@ -81,19 +180,19 @@ namespace Societies.Presentation
 
             switch (key.Keycode)
             {
-                case Key.Key1: SetDirection(F1StudyDirection.ReedworkFoundry); break;
-                case Key.Key2: SetDirection(F1StudyDirection.FloodplainCommons); break;
-                case Key.Key3: SetDirection(F1StudyDirection.SluiceObservatory); break;
+                case Key.Key1: SetDirection(F1StudyDirection.HearthwoodCauseway); break;
+                case Key.Key2: SetDirection(F1StudyDirection.ReedKilnWetlands); break;
+                case Key.Key3: SetDirection(F1StudyDirection.PaintedSluiceToyworks); break;
                 case Key.Q: SelectResponse(F1StudyResponse.OfferLabor); break;
                 case Key.W: SelectResponse(F1StudyResponse.AskForEvidence); break;
                 case Key.E: SelectResponse(F1StudyResponse.Defer); break;
                 case Key.Space: AdvanceStudyState(); break;
                 case Key.R: ToggleReducedMotion(); break;
+                case Key.D: ToggleDiagnostics(); break;
                 default: return;
             }
 
-            // Run at the input stage so Space remains reliable even when a Button owns focus.
-            // The visible Advance button provides the equivalent pointer/focus activation path.
+            // Run at the input stage so Space remains reliable alongside the raycast-driven physical pieces.
             GetViewport().SetInputAsHandled();
         }
 
@@ -101,37 +200,38 @@ namespace Societies.Presentation
         {
             WorldEnvironment environment = new()
             {
+                Name = "WorldEnvironment",
                 Environment = new Godot.Environment
                 {
                     BackgroundMode = Godot.Environment.BGMode.Color,
                     BackgroundColor = new Color("17262A"),
                     AmbientLightSource = Godot.Environment.AmbientSource.Color,
-                    AmbientLightColor = new Color("A9C2BE"),
-                    AmbientLightEnergy = 0.7f,
-                    FogEnabled = true,
-                    FogLightColor = new Color("A9C2BE"),
-                    FogDensity = 0.015f
+                    AmbientLightColor = new Color("F2D9B0"),
+                    AmbientLightEnergy = 0.88f,
+                    FogEnabled = false
                 }
             };
             AddChild(environment);
 
             DirectionalLight3D key = new()
             {
-                RotationDegrees = new Vector3(-54.0f, -28.0f, 0.0f),
-                LightColor = new Color("D7E8D7"),
-                LightEnergy = 1.3f,
-                ShadowEnabled = true
+                RotationDegrees = new Vector3(-58.0f, -28.0f, 0.0f),
+                LightColor = new Color("FFE5BB"),
+                LightEnergy = 1.15f,
+                ShadowEnabled = false
             };
             AddChild(key);
 
-            Camera3D camera = new()
+            _tabletopCamera = new Camera3D
             {
-                Position = new Vector3(0.0f, 4.0f, 10.5f),
-                Fov = 66.0f,
+                Name = "TabletopCamera",
+                Position = new Vector3(0.0f, 11.0f, 11.5f),
+                Projection = Camera3D.ProjectionType.Orthogonal,
+                Size = 16.0f,
                 Current = true
             };
-            AddChild(camera);
-            camera.LookAt(new Vector3(0.0f, 1.2f, -5.8f), Vector3.Up);
+            AddChild(_tabletopCamera);
+            _tabletopCamera.LookAt(new Vector3(0.0f, 0.0f, -5.8f), Vector3.Up);
         }
 
         private void BuildInterface()
@@ -152,6 +252,7 @@ namespace Societies.Presentation
             header.AddChild(_placeLabel);
 
             _surface = MakePanel("ResponseSurface");
+            _surface.Visible = false;
             _uiRoot.AddChild(_surface);
             _interactionHeadingLabel = MakeLabel("InteractionHeading", 11, HorizontalAlignment.Left);
             _stateMarkLabel = MakeLabel("StateMark", 30, HorizontalAlignment.Center);
@@ -166,18 +267,9 @@ namespace Societies.Presentation
             _surface.AddChild(_consequenceLine);
             _surface.AddChild(_materialLabel);
 
-            Button labor = MakeResponseButton("Labor", "Q  OFFER LABOR", F1StudyResponse.OfferLabor);
-            Button evidence = MakeResponseButton("Evidence", "W  ASK FOR EVIDENCE", F1StudyResponse.AskForEvidence);
-            Button defer = MakeResponseButton("Defer", "E  DEFER", F1StudyResponse.Defer);
-            _advanceButton = MakeResponseButton("Advance", "SPACE  SEE CONSEQUENCE", F1StudyResponse.None);
-            _advanceButton.Pressed += AdvanceStudyState;
-            _uiRoot.AddChild(labor);
-            _uiRoot.AddChild(evidence);
-            _uiRoot.AddChild(defer);
-            _uiRoot.AddChild(_advanceButton);
-
             _hintLabel = MakeLabel("Hint", 11, HorizontalAlignment.Right);
-            _hintLabel.Text = "1 / 2 / 3 direction   •   R reduced motion";
+            _hintLabel.Text = "D  DETAILS";
+            _hintLabel.Visible = false;
             _uiRoot.AddChild(_hintLabel);
             ApplyLayout(GetViewport().GetVisibleRect().Size);
         }
@@ -189,23 +281,25 @@ namespace Societies.Presentation
             {
                 environment.Environment.BackgroundColor = palette.Sky;
                 environment.Environment.AmbientLightColor = palette.Mist;
-                environment.Environment.FogLightColor = palette.Mist;
             }
 
             _worldRoot?.QueueFree();
             _worldRoot = new Node3D { Name = $"{_direction}World" };
             AddChild(_worldRoot);
+            _physicalControls.Clear();
+            _hoveredPhysicalControl = null;
             BuildWetlandMoment(_worldRoot, palette);
             RefreshInterface();
         }
 
         private void BuildWetlandMoment(Node3D root, DirectionPalette palette)
         {
-            AddMesh(root, "Water", new PlaneMesh { Size = new Vector2(50.0f, 34.0f) }, palette.Water, new Vector3(0.0f, -0.05f, -7.0f), emission: palette.Water.Darkened(0.7f));
-            AddMesh(root, "CausewayBase", new BoxMesh { Size = new Vector3(5.2f, 0.7f, 17.0f) }, palette.Structure, new Vector3(0.0f, 0.28f, -5.8f));
-            AddMesh(root, "CausewaySplit", new BoxMesh { Size = new Vector3(0.34f, 0.1f, 4.8f) }, palette.Accent, new Vector3(-0.6f, 0.66f, -5.7f), new Vector3(0.0f, 0.18f, 0.0f));
+            AddMesh(root, "TabletopPlinth", new BoxMesh { Size = new Vector3(18.0f, 0.72f, 15.0f) }, palette.Table, new Vector3(0.0f, -0.38f, -5.4f));
+            AddMesh(root, "MatteWaterInset", new PlaneMesh { Size = new Vector2(16.6f, 13.6f) }, palette.Water, new Vector3(0.0f, 0.01f, -5.4f));
+            AddMesh(root, "CausewayBase", new BoxMesh { Size = new Vector3(5.5f, 0.74f, 15.2f) }, palette.Structure, new Vector3(0.0f, 0.38f, -5.5f));
+            AddMesh(root, "CausewaySplit", new BoxMesh { Size = new Vector3(0.44f, 0.13f, 4.5f) }, palette.Accent, new Vector3(-0.55f, 0.82f, -5.45f), new Vector3(0.0f, 0.14f, 0.0f));
 
-            for (int index = 0; index < 28; index++)
+            for (int index = 0; index < 20; index++)
             {
                 float x = -9.0f + (index % 7) * 3.0f + ((index / 7) % 2) * 0.6f;
                 float z = -1.5f - (index / 7) * 4.5f;
@@ -214,73 +308,86 @@ namespace Societies.Presentation
 
             switch (_direction)
             {
-                case F1StudyDirection.ReedworkFoundry:
-                    BuildReedworkFoundry(root, palette);
+                case F1StudyDirection.HearthwoodCauseway:
+                    BuildHearthwoodCauseway(root, palette);
                     break;
-                case F1StudyDirection.FloodplainCommons:
-                    BuildFloodplainCommons(root, palette);
+                case F1StudyDirection.ReedKilnWetlands:
+                    BuildReedKilnWetlands(root, palette);
                     break;
                 default:
-                    BuildSluiceObservatory(root, palette);
+                    BuildPaintedSluiceToyworks(root, palette);
                     break;
             }
 
             BuildCharacters(root, palette);
-            _mistRoot = new Node3D { Name = "AtmosphereMist" };
-            root.AddChild(_mistRoot);
-            for (int index = 0; index < 5; index++)
+            BuildPhysicalControls(root, palette);
+            BuildWorldStateFeedback(root, palette);
+            _waterAccentRoot = new Node3D { Name = "TabletopWaterAccents" };
+            root.AddChild(_waterAccentRoot);
+            for (int index = 0; index < 6; index++)
             {
-                AddMesh(_mistRoot, $"Mist{index}", new QuadMesh { Size = new Vector2(7.0f, 1.6f) }, WithAlpha(palette.Mist, 0.12f), new Vector3(-7.0f + index * 3.4f, 1.0f + (index % 2) * 0.45f, -6.5f - index * 1.1f), new Vector3(0.0f, 0.15f, 0.0f), unshaded: true);
+                float radius = 0.34f + (index % 3) * 0.14f;
+                AddMesh(_waterAccentRoot, $"WaterRing{index}", new CylinderMesh { TopRadius = radius, BottomRadius = radius, Height = 0.018f }, WithAlpha(palette.Mist, 0.24f), new Vector3(-6.4f + index * 2.35f, 0.035f, -2.2f - (index % 3) * 3.8f), unshaded: true);
             }
         }
 
-        private static void BuildReedworkFoundry(Node3D root, DirectionPalette palette)
+        private static void BuildHearthwoodCauseway(Node3D root, DirectionPalette palette)
         {
-            for (int index = 0; index < 8; index++)
+            for (int index = 0; index < 7; index++)
             {
-                AddMesh(root, $"ReedRib{index}", new CylinderMesh { TopRadius = 0.09f, BottomRadius = 0.13f, Height = 4.7f }, palette.Reed, new Vector3(-2.0f + index * 0.57f, 2.35f, -4.5f), new Vector3(0.0f, 0.0f, -0.22f + index * 0.055f));
+                float z = -1.3f - index * 1.95f;
+                AddMesh(root, $"HandCarvedPlank{index}", new BoxMesh { Size = new Vector3(4.9f, 0.28f, 1.55f) }, palette.Wood, new Vector3(0.0f, 0.9f, z), new Vector3(0.0f, (index % 2 == 0 ? 0.025f : -0.025f), 0.0f));
+                AddMesh(root, $"ClayPegLeft{index}", new CylinderMesh { TopRadius = 0.17f, BottomRadius = 0.2f, Height = 0.34f }, palette.Clay, new Vector3(-1.85f, 1.06f, z));
+                AddMesh(root, $"ClayPegRight{index}", new CylinderMesh { TopRadius = 0.17f, BottomRadius = 0.2f, Height = 0.34f }, palette.Clay, new Vector3(1.85f, 1.06f, z));
             }
-            AddMesh(root, "FoundryFrame", new BoxMesh { Size = new Vector3(4.9f, 0.18f, 0.18f) }, palette.Accent, new Vector3(0.0f, 3.9f, -4.5f));
-            OmniLight3D lamp = new() { Position = new Vector3(0.0f, 3.35f, -3.9f), LightColor = palette.Accent, LightEnergy = 2.6f, OmniRange = 10.0f };
-            root.AddChild(lamp);
+            AddMesh(root, "WoolFeltWorkMat", new BoxMesh { Size = new Vector3(3.8f, 0.08f, 2.3f) }, palette.Felt, new Vector3(-5.0f, 0.18f, -3.8f));
+            AddMesh(root, "ChunkyWoodBrace", new BoxMesh { Size = new Vector3(0.42f, 1.9f, 5.0f) }, palette.Wood.Darkened(0.18f), new Vector3(-0.9f, 1.6f, -5.5f), new Vector3(0.0f, 0.0f, 0.22f));
+            AddMesh(root, "TerracottaRepairMarker", new CylinderMesh { TopRadius = 0.62f, BottomRadius = 0.72f, Height = 0.42f }, palette.Clay, new Vector3(2.8f, 0.5f, -5.2f));
         }
 
-        private static void BuildFloodplainCommons(Node3D root, DirectionPalette palette)
+        private static void BuildReedKilnWetlands(Node3D root, DirectionPalette palette)
         {
-            AddMesh(root, "NoticeBoard", new BoxMesh { Size = new Vector3(2.5f, 1.55f, 0.12f) }, new Color("E9DDB8"), new Vector3(-3.8f, 2.0f, -4.8f));
-            AddMesh(root, "NoticeStripe", new BoxMesh { Size = new Vector3(2.25f, 0.18f, 0.15f) }, palette.Accent, new Vector3(-3.8f, 2.25f, -4.7f));
-            AddMesh(root, "CanvasAwning", new QuadMesh { Size = new Vector2(4.7f, 2.2f) }, new Color(palette.Mist, 0.88f), new Vector3(1.3f, 3.3f, -4.2f), new Vector3(-0.26f, 0.0f, 0.0f));
-            for (int index = 0; index < 4; index++)
+            for (int index = 0; index < 6; index++)
             {
-                AddMesh(root, $"TimberPost{index}", new CylinderMesh { TopRadius = 0.12f, BottomRadius = 0.15f, Height = 3.5f }, palette.Structure, new Vector3(-0.7f + index * 1.35f, 1.75f, -4.2f));
+                float x = -4.8f + index * 1.82f;
+                float z = -3.5f - (index % 2) * 2.8f;
+                float radius = 0.72f + (index % 3) * 0.14f;
+                AddMesh(root, $"EarthenwareMound{index}", new SphereMesh { Radius = radius, Height = radius * 1.25f }, palette.Clay, new Vector3(x, radius * 0.42f, z), new Vector3(0.0f, index * 0.23f, 0.0f));
+                AddMesh(root, $"ReedMat{index}", new BoxMesh { Size = new Vector3(1.42f, 0.07f, 1.76f) }, palette.Reed, new Vector3(x + 0.48f, 0.12f, z + 0.6f), new Vector3(0.0f, index * 0.15f, 0.0f));
             }
+            AddMesh(root, "ScorchedWoodBrace", new BoxMesh { Size = new Vector3(0.46f, 1.7f, 5.3f) }, palette.Wood.Darkened(0.38f), new Vector3(0.95f, 1.64f, -5.45f), new Vector3(0.0f, 0.0f, -0.26f));
+            AddMesh(root, "KilnWitnessTile", new CylinderMesh { TopRadius = 0.82f, BottomRadius = 0.94f, Height = 0.22f }, palette.Accent, new Vector3(-2.9f, 0.34f, -5.4f));
         }
 
-        private static void BuildSluiceObservatory(Node3D root, DirectionPalette palette)
+        private static void BuildPaintedSluiceToyworks(Node3D root, DirectionPalette palette)
         {
-            AddMesh(root, "MonolithLeft", new BoxMesh { Size = new Vector3(1.3f, 5.5f, 1.5f) }, palette.Reed, new Vector3(-3.5f, 2.75f, -5.6f));
-            AddMesh(root, "MonolithRight", new BoxMesh { Size = new Vector3(1.3f, 5.5f, 1.5f) }, palette.Reed, new Vector3(3.5f, 2.75f, -5.6f));
-            AddMesh(root, "GaugeGlass", new CylinderMesh { TopRadius = 0.42f, BottomRadius = 0.42f, Height = 2.3f }, palette.Accent, new Vector3(0.0f, 2.0f, -5.3f), emission: palette.Accent);
-            AddMesh(root, "GateLine", new BoxMesh { Size = new Vector3(6.2f, 0.2f, 0.22f) }, palette.Structure, new Vector3(0.0f, 4.3f, -5.2f));
-            SpotLight3D beam = new() { Position = new Vector3(0.0f, 5.4f, -2.2f), RotationDegrees = new Vector3(-55.0f, 180.0f, 0.0f), LightColor = palette.Accent, LightEnergy = 3.0f, SpotRange = 16.0f, SpotAngle = 30.0f };
-            root.AddChild(beam);
+            for (int index = 0; index < 6; index++)
+            {
+                Color blockColor = index % 2 == 0 ? palette.Wood : palette.Accent;
+                AddMesh(root, $"PaintedSluiceBlock{index}", new BoxMesh { Size = new Vector3(1.18f, 1.05f + (index % 2) * 0.42f, 1.42f) }, blockColor, new Vector3(-3.1f + index * 1.22f, 0.96f, -5.1f + (index % 2) * 0.62f));
+            }
+            AddMesh(root, "GlazedClayChannel", new BoxMesh { Size = new Vector3(0.64f, 0.28f, 6.5f) }, palette.Clay, new Vector3(2.75f, 0.72f, -5.25f));
+            AddMesh(root, "GlazedGauge", new CylinderMesh { TopRadius = 0.72f, BottomRadius = 0.72f, Height = 0.24f }, palette.Accent, new Vector3(3.85f, 0.46f, -3.4f));
+            AddMesh(root, "CauseEffectWheel", new CylinderMesh { TopRadius = 1.04f, BottomRadius = 1.04f, Height = 0.3f }, palette.Wood, new Vector3(-3.25f, 1.35f, -6.5f), new Vector3(Mathf.Pi / 2.0f, 0.0f, 0.0f));
+            AddMesh(root, "WheelPointer", new BoxMesh { Size = new Vector3(0.16f, 1.25f, 0.22f) }, palette.Accent, new Vector3(-3.25f, 1.35f, -5.97f), new Vector3(0.0f, 0.0f, -0.58f));
         }
 
         private static void BuildCharacters(Node3D root, DirectionPalette palette)
         {
-            AddFigure(root, "Mara_WetlandKeeper", "MARA\nKEEPER", new Vector3(-1.55f, 0.85f, -3.4f), palette.Accent, new Color("E9E3CE"));
-            AddFigure(root, "Ivo_Repair", "IVO\nBRACING", new Vector3(0.75f, 0.72f, -4.9f), palette.Structure, new Color("F0D9A0"), -0.34f);
-            AddFigure(root, "Sena_Depot", "SENA\nDEPOT", new Vector3(4.8f, 0.82f, -7.6f), palette.Reed, new Color("D1E6D7"));
-            AddMesh(root, "Depot", new BoxMesh { Size = new Vector3(2.2f, 1.0f, 1.5f) }, palette.Structure, new Vector3(4.8f, 0.5f, -7.8f));
+            AddCitizenToken(root, "Mara_WetlandKeeper", "MARA\nKEEPER", new Vector3(-1.55f, 0.95f, -3.4f), palette.Accent, new Color("FFF1D1"));
+            AddCitizenToken(root, "Ivo_Repair", "IVO\nBRACING", new Vector3(0.75f, 0.87f, -4.9f), palette.Wood, new Color("FFF1D1"), -0.34f);
+            AddCitizenToken(root, "Sena_Depot", "SENA\nDEPOT", new Vector3(4.8f, 0.94f, -7.6f), palette.Reed, new Color("FFF1D1"));
+            AddMesh(root, "DepotBlock", new BoxMesh { Size = new Vector3(2.4f, 1.15f, 1.65f) }, palette.Structure, new Vector3(4.8f, 0.58f, -7.8f));
         }
 
-        private static void AddFigure(Node3D root, string name, string labelText, Vector3 position, Color coat, Color labelColor, float rotation = 0.0f)
+        private static void AddCitizenToken(Node3D root, string name, string labelText, Vector3 position, Color coat, Color labelColor, float rotation = 0.0f)
         {
-            Node3D figure = new() { Name = name, Position = position, Rotation = new Vector3(0.0f, rotation, 0.0f) };
-            root.AddChild(figure);
-            AddMesh(figure, "Body", new CapsuleMesh { Radius = 0.27f, Height = 1.45f }, coat, new Vector3(0.0f, 0.72f, 0.0f));
-            AddMesh(figure, "Head", new SphereMesh { Radius = 0.23f, Height = 0.46f }, new Color("9E7354"), new Vector3(0.0f, 1.55f, 0.0f));
-            figure.AddChild(new Label3D { Name = "Identity", Text = labelText, Billboard = BaseMaterial3D.BillboardModeEnum.Enabled, Position = new Vector3(0.0f, 2.2f, 0.0f), FontSize = 18, Modulate = labelColor, OutlineSize = 5, OutlineModulate = new Color(0.04f, 0.08f, 0.08f) });
+            Node3D token = new() { Name = name, Position = position, Rotation = new Vector3(0.0f, rotation, 0.0f) };
+            root.AddChild(token);
+            AddMesh(token, "PawnBase", new CylinderMesh { TopRadius = 0.38f, BottomRadius = 0.48f, Height = 0.24f }, coat.Darkened(0.12f), new Vector3(0.0f, 0.12f, 0.0f));
+            AddMesh(token, "ChunkyBody", new BoxMesh { Size = new Vector3(0.58f, 0.76f, 0.48f) }, coat, new Vector3(0.0f, 0.6f, 0.0f));
+            AddMesh(token, "PaintedHeadBlock", new BoxMesh { Size = new Vector3(0.42f, 0.34f, 0.38f) }, labelColor.Darkened(0.08f), new Vector3(0.0f, 1.13f, 0.0f));
+            token.AddChild(new Label3D { Name = "Identity", Text = labelText, Billboard = BaseMaterial3D.BillboardModeEnum.Enabled, Position = new Vector3(0.0f, 1.64f, 0.0f), FontSize = 17, Modulate = labelColor, OutlineSize = 4, OutlineModulate = new Color(0.10f, 0.07f, 0.05f) });
         }
 
         private static void AddReedCluster(Node3D root, Vector3 position, Color color, int index)
@@ -302,12 +409,14 @@ namespace Societies.Presentation
         /// <summary>Material factory used by the study's code-native world props and headless-safe tests.</summary>
         public static StandardMaterial3D CreateStudyMaterial(Color color, Color? emission = null, bool unshaded = false)
         {
+            F1StudyMaterialProfile profile = F1VisualTargetStudyModel.GetMaterialProfile(color.A);
             StandardMaterial3D material = new()
             {
                 AlbedoColor = color,
-                Roughness = 0.78f,
+                Metallic = profile.Metallic,
+                Roughness = profile.Roughness,
                 ShadingMode = unshaded ? BaseMaterial3D.ShadingModeEnum.Unshaded : BaseMaterial3D.ShadingModeEnum.PerPixel,
-                Transparency = F1VisualTargetStudyModel.ShouldUseAlphaTransparency(color.A)
+                Transparency = profile.UsesAlphaTransparency
                     ? BaseMaterial3D.TransparencyEnum.Alpha
                     : BaseMaterial3D.TransparencyEnum.Disabled
             };
@@ -341,41 +450,9 @@ namespace Societies.Presentation
             return label;
         }
 
-        private Button MakeResponseButton(string name, string text, F1StudyResponse response)
-        {
-            Button button = new() { Name = name, Text = text, TooltipText = text.Replace("  ", ": "), FocusMode = Control.FocusModeEnum.All };
-            button.AddThemeFontSizeOverride("font_size", 12);
-            button.Pressed += () =>
-            {
-                if (response != F1StudyResponse.None)
-                {
-                    SelectResponse(response);
-                }
-            };
-            return button;
-        }
-
-        private void ApplyDirectionControls(F1DirectionTreatment treatment)
-        {
-            if (_uiRoot == null)
-            {
-                return;
-            }
-
-            ApplyControlCopy(_uiRoot.GetNode<Button>("Labor"), treatment.LaborControl, "Offer labor");
-            ApplyControlCopy(_uiRoot.GetNode<Button>("Evidence"), treatment.EvidenceControl, "Ask for evidence");
-            ApplyControlCopy(_uiRoot.GetNode<Button>("Defer"), treatment.DeferControl, "Defer a commitment");
-        }
-
-        private static void ApplyControlCopy(Button button, string text, string semanticChoice)
-        {
-            button.Text = text;
-            button.TooltipText = $"{semanticChoice}: {text.Replace("  ", ": ")}";
-        }
-
         private void RefreshInterface()
         {
-            if (_uiRoot == null || _surface == null || _directionLabel == null || _straplineLabel == null || _placeLabel == null || _interactionHeadingLabel == null || _materialLabel == null || _stateMarkLabel == null || _stateLabel == null || _maraLine == null || _consequenceLine == null || _advanceButton == null)
+            if (_uiRoot == null || _surface == null || _directionLabel == null || _straplineLabel == null || _placeLabel == null || _interactionHeadingLabel == null || _materialLabel == null || _stateMarkLabel == null || _stateLabel == null || _maraLine == null || _consequenceLine == null)
             {
                 return;
             }
@@ -384,7 +461,7 @@ namespace Societies.Presentation
             F1DirectionTreatment treatment = F1VisualTargetStudyModel.GetTreatment(_direction);
             F1ResponsePresentation presentation = F1VisualTargetStudyModel.GetPresentation(_response, _state);
             _directionLabel.Text = treatment.Title;
-            _straplineLabel.Text = treatment.Strapline;
+            _straplineLabel.Text = $"{treatment.Strapline}   •   D DETAILS";
             _placeLabel.Text = treatment.PlaceLabel;
             _interactionHeadingLabel.Text = treatment.InteractionHeading;
             _materialLabel.Text = treatment.PrimaryMaterial.ToUpperInvariant();
@@ -392,13 +469,6 @@ namespace Societies.Presentation
             _stateLabel.Text = presentation.StateLabel;
             _maraLine.Text = presentation.MaraLine;
             _consequenceLine.Text = presentation.ConsequenceLine;
-            _advanceButton.Visible = presentation.AllowsAdvance;
-            _advanceButton.Text = _state == F1StudyState.Refused || _state == F1StudyState.Consequence
-                ? "SPACE  RESET POSITION"
-                : "SPACE  SEE CONSEQUENCE";
-
-            ApplyDirectionControls(treatment);
-
             foreach (Node child in _uiRoot.GetChildren())
             {
                 if (child is Panel panel)
@@ -406,10 +476,6 @@ namespace Societies.Presentation
                     panel.AddThemeStyleboxOverride("panel", panel == _surface
                         ? MakeInteractionSurfaceStyle(palette, treatment.InteractionStyle)
                         : MakePanelStyle(palette, 6));
-                }
-                else if (child is Button button)
-                {
-                    ApplyButtonStyle(button, palette, treatment.Direction, treatment.InteractionStyle);
                 }
             }
             _directionLabel.Modulate = palette.Text;
@@ -421,7 +487,10 @@ namespace Societies.Presentation
             _maraLine.Modulate = palette.Text;
             _consequenceLine.Modulate = palette.Text.Lightened(0.12f);
             _materialLabel.Modulate = palette.Accent;
+            ApplyDiagnosticsVisibility();
             ApplyLayout(GetViewport().GetVisibleRect().Size);
+            UpdateWorldStateFeedback(palette, presentation);
+            UpdatePhysicalControlVisuals(palette);
         }
 
         private void ApplyLayout(Vector2 viewport)
@@ -438,16 +507,10 @@ namespace Societies.Presentation
             _straplineLabel!.Position = new Vector2(18.0f, layout.IsCompact ? 28.0f : 38.0f); _straplineLabel.Size = new Vector2(header.Size.X * 0.62f, 22.0f);
             _placeLabel!.Position = new Vector2(header.Size.X * 0.55f, 10.0f); _placeLabel.Size = new Vector2(header.Size.X * 0.42f, 42.0f);
 
-            F1DirectionTreatment treatment = F1VisualTargetStudyModel.GetTreatment(_direction);
-            float preferredWidth = treatment.InteractionStyle switch
-            {
-                F1InteractionSurfaceStyle.PublicNotice => layout.IsCompact ? 520.0f : 660.0f,
-                F1InteractionSurfaceStyle.CalibrationRail => layout.IsCompact ? 560.0f : 780.0f,
-                _ => layout.SurfaceWidth
-            };
-            bool usesHorizontalRail = treatment.InteractionStyle != F1InteractionSurfaceStyle.InstrumentStack;
-            float surfaceWidth = MathF.Min(preferredWidth, viewport.X - layout.Margin * 2.0f);
-            float surfaceHeight = layout.SurfaceHeight + (usesHorizontalRail ? 34.0f : 0.0f);
+            F1DirectionSurfaceLayout directionLayout = F1VisualTargetStudyModel.CalculateDirectionSurfaceLayout(_direction, viewport.X, viewport.Y);
+            bool usesHorizontalRail = directionLayout.UsesHorizontalPhysicalRail;
+            float surfaceWidth = directionLayout.SurfaceWidth;
+            float surfaceHeight = directionLayout.SurfaceHeight;
             _surface.Position = new Vector2(layout.Margin, viewport.Y - layout.Margin - surfaceHeight);
             _surface.Size = new Vector2(surfaceWidth, surfaceHeight);
 
@@ -457,40 +520,6 @@ namespace Societies.Presentation
             _maraLine!.Position = new Vector2(18.0f, 62.0f); _maraLine.Size = new Vector2(_surface.Size.X - 36.0f, usesHorizontalRail ? 42.0f : layout.IsCompact ? 48.0f : 56.0f);
             _consequenceLine!.Position = new Vector2(18.0f, usesHorizontalRail ? 104.0f : layout.IsCompact ? 112.0f : 124.0f); _consequenceLine.Size = new Vector2(_surface.Size.X - 36.0f, usesHorizontalRail ? 28.0f : 38.0f);
             _materialLabel!.Position = new Vector2(18.0f, _surface.Size.Y - 25.0f); _materialLabel.Size = new Vector2(_surface.Size.X - 36.0f, 16.0f);
-
-            Button labor = _uiRoot.GetNode<Button>("Labor"); Button evidence = _uiRoot.GetNode<Button>("Evidence"); Button defer = _uiRoot.GetNode<Button>("Defer");
-            Button[] choices = { labor, evidence, defer };
-            if (!usesHorizontalRail)
-            {
-                float buttonX = _surface.Position.X + _surface.Size.X + 12.0f;
-                float available = viewport.X - buttonX - layout.Margin;
-                bool stackButtons = available < 230.0f;
-                float choiceWidth = stackButtons ? MathF.Max(174.0f, _surface.Size.X) : MathF.Min(260.0f, available);
-                for (int index = 0; index < choices.Length; index++)
-                {
-                    choices[index].Position = stackButtons
-                        ? new Vector2(_surface.Position.X, _surface.Position.Y - 46.0f * (3 - index))
-                        : new Vector2(buttonX, _surface.Position.Y + index * 48.0f);
-                    choices[index].Size = new Vector2(choiceWidth, 38.0f);
-                }
-                _advanceButton!.Position = stackButtons
-                    ? new Vector2(_surface.Position.X, _surface.Position.Y - 184.0f)
-                    : new Vector2(buttonX, _surface.Position.Y + 154.0f);
-                _advanceButton.Size = new Vector2(choiceWidth, 38.0f);
-            }
-            else
-            {
-                float gutter = 10.0f;
-                float controlWidth = (_surface.Size.X - 36.0f - gutter * 2.0f) / 3.0f;
-                float controlY = _surface.Size.Y - 66.0f;
-                for (int index = 0; index < choices.Length; index++)
-                {
-                    choices[index].Position = _surface.Position + new Vector2(18.0f + index * (controlWidth + gutter), controlY);
-                    choices[index].Size = new Vector2(controlWidth, 34.0f);
-                }
-                _advanceButton!.Position = _surface.Position + new Vector2(18.0f, controlY - 40.0f);
-                _advanceButton.Size = new Vector2(_surface.Size.X - 36.0f, 32.0f);
-            }
             _hintLabel!.Position = new Vector2(viewport.X - layout.Margin - 360.0f, viewport.Y - layout.Margin - 18.0f);
             _hintLabel.Size = new Vector2(360.0f, 18.0f);
         }
@@ -512,25 +541,25 @@ namespace Societies.Presentation
         {
             StyleBoxFlat surface = style switch
             {
-                F1InteractionSurfaceStyle.InstrumentStack => MakePanelStyle(palette, 16),
-                F1InteractionSurfaceStyle.PublicNotice => MakePanelStyle(palette, 0),
+                F1InteractionSurfaceStyle.HandboundLedger => MakePanelStyle(palette, 16),
+                F1InteractionSurfaceStyle.KilnTileNotice => MakePanelStyle(palette, 4),
                 _ => MakePanelStyle(palette, 0)
             };
 
             switch (style)
             {
-                case F1InteractionSurfaceStyle.InstrumentStack:
+                case F1InteractionSurfaceStyle.HandboundLedger:
                     surface.BorderWidthLeft = 5;
                     surface.BorderWidthTop = 2;
                     break;
-                case F1InteractionSurfaceStyle.PublicNotice:
+                case F1InteractionSurfaceStyle.KilnTileNotice:
                     surface.BorderWidthTop = 4;
                     surface.BorderWidthBottom = 4;
                     // Keep the board noticeably distinct from the other treatments without
                     // sacrificing contrast for the shared light-on-dark study typography.
                     surface.BgColor = WithAlpha(palette.Panel.Lightened(0.10f), 0.98f);
                     break;
-                case F1InteractionSurfaceStyle.CalibrationRail:
+                case F1InteractionSurfaceStyle.PaintedControlRail:
                     surface.BorderWidthTop = 2;
                     surface.BorderWidthBottom = 2;
                     surface.BorderWidthLeft = 0;
@@ -541,27 +570,187 @@ namespace Societies.Presentation
             return surface;
         }
 
-        private static void ApplyButtonStyle(Button button, DirectionPalette palette, F1StudyDirection direction, F1InteractionSurfaceStyle style)
+        private void BuildPhysicalControls(Node3D root, DirectionPalette palette)
         {
-            int radius = style == F1InteractionSurfaceStyle.InstrumentStack ? 10 : 0;
-            F1PressedControlColors pressedColors = F1VisualTargetStudyModel.GetPressedControlColors(direction);
-            StyleBoxFlat normal = MakePanelStyle(palette, radius); normal.BgColor = WithAlpha(palette.Panel, 0.92f);
-            StyleBoxFlat hover = MakePanelStyle(palette, radius); hover.BgColor = WithAlpha(palette.Accent, 0.28f);
-            StyleBoxFlat pressed = MakePanelStyle(palette, radius); pressed.BgColor = new Color(pressedColors.BackgroundHex);
-            pressed.BorderColor = palette.Accent.Lightened(0.20f);
-            pressed.BorderWidthTop = 3; pressed.BorderWidthBottom = 3;
-            if (style == F1InteractionSurfaceStyle.CalibrationRail)
+            F1DirectionTreatment treatment = F1VisualTargetStudyModel.GetTreatment(_direction);
+            for (int index = 0; index < F1VisualTargetStudyModel.OrderedDirections.Count; index++)
             {
-                normal.BorderWidthLeft = 0; normal.BorderWidthRight = 0;
-                hover.BorderWidthLeft = 0; hover.BorderWidthRight = 0;
-                pressed.BorderWidthLeft = 0; pressed.BorderWidthRight = 0;
+                F1StudyDirection direction = F1VisualTargetStudyModel.OrderedDirections[index];
+                string label = direction switch
+                {
+                    F1StudyDirection.HearthwoodCauseway => "1  HEARTHWOOD",
+                    F1StudyDirection.ReedKilnWetlands => "2  REED-KILN",
+                    _ => "3  TOYWORKS"
+                };
+                CreatePhysicalControl(
+                    root,
+                    $"direction:{direction}",
+                    "F1DirectionHitTarget",
+                    label,
+                    new BoxMesh { Size = new Vector3(2.45f, 0.32f, 0.86f) },
+                    new Vector3(-4.2f + index * 4.2f, 0.34f, 1.0f),
+                    new Vector3(2.55f, 0.55f, 1.05f));
             }
-            button.AddThemeStyleboxOverride("normal", normal);
-            button.AddThemeStyleboxOverride("hover", hover);
-            button.AddThemeStyleboxOverride("pressed", pressed);
-            button.AddThemeColorOverride("font_color", palette.Text);
-            button.AddThemeColorOverride("font_hover_color", palette.Text);
-            button.AddThemeColorOverride("font_pressed_color", new Color(pressedColors.ForegroundHex));
+
+            switch (_direction)
+            {
+                case F1StudyDirection.HearthwoodCauseway:
+                    CreatePhysicalControl(root, "response:OfferLabor", "F1ResponseHitTarget", treatment.LaborControl, new BoxMesh { Size = new Vector3(2.35f, 0.40f, 0.92f) }, new Vector3(-5.4f, 0.38f, -1.0f), new Vector3(2.55f, 0.65f, 1.12f));
+                    CreatePhysicalControl(root, "response:AskForEvidence", "F1ResponseHitTarget", treatment.EvidenceControl, new BoxMesh { Size = new Vector3(2.35f, 0.40f, 0.92f) }, new Vector3(-5.4f, 0.38f, -2.35f), new Vector3(2.55f, 0.65f, 1.12f));
+                    CreatePhysicalControl(root, "response:Defer", "F1ResponseHitTarget", treatment.DeferControl, new BoxMesh { Size = new Vector3(2.35f, 0.40f, 0.92f) }, new Vector3(-5.4f, 0.38f, -3.70f), new Vector3(2.55f, 0.65f, 1.12f));
+                    break;
+                case F1StudyDirection.ReedKilnWetlands:
+                    CreatePhysicalControl(root, "response:OfferLabor", "F1ResponseHitTarget", treatment.LaborControl, new CylinderMesh { TopRadius = 0.92f, BottomRadius = 1.04f, Height = 0.30f }, new Vector3(-4.7f, 0.30f, -1.8f), new Vector3(2.25f, 0.55f, 2.25f));
+                    CreatePhysicalControl(root, "response:AskForEvidence", "F1ResponseHitTarget", treatment.EvidenceControl, new CylinderMesh { TopRadius = 0.92f, BottomRadius = 1.04f, Height = 0.30f }, new Vector3(-2.45f, 0.30f, -2.85f), new Vector3(2.25f, 0.55f, 2.25f));
+                    CreatePhysicalControl(root, "response:Defer", "F1ResponseHitTarget", treatment.DeferControl, new CylinderMesh { TopRadius = 0.92f, BottomRadius = 1.04f, Height = 0.30f }, new Vector3(-0.20f, 0.30f, -1.8f), new Vector3(2.25f, 0.55f, 2.25f));
+                    break;
+                default:
+                    CreatePhysicalControl(root, "response:OfferLabor", "F1ResponseHitTarget", treatment.LaborControl, new BoxMesh { Size = new Vector3(2.18f, 0.36f, 0.86f) }, new Vector3(-4.3f, 0.34f, -1.6f), new Vector3(2.38f, 0.55f, 1.06f));
+                    CreatePhysicalControl(root, "response:AskForEvidence", "F1ResponseHitTarget", treatment.EvidenceControl, new BoxMesh { Size = new Vector3(2.18f, 0.36f, 0.86f) }, new Vector3(-1.95f, 0.34f, -1.6f), new Vector3(2.38f, 0.55f, 1.06f));
+                    CreatePhysicalControl(root, "response:Defer", "F1ResponseHitTarget", treatment.DeferControl, new BoxMesh { Size = new Vector3(2.18f, 0.36f, 0.86f) }, new Vector3(0.40f, 0.34f, -1.6f), new Vector3(2.38f, 0.55f, 1.06f));
+                    break;
+            }
+
+            CreatePhysicalControl(root, "advance", "F1ResponseHitTarget", "SPACE  TURN THE RESULT TILE", new BoxMesh { Size = new Vector3(3.65f, 0.34f, 0.84f) }, new Vector3(4.25f, 0.34f, -1.7f), new Vector3(3.9f, 0.55f, 1.04f));
+        }
+
+        private void CreatePhysicalControl(Node3D root, string controlId, string groupName, string labelText, Mesh mesh, Vector3 position, Vector3 hitSize)
+        {
+            StaticBody3D hitTarget = new()
+            {
+                Name = $"{controlId.Replace(':', '_')}HitTarget",
+                Position = position
+            };
+            hitTarget.AddToGroup("F1PhysicalControl");
+            hitTarget.AddToGroup(groupName);
+            hitTarget.SetMeta("f1_physical_control_id", controlId);
+            root.AddChild(hitTarget);
+
+            MeshInstance3D visiblePiece = new()
+            {
+                Name = $"{controlId.Replace(':', '_')}Piece",
+                Mesh = mesh
+            };
+            hitTarget.AddChild(visiblePiece);
+            hitTarget.AddChild(new CollisionShape3D
+            {
+                Name = "PointerRaycastShape",
+                Shape = new BoxShape3D { Size = hitSize }
+            });
+            Label3D label = new()
+            {
+                Name = "ControlLabel",
+                Text = labelText,
+                Position = new Vector3(0.0f, hitSize.Y * 0.58f, 0.0f),
+                Billboard = BaseMaterial3D.BillboardModeEnum.Enabled,
+                FontSize = 24,
+                OutlineSize = 4,
+                OutlineModulate = new Color("1B1510")
+            };
+            hitTarget.AddChild(label);
+            _physicalControls[controlId] = new PhysicalControlPiece(hitTarget, visiblePiece, label, hitSize);
+        }
+
+        private static void BuildWorldStateFeedback(Node3D root, DirectionPalette palette)
+        {
+            MeshInstance3D feedbackTile = new()
+            {
+                Name = "WorldStateFeedbackTile",
+                Mesh = new BoxMesh { Size = new Vector3(3.7f, 0.24f, 0.95f) },
+                Position = new Vector3(4.25f, 0.48f, -3.05f),
+                MaterialOverride = CreateStudyMaterial(palette.Panel)
+            };
+            root.AddChild(feedbackTile);
+            root.AddChild(new Label3D
+            {
+                Name = "WorldStateFeedback",
+                Text = "◇  POSITION OPEN",
+                Position = new Vector3(4.25f, 0.92f, -3.05f),
+                Billboard = BaseMaterial3D.BillboardModeEnum.Enabled,
+                FontSize = 27,
+                OutlineSize = 4,
+                OutlineModulate = new Color("1B1510"),
+                Modulate = palette.Text
+            });
+        }
+
+        private void UpdateWorldStateFeedback(DirectionPalette palette, F1ResponsePresentation presentation)
+        {
+            if (_worldRoot?.GetNodeOrNull<Label3D>("WorldStateFeedback") is Label3D label)
+            {
+                label.Text = $"{presentation.StateMark}  {presentation.StateLabel}";
+                label.Modulate = GetStateColor(palette, presentation.State);
+            }
+            if (_worldRoot?.GetNodeOrNull<MeshInstance3D>("WorldStateFeedbackTile") is MeshInstance3D tile)
+            {
+                tile.MaterialOverride = CreateStudyMaterial(GetStateColor(palette, presentation.State).Darkened(0.55f));
+            }
+        }
+
+        private void UpdatePhysicalControlVisuals(DirectionPalette palette)
+        {
+            F1PhysicalControlColors colors = F1VisualTargetStudyModel.GetPhysicalControlColors(_direction);
+            foreach ((string controlId, PhysicalControlPiece piece) in _physicalControls)
+            {
+                bool selectedDirection = controlId == $"direction:{_direction}";
+                bool selectedResponse = controlId == $"response:{_response}" && _response != F1StudyResponse.None;
+                bool advancesResult = controlId == "advance" && _state != F1StudyState.Awaiting;
+                bool pressed = selectedDirection || selectedResponse || advancesResult;
+                bool hovered = controlId == _hoveredPhysicalControl && !pressed;
+                Color background = new(pressed ? colors.PressedBackgroundHex : hovered ? colors.HoverBackgroundHex : colors.NormalBackgroundHex);
+                Color foreground = new(pressed ? colors.PressedForegroundHex : hovered ? colors.HoverForegroundHex : colors.NormalForegroundHex);
+                piece.Mesh.MaterialOverride = CreateStudyMaterial(background);
+                piece.Label.Modulate = foreground;
+            }
+        }
+
+        private void SetHoveredPhysicalControl(string? controlId)
+        {
+            if (_hoveredPhysicalControl == controlId)
+            {
+                return;
+            }
+            _hoveredPhysicalControl = controlId;
+            UpdatePhysicalControlVisuals(_palettes[_direction]);
+        }
+
+        private string? ResolvePhysicalControlAt(Vector2 screenPosition)
+        {
+            if (_tabletopCamera == null || !HasPointerControlSurface)
+            {
+                return null;
+            }
+            Vector3 origin = _tabletopCamera.ProjectRayOrigin(screenPosition);
+            Vector3 end = origin + _tabletopCamera.ProjectRayNormal(screenPosition) * 100.0f;
+            Godot.Collections.Dictionary result = GetWorld3D().DirectSpaceState.IntersectRay(PhysicsRayQueryParameters3D.Create(origin, end));
+            if (!result.ContainsKey("collider") || result["collider"].AsGodotObject() is not Node hitTarget)
+            {
+                return null;
+            }
+            return hitTarget.HasMeta("f1_physical_control_id")
+                ? hitTarget.GetMeta("f1_physical_control_id").AsString()
+                : null;
+        }
+
+        private bool TryActivatePhysicalControl(string? controlId)
+        {
+            if (string.IsNullOrEmpty(controlId))
+            {
+                return false;
+            }
+            foreach (F1StudyDirection direction in F1VisualTargetStudyModel.OrderedDirections)
+            {
+                if (controlId == $"direction:{direction}")
+                {
+                    SetDirection(direction);
+                    return true;
+                }
+            }
+            if (controlId == "response:OfferLabor") { SelectResponse(F1StudyResponse.OfferLabor); return true; }
+            if (controlId == "response:AskForEvidence") { SelectResponse(F1StudyResponse.AskForEvidence); return true; }
+            if (controlId == "response:Defer") { SelectResponse(F1StudyResponse.Defer); return true; }
+            if (controlId == "advance") { AdvanceStudyState(); return true; }
+            return false;
         }
 
         private void SetDirection(F1StudyDirection direction)
@@ -590,11 +779,36 @@ namespace Societies.Presentation
         private void ToggleReducedMotion()
         {
             _reducedMotion = !_reducedMotion;
+            UpdateReducedMotionHint();
+        }
+
+        private void UpdateReducedMotionHint()
+        {
             if (_hintLabel != null)
             {
                 _hintLabel.Text = _reducedMotion
                     ? "STATIC-SAFE VIEW   •   R restores subtle motion"
                     : "1 / 2 / 3 direction   •   R reduced motion";
+            }
+        }
+
+        private void ToggleDiagnostics()
+        {
+            _diagnosticsVisible = !_diagnosticsVisible;
+            ApplyDiagnosticsVisibility();
+        }
+
+        private void ApplyDiagnosticsVisibility()
+        {
+            if (_surface != null)
+            {
+                _surface.Visible = _diagnosticsVisible;
+            }
+            // The top header carries the compact treatment identity. Essential choice and state
+            // feedback remain on the tabletop pieces, so this optional detail layer never owns input.
+            if (_hintLabel != null)
+            {
+                _hintLabel.Visible = false;
             }
         }
 
@@ -608,6 +822,20 @@ namespace Societies.Presentation
 
         private static Color WithAlpha(Color color, float alpha) => new(color.R, color.G, color.B, alpha);
 
-        private sealed record DirectionPalette(Color Sky, Color Water, Color Reed, Color Structure, Color Accent, Color Text, Color Panel, Color Mist);
+        private sealed record DirectionPalette(
+            Color Sky,
+            Color Water,
+            Color Reed,
+            Color Structure,
+            Color Accent,
+            Color Text,
+            Color Panel,
+            Color Mist,
+            Color Table,
+            Color Wood,
+            Color Clay,
+            Color Felt);
+
+        private sealed record PhysicalControlPiece(StaticBody3D HitTarget, MeshInstance3D Mesh, Label3D Label, Vector3 HitSize);
     }
 }

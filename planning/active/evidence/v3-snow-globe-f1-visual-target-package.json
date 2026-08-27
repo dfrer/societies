@@ -1,15 +1,15 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "milestone": "F1_visual_and_interaction_target",
-  "status": "candidate_package_ready_human_acceptance_required",
+  "status": "tactile_miniature_replacement_candidate_human_acceptance_required",
   "date": "2026-08-26",
   "repository": {
     "baseCommit": "75b23e9de20be4797a233cb78ff8e8e1b3cd4daf",
-    "implementationCommit": "8820734ecc8afd1a592c9077a9e441c5c4467d5d",
+    "priorCandidateHead": "fef1441b4b69e374572178b324d6c12a2a5fa888",
     "branch": "codex/snow-globe-f1-visual-target",
     "pullRequest": "https://github.com/dfrer/societies/pull/179",
     "pullRequestBase": "codex/snow-globe-frontend-recovery-plan",
-    "deliveryState": "pushed_stacked_pull_request_open_ci_not_triggered_for_non_default_base",
+    "deliveryState": "replacement_validated_working_tree_uncommitted",
     "ci": {
       "status": "not_reported",
       "reason": "tests_workflow_pull_request_filter_accepts_only_master_or_main_bases",
@@ -17,6 +17,13 @@
     },
     "worktree": "C:\\Users\\hunte\\.codex\\worktrees\\f1-visual-target\\societies",
     "primaryCheckoutPreserved": true
+  },
+  "userEvaluation": {
+    "v1Status": "rejected",
+    "v1Reason": "far_too_realistic",
+    "selectedDominantLanguage": "tactile_clay_and_wood_miniature",
+    "v2HumanVisualAcceptance": false,
+    "v2HumanPlayAcceptance": false
   },
   "fixedMoment": "resident_founder_at_failing_wetland_causeway_with_mara_ivo_sena_and_labor_evidence_defer_responses",
   "assetProvenance": {
@@ -26,32 +33,49 @@
     "productionOrPublicReleaseClearanceClaimed": false,
     "nextGate": "selected_direction_asset_provenance_and_license_review_or_replacement"
   },
-  "directions": [
+  "replacementDirections": [
     {
-      "id": "reedwork_foundry",
-      "position": "weathered_ecological_futurism",
-      "asset": "planning/active/assets/f1-visual-targets/direction-a-reedwork-foundry.png",
+      "id": "hearthwood_causeway",
+      "position": "warm_hand_carved_commonwork",
+      "asset": "planning/active/assets/f1-visual-targets/direction-a-hearthwood-causeway-v3.png",
       "width": 1672,
       "height": 941,
-      "bytes": 2452906,
+      "bytes": 2645184,
+      "sha256": "f0452cfba01bd5930514e1760caa62db06dfa6fd095f174d4f66f4799f057f83"
+    },
+    {
+      "id": "reed_kiln_wetlands",
+      "position": "earthenware_wetland_craft",
+      "asset": "planning/active/assets/f1-visual-targets/direction-b-reed-kiln-wetlands-v3.png",
+      "width": 1672,
+      "height": 941,
+      "bytes": 2513708,
+      "sha256": "1b28dd11a05321908d4eea3f0de0ed6a83cd997bdb5b5f98168be499fdf37aaa"
+    },
+    {
+      "id": "painted_sluice_toyworks",
+      "position": "graphic_civic_cause_and_effect",
+      "asset": "planning/active/assets/f1-visual-targets/direction-c-painted-sluice-toyworks-v3.png",
+      "width": 1672,
+      "height": 941,
+      "bytes": 2624559,
+      "sha256": "eded1215c66e636c38c3bd26ea354ef12e2a412c8170a09c481e06af95c28549"
+    }
+  ],
+  "rejectedV1Directions": [
+    {
+      "id": "reedwork_foundry",
+      "asset": "planning/active/assets/f1-visual-targets/direction-a-reedwork-foundry.png",
       "sha256": "f02c35bc8d840074b945b7036b2c3dab7ee66d355d80b83762fd33ae684ca2e5"
     },
     {
       "id": "floodplain_commons",
-      "position": "civic_fieldcraft",
       "asset": "planning/active/assets/f1-visual-targets/direction-b-floodplain-commons.png",
-      "width": 1672,
-      "height": 941,
-      "bytes": 2727569,
       "sha256": "ab52ef1a0f8226342dccf170981c20d1d7189510f9eaedbf4cc570f640ed016c"
     },
     {
       "id": "sluice_observatory",
-      "position": "hydrological_instrumentalism",
       "asset": "planning/active/assets/f1-visual-targets/direction-c-sluice-observatory.png",
-      "width": 1536,
-      "height": 1024,
-      "bytes": 2549002,
       "sha256": "64aa5902d567984ff0a8b370b419bf357e1a393a744ac840382367f402fbe2c6"
     }
   ],
@@ -60,37 +84,56 @@
     "presentationOnly": true,
     "simulationMutation": false,
     "providerOrModelCall": false,
+    "dominantLanguage": "tactile_clay_and_wood_miniature",
     "directions": 3,
     "responses": ["offer_labor", "ask_for_evidence", "defer"],
     "states": ["awaiting", "pending", "refused", "consequence"],
+    "orthographicTabletop": true,
+    "cinematicFog": false,
+    "matteNonMetallicMaterials": true,
+    "physicalWorldControls": 7,
+    "pointerRaycastControls": true,
+    "keyboardShortcutParity": true,
+    "diagnosticPanelHiddenByDefault": true,
+    "diagnosticPanelToggle": "D",
     "reducedMotion": true,
     "supportedStudyViewports": ["1920x1080", "1280x720", "960x540"]
   },
   "validation": {
+    "status": "replacement_full_validation_passed_human_acceptance_required",
     "focusedTests": {
-      "passed": 11,
-      "failed": 0
+      "passed": 14,
+      "failed": 0,
+      "source": "main_confirmed"
     },
     "fastManifestTests": {
-      "passed": 376,
-      "failed": 0
+      "status": "not_separately_claimed",
+      "reason": "the_authoritative_wrapper_passed_the_complete_managed_suite"
     },
     "authoritativeWrapper": {
-      "managedPassed": 496,
+      "managedPassed": 499,
       "managedFailed": 0,
-      "godotPassed": 25,
-      "godotFailed": 0
+      "godotPassed": 26,
+      "godotFailed": 0,
+      "exitCode": 0,
+      "knownIntentionalWarnings": [
+        "frame_catch_up_backlog_warning_exercised_by_its_smoke_test",
+        "optional_runtime_metrics_artifact_access_denied_test_still_passed"
+      ],
+      "source": "main_confirmed"
     },
     "releaseBuild": {
       "warnings": 0,
-      "errors": 0
+      "errors": 0,
+      "source": "main_confirmed"
     },
     "exportReleaseBuild": {
       "warnings": 0,
-      "errors": 0
+      "errors": 0,
+      "source": "main_confirmed"
     },
-    "headlessSceneSmoke": "passed_clean_load",
-    "diffCheck": "passed_pre_commit",
+    "headlessSceneSmoke": "passed_main_confirmed",
+    "diffCheck": "pending_final_commit",
     "humanVisualAcceptance": false,
     "humanPlayAcceptance": false
   },
@@ -101,5 +144,5 @@
     "knownPredecessorReferenceMedianP95Milliseconds": 51.9392,
     "knownSafetyLineMilliseconds": 50.0
   },
-  "nextAction": "User runs the standalone study, compares all three directions and states, and selects one dominant direction or a precise bounded blend."
+  "nextAction": "User runs the tactile miniature study, compares all three treatments and selects one base treatment or a precise bounded blend."
 }

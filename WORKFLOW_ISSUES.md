@@ -266,3 +266,23 @@ Statuses: **Open**, **Monitoring**, **Resolved**, **Deferred**, **Rejected**.
 - **Auto-fix eligibility/rationale:** No — workflow trigger and required-check policy changes need explicit CI review.
 - **Resolution/validation:** Open; local validation is complete but does not substitute for a GitHub check.
 - **Linked entry:** WI-GLOBAL-2026-144 in `C:\Users\hunte\Documents\Codex\WORKFLOW_ISSUES.md`.
+
+### WI-SOCIETIES-2026-014 — Managed presentation test constructed a Godot native material outside the engine host
+
+- **Tier:** T3
+- **Status:** Resolved
+- **Scope/project:** `C:\Users\hunte\.codex\worktrees\f1-visual-target\societies`; F1 tactile-miniature presentation tests
+- **Category:** test-host compatibility
+- **First seen:** 2026-08-26 (America/Vancouver)
+- **Last seen:** 2026-08-26 (America/Vancouver)
+- **Occurrences:** 1 transient focused-test host crash
+- **Reporter:** `frontend_worker` and main orchestrator
+- **Symptom:** A managed unit test directly constructed `StandardMaterial3D` without a running Godot engine context, causing the .NET test host to terminate instead of returning an assertion result.
+- **Impact:** Focused validation was briefly blocked; production code and runtime behavior were unaffected.
+- **Evidence:** Replacing native-object construction in the managed test with a pure material-policy seam restored stable focused execution. Final focused tests pass 14/14, the authoritative wrapper passes 499/499 managed and 26/26 Godot tests, and Release/ExportRelease builds are warning-free.
+- **Workaround:** Keep pure presentation-policy assertions in managed tests and reserve native Godot object construction for the Godot-hosted runner.
+- **Root cause:** Godot native resources require engine initialization that the ordinary xUnit host does not provide.
+- **Proposed fix:** Completed in the F1 replacement: the managed model exposes a pure matte/non-metallic policy, while the Godot-hosted smoke validates the instantiated materials and scene controls.
+- **Auto-fix eligibility/rationale:** Yes — test placement and pure-policy extraction are bounded, reversible, and do not change world authority.
+- **Resolution/validation:** Resolved by the final validation evidence above.
+- **Linked entry:** WI-GLOBAL-2026-145 in `C:\Users\hunte\Documents\Codex\WORKFLOW_ISSUES.md`.

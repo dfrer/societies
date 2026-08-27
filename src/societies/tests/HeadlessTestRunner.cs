@@ -50,6 +50,7 @@ namespace Societies.Tests
             Test_Vector3_Operations();
             Test_Node_Creation();
             Test_SceneTree_Access();
+            await Test_F1VisualTargetStudy_PhysicalMiniatureInteractionSmoke();
             Test_RunOutputDirectory_IsolatedPerInvocation();
             await Test_MainScene_BootstrapSmoke();
             await Test_MainScene_DepotContributionInputSmoke();
@@ -150,6 +151,103 @@ namespace Societies.Tests
             catch (Exception ex)
             {
                 Fail(nameof(Test_SceneTree_Access), ex);
+            }
+        }
+
+        private async Task Test_F1VisualTargetStudy_PhysicalMiniatureInteractionSmoke()
+        {
+            Node? scene = null;
+
+            try
+            {
+                PackedScene packedScene = GD.Load<PackedScene>("res://scenes/f1_visual_target_study.tscn");
+                Assert(packedScene != null, "F1 visual target study failed to load");
+
+                F1VisualTargetStudy study = packedScene!.Instantiate<F1VisualTargetStudy>();
+                scene = study;
+                AddChild(scene);
+                await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+                await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+
+                Camera3D camera = study.GetNode<Camera3D>("TabletopCamera");
+                WorldEnvironment environment = study.GetNode<WorldEnvironment>("WorldEnvironment");
+                Assert(camera.Projection == Camera3D.ProjectionType.Orthogonal, "F1 study must use the shallow orthographic tabletop camera");
+                Assert(environment.Environment != null && !environment.Environment.FogEnabled, "F1 study must disable cinematic fog");
+                Assert(study.HasPointerControlSurface, "F1 study must expose its physical pointer/raycast control surface");
+                Assert(study.PhysicalControlIds.Count == 7, "F1 study must expose three direction tabs, three response pieces, and one result tile");
+
+                List<StaticBody3D> physicalControls = EnumerateNodes(study)
+                    .OfType<StaticBody3D>()
+                    .Where(node => node.IsInGroup("F1PhysicalControl"))
+                    .ToList();
+                Assert(physicalControls.Count == 7, "F1 study must create exactly seven physical hit targets");
+                Assert(physicalControls.Count(node => node.IsInGroup("F1DirectionHitTarget")) == 3, "F1 study must create three physical direction tabs");
+                Assert(physicalControls.Count(node => node.IsInGroup("F1ResponseHitTarget")) == 4, "F1 study must create three response pieces plus one result tile");
+                Assert(physicalControls.All(node => node.HasMeta("f1_physical_control_id") && node.GetNodeOrNull<CollisionShape3D>("PointerRaycastShape") != null), "Every physical control must publish a raycast hit target contract");
+                Assert(!EnumerateNodes(study).OfType<Button>().Any(), "F1 study Canvas diagnostics must not contain generic response Buttons");
+                Assert(study.FindChild("HandCarvedPlank0", true, false) != null, "Hearthwood treatment geometry must be present by default");
+                Assert(!study.DiagnosticsVisible, "F1 detail diagnostics must be hidden by default");
+                F1StudyState stateBeforeDiagnosticsToggle = study.CurrentStudyState;
+                study.ToggleDiagnosticsForTest();
+                Assert(study.DiagnosticsVisible && study.CurrentStudyState == stateBeforeDiagnosticsToggle, "Diagnostics must toggle locally without mutating study state");
+                study.ToggleDiagnosticsForTest();
+                Assert(!study.DiagnosticsVisible, "Diagnostics must be toggleable back to the unobscured default");
+
+                Vector2I originalWindowSize = GetWindow().Size;
+                try
+                {
+                    foreach (Vector2I viewportSize in new[] { new Vector2I(1920, 1080), new Vector2I(1280, 720), new Vector2I(960, 540) })
+                    {
+                        GetWindow().Size = viewportSize;
+                        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+                        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+                        foreach (F1StudyDirection direction in F1VisualTargetStudyModel.OrderedDirections)
+                        {
+                            Assert(study.ActivatePhysicalControlForTest($"direction:{direction}"), $"{direction} direction tab must activate for projection coverage");
+                            await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+                            Assert(study.GetVisibleCanvasOccluderRectsForTest().Count == 1, $"{viewportSize} {direction} should expose only the compact header by default");
+                            Assert(study.GetPhysicalControlProjectedRectsForTest().Count == 7, $"{viewportSize} {direction} should project all seven physical controls");
+                            Assert(study.ArePhysicalControlsUnobscuredByVisibleCanvasForTest(), $"{viewportSize} {direction} must keep every physical piece clear of visible Canvas rects");
+                        }
+                    }
+                }
+                finally
+                {
+                    GetWindow().Size = originalWindowSize;
+                    await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+                }
+
+                Assert(study.ActivatePhysicalControlForTest("direction:ReedKilnWetlands"), "Reed-Kiln direction tab must activate");
+                await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+                Assert(study.FindChild("EarthenwareMound0", true, false) != null, "Reed-Kiln treatment must create its earthenware geometry");
+                Assert(study.ActivatePhysicalControlForTest("direction:PaintedSluiceToyworks"), "Painted Sluice direction tab must activate");
+                await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+                Assert(study.FindChild("PaintedSluiceBlock0", true, false) != null && study.FindChild("CauseEffectWheel", true, false) != null, "Painted Sluice treatment must create its painted-block and mechanism geometry");
+
+                Assert(study.ActivatePhysicalControlForTest("response:OfferLabor"), "Physical labor piece must activate");
+                Assert(study.CurrentStudyState == F1StudyState.Pending, "Physical labor activation must enter pending state");
+                Assert(study.ActivatePhysicalControlForTest("advance"), "Physical result tile must activate");
+                Assert(study.CurrentStudyState == F1StudyState.Consequence, "Physical result tile must advance to consequence");
+                Assert(study.ActivatePhysicalControlForTest("advance"), "Physical result tile must reset the local study state");
+                Assert(study.CurrentStudyState == F1StudyState.Awaiting, "Physical result reset must return to the open position");
+                study.SetReducedMotionForTest(true);
+                Assert(study.IsReducedMotion, "F1 study test seam must enable reduced motion");
+
+                F1DirectionSurfaceLayout compactLayout = F1VisualTargetStudyModel.CalculateDirectionSurfaceLayout(F1StudyDirection.PaintedSluiceToyworks, 1280.0f, 720.0f);
+                Assert(compactLayout.SurfaceWidth == 560.0f && compactLayout.SurfaceHeight == 246.0f && compactLayout.UsesHorizontalPhysicalRail, "F1 study must retain its supported compact treatment layout");
+                Pass(nameof(Test_F1VisualTargetStudy_PhysicalMiniatureInteractionSmoke));
+            }
+            catch (Exception ex)
+            {
+                Fail(nameof(Test_F1VisualTargetStudy_PhysicalMiniatureInteractionSmoke), ex);
+            }
+            finally
+            {
+                if (scene != null)
+                {
+                    scene.QueueFree();
+                    await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+                }
             }
         }
 
@@ -1684,6 +1782,18 @@ namespace Societies.Tests
         private static PrototypeCatalogBundle LoadCatalogBundle()
         {
             return PrototypeCatalogLoader.LoadFromDirectory(ProjectSettings.GlobalizePath("res://data"));
+        }
+
+        private static IEnumerable<Node> EnumerateNodes(Node root)
+        {
+            yield return root;
+            foreach (Node child in root.GetChildren())
+            {
+                foreach (Node descendant in EnumerateNodes(child))
+                {
+                    yield return descendant;
+                }
+            }
         }
     }
 }

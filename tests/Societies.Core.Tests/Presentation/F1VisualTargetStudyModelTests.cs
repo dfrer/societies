@@ -6,41 +6,61 @@ namespace Societies.Core.Tests.Presentation
     public class F1VisualTargetStudyModelTests
     {
         [Fact]
-        public void Directions_AreThreeMateriallyDifferentNamedTreatments()
+        public void Directions_AreThreeMateriallyDifferentNamedMiniatureTreatments()
         {
             Assert.Collection(
                 F1VisualTargetStudyModel.OrderedDirections,
-                direction => Assert.Equal("REEDWORK FOUNDRY", F1VisualTargetStudyModel.GetTreatment(direction).Title),
-                direction => Assert.Equal("FLOODPLAIN COMMONS", F1VisualTargetStudyModel.GetTreatment(direction).Title),
-                direction => Assert.Equal("SLUICE OBSERVATORY", F1VisualTargetStudyModel.GetTreatment(direction).Title));
+                direction => Assert.Equal("A  HEARTHWOOD CAUSEWAY", F1VisualTargetStudyModel.GetTreatment(direction).Title),
+                direction => Assert.Equal("B  REED-KILN WETLANDS", F1VisualTargetStudyModel.GetTreatment(direction).Title),
+                direction => Assert.Equal("C  PAINTED SLUICE TOYWORKS", F1VisualTargetStudyModel.GetTreatment(direction).Title));
 
-            Assert.Contains("reed fibre", F1VisualTargetStudyModel.GetTreatment(F1StudyDirection.ReedworkFoundry).PrimaryMaterial);
-            Assert.Contains("canvas", F1VisualTargetStudyModel.GetTreatment(F1StudyDirection.FloodplainCommons).PrimaryMaterial);
-            Assert.Contains("gauge glass", F1VisualTargetStudyModel.GetTreatment(F1StudyDirection.SluiceObservatory).PrimaryMaterial);
+            Assert.Contains("terracotta clay", F1VisualTargetStudyModel.GetTreatment(F1StudyDirection.HearthwoodCauseway).PrimaryMaterial);
+            Assert.Contains("reed matting", F1VisualTargetStudyModel.GetTreatment(F1StudyDirection.ReedKilnWetlands).PrimaryMaterial);
+            Assert.Contains("glazed clay channels", F1VisualTargetStudyModel.GetTreatment(F1StudyDirection.PaintedSluiceToyworks).PrimaryMaterial);
         }
 
         [Fact]
         public void Directions_ExposeDistinctInEngineInteractionLanguagesAndTreatments()
         {
-            F1DirectionTreatment reedwork = F1VisualTargetStudyModel.GetTreatment(F1StudyDirection.ReedworkFoundry);
-            F1DirectionTreatment commons = F1VisualTargetStudyModel.GetTreatment(F1StudyDirection.FloodplainCommons);
-            F1DirectionTreatment observatory = F1VisualTargetStudyModel.GetTreatment(F1StudyDirection.SluiceObservatory);
+            F1DirectionTreatment hearthwood = F1VisualTargetStudyModel.GetTreatment(F1StudyDirection.HearthwoodCauseway);
+            F1DirectionTreatment wetlands = F1VisualTargetStudyModel.GetTreatment(F1StudyDirection.ReedKilnWetlands);
+            F1DirectionTreatment toyworks = F1VisualTargetStudyModel.GetTreatment(F1StudyDirection.PaintedSluiceToyworks);
 
-            Assert.Equal(F1InteractionSurfaceStyle.InstrumentStack, reedwork.InteractionStyle);
-            Assert.Equal(F1InteractionSurfaceStyle.PublicNotice, commons.InteractionStyle);
-            Assert.Equal(F1InteractionSurfaceStyle.CalibrationRail, observatory.InteractionStyle);
-            Assert.Equal("WORK ORDER: CAUSEWAY", reedwork.InteractionHeading);
-            Assert.Equal("NOTICE / SPEAK INTO RECORD", commons.InteractionHeading);
-            Assert.Equal("FLOW POSITION: CAUSEWAY", observatory.InteractionHeading);
-            Assert.Contains("BRACE", reedwork.LaborControl);
-            Assert.Contains("SIGN ON", commons.LaborControl);
-            Assert.Contains("COMMIT", observatory.LaborControl);
-            Assert.NotEqual(reedwork.EvidenceControl, commons.EvidenceControl);
-            Assert.NotEqual(commons.DeferControl, observatory.DeferControl);
+            Assert.Equal(F1InteractionSurfaceStyle.HandboundLedger, hearthwood.InteractionStyle);
+            Assert.Equal(F1InteractionSurfaceStyle.KilnTileNotice, wetlands.InteractionStyle);
+            Assert.Equal(F1InteractionSurfaceStyle.PaintedControlRail, toyworks.InteractionStyle);
+            Assert.Contains("LEDGER", hearthwood.InteractionHeading);
+            Assert.Contains("KILN", wetlands.InteractionHeading);
+            Assert.Contains("CONTROL RAIL", toyworks.InteractionHeading);
+            Assert.Contains("BRACE", hearthwood.LaborControl);
+            Assert.Contains("BRACE", wetlands.LaborControl);
+            Assert.Contains("BLOCK", toyworks.LaborControl);
+            Assert.NotEqual(hearthwood.EvidenceControl, wetlands.EvidenceControl);
+            Assert.NotEqual(wetlands.DeferControl, toyworks.DeferControl);
         }
 
         [Fact]
-        public void MistMaterialPolicy_UsesAlphaTransparencyAndLeavesOpaquePropsOpaque()
+        public void MiniatureLanguage_IsExplicitAndRejectsTheRealisticAdjacentDirection()
+        {
+            foreach (F1StudyDirection direction in F1VisualTargetStudyModel.OrderedDirections)
+            {
+                F1DirectionTreatment treatment = F1VisualTargetStudyModel.GetTreatment(direction);
+                Assert.Contains("miniature", treatment.MiniatureStyleTokens);
+                Assert.Contains("chunky proportions", treatment.MiniatureStyleTokens);
+                Assert.Contains("shallow tabletop", treatment.MiniatureStyleTokens);
+                Assert.Contains("matte tactile", treatment.MiniatureStyleTokens);
+                Assert.Contains("simplified citizens", treatment.MiniatureStyleTokens);
+                Assert.Contains("photorealism", treatment.AvoidedVisualTokens);
+                Assert.Contains("realistic PBR", treatment.AvoidedVisualTokens);
+                Assert.Contains("realistic human anatomy", treatment.AvoidedVisualTokens);
+                Assert.Contains("cinematic fog", treatment.AvoidedVisualTokens);
+                Assert.Contains("generic survival HUD", treatment.AvoidedVisualTokens);
+                Assert.Contains("toy-store childishness", treatment.AvoidedVisualTokens);
+            }
+        }
+
+        [Fact]
+        public void TabletopWaterMaterialPolicy_UsesAlphaTransparencyAndLeavesOpaquePropsOpaque()
         {
             Assert.True(F1VisualTargetStudyModel.ShouldUseAlphaTransparency(0.12f));
             Assert.True(F1VisualTargetStudyModel.ShouldUseAlphaTransparency(0.998f));
@@ -49,14 +69,30 @@ namespace Societies.Core.Tests.Presentation
         }
 
         [Fact]
-        public void PressedResponseControls_HaveWcagNormalTextContrastForEveryDirection()
+        public void StudyMaterialPolicy_IsMatteAndUsesTrueAlphaOnlyForTranslucentTabletopAccents()
+        {
+            F1StudyMaterialProfile transparent = F1VisualTargetStudyModel.GetMaterialProfile(0.24f);
+            F1StudyMaterialProfile opaque = F1VisualTargetStudyModel.GetMaterialProfile(1.0f);
+
+            Assert.True(transparent.UsesAlphaTransparency);
+            Assert.False(opaque.UsesAlphaTransparency);
+            Assert.Equal(0.0f, opaque.Metallic);
+            Assert.InRange(opaque.Roughness, 0.9f, 1.0f);
+        }
+
+        [Fact]
+        public void PhysicalControlColors_HaveWcagContrastForNormalHoverAndPressedStates()
         {
             foreach (F1StudyDirection direction in F1VisualTargetStudyModel.OrderedDirections)
             {
-                F1PressedControlColors colors = F1VisualTargetStudyModel.GetPressedControlColors(direction);
-                Assert.True(
-                    colors.ContrastRatio >= 4.5d,
-                    $"{direction} pressed pair {colors.BackgroundHex}/{colors.ForegroundHex} has contrast {colors.ContrastRatio:F2}:1.");
+                F1PhysicalControlColors colors = F1VisualTargetStudyModel.GetPhysicalControlColors(direction);
+                Assert.True(colors.NormalContrastRatio >= 4.5d, $"{direction} normal contrast is {colors.NormalContrastRatio:F2}:1.");
+                Assert.True(colors.HoverContrastRatio >= 4.5d, $"{direction} hover contrast is {colors.HoverContrastRatio:F2}:1.");
+                Assert.True(colors.PressedContrastRatio >= 4.5d, $"{direction} pressed contrast is {colors.PressedContrastRatio:F2}:1.");
+
+                F1PressedControlColors pressed = F1VisualTargetStudyModel.GetPressedControlColors(direction);
+                Assert.Equal(colors.PressedBackgroundHex, pressed.BackgroundHex);
+                Assert.Equal(colors.PressedForegroundHex, pressed.ForegroundHex);
             }
         }
 
@@ -71,6 +107,17 @@ namespace Societies.Core.Tests.Presentation
             Assert.True(layout.Fits(width, height));
             Assert.InRange(layout.SurfaceWidth, 0.0f, width - layout.Margin * 2.0f);
             Assert.True(layout.HeaderHeight > 0.0f);
+        }
+
+        [Fact]
+        public void DirectionLayouts_UseTheFinalTreatmentSpecificDimensions()
+        {
+            AssertDirectionLayout(F1StudyDirection.HearthwoodCauseway, 1920.0f, 1080.0f, 520.0f, 248.0f, false);
+            AssertDirectionLayout(F1StudyDirection.ReedKilnWetlands, 1920.0f, 1080.0f, 660.0f, 282.0f, true);
+            AssertDirectionLayout(F1StudyDirection.PaintedSluiceToyworks, 1920.0f, 1080.0f, 780.0f, 282.0f, true);
+            AssertDirectionLayout(F1StudyDirection.HearthwoodCauseway, 1280.0f, 720.0f, 430.0f, 212.0f, false);
+            AssertDirectionLayout(F1StudyDirection.ReedKilnWetlands, 1280.0f, 720.0f, 520.0f, 246.0f, true);
+            AssertDirectionLayout(F1StudyDirection.PaintedSluiceToyworks, 1280.0f, 720.0f, 560.0f, 246.0f, true);
         }
 
         [Fact]
@@ -140,6 +187,15 @@ namespace Societies.Core.Tests.Presentation
             Assert.Equal("✓", consequencePresentation.StateMark);
             Assert.True(consequencePresentation.AllowsAdvance);
             Assert.Equal(F1StudyState.Awaiting, reset);
+        }
+
+        private static void AssertDirectionLayout(F1StudyDirection direction, float width, float height, float expectedWidth, float expectedHeight, bool expectedRail)
+        {
+            F1DirectionSurfaceLayout layout = F1VisualTargetStudyModel.CalculateDirectionSurfaceLayout(direction, width, height);
+
+            Assert.Equal(expectedWidth, layout.SurfaceWidth);
+            Assert.Equal(expectedHeight, layout.SurfaceHeight);
+            Assert.Equal(expectedRail, layout.UsesHorizontalPhysicalRail);
         }
     }
 }

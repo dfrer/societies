@@ -4,7 +4,7 @@
 
 | Field | Value |
 |---|---|
-| Status | **Foundation Gate F0 accepted; F1 three-direction Candidate package ready for user selection** |
+| Status | **Foundation Gate F0 accepted; tactile miniature selected; F1 replacement Candidate awaits review** |
 | Decision date | 2026-08-26 |
 | Trigger | ER-01 and its HUD/interaction recovery remained unacceptable in quality, gameplay, visuals, and overall experience |
 | Product relationship | **Societies is the embodied player-facing frontend for Snow Globe** |
@@ -316,10 +316,12 @@ the latency, operational, or provider cost.
 
 **Timebox:** 4-6 working days after F0.
 
-**Current state:** the [F1 Candidate package](v3-snow-globe-f1-visual-target-package.md) now compares Reedwork
-Foundry, Floodplain Commons, and Sluice Observatory through three generated style frames and one standalone
-in-engine study. This is delivered comparison evidence, not an accepted art bible. The user must run the study
-and select one dominant direction before the complete five-view target package or F2 begins.
+**Current state:** the first [F1 Candidate package](v3-snow-globe-f1-visual-target-package.md) was rejected by
+the user as far too realistic. Tactile clay-and-wood miniature is now the selected dominant language. Three
+replacement treatments—Hearthwood Causeway, Reed-Kiln Wetlands, and Painted Sluice Toyworks—compare warmth,
+wetland craft, and causal-mechanical readability inside that shared language. They remain unaccepted candidate
+evidence; the user must run the replacement study and choose a base treatment before the complete five-view
+target package or F2 begins.
 
 Produce three meaningfully different visual directions. Each must show the same accepted gameplay moment
 from gameplay camera, close interaction, settlement overview, citizen encounter, and decision/consequence
@@ -532,7 +534,7 @@ Never cut:
 
 ## Immediate Next Action
 
-Run the [F1 comparison route](v3-snow-globe-f1-visual-target-package.md#standalone-review-route), compare all
-three directions in open, pending, refusal, consequence, and reduced-motion states, and select one dominant
-direction or a precise bounded blend. The selected direction then receives the complete five-view target
-package and normal-play in-engine target needed to pass F1.
+Run the [tactile miniature F1 comparison route](v3-snow-globe-f1-visual-target-package.md#standalone-review-route),
+compare Hearthwood Causeway, Reed-Kiln Wetlands, and Painted Sluice Toyworks in open, pending, refusal,
+consequence, and reduced-motion states, and select one base treatment or a precise bounded blend. The selected
+treatment then receives the complete five-view package and normal-play in-engine target needed to pass F1.
