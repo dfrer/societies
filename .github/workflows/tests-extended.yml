@@ -59,17 +59,60 @@ jobs:
         run: dotnet build src/societies/Societies.csproj --configuration Release --no-restore
 
       - name: Run all unit tests with coverage
-        run: >
-          dotnet test tests/Societies.Core.Tests/Societies.Core.Tests.csproj
-          --configuration Release
-          --logger "trx;LogFileName=unit-tests.trx"
-          --collect:"XPlat Code Coverage"
+        shell: pwsh
+        run: |
+          $manifest = Get-Content tests/test-manifest.json -Raw | ConvertFrom-Json
+          dotnet test tests/Societies.Core.Tests/Societies.Core.Tests.csproj `
+            --configuration Release `
+            --logger "trx;LogFileName=unit-tests.trx" `
+            --collect:"XPlat Code Coverage"
+
+          if ($LASTEXITCODE -ne 0) {
+            exit $LASTEXITCODE
+          }
+
+          $trxPath = "tests/Societies.Core.Tests/TestResults/unit-tests.trx"
+          [xml]$trx = Get-Content $trxPath -Raw
+          $counters = $trx.SelectSingleNode("/*[local-name()='TestRun']/*[local-name()='ResultSummary']/*[local-name()='Counters']")
+          if ($null -eq $counters) {
+            Write-Error "TRX counters were not found at $trxPath"
+            exit 1
+          }
+
+          $actualCount = [int]$counters.GetAttribute("total")
+          $expectedCount = [int]$manifest.required.dotnet.expectedTestCount
+          if ($actualCount -ne $expectedCount) {
+            Write-Error "Full-test manifest drift: expected $expectedCount, discovered $actualCount."
+            exit 1
+          }
+
+          Write-Host "Full-test manifest count verified: $actualCount"
 
       - name: Build Godot C# solutions
         run: godot --headless --path src/societies --build-solutions --quit
 
       - name: Run headless smoke suite
-        run: godot --headless --path src/societies res://tests/HeadlessTestRunner.tscn
+        shell: bash
+        run: |
+          set -euo pipefail
+          log_file="$(mktemp)"
+          godot --headless --path src/societies res://tests/HeadlessTestRunner.tscn 2>&1 | tee "$log_file"
+
+          expected_count="$(python3 -c 'import json; print(json.load(open("tests/test-manifest.json", encoding="utf-8"))["required"]["godot"]["expectedTestCount"])')"
+          result_line="$(grep -E 'Headless results: [0-9]+ passed, [0-9]+ failed' "$log_file" | tail -n 1 || true)"
+          if [[ -z "$result_line" ]]; then
+            echo "::error::Godot headless result summary was not found."
+            exit 1
+          fi
+
+          actual_passed="$(sed -E 's/.*Headless results: ([0-9]+) passed, ([0-9]+) failed.*/\1/' <<< "$result_line")"
+          actual_failed="$(sed -E 's/.*Headless results: ([0-9]+) passed, ([0-9]+) failed.*/\2/' <<< "$result_line")"
+          if [[ "$actual_failed" -ne 0 || "$actual_passed" -ne "$expected_count" ]]; then
+            echo "::error::Godot manifest drift or failure: expected $expected_count passed and 0 failed; observed $actual_passed passed and $actual_failed failed."
+            exit 1
+          fi
+
+          echo "Godot manifest count verified: $actual_passed"
 
       - name: Generate core test report
         uses: dorny/test-reporter@v1
