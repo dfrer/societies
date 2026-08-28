@@ -1,0 +1,131 @@
+name: Consolidation Repair V3
+
+on:
+  pull_request:
+    branches: [master, main]
+    paths:
+      - '.github/workflows/consolidation-repair-v3.yml'
+
+permissions:
+  contents: write
+  pull-requests: read
+
+concurrency:
+  group: consolidation-repair-v3-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  repair:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: windows-latest
+    timeout-minutes: 90
+
+    steps:
+      - name: Checkout pull-request head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Apply proven clean-runner repairs
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import textwrap
+
+          # Reuse the already exercised bounded patch script from V2 rather than
+          # duplicating its large set of exact replacements a third time.
+          workflow = Path('.github/workflows/consolidation-repair-v2.yml').read_text(encoding='utf-8')
+          marker = "          python - <<'PY'\n"
+          start = workflow.index(marker) + len(marker)
+          end = workflow.index("\n          PY", start)
+          script = textwrap.dedent(workflow[start:end])
+          exec(compile(script, 'consolidation-repair-v2-embedded.py', 'exec'), {'__name__': '__main__'})
+
+          # The production bridge intentionally uses a deeply nested fixed root.
+          # Keep the test's temporary parent short enough that the final leaf does
+          # not cross the legacy Windows MAX_PATH boundary on hosted runners.
+          path = Path('tests/Societies.SnowGlobe.OpenRouterCli.Tests/OpenRouterProductionBridgeTests.cs')
+          text = path.read_text(encoding='utf-8')
+          old = '"societies-openrouter-production-" + Guid.NewGuid().ToString("N")'
+          new = '"sg-or-" + Guid.NewGuid().ToString("N")'
+          if text.count(old) != 1:
+              raise RuntimeError(f'expected one OpenRouter temporary-root prefix, found {text.count(old)}')
+          path.write_text(text.replace(old, new), encoding='utf-8', newline='\n')
+          PY
+
+      - name: Validate project governance
+        run: python scripts/check-project-governance.py
+
+      - name: Validate patch whitespace
+        shell: bash
+        run: git diff --check
+
+      - name: Build Snow Globe core
+        run: dotnet build labs/Societies.SnowGlobe/Societies.SnowGlobe.csproj --configuration Release
+
+      - name: Test Snow Globe core
+        run: >
+          dotnet test tests/Societies.SnowGlobe.Tests/Societies.SnowGlobe.Tests.csproj
+          --configuration Release
+          --logger "trx;LogFileName=snow-globe-core-repair-v3.trx"
+
+      - name: Test benchmark CLI
+        run: >
+          dotnet test tests/Societies.SnowGlobe.BenchmarkCli.Tests/Societies.SnowGlobe.BenchmarkCli.Tests.csproj
+          --configuration Release
+          --logger "trx;LogFileName=snow-globe-benchmark-cli-repair-v3.trx"
+
+      - name: Test recording CLI
+        run: >
+          dotnet test tests/Societies.SnowGlobe.RecordingCli.Tests/Societies.SnowGlobe.RecordingCli.Tests.csproj
+          --configuration Release
+          --logger "trx;LogFileName=snow-globe-recording-cli-repair-v3.trx"
+
+      - name: Test OpenRouter CLI
+        run: >
+          dotnet test tests/Societies.SnowGlobe.OpenRouterCli.Tests/Societies.SnowGlobe.OpenRouterCli.Tests.csproj
+          --configuration Release
+          --logger "trx;LogFileName=snow-globe-openrouter-cli-repair-v3.trx"
+
+      - name: Upload repair test reports
+        if: success() || failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: consolidation-repair-v3-test-reports
+          path: '**/TestResults/*.trx'
+          retention-days: 30
+
+      - name: Commit proven repairs and remove temporary workflows
+        shell: bash
+        run: |
+          rm .github/workflows/consolidation-repair.yml
+          rm .github/workflows/consolidation-repair-v2.yml
+          rm .github/workflows/consolidation-repair-v3.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            .github/workflows/consolidation-repair.yml \
+            .github/workflows/consolidation-repair-v2.yml \
+            .github/workflows/consolidation-repair-v3.yml \
+            tests/Societies.SnowGlobe.Tests/AssemblyInfo.cs \
+            tests/Societies.SnowGlobe.Tests/RepositoryTestPaths.cs \
+            tests/Societies.SnowGlobe.Tests/ProviderRoutingPolicyTests.cs \
+            tests/Societies.SnowGlobe.Tests/ProviderRoutingReadinessEvidenceTests.cs \
+            tests/Societies.SnowGlobe.Tests/OllamaRecordingExecutionArtifactTests.cs \
+            tests/Societies.SnowGlobe.Tests/LocalPremiumComparisonTests.cs \
+            tests/Societies.SnowGlobe.OpenRouterCli.Tests/OpenRouterProductionBridgeTests.cs
+          git diff --cached --check
+          git commit -m "test: stabilize Snow Globe clean-runner contracts"
+          git push origin "HEAD:${{ github.event.pull_request.head.ref }}"
