@@ -1,0 +1,183 @@
+{
+  "schemaVersion": 1,
+  "capturedUtc": "2026-07-13T04:31:51.4015651Z",
+  "workItem": "V3-W1-05",
+  "status": "implementation_and_exact_selection_contract_passed_performance_safety_failed",
+  "branch": "feature/v3-exact-job-selection",
+  "baseCommit": "230c23ad8143e4643339b1b880c5f38eac53e909",
+  "implementationCommits": [
+    "b1fddaf",
+    "6b68c4d",
+    "91998a6",
+    "227a758"
+  ],
+  "releaseEvidenceCommit": "227a7585d921255942c5d81e3e82bc3f91d01102",
+  "implementation": {
+    "selectorModeDefault": "exact_branch_and_bound",
+    "referenceMode": "exhaustive_reference",
+    "scoreFormulaPreserved": true,
+    "straightLineUpperBoundGuardedForFloatError": true,
+    "strictBelowBestPruning": true,
+    "ordinalOrderIdTieBreak": true,
+    "unreachableMultiLegCandidatesSkipped": true,
+    "selectedFirstRouteReused": true,
+    "selectorModePersisted": false,
+    "runtimeResultSchemaVersion": 4,
+    "runtimeMetricsArtifact": "runtime-batch-metrics-v4.csv"
+  },
+  "localValidation": {
+    "selectorFocused": {
+      "passed": 9,
+      "failed": 0,
+      "scenarios": [
+        "balanced_basin",
+        "long_haul_quarry",
+        "food_poor_highlands",
+        "wetland_builder"
+      ],
+      "ticksPerScenario": 300,
+      "balancedBasinCitizenCount": 16,
+      "optimizedExactQueries": 2544,
+      "exhaustiveExactQueries": 17441,
+      "exactQueryReduction": 0.8541368040823347,
+      "perTickAssignmentsEqual": true,
+      "eventsEqual": true,
+      "harvestAndResourceApplicationEqual": true,
+      "finalSnapshotsEqual": true
+    },
+    "requiredDotnet": {
+      "passed": 119,
+      "failed": 0,
+      "skipped": 0
+    },
+    "godotHeadless": {
+      "passed": 16,
+      "failed": 0
+    },
+    "managedBuilds": {
+      "Debug": {
+        "warnings": 0,
+        "errors": 0
+      },
+      "ExportDebug": {
+        "warnings": 0,
+        "errors": 0
+      },
+      "ExportRelease": {
+        "warnings": 0,
+        "errors": 0
+      }
+    },
+    "fullValidationCommand": "./scripts/run-prototype-validation.ps1",
+    "fullValidationPassed": true,
+    "diffCheckPassed": true
+  },
+  "releaseSelectorComparison": {
+    "command": "./scripts/run-job-selection-comparison.ps1 -ReleaseExport -Scenario balanced_basin -Seed 1337 -Citizens 16 -Ticks 300 -Trials 3 -OutputRoot artifacts/performance/w105-selection-227a758",
+    "status": "pass",
+    "sourceClean": true,
+    "verifiedRelease": true,
+    "trialsPerSelector": 3,
+    "sharedBundleSha256": "02ea7b1897f240c85b56895bf85a83bc91847ce792292194d68fccbe7f9bb8be",
+    "sharedBundleFileCount": 190,
+    "bundleReuseChecks": 5,
+    "deterministicStateAndEventSha256": "1ff16c9086793aa65a811dfb7bef718b1242415a80675e03a551c3d03aef6cbb",
+    "hashesEqualEveryTrial": true,
+    "selectorQueryAccountingValid": true,
+    "exhaustiveExactQueriesPerTrial": 17441,
+    "optimizedExactQueriesPerTrial": 2544,
+    "exactQueryReductionPerTrial": 0.8541368040823347,
+    "exhaustiveMedianP95Milliseconds": 656.3981,
+    "optimizedMedianP95Milliseconds": 78.0301,
+    "p95Ratio": 0.11887618199991744,
+    "p95RegressionGatePassed": true
+  },
+  "cacheModeRerun": {
+    "command": "./scripts/run-performance-cache-modes.ps1 -ReleaseExport -Scenario balanced_basin -Seed 1337 -Citizens 16 -Ticks 300 -PreconditioningTicks 1 -AllowPrimarySafetyFailure -OutputRoot artifacts/performance/w105-cache-modes-227a758",
+    "status": "pass",
+    "selectorMode": "exact_branch_and_bound",
+    "coldWarmHashesEqual": true,
+    "coldP95Milliseconds": 81.0469,
+    "naturalWarmP95Milliseconds": 34.005,
+    "forcedTransitionValid": true,
+    "forcedCommitToFirstCorrectLookupMilliseconds": 14.8249
+  },
+  "canonicalMatrixRerun": {
+    "command": "./scripts/run-performance-baseline-matrix.ps1 -OutputRoot artifacts/performance/w105-baseline-227a758",
+    "status": "pass",
+    "contractStatus": "pass",
+    "budgetStatus": "safety_failure",
+    "selectorMode": "exact_branch_and_bound",
+    "pairCount": 14,
+    "metricsRowCount": 28,
+    "manifestArtifactsValidated": 354,
+    "referenceMedianP95Milliseconds": 81.4823,
+    "referenceMedianMaximumMilliseconds": 1552.5664,
+    "referenceSafetyP95LimitMilliseconds": 50,
+    "referenceSafetyMaximumLimitMilliseconds": 250,
+    "referenceSafetyPassed": false,
+    "priorReferenceMedianP95Milliseconds": 570.6155,
+    "referenceP95ReductionFromW103c": 0.8572027924232692,
+    "soakP95Milliseconds": [
+      46.779,
+      44.8346
+    ],
+    "soakMaximumMilliseconds": [
+      1865.4577,
+      1836.4422
+    ],
+    "soakDeterministic": true,
+    "soakSafetyPassed": false,
+    "stressP95Milliseconds": 1373.2653,
+    "stressMaximumMilliseconds": 3446.2382,
+    "forcedCommitToFirstCorrectLookupMilliseconds": 17.5925,
+    "forcedTargetPassed": true,
+    "forcedSafetyPassed": true
+  },
+  "review": {
+    "reviewer": "deep_reviewer",
+    "implementationP0P1Findings": 0,
+    "evidenceScriptP1Findings": 2,
+    "evidenceScriptFindingsClosed": true,
+    "notes": "The comparison pins one Release bundle by aggregate hash, verifies it before and after every reuse, alternates selector order across trials, uses metrics-off p95 and metrics-on selector diagnostics, and enforces all W1-05 gates."
+  },
+  "artifactDigests": [
+    {
+      "path": "artifacts/performance/w105-selection-227a758/job-selection-comparison.json",
+      "sizeBytes": 191999,
+      "sha256": "99eac7e17960f3b6353c9f91c2c13d4fa2717eb60f54630d72f0c3875866d7e2"
+    },
+    {
+      "path": "artifacts/performance/w105-selection-227a758/job-selection-comparison-manifest.json",
+      "sizeBytes": 8038,
+      "sha256": "b93cdb5b3ad5f00b63f9c7586a38e93b74acbb91757a9f00fda83af90d00ca46"
+    },
+    {
+      "path": "artifacts/performance/w105-cache-modes-227a758/cache-mode-comparison.json",
+      "sizeBytes": 15700,
+      "sha256": "245e02de3a261fbecc33f9d6682aa56507bf86506720ee084cb9bb75d5a17569"
+    },
+    {
+      "path": "artifacts/performance/w105-baseline-227a758/perf-results.json",
+      "sizeBytes": 204506,
+      "sha256": "1e79703c05f4a559c361be721b9bcc2d97a703e35352e1119b00b18f50380f42"
+    },
+    {
+      "path": "artifacts/performance/w105-baseline-227a758/validation-manifest.json",
+      "sizeBytes": 159226,
+      "sha256": "110db8009e45579e1f5135fbeb3c528a821fff5fd0d8b89f4b95dc8c1e503d24"
+    },
+    {
+      "path": "artifacts/performance/w105-baseline-227a758/perf-matrix.csv",
+      "sizeBytes": 38139,
+      "sha256": "bc31eba1e0674fc0771ace8631dcee91560fa353886d7c29ad07a23cd176fd92"
+    }
+  ],
+  "decision": {
+    "w105Complete": true,
+    "exactSelectionOptimizationAccepted": true,
+    "performanceSafetyGatePassed": false,
+    "week2FeatureExpansionBlocked": true,
+    "next": "Use the schema-v4 route-selection diagnostics to isolate the remaining p95 and maximum spikes before W1-06 or Week 2 feature expansion."
+  }
+}

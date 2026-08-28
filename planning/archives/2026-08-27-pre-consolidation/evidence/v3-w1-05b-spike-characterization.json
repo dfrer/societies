@@ -1,0 +1,193 @@
+{
+  "schemaVersion": 1,
+  "capturedUtc": "2026-07-13T14:03:38.3322127Z",
+  "workItem": "V3-W1-05b",
+  "status": "spike_root_cause_characterized_performance_safety_still_failed",
+  "branch": "feature/v3-spike-characterization",
+  "baseCommit": "57e1881c0f5c63f46e566bd12afb5eb7be9821ec",
+  "sourcePerformanceCommit": "227a7585d921255942c5d81e3e82bc3f91d01102",
+  "analysis": {
+    "script": "scripts/analyze-performance-spikes.ps1",
+    "command": "./scripts/analyze-performance-spikes.ps1 -InputPath artifacts/performance/w105-baseline-227a758 -OutputPath artifacts/performance/w105-baseline-227a758/spike-analysis.json",
+    "runtimeMetricsSchemaVersion": 4,
+    "scope": "metrics_on_diagnostic_characterization_only_not_a_release_gate",
+    "sourceContract": "clean_verified_export_release_equivalence_pairs",
+    "runCount": 14,
+    "measuredTickCount": 5301,
+    "thresholdMilliseconds": [
+      50,
+      250,
+      1000
+    ],
+    "repeatedExecutions": 2,
+    "byteIdenticalOutput": true,
+    "scriptGitBlobSha1": "76a3f198cce85bf249d27ef25f35a6eb312aee4a",
+    "outputSha256": "fcb51b684dca292d6345d13eec72ac0dfa7b22523f0fba647b8a61935d1fdecd",
+    "outputSizeBytes": 1016818
+  },
+  "sourceArtifacts": [
+    {
+      "path": "artifacts/performance/w105-baseline-227a758/perf-results.json",
+      "sizeBytes": 204506,
+      "sha256": "1e79703c05f4a559c361be721b9bcc2d97a703e35352e1119b00b18f50380f42"
+    },
+    {
+      "path": "artifacts/performance/w105-baseline-227a758/validation-manifest.json",
+      "sizeBytes": 159226,
+      "sha256": "110db8009e45579e1f5135fbeb3c528a821fff5fd0d8b89f4b95dc8c1e503d24"
+    },
+    {
+      "path": "artifacts/performance/w105-baseline-227a758/perf-matrix.csv",
+      "sizeBytes": 38139,
+      "sha256": "bc31eba1e0674fc0771ace8631dcee91560fa353886d7c29ad07a23cd176fd92"
+    }
+  ],
+  "findings": {
+    "primaryCause": "cache_miss_driven_exact_astar_fanout",
+    "causalChain": [
+      "Completing a built path segment invalidates navigation.",
+      "Navigation rebuild clears the full derived path cache.",
+      "The next work-order pass ranks extraction sites with uncached exact route queries.",
+      "Idle-citizen selection can add a second burst of uncached exact multi-leg queries."
+    ],
+    "aggregateWallTimeCorrelations": {
+      "allPathLookups": 0.233264,
+      "allPathCacheMisses": 0.982573,
+      "generalPathCacheMisses": 0.877931,
+      "selectorPathCacheMisses": 0.763972,
+      "buildWorkOrdersMilliseconds": 0.897958,
+      "routeSelectionMilliseconds": 0.753277,
+      "navigationRebuildMilliseconds": 0.076652
+    },
+    "representativeCorrelations": {
+      "referenceC16": {
+        "allPathLookups": 0.106007,
+        "allPathCacheMisses": 0.977967
+      },
+      "soakC16Trial1": {
+        "allPathLookups": 0.333484,
+        "allPathCacheMisses": 0.97658
+      },
+      "soakC16Trial2": {
+        "allPathLookups": 0.33472,
+        "allPathCacheMisses": 0.976238
+      },
+      "stressC24": {
+        "allPathLookups": 0.372365,
+        "allPathCacheMisses": 0.992276
+      }
+    },
+    "referenceC16": {
+      "trialCount": 3,
+      "ticksPerTrial": 300,
+      "spikeTickSetsExactAcrossTrials": true,
+      "thresholdBucketCountsPerTrial": {
+        "atOrBelow50Milliseconds": 284,
+        "over50Through250Milliseconds": 9,
+        "over250Through1000Milliseconds": 1,
+        "over1000Milliseconds": 6
+      },
+      "spikesOver50Milliseconds": 16,
+      "over50Attribution": {
+        "initialCold": 1,
+        "immediatelyPostInvalidation": 6,
+        "invalidationTick": 0,
+        "steadyState": 9
+      },
+      "over250Milliseconds": 7,
+      "over250InitialOrImmediatelyPostInvalidation": 7,
+      "over1000Milliseconds": 6,
+      "over1000ImmediatelyPostInvalidation": 6,
+      "worstDiagnosticTick": {
+        "endSimulationTick": 296,
+        "wallMilliseconds": 1567.696,
+        "generalPathCacheMisses": 72,
+        "selectorPathCacheMisses": 45,
+        "dominantPhase": "build_work_orders"
+      }
+    },
+    "soakC16": {
+      "trialCount": 2,
+      "ticksPerTrial": 1000,
+      "spikeTickSetsExactAcrossTrials": true,
+      "spikesOver50MillisecondsPerTrial": 50,
+      "over50AttributionPerTrial": {
+        "initialCold": 1,
+        "immediatelyPostInvalidation": 21,
+        "invalidationTick": 2,
+        "steadyState": 26
+      },
+      "over1000MillisecondsPerTrial": 18,
+      "over1000ImmediatelyPostInvalidationPerTrial": 18
+    },
+    "stressC24": {
+      "ticks": 300,
+      "spikesOver50Milliseconds": 56,
+      "over50Attribution": {
+        "initialCold": 1,
+        "immediatelyPostInvalidation": 33,
+        "invalidationTick": 3,
+        "steadyState": 19
+      },
+      "over250Milliseconds": 44,
+      "over1000Milliseconds": 35,
+      "over1000ImmediatelyPostInvalidation": 31,
+      "worstDiagnosticTick": {
+        "endSimulationTick": 292,
+        "wallMilliseconds": 3460.1108,
+        "generalPathCacheMisses": 71,
+        "selectorPathCacheMisses": 225,
+        "dominantPhase": "route_selection"
+      }
+    },
+    "forcedInvalidationScope": {
+      "exactNewVersionMissProven": true,
+      "cacheEntriesImmediatelyAfterRebuild": 0,
+      "commitToFirstLookupMilliseconds": 14.082,
+      "diagnosticTickWallMilliseconds": 1097.6863,
+      "navigationRebuildMilliseconds": 13.719,
+      "navigationRebuildWallSharePercent": 1.249811,
+      "buildWorkOrdersMilliseconds": 1073.3204,
+      "buildWorkOrdersWallSharePercent": 97.780249,
+      "interpretation": "The transition probe validates correctness and first-lookup latency only; the full diagnostic tick still suffers cache-repopulation fanout."
+    },
+    "timingPattern": "deterministic_event_driven_not_clock_periodic",
+    "navigationGridRebuildIsPrimaryCause": false,
+    "cacheMissFanoutIsPrimaryCause": true
+  },
+  "codePathReview": {
+    "navigationInvalidation": "src/societies/scripts/simulation/SettlementBuilding.cs and SettlementInfrastructure.cs",
+    "workOrderRouteRanking": "src/societies/scripts/simulation/SettlementEconomy.cs",
+    "selectorRouteFanout": "src/societies/scripts/simulation/SettlementCitizen.cs",
+    "exactSearch": "src/societies/scripts/simulation/PrototypeNavigation.cs"
+  },
+  "localValidation": {
+    "validatedUtc": "2026-07-13T14:16:08.5239963Z",
+    "command": "./scripts/run-prototype-validation.ps1",
+    "passed": true,
+    "debugBuildWarnings": 0,
+    "debugBuildErrors": 0,
+    "requiredDotnetPassed": 119,
+    "requiredDotnetFailed": 0,
+    "godotHeadlessPassed": 16,
+    "godotHeadlessFailed": 0,
+    "expectedRuntimeWarningsObserved": [
+      "frame catch-up backlog diagnostic",
+      "optional runtime-metrics I/O isolation diagnostic"
+    ]
+  },
+  "review": {
+    "reviewer": "deep_reviewer",
+    "p0Findings": 0,
+    "p1Findings": 0,
+    "windowsPowerShell51ParsePassed": true,
+    "sourceHashesRevalidated": true
+  },
+  "decision": {
+    "spikesCharacterized": true,
+    "performanceSafetyGatePassed": false,
+    "w106Allowed": false,
+    "week2FeatureExpansionAllowed": false,
+    "next": "Reduce exact A-star cache-repopulation fanout while preserving navigation-version correctness, negative-cache safety, exact endpoints, multi-leg reachability, geometric-distance scoring, and deterministic ties; then rerun the canonical Release matrix."
+  }
+}

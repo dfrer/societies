@@ -1,0 +1,150 @@
+{
+  "schemaVersion": 1,
+  "workItem": "V3-W2-06 reserve extraction optimization clean canonical matrix",
+  "status": "pass",
+  "capturedUtc": "2026-08-02T02:21:41.3634531Z",
+  "claimBoundary": "clean_committed_14_pair_export_release_hard_safety_gate_only",
+  "source": {
+    "branch": "feature/v3-w2-06-reserve-extraction-optimization",
+    "gitSha": "478a4d9ca7cd71963c92b9bfb20bfecb7aa98fde",
+    "gitDirtyBeforeRun": false,
+    "sourceClean": true
+  },
+  "execution": {
+    "command": "& .\\scripts\\run-performance-baseline-matrix.ps1 -GodotPath 'C:\\Users\\hunte\\AppData\\Local\\Microsoft\\WinGet\\Packages\\GodotEngine.GodotEngine.Mono_Microsoft.Winget.Source_8wekyb3d8bbwe\\Godot_v4.6.2-stable_mono_win64\\Godot_v4.6.2-stable_mono_win64.exe' -OutputRoot 'artifacts\\performance\\w206-clean-canonical-478a4d9'",
+    "exitCode": 0,
+    "wallSeconds": 366.9,
+    "outputRoot": "artifacts/performance/w206-clean-canonical-478a4d9",
+    "environment": {
+      "machineName": "DESKTOP-H5M54GO",
+      "logicalProcessorCount": 16,
+      "operatingSystem": "Microsoft Windows 10.0.19045",
+      "processArchitecture": "X64",
+      "dotnetRuntime": ".NET 8.0.24",
+      "godotVersion": "4.6.2-stable (official)",
+      "managedAssemblyConfiguration": "ExportRelease",
+      "verifiedReleaseExecution": true
+    }
+  },
+  "aggregate": {
+    "status": "pass",
+    "contractStatus": "pass",
+    "budgetStatus": "target_missed",
+    "releaseBaselineEvidence": true,
+    "fullMatrixCaptured": true,
+    "medianOfThreeCaptured": true,
+    "selectedPairCount": 14,
+    "canonicalPairCount": 14,
+    "exactCanonicalInventory": true,
+    "sameEnvironment": true,
+    "sameReleaseBuild": true,
+    "verifiedReleaseExecution": true,
+    "failedChecks": 0,
+    "budgetInterpretation": "The publication target is stricter than the W2-06 hard-safety gate. Reference and soak p95 exceed the 25 ms target, and the c24 characterization exceeds its 50 ms p95 target; all requested hard-safety limits and contracts pass."
+  },
+  "hardSafetyGate": {
+    "allRequestedCriteriaPassed": true,
+    "reference": {
+      "trialIds": [
+        "matrix-c16-cold-t1",
+        "reference-c16-cold-t2",
+        "reference-c16-cold-t3"
+      ],
+      "p95Milliseconds": [44.0459, 48.3496, 45.011],
+      "maximumMilliseconds": [172.7039, 140.2428, 203.892],
+      "medianP95Milliseconds": 45.011,
+      "medianMaximumMilliseconds": 172.7039,
+      "p95SafetyLimitMilliseconds": 50,
+      "maximumSafetyLimitMilliseconds": 250,
+      "safetyPassed": true,
+      "deterministicHash": "7fe45268e67b8dff1da6bbcf785dc996e275fd1d814e713fe83d50873d5cab8e"
+    },
+    "soak": {
+      "trialIds": ["soak-c16-cold-t1", "soak-c16-cold-t2"],
+      "p95Milliseconds": [41.0153, 41.24],
+      "maximumMilliseconds": [175.5645, 168.2482],
+      "p95SafetyLimitMilliseconds": 50,
+      "maximumSafetyLimitMilliseconds": 250,
+      "bothTrialsWithinSafetyLimits": true,
+      "deterministicRepeat": true,
+      "deterministicHash": "16314b2dc1f6f6a0682f79de8d0ccd157d05888f3f0a6c513d26337a5f7b12d1"
+    },
+    "forcedInvalidation": {
+      "trialId": "forced-c16-t1",
+      "transitionCorrect": true,
+      "commitToFirstCorrectLookupMilliseconds": 23.3878,
+      "targetLimitMilliseconds": 150,
+      "safetyLimitMilliseconds": 250,
+      "targetPassed": true,
+      "safetyPassed": true,
+      "deterministicHash": "d4fd8999867eac6274548bde80bcc170d959bb0a6dc2a1003b3ae074c5693aef"
+    },
+    "stressCharacterization": {
+      "trialId": "stress-c24-cold-t1",
+      "classification": "characterization",
+      "p95Milliseconds": 157.0955,
+      "maximumMilliseconds": 198.9522,
+      "targetP95Milliseconds": 50,
+      "targetMaximumMilliseconds": 200,
+      "targetPassed": false,
+      "safetyGateApplied": false,
+      "deterministicHash": "53b79c0e67e4dadbaf1430fcf6ca5fe9705eb74e34a47aae5a11950a58afdcb1"
+    }
+  },
+  "pairContracts": {
+    "count": 14,
+    "statusPassCount": 14,
+    "contractPassCount": 14,
+    "hashesValidCount": 14,
+    "artifactContractValidCount": 14,
+    "resultSchemaValidCount": 14,
+    "matrixSchemaValidCount": 14,
+    "deterministicArtifactEquivalenceProvenCount": 14,
+    "pairs": [
+      {"id": "matrix-c3-cold-t1", "p95Milliseconds": 22.1696, "maximumMilliseconds": 54.4584, "deterministicHash": "0e30419b5f2aaed0d8736a6569b45d1a619d6995328cb67242a3259b8502204c", "equivalenceSha256": "3ae98edbd0de36acd79c154e97a520c3dd824db6db8f7c1a1f7ba7c7d90e40c2"},
+      {"id": "matrix-c3-warm-t1", "p95Milliseconds": 19.4185, "maximumMilliseconds": 50.2748, "deterministicHash": "0e30419b5f2aaed0d8736a6569b45d1a619d6995328cb67242a3259b8502204c", "equivalenceSha256": "4d8e0e9813f8285ae6ff5c65a3ce8b8142b3ffe1c76c78246b963a509c9465a2"},
+      {"id": "matrix-c6-cold-t1", "p95Milliseconds": 44.8583, "maximumMilliseconds": 106.7727, "deterministicHash": "a003e2d070f19ad77720516446b3ac7e330049d90896d50e8b653bb6d11f05aa", "equivalenceSha256": "a3bca6961a989a8d7e027937687cf4a12e08467f657f696f460a4721d5b829ac"},
+      {"id": "matrix-c6-warm-t1", "p95Milliseconds": 39.0234, "maximumMilliseconds": 140.3629, "deterministicHash": "a003e2d070f19ad77720516446b3ac7e330049d90896d50e8b653bb6d11f05aa", "equivalenceSha256": "4a31035dbb3d9b7e9e1240ed0d6f5b1ee41360b04f404852dbe9062f3518f3da"},
+      {"id": "matrix-c12-cold-t1", "p95Milliseconds": 41.7358, "maximumMilliseconds": 182.4477, "deterministicHash": "05b6ccfd95741252e3094c8c941c7c14f2e0628863badbb50dda184c4bb73024", "equivalenceSha256": "5f17557c7d7e38577959b59218db92a10131bd5b80725de983f23a0069234cf2"},
+      {"id": "matrix-c12-warm-t1", "p95Milliseconds": 36.7306, "maximumMilliseconds": 208.7953, "deterministicHash": "05b6ccfd95741252e3094c8c941c7c14f2e0628863badbb50dda184c4bb73024", "equivalenceSha256": "43b6816f4df0346e33ddf665ee53029edeb2f0b798571045996cd948d752be15"},
+      {"id": "matrix-c16-cold-t1", "p95Milliseconds": 44.0459, "maximumMilliseconds": 172.7039, "deterministicHash": "7fe45268e67b8dff1da6bbcf785dc996e275fd1d814e713fe83d50873d5cab8e", "equivalenceSha256": "21d2c9f75d890f1edb67660ac741cfe3cc329c0407aa794ece6b5c4c7cf146b2"},
+      {"id": "matrix-c16-warm-t1", "p95Milliseconds": 44.0346, "maximumMilliseconds": 186.5251, "deterministicHash": "7fe45268e67b8dff1da6bbcf785dc996e275fd1d814e713fe83d50873d5cab8e", "equivalenceSha256": "ca52617e0af6a72e30f4563ab4f2dc12d3b6f60c1db03ab3bc55098628718bbd"},
+      {"id": "reference-c16-cold-t2", "p95Milliseconds": 48.3496, "maximumMilliseconds": 140.2428, "deterministicHash": "7fe45268e67b8dff1da6bbcf785dc996e275fd1d814e713fe83d50873d5cab8e", "equivalenceSha256": "618aa75ca876a2f86c678b5c8fd0fa2bb8c70757e24429874f2135405ed984bc"},
+      {"id": "reference-c16-cold-t3", "p95Milliseconds": 45.011, "maximumMilliseconds": 203.892, "deterministicHash": "7fe45268e67b8dff1da6bbcf785dc996e275fd1d814e713fe83d50873d5cab8e", "equivalenceSha256": "ce438a9151d4db66c84a9a2c0304a12ccee4a9553c0d45e83fbe7969fbf6b901"},
+      {"id": "soak-c16-cold-t1", "p95Milliseconds": 41.0153, "maximumMilliseconds": 175.5645, "deterministicHash": "16314b2dc1f6f6a0682f79de8d0ccd157d05888f3f0a6c513d26337a5f7b12d1", "equivalenceSha256": "128066affbc5f3d03d31912338fb3822f3d2603a35028eff50fc51034827980c"},
+      {"id": "soak-c16-cold-t2", "p95Milliseconds": 41.24, "maximumMilliseconds": 168.2482, "deterministicHash": "16314b2dc1f6f6a0682f79de8d0ccd157d05888f3f0a6c513d26337a5f7b12d1", "equivalenceSha256": "9b072080d494726f74a2c7d0bedcb77f2d83eddd4d8ad63ead91450c68f5f635"},
+      {"id": "stress-c24-cold-t1", "p95Milliseconds": 157.0955, "maximumMilliseconds": 198.9522, "deterministicHash": "53b79c0e67e4dadbaf1430fcf6ca5fe9705eb74e34a47aae5a11950a58afdcb1", "equivalenceSha256": "3be29d85a79824ace044cbd04bd87291d1c58b02b666312d43ea2685da9a30ac"},
+      {"id": "forced-c16-t1", "p95Milliseconds": 136.4931, "maximumMilliseconds": 136.4931, "deterministicHash": "d4fd8999867eac6274548bde80bcc170d959bb0a6dc2a1003b3ae074c5693aef", "equivalenceSha256": "287561dd2a1d3e940c6ea454f3324a78655c6a574dc60b8cd117c161488173e2"}
+    ]
+  },
+  "releaseBuildFingerprint": {
+    "artifacts": [
+      {"path": "artifacts/performance/w206-clean-canonical-478a4d9/cases/matrix-c3-cold-t1/release-runner/SocietiesPerformance.exe", "bytes": 104749568, "sha256": "11cf267ff84824b708174073c2d54bb3684e74218828cd99087217dd85776918"},
+      {"path": "artifacts/performance/w206-clean-canonical-478a4d9/cases/matrix-c3-cold-t1/release-runner/SocietiesPerformance.console.exe", "bytes": 50176, "sha256": "b5c477879d9af42ac4ac8efd41f42bf35997a71b35a4d5772ce3e6817f2fa438"},
+      {"path": "artifacts/performance/w206-clean-canonical-478a4d9/cases/matrix-c3-cold-t1/release-runner/SocietiesPerformance.pck", "bytes": 33588, "sha256": "3e90025088adc2e6f8392a8e2f0fe2c16d3ddb238ae9c5234b0b4320379b81e2"},
+      {"path": "artifacts/performance/w206-clean-canonical-478a4d9/cases/matrix-c3-cold-t1/release-runner/data_Societies_windows_x86_64/Societies.dll", "bytes": 912896, "sha256": "5eef681c4f078d9c5435ef8815c2172bb6a6aa0707095667f4d4218daecd3f78"}
+    ]
+  },
+  "rootReports": [
+    {"path": "artifacts/performance/w206-clean-canonical-478a4d9/run-plan.json", "bytes": 11553, "sha256": "0d0b62d20bafd11b4442b7188feace92c11dd56493b799794ed0357451d209c8"},
+    {"path": "artifacts/performance/w206-clean-canonical-478a4d9/perf-matrix.csv", "bytes": 39766, "sha256": "128ecbec53342e5ed5096bb44badf3f02b292dd9fff8c9d09e22d5f1dbeaa480"},
+    {"path": "artifacts/performance/w206-clean-canonical-478a4d9/perf-results.json", "bytes": 209240, "sha256": "5d7fff2ca9742ed2e40d1b01680e1064993e4da9a9b905436789849b63193795"},
+    {"path": "artifacts/performance/w206-clean-canonical-478a4d9/validation-manifest.json", "bytes": 161029, "sha256": "f13dbfb0f842a31d56d3d5b88f322341a36d2b302ed44b6f1b7c5b9e38e5c21d"},
+    {"path": "artifacts/performance/w206-clean-canonical-478a4d9/summary.txt", "bytes": 695, "sha256": "cf829ee9ac474baae271706f403573270c5d73734cba0906fdee391919af18e2"}
+  ],
+  "generatedTrackedChanges": [
+    {
+      "path": "src/societies/icon.svg.import",
+      "observedStatusAfterRun": "modified_line_ending_only",
+      "workingTreeNormalizedGitObject": "3e357237b7c316d6e9044c24b95a02ca1e010b1f",
+      "headGitObject": "3e357237b7c316d6e9044c24b95a02ca1e010b1f",
+      "restoredAfterCapture": true
+    }
+  ],
+  "delivery": {
+    "evidencePath": "planning/active/evidence/v3-w2-06-clean-canonical-matrix-validation.json",
+    "staged": false,
+    "committed": false,
+    "pushed": false
+  }
+}

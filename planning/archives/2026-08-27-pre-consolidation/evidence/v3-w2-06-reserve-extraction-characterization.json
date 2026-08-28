@@ -1,0 +1,1286 @@
+{
+    "schemaVersion":  1,
+    "analyzerVersion":  "1.1.0",
+    "workItem":  "V3-W2-06 AddReserveExtractionOrders diagnostic characterization",
+    "status":  "diagnostic_operation_selected",
+    "capturedUtc":  "2026-08-01T23:55:40.3890963Z",
+    "claimBoundary":  "diagnostic_characterization_only_not_release_gate_or_canonical_matrix",
+    "source":  {
+                   "gitSha":  "83a9cbf6b899a8d7c96f0ded4ed943cef64c2f0e",
+                   "gitDirty":  true,
+                   "provenance":  "uncommitted_diagnostic_source",
+                   "sourceFiles":  [
+                                       {
+                                           "path":  "src/societies/scripts/simulation/SettlementEconomy.cs",
+                                           "sizeBytes":  66296,
+                                           "sha256":  "df82e0d992d71177e404495207ebe6a2a5f5b6c292bd891deffe6120df0cc076"
+                                       },
+                                       {
+                                           "path":  "src/societies/scripts/simulation/SettlementSimulation.cs",
+                                           "sizeBytes":  40274,
+                                           "sha256":  "726809fed1bcd493cb57886f4d0c53538bd336b62c6a650fdfe4a756b6ce0104"
+                                       },
+                                       {
+                                           "path":  "src/societies/scripts/core/RuntimeMetricsCollector.cs",
+                                           "sizeBytes":  34427,
+                                           "sha256":  "cc4f859ffc4704fdb066ca7d5d11b2afcc855a0cd03306334a4cdde5866a17d3"
+                                       },
+                                       {
+                                           "path":  "src/societies/scripts/core/PrototypeRunArtifactManager.cs",
+                                           "sizeBytes":  44832,
+                                           "sha256":  "365fd3181235dee61af21d4226aaf75c8a291fd38d4e70e2b82c5ab9631753b1"
+                                       },
+                                       {
+                                           "path":  "src/societies/tests/PerfRunner.cs",
+                                           "sizeBytes":  89808,
+                                           "sha256":  "db9f3f0f9f6bb0e2b5161cc798cecce8da91662abe5de05d476d16bd6b9e84a0"
+                                       },
+                                       {
+                                           "path":  "src/societies/tests/PerformanceRunModels.cs",
+                                           "sizeBytes":  12312,
+                                           "sha256":  "2001e2da8df89c8ae1964744806b268e9911006284608e924c75150ca64c42f2"
+                                       },
+                                       {
+                                           "path":  "scripts/run-performance-pair.ps1",
+                                           "sizeBytes":  69715,
+                                           "sha256":  "1c57db1aa1c422bae3dfac04787fbf4e172f2e6e325239e88ba7f7491e9879c1"
+                                       },
+                                       {
+                                           "path":  "scripts/analyze-build-work-orders-profile.ps1",
+                                           "sizeBytes":  38048,
+                                           "sha256":  "de22a36e2a58d969ffe376fae5d7bcd35361c1d36c62011b82491470c2db03dc"
+                                       },
+                                       {
+                                           "path":  "scripts/analyze-reserve-extraction-profile.ps1",
+                                           "sizeBytes":  45583,
+                                           "sha256":  "4fe31b0409d1a677cd7bb247acc22a29a893d603fe1a52e27be5239df54d021d"
+                                       },
+                                       {
+                                           "path":  "tests/scripts/test-analyze-reserve-extraction-profile.ps1",
+                                           "sizeBytes":  23525,
+                                           "sha256":  "0688b1372e055dac31ae6e878a46f487f283f2e93166b331d2595595ae15811f"
+                                       },
+                                       {
+                                           "path":  "tests/test-manifest.json",
+                                           "sizeBytes":  17032,
+                                           "sha256":  "92d37ac1535a84421433af116124f6a6a909dfe62187637e6891156ef741a29e"
+                                       }
+                                   ],
+                   "releaseArtifacts":  [
+                                            {
+                                                "path":  "artifacts/performance/w206-reserve-extraction-characterization-t1/release-runner/SocietiesPerformance.exe",
+                                                "sizeBytes":  104749568,
+                                                "sha256":  "11cf267ff84824b708174073c2d54bb3684e74218828cd99087217dd85776918"
+                                            },
+                                            {
+                                                "path":  "artifacts/performance/w206-reserve-extraction-characterization-t1/release-runner/SocietiesPerformance.console.exe",
+                                                "sizeBytes":  50176,
+                                                "sha256":  "b5c477879d9af42ac4ac8efd41f42bf35997a71b35a4d5772ce3e6817f2fa438"
+                                            }
+                                        ]
+               },
+    "configuration":  {
+                          "scenarioId":  "balanced_basin",
+                          "seed":  1337,
+                          "citizens":  16,
+                          "warmupTicks":  2,
+                          "measuredTicks":  300,
+                          "cacheMode":  "cold",
+                          "selectorMode":  "exact_branch_and_bound",
+                          "extractionPlanningMode":  "exact_bounded",
+                          "routeDistanceMode":  "cached_distance_only",
+                          "trialCount":  3,
+                          "spikeThresholdMilliseconds":  50
+                      },
+    "commands":  {
+                     "trialPairs":  [
+                                        ".\\scripts\\run-performance-pair.ps1 -ReleaseExport -GodotPath \u0027C:\\Users\\hunte\\AppData\\Local\\Microsoft\\WinGet\\Packages\\GodotEngine.GodotEngine.Mono_Microsoft.Winget.Source_8wekyb3d8bbwe\\Godot_v4.6.2-stable_mono_win64\\Godot_v4.6.2-stable_mono_win64.exe\u0027 -Scenario balanced_basin -Seed 1337 -Citizens 16 -WarmupTicks 2 -Ticks 300 -CacheMode cold -ComparisonGroup w206-reserve-extraction-profile -TrialIndex 1 -OutputRoot \u0027artifacts/performance/w206-reserve-extraction-characterization-t1\u0027 -AllowDirtySource -AllowPrimarySafetyFailure",
+                                        ".\\scripts\\run-performance-pair.ps1 -ExistingReleaseRunner \u0027C:\\tmp\\societies-v3-w2-06-perf\\artifacts\\performance\\w206-reserve-extraction-characterization-t1\\release-runner\\SocietiesPerformance.console.exe\u0027 -GodotPath \u0027C:\\Users\\hunte\\AppData\\Local\\Microsoft\\WinGet\\Packages\\GodotEngine.GodotEngine.Mono_Microsoft.Winget.Source_8wekyb3d8bbwe\\Godot_v4.6.2-stable_mono_win64\\Godot_v4.6.2-stable_mono_win64.exe\u0027 -Scenario balanced_basin -Seed 1337 -Citizens 16 -WarmupTicks 2 -Ticks 300 -CacheMode cold -ComparisonGroup w206-reserve-extraction-profile -TrialIndex 2 -OutputRoot \u0027artifacts/performance/w206-reserve-extraction-characterization-t2\u0027 -AllowDirtySource -AllowPrimarySafetyFailure",
+                                        ".\\scripts\\run-performance-pair.ps1 -ExistingReleaseRunner \u0027C:\\tmp\\societies-v3-w2-06-perf\\artifacts\\performance\\w206-reserve-extraction-characterization-t1\\release-runner\\SocietiesPerformance.console.exe\u0027 -GodotPath \u0027C:\\Users\\hunte\\AppData\\Local\\Microsoft\\WinGet\\Packages\\GodotEngine.GodotEngine.Mono_Microsoft.Winget.Source_8wekyb3d8bbwe\\Godot_v4.6.2-stable_mono_win64\\Godot_v4.6.2-stable_mono_win64.exe\u0027 -Scenario balanced_basin -Seed 1337 -Citizens 16 -WarmupTicks 2 -Ticks 300 -CacheMode cold -ComparisonGroup w206-reserve-extraction-profile -TrialIndex 3 -OutputRoot \u0027artifacts/performance/w206-reserve-extraction-characterization-t3\u0027 -AllowDirtySource -AllowPrimarySafetyFailure"
+                                    ],
+                     "analyzer":  ".\\scripts\\analyze-reserve-extraction-profile.ps1 -InputPath \u0027artifacts/performance/w206-reserve-extraction-characterization-t1/metrics-on\u0027,\u0027artifacts/performance/w206-reserve-extraction-characterization-t2/metrics-on\u0027,\u0027artifacts/performance/w206-reserve-extraction-characterization-t3/metrics-on\u0027 -OutputPath \u0027\u003coutput-json\u003e\u0027 -AllowDirtySource"
+                 },
+    "environment":  {
+                        "gitSha":  "83a9cbf6b899a8d7c96f0ded4ed943cef64c2f0e",
+                        "gitDirty":  true,
+                        "executionRoute":  "export_release",
+                        "machineName":  "DESKTOP-H5M54GO",
+                        "logicalProcessorCount":  16,
+                        "operatingSystem":  "Microsoft Windows 10.0.19045",
+                        "processArchitecture":  "X64",
+                        "dotnetRuntime":  ".NET 8.0.24",
+                        "godotVersion":  "4.6.2-stable (official)",
+                        "managedAssemblyConfiguration":  "ExportRelease",
+                        "processExecutablePath":  "C:\\tmp\\societies-v3-w2-06-perf\\artifacts\\performance\\w206-reserve-extraction-characterization-t1\\release-runner\\SocietiesPerformance.exe",
+                        "runnerExecutablePath":  "C:\\tmp\\societies-v3-w2-06-perf\\artifacts\\performance\\w206-reserve-extraction-characterization-t1\\release-runner\\SocietiesPerformance.console.exe",
+                        "runtimeMetricsSchemaVersion":  6
+                    },
+    "instrumentationContract":  {
+                                    "runtimeMetricsSchemaVersion":  6,
+                                    "runtimeMetricsFile":  "runtime-batch-metrics-v6.csv",
+                                    "enabledBoundary":  "existing nullable RuntimeMetricsCollector created only when SOCIETIES_PERF_METRICS=1",
+                                    "metricsOffContract":  "no collector clock reads and no runtime profile CSV",
+                                    "outerParentField":  "build_work_orders_ms",
+                                    "parentField":  "build_work_orders_reserve_extraction_ms",
+                                    "sequentialNonOverlappingChildFields":  [
+                                                                                "reserve_extraction_class_preparation_ms",
+                                                                                "reserve_extraction_candidate_enumeration_and_bound_selection_ms",
+                                                                                "reserve_extraction_active_frontier_and_claim_evaluation_ms",
+                                                                                "reserve_extraction_retained_materialization_ms"
+                                                                            ],
+                                    "residualFormula":  "build_work_orders_reserve_extraction_ms - sum(sequential child fields)",
+                                    "residualMeaning":  "reserve-target argument evaluation, control-flow, and diagnostic clock overhead inside the inclusive parent",
+                                    "negativeResidualToleranceMilliseconds":  0.001,
+                                    "parentWallToleranceMilliseconds":  0.001,
+                                    "invalidReconciliationHandling":  "reject below negative tolerance; otherwise clamp to zero and flag",
+                                    "parserBounds":  {
+                                                         "maximumJsonBytes":  2097152,
+                                                         "maximumCsvBytes":  4194304,
+                                                         "maximumCsvLines":  301,
+                                                         "maximumCsvLineCharacters":  16384,
+                                                         "maximumJsonNestingDepth":  32,
+                                                         "enforcement":  "preflight_before_ConvertFrom-Json_or_Import-Csv_materialization"
+                                                     }
+                                },
+    "runs":  [
+                 {
+                     "run":  "artifacts/performance/w206-reserve-extraction-characterization-t1/metrics-on",
+                     "pairRoot":  "artifacts/performance/w206-reserve-extraction-characterization-t1",
+                     "trialIndex":  1,
+                     "releaseExport":  true,
+                     "reusedReleaseRunner":  false,
+                     "exportEditorExecutable":  "C:\\Users\\hunte\\AppData\\Local\\Microsoft\\WinGet\\Packages\\GodotEngine.GodotEngine.Mono_Microsoft.Winget.Source_8wekyb3d8bbwe\\Godot_v4.6.2-stable_mono_win64\\Godot_v4.6.2-stable_mono_win64.exe",
+                     "pairStatus":  "pass_dirty_source",
+                     "pairContractStatus":  "pass_dirty_source",
+                     "capturedUtc":  "2026-08-01T23:55:40.3890963Z",
+                     "verifiedReleaseExecution":  true,
+                     "exactInvocation":  "C:\\tmp\\societies-v3-w2-06-perf\\artifacts\\performance\\w206-reserve-extraction-characterization-t1\\release-runner\\SocietiesPerformance.console.exe --headless -- --scenario balanced_basin --seed 1337 --citizens 16 --ticks 300 --warmup-ticks 2 --cache-mode cold --selector-mode exact_branch_and_bound --extraction-planning-mode exact_bounded --route-distance-mode cached_distance_only --artifact-mode full_artifacts --comparison-group w206-reserve-extraction-profile --trial-index 1 --metrics on --output-dir C:\\tmp\\societies-v3-w2-06-perf\\artifacts\\performance\\w206-reserve-extraction-characterization-t1\\metrics-on --run-id perf-bd590c81df18322c0a7bb50e-on --git-sha 83a9cbf6b899a8d7c96f0ded4ed943cef64c2f0e --git-dirty true --execution-route export_release --project-path C:\\tmp\\societies-v3-w2-06-perf\\src\\societies --runner-executable C:\\tmp\\societies-v3-w2-06-perf\\artifacts\\performance\\w206-reserve-extraction-characterization-t1\\release-runner\\SocietiesPerformance.console.exe --allow-safety-failure true",
+                     "deterministicStateAndEventSha256":  "7fe45268e67b8dff1da6bbcf785dc996e275fd1d814e713fe83d50873d5cab8e",
+                     "metricsOffRuntimeProfileAbsent":  true,
+                     "measuredTickSummary":  {
+                                                 "sampleCount":  300,
+                                                 "metrics":  {
+                                                                 "parent":  {
+                                                                                "count":  300,
+                                                                                "totalMilliseconds":  3718.6554,
+                                                                                "medianMilliseconds":  9.21935,
+                                                                                "meanMilliseconds":  12.395518,
+                                                                                "minimumMilliseconds":  8.7674,
+                                                                                "maximumMilliseconds":  173.9131
+                                                                            },
+                                                                 "class_preparation":  {
+                                                                                           "count":  300,
+                                                                                           "totalMilliseconds":  54.0025,
+                                                                                           "medianMilliseconds":  0.10405,
+                                                                                           "meanMilliseconds":  0.180008,
+                                                                                           "minimumMilliseconds":  0.0647,
+                                                                                           "maximumMilliseconds":  1.8999,
+                                                                                           "parentSharePercent":  1.452205
+                                                                                       },
+                                                                 "candidate_enumeration_and_bound_selection":  {
+                                                                                                                   "count":  300,
+                                                                                                                   "totalMilliseconds":  3485.1151,
+                                                                                                                   "medianMilliseconds":  8.69975,
+                                                                                                                   "meanMilliseconds":  11.61705,
+                                                                                                                   "minimumMilliseconds":  8.4188,
+                                                                                                                   "maximumMilliseconds":  171.8703,
+                                                                                                                   "parentSharePercent":  93.719765
+                                                                                                               },
+                                                                 "active_frontier_and_claim_evaluation":  {
+                                                                                                              "count":  300,
+                                                                                                              "totalMilliseconds":  2.3355,
+                                                                                                              "medianMilliseconds":  0.0064,
+                                                                                                              "meanMilliseconds":  0.007785,
+                                                                                                              "minimumMilliseconds":  0.0034,
+                                                                                                              "maximumMilliseconds":  0.0649,
+                                                                                                              "parentSharePercent":  0.062805
+                                                                                                          },
+                                                                 "retained_materialization":  {
+                                                                                                  "count":  300,
+                                                                                                  "totalMilliseconds":  33.8273,
+                                                                                                  "medianMilliseconds":  0.02905,
+                                                                                                  "meanMilliseconds":  0.112758,
+                                                                                                  "minimumMilliseconds":  0.0144,
+                                                                                                  "maximumMilliseconds":  18.9252,
+                                                                                                  "parentSharePercent":  0.909665
+                                                                                              },
+                                                                 "children_total":  {
+                                                                                        "count":  300,
+                                                                                        "totalMilliseconds":  3575.2804,
+                                                                                        "medianMilliseconds":  8.862,
+                                                                                        "meanMilliseconds":  11.917601,
+                                                                                        "minimumMilliseconds":  8.5149,
+                                                                                        "maximumMilliseconds":  172.8023
+                                                                                    },
+                                                                 "residual":  {
+                                                                                  "count":  300,
+                                                                                  "totalMilliseconds":  143.375,
+                                                                                  "medianMilliseconds":  0.33675,
+                                                                                  "meanMilliseconds":  0.477917,
+                                                                                  "minimumMilliseconds":  0.2512,
+                                                                                  "maximumMilliseconds":  2.1575
+                                                                              }
+                                                             },
+                                                 "reconciliation":  {
+                                                                        "parentTotalMilliseconds":  3718.6554,
+                                                                        "childTotalMilliseconds":  3575.2804,
+                                                                        "residualTotalMilliseconds":  143.375,
+                                                                        "exactRoundedIdentity":  true
+                                                                    },
+                                                 "dominantExercisedSubCost":  {
+                                                                                  "category":  "candidate_enumeration_and_bound_selection",
+                                                                                  "totalMilliseconds":  3485.1151,
+                                                                                  "parentSharePercent":  93.719765,
+                                                                                  "uniquePositiveMaximum":  true,
+                                                                                  "maximumTiedCategories":  {
+
+                                                                                                            }
+                                                                              }
+                                             },
+                     "spikeCount":  16,
+                     "spikeEndSimulationTicks":  [
+                                                     3,
+                                                     7,
+                                                     22,
+                                                     31,
+                                                     39,
+                                                     40,
+                                                     41,
+                                                     44,
+                                                     246,
+                                                     247,
+                                                     250,
+                                                     251,
+                                                     257,
+                                                     258,
+                                                     264,
+                                                     265
+                                                 ],
+                     "spikeSummary":  {
+                                          "sampleCount":  16,
+                                          "metrics":  {
+                                                          "parent":  {
+                                                                         "count":  16,
+                                                                         "totalMilliseconds":  881.3248,
+                                                                         "medianMilliseconds":  12.30685,
+                                                                         "meanMilliseconds":  55.0828,
+                                                                         "minimumMilliseconds":  9.0718,
+                                                                         "maximumMilliseconds":  173.9131
+                                                                     },
+                                                          "class_preparation":  {
+                                                                                    "count":  16,
+                                                                                    "totalMilliseconds":  4.6012,
+                                                                                    "medianMilliseconds":  0.2043,
+                                                                                    "meanMilliseconds":  0.287575,
+                                                                                    "minimumMilliseconds":  0.0907,
+                                                                                    "maximumMilliseconds":  0.5881,
+                                                                                    "parentSharePercent":  0.522078
+                                                                                },
+                                                          "candidate_enumeration_and_bound_selection":  {
+                                                                                                            "count":  16,
+                                                                                                            "totalMilliseconds":  862.6055,
+                                                                                                            "medianMilliseconds":  10.0916,
+                                                                                                            "meanMilliseconds":  53.912844,
+                                                                                                            "minimumMilliseconds":  8.5789,
+                                                                                                            "maximumMilliseconds":  171.8703,
+                                                                                                            "parentSharePercent":  97.876004
+                                                                                                        },
+                                                          "active_frontier_and_claim_evaluation":  {
+                                                                                                       "count":  16,
+                                                                                                       "totalMilliseconds":  0.2375,
+                                                                                                       "medianMilliseconds":  0.01025,
+                                                                                                       "meanMilliseconds":  0.014844,
+                                                                                                       "minimumMilliseconds":  0.0052,
+                                                                                                       "maximumMilliseconds":  0.0649,
+                                                                                                       "parentSharePercent":  0.026948
+                                                                                                   },
+                                                          "retained_materialization":  {
+                                                                                           "count":  16,
+                                                                                           "totalMilliseconds":  1.6361,
+                                                                                           "medianMilliseconds":  0.10955,
+                                                                                           "meanMilliseconds":  0.102256,
+                                                                                           "minimumMilliseconds":  0.0271,
+                                                                                           "maximumMilliseconds":  0.279,
+                                                                                           "parentSharePercent":  0.185641
+                                                                                       },
+                                                          "children_total":  {
+                                                                                 "count":  16,
+                                                                                 "totalMilliseconds":  869.0803,
+                                                                                 "medianMilliseconds":  10.7307,
+                                                                                 "meanMilliseconds":  54.317519,
+                                                                                 "minimumMilliseconds":  8.7134,
+                                                                                 "maximumMilliseconds":  172.8023
+                                                                             },
+                                                          "residual":  {
+                                                                           "count":  16,
+                                                                           "totalMilliseconds":  12.2445,
+                                                                           "medianMilliseconds":  0.60055,
+                                                                           "meanMilliseconds":  0.765281,
+                                                                           "minimumMilliseconds":  0.2926,
+                                                                           "maximumMilliseconds":  2.1575
+                                                                       }
+                                                      },
+                                          "reconciliation":  {
+                                                                 "parentTotalMilliseconds":  881.3248,
+                                                                 "childTotalMilliseconds":  869.0803,
+                                                                 "residualTotalMilliseconds":  12.2445,
+                                                                 "exactRoundedIdentity":  true
+                                                             },
+                                          "dominantExercisedSubCost":  {
+                                                                           "category":  "candidate_enumeration_and_bound_selection",
+                                                                           "totalMilliseconds":  862.6055,
+                                                                           "parentSharePercent":  97.876004,
+                                                                           "uniquePositiveMaximum":  true,
+                                                                           "maximumTiedCategories":  {
+
+                                                                                                     }
+                                                                       }
+                                      },
+                     "artifacts":  [
+                                       {
+                                           "path":  "artifacts/performance/w206-reserve-extraction-characterization-t1/metrics-on/runtime-batch-metrics-v6.csv",
+                                           "sizeBytes":  67770,
+                                           "sha256":  "ff13e7aa0274e49f38ef0a180fac2e032f62386ab5cceb0c2e92be8df3fd021b"
+                                       },
+                                       {
+                                           "path":  "artifacts/performance/w206-reserve-extraction-characterization-t1/metrics-on/perf-results.json",
+                                           "sizeBytes":  17829,
+                                           "sha256":  "5d1e74a0be1d1d79a7a0d80c1fb40ae093247d59f800d4404b525831fcd70c49"
+                                       },
+                                       {
+                                           "path":  "artifacts/performance/w206-reserve-extraction-characterization-t1/equivalence-results.json",
+                                           "sizeBytes":  41988,
+                                           "sha256":  "e7c9325ca786da5d65b0cf3f13864ec80d77bad68576b8e48b8cbed781da7e6e"
+                                       }
+                                   ],
+                     "reproductionCommand":  ".\\scripts\\run-performance-pair.ps1 -ReleaseExport -GodotPath \u0027C:\\Users\\hunte\\AppData\\Local\\Microsoft\\WinGet\\Packages\\GodotEngine.GodotEngine.Mono_Microsoft.Winget.Source_8wekyb3d8bbwe\\Godot_v4.6.2-stable_mono_win64\\Godot_v4.6.2-stable_mono_win64.exe\u0027 -Scenario balanced_basin -Seed 1337 -Citizens 16 -WarmupTicks 2 -Ticks 300 -CacheMode cold -ComparisonGroup w206-reserve-extraction-profile -TrialIndex 1 -OutputRoot \u0027artifacts/performance/w206-reserve-extraction-characterization-t1\u0027 -AllowDirtySource -AllowPrimarySafetyFailure"
+                 },
+                 {
+                     "run":  "artifacts/performance/w206-reserve-extraction-characterization-t2/metrics-on",
+                     "pairRoot":  "artifacts/performance/w206-reserve-extraction-characterization-t2",
+                     "trialIndex":  2,
+                     "releaseExport":  false,
+                     "reusedReleaseRunner":  true,
+                     "exportEditorExecutable":  null,
+                     "pairStatus":  "pass_dirty_source",
+                     "pairContractStatus":  "pass_dirty_source",
+                     "capturedUtc":  "2026-08-01T23:56:14.2234475Z",
+                     "verifiedReleaseExecution":  true,
+                     "exactInvocation":  "C:\\tmp\\societies-v3-w2-06-perf\\artifacts\\performance\\w206-reserve-extraction-characterization-t1\\release-runner\\SocietiesPerformance.console.exe --headless -- --scenario balanced_basin --seed 1337 --citizens 16 --ticks 300 --warmup-ticks 2 --cache-mode cold --selector-mode exact_branch_and_bound --extraction-planning-mode exact_bounded --route-distance-mode cached_distance_only --artifact-mode full_artifacts --comparison-group w206-reserve-extraction-profile --trial-index 2 --metrics on --output-dir C:\\tmp\\societies-v3-w2-06-perf\\artifacts\\performance\\w206-reserve-extraction-characterization-t2\\metrics-on --run-id perf-55473c8c38583716954c02a7-on --git-sha 83a9cbf6b899a8d7c96f0ded4ed943cef64c2f0e --git-dirty true --execution-route export_release --project-path C:\\tmp\\societies-v3-w2-06-perf\\src\\societies --runner-executable C:\\tmp\\societies-v3-w2-06-perf\\artifacts\\performance\\w206-reserve-extraction-characterization-t1\\release-runner\\SocietiesPerformance.console.exe --allow-safety-failure true",
+                     "deterministicStateAndEventSha256":  "7fe45268e67b8dff1da6bbcf785dc996e275fd1d814e713fe83d50873d5cab8e",
+                     "metricsOffRuntimeProfileAbsent":  true,
+                     "measuredTickSummary":  {
+                                                 "sampleCount":  300,
+                                                 "metrics":  {
+                                                                 "parent":  {
+                                                                                "count":  300,
+                                                                                "totalMilliseconds":  3616.9124,
+                                                                                "medianMilliseconds":  9.1527,
+                                                                                "meanMilliseconds":  12.056375,
+                                                                                "minimumMilliseconds":  8.7848,
+                                                                                "maximumMilliseconds":  135.2121
+                                                                            },
+                                                                 "class_preparation":  {
+                                                                                           "count":  300,
+                                                                                           "totalMilliseconds":  52.394,
+                                                                                           "medianMilliseconds":  0.1027,
+                                                                                           "meanMilliseconds":  0.174647,
+                                                                                           "minimumMilliseconds":  0.063,
+                                                                                           "maximumMilliseconds":  1.875,
+                                                                                           "parentSharePercent":  1.448584
+                                                                                       },
+                                                                 "candidate_enumeration_and_bound_selection":  {
+                                                                                                                   "count":  300,
+                                                                                                                   "totalMilliseconds":  3379.2509,
+                                                                                                                   "medianMilliseconds":  8.64295,
+                                                                                                                   "meanMilliseconds":  11.26417,
+                                                                                                                   "minimumMilliseconds":  8.4126,
+                                                                                                                   "maximumMilliseconds":  133.4965,
+                                                                                                                   "parentSharePercent":  93.429161
+                                                                                                               },
+                                                                 "active_frontier_and_claim_evaluation":  {
+                                                                                                              "count":  300,
+                                                                                                              "totalMilliseconds":  3.342,
+                                                                                                              "medianMilliseconds":  0.0065,
+                                                                                                              "meanMilliseconds":  0.01114,
+                                                                                                              "minimumMilliseconds":  0.0036,
+                                                                                                              "maximumMilliseconds":  0.9703,
+                                                                                                              "parentSharePercent":  0.092399
+                                                                                                          },
+                                                                 "retained_materialization":  {
+                                                                                                  "count":  300,
+                                                                                                  "totalMilliseconds":  31.0985,
+                                                                                                  "medianMilliseconds":  0.0292,
+                                                                                                  "meanMilliseconds":  0.103662,
+                                                                                                  "minimumMilliseconds":  0.0137,
+                                                                                                  "maximumMilliseconds":  18.4115,
+                                                                                                  "parentSharePercent":  0.859808
+                                                                                              },
+                                                                 "children_total":  {
+                                                                                        "count":  300,
+                                                                                        "totalMilliseconds":  3466.0854,
+                                                                                        "medianMilliseconds":  8.78625,
+                                                                                        "meanMilliseconds":  11.553618,
+                                                                                        "minimumMilliseconds":  8.5007,
+                                                                                        "maximumMilliseconds":  134.2856
+                                                                                    },
+                                                                 "residual":  {
+                                                                                  "count":  300,
+                                                                                  "totalMilliseconds":  150.827,
+                                                                                  "medianMilliseconds":  0.3514,
+                                                                                  "meanMilliseconds":  0.502757,
+                                                                                  "minimumMilliseconds":  0.2661,
+                                                                                  "maximumMilliseconds":  7.8773
+                                                                              }
+                                                             },
+                                                 "reconciliation":  {
+                                                                        "parentTotalMilliseconds":  3616.9124,
+                                                                        "childTotalMilliseconds":  3466.0854,
+                                                                        "residualTotalMilliseconds":  150.827,
+                                                                        "exactRoundedIdentity":  true
+                                                                    },
+                                                 "dominantExercisedSubCost":  {
+                                                                                  "category":  "candidate_enumeration_and_bound_selection",
+                                                                                  "totalMilliseconds":  3379.2509,
+                                                                                  "parentSharePercent":  93.429161,
+                                                                                  "uniquePositiveMaximum":  true,
+                                                                                  "maximumTiedCategories":  {
+
+                                                                                                            }
+                                                                              }
+                                             },
+                     "spikeCount":  15,
+                     "spikeEndSimulationTicks":  [
+                                                     3,
+                                                     7,
+                                                     22,
+                                                     31,
+                                                     39,
+                                                     40,
+                                                     41,
+                                                     246,
+                                                     247,
+                                                     250,
+                                                     251,
+                                                     257,
+                                                     258,
+                                                     264,
+                                                     265
+                                                 ],
+                     "spikeSummary":  {
+                                          "sampleCount":  15,
+                                          "metrics":  {
+                                                          "parent":  {
+                                                                         "count":  15,
+                                                                         "totalMilliseconds":  806.0225,
+                                                                         "medianMilliseconds":  12.1016,
+                                                                         "meanMilliseconds":  53.734833,
+                                                                         "minimumMilliseconds":  9.105,
+                                                                         "maximumMilliseconds":  135.2121
+                                                                     },
+                                                          "class_preparation":  {
+                                                                                    "count":  15,
+                                                                                    "totalMilliseconds":  5.0063,
+                                                                                    "medianMilliseconds":  0.2476,
+                                                                                    "meanMilliseconds":  0.333753,
+                                                                                    "minimumMilliseconds":  0.0971,
+                                                                                    "maximumMilliseconds":  0.9587,
+                                                                                    "parentSharePercent":  0.621112
+                                                                                },
+                                                          "candidate_enumeration_and_bound_selection":  {
+                                                                                                            "count":  15,
+                                                                                                            "totalMilliseconds":  788.126,
+                                                                                                            "medianMilliseconds":  9.1686,
+                                                                                                            "meanMilliseconds":  52.541733,
+                                                                                                            "minimumMilliseconds":  8.5969,
+                                                                                                            "maximumMilliseconds":  133.4965,
+                                                                                                            "parentSharePercent":  97.779653
+                                                                                                        },
+                                                          "active_frontier_and_claim_evaluation":  {
+                                                                                                       "count":  15,
+                                                                                                       "totalMilliseconds":  0.2018,
+                                                                                                       "medianMilliseconds":  0.0119,
+                                                                                                       "meanMilliseconds":  0.013453,
+                                                                                                       "minimumMilliseconds":  0.006,
+                                                                                                       "maximumMilliseconds":  0.0275,
+                                                                                                       "parentSharePercent":  0.025037
+                                                                                                   },
+                                                          "retained_materialization":  {
+                                                                                           "count":  15,
+                                                                                           "totalMilliseconds":  1.5764,
+                                                                                           "medianMilliseconds":  0.106,
+                                                                                           "meanMilliseconds":  0.105093,
+                                                                                           "minimumMilliseconds":  0.0291,
+                                                                                           "maximumMilliseconds":  0.2627,
+                                                                                           "parentSharePercent":  0.195578
+                                                                                       },
+                                                          "children_total":  {
+                                                                                 "count":  15,
+                                                                                 "totalMilliseconds":  794.9105,
+                                                                                 "medianMilliseconds":  10.2606,
+                                                                                 "meanMilliseconds":  52.994033,
+                                                                                 "minimumMilliseconds":  8.7385,
+                                                                                 "maximumMilliseconds":  134.2856
+                                                                             },
+                                                          "residual":  {
+                                                                           "count":  15,
+                                                                           "totalMilliseconds":  11.112,
+                                                                           "medianMilliseconds":  0.6765,
+                                                                           "meanMilliseconds":  0.7408,
+                                                                           "minimumMilliseconds":  0.3198,
+                                                                           "maximumMilliseconds":  1.841
+                                                                       }
+                                                      },
+                                          "reconciliation":  {
+                                                                 "parentTotalMilliseconds":  806.0225,
+                                                                 "childTotalMilliseconds":  794.9105,
+                                                                 "residualTotalMilliseconds":  11.112,
+                                                                 "exactRoundedIdentity":  true
+                                                             },
+                                          "dominantExercisedSubCost":  {
+                                                                           "category":  "candidate_enumeration_and_bound_selection",
+                                                                           "totalMilliseconds":  788.126,
+                                                                           "parentSharePercent":  97.779653,
+                                                                           "uniquePositiveMaximum":  true,
+                                                                           "maximumTiedCategories":  {
+
+                                                                                                     }
+                                                                       }
+                                      },
+                     "artifacts":  [
+                                       {
+                                           "path":  "artifacts/performance/w206-reserve-extraction-characterization-t2/metrics-on/runtime-batch-metrics-v6.csv",
+                                           "sizeBytes":  67769,
+                                           "sha256":  "e5577b2cfa694e8c39b39bce624a8749674ccc96109a001e1a5995be26abfa29"
+                                       },
+                                       {
+                                           "path":  "artifacts/performance/w206-reserve-extraction-characterization-t2/metrics-on/perf-results.json",
+                                           "sizeBytes":  17834,
+                                           "sha256":  "72461b94519c4eb95b6cf56d363f4b233f669b524818038464ae64917b47db08"
+                                       },
+                                       {
+                                           "path":  "artifacts/performance/w206-reserve-extraction-characterization-t2/equivalence-results.json",
+                                           "sizeBytes":  41722,
+                                           "sha256":  "b7b5e88ca3b86deb0f52b36e73137460909037b5e385d7b797942c4bc9e6db8a"
+                                       }
+                                   ],
+                     "reproductionCommand":  ".\\scripts\\run-performance-pair.ps1 -ExistingReleaseRunner \u0027C:\\tmp\\societies-v3-w2-06-perf\\artifacts\\performance\\w206-reserve-extraction-characterization-t1\\release-runner\\SocietiesPerformance.console.exe\u0027 -GodotPath \u0027C:\\Users\\hunte\\AppData\\Local\\Microsoft\\WinGet\\Packages\\GodotEngine.GodotEngine.Mono_Microsoft.Winget.Source_8wekyb3d8bbwe\\Godot_v4.6.2-stable_mono_win64\\Godot_v4.6.2-stable_mono_win64.exe\u0027 -Scenario balanced_basin -Seed 1337 -Citizens 16 -WarmupTicks 2 -Ticks 300 -CacheMode cold -ComparisonGroup w206-reserve-extraction-profile -TrialIndex 2 -OutputRoot \u0027artifacts/performance/w206-reserve-extraction-characterization-t2\u0027 -AllowDirtySource -AllowPrimarySafetyFailure"
+                 },
+                 {
+                     "run":  "artifacts/performance/w206-reserve-extraction-characterization-t3/metrics-on",
+                     "pairRoot":  "artifacts/performance/w206-reserve-extraction-characterization-t3",
+                     "trialIndex":  3,
+                     "releaseExport":  false,
+                     "reusedReleaseRunner":  true,
+                     "exportEditorExecutable":  null,
+                     "pairStatus":  "pass_dirty_source",
+                     "pairContractStatus":  "pass_dirty_source",
+                     "capturedUtc":  "2026-08-01T23:56:50.5850457Z",
+                     "verifiedReleaseExecution":  true,
+                     "exactInvocation":  "C:\\tmp\\societies-v3-w2-06-perf\\artifacts\\performance\\w206-reserve-extraction-characterization-t1\\release-runner\\SocietiesPerformance.console.exe --headless -- --scenario balanced_basin --seed 1337 --citizens 16 --ticks 300 --warmup-ticks 2 --cache-mode cold --selector-mode exact_branch_and_bound --extraction-planning-mode exact_bounded --route-distance-mode cached_distance_only --artifact-mode full_artifacts --comparison-group w206-reserve-extraction-profile --trial-index 3 --metrics on --output-dir C:\\tmp\\societies-v3-w2-06-perf\\artifacts\\performance\\w206-reserve-extraction-characterization-t3\\metrics-on --run-id perf-3054be21a7e4194c69940728-on --git-sha 83a9cbf6b899a8d7c96f0ded4ed943cef64c2f0e --git-dirty true --execution-route export_release --project-path C:\\tmp\\societies-v3-w2-06-perf\\src\\societies --runner-executable C:\\tmp\\societies-v3-w2-06-perf\\artifacts\\performance\\w206-reserve-extraction-characterization-t1\\release-runner\\SocietiesPerformance.console.exe --allow-safety-failure true",
+                     "deterministicStateAndEventSha256":  "7fe45268e67b8dff1da6bbcf785dc996e275fd1d814e713fe83d50873d5cab8e",
+                     "metricsOffRuntimeProfileAbsent":  true,
+                     "measuredTickSummary":  {
+                                                 "sampleCount":  300,
+                                                 "metrics":  {
+                                                                 "parent":  {
+                                                                                "count":  300,
+                                                                                "totalMilliseconds":  3695.9159,
+                                                                                "medianMilliseconds":  9.0746,
+                                                                                "meanMilliseconds":  12.31972,
+                                                                                "minimumMilliseconds":  8.3105,
+                                                                                "maximumMilliseconds":  169.1481
+                                                                            },
+                                                                 "class_preparation":  {
+                                                                                           "count":  300,
+                                                                                           "totalMilliseconds":  51.3583,
+                                                                                           "medianMilliseconds":  0.095,
+                                                                                           "meanMilliseconds":  0.171194,
+                                                                                           "minimumMilliseconds":  0.0591,
+                                                                                           "maximumMilliseconds":  2.0456,
+                                                                                           "parentSharePercent":  1.389596
+                                                                                       },
+                                                                 "candidate_enumeration_and_bound_selection":  {
+                                                                                                                   "count":  300,
+                                                                                                                   "totalMilliseconds":  3458.9627,
+                                                                                                                   "medianMilliseconds":  8.56415,
+                                                                                                                   "meanMilliseconds":  11.529876,
+                                                                                                                   "minimumMilliseconds":  7.9868,
+                                                                                                                   "maximumMilliseconds":  167.1737,
+                                                                                                                   "parentSharePercent":  93.588783
+                                                                                                               },
+                                                                 "active_frontier_and_claim_evaluation":  {
+                                                                                                              "count":  300,
+                                                                                                              "totalMilliseconds":  3.2945,
+                                                                                                              "medianMilliseconds":  0.0065,
+                                                                                                              "meanMilliseconds":  0.010982,
+                                                                                                              "minimumMilliseconds":  0.0031,
+                                                                                                              "maximumMilliseconds":  0.9791,
+                                                                                                              "parentSharePercent":  0.089139
+                                                                                                          },
+                                                                 "retained_materialization":  {
+                                                                                                  "count":  300,
+                                                                                                  "totalMilliseconds":  31.0336,
+                                                                                                  "medianMilliseconds":  0.0294,
+                                                                                                  "meanMilliseconds":  0.103445,
+                                                                                                  "minimumMilliseconds":  0.014,
+                                                                                                  "maximumMilliseconds":  18.9728,
+                                                                                                  "parentSharePercent":  0.839673
+                                                                                              },
+                                                                 "children_total":  {
+                                                                                        "count":  300,
+                                                                                        "totalMilliseconds":  3544.6491,
+                                                                                        "medianMilliseconds":  8.7026,
+                                                                                        "meanMilliseconds":  11.815497,
+                                                                                        "minimumMilliseconds":  8.0713,
+                                                                                        "maximumMilliseconds":  168.0461
+                                                                                    },
+                                                                 "residual":  {
+                                                                                  "count":  300,
+                                                                                  "totalMilliseconds":  151.2668,
+                                                                                  "medianMilliseconds":  0.33095,
+                                                                                  "meanMilliseconds":  0.504223,
+                                                                                  "minimumMilliseconds":  0.2275,
+                                                                                  "maximumMilliseconds":  7.9216
+                                                                              }
+                                                             },
+                                                 "reconciliation":  {
+                                                                        "parentTotalMilliseconds":  3695.9159,
+                                                                        "childTotalMilliseconds":  3544.6491,
+                                                                        "residualTotalMilliseconds":  151.2668,
+                                                                        "exactRoundedIdentity":  true
+                                                                    },
+                                                 "dominantExercisedSubCost":  {
+                                                                                  "category":  "candidate_enumeration_and_bound_selection",
+                                                                                  "totalMilliseconds":  3458.9627,
+                                                                                  "parentSharePercent":  93.588783,
+                                                                                  "uniquePositiveMaximum":  true,
+                                                                                  "maximumTiedCategories":  {
+
+                                                                                                            }
+                                                                              }
+                                             },
+                     "spikeCount":  15,
+                     "spikeEndSimulationTicks":  [
+                                                     3,
+                                                     7,
+                                                     22,
+                                                     31,
+                                                     39,
+                                                     40,
+                                                     41,
+                                                     246,
+                                                     247,
+                                                     250,
+                                                     251,
+                                                     257,
+                                                     258,
+                                                     264,
+                                                     265
+                                                 ],
+                     "spikeSummary":  {
+                                          "sampleCount":  15,
+                                          "metrics":  {
+                                                          "parent":  {
+                                                                         "count":  15,
+                                                                         "totalMilliseconds":  890.4196,
+                                                                         "medianMilliseconds":  13.8581,
+                                                                         "meanMilliseconds":  59.361307,
+                                                                         "minimumMilliseconds":  8.866,
+                                                                         "maximumMilliseconds":  169.1481
+                                                                     },
+                                                          "class_preparation":  {
+                                                                                    "count":  15,
+                                                                                    "totalMilliseconds":  4.2327,
+                                                                                    "medianMilliseconds":  0.1829,
+                                                                                    "meanMilliseconds":  0.28218,
+                                                                                    "minimumMilliseconds":  0.0856,
+                                                                                    "maximumMilliseconds":  0.5765,
+                                                                                    "parentSharePercent":  0.47536
+                                                                                },
+                                                          "candidate_enumeration_and_bound_selection":  {
+                                                                                                            "count":  15,
+                                                                                                            "totalMilliseconds":  872.5555,
+                                                                                                            "medianMilliseconds":  11.6695,
+                                                                                                            "meanMilliseconds":  58.170367,
+                                                                                                            "minimumMilliseconds":  8.4609,
+                                                                                                            "maximumMilliseconds":  167.1737,
+                                                                                                            "parentSharePercent":  97.993744
+                                                                                                        },
+                                                          "active_frontier_and_claim_evaluation":  {
+                                                                                                       "count":  15,
+                                                                                                       "totalMilliseconds":  0.2094,
+                                                                                                       "medianMilliseconds":  0.0114,
+                                                                                                       "meanMilliseconds":  0.01396,
+                                                                                                       "minimumMilliseconds":  0.0056,
+                                                                                                       "maximumMilliseconds":  0.0336,
+                                                                                                       "parentSharePercent":  0.023517
+                                                                                                   },
+                                                          "retained_materialization":  {
+                                                                                           "count":  15,
+                                                                                           "totalMilliseconds":  1.6257,
+                                                                                           "medianMilliseconds":  0.1143,
+                                                                                           "meanMilliseconds":  0.10838,
+                                                                                           "minimumMilliseconds":  0.0286,
+                                                                                           "maximumMilliseconds":  0.2642,
+                                                                                           "parentSharePercent":  0.182577
+                                                                                       },
+                                                          "children_total":  {
+                                                                                 "count":  15,
+                                                                                 "totalMilliseconds":  878.6233,
+                                                                                 "medianMilliseconds":  11.9517,
+                                                                                 "meanMilliseconds":  58.574887,
+                                                                                 "minimumMilliseconds":  8.5807,
+                                                                                 "maximumMilliseconds":  168.0461
+                                                                             },
+                                                          "residual":  {
+                                                                           "count":  15,
+                                                                           "totalMilliseconds":  11.7963,
+                                                                           "medianMilliseconds":  0.6153,
+                                                                           "meanMilliseconds":  0.78642,
+                                                                           "minimumMilliseconds":  0.2853,
+                                                                           "maximumMilliseconds":  2.0993
+                                                                       }
+                                                      },
+                                          "reconciliation":  {
+                                                                 "parentTotalMilliseconds":  890.4196,
+                                                                 "childTotalMilliseconds":  878.6233,
+                                                                 "residualTotalMilliseconds":  11.7963,
+                                                                 "exactRoundedIdentity":  true
+                                                             },
+                                          "dominantExercisedSubCost":  {
+                                                                           "category":  "candidate_enumeration_and_bound_selection",
+                                                                           "totalMilliseconds":  872.5555,
+                                                                           "parentSharePercent":  97.993744,
+                                                                           "uniquePositiveMaximum":  true,
+                                                                           "maximumTiedCategories":  {
+
+                                                                                                     }
+                                                                       }
+                                      },
+                     "artifacts":  [
+                                       {
+                                           "path":  "artifacts/performance/w206-reserve-extraction-characterization-t3/metrics-on/runtime-batch-metrics-v6.csv",
+                                           "sizeBytes":  67860,
+                                           "sha256":  "105c8e64bc97652d79cda33f08db768098f210069ed084837fba8967daf8db33"
+                                       },
+                                       {
+                                           "path":  "artifacts/performance/w206-reserve-extraction-characterization-t3/metrics-on/perf-results.json",
+                                           "sizeBytes":  17847,
+                                           "sha256":  "b81ee6dbe3850954c0342b5639600b17c6a7fa63a4d87b18bce701c934bd2b59"
+                                       },
+                                       {
+                                           "path":  "artifacts/performance/w206-reserve-extraction-characterization-t3/equivalence-results.json",
+                                           "sizeBytes":  41722,
+                                           "sha256":  "c88b0b1cb5631c59b84da65e6f5fae627004425d4ddac3d6f9b3b7edac7b914a"
+                                       }
+                                   ],
+                     "reproductionCommand":  ".\\scripts\\run-performance-pair.ps1 -ExistingReleaseRunner \u0027C:\\tmp\\societies-v3-w2-06-perf\\artifacts\\performance\\w206-reserve-extraction-characterization-t1\\release-runner\\SocietiesPerformance.console.exe\u0027 -GodotPath \u0027C:\\Users\\hunte\\AppData\\Local\\Microsoft\\WinGet\\Packages\\GodotEngine.GodotEngine.Mono_Microsoft.Winget.Source_8wekyb3d8bbwe\\Godot_v4.6.2-stable_mono_win64\\Godot_v4.6.2-stable_mono_win64.exe\u0027 -Scenario balanced_basin -Seed 1337 -Citizens 16 -WarmupTicks 2 -Ticks 300 -CacheMode cold -ComparisonGroup w206-reserve-extraction-profile -TrialIndex 3 -OutputRoot \u0027artifacts/performance/w206-reserve-extraction-characterization-t3\u0027 -AllowDirtySource -AllowPrimarySafetyFailure"
+                 }
+             ],
+    "repeatability":  {
+                          "commonSpikeTickCount":  15,
+                          "commonSpikeEndSimulationTicks":  [
+                                                                3,
+                                                                7,
+                                                                22,
+                                                                31,
+                                                                39,
+                                                                40,
+                                                                41,
+                                                                246,
+                                                                247,
+                                                                250,
+                                                                251,
+                                                                257,
+                                                                258,
+                                                                264,
+                                                                265
+                                                            ],
+                          "unionSpikeTickCount":  16,
+                          "unionSpikeEndSimulationTicks":  [
+                                                               3,
+                                                               7,
+                                                               22,
+                                                               31,
+                                                               39,
+                                                               40,
+                                                               41,
+                                                               44,
+                                                               246,
+                                                               247,
+                                                               250,
+                                                               251,
+                                                               257,
+                                                               258,
+                                                               264,
+                                                               265
+                                                           ],
+                          "allRunsExactSpikeTickSetIdentity":  false,
+                          "perTrialCommonSpikeSubCostSummaries":  [
+                                                                      {
+                                                                          "run":  "artifacts/performance/w206-reserve-extraction-characterization-t1/metrics-on",
+                                                                          "trialIndex":  1,
+                                                                          "commonSpikeSummary":  {
+                                                                                                     "sampleCount":  15,
+                                                                                                     "metrics":  {
+                                                                                                                     "parent":  {
+                                                                                                                                    "count":  15,
+                                                                                                                                    "totalMilliseconds":  870.9589,
+                                                                                                                                    "medianMilliseconds":  14.0817,
+                                                                                                                                    "meanMilliseconds":  58.063927,
+                                                                                                                                    "minimumMilliseconds":  9.0718,
+                                                                                                                                    "maximumMilliseconds":  173.9131
+                                                                                                                                },
+                                                                                                                     "class_preparation":  {
+                                                                                                                                               "count":  15,
+                                                                                                                                               "totalMilliseconds":  4.1338,
+                                                                                                                                               "medianMilliseconds":  0.1502,
+                                                                                                                                               "meanMilliseconds":  0.275587,
+                                                                                                                                               "minimumMilliseconds":  0.0907,
+                                                                                                                                               "maximumMilliseconds":  0.5881,
+                                                                                                                                               "parentSharePercent":  0.474626
+                                                                                                                                           },
+                                                                                                                     "candidate_enumeration_and_bound_selection":  {
+                                                                                                                                                                       "count":  15,
+                                                                                                                                                                       "totalMilliseconds":  853.6802,
+                                                                                                                                                                       "medianMilliseconds":  11.2579,
+                                                                                                                                                                       "meanMilliseconds":  56.912013,
+                                                                                                                                                                       "minimumMilliseconds":  8.5789,
+                                                                                                                                                                       "maximumMilliseconds":  171.8703,
+                                                                                                                                                                       "parentSharePercent":  98.016129
+                                                                                                                                                                   },
+                                                                                                                     "active_frontier_and_claim_evaluation":  {
+                                                                                                                                                                  "count":  15,
+                                                                                                                                                                  "totalMilliseconds":  0.2218,
+                                                                                                                                                                  "medianMilliseconds":  0.0099,
+                                                                                                                                                                  "meanMilliseconds":  0.014787,
+                                                                                                                                                                  "minimumMilliseconds":  0.0052,
+                                                                                                                                                                  "maximumMilliseconds":  0.0649,
+                                                                                                                                                                  "parentSharePercent":  0.025466
+                                                                                                                                                              },
+                                                                                                                     "retained_materialization":  {
+                                                                                                                                                      "count":  15,
+                                                                                                                                                      "totalMilliseconds":  1.5073,
+                                                                                                                                                      "medianMilliseconds":  0.1025,
+                                                                                                                                                      "meanMilliseconds":  0.100487,
+                                                                                                                                                      "minimumMilliseconds":  0.0271,
+                                                                                                                                                      "maximumMilliseconds":  0.279,
+                                                                                                                                                      "parentSharePercent":  0.173062
+                                                                                                                                                  },
+                                                                                                                     "children_total":  {
+                                                                                                                                            "count":  15,
+                                                                                                                                            "totalMilliseconds":  859.5431,
+                                                                                                                                            "medianMilliseconds":  11.9242,
+                                                                                                                                            "meanMilliseconds":  57.302873,
+                                                                                                                                            "minimumMilliseconds":  8.7134,
+                                                                                                                                            "maximumMilliseconds":  172.8023
+                                                                                                                                        },
+                                                                                                                     "residual":  {
+                                                                                                                                      "count":  15,
+                                                                                                                                      "totalMilliseconds":  11.4158,
+                                                                                                                                      "medianMilliseconds":  0.4695,
+                                                                                                                                      "meanMilliseconds":  0.761053,
+                                                                                                                                      "minimumMilliseconds":  0.2926,
+                                                                                                                                      "maximumMilliseconds":  2.1575
+                                                                                                                                  }
+                                                                                                                 },
+                                                                                                     "reconciliation":  {
+                                                                                                                            "parentTotalMilliseconds":  870.9589,
+                                                                                                                            "childTotalMilliseconds":  859.5431,
+                                                                                                                            "residualTotalMilliseconds":  11.4158,
+                                                                                                                            "exactRoundedIdentity":  true
+                                                                                                                        },
+                                                                                                     "dominantExercisedSubCost":  {
+                                                                                                                                      "category":  "candidate_enumeration_and_bound_selection",
+                                                                                                                                      "totalMilliseconds":  853.6802,
+                                                                                                                                      "parentSharePercent":  98.016129,
+                                                                                                                                      "uniquePositiveMaximum":  true,
+                                                                                                                                      "maximumTiedCategories":  {
+
+                                                                                                                                                                }
+                                                                                                                                  }
+                                                                                                 }
+                                                                      },
+                                                                      {
+                                                                          "run":  "artifacts/performance/w206-reserve-extraction-characterization-t2/metrics-on",
+                                                                          "trialIndex":  2,
+                                                                          "commonSpikeSummary":  {
+                                                                                                     "sampleCount":  15,
+                                                                                                     "metrics":  {
+                                                                                                                     "parent":  {
+                                                                                                                                    "count":  15,
+                                                                                                                                    "totalMilliseconds":  806.0225,
+                                                                                                                                    "medianMilliseconds":  12.1016,
+                                                                                                                                    "meanMilliseconds":  53.734833,
+                                                                                                                                    "minimumMilliseconds":  9.105,
+                                                                                                                                    "maximumMilliseconds":  135.2121
+                                                                                                                                },
+                                                                                                                     "class_preparation":  {
+                                                                                                                                               "count":  15,
+                                                                                                                                               "totalMilliseconds":  5.0063,
+                                                                                                                                               "medianMilliseconds":  0.2476,
+                                                                                                                                               "meanMilliseconds":  0.333753,
+                                                                                                                                               "minimumMilliseconds":  0.0971,
+                                                                                                                                               "maximumMilliseconds":  0.9587,
+                                                                                                                                               "parentSharePercent":  0.621112
+                                                                                                                                           },
+                                                                                                                     "candidate_enumeration_and_bound_selection":  {
+                                                                                                                                                                       "count":  15,
+                                                                                                                                                                       "totalMilliseconds":  788.126,
+                                                                                                                                                                       "medianMilliseconds":  9.1686,
+                                                                                                                                                                       "meanMilliseconds":  52.541733,
+                                                                                                                                                                       "minimumMilliseconds":  8.5969,
+                                                                                                                                                                       "maximumMilliseconds":  133.4965,
+                                                                                                                                                                       "parentSharePercent":  97.779653
+                                                                                                                                                                   },
+                                                                                                                     "active_frontier_and_claim_evaluation":  {
+                                                                                                                                                                  "count":  15,
+                                                                                                                                                                  "totalMilliseconds":  0.2018,
+                                                                                                                                                                  "medianMilliseconds":  0.0119,
+                                                                                                                                                                  "meanMilliseconds":  0.013453,
+                                                                                                                                                                  "minimumMilliseconds":  0.006,
+                                                                                                                                                                  "maximumMilliseconds":  0.0275,
+                                                                                                                                                                  "parentSharePercent":  0.025037
+                                                                                                                                                              },
+                                                                                                                     "retained_materialization":  {
+                                                                                                                                                      "count":  15,
+                                                                                                                                                      "totalMilliseconds":  1.5764,
+                                                                                                                                                      "medianMilliseconds":  0.106,
+                                                                                                                                                      "meanMilliseconds":  0.105093,
+                                                                                                                                                      "minimumMilliseconds":  0.0291,
+                                                                                                                                                      "maximumMilliseconds":  0.2627,
+                                                                                                                                                      "parentSharePercent":  0.195578
+                                                                                                                                                  },
+                                                                                                                     "children_total":  {
+                                                                                                                                            "count":  15,
+                                                                                                                                            "totalMilliseconds":  794.9105,
+                                                                                                                                            "medianMilliseconds":  10.2606,
+                                                                                                                                            "meanMilliseconds":  52.994033,
+                                                                                                                                            "minimumMilliseconds":  8.7385,
+                                                                                                                                            "maximumMilliseconds":  134.2856
+                                                                                                                                        },
+                                                                                                                     "residual":  {
+                                                                                                                                      "count":  15,
+                                                                                                                                      "totalMilliseconds":  11.112,
+                                                                                                                                      "medianMilliseconds":  0.6765,
+                                                                                                                                      "meanMilliseconds":  0.7408,
+                                                                                                                                      "minimumMilliseconds":  0.3198,
+                                                                                                                                      "maximumMilliseconds":  1.841
+                                                                                                                                  }
+                                                                                                                 },
+                                                                                                     "reconciliation":  {
+                                                                                                                            "parentTotalMilliseconds":  806.0225,
+                                                                                                                            "childTotalMilliseconds":  794.9105,
+                                                                                                                            "residualTotalMilliseconds":  11.112,
+                                                                                                                            "exactRoundedIdentity":  true
+                                                                                                                        },
+                                                                                                     "dominantExercisedSubCost":  {
+                                                                                                                                      "category":  "candidate_enumeration_and_bound_selection",
+                                                                                                                                      "totalMilliseconds":  788.126,
+                                                                                                                                      "parentSharePercent":  97.779653,
+                                                                                                                                      "uniquePositiveMaximum":  true,
+                                                                                                                                      "maximumTiedCategories":  {
+
+                                                                                                                                                                }
+                                                                                                                                  }
+                                                                                                 }
+                                                                      },
+                                                                      {
+                                                                          "run":  "artifacts/performance/w206-reserve-extraction-characterization-t3/metrics-on",
+                                                                          "trialIndex":  3,
+                                                                          "commonSpikeSummary":  {
+                                                                                                     "sampleCount":  15,
+                                                                                                     "metrics":  {
+                                                                                                                     "parent":  {
+                                                                                                                                    "count":  15,
+                                                                                                                                    "totalMilliseconds":  890.4196,
+                                                                                                                                    "medianMilliseconds":  13.8581,
+                                                                                                                                    "meanMilliseconds":  59.361307,
+                                                                                                                                    "minimumMilliseconds":  8.866,
+                                                                                                                                    "maximumMilliseconds":  169.1481
+                                                                                                                                },
+                                                                                                                     "class_preparation":  {
+                                                                                                                                               "count":  15,
+                                                                                                                                               "totalMilliseconds":  4.2327,
+                                                                                                                                               "medianMilliseconds":  0.1829,
+                                                                                                                                               "meanMilliseconds":  0.28218,
+                                                                                                                                               "minimumMilliseconds":  0.0856,
+                                                                                                                                               "maximumMilliseconds":  0.5765,
+                                                                                                                                               "parentSharePercent":  0.47536
+                                                                                                                                           },
+                                                                                                                     "candidate_enumeration_and_bound_selection":  {
+                                                                                                                                                                       "count":  15,
+                                                                                                                                                                       "totalMilliseconds":  872.5555,
+                                                                                                                                                                       "medianMilliseconds":  11.6695,
+                                                                                                                                                                       "meanMilliseconds":  58.170367,
+                                                                                                                                                                       "minimumMilliseconds":  8.4609,
+                                                                                                                                                                       "maximumMilliseconds":  167.1737,
+                                                                                                                                                                       "parentSharePercent":  97.993744
+                                                                                                                                                                   },
+                                                                                                                     "active_frontier_and_claim_evaluation":  {
+                                                                                                                                                                  "count":  15,
+                                                                                                                                                                  "totalMilliseconds":  0.2094,
+                                                                                                                                                                  "medianMilliseconds":  0.0114,
+                                                                                                                                                                  "meanMilliseconds":  0.01396,
+                                                                                                                                                                  "minimumMilliseconds":  0.0056,
+                                                                                                                                                                  "maximumMilliseconds":  0.0336,
+                                                                                                                                                                  "parentSharePercent":  0.023517
+                                                                                                                                                              },
+                                                                                                                     "retained_materialization":  {
+                                                                                                                                                      "count":  15,
+                                                                                                                                                      "totalMilliseconds":  1.6257,
+                                                                                                                                                      "medianMilliseconds":  0.1143,
+                                                                                                                                                      "meanMilliseconds":  0.10838,
+                                                                                                                                                      "minimumMilliseconds":  0.0286,
+                                                                                                                                                      "maximumMilliseconds":  0.2642,
+                                                                                                                                                      "parentSharePercent":  0.182577
+                                                                                                                                                  },
+                                                                                                                     "children_total":  {
+                                                                                                                                            "count":  15,
+                                                                                                                                            "totalMilliseconds":  878.6233,
+                                                                                                                                            "medianMilliseconds":  11.9517,
+                                                                                                                                            "meanMilliseconds":  58.574887,
+                                                                                                                                            "minimumMilliseconds":  8.5807,
+                                                                                                                                            "maximumMilliseconds":  168.0461
+                                                                                                                                        },
+                                                                                                                     "residual":  {
+                                                                                                                                      "count":  15,
+                                                                                                                                      "totalMilliseconds":  11.7963,
+                                                                                                                                      "medianMilliseconds":  0.6153,
+                                                                                                                                      "meanMilliseconds":  0.78642,
+                                                                                                                                      "minimumMilliseconds":  0.2853,
+                                                                                                                                      "maximumMilliseconds":  2.0993
+                                                                                                                                  }
+                                                                                                                 },
+                                                                                                     "reconciliation":  {
+                                                                                                                            "parentTotalMilliseconds":  890.4196,
+                                                                                                                            "childTotalMilliseconds":  878.6233,
+                                                                                                                            "residualTotalMilliseconds":  11.7963,
+                                                                                                                            "exactRoundedIdentity":  true
+                                                                                                                        },
+                                                                                                     "dominantExercisedSubCost":  {
+                                                                                                                                      "category":  "candidate_enumeration_and_bound_selection",
+                                                                                                                                      "totalMilliseconds":  872.5555,
+                                                                                                                                      "parentSharePercent":  97.993744,
+                                                                                                                                      "uniquePositiveMaximum":  true,
+                                                                                                                                      "maximumTiedCategories":  {
+
+                                                                                                                                                                }
+                                                                                                                                  }
+                                                                                                 }
+                                                                      }
+                                                                  ],
+                          "aggregateCommonSpikeSubCostSummary":  {
+                                                                     "sampleCount":  45,
+                                                                     "metrics":  {
+                                                                                     "parent":  {
+                                                                                                    "count":  45,
+                                                                                                    "totalMilliseconds":  2567.401,
+                                                                                                    "medianMilliseconds":  13.8581,
+                                                                                                    "meanMilliseconds":  57.053356,
+                                                                                                    "minimumMilliseconds":  8.866,
+                                                                                                    "maximumMilliseconds":  173.9131
+                                                                                                },
+                                                                                     "class_preparation":  {
+                                                                                                               "count":  45,
+                                                                                                               "totalMilliseconds":  13.3728,
+                                                                                                               "medianMilliseconds":  0.1829,
+                                                                                                               "meanMilliseconds":  0.297173,
+                                                                                                               "minimumMilliseconds":  0.0856,
+                                                                                                               "maximumMilliseconds":  0.9587,
+                                                                                                               "parentSharePercent":  0.520869
+                                                                                                           },
+                                                                                     "candidate_enumeration_and_bound_selection":  {
+                                                                                                                                       "count":  45,
+                                                                                                                                       "totalMilliseconds":  2514.3617,
+                                                                                                                                       "medianMilliseconds":  11.2579,
+                                                                                                                                       "meanMilliseconds":  55.874704,
+                                                                                                                                       "minimumMilliseconds":  8.4609,
+                                                                                                                                       "maximumMilliseconds":  171.8703,
+                                                                                                                                       "parentSharePercent":  97.934125
+                                                                                                                                   },
+                                                                                     "active_frontier_and_claim_evaluation":  {
+                                                                                                                                  "count":  45,
+                                                                                                                                  "totalMilliseconds":  0.633,
+                                                                                                                                  "medianMilliseconds":  0.0114,
+                                                                                                                                  "meanMilliseconds":  0.014067,
+                                                                                                                                  "minimumMilliseconds":  0.0052,
+                                                                                                                                  "maximumMilliseconds":  0.0649,
+                                                                                                                                  "parentSharePercent":  0.024655
+                                                                                                                              },
+                                                                                     "retained_materialization":  {
+                                                                                                                      "count":  45,
+                                                                                                                      "totalMilliseconds":  4.7094,
+                                                                                                                      "medianMilliseconds":  0.106,
+                                                                                                                      "meanMilliseconds":  0.104653,
+                                                                                                                      "minimumMilliseconds":  0.0271,
+                                                                                                                      "maximumMilliseconds":  0.279,
+                                                                                                                      "parentSharePercent":  0.183431
+                                                                                                                  },
+                                                                                     "children_total":  {
+                                                                                                            "count":  45,
+                                                                                                            "totalMilliseconds":  2533.0769,
+                                                                                                            "medianMilliseconds":  11.9242,
+                                                                                                            "meanMilliseconds":  56.290598,
+                                                                                                            "minimumMilliseconds":  8.5807,
+                                                                                                            "maximumMilliseconds":  172.8023
+                                                                                                        },
+                                                                                     "residual":  {
+                                                                                                      "count":  45,
+                                                                                                      "totalMilliseconds":  34.3241,
+                                                                                                      "medianMilliseconds":  0.6153,
+                                                                                                      "meanMilliseconds":  0.762758,
+                                                                                                      "minimumMilliseconds":  0.2853,
+                                                                                                      "maximumMilliseconds":  2.1575
+                                                                                                  }
+                                                                                 },
+                                                                     "reconciliation":  {
+                                                                                            "parentTotalMilliseconds":  2567.401,
+                                                                                            "childTotalMilliseconds":  2533.0769,
+                                                                                            "residualTotalMilliseconds":  34.3241,
+                                                                                            "exactRoundedIdentity":  true
+                                                                                        },
+                                                                     "dominantExercisedSubCost":  {
+                                                                                                      "category":  "candidate_enumeration_and_bound_selection",
+                                                                                                      "totalMilliseconds":  2514.3617,
+                                                                                                      "parentSharePercent":  97.934125,
+                                                                                                      "uniquePositiveMaximum":  true,
+                                                                                                      "maximumTiedCategories":  {
+
+                                                                                                                                }
+                                                                                                  }
+                                                                 },
+                          "perTrialVariance":  {
+                                                   "class_preparation":  {
+                                                                             "perTrialCommonSpikeTotalMilliseconds":  {
+                                                                                                                          "count":  3,
+                                                                                                                          "mean":  4.4576,
+                                                                                                                          "standardDeviation":  0.390085,
+                                                                                                                          "coefficientOfVariationPercent":  8.751002,
+                                                                                                                          "range":  0.8725
+                                                                                                                      },
+                                                                             "perTrialCommonSpikeMedianMilliseconds":  {
+                                                                                                                           "count":  3,
+                                                                                                                           "mean":  0.193567,
+                                                                                                                           "standardDeviation":  0.040472,
+                                                                                                                           "coefficientOfVariationPercent":  20.908768,
+                                                                                                                           "range":  0.0974
+                                                                                                                       }
+                                                                         },
+                                                   "candidate_enumeration_and_bound_selection":  {
+                                                                                                     "perTrialCommonSpikeTotalMilliseconds":  {
+                                                                                                                                                  "count":  3,
+                                                                                                                                                  "mean":  838.120567,
+                                                                                                                                                  "standardDeviation":  36.181595,
+                                                                                                                                                  "coefficientOfVariationPercent":  4.316992,
+                                                                                                                                                  "range":  84.4295
+                                                                                                                                              },
+                                                                                                     "perTrialCommonSpikeMedianMilliseconds":  {
+                                                                                                                                                   "count":  3,
+                                                                                                                                                   "mean":  10.698667,
+                                                                                                                                                   "standardDeviation":  1.094892,
+                                                                                                                                                   "coefficientOfVariationPercent":  10.233908,
+                                                                                                                                                   "range":  2.5009
+                                                                                                                                               }
+                                                                                                 },
+                                                   "active_frontier_and_claim_evaluation":  {
+                                                                                                "perTrialCommonSpikeTotalMilliseconds":  {
+                                                                                                                                             "count":  3,
+                                                                                                                                             "mean":  0.211,
+                                                                                                                                             "standardDeviation":  0.008243,
+                                                                                                                                             "coefficientOfVariationPercent":  3.906624,
+                                                                                                                                             "range":  0.02
+                                                                                                                                         },
+                                                                                                "perTrialCommonSpikeMedianMilliseconds":  {
+                                                                                                                                              "count":  3,
+                                                                                                                                              "mean":  0.011067,
+                                                                                                                                              "standardDeviation":  0.00085,
+                                                                                                                                              "coefficientOfVariationPercent":  7.679246,
+                                                                                                                                              "range":  0.002
+                                                                                                                                          }
+                                                                                            },
+                                                   "retained_materialization":  {
+                                                                                    "perTrialCommonSpikeTotalMilliseconds":  {
+                                                                                                                                 "count":  3,
+                                                                                                                                 "mean":  1.5698,
+                                                                                                                                 "standardDeviation":  0.048561,
+                                                                                                                                 "coefficientOfVariationPercent":  3.093475,
+                                                                                                                                 "range":  0.1184
+                                                                                                                             },
+                                                                                    "perTrialCommonSpikeMedianMilliseconds":  {
+                                                                                                                                  "count":  3,
+                                                                                                                                  "mean":  0.1076,
+                                                                                                                                  "standardDeviation":  0.004948,
+                                                                                                                                  "coefficientOfVariationPercent":  4.598885,
+                                                                                                                                  "range":  0.0118
+                                                                                                                              }
+                                                                                }
+                                               }
+                      },
+    "selectedSubCost":  {
+                            "status":  "selected",
+                            "category":  "candidate_enumeration_and_bound_selection",
+                            "totalMilliseconds":  2514.3617,
+                            "parentSharePercent":  97.934125,
+                            "basis":  "single unique positive code-level maximum across common-spike totals in each trial and in aggregate; equal maxima are non-selectable",
+                            "perTrialDominantCategories":  [
+                                                               "candidate_enumeration_and_bound_selection",
+                                                               "candidate_enumeration_and_bound_selection",
+                                                               "candidate_enumeration_and_bound_selection"
+                                                           ]
+                        },
+    "proposedOptimizationContract":  {
+                                         "selectedOperation":  "candidate_enumeration_and_bound_selection",
+                                         "exactBehaviorToPreserve":  [
+                                                                         "byte-identical ordered final work orders, order IDs, priorities, directive metadata, targets, and virtual uncapped counts",
+                                                                         "identical active-claim exclusion, duplicate/collision fallback, strict frontier capacity, priority/tie ordering, path-query behavior, and lightweight-frontier activation semantics",
+                                                                         "identical per-tick assignments, worker state, resources, events, snapshots, and deterministic state/event hashes with metrics off and on"
+                                                                     ],
+                                         "allowedImplementationSurface":  [
+                                                                              "AddExtractionOrders candidate construction and exact Top-K bound-selection path",
+                                                                              "pure candidate-selection helpers and focused tests only"
+                                                                          ],
+                                         "forbiddenSurface":  [
+                                                                  "public contracts",
+                                                                  "runtime snapshot or persistence schemas",
+                                                                  "thresholds",
+                                                                  "simulation tick/order semantics",
+                                                                  "feature scope"
+                                                              ],
+                                         "referenceAndDifferentialMode":  "retain the current selected-operation implementation as an internal opt-in reference; compare reference versus optimized mode per tick across direct fixtures and 300-tick shipped-scenario differentials before performance evidence",
+                                         "requiredRegressionCases":  [
+                                                                         "zero/one/many active claims including ordinal prefix lookalikes",
+                                                                         "duplicate existing order IDs and extraction-node collisions forcing fallback",
+                                                                         "underfilled, exact-capacity, and over-capacity frontiers with equal-priority ordinal ties",
+                                                                         "all five resource classes, no eligible sites, whole-class omission, and uncapped/exhaustive fallbacks",
+                                                                         "navigation-version changes, reachable/unreachable routes, neutral/FoodAndFuel/Shelter directives, and checkpoint/resume"
+                                                                     ],
+                                         "fullValidation":  [
+                                                                "fresh focused managed and Godot diagnostic coverage",
+                                                                "complete manifest-owned .NET and exact-count Godot suites",
+                                                                "zero-warning Debug, Release, and ExportRelease builds",
+                                                                "all PowerShell analyzer suites, evidence hash verification, and git diff --check"
+                                                            ],
+                                         "cleanCanonicalMatrixHardSafetyGate":  {
+                                                                                    "requiredBeforeW206CompletionOrDelivery":  true,
+                                                                                    "route":  "fresh clean committed 14-pair ExportRelease canonical matrix after independent review",
+                                                                                    "requiredResults":  [
+                                                                                                            "reference median p95 must be less than or equal to 50 ms",
+                                                                                                            "reference median maximum must be less than or equal to 250 ms",
+                                                                                                            "both soak p95 and maximum safety limits must pass",
+                                                                                                            "forced-invalidation transition and timing contract must pass",
+                                                                                                            "all matrix, pair-equivalence, deterministic-hash, artifact-binding, and schema contracts must pass"
+                                                                                                        ],
+                                                                                    "failureDisposition":  "if any required result fails, W2-06 is not complete or deliverable, Stop Feature Expansion remains active, and the optimization is not mergeable",
+                                                                                    "dirtySourceBoundary":  "dirty-source characterization cannot satisfy or replace this clean canonical hard-safety gate"
+                                                                                },
+                                         "rollbackCondition":  "revert and do not merge the optimization if any direct/reference differential, deterministic hash, artifact/schema contract, build/test gate, canonical matrix/equivalence/hash contract, reference median p95 \u003c= 50 ms, reference median max \u003c= 250 ms, soak safety limit, or forced-invalidation contract fails; Stop Feature Expansion remains active"
+                                     },
+    "limitations":  [
+                        "Metrics-on instrumentation adds monotonic clock reads and is unsuitable for release-gate timing claims.",
+                        "Dirty-source runs are identified as uncommitted diagnostic evidence and cannot become canonical release evidence.",
+                        "Only balanced_basin seed 1337, 16 citizens, cold cache, warmup ticks 2, and 300 measured ticks are characterized.",
+                        "Operation selection is descriptive and authorizes no optimization, threshold change, feature expansion, PR, or merge."
+                    ]
+}

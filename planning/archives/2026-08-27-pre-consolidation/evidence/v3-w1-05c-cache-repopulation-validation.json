@@ -1,0 +1,235 @@
+{
+  "schemaVersion": 1,
+  "capturedUtc": "2026-07-13T16:00:53.6164484Z",
+  "workItem": "V3-W1-05c",
+  "status": "cache_repopulation_materially_improved_safety_gate_still_failed",
+  "branch": "feature/v3-cache-repopulation-pruning",
+  "baseCommit": "cb51de6",
+  "implementationCommits": [
+    "6dfc46daf7fd602661b2f1585893f83fccc0dad7",
+    "908e6e49f7c258112fe264284f498ada303c93c7",
+    "0b9d260e37e3b67f64deb0fa9c57ce1f489d58a4",
+    "a772d15ffc791da25e52afc9a04cb1a0ae655370"
+  ],
+  "implementation": {
+    "extractionPlanning": {
+      "defaultMode": "exact_bounded",
+      "referenceMode": "exhaustive_reference",
+      "persistent": false,
+      "behavior": [
+        "Uses conservative lower bounds and strict cutoffs for exact top-k extraction planning.",
+        "Skips depot-route queries only for a built depot or a strict lower-bound threshold proof.",
+        "Preserves unreachable candidates, ordinal ties, duplicate-name fallback, assignments, events, resources, and snapshots."
+      ],
+      "threeHundredTickPathLookupReductionPercentByScenario": {
+        "balanced_basin": 37.77,
+        "long_haul_quarry": 38.45,
+        "food_poor_highlands": 22.72,
+        "wetland_builder": 67.96
+      }
+    },
+    "navigationSearch": {
+      "policyChanged": false,
+      "representationChanges": [
+        "Dense row-major navigation cells replace coordinate dictionaries.",
+        "Concurrent pooled workspaces reuse generation-stamped costs, parents, and priority queues.",
+        "Immutable neighbor topology is packed in the original eight-neighbor order and shared only across grids with identical world identity, dimensions, and per-cell walkability.",
+        "Traversal multipliers are rebuilt for every navigation version and cached as exact float values."
+      ],
+      "preservedInvariants": [
+        "neighbor order and diagonal corner rules",
+        "float operation order and constants",
+        "priority tuple and enqueue sequence",
+        "strict lower-cost replacement",
+        "duplicate queue-entry behavior",
+        "destination-pop termination and parent reconstruction",
+        "public out-of-bounds behavior",
+        "navigation-version and negative-cache semantics"
+      ]
+    },
+    "performanceContract": {
+      "resultSchemaVersion": 5,
+      "runtimeMetricsSchemaVersion": 4,
+      "requiredConfigurationIdentity": "extractionPlanningMode",
+      "spikeAnalyzerAcceptsReusedVerifiedReleaseRunner": true
+    }
+  },
+  "differentialValidation": {
+    "extractionCases": 16,
+    "navigationRepresentationCases": 16,
+    "navigationCasesCombined": 23,
+    "scenarioCount": 4,
+    "extractionTicksPerScenario": 300,
+    "exactPlanComparison": [
+      "reachability",
+      "query",
+      "cells",
+      "waypoints",
+      "total distance float bits",
+      "total cost float bits",
+      "estimated travel ticks"
+    ],
+    "adversarialCoverage": [
+      "blocked and disconnected endpoints",
+      "corner cutting and symmetric ties",
+      "built-path cost versions",
+      "workspace reuse and generation wrap",
+      "concurrent same-grid queries",
+      "negative and upper-bound coordinates",
+      "topology sharing after walkability and movement-cost mutations"
+    ]
+  },
+  "forcedInvalidationProgression": {
+    "extractionOnlyCommit": {
+      "commit": "6dfc46daf7fd602661b2f1585893f83fccc0dad7",
+      "diagnosticTickWallMilliseconds": 1100.6868,
+      "buildWorkOrdersMilliseconds": 1075.7857,
+      "pathCacheMisses": 85,
+      "deterministicHash": "5379daf800d5bb8cdeb0aaaa24983d3a27c13d17507816b3400b3f6f3e395aa2"
+    },
+    "indexedWorkspaceCommit": {
+      "commit": "908e6e49f7c258112fe264284f498ada303c93c7",
+      "diagnosticTickWallMilliseconds": 294.0013,
+      "buildWorkOrdersMilliseconds": 278.1974,
+      "pathCacheMisses": 85,
+      "wallReductionPercent": 73.289,
+      "buildWorkOrdersReductionPercent": 74.14,
+      "deterministicHash": "5379daf800d5bb8cdeb0aaaa24983d3a27c13d17507816b3400b3f6f3e395aa2"
+    },
+    "finalMatrixCommit": {
+      "commit": "a772d15ffc791da25e52afc9a04cb1a0ae655370",
+      "metricsOffTickMilliseconds": 245.699,
+      "metricsOnDiagnosticTickMilliseconds": 310.3661,
+      "sliceDiagnosticLimitMilliseconds": 250,
+      "sliceDiagnosticFullTickPassed": true,
+      "commitToFirstCorrectLookupMilliseconds": 11.8671,
+      "transitionCorrect": true,
+      "formalTransitionThresholdPassed": true
+    }
+  },
+  "canonicalReleaseMatrix": {
+    "command": "./scripts/run-performance-baseline-matrix.ps1 -OutputRoot artifacts/performance/w105c-baseline-a772d15",
+    "sourceCommit": "a772d15ffc791da25e52afc9a04cb1a0ae655370",
+    "sourceClean": true,
+    "contractStatus": "pass",
+    "budgetStatus": "safety_failure",
+    "pairCount": 14,
+    "metricsRowCount": 28,
+    "manifestArtifactHashesMatched": 354,
+    "reference16Citizens": {
+      "trialCount": 3,
+      "medianP95Milliseconds": 36.9614,
+      "medianP99Milliseconds": 201.4244,
+      "medianMaximumMilliseconds": 259.702,
+      "medianTotalMilliseconds": 5196.8236,
+      "safetyP95LimitMilliseconds": 50,
+      "safetyMaximumLimitMilliseconds": 250,
+      "safetyPassed": false,
+      "immediatePreSliceMedianP95Milliseconds": 81.4823,
+      "immediatePreSliceMedianMaximumMilliseconds": 1552.5664,
+      "p95ReductionPercent": 54.639,
+      "maximumReductionPercent": 83.273
+    },
+    "soak16Citizens": {
+      "deterministicRepeat": true,
+      "p95Milliseconds": [
+        36.907,
+        38.0829
+      ],
+      "maximumMilliseconds": [
+        323.231,
+        322.1246
+      ],
+      "safetyPassed": false
+    },
+    "stress24Citizens": {
+      "p95Milliseconds": 272.6378,
+      "maximumMilliseconds": 607.9651,
+      "classification": "characterization",
+      "targetPassed": false
+    }
+  },
+  "residualSpikeCharacterization": {
+    "runCount": 14,
+    "measuredTickCount": 5301,
+    "wallTimeCorrelations": {
+      "allPathCacheMisses": 0.959689,
+      "generalPathCacheMisses": 0.868891,
+      "selectorPathCacheMisses": 0.73293,
+      "buildWorkOrdersMilliseconds": 0.890087,
+      "routeSelectionMilliseconds": 0.722039,
+      "navigationRebuildMilliseconds": 0.099071
+    },
+    "reference16Citizens": {
+      "spikesOver50MillisecondsPerTrial": 8,
+      "postInvalidationSpikesPerTrial": 6,
+      "ticksOver250Milliseconds": [2, 1, 2]
+    },
+    "soak16Citizens": {
+      "spikesOver50MillisecondsPerTrial": 41,
+      "postInvalidationSpikesPerTrial": 21,
+      "ticksOver250MillisecondsPerTrial": 3,
+      "worstRepeatedTickMilliseconds": 334.2233
+    },
+    "stress24Citizens": {
+      "spikesOver50Milliseconds": 46,
+      "postInvalidationSpikes": 33,
+      "ticksOver250Milliseconds": 16,
+      "worstTickMilliseconds": 626.3771,
+      "worstTickGeneralPathMisses": 67,
+      "worstTickSelectorPathMisses": 225,
+      "dominantRemainingPressure": "selector_and_global_frontier_fanout_after_invalidation"
+    },
+    "interpretation": "A-star representation cost is no longer the primary blocker. The remaining maxima require fewer distinct exact searches across the global work-order and citizen-selection frontier, especially at 24 citizens, while preserving exact routes and deterministic ties."
+  },
+  "fullValidation": {
+    "command": "./scripts/run-prototype-validation.ps1",
+    "passed": true,
+    "debugBuildWarnings": 0,
+    "debugBuildErrors": 0,
+    "requiredDotnetPassed": 151,
+    "requiredDotnetFailed": 0,
+    "godotHeadlessPassed": 16,
+    "godotHeadlessFailed": 0,
+    "expectedRuntimeWarningsObserved": [
+      "frame catch-up backlog diagnostic",
+      "optional runtime-metrics I/O isolation diagnostic"
+    ]
+  },
+  "sourceArtifacts": [
+    {
+      "path": "artifacts/performance/w105c-baseline-a772d15/perf-results.json",
+      "sizeBytes": 205169,
+      "sha256": "ebfecdd601a40778202da2a1fededd32e0134b8b86d7044713562ec67562d7d5"
+    },
+    {
+      "path": "artifacts/performance/w105c-baseline-a772d15/validation-manifest.json",
+      "sizeBytes": 159907,
+      "sha256": "cde24c8efbee5d5e3d5c7bb55cda6aab333a6a77013c368ca050457f5d592ce3"
+    },
+    {
+      "path": "artifacts/performance/w105c-baseline-a772d15/perf-matrix.csv",
+      "sizeBytes": 38214,
+      "sha256": "e4d22f378f0891283888ab728b6ad7e980501cf54bb7894852f5415e300b76ef"
+    },
+    {
+      "path": "artifacts/performance/w105c-baseline-a772d15/spike-analysis.json",
+      "sizeBytes": 890256,
+      "sha256": "f80c05afa920be2abd1950f898292181d260532465473898aba470f2da7812ba"
+    }
+  ],
+  "review": {
+    "reviewer": "deep_reviewer",
+    "p0Findings": 0,
+    "p1Findings": 0,
+    "differentialExactnessConfirmed": true,
+    "schemaAndManifestTruthConfirmed": true
+  },
+  "decision": {
+    "cacheRepopulationOptimizationValidated": true,
+    "performanceSafetyGatePassed": false,
+    "w106Allowed": false,
+    "week2FeatureExpansionAllowed": false,
+    "next": "Reduce the number of distinct exact path searches across the shared work-order and citizen-selection frontier, then rerun the canonical Release matrix. Do not relax route correctness, tie ordering, or navigation-version invalidation."
+  }
+}

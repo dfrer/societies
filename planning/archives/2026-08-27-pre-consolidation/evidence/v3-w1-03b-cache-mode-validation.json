@@ -1,0 +1,333 @@
+{
+  "schemaVersion": 1,
+  "capturedUtc": "2026-07-12T00:40:33.7800630Z",
+  "scope": "V3-W1-03b_cache_modes_and_cross_mode_equivalence_only",
+  "status": "passed",
+  "source": {
+    "branch": "feature/v3-cache-mode-evidence",
+    "implementationCommit": "5444cc3a39fd9a58f87a7f999b67c9458dfe30c7",
+    "sourceClean": true
+  },
+  "configuration": {
+    "scenarioId": "balanced_basin",
+    "simulationSeed": 1337,
+    "citizenCount": 3,
+    "preconditioningTicks": 2,
+    "coldWarmMeasuredTicks": 2,
+    "forcedInvalidationMeasuredTicks": 1,
+    "comparisonGroup": "w103b-release-cache-modes",
+    "trialIndex": 1
+  },
+  "claims": {
+    "cacheModeContractEvidence": true,
+    "cacheModeEvidence": true,
+    "crossModeEquivalenceCaptured": true,
+    "releaseBaselineEvidence": false,
+    "fullMatrixCaptured": false,
+    "medianOfThreeCaptured": false,
+    "targetOrSafetyClaimMade": false
+  },
+  "releaseExecution": {
+    "machineName": "DESKTOP-H5M54GO",
+    "logicalProcessorCount": 16,
+    "operatingSystem": "Microsoft Windows 10.0.19045",
+    "processArchitecture": "X64",
+    "dotnetRuntime": ".NET 8.0.24",
+    "godotVersion": "4.6.2-stable (official)",
+    "managedBuildConfiguration": "Release",
+    "managedAssemblyConfiguration": "ExportRelease",
+    "godotDebugBuild": false,
+    "godotReleaseFeature": true,
+    "godotTemplateFeature": true,
+    "godotEditorFeature": false,
+    "verifiedReleaseExecution": true
+  },
+  "validation": {
+    "focusedProbeAndStatisticsTests": {
+      "passed": 7,
+      "failed": 0
+    },
+    "requiredDotnetTests": {
+      "passed": 98,
+      "failed": 0,
+      "duration": "5m15s"
+    },
+    "solutionBuilds": [
+      {
+        "configuration": "Debug",
+        "warnings": 0,
+        "errors": 0
+      },
+      {
+        "configuration": "ExportDebug",
+        "warnings": 0,
+        "errors": 0
+      },
+      {
+        "configuration": "ExportRelease",
+        "warnings": 0,
+        "errors": 0
+      }
+    ],
+    "godotHeadless": {
+      "passed": 16,
+      "failed": 0,
+      "durationSeconds": 394
+    },
+    "powershellAstParse": true,
+    "jsonParse": true,
+    "gitDiffCheck": true,
+    "independentReview": {
+      "p0Findings": 0,
+      "p1Findings": 0
+    }
+  },
+  "comparisonContracts": {
+    "coldWarmConfigurationIdentityValid": true,
+    "coldWarmGitIdentityValid": true,
+    "coldWarmEnvironmentIdentityValid": true,
+    "coldWarmRouteIdentityValid": true,
+    "coldWarmTickIdentityValid": true,
+    "coldWarmSnapshotHashMatch": true,
+    "coldWarmEventLogHashMatch": true,
+    "coldWarmCombinedHashMatch": true,
+    "forcedSharedConfigurationIdentityValid": true,
+    "forcedEnvironmentIdentityValid": true,
+    "forcedRouteIdentityValid": true,
+    "forcedTickBoundaryValid": true,
+    "forcedSingleModeTransitionValid": true,
+    "pairStatusAndSourceIdentityValid": true,
+    "combinedMatrixValid": true
+  },
+  "modeResults": [
+    {
+      "cacheMode": "cold",
+      "status": "pass",
+      "measuredStartSimulationTick": 2,
+      "finalSimulationTick": 4,
+      "cacheEntriesAfterBootstrap": 0,
+      "cacheEntriesAfterNaturalWarmup": 173,
+      "clearedCacheEntries": 173,
+      "cacheEntriesBeforeMeasurement": 0,
+      "cacheEntriesAfterMeasurement": 146,
+      "firstMeasuredBatchHits": 1,
+      "firstMeasuredBatchMisses": 146,
+      "navigationInvalidations": 0,
+      "metricsOffP95Milliseconds": 3690.3028,
+      "metricsOnP95Milliseconds": 3649.0556,
+      "snapshotSha256": "bb28fc14d06ad56c70a103102500fefd3c1aff9ad3926084b3efb3a9708b28b3",
+      "eventLogSha256": "eb3f2e70bfc9b7e535e68386e5a9d1635186447c60c1c40097c765402d2dffcb",
+      "deterministicStateAndEventSha256": "7e24bda3446585802f37a95edc050848d126b8a6c5a94ebfe07368a071430814"
+    },
+    {
+      "cacheMode": "natural_warm",
+      "status": "pass",
+      "measuredStartSimulationTick": 2,
+      "finalSimulationTick": 4,
+      "cacheEntriesAfterBootstrap": 0,
+      "cacheEntriesAfterNaturalWarmup": 173,
+      "clearedCacheEntries": 0,
+      "cacheEntriesBeforeMeasurement": 173,
+      "cacheEntriesAfterMeasurement": 173,
+      "firstMeasuredBatchHits": 147,
+      "firstMeasuredBatchMisses": 0,
+      "navigationInvalidations": 0,
+      "metricsOffP95Milliseconds": 30.4599,
+      "metricsOnP95Milliseconds": 29.3723,
+      "snapshotSha256": "bb28fc14d06ad56c70a103102500fefd3c1aff9ad3926084b3efb3a9708b28b3",
+      "eventLogSha256": "eb3f2e70bfc9b7e535e68386e5a9d1635186447c60c1c40097c765402d2dffcb",
+      "deterministicStateAndEventSha256": "7e24bda3446585802f37a95edc050848d126b8a6c5a94ebfe07368a071430814"
+    },
+    {
+      "cacheMode": "forced_invalidation",
+      "status": "pass",
+      "measuredStartSimulationTick": 2,
+      "finalSimulationTick": 3,
+      "cacheEntriesAfterBootstrap": 0,
+      "cacheEntriesAfterNaturalWarmup": 173,
+      "cacheEntriesBeforeMeasurement": 174,
+      "cacheEntriesImmediatelyAfterRebuild": 0,
+      "cacheEntriesAfterMeasurement": 147,
+      "firstMeasuredBatchHits": 1,
+      "firstMeasuredBatchMisses": 147,
+      "navigationInvalidations": 1,
+      "navigationRebuildMilliseconds": 11.9508,
+      "metricsOffP95Milliseconds": 3544.2673,
+      "metricsOnP95Milliseconds": 3474.3741,
+      "snapshotSha256": "0f34c81c36b12851124be6dbb7c805dc89277f3484d75e0eb9aee4e6d2ea4ef1",
+      "eventLogSha256": "6dc98988f47a18c9854ead4ff034faea2222717b70fe022e784e80ea8dd8bcbb",
+      "deterministicStateAndEventSha256": "7dbf93fcf4c0c852cb608cc94f8fb87e19c9b61b8a8bec4919c3004d782e3d88"
+    }
+  ],
+  "forcedInvalidationProof": {
+    "pathSegmentStructureId": "path_segment_1",
+    "pathSegmentWasBuiltBefore": false,
+    "pathSegmentIsBuiltAfter": true,
+    "changedCellGridX": 134,
+    "changedCellGridY": 123,
+    "completionTick": 3,
+    "versionBeforeCommit": 1,
+    "versionAfterCommit": 2,
+    "totalInvalidationsBeforeCommit": 0,
+    "totalInvalidationsAfterCommit": 1,
+    "cacheEntriesBeforeRebuild": 174,
+    "cacheEntriesImmediatelyAfterRebuild": 0,
+    "firstPostChangeLookupObserved": true,
+    "firstPostChangeLookupWasCacheMiss": true,
+    "firstPostChangeLookupUsedNewVersion": true,
+    "preChangeQueryVersion": 1,
+    "preChangePlanVersion": 1,
+    "postChangeQueryVersion": 2,
+    "postChangePlanVersion": 2,
+    "exactEndpointsMatch": true,
+    "changedCellIncludedInPostChangePlan": true,
+    "preChangePlanCost": 2.0,
+    "postChangePlanCost": 1.100000023841858,
+    "commitToFirstLookupMilliseconds": 8.5859
+  },
+  "artifactIntegrity": {
+    "artifactCount": 21,
+    "allHashesMatch": true,
+    "artifacts": [
+      {
+        "mode": "comparison",
+        "role": "comparison",
+        "path": "artifacts/performance/w103b-clean-release-5444cc3/cache-mode-comparison.json",
+        "sha256": "dee88e8934cbbc0ae567208ca7f9a4141f9d25bac986117399ab8f9c239fa7b3"
+      },
+      {
+        "mode": "cold",
+        "role": "equivalence",
+        "path": "artifacts/performance/w103b-clean-release-5444cc3/cold/equivalence-results.json",
+        "sha256": "0829385dd055d90cd98b8d88c6c01335f13862b0fa7768d1f64b46304f446bec"
+      },
+      {
+        "mode": "cold",
+        "role": "metrics_off_result",
+        "path": "artifacts/performance/w103b-clean-release-5444cc3/cold/metrics-off/perf-results.json",
+        "sha256": "a0f6f3e7bfb6acf8cb14e1909fd1c8bb1a24cec61e488e22f72c8ebeb0fb5a8e"
+      },
+      {
+        "mode": "cold",
+        "role": "metrics_on_result",
+        "path": "artifacts/performance/w103b-clean-release-5444cc3/cold/metrics-on/perf-results.json",
+        "sha256": "2380e529c3ead5d7c314c6885576cc69bc6f560c74c8ddcfd6d2e4284db4737f"
+      },
+      {
+        "mode": "cold",
+        "role": "metrics_off_manifest",
+        "path": "artifacts/performance/w103b-clean-release-5444cc3/cold/metrics-off/validation-manifest.json",
+        "sha256": "1e0aa0008759a2260a71f338480b18628f8fd54821d22359cfb6cc0b9af0c222"
+      },
+      {
+        "mode": "cold",
+        "role": "metrics_on_manifest",
+        "path": "artifacts/performance/w103b-clean-release-5444cc3/cold/metrics-on/validation-manifest.json",
+        "sha256": "b4077aaf6a57be6e5530a4d106d147da915b165baf5e735a7f5c91aeb22ba3da"
+      },
+      {
+        "mode": "cold",
+        "role": "pair_matrix",
+        "path": "artifacts/performance/w103b-clean-release-5444cc3/cold/perf-matrix.csv",
+        "sha256": "5d0602dc75f3ac27f9b28a3b1d9f36041d7206d8978f7d5f11a95f3acaef0bdd"
+      },
+      {
+        "mode": "natural_warm",
+        "role": "equivalence",
+        "path": "artifacts/performance/w103b-clean-release-5444cc3/natural-warm/equivalence-results.json",
+        "sha256": "1cc13499befa40c53b7154e79f0c885a63610483e7552770562fdd9410f4649e"
+      },
+      {
+        "mode": "natural_warm",
+        "role": "metrics_off_result",
+        "path": "artifacts/performance/w103b-clean-release-5444cc3/natural-warm/metrics-off/perf-results.json",
+        "sha256": "1bd03d976f575069807b9a9e06159365e1c1f116c8ab12ddac262fff2aae7d0e"
+      },
+      {
+        "mode": "natural_warm",
+        "role": "metrics_on_result",
+        "path": "artifacts/performance/w103b-clean-release-5444cc3/natural-warm/metrics-on/perf-results.json",
+        "sha256": "3cd14529fe318c571466abd270b86af2c254e4cd1f3875a575ae900acae83e95"
+      },
+      {
+        "mode": "natural_warm",
+        "role": "metrics_off_manifest",
+        "path": "artifacts/performance/w103b-clean-release-5444cc3/natural-warm/metrics-off/validation-manifest.json",
+        "sha256": "3979ef10466ad0823246c32653b030a94942267a1f0b9761f47aec53285bf7f5"
+      },
+      {
+        "mode": "natural_warm",
+        "role": "metrics_on_manifest",
+        "path": "artifacts/performance/w103b-clean-release-5444cc3/natural-warm/metrics-on/validation-manifest.json",
+        "sha256": "1e0280d314f4d43281334894c0be1051134f05419a2fa36529bdb8004570cd49"
+      },
+      {
+        "mode": "natural_warm",
+        "role": "pair_matrix",
+        "path": "artifacts/performance/w103b-clean-release-5444cc3/natural-warm/perf-matrix.csv",
+        "sha256": "26c784c8d3003af228ba59ca9822d775750d8268dd7271c908394cd91ce7d72d"
+      },
+      {
+        "mode": "forced_invalidation",
+        "role": "equivalence",
+        "path": "artifacts/performance/w103b-clean-release-5444cc3/forced-invalidation/equivalence-results.json",
+        "sha256": "92a5f4bda1cf330fb756a1a730a1b6470527db0f89f499e720ca543c5c61dfb2"
+      },
+      {
+        "mode": "forced_invalidation",
+        "role": "metrics_off_result",
+        "path": "artifacts/performance/w103b-clean-release-5444cc3/forced-invalidation/metrics-off/perf-results.json",
+        "sha256": "37da2342f3c5753190fd14c1b62fa9e3b268787a5bd1f42e83cdcd2a9c7f25d4"
+      },
+      {
+        "mode": "forced_invalidation",
+        "role": "metrics_on_result",
+        "path": "artifacts/performance/w103b-clean-release-5444cc3/forced-invalidation/metrics-on/perf-results.json",
+        "sha256": "6b33585c7136037b12e95ed23141bc65ef30469eb49ec93c5a1415d27edb677f"
+      },
+      {
+        "mode": "forced_invalidation",
+        "role": "metrics_off_manifest",
+        "path": "artifacts/performance/w103b-clean-release-5444cc3/forced-invalidation/metrics-off/validation-manifest.json",
+        "sha256": "bcb0c6d14a066a6a21fe7a8e6ce0f2bcdcbb926b9dca390370ec4e1596c9bbe5"
+      },
+      {
+        "mode": "forced_invalidation",
+        "role": "metrics_on_manifest",
+        "path": "artifacts/performance/w103b-clean-release-5444cc3/forced-invalidation/metrics-on/validation-manifest.json",
+        "sha256": "e0c636a10e70c564fe08d2628b1939de5ace3c7264db6b6e3b0c28b6e5e4c1b0"
+      },
+      {
+        "mode": "forced_invalidation",
+        "role": "pair_matrix",
+        "path": "artifacts/performance/w103b-clean-release-5444cc3/forced-invalidation/perf-matrix.csv",
+        "sha256": "03a9ba50775b63fadc307442ced6ad2f4d0c17a4c834d7a1757ecbffa79ef044"
+      },
+      {
+        "mode": "comparison",
+        "role": "combined_matrix",
+        "path": "artifacts/performance/w103b-clean-release-5444cc3/cache-mode-matrix.csv",
+        "sha256": "770fd01c3a421818fab706933a2c55043fb54cf1642d8ea3248b808681640291"
+      },
+      {
+        "mode": "comparison",
+        "role": "summary",
+        "path": "artifacts/performance/w103b-clean-release-5444cc3/cache-mode-summary.txt",
+        "sha256": "fd03f8cb98308d13acac20984e400234873ac53bfe8c057bcfd14ef3be46d050"
+      }
+    ]
+  },
+  "evidenceBoundary": {
+    "statement": "This evidence proves the clean verified ExportRelease cache-mode contract and cold/warm deterministic equivalence for a short three-citizen smoke only.",
+    "doesNotClaim": [
+      "the V3-W1-03 performance baseline",
+      "the complete 3/6/12/16 citizen matrix",
+      "the 16-citizen 1000-tick soak",
+      "the 24-citizen stress case",
+      "median-of-three timing gates",
+      "target or safety threshold compliance",
+      "a production eager/all-pairs warmup decision"
+    ],
+    "nextRequiredStep": "Run V3-W1-03c: the complete clean ExportRelease matrix, same-machine median-of-three reference cases, soak, and stress cases."
+  }
+}

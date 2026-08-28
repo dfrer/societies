@@ -1,0 +1,226 @@
+{
+  "schema_version": 1,
+  "captured_utc": "2026-08-02T17:05:59.1421420Z",
+  "scope": "V3-W3-01_performance_validation_disposition",
+  "status": "passed_contract_safety_passed_target_missed",
+  "decision": {
+    "w3_01_performance_gate": "green",
+    "hard_safety_gate_passed": true,
+    "determinism_gate_passed": true,
+    "artifact_integrity_gate_passed": true,
+    "formal_performance_target": "target_missed",
+    "c24_disposition": "characterization_only_non_gating"
+  },
+  "source": {
+    "requested_worktree": "C:\\tmp\\societies-v3-w2-06-perf",
+    "authoritative_clean_clone": "C:\\tmp\\societies-v3-w3-01-perf-clean-9d8bff4",
+    "branch": "feature/v3-w3-01-civic-state-contract",
+    "commit": "9d8bff42af5b5ad3f5a270b6579f9c51a400343a",
+    "requested_worktree_preflight_clean": true,
+    "authoritative_clone_pre_run_clean": true,
+    "result_reported_source_clean": true,
+    "result_reported_git_dirty": false,
+    "post_run_clone_clean_after_proven_generated_artifact_restore": true
+  },
+  "authoritative_run": {
+    "command": "C:\\tmp\\societies-v3-w3-01-perf-clean-9d8bff4\\scripts\\run-performance-baseline-matrix.ps1 -OutputRoot C:\\tmp\\societies-w3-01-performance-matrix-9d8bff4-clean -GodotPath C:\\Users\\hunte\\AppData\\Local\\Microsoft\\WinGet\\Packages\\GodotEngine.GodotEngine.Mono_Microsoft.Winget.Source_8wekyb3d8bbwe\\Godot_v4.6.2-stable_mono_win64\\Godot_v4.6.2-stable_mono_win64.exe",
+    "output_root": "C:\\tmp\\societies-w3-01-performance-matrix-9d8bff4-clean",
+    "started_utc": "2026-08-02T17:00:04.9809815Z",
+    "ended_utc": "2026-08-02T17:05:59.2822554Z",
+    "duration_seconds": 354.291,
+    "exit_code": 0,
+    "result_schema_version": 1,
+    "result_status": "pass",
+    "contract_status": "pass",
+    "budget_status": "target_missed",
+    "pairs": "14/14",
+    "metrics_rows": 28,
+    "verified_export_release": true
+  },
+  "environment": {
+    "machine_name": "DESKTOP-H5M54GO",
+    "logical_processor_count": 16,
+    "operating_system": "Microsoft Windows 10.0.19045",
+    "process_architecture": "X64",
+    "dotnet_runtime": ".NET 8.0.24",
+    "godot_version": "4.6.2-stable (official)",
+    "managed_build_configuration": "Release",
+    "managed_assembly_configuration": "ExportRelease",
+    "godot_debug_build": false,
+    "godot_release_feature": true,
+    "godot_template_feature": true,
+    "godot_editor_feature": false
+  },
+  "configuration": {
+    "scenario_id": "balanced_basin",
+    "simulation_seed": 1337,
+    "preconditioning_ticks": 2,
+    "selector_mode": "exact_branch_and_bound",
+    "extraction_planning_mode": "exact_bounded",
+    "route_distance_mode": "cached_distance_only",
+    "export_preset": "Windows Performance Release",
+    "canonical_pair_count": 14
+  },
+  "contracts": {
+    "exact_canonical_inventory": true,
+    "same_environment": true,
+    "same_release_build": true,
+    "verified_release_execution": true,
+    "cold_warm_deterministic_equivalence": true,
+    "reference_trials_comparable": true,
+    "soak_deterministic_repeat": true,
+    "forced_invalidation_correct": true,
+    "release_baseline_evidence": true,
+    "full_matrix_captured": true,
+    "median_of_three_captured": true,
+    "target_or_safety_claim_made": true
+  },
+  "reference_assessment": {
+    "trial_count": 3,
+    "p95_ms": [48.2316, 47.9643, 44.1349],
+    "maximum_ms": [145.4452, 176.1198, 199.6855],
+    "median_bootstrap_ms": 681.2703,
+    "median_p95_ms": 47.9643,
+    "median_p99_ms": 132.8596,
+    "median_maximum_ms": 176.1198,
+    "median_total_ms": 5830.4286,
+    "safety_limits_ms": {
+      "bootstrap": 5000.0,
+      "p95": 50.0,
+      "maximum": 250.0
+    },
+    "safety_passed": true,
+    "formal_targets_ms": {
+      "bootstrap": 3000.0,
+      "p95": 25.0,
+      "p99": 50.0,
+      "maximum": 100.0,
+      "total": 6000.0
+    },
+    "formal_target_passed": false,
+    "deterministic_hash": "6979539248b469c6a255be20d0f7a4b7cdf09711256155c1b44c80a6d3a8dad5"
+  },
+  "soak_assessment": {
+    "trial_count": 2,
+    "measured_ticks_per_trial": 1000,
+    "p95_ms": [38.5737, 38.0676],
+    "maximum_ms": [205.6055, 192.3137],
+    "safety_limits_ms": {
+      "p95": 50.0,
+      "maximum": 250.0
+    },
+    "safety_passed": true,
+    "deterministic_repeat": true,
+    "deterministic_hash": "c637417115603789d6ed77a8c10f2b7db98ceb870a7c7f9524ec00dccf005d8b",
+    "formal_target_passed": false
+  },
+  "forced_invalidation_assessment": {
+    "transition_correct": true,
+    "commit_to_first_correct_lookup_ms": 22.8738,
+    "target_limit_ms": 150.0,
+    "safety_limit_ms": 250.0,
+    "target_passed": true,
+    "safety_passed": true,
+    "single_tick_p95_ms": 139.0254,
+    "single_tick_maximum_ms": 139.0254,
+    "deterministic_hash": "4602cbb069d4d057611e34a29e34392bd83b0969b7805fe02f5d0f0ce8c06464"
+  },
+  "c24_characterization": {
+    "classification": "characterization",
+    "safety_gate_applied": false,
+    "p95_ms": 151.4178,
+    "maximum_ms": 198.9147,
+    "characterization_targets_ms": {
+      "p95": 50.0,
+      "maximum": 200.0
+    },
+    "target_passed": false,
+    "deterministic_hash": "b4eab370593ef7cd47b9ff529190f080f0d0b315a63f13a5fb7a78e6855ad48b"
+  },
+  "target_missed_nuance": {
+    "hard_gate_failed": false,
+    "explanation": "The formal aspirational target remains missed because the reference median p95, p99, and maximum exceed 25 ms, 50 ms, and 100 ms respectively, and the soak target also remains missed. The required safety acceptance is green: reference median p95 is at or below 50 ms, reference median maximum is at or below 250 ms, both soaks pass p95 and maximum safety with deterministic repeat, and forced invalidation is correct. The c24 result is characterization-only and cannot fail this gate."
+  },
+  "pair_timings": [
+    {"id": "matrix-c3-cold-t1", "citizens": 3, "measured_ticks": 300, "cache_mode": "cold", "p95_ms": 17.4654, "maximum_ms": 51.9809},
+    {"id": "matrix-c3-warm-t1", "citizens": 3, "measured_ticks": 300, "cache_mode": "natural_warm", "p95_ms": 28.8405, "maximum_ms": 59.7585},
+    {"id": "matrix-c6-cold-t1", "citizens": 6, "measured_ticks": 300, "cache_mode": "cold", "p95_ms": 30.7944, "maximum_ms": 95.0161},
+    {"id": "matrix-c6-warm-t1", "citizens": 6, "measured_ticks": 300, "cache_mode": "natural_warm", "p95_ms": 44.2513, "maximum_ms": 100.4804},
+    {"id": "matrix-c12-cold-t1", "citizens": 12, "measured_ticks": 300, "cache_mode": "cold", "p95_ms": 38.1431, "maximum_ms": 186.7993},
+    {"id": "matrix-c12-warm-t1", "citizens": 12, "measured_ticks": 300, "cache_mode": "natural_warm", "p95_ms": 31.5128, "maximum_ms": 191.9498},
+    {"id": "matrix-c16-cold-t1", "citizens": 16, "measured_ticks": 300, "cache_mode": "cold", "p95_ms": 48.2316, "maximum_ms": 145.4452},
+    {"id": "matrix-c16-warm-t1", "citizens": 16, "measured_ticks": 300, "cache_mode": "natural_warm", "p95_ms": 41.2683, "maximum_ms": 153.2330},
+    {"id": "reference-c16-cold-t2", "citizens": 16, "measured_ticks": 300, "cache_mode": "cold", "p95_ms": 47.9643, "maximum_ms": 176.1198},
+    {"id": "reference-c16-cold-t3", "citizens": 16, "measured_ticks": 300, "cache_mode": "cold", "p95_ms": 44.1349, "maximum_ms": 199.6855},
+    {"id": "soak-c16-cold-t1", "citizens": 16, "measured_ticks": 1000, "cache_mode": "cold", "p95_ms": 38.5737, "maximum_ms": 205.6055},
+    {"id": "soak-c16-cold-t2", "citizens": 16, "measured_ticks": 1000, "cache_mode": "cold", "p95_ms": 38.0676, "maximum_ms": 192.3137},
+    {"id": "stress-c24-cold-t1", "citizens": 24, "measured_ticks": 300, "cache_mode": "cold", "p95_ms": 151.4178, "maximum_ms": 198.9147},
+    {"id": "forced-c16-t1", "citizens": 16, "measured_ticks": 1, "cache_mode": "forced_invalidation", "p95_ms": 139.0254, "maximum_ms": 139.0254}
+  ],
+  "determinism": {
+    "cold_warm_hashes": [
+      {"citizens": 3, "hash": "c531097d099d90a5e6891af09734f5f514cc0a82a0a1bede470303b99065557a"},
+      {"citizens": 6, "hash": "25539b2184064e69464b0d525dd09d4cd0366915ef443d2945191d0861a83c68"},
+      {"citizens": 12, "hash": "186ed63a54452159cde95c1c3a1dfe02ca8634c155c8ce2051b1cf0931abb705"},
+      {"citizens": 16, "hash": "6979539248b469c6a255be20d0f7a4b7cdf09711256155c1b44c80a6d3a8dad5"}
+    ],
+    "soak_repeat_hash": "c637417115603789d6ed77a8c10f2b7db98ceb870a7c7f9524ec00dccf005d8b"
+  },
+  "artifact_validation": {
+    "manifest_artifacts": 354,
+    "hashes_checked": 354,
+    "hashes_matched": 354,
+    "missing": 0,
+    "outside_output_root": 0,
+    "zero_size": 0,
+    "manifest_failed_checks": 0,
+    "unique_json_artifacts_parsed": 184,
+    "invalid_json": 0,
+    "manifest_artifact_bytes": 74138916,
+    "all_passed": true
+  },
+  "release_build_fingerprint": {
+    "console_wrapper_sha256": "b5c477879d9af42ac4ac8efd41f42bf35997a71b35a4d5772ce3e6817f2fa438",
+    "pack_sha256": "011c60220b74230685076facd6addb55ee8d16e66ec86d931a93129a59a66d6c",
+    "managed_assembly_sha256": "1d254929e24780b9d09e9ce142191e527193cd80d7076ac933fcd8fb1a294043"
+  },
+  "bound_artifacts": [
+    {"role": "run_plan", "path": "C:\\tmp\\societies-w3-01-performance-matrix-9d8bff4-clean\\run-plan.json", "size_bytes": 12799, "sha256": "1f6a63cd5fd7d1615c62fc45e033b43dbf5771fb09a998736e1f363b41d68633"},
+    {"role": "performance_matrix", "path": "C:\\tmp\\societies-w3-01-performance-matrix-9d8bff4-clean\\perf-matrix.csv", "size_bytes": 37260, "sha256": "3655719c9fe175664f35c62643d947bb98a8347fe09ce34d78ce129021bd20ac"},
+    {"role": "performance_results", "path": "C:\\tmp\\societies-w3-01-performance-matrix-9d8bff4-clean\\perf-results.json", "size_bytes": 199790, "sha256": "e6196458d7a560b2a8b01880da5064bac947d6f0dcdbecc44b43f7ca37b6ef5f"},
+    {"role": "summary", "path": "C:\\tmp\\societies-w3-01-performance-matrix-9d8bff4-clean\\summary.txt", "size_bytes": 669, "sha256": "44abeac0fdc9c59d78ae2969aaf98ab48a7217886f944f21f128b13eb35d6963"},
+    {"role": "validation_manifest", "path": "C:\\tmp\\societies-w3-01-performance-matrix-9d8bff4-clean\\validation-manifest.json", "size_bytes": 151985, "sha256": "1c6ad113322d65d899aea896e98025b04802e8e7b9836ce0bb5aabd6691aaa2c"},
+    {"role": "release_console_wrapper", "path": "C:\\tmp\\societies-w3-01-performance-matrix-9d8bff4-clean\\cases\\matrix-c3-cold-t1\\release-runner\\SocietiesPerformance.console.exe", "size_bytes": 50176, "sha256": "b5c477879d9af42ac4ac8efd41f42bf35997a71b35a4d5772ce3e6817f2fa438"},
+    {"role": "release_pack", "path": "C:\\tmp\\societies-w3-01-performance-matrix-9d8bff4-clean\\cases\\matrix-c3-cold-t1\\release-runner\\SocietiesPerformance.pck", "size_bytes": 33728, "sha256": "011c60220b74230685076facd6addb55ee8d16e66ec86d931a93129a59a66d6c"},
+    {"role": "managed_assembly", "path": "C:\\tmp\\societies-w3-01-performance-matrix-9d8bff4-clean\\cases\\matrix-c3-cold-t1\\release-runner\\data_Societies_windows_x86_64\\Societies.dll", "size_bytes": 925184, "sha256": "1d254929e24780b9d09e9ce142191e527193cd80d7076ac933fcd8fb1a294043"},
+    {"role": "godot_editor", "path": "C:\\Users\\hunte\\AppData\\Local\\Microsoft\\WinGet\\Packages\\GodotEngine.GodotEngine.Mono_Microsoft.Winget.Source_8wekyb3d8bbwe\\Godot_v4.6.2-stable_mono_win64\\Godot_v4.6.2-stable_mono_win64.exe", "size_bytes": 172977672, "sha256": "9dece0030aca9d4bb0d47f50ae8529cfaec6520eb7b3a7056193fb44e9e2fc27"},
+    {"role": "godot_console", "path": "C:\\Users\\hunte\\AppData\\Local\\Microsoft\\WinGet\\Packages\\GodotEngine.GodotEngine.Mono_Microsoft.Winget.Source_8wekyb3d8bbwe\\Godot_v4.6.2-stable_mono_win64\\Godot_v4.6.2-stable_mono_win64_console.exe", "size_bytes": 198152, "sha256": "f13f47b3d3247af7d6bfe3eb161b1c46c1210b5f580b215323a46f0054b4a2e4"}
+  ],
+  "generated_artifact_recovery": {
+    "path": "src/societies/icon.svg.import",
+    "head_object": "3e357237b7c316d6e9044c24b95a02ca1e010b1f",
+    "shared_worktree_restore": "restored_only_after_git_clean_filter_object_equaled_HEAD_and_ignore_space_at_eol_diff_exit_0",
+    "clean_clone_prewarm_restore": "restored_only_after_git_clean_filter_object_equaled_HEAD_and_ignore_space_at_eol_diff_exit_0",
+    "clean_clone_post_run_restore": "restored_only_after_git_clean_filter_object_equaled_HEAD_and_ignore_space_at_eol_diff_exit_0",
+    "unrelated_changes_preserved": true
+  },
+  "non_authoritative_attempt": {
+    "output_root": "C:\\tmp\\societies-w3-01-performance-matrix-9d8bff4",
+    "started_utc": "2026-08-02T16:54:39.5215554Z",
+    "ended_utc": "2026-08-02T16:56:09.8510223Z",
+    "duration_seconds": 90.314,
+    "exit_code": 1,
+    "completed_pairs": 4,
+    "reason": "Godot first-scan rewrote the tracked icon import line endings, and pair 5 correctly rejected the resulting dirty worktree. This partial attempt is not bound as performance evidence."
+  },
+  "conclusion": {
+    "w3_01_performance_validation_complete": true,
+    "w3_01_performance_gate_passed": true,
+    "formal_target_remains_missed": true,
+    "general_performance_regression_assessment": "not_performed",
+    "hard_safety_regression_detected": false,
+    "hard_safety_regression_definition": "No regression against the unchanged hard thresholds: reference median p95 at or below 50 ms and median maximum at or below 250 ms; both soak p95 values at or below 50 ms and maximum values at or below 250 ms; forced invalidation correct and at or below 250 ms.",
+    "feature_expansion_blocked_by_this_gate": false,
+    "next_boundary": "Use this clean 9d8bff4 matrix as the W3-01 performance disposition; keep c24 characterization non-gating and do not describe target_missed as a safety failure."
+  }
+}

@@ -16,6 +16,9 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Validate project governance
+        run: python3 scripts/check-project-governance.py
+
       - name: Classify change scope
         id: change_scope
         shell: bash

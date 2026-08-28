@@ -1,0 +1,1181 @@
+{
+    "schemaVersion":  2,
+    "analyzerVersion":  "2.0.0",
+    "workItem":  "V3-W2-06 BuildWorkOrders diagnostic profiling",
+    "status":  "diagnostic_subcost_selected",
+    "capturedUtc":  "2026-08-01T21:54:01.8154507Z",
+    "claimBoundary":  "diagnostic_characterization_only_not_release_gate_or_canonical_matrix",
+    "source":  {
+                   "gitSha":  "bfa76c3d322f11c5eccc69cbd2218ef055604b2a",
+                   "gitDirty":  true,
+                   "provenance":  "uncommitted_diagnostic_source",
+                   "sourceFiles":  [
+                                       {
+                                           "path":  "src/societies/scripts/simulation/SettlementEconomy.cs",
+                                           "sizeBytes":  62952,
+                                           "sha256":  "f0c55831b295e6d60ed1b874fdded17d5cbd4d3cf92f5f3c9588ea74923cb811"
+                                       },
+                                       {
+                                           "path":  "src/societies/scripts/simulation/SettlementSimulation.cs",
+                                           "sizeBytes":  40274,
+                                           "sha256":  "726809fed1bcd493cb57886f4d0c53538bd336b62c6a650fdfe4a756b6ce0104"
+                                       },
+                                       {
+                                           "path":  "src/societies/scripts/core/RuntimeMetricsCollector.cs",
+                                           "sizeBytes":  31031,
+                                           "sha256":  "03d235b7c800e547f1f26af63829eb736c142827630663b5c343ed47129d03be"
+                                       },
+                                       {
+                                           "path":  "src/societies/scripts/core/PrototypeRunArtifactManager.cs",
+                                           "sizeBytes":  44437,
+                                           "sha256":  "2a6c60a18fd5575fbd0a931f9b4dc4e2b0328988acfb0929e2625a657093d51c"
+                                       },
+                                       {
+                                           "path":  "src/societies/tests/PerfRunner.cs",
+                                           "sizeBytes":  88734,
+                                           "sha256":  "661e131fea66d750cf295ef48bb1b421c7b49e70f05a0059a234b267536000bd"
+                                       },
+                                       {
+                                           "path":  "src/societies/tests/PerformanceRunModels.cs",
+                                           "sizeBytes":  11936,
+                                           "sha256":  "16bd7f9ec98af0c5e785217deb27e382043fb3461dbd47ff41b2ca46ffbb20d2"
+                                       },
+                                       {
+                                           "path":  "scripts/run-performance-pair.ps1",
+                                           "sizeBytes":  69523,
+                                           "sha256":  "1f891477afdc9e37139dae11a4ceddc32426720c07954c9ac5e3269f1ce93559"
+                                       },
+                                       {
+                                           "path":  "scripts/analyze-build-work-orders-profile.ps1",
+                                           "sizeBytes":  37333,
+                                           "sha256":  "39f9931e51903add7c21b8f68e6ecbbca2729ac1c881c9b5561ebac19ef8db28"
+                                       }
+                                   ],
+                   "releaseArtifacts":  [
+                                            {
+                                                "path":  "artifacts/performance/w206-build-work-orders-profile-diagnostic-t1/release-runner/SocietiesPerformance.exe",
+                                                "sizeBytes":  104749568,
+                                                "sha256":  "11cf267ff84824b708174073c2d54bb3684e74218828cd99087217dd85776918"
+                                            },
+                                            {
+                                                "path":  "artifacts/performance/w206-build-work-orders-profile-diagnostic-t1/release-runner/SocietiesPerformance.console.exe",
+                                                "sizeBytes":  50176,
+                                                "sha256":  "b5c477879d9af42ac4ac8efd41f42bf35997a71b35a4d5772ce3e6817f2fa438"
+                                            }
+                                        ]
+               },
+    "configuration":  {
+                          "scenarioId":  "balanced_basin",
+                          "seed":  1337,
+                          "citizens":  16,
+                          "warmupTicks":  2,
+                          "measuredTicks":  300,
+                          "cacheMode":  "cold",
+                          "selectorMode":  "exact_branch_and_bound",
+                          "extractionPlanningMode":  "exact_bounded",
+                          "routeDistanceMode":  "cached_distance_only",
+                          "trialCount":  3,
+                          "spikeThresholdMilliseconds":  50
+                      },
+    "commands":  {
+                     "trialPairs":  [
+                                        ".\\scripts\\run-performance-pair.ps1 -ReleaseExport -GodotPath \u0027C:\\Users\\hunte\\AppData\\Local\\Microsoft\\WinGet\\Packages\\GodotEngine.GodotEngine.Mono_Microsoft.Winget.Source_8wekyb3d8bbwe\\Godot_v4.6.2-stable_mono_win64\\Godot_v4.6.2-stable_mono_win64.exe\u0027 -Scenario balanced_basin -Seed 1337 -Citizens 16 -WarmupTicks 2 -Ticks 300 -CacheMode cold -ComparisonGroup w206-build-work-orders-profile -TrialIndex 1 -OutputRoot \u0027artifacts/performance/w206-build-work-orders-profile-diagnostic-t1\u0027 -AllowDirtySource -AllowPrimarySafetyFailure",
+                                        ".\\scripts\\run-performance-pair.ps1 -ExistingReleaseRunner \u0027C:\\tmp\\societies-v3-w2-06-perf\\artifacts\\performance\\w206-build-work-orders-profile-diagnostic-t1\\release-runner\\SocietiesPerformance.console.exe\u0027 -GodotPath \u0027C:\\Users\\hunte\\AppData\\Local\\Microsoft\\WinGet\\Packages\\GodotEngine.GodotEngine.Mono_Microsoft.Winget.Source_8wekyb3d8bbwe\\Godot_v4.6.2-stable_mono_win64\\Godot_v4.6.2-stable_mono_win64.exe\u0027 -Scenario balanced_basin -Seed 1337 -Citizens 16 -WarmupTicks 2 -Ticks 300 -CacheMode cold -ComparisonGroup w206-build-work-orders-profile -TrialIndex 2 -OutputRoot \u0027artifacts/performance/w206-build-work-orders-profile-diagnostic-t2\u0027 -AllowDirtySource -AllowPrimarySafetyFailure",
+                                        ".\\scripts\\run-performance-pair.ps1 -ExistingReleaseRunner \u0027C:\\tmp\\societies-v3-w2-06-perf\\artifacts\\performance\\w206-build-work-orders-profile-diagnostic-t1\\release-runner\\SocietiesPerformance.console.exe\u0027 -GodotPath \u0027C:\\Users\\hunte\\AppData\\Local\\Microsoft\\WinGet\\Packages\\GodotEngine.GodotEngine.Mono_Microsoft.Winget.Source_8wekyb3d8bbwe\\Godot_v4.6.2-stable_mono_win64\\Godot_v4.6.2-stable_mono_win64.exe\u0027 -Scenario balanced_basin -Seed 1337 -Citizens 16 -WarmupTicks 2 -Ticks 300 -CacheMode cold -ComparisonGroup w206-build-work-orders-profile -TrialIndex 3 -OutputRoot \u0027artifacts/performance/w206-build-work-orders-profile-diagnostic-t3\u0027 -AllowDirtySource -AllowPrimarySafetyFailure"
+                                    ],
+                     "analyzer":  ".\\scripts\\analyze-build-work-orders-profile.ps1 -InputPath \u0027artifacts/performance/w206-build-work-orders-profile-diagnostic-t1/metrics-on\u0027,\u0027artifacts/performance/w206-build-work-orders-profile-diagnostic-t2/metrics-on\u0027,\u0027artifacts/performance/w206-build-work-orders-profile-diagnostic-t3/metrics-on\u0027 -OutputPath \u0027\u003coutput-json\u003e\u0027 -AllowDirtySource"
+                 },
+    "environment":  {
+                        "gitSha":  "bfa76c3d322f11c5eccc69cbd2218ef055604b2a",
+                        "gitDirty":  true,
+                        "executionRoute":  "export_release",
+                        "machineName":  "DESKTOP-H5M54GO",
+                        "logicalProcessorCount":  16,
+                        "operatingSystem":  "Microsoft Windows 10.0.19045",
+                        "processArchitecture":  "X64",
+                        "dotnetRuntime":  ".NET 8.0.24",
+                        "godotVersion":  "4.6.2-stable (official)",
+                        "managedAssemblyConfiguration":  "ExportRelease",
+                        "processExecutablePath":  "C:\\tmp\\societies-v3-w2-06-perf\\artifacts\\performance\\w206-build-work-orders-profile-diagnostic-t1\\release-runner\\SocietiesPerformance.exe",
+                        "runnerExecutablePath":  "C:\\tmp\\societies-v3-w2-06-perf\\artifacts\\performance\\w206-build-work-orders-profile-diagnostic-t1\\release-runner\\SocietiesPerformance.console.exe"
+                    },
+    "instrumentationContract":  {
+                                    "runtimeMetricsSchemaVersion":  5,
+                                    "runtimeMetricsFile":  "runtime-batch-metrics-v5.csv",
+                                    "enabledBoundary":  "existing nullable RuntimeMetricsCollector created only when SOCIETIES_PERF_METRICS=1",
+                                    "metricsOffContract":  "no collector clock reads and no runtime profile CSV",
+                                    "parentField":  "build_work_orders_ms",
+                                    "sequentialNonOverlappingChildFields":  [
+                                                                                "build_work_orders_input_preparation_ms",
+                                                                                "build_work_orders_non_extraction_ms",
+                                                                                "build_work_orders_reserve_extraction_ms",
+                                                                                "build_work_orders_finalization_ms"
+                                                                            ],
+                                    "residualFormula":  "build_work_orders_ms - sum(sequential child fields)",
+                                    "residualMeaning":  "phase-boundary, control-flow, and diagnostic clock overhead inside the inclusive parent",
+                                    "negativeResidualToleranceMilliseconds":  0.001,
+                                    "parentWallToleranceMilliseconds":  0.001,
+                                    "invalidReconciliationHandling":  "reject below negative tolerance; otherwise clamp to zero and flag",
+                                    "parserBounds":  {
+                                                         "maximumJsonBytes":  2097152,
+                                                         "maximumCsvBytes":  4194304,
+                                                         "maximumCsvLines":  301,
+                                                         "maximumCsvLineCharacters":  16384,
+                                                         "maximumJsonNestingDepth":  32,
+                                                         "enforcement":  "preflight_before_ConvertFrom-Json_or_Import-Csv_materialization"
+                                                     }
+                                },
+    "runs":  [
+                 {
+                     "run":  "artifacts/performance/w206-build-work-orders-profile-diagnostic-t1/metrics-on",
+                     "pairRoot":  "artifacts/performance/w206-build-work-orders-profile-diagnostic-t1",
+                     "trialIndex":  1,
+                     "releaseExport":  true,
+                     "reusedReleaseRunner":  false,
+                     "exportEditorExecutable":  "C:\\Users\\hunte\\AppData\\Local\\Microsoft\\WinGet\\Packages\\GodotEngine.GodotEngine.Mono_Microsoft.Winget.Source_8wekyb3d8bbwe\\Godot_v4.6.2-stable_mono_win64\\Godot_v4.6.2-stable_mono_win64.exe",
+                     "pairStatus":  "pass_dirty_source",
+                     "pairContractStatus":  "pass_dirty_source",
+                     "capturedUtc":  "2026-08-01T21:54:01.8154507Z",
+                     "verifiedReleaseExecution":  true,
+                     "exactInvocation":  "C:\\tmp\\societies-v3-w2-06-perf\\artifacts\\performance\\w206-build-work-orders-profile-diagnostic-t1\\release-runner\\SocietiesPerformance.console.exe --headless -- --scenario balanced_basin --seed 1337 --citizens 16 --ticks 300 --warmup-ticks 2 --cache-mode cold --selector-mode exact_branch_and_bound --extraction-planning-mode exact_bounded --route-distance-mode cached_distance_only --artifact-mode full_artifacts --comparison-group w206-build-work-orders-profile --trial-index 1 --metrics on --output-dir C:\\tmp\\societies-v3-w2-06-perf\\artifacts\\performance\\w206-build-work-orders-profile-diagnostic-t1\\metrics-on --run-id perf-47f48388fed5e15f1a3daa19-on --git-sha bfa76c3d322f11c5eccc69cbd2218ef055604b2a --git-dirty true --execution-route export_release --project-path C:\\tmp\\societies-v3-w2-06-perf\\src\\societies --runner-executable C:\\tmp\\societies-v3-w2-06-perf\\artifacts\\performance\\w206-build-work-orders-profile-diagnostic-t1\\release-runner\\SocietiesPerformance.console.exe --allow-safety-failure true",
+                     "deterministicStateAndEventSha256":  "7fe45268e67b8dff1da6bbcf785dc996e275fd1d814e713fe83d50873d5cab8e",
+                     "metricsOffRuntimeProfileAbsent":  true,
+                     "measuredTickSummary":  {
+                                                 "sampleCount":  300,
+                                                 "metrics":  {
+                                                                 "parent":  {
+                                                                                "count":  300,
+                                                                                "totalMilliseconds":  5282.7641,
+                                                                                "medianMilliseconds":  13.31885,
+                                                                                "meanMilliseconds":  17.609214,
+                                                                                "minimumMilliseconds":  12.8149,
+                                                                                "maximumMilliseconds":  205.9343
+                                                                            },
+                                                                 "input_preparation":  {
+                                                                                           "count":  300,
+                                                                                           "totalMilliseconds":  3.5037,
+                                                                                           "medianMilliseconds":  0.0087,
+                                                                                           "meanMilliseconds":  0.011679,
+                                                                                           "minimumMilliseconds":  0.0065,
+                                                                                           "maximumMilliseconds":  0.2382,
+                                                                                           "parentSharePercent":  0.066323
+                                                                                       },
+                                                                 "non_extraction":  {
+                                                                                        "count":  300,
+                                                                                        "totalMilliseconds":  1624.4113,
+                                                                                        "medianMilliseconds":  3.984,
+                                                                                        "meanMilliseconds":  5.414704,
+                                                                                        "minimumMilliseconds":  3.8548,
+                                                                                        "maximumMilliseconds":  22.2827,
+                                                                                        "parentSharePercent":  30.749268
+                                                                                    },
+                                                                 "reserve_extraction":  {
+                                                                                            "count":  300,
+                                                                                            "totalMilliseconds":  3617.8154,
+                                                                                            "medianMilliseconds":  9.18375,
+                                                                                            "meanMilliseconds":  12.059385,
+                                                                                            "minimumMilliseconds":  8.7858,
+                                                                                            "maximumMilliseconds":  183.4318,
+                                                                                            "parentSharePercent":  68.48338
+                                                                                        },
+                                                                 "finalization":  {
+                                                                                      "count":  300,
+                                                                                      "totalMilliseconds":  36.5906,
+                                                                                      "medianMilliseconds":  0.097,
+                                                                                      "meanMilliseconds":  0.121969,
+                                                                                      "minimumMilliseconds":  0.0648,
+                                                                                      "maximumMilliseconds":  1.0215,
+                                                                                      "parentSharePercent":  0.692641
+                                                                                  },
+                                                                 "children_total":  {
+                                                                                        "count":  300,
+                                                                                        "totalMilliseconds":  5282.321,
+                                                                                        "medianMilliseconds":  13.3179,
+                                                                                        "meanMilliseconds":  17.607737,
+                                                                                        "minimumMilliseconds":  12.814,
+                                                                                        "maximumMilliseconds":  205.9302
+                                                                                    },
+                                                                 "residual":  {
+                                                                                  "count":  300,
+                                                                                  "totalMilliseconds":  0.4431,
+                                                                                  "medianMilliseconds":  0.0011,
+                                                                                  "meanMilliseconds":  0.001477,
+                                                                                  "minimumMilliseconds":  0.0005,
+                                                                                  "maximumMilliseconds":  0.0082
+                                                                              }
+                                                             },
+                                                 "reconciliation":  {
+                                                                        "parentTotalMilliseconds":  5282.7641,
+                                                                        "childTotalMilliseconds":  5282.321,
+                                                                        "residualTotalMilliseconds":  0.4431,
+                                                                        "exactRoundedIdentity":  true
+                                                                    },
+                                                 "dominantExercisedSubCost":  {
+                                                                                  "category":  "reserve_extraction",
+                                                                                  "totalMilliseconds":  3617.8154,
+                                                                                  "parentSharePercent":  68.48338
+                                                                              }
+                                             },
+                     "spikeCount":  16,
+                     "spikeEndSimulationTicks":  [
+                                                     3,
+                                                     7,
+                                                     22,
+                                                     31,
+                                                     39,
+                                                     40,
+                                                     41,
+                                                     246,
+                                                     247,
+                                                     250,
+                                                     251,
+                                                     252,
+                                                     257,
+                                                     258,
+                                                     264,
+                                                     265
+                                                 ],
+                     "spikeSummary":  {
+                                          "sampleCount":  16,
+                                          "metrics":  {
+                                                          "parent":  {
+                                                                         "count":  16,
+                                                                         "totalMilliseconds":  966.816,
+                                                                         "medianMilliseconds":  35.97675,
+                                                                         "meanMilliseconds":  60.426,
+                                                                         "minimumMilliseconds":  12.965,
+                                                                         "maximumMilliseconds":  205.9343
+                                                                     },
+                                                          "input_preparation":  {
+                                                                                    "count":  16,
+                                                                                    "totalMilliseconds":  0.4675,
+                                                                                    "medianMilliseconds":  0.0103,
+                                                                                    "meanMilliseconds":  0.029219,
+                                                                                    "minimumMilliseconds":  0.0074,
+                                                                                    "maximumMilliseconds":  0.2382,
+                                                                                    "parentSharePercent":  0.048355
+                                                                                },
+                                                          "non_extraction":  {
+                                                                                 "count":  16,
+                                                                                 "totalMilliseconds":  130.7155,
+                                                                                 "medianMilliseconds":  5.4193,
+                                                                                 "meanMilliseconds":  8.169719,
+                                                                                 "minimumMilliseconds":  3.8646,
+                                                                                 "maximumMilliseconds":  22.2827,
+                                                                                 "parentSharePercent":  13.520204
+                                                                             },
+                                                          "reserve_extraction":  {
+                                                                                     "count":  16,
+                                                                                     "totalMilliseconds":  833.2948,
+                                                                                     "medianMilliseconds":  21.95205,
+                                                                                     "meanMilliseconds":  52.080925,
+                                                                                     "minimumMilliseconds":  8.9592,
+                                                                                     "maximumMilliseconds":  183.4318,
+                                                                                     "parentSharePercent":  86.189596
+                                                                                 },
+                                                          "finalization":  {
+                                                                               "count":  16,
+                                                                               "totalMilliseconds":  2.3074,
+                                                                               "medianMilliseconds":  0.11625,
+                                                                               "meanMilliseconds":  0.144213,
+                                                                               "minimumMilliseconds":  0.079,
+                                                                               "maximumMilliseconds":  0.2819,
+                                                                               "parentSharePercent":  0.23866
+                                                                           },
+                                                          "children_total":  {
+                                                                                 "count":  16,
+                                                                                 "totalMilliseconds":  966.7852,
+                                                                                 "medianMilliseconds":  35.97405,
+                                                                                 "meanMilliseconds":  60.424075,
+                                                                                 "minimumMilliseconds":  12.9642,
+                                                                                 "maximumMilliseconds":  205.9302
+                                                                             },
+                                                          "residual":  {
+                                                                           "count":  16,
+                                                                           "totalMilliseconds":  0.0308,
+                                                                           "medianMilliseconds":  0.0014,
+                                                                           "meanMilliseconds":  0.001925,
+                                                                           "minimumMilliseconds":  0.0008,
+                                                                           "maximumMilliseconds":  0.0041
+                                                                       }
+                                                      },
+                                          "reconciliation":  {
+                                                                 "parentTotalMilliseconds":  966.816,
+                                                                 "childTotalMilliseconds":  966.7852,
+                                                                 "residualTotalMilliseconds":  0.0308,
+                                                                 "exactRoundedIdentity":  true
+                                                             },
+                                          "dominantExercisedSubCost":  {
+                                                                           "category":  "reserve_extraction",
+                                                                           "totalMilliseconds":  833.2948,
+                                                                           "parentSharePercent":  86.189596
+                                                                       }
+                                      },
+                     "artifacts":  [
+                                       {
+                                           "path":  "artifacts/performance/w206-build-work-orders-profile-diagnostic-t1/metrics-on/runtime-batch-metrics-v5.csv",
+                                           "sizeBytes":  53268,
+                                           "sha256":  "685e0ac60ced2d89e2bdea44a51680775361d5346ce249e8dcf991af588ed5a4"
+                                       },
+                                       {
+                                           "path":  "artifacts/performance/w206-build-work-orders-profile-diagnostic-t1/metrics-on/perf-results.json",
+                                           "sizeBytes":  17525,
+                                           "sha256":  "18cebe3e132b1fe0066b28daa781b60710a03af13d3ba93bd2d37c86e9fbc7c2"
+                                       },
+                                       {
+                                           "path":  "artifacts/performance/w206-build-work-orders-profile-diagnostic-t1/equivalence-results.json",
+                                           "sizeBytes":  41992,
+                                           "sha256":  "7fccb70705610b923241f31c387e7b40e8bc812de31bab1df16ad5cce2242ad6"
+                                       }
+                                   ],
+                     "reproductionCommand":  ".\\scripts\\run-performance-pair.ps1 -ReleaseExport -GodotPath \u0027C:\\Users\\hunte\\AppData\\Local\\Microsoft\\WinGet\\Packages\\GodotEngine.GodotEngine.Mono_Microsoft.Winget.Source_8wekyb3d8bbwe\\Godot_v4.6.2-stable_mono_win64\\Godot_v4.6.2-stable_mono_win64.exe\u0027 -Scenario balanced_basin -Seed 1337 -Citizens 16 -WarmupTicks 2 -Ticks 300 -CacheMode cold -ComparisonGroup w206-build-work-orders-profile -TrialIndex 1 -OutputRoot \u0027artifacts/performance/w206-build-work-orders-profile-diagnostic-t1\u0027 -AllowDirtySource -AllowPrimarySafetyFailure"
+                 },
+                 {
+                     "run":  "artifacts/performance/w206-build-work-orders-profile-diagnostic-t2/metrics-on",
+                     "pairRoot":  "artifacts/performance/w206-build-work-orders-profile-diagnostic-t2",
+                     "trialIndex":  2,
+                     "releaseExport":  false,
+                     "reusedReleaseRunner":  true,
+                     "exportEditorExecutable":  null,
+                     "pairStatus":  "pass_dirty_source",
+                     "pairContractStatus":  "pass_dirty_source",
+                     "capturedUtc":  "2026-08-01T21:54:32.4092833Z",
+                     "verifiedReleaseExecution":  true,
+                     "exactInvocation":  "C:\\tmp\\societies-v3-w2-06-perf\\artifacts\\performance\\w206-build-work-orders-profile-diagnostic-t1\\release-runner\\SocietiesPerformance.console.exe --headless -- --scenario balanced_basin --seed 1337 --citizens 16 --ticks 300 --warmup-ticks 2 --cache-mode cold --selector-mode exact_branch_and_bound --extraction-planning-mode exact_bounded --route-distance-mode cached_distance_only --artifact-mode full_artifacts --comparison-group w206-build-work-orders-profile --trial-index 2 --metrics on --output-dir C:\\tmp\\societies-v3-w2-06-perf\\artifacts\\performance\\w206-build-work-orders-profile-diagnostic-t2\\metrics-on --run-id perf-9db431885bb93f2b59a350db-on --git-sha bfa76c3d322f11c5eccc69cbd2218ef055604b2a --git-dirty true --execution-route export_release --project-path C:\\tmp\\societies-v3-w2-06-perf\\src\\societies --runner-executable C:\\tmp\\societies-v3-w2-06-perf\\artifacts\\performance\\w206-build-work-orders-profile-diagnostic-t1\\release-runner\\SocietiesPerformance.console.exe --allow-safety-failure true",
+                     "deterministicStateAndEventSha256":  "7fe45268e67b8dff1da6bbcf785dc996e275fd1d814e713fe83d50873d5cab8e",
+                     "metricsOffRuntimeProfileAbsent":  true,
+                     "measuredTickSummary":  {
+                                                 "sampleCount":  300,
+                                                 "metrics":  {
+                                                                 "parent":  {
+                                                                                "count":  300,
+                                                                                "totalMilliseconds":  5781.4268,
+                                                                                "medianMilliseconds":  15.60225,
+                                                                                "meanMilliseconds":  19.271423,
+                                                                                "minimumMilliseconds":  14.9931,
+                                                                                "maximumMilliseconds":  126.8378
+                                                                            },
+                                                                 "input_preparation":  {
+                                                                                           "count":  300,
+                                                                                           "totalMilliseconds":  3.4659,
+                                                                                           "medianMilliseconds":  0.0084,
+                                                                                           "meanMilliseconds":  0.011553,
+                                                                                           "minimumMilliseconds":  0.0062,
+                                                                                           "maximumMilliseconds":  0.2542,
+                                                                                           "parentSharePercent":  0.059949
+                                                                                       },
+                                                                 "non_extraction":  {
+                                                                                        "count":  300,
+                                                                                        "totalMilliseconds":  2185.0278,
+                                                                                        "medianMilliseconds":  6.22195,
+                                                                                        "meanMilliseconds":  7.283426,
+                                                                                        "minimumMilliseconds":  6.0485,
+                                                                                        "maximumMilliseconds":  23.294,
+                                                                                        "parentSharePercent":  37.79392
+                                                                                    },
+                                                                 "reserve_extraction":  {
+                                                                                            "count":  300,
+                                                                                            "totalMilliseconds":  3556.0227,
+                                                                                            "medianMilliseconds":  9.1508,
+                                                                                            "meanMilliseconds":  11.853409,
+                                                                                            "minimumMilliseconds":  8.7563,
+                                                                                            "maximumMilliseconds":  119.0525,
+                                                                                            "parentSharePercent":  61.507701
+                                                                                        },
+                                                                 "finalization":  {
+                                                                                      "count":  300,
+                                                                                      "totalMilliseconds":  36.4148,
+                                                                                      "medianMilliseconds":  0.0963,
+                                                                                      "meanMilliseconds":  0.121383,
+                                                                                      "minimumMilliseconds":  0.0647,
+                                                                                      "maximumMilliseconds":  1.0207,
+                                                                                      "parentSharePercent":  0.629858
+                                                                                  },
+                                                                 "children_total":  {
+                                                                                        "count":  300,
+                                                                                        "totalMilliseconds":  5780.9312,
+                                                                                        "medianMilliseconds":  15.60135,
+                                                                                        "meanMilliseconds":  19.269771,
+                                                                                        "minimumMilliseconds":  14.9922,
+                                                                                        "maximumMilliseconds":  126.8358
+                                                                                    },
+                                                                 "residual":  {
+                                                                                  "count":  300,
+                                                                                  "totalMilliseconds":  0.4956,
+                                                                                  "medianMilliseconds":  0.0014,
+                                                                                  "meanMilliseconds":  0.001652,
+                                                                                  "minimumMilliseconds":  0.0007,
+                                                                                  "maximumMilliseconds":  0.0091
+                                                                              }
+                                                             },
+                                                 "reconciliation":  {
+                                                                        "parentTotalMilliseconds":  5781.4268,
+                                                                        "childTotalMilliseconds":  5780.9312,
+                                                                        "residualTotalMilliseconds":  0.4956,
+                                                                        "exactRoundedIdentity":  true
+                                                                    },
+                                                 "dominantExercisedSubCost":  {
+                                                                                  "category":  "reserve_extraction",
+                                                                                  "totalMilliseconds":  3556.0227,
+                                                                                  "parentSharePercent":  61.507701
+                                                                              }
+                                             },
+                     "spikeCount":  17,
+                     "spikeEndSimulationTicks":  [
+                                                     3,
+                                                     7,
+                                                     8,
+                                                     10,
+                                                     22,
+                                                     31,
+                                                     39,
+                                                     40,
+                                                     41,
+                                                     246,
+                                                     247,
+                                                     250,
+                                                     251,
+                                                     257,
+                                                     258,
+                                                     264,
+                                                     265
+                                                 ],
+                     "spikeSummary":  {
+                                          "sampleCount":  17,
+                                          "metrics":  {
+                                                          "parent":  {
+                                                                         "count":  17,
+                                                                         "totalMilliseconds":  937.9209,
+                                                                         "medianMilliseconds":  30.3695,
+                                                                         "meanMilliseconds":  55.171818,
+                                                                         "minimumMilliseconds":  15.1402,
+                                                                         "maximumMilliseconds":  126.8378
+                                                                     },
+                                                          "input_preparation":  {
+                                                                                    "count":  17,
+                                                                                    "totalMilliseconds":  0.5117,
+                                                                                    "medianMilliseconds":  0.0128,
+                                                                                    "meanMilliseconds":  0.0301,
+                                                                                    "minimumMilliseconds":  0.0068,
+                                                                                    "maximumMilliseconds":  0.2542,
+                                                                                    "parentSharePercent":  0.054557
+                                                                                },
+                                                          "non_extraction":  {
+                                                                                 "count":  17,
+                                                                                 "totalMilliseconds":  168.2263,
+                                                                                 "medianMilliseconds":  6.3258,
+                                                                                 "meanMilliseconds":  9.895665,
+                                                                                 "minimumMilliseconds":  6.0975,
+                                                                                 "maximumMilliseconds":  23.294,
+                                                                                 "parentSharePercent":  17.936086
+                                                                             },
+                                                          "reserve_extraction":  {
+                                                                                     "count":  17,
+                                                                                     "totalMilliseconds":  766.4574,
+                                                                                     "medianMilliseconds":  11.9419,
+                                                                                     "meanMilliseconds":  45.085729,
+                                                                                     "minimumMilliseconds":  8.9505,
+                                                                                     "maximumMilliseconds":  119.0525,
+                                                                                     "parentSharePercent":  81.718768
+                                                                                 },
+                                                          "finalization":  {
+                                                                               "count":  17,
+                                                                               "totalMilliseconds":  2.6893,
+                                                                               "medianMilliseconds":  0.1152,
+                                                                               "meanMilliseconds":  0.158194,
+                                                                               "minimumMilliseconds":  0.0831,
+                                                                               "maximumMilliseconds":  0.3809,
+                                                                               "parentSharePercent":  0.28673
+                                                                           },
+                                                          "children_total":  {
+                                                                                 "count":  17,
+                                                                                 "totalMilliseconds":  937.8847,
+                                                                                 "medianMilliseconds":  30.3664,
+                                                                                 "meanMilliseconds":  55.169688,
+                                                                                 "minimumMilliseconds":  15.1392,
+                                                                                 "maximumMilliseconds":  126.8358
+                                                                             },
+                                                          "residual":  {
+                                                                           "count":  17,
+                                                                           "totalMilliseconds":  0.0362,
+                                                                           "medianMilliseconds":  0.0018,
+                                                                           "meanMilliseconds":  0.002129,
+                                                                           "minimumMilliseconds":  0.0008,
+                                                                           "maximumMilliseconds":  0.0048
+                                                                       }
+                                                      },
+                                          "reconciliation":  {
+                                                                 "parentTotalMilliseconds":  937.9209,
+                                                                 "childTotalMilliseconds":  937.8847,
+                                                                 "residualTotalMilliseconds":  0.0362,
+                                                                 "exactRoundedIdentity":  true
+                                                             },
+                                          "dominantExercisedSubCost":  {
+                                                                           "category":  "reserve_extraction",
+                                                                           "totalMilliseconds":  766.4574,
+                                                                           "parentSharePercent":  81.718768
+                                                                       }
+                                      },
+                     "artifacts":  [
+                                       {
+                                           "path":  "artifacts/performance/w206-build-work-orders-profile-diagnostic-t2/metrics-on/runtime-batch-metrics-v5.csv",
+                                           "sizeBytes":  53281,
+                                           "sha256":  "a124737c94823491753559455a5630e0d6e94766152256cb21594adbd8d9abea"
+                                       },
+                                       {
+                                           "path":  "artifacts/performance/w206-build-work-orders-profile-diagnostic-t2/metrics-on/perf-results.json",
+                                           "sizeBytes":  17532,
+                                           "sha256":  "adff7d0ba1b1166a457ae7f9439393876b7faefc5f3ccd82b23251d476115b59"
+                                       },
+                                       {
+                                           "path":  "artifacts/performance/w206-build-work-orders-profile-diagnostic-t2/equivalence-results.json",
+                                           "sizeBytes":  41724,
+                                           "sha256":  "3b169653c57b4946bad1bb5663edecf0d2d49cd55e894106adaa036c4a45b92d"
+                                       }
+                                   ],
+                     "reproductionCommand":  ".\\scripts\\run-performance-pair.ps1 -ExistingReleaseRunner \u0027C:\\tmp\\societies-v3-w2-06-perf\\artifacts\\performance\\w206-build-work-orders-profile-diagnostic-t1\\release-runner\\SocietiesPerformance.console.exe\u0027 -GodotPath \u0027C:\\Users\\hunte\\AppData\\Local\\Microsoft\\WinGet\\Packages\\GodotEngine.GodotEngine.Mono_Microsoft.Winget.Source_8wekyb3d8bbwe\\Godot_v4.6.2-stable_mono_win64\\Godot_v4.6.2-stable_mono_win64.exe\u0027 -Scenario balanced_basin -Seed 1337 -Citizens 16 -WarmupTicks 2 -Ticks 300 -CacheMode cold -ComparisonGroup w206-build-work-orders-profile -TrialIndex 2 -OutputRoot \u0027artifacts/performance/w206-build-work-orders-profile-diagnostic-t2\u0027 -AllowDirtySource -AllowPrimarySafetyFailure"
+                 },
+                 {
+                     "run":  "artifacts/performance/w206-build-work-orders-profile-diagnostic-t3/metrics-on",
+                     "pairRoot":  "artifacts/performance/w206-build-work-orders-profile-diagnostic-t3",
+                     "trialIndex":  3,
+                     "releaseExport":  false,
+                     "reusedReleaseRunner":  true,
+                     "exportEditorExecutable":  null,
+                     "pairStatus":  "pass_dirty_source",
+                     "pairContractStatus":  "pass_dirty_source",
+                     "capturedUtc":  "2026-08-01T21:55:02.3729214Z",
+                     "verifiedReleaseExecution":  true,
+                     "exactInvocation":  "C:\\tmp\\societies-v3-w2-06-perf\\artifacts\\performance\\w206-build-work-orders-profile-diagnostic-t1\\release-runner\\SocietiesPerformance.console.exe --headless -- --scenario balanced_basin --seed 1337 --citizens 16 --ticks 300 --warmup-ticks 2 --cache-mode cold --selector-mode exact_branch_and_bound --extraction-planning-mode exact_bounded --route-distance-mode cached_distance_only --artifact-mode full_artifacts --comparison-group w206-build-work-orders-profile --trial-index 3 --metrics on --output-dir C:\\tmp\\societies-v3-w2-06-perf\\artifacts\\performance\\w206-build-work-orders-profile-diagnostic-t3\\metrics-on --run-id perf-e1c75983b41199956add7794-on --git-sha bfa76c3d322f11c5eccc69cbd2218ef055604b2a --git-dirty true --execution-route export_release --project-path C:\\tmp\\societies-v3-w2-06-perf\\src\\societies --runner-executable C:\\tmp\\societies-v3-w2-06-perf\\artifacts\\performance\\w206-build-work-orders-profile-diagnostic-t1\\release-runner\\SocietiesPerformance.console.exe --allow-safety-failure true",
+                     "deterministicStateAndEventSha256":  "7fe45268e67b8dff1da6bbcf785dc996e275fd1d814e713fe83d50873d5cab8e",
+                     "metricsOffRuntimeProfileAbsent":  true,
+                     "measuredTickSummary":  {
+                                                 "sampleCount":  300,
+                                                 "metrics":  {
+                                                                 "parent":  {
+                                                                                "count":  300,
+                                                                                "totalMilliseconds":  5848.2378,
+                                                                                "medianMilliseconds":  15.59975,
+                                                                                "meanMilliseconds":  19.494126,
+                                                                                "minimumMilliseconds":  15.0418,
+                                                                                "maximumMilliseconds":  187.2132
+                                                                            },
+                                                                 "input_preparation":  {
+                                                                                           "count":  300,
+                                                                                           "totalMilliseconds":  3.531,
+                                                                                           "medianMilliseconds":  0.0085,
+                                                                                           "meanMilliseconds":  0.01177,
+                                                                                           "minimumMilliseconds":  0.0062,
+                                                                                           "maximumMilliseconds":  0.3837,
+                                                                                           "parentSharePercent":  0.060377
+                                                                                       },
+                                                                 "non_extraction":  {
+                                                                                        "count":  300,
+                                                                                        "totalMilliseconds":  2190.8344,
+                                                                                        "medianMilliseconds":  6.14105,
+                                                                                        "meanMilliseconds":  7.302781,
+                                                                                        "minimumMilliseconds":  5.9736,
+                                                                                        "maximumMilliseconds":  27.0814,
+                                                                                        "parentSharePercent":  37.461445
+                                                                                    },
+                                                                 "reserve_extraction":  {
+                                                                                            "count":  300,
+                                                                                            "totalMilliseconds":  3616.1375,
+                                                                                            "medianMilliseconds":  9.2571,
+                                                                                            "meanMilliseconds":  12.053792,
+                                                                                            "minimumMilliseconds":  8.9079,
+                                                                                            "maximumMilliseconds":  170.7521,
+                                                                                            "parentSharePercent":  61.832942
+                                                                                        },
+                                                                 "finalization":  {
+                                                                                      "count":  300,
+                                                                                      "totalMilliseconds":  37.2886,
+                                                                                      "medianMilliseconds":  0.1004,
+                                                                                      "meanMilliseconds":  0.124295,
+                                                                                      "minimumMilliseconds":  0.0675,
+                                                                                      "maximumMilliseconds":  1.0363,
+                                                                                      "parentSharePercent":  0.637604
+                                                                                  },
+                                                                 "children_total":  {
+                                                                                        "count":  300,
+                                                                                        "totalMilliseconds":  5847.7915,
+                                                                                        "medianMilliseconds":  15.59835,
+                                                                                        "meanMilliseconds":  19.492638,
+                                                                                        "minimumMilliseconds":  15.0412,
+                                                                                        "maximumMilliseconds":  187.2103
+                                                                                    },
+                                                                 "residual":  {
+                                                                                  "count":  300,
+                                                                                  "totalMilliseconds":  0.4463,
+                                                                                  "medianMilliseconds":  0.0013,
+                                                                                  "meanMilliseconds":  0.001488,
+                                                                                  "minimumMilliseconds":  0.0006,
+                                                                                  "maximumMilliseconds":  0.0055
+                                                                              }
+                                                             },
+                                                 "reconciliation":  {
+                                                                        "parentTotalMilliseconds":  5848.2378,
+                                                                        "childTotalMilliseconds":  5847.7915,
+                                                                        "residualTotalMilliseconds":  0.4463,
+                                                                        "exactRoundedIdentity":  true
+                                                                    },
+                                                 "dominantExercisedSubCost":  {
+                                                                                  "category":  "reserve_extraction",
+                                                                                  "totalMilliseconds":  3616.1375,
+                                                                                  "parentSharePercent":  61.832942
+                                                                              }
+                                             },
+                     "spikeCount":  15,
+                     "spikeEndSimulationTicks":  [
+                                                     3,
+                                                     7,
+                                                     22,
+                                                     31,
+                                                     39,
+                                                     40,
+                                                     41,
+                                                     246,
+                                                     247,
+                                                     250,
+                                                     251,
+                                                     257,
+                                                     258,
+                                                     264,
+                                                     265
+                                                 ],
+                     "spikeSummary":  {
+                                          "sampleCount":  15,
+                                          "metrics":  {
+                                                          "parent":  {
+                                                                         "count":  15,
+                                                                         "totalMilliseconds":  938.0385,
+                                                                         "medianMilliseconds":  35.0173,
+                                                                         "meanMilliseconds":  62.5359,
+                                                                         "minimumMilliseconds":  15.3436,
+                                                                         "maximumMilliseconds":  187.2132
+                                                                     },
+                                                          "input_preparation":  {
+                                                                                    "count":  15,
+                                                                                    "totalMilliseconds":  0.6145,
+                                                                                    "medianMilliseconds":  0.0119,
+                                                                                    "meanMilliseconds":  0.040967,
+                                                                                    "minimumMilliseconds":  0.0062,
+                                                                                    "maximumMilliseconds":  0.3837,
+                                                                                    "parentSharePercent":  0.065509
+                                                                                },
+                                                          "non_extraction":  {
+                                                                                 "count":  15,
+                                                                                 "totalMilliseconds":  143.1453,
+                                                                                 "medianMilliseconds":  6.2541,
+                                                                                 "meanMilliseconds":  9.54302,
+                                                                                 "minimumMilliseconds":  5.9864,
+                                                                                 "maximumMilliseconds":  24.4659,
+                                                                                 "parentSharePercent":  15.260067
+                                                                             },
+                                                          "reserve_extraction":  {
+                                                                                     "count":  15,
+                                                                                     "totalMilliseconds":  792.0147,
+                                                                                     "medianMilliseconds":  11.4493,
+                                                                                     "meanMilliseconds":  52.80098,
+                                                                                     "minimumMilliseconds":  9.1704,
+                                                                                     "maximumMilliseconds":  170.7521,
+                                                                                     "parentSharePercent":  84.43307
+                                                                                 },
+                                                          "finalization":  {
+                                                                               "count":  15,
+                                                                               "totalMilliseconds":  2.2321,
+                                                                               "medianMilliseconds":  0.1232,
+                                                                               "meanMilliseconds":  0.148807,
+                                                                               "minimumMilliseconds":  0.089,
+                                                                               "maximumMilliseconds":  0.2912,
+                                                                               "parentSharePercent":  0.237954
+                                                                           },
+                                                          "children_total":  {
+                                                                                 "count":  15,
+                                                                                 "totalMilliseconds":  938.0066,
+                                                                                 "medianMilliseconds":  35.0132,
+                                                                                 "meanMilliseconds":  62.533773,
+                                                                                 "minimumMilliseconds":  15.3423,
+                                                                                 "maximumMilliseconds":  187.2103
+                                                                             },
+                                                          "residual":  {
+                                                                           "count":  15,
+                                                                           "totalMilliseconds":  0.0319,
+                                                                           "medianMilliseconds":  0.0016,
+                                                                           "meanMilliseconds":  0.002127,
+                                                                           "minimumMilliseconds":  0.0008,
+                                                                           "maximumMilliseconds":  0.0041
+                                                                       }
+                                                      },
+                                          "reconciliation":  {
+                                                                 "parentTotalMilliseconds":  938.0385,
+                                                                 "childTotalMilliseconds":  938.0066,
+                                                                 "residualTotalMilliseconds":  0.0319,
+                                                                 "exactRoundedIdentity":  true
+                                                             },
+                                          "dominantExercisedSubCost":  {
+                                                                           "category":  "reserve_extraction",
+                                                                           "totalMilliseconds":  792.0147,
+                                                                           "parentSharePercent":  84.43307
+                                                                       }
+                                      },
+                     "artifacts":  [
+                                       {
+                                           "path":  "artifacts/performance/w206-build-work-orders-profile-diagnostic-t3/metrics-on/runtime-batch-metrics-v5.csv",
+                                           "sizeBytes":  53219,
+                                           "sha256":  "87cc3c2a94cc82c0d9af653b60a96bfbc3c437268d8f8e6c3bd52d87713302ea"
+                                       },
+                                       {
+                                           "path":  "artifacts/performance/w206-build-work-orders-profile-diagnostic-t3/metrics-on/perf-results.json",
+                                           "sizeBytes":  17506,
+                                           "sha256":  "27951e58a5b00fa07c2d5ea4739b9e73a3212ced03e34d8f5e1fffa4aa37fcb3"
+                                       },
+                                       {
+                                           "path":  "artifacts/performance/w206-build-work-orders-profile-diagnostic-t3/equivalence-results.json",
+                                           "sizeBytes":  41726,
+                                           "sha256":  "809b41bfa85fc94f873ac7f50905e7dca8ca182ce0ee0f58123f12767b87de74"
+                                       }
+                                   ],
+                     "reproductionCommand":  ".\\scripts\\run-performance-pair.ps1 -ExistingReleaseRunner \u0027C:\\tmp\\societies-v3-w2-06-perf\\artifacts\\performance\\w206-build-work-orders-profile-diagnostic-t1\\release-runner\\SocietiesPerformance.console.exe\u0027 -GodotPath \u0027C:\\Users\\hunte\\AppData\\Local\\Microsoft\\WinGet\\Packages\\GodotEngine.GodotEngine.Mono_Microsoft.Winget.Source_8wekyb3d8bbwe\\Godot_v4.6.2-stable_mono_win64\\Godot_v4.6.2-stable_mono_win64.exe\u0027 -Scenario balanced_basin -Seed 1337 -Citizens 16 -WarmupTicks 2 -Ticks 300 -CacheMode cold -ComparisonGroup w206-build-work-orders-profile -TrialIndex 3 -OutputRoot \u0027artifacts/performance/w206-build-work-orders-profile-diagnostic-t3\u0027 -AllowDirtySource -AllowPrimarySafetyFailure"
+                 }
+             ],
+    "repeatability":  {
+                          "commonSpikeTickCount":  15,
+                          "commonSpikeEndSimulationTicks":  [
+                                                                3,
+                                                                7,
+                                                                22,
+                                                                31,
+                                                                39,
+                                                                40,
+                                                                41,
+                                                                246,
+                                                                247,
+                                                                250,
+                                                                251,
+                                                                257,
+                                                                258,
+                                                                264,
+                                                                265
+                                                            ],
+                          "unionSpikeTickCount":  18,
+                          "unionSpikeEndSimulationTicks":  [
+                                                               3,
+                                                               7,
+                                                               8,
+                                                               10,
+                                                               22,
+                                                               31,
+                                                               39,
+                                                               40,
+                                                               41,
+                                                               246,
+                                                               247,
+                                                               250,
+                                                               251,
+                                                               252,
+                                                               257,
+                                                               258,
+                                                               264,
+                                                               265
+                                                           ],
+                          "allRunsExactSpikeTickSetIdentity":  false,
+                          "perTrialCommonSpikeSubCostSummaries":  [
+                                                                      {
+                                                                          "run":  "artifacts/performance/w206-build-work-orders-profile-diagnostic-t1/metrics-on",
+                                                                          "trialIndex":  1,
+                                                                          "commonSpikeSummary":  {
+                                                                                                     "sampleCount":  15,
+                                                                                                     "metrics":  {
+                                                                                                                     "parent":  {
+                                                                                                                                    "count":  15,
+                                                                                                                                    "totalMilliseconds":  927.1866,
+                                                                                                                                    "medianMilliseconds":  32.3241,
+                                                                                                                                    "meanMilliseconds":  61.81244,
+                                                                                                                                    "minimumMilliseconds":  12.965,
+                                                                                                                                    "maximumMilliseconds":  205.9343
+                                                                                                                                },
+                                                                                                                     "input_preparation":  {
+                                                                                                                                               "count":  15,
+                                                                                                                                               "totalMilliseconds":  0.4565,
+                                                                                                                                               "medianMilliseconds":  0.0096,
+                                                                                                                                               "meanMilliseconds":  0.030433,
+                                                                                                                                               "minimumMilliseconds":  0.0074,
+                                                                                                                                               "maximumMilliseconds":  0.2382,
+                                                                                                                                               "parentSharePercent":  0.049235
+                                                                                                                                           },
+                                                                                                                     "non_extraction":  {
+                                                                                                                                            "count":  15,
+                                                                                                                                            "totalMilliseconds":  123.6367,
+                                                                                                                                            "medianMilliseconds":  4.1799,
+                                                                                                                                            "meanMilliseconds":  8.242447,
+                                                                                                                                            "minimumMilliseconds":  3.8646,
+                                                                                                                                            "maximumMilliseconds":  22.2827,
+                                                                                                                                            "parentSharePercent":  13.334608
+                                                                                                                                        },
+                                                                                                                     "reserve_extraction":  {
+                                                                                                                                                "count":  15,
+                                                                                                                                                "totalMilliseconds":  800.8815,
+                                                                                                                                                "medianMilliseconds":  11.4908,
+                                                                                                                                                "meanMilliseconds":  53.3921,
+                                                                                                                                                "minimumMilliseconds":  8.9592,
+                                                                                                                                                "maximumMilliseconds":  183.4318,
+                                                                                                                                                "parentSharePercent":  86.377596
+                                                                                                                                            },
+                                                                                                                     "finalization":  {
+                                                                                                                                          "count":  15,
+                                                                                                                                          "totalMilliseconds":  2.1824,
+                                                                                                                                          "medianMilliseconds":  0.1075,
+                                                                                                                                          "meanMilliseconds":  0.145493,
+                                                                                                                                          "minimumMilliseconds":  0.079,
+                                                                                                                                          "maximumMilliseconds":  0.2819,
+                                                                                                                                          "parentSharePercent":  0.235379
+                                                                                                                                      },
+                                                                                                                     "children_total":  {
+                                                                                                                                            "count":  15,
+                                                                                                                                            "totalMilliseconds":  927.1571,
+                                                                                                                                            "medianMilliseconds":  32.32,
+                                                                                                                                            "meanMilliseconds":  61.810473,
+                                                                                                                                            "minimumMilliseconds":  12.9642,
+                                                                                                                                            "maximumMilliseconds":  205.9302
+                                                                                                                                        },
+                                                                                                                     "residual":  {
+                                                                                                                                      "count":  15,
+                                                                                                                                      "totalMilliseconds":  0.0295,
+                                                                                                                                      "medianMilliseconds":  0.0014,
+                                                                                                                                      "meanMilliseconds":  0.001967,
+                                                                                                                                      "minimumMilliseconds":  0.0008,
+                                                                                                                                      "maximumMilliseconds":  0.0041
+                                                                                                                                  }
+                                                                                                                 },
+                                                                                                     "reconciliation":  {
+                                                                                                                            "parentTotalMilliseconds":  927.1866,
+                                                                                                                            "childTotalMilliseconds":  927.1571,
+                                                                                                                            "residualTotalMilliseconds":  0.0295,
+                                                                                                                            "exactRoundedIdentity":  true
+                                                                                                                        },
+                                                                                                     "dominantExercisedSubCost":  {
+                                                                                                                                      "category":  "reserve_extraction",
+                                                                                                                                      "totalMilliseconds":  800.8815,
+                                                                                                                                      "parentSharePercent":  86.377596
+                                                                                                                                  }
+                                                                                                 }
+                                                                      },
+                                                                      {
+                                                                          "run":  "artifacts/performance/w206-build-work-orders-profile-diagnostic-t2/metrics-on",
+                                                                          "trialIndex":  2,
+                                                                          "commonSpikeSummary":  {
+                                                                                                     "sampleCount":  15,
+                                                                                                     "metrics":  {
+                                                                                                                     "parent":  {
+                                                                                                                                    "count":  15,
+                                                                                                                                    "totalMilliseconds":  884.7697,
+                                                                                                                                    "medianMilliseconds":  33.7312,
+                                                                                                                                    "meanMilliseconds":  58.984647,
+                                                                                                                                    "minimumMilliseconds":  15.1402,
+                                                                                                                                    "maximumMilliseconds":  126.8378
+                                                                                                                                },
+                                                                                                                     "input_preparation":  {
+                                                                                                                                               "count":  15,
+                                                                                                                                               "totalMilliseconds":  0.4478,
+                                                                                                                                               "medianMilliseconds":  0.009,
+                                                                                                                                               "meanMilliseconds":  0.029853,
+                                                                                                                                               "minimumMilliseconds":  0.0068,
+                                                                                                                                               "maximumMilliseconds":  0.2542,
+                                                                                                                                               "parentSharePercent":  0.050612
+                                                                                                                                           },
+                                                                                                                     "non_extraction":  {
+                                                                                                                                            "count":  15,
+                                                                                                                                            "totalMilliseconds":  139.6139,
+                                                                                                                                            "medianMilliseconds":  6.3132,
+                                                                                                                                            "meanMilliseconds":  9.307593,
+                                                                                                                                            "minimumMilliseconds":  6.0975,
+                                                                                                                                            "maximumMilliseconds":  23.294,
+                                                                                                                                            "parentSharePercent":  15.779688
+                                                                                                                                        },
+                                                                                                                     "reserve_extraction":  {
+                                                                                                                                                "count":  15,
+                                                                                                                                                "totalMilliseconds":  742.5928,
+                                                                                                                                                "medianMilliseconds":  13.737,
+                                                                                                                                                "meanMilliseconds":  49.506187,
+                                                                                                                                                "minimumMilliseconds":  8.9505,
+                                                                                                                                                "maximumMilliseconds":  119.0525,
+                                                                                                                                                "parentSharePercent":  83.930632
+                                                                                                                                            },
+                                                                                                                     "finalization":  {
+                                                                                                                                          "count":  15,
+                                                                                                                                          "totalMilliseconds":  2.0873,
+                                                                                                                                          "medianMilliseconds":  0.0975,
+                                                                                                                                          "meanMilliseconds":  0.139153,
+                                                                                                                                          "minimumMilliseconds":  0.0831,
+                                                                                                                                          "maximumMilliseconds":  0.2896,
+                                                                                                                                          "parentSharePercent":  0.235914
+                                                                                                                                      },
+                                                                                                                     "children_total":  {
+                                                                                                                                            "count":  15,
+                                                                                                                                            "totalMilliseconds":  884.7418,
+                                                                                                                                            "medianMilliseconds":  33.7276,
+                                                                                                                                            "meanMilliseconds":  58.982787,
+                                                                                                                                            "minimumMilliseconds":  15.1392,
+                                                                                                                                            "maximumMilliseconds":  126.8358
+                                                                                                                                        },
+                                                                                                                     "residual":  {
+                                                                                                                                      "count":  15,
+                                                                                                                                      "totalMilliseconds":  0.0279,
+                                                                                                                                      "medianMilliseconds":  0.0018,
+                                                                                                                                      "meanMilliseconds":  0.00186,
+                                                                                                                                      "minimumMilliseconds":  0.0008,
+                                                                                                                                      "maximumMilliseconds":  0.0036
+                                                                                                                                  }
+                                                                                                                 },
+                                                                                                     "reconciliation":  {
+                                                                                                                            "parentTotalMilliseconds":  884.7697,
+                                                                                                                            "childTotalMilliseconds":  884.7418,
+                                                                                                                            "residualTotalMilliseconds":  0.0279,
+                                                                                                                            "exactRoundedIdentity":  true
+                                                                                                                        },
+                                                                                                     "dominantExercisedSubCost":  {
+                                                                                                                                      "category":  "reserve_extraction",
+                                                                                                                                      "totalMilliseconds":  742.5928,
+                                                                                                                                      "parentSharePercent":  83.930632
+                                                                                                                                  }
+                                                                                                 }
+                                                                      },
+                                                                      {
+                                                                          "run":  "artifacts/performance/w206-build-work-orders-profile-diagnostic-t3/metrics-on",
+                                                                          "trialIndex":  3,
+                                                                          "commonSpikeSummary":  {
+                                                                                                     "sampleCount":  15,
+                                                                                                     "metrics":  {
+                                                                                                                     "parent":  {
+                                                                                                                                    "count":  15,
+                                                                                                                                    "totalMilliseconds":  938.0385,
+                                                                                                                                    "medianMilliseconds":  35.0173,
+                                                                                                                                    "meanMilliseconds":  62.5359,
+                                                                                                                                    "minimumMilliseconds":  15.3436,
+                                                                                                                                    "maximumMilliseconds":  187.2132
+                                                                                                                                },
+                                                                                                                     "input_preparation":  {
+                                                                                                                                               "count":  15,
+                                                                                                                                               "totalMilliseconds":  0.6145,
+                                                                                                                                               "medianMilliseconds":  0.0119,
+                                                                                                                                               "meanMilliseconds":  0.040967,
+                                                                                                                                               "minimumMilliseconds":  0.0062,
+                                                                                                                                               "maximumMilliseconds":  0.3837,
+                                                                                                                                               "parentSharePercent":  0.065509
+                                                                                                                                           },
+                                                                                                                     "non_extraction":  {
+                                                                                                                                            "count":  15,
+                                                                                                                                            "totalMilliseconds":  143.1453,
+                                                                                                                                            "medianMilliseconds":  6.2541,
+                                                                                                                                            "meanMilliseconds":  9.54302,
+                                                                                                                                            "minimumMilliseconds":  5.9864,
+                                                                                                                                            "maximumMilliseconds":  24.4659,
+                                                                                                                                            "parentSharePercent":  15.260067
+                                                                                                                                        },
+                                                                                                                     "reserve_extraction":  {
+                                                                                                                                                "count":  15,
+                                                                                                                                                "totalMilliseconds":  792.0147,
+                                                                                                                                                "medianMilliseconds":  11.4493,
+                                                                                                                                                "meanMilliseconds":  52.80098,
+                                                                                                                                                "minimumMilliseconds":  9.1704,
+                                                                                                                                                "maximumMilliseconds":  170.7521,
+                                                                                                                                                "parentSharePercent":  84.43307
+                                                                                                                                            },
+                                                                                                                     "finalization":  {
+                                                                                                                                          "count":  15,
+                                                                                                                                          "totalMilliseconds":  2.2321,
+                                                                                                                                          "medianMilliseconds":  0.1232,
+                                                                                                                                          "meanMilliseconds":  0.148807,
+                                                                                                                                          "minimumMilliseconds":  0.089,
+                                                                                                                                          "maximumMilliseconds":  0.2912,
+                                                                                                                                          "parentSharePercent":  0.237954
+                                                                                                                                      },
+                                                                                                                     "children_total":  {
+                                                                                                                                            "count":  15,
+                                                                                                                                            "totalMilliseconds":  938.0066,
+                                                                                                                                            "medianMilliseconds":  35.0132,
+                                                                                                                                            "meanMilliseconds":  62.533773,
+                                                                                                                                            "minimumMilliseconds":  15.3423,
+                                                                                                                                            "maximumMilliseconds":  187.2103
+                                                                                                                                        },
+                                                                                                                     "residual":  {
+                                                                                                                                      "count":  15,
+                                                                                                                                      "totalMilliseconds":  0.0319,
+                                                                                                                                      "medianMilliseconds":  0.0016,
+                                                                                                                                      "meanMilliseconds":  0.002127,
+                                                                                                                                      "minimumMilliseconds":  0.0008,
+                                                                                                                                      "maximumMilliseconds":  0.0041
+                                                                                                                                  }
+                                                                                                                 },
+                                                                                                     "reconciliation":  {
+                                                                                                                            "parentTotalMilliseconds":  938.0385,
+                                                                                                                            "childTotalMilliseconds":  938.0066,
+                                                                                                                            "residualTotalMilliseconds":  0.0319,
+                                                                                                                            "exactRoundedIdentity":  true
+                                                                                                                        },
+                                                                                                     "dominantExercisedSubCost":  {
+                                                                                                                                      "category":  "reserve_extraction",
+                                                                                                                                      "totalMilliseconds":  792.0147,
+                                                                                                                                      "parentSharePercent":  84.43307
+                                                                                                                                  }
+                                                                                                 }
+                                                                      }
+                                                                  ],
+                          "aggregateCommonSpikeSubCostSummary":  {
+                                                                     "sampleCount":  45,
+                                                                     "metrics":  {
+                                                                                     "parent":  {
+                                                                                                    "count":  45,
+                                                                                                    "totalMilliseconds":  2749.9948,
+                                                                                                    "medianMilliseconds":  33.7312,
+                                                                                                    "meanMilliseconds":  61.110996,
+                                                                                                    "minimumMilliseconds":  12.965,
+                                                                                                    "maximumMilliseconds":  205.9343
+                                                                                                },
+                                                                                     "input_preparation":  {
+                                                                                                               "count":  45,
+                                                                                                               "totalMilliseconds":  1.5188,
+                                                                                                               "medianMilliseconds":  0.0104,
+                                                                                                               "meanMilliseconds":  0.033751,
+                                                                                                               "minimumMilliseconds":  0.0062,
+                                                                                                               "maximumMilliseconds":  0.3837,
+                                                                                                               "parentSharePercent":  0.055229
+                                                                                                           },
+                                                                                     "non_extraction":  {
+                                                                                                            "count":  45,
+                                                                                                            "totalMilliseconds":  406.3959,
+                                                                                                            "medianMilliseconds":  6.2541,
+                                                                                                            "meanMilliseconds":  9.03102,
+                                                                                                            "minimumMilliseconds":  3.8646,
+                                                                                                            "maximumMilliseconds":  24.4659,
+                                                                                                            "parentSharePercent":  14.778061
+                                                                                                        },
+                                                                                     "reserve_extraction":  {
+                                                                                                                "count":  45,
+                                                                                                                "totalMilliseconds":  2335.489,
+                                                                                                                "medianMilliseconds":  11.4908,
+                                                                                                                "meanMilliseconds":  51.899755999999996,
+                                                                                                                "minimumMilliseconds":  8.9505,
+                                                                                                                "maximumMilliseconds":  183.4318,
+                                                                                                                "parentSharePercent":  84.927033
+                                                                                                            },
+                                                                                     "finalization":  {
+                                                                                                          "count":  45,
+                                                                                                          "totalMilliseconds":  6.5018,
+                                                                                                          "medianMilliseconds":  0.1125,
+                                                                                                          "meanMilliseconds":  0.144484,
+                                                                                                          "minimumMilliseconds":  0.079,
+                                                                                                          "maximumMilliseconds":  0.2912,
+                                                                                                          "parentSharePercent":  0.23643
+                                                                                                      },
+                                                                                     "children_total":  {
+                                                                                                            "count":  45,
+                                                                                                            "totalMilliseconds":  2749.9055,
+                                                                                                            "medianMilliseconds":  33.7276,
+                                                                                                            "meanMilliseconds":  61.109011,
+                                                                                                            "minimumMilliseconds":  12.9642,
+                                                                                                            "maximumMilliseconds":  205.9302
+                                                                                                        },
+                                                                                     "residual":  {
+                                                                                                      "count":  45,
+                                                                                                      "totalMilliseconds":  0.0893,
+                                                                                                      "medianMilliseconds":  0.0015,
+                                                                                                      "meanMilliseconds":  0.001984,
+                                                                                                      "minimumMilliseconds":  0.0008,
+                                                                                                      "maximumMilliseconds":  0.0041
+                                                                                                  }
+                                                                                 },
+                                                                     "reconciliation":  {
+                                                                                            "parentTotalMilliseconds":  2749.9948,
+                                                                                            "childTotalMilliseconds":  2749.9055,
+                                                                                            "residualTotalMilliseconds":  0.0893,
+                                                                                            "exactRoundedIdentity":  true
+                                                                                        },
+                                                                     "dominantExercisedSubCost":  {
+                                                                                                      "category":  "reserve_extraction",
+                                                                                                      "totalMilliseconds":  2335.489,
+                                                                                                      "parentSharePercent":  84.927033
+                                                                                                  }
+                                                                 },
+                          "perTrialVariance":  {
+                                                   "input_preparation":  {
+                                                                             "perTrialCommonSpikeTotalMilliseconds":  {
+                                                                                                                          "count":  3,
+                                                                                                                          "mean":  0.506267,
+                                                                                                                          "standardDeviation":  0.076615,
+                                                                                                                          "coefficientOfVariationPercent":  15.133308,
+                                                                                                                          "range":  0.1667
+                                                                                                                      },
+                                                                             "perTrialCommonSpikeMedianMilliseconds":  {
+                                                                                                                           "count":  3,
+                                                                                                                           "mean":  0.010167,
+                                                                                                                           "standardDeviation":  0.00125,
+                                                                                                                           "coefficientOfVariationPercent":  12.293989,
+                                                                                                                           "range":  0.0029
+                                                                                                                       }
+                                                                         },
+                                                   "non_extraction":  {
+                                                                          "perTrialCommonSpikeTotalMilliseconds":  {
+                                                                                                                       "count":  3,
+                                                                                                                       "mean":  135.4653,
+                                                                                                                       "standardDeviation":  8.487423,
+                                                                                                                       "coefficientOfVariationPercent":  6.265385,
+                                                                                                                       "range":  19.5086
+                                                                                                                   },
+                                                                          "perTrialCommonSpikeMedianMilliseconds":  {
+                                                                                                                        "count":  3,
+                                                                                                                        "mean":  5.5824,
+                                                                                                                        "standardDeviation":  0.992011,
+                                                                                                                        "coefficientOfVariationPercent":  17.770327,
+                                                                                                                        "range":  2.1333
+                                                                                                                    }
+                                                                      },
+                                                   "reserve_extraction":  {
+                                                                              "perTrialCommonSpikeTotalMilliseconds":  {
+                                                                                                                           "count":  3,
+                                                                                                                           "mean":  778.496333,
+                                                                                                                           "standardDeviation":  25.644399,
+                                                                                                                           "coefficientOfVariationPercent":  3.294094,
+                                                                                                                           "range":  58.2887
+                                                                                                                       },
+                                                                              "perTrialCommonSpikeMedianMilliseconds":  {
+                                                                                                                            "count":  3,
+                                                                                                                            "mean":  12.2257,
+                                                                                                                            "standardDeviation":  1.068785,
+                                                                                                                            "coefficientOfVariationPercent":  8.742115,
+                                                                                                                            "range":  2.2877
+                                                                                                                        }
+                                                                          },
+                                                   "finalization":  {
+                                                                        "perTrialCommonSpikeTotalMilliseconds":  {
+                                                                                                                     "count":  3,
+                                                                                                                     "mean":  2.167267,
+                                                                                                                     "standardDeviation":  0.060075,
+                                                                                                                     "coefficientOfVariationPercent":  2.771929,
+                                                                                                                     "range":  0.1448
+                                                                                                                 },
+                                                                        "perTrialCommonSpikeMedianMilliseconds":  {
+                                                                                                                      "count":  3,
+                                                                                                                      "mean":  0.1094,
+                                                                                                                      "standardDeviation":  0.010578,
+                                                                                                                      "coefficientOfVariationPercent":  9.668784,
+                                                                                                                      "range":  0.0257
+                                                                                                                  }
+                                                                    }
+                                               }
+                      },
+    "selectedSubCost":  {
+                            "status":  "selected",
+                            "category":  "reserve_extraction",
+                            "totalMilliseconds":  2335.489,
+                            "parentSharePercent":  84.927033,
+                            "basis":  "largest child-phase total across common greater-than-threshold spike occurrences"
+                        },
+    "limitations":  [
+                        "Metrics-on instrumentation adds monotonic clock reads and is unsuitable for release-gate timing claims.",
+                        "Dirty-source runs are identified as uncommitted diagnostic evidence and cannot become canonical release evidence.",
+                        "Only balanced_basin seed 1337, 16 citizens, cold cache, warmup ticks 2, and 300 measured ticks are characterized.",
+                        "Sub-cost selection is descriptive and authorizes no optimization, threshold change, feature expansion, PR, or merge."
+                    ]
+}

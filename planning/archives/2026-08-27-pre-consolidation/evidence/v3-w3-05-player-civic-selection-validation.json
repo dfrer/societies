@@ -1,0 +1,163 @@
+{
+  "schemaVersion": 1,
+  "capturedUtc": "2026-08-26T01:41:06Z",
+  "workItem": "W3-05-follow-up-player-civic-selection",
+  "status": "merged_automated_acceptance_pass_author_smoke_observation_blocked",
+  "source": {
+    "baseCommit": "ed94b1f2ab016c53988f86902e0e28b7f28849df",
+    "implementationCommit": "5c732b1672397c552a0ce6d0b4f0b162006d79a1",
+    "clarityAndCognitionCommit": "013ccfecb5500c4c32de3c99c9d50cdbf12fcd87",
+    "restoredGuardRepairCommit": "edfb673f6a4f05f3f83b61865b4036c51d872090",
+    "finalTestContractCommit": "37afb1b2cea98e4e00076a096d4b52f1f355e5fc",
+    "branch": "feature/v3-w3-05-player-civic-selection",
+    "worktree": "C:\\Users\\hunte\\.codex\\worktrees\\w305-followup\\societies",
+    "productionRuntimeChanged": true,
+    "schemaOrMigrationChanged": false
+  },
+  "coverage": {
+    "playerInput": {
+      "protect": "4",
+      "drawDown": "5",
+      "cognition": "6",
+      "authority": "GameManager.SelectCivicPolicy constructs a current command and calls PrototypeRuntimeSession.SelectCivicPolicy only"
+    },
+    "presentation": [
+      "neutral policy reading",
+      "Protect and Drawdown policy",
+      "reed quota",
+      "wetland health and band",
+      "material consequence",
+      "future reeds support or opposition",
+      "shelter now support or opposition",
+      "one-use visible deterministic_fallback civic.cognition.decision",
+      "resumed duplicate rejection from restored cognition event history"
+    ],
+    "preservedRegressionContracts": [
+      "duplicate player selection rejection",
+      "stale command rejection",
+      "exactly-once cognition event",
+      "schema-v9 save-resume duplicate protection",
+      "reset",
+      "offline no-input"
+    ]
+  },
+  "review": {
+    "role": "deep_reviewer",
+    "result": "GO",
+    "findings": "no P0-P2 findings on edfb673f; no findings on final test-only commit 37afb1b2",
+    "closedFindings": [
+      "selected-policy stance labels",
+      "1280x720 combined citizen-interest-structure seven-line capacity",
+      "visible cognition source and event",
+      "schema-v9 restored-session duplicate cognition rejection"
+    ]
+  },
+  "results": [
+    {
+      "command": "dotnet test tests/Societies.Core.Tests/Societies.Core.Tests.csproj --configuration Release --filter PrototypeHudLayoutTests|PrototypeHudTextBuilderTests",
+      "result": "pass",
+      "passed": 24,
+      "failed": 0,
+      "skipped": 0,
+      "note": "The test project emitted its existing generated Main CS0436 warning; production builds remained warning-free."
+    },
+    {
+      "command": "scripts/run-prototype-validation.ps1",
+      "result": "pass",
+      "managed": { "passed": 485, "failed": 0, "skipped": 0 },
+      "godot": { "passed": 25, "failed": 0 },
+      "productionDebugBuild": { "warnings": 0, "errors": 0 },
+      "civicSmoke": "Test_MainScene_CivicPolicySelectionInputSmoke passed inside the full Godot suite",
+      "observedCoverage": "both policy key routes, selected-policy labels, seven-line capacity, duplicate policy and cognition rejection, HUD consequence, reset, both F3 interests, deterministic_fallback civic.cognition.decision, GameManager schema-v9 save/load rejection, and fresh F7 allowance"
+    },
+    {
+      "command": "dotnet build src/societies/Societies.csproj --configuration Release",
+      "result": "pass",
+      "warnings": 0,
+      "errors": 0,
+      "commit": "37afb1b2cea98e4e00076a096d4b52f1f355e5fc"
+    },
+    {
+      "command": "dotnet build src/societies/Societies.sln --configuration ExportRelease",
+      "result": "pass",
+      "warnings": 0,
+      "errors": 0,
+      "commit": "37afb1b2cea98e4e00076a096d4b52f1f355e5fc"
+    },
+    {
+      "command": "git diff --check",
+      "result": "pass"
+    }
+  ],
+  "performanceMatrix": {
+    "command": "scripts/run-performance-baseline-matrix.ps1 -GodotPath <Godot 4.6.2 Mono>",
+    "sourceCommit": "edfb673f6a4f05f3f83b61865b4036c51d872090",
+    "finalCommitDelta": "37afb1b2 changes one managed test assertion only; production sources and release bundle inputs are unchanged",
+    "root": "artifacts/performance/w103c-release-20260826-011321-642",
+    "status": "pass",
+    "contractStatus": "pass",
+    "budgetStatus": "safety_failure",
+    "pairs": { "passed": 14, "expected": 14 },
+    "releaseVerified": true,
+    "coldWarmDeterministicEquivalence": true,
+    "reference": {
+      "targetPassed": false,
+      "safetyPassed": false,
+      "medianP95Milliseconds": 41.2477,
+      "medianMaximumMilliseconds": 200.8133
+    },
+    "soak": { "deterministic": true, "safetyPassed": true },
+    "forcedInvalidation": { "targetPassed": true, "safetyPassed": true },
+    "stress24Citizen": {
+      "classification": "characterization",
+      "targetPassed": false,
+      "p95Milliseconds": 144.4731,
+      "maximumMilliseconds": 200.9875
+    },
+    "claim": "The correctness and evidence contract passed. The raw timing budget remains safety_failure and is not softened into a performance pass."
+  },
+  "invalidAcceptanceAttempt": {
+    "result": "stopped_after_first_failure",
+    "finding": "The ordinary compact inspector used 6 of 7 available lines while a stale test expected exactly 7.",
+    "repair": "37afb1b2 changes the ordinary fixture to a capacity assertion; the civic maximum-density fixture still proves exact 7 of 7.",
+    "finalRerun": "pass"
+  },
+  "authorSmoke": {
+    "status": "blocked_by_reliable_window_observation",
+    "window": "Societies (DEBUG) was launched and uniquely identified",
+    "attempts": 2,
+    "error": "SetIsBorderRequired failed: No such interface supported (0x80004002)",
+    "actionTaken": "No blind input was sent; the isolated game window was closed.",
+    "unverifiedManualBoundary": [
+      "visible Protect and Drawdown HUD readings",
+      "visible future-reeds and shelter-now citizen observations",
+      "visible deterministic_fallback civic.cognition.decision status",
+      "ordinary player-route reed harvest and resulting quota or wetland-health update",
+      "human visual acceptance at 1280x720"
+    ],
+    "manualInstructions": "planning/active/v3-w3-05-player-civic-selection.md",
+    "claim": "Automated main-scene input smoke passed, but author or visual acceptance is not claimed."
+  },
+  "delivery": {
+    "status": "merged",
+    "headCommit": "155b4e6cc61f7478c008709adcaf521a1b0008ed",
+    "pullRequest": 175,
+    "requiredCheck": {
+      "name": "build-test-smoke",
+      "result": "pass",
+      "duration": "4m13s",
+      "run": 32919607942
+    },
+    "mergedAt": "2026-08-26T01:41:06Z",
+    "mergeCommit": "36c445bc594daa3c6eabce49aa7a98e1f558dd87"
+  },
+  "inactiveScope": [
+    "W3-06+",
+    "W4",
+    "Snow Globe integration",
+    "live provider calls",
+    "credentials",
+    "network",
+    "payment or retry behavior"
+  ]
+}

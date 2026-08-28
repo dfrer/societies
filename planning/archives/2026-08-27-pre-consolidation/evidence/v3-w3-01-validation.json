@@ -1,0 +1,151 @@
+{
+  "schemaVersion": 1,
+  "scope": "V3-W3-01 final local validation evidence",
+  "status": "pass",
+  "evidenceType": "post-commit record of orchestrator-observed validation performed on the identical staged bytes committed as 9d8bff4",
+  "source": {
+    "branch": "feature/v3-w3-01-civic-state-contract",
+    "commit": "9d8bff42af5b5ad3f5a270b6579f9c51a400343a",
+    "tree": "6f573db6540b50cd6a8e3e6f49cb6bae44d83713",
+    "commitSubject": "Add deterministic civic policy contract",
+    "testedByteIdentity": "The orchestrator ran the recorded validation commands against the staged implementation bytes immediately before they became the commit above. This record was added afterward and was not an input to those commands."
+  },
+  "boundInputs": [
+    { "kind": "test_manifest", "path": "tests/test-manifest.json", "bytes": 17143, "sha256": "be39bef9ca9a2d6c2a4579a697504e731f777d60bcecb0d73755cd90b0821961", "gitBlob": "40899a8d7880b217e771ef89f2c80966d7ff1c4a" },
+    { "kind": "validation_script", "path": "scripts/run-prototype-validation.ps1", "bytes": 1465, "sha256": "0e8ef47fc1b7aa7a25ef434c6fc18666b5d12118a64359a55973a79f953bde21", "gitBlob": "68fa7da08ba3a6d8680286d4a18a70f579febe16" },
+    { "kind": "project", "path": "src/societies/Societies.csproj", "bytes": 460, "sha256": "0775244c2fc78c2c9e5e49de8b53ec8d4812744b31068ec629cb4b60092fcf61", "gitBlob": "4ff3844da4729064657bdb8fceb768f7b7486b12" },
+    { "kind": "solution", "path": "src/societies/Societies.sln", "bytes": 1255, "sha256": "89a06b1d6183c5da57785fad867f14b2167594c82c00bd2e8b873d4e130697e7", "gitBlob": "452c52852933fe63993962eccf23e4fabd49337a" },
+    { "kind": "godot_project", "path": "src/societies/project.godot", "bytes": 5147, "sha256": "a8f26ad3ea220920f2a977848821b35f466ce1e6dcae834cd8406231ce4e120c", "gitBlob": "c14db8ed01dd22635ce3f2e1e3612ef9b5cf93fb" },
+    { "kind": "test_project", "path": "tests/Societies.Core.Tests/Societies.Core.Tests.csproj", "bytes": 1238, "sha256": "65f9265364229a65ab7a25f7f8269d929b25f44ae3a9ff35ee3bea7507952ae5", "gitBlob": "7264596070f86b0418b949750ac8d1cc2c2e07a1" },
+    { "kind": "production_source", "path": "src/societies/scripts/core/PrototypeCivicPolicy.cs", "bytes": 6418, "sha256": "83656b9c7027b105c87d348e6a87f2dd5bfec90ea2a9fc286d51c7a14f87abb0", "gitBlob": "322342807f6073d50a30815e7edc81e44267d854" },
+    { "kind": "production_source", "path": "src/societies/scripts/core/PrototypeEventTypes.cs", "bytes": 3346, "sha256": "bb8ac8e51b423d7bd4dd05d9554e378b1a32411833d0e84fd982eb7495270619", "gitBlob": "92f1afc3a1c00120ee201be18bef9a24ab540a42" },
+    { "kind": "production_source", "path": "src/societies/scripts/core/PrototypeResourceLedger.cs", "bytes": 11423, "sha256": "dab71e4a937d298eecc4f273f29adb76b3d41c05ea91bac93226a5cf8274d7e9", "gitBlob": "48232f1484a07dbf290a42fa83fb175bce6a416c" },
+    { "kind": "production_source", "path": "src/societies/scripts/core/PrototypeRunArtifactManager.cs", "bytes": 50857, "sha256": "a8abf841da6b15896e51d210c6ef98ac22a17732e3cd1d483aed3eb5c34ec3c3", "gitBlob": "5f9f7413f7ee8f3c53f3a0e8bfe0919ad4f052fa" },
+    { "kind": "production_source", "path": "src/societies/scripts/core/PrototypeRunSummaryBuilder.cs", "bytes": 14886, "sha256": "a1cceebe504d377ce7a68ee390a047b1be9ec20c84d534d2614262b83de2ab42", "gitBlob": "7e7c7f469f20a9b29a49d4741282430a88b0a704" },
+    { "kind": "production_source", "path": "src/societies/scripts/core/PrototypeRuntimePersistence.cs", "bytes": 33545, "sha256": "e9961a5f956c5f64d5dbd59087b70a351d368d48a9c544e21bc472c2e052a2d5", "gitBlob": "98ed9e8b7a2a600331578ebf919ae0ca76b8d571" },
+    { "kind": "production_source", "path": "src/societies/scripts/core/PrototypeRuntimeSession.cs", "bytes": 74865, "sha256": "348959cdd8e924abf197780555f9007f4eceb89ee9a26e9ac352ff7d3d542626", "gitBlob": "777b5a59df555a7dc0fbf0d56b3fe8e6a51b3536" },
+    { "kind": "godot_test_harness", "path": "src/societies/tests/HeadlessTestRunner.cs", "bytes": 87868, "sha256": "f1badb14347bbd3a826912fb4304c622300fbcf08c1bb672854868a4d91aa3a2", "gitBlob": "2f61689a1115b9cc4c56ed205a861d6753a8299b" },
+    { "kind": "managed_test", "path": "tests/Societies.Core.Tests/Core/PrototypeArtifactGenerationTests.cs", "bytes": 23791, "sha256": "3409a17c86a69edad2f476a44e80b7c52425c574581842e68999b57375b19c94", "gitBlob": "24c780915f0a4e0a1f507d1d3b6907f49a1890ec" },
+    { "kind": "managed_test", "path": "tests/Societies.Core.Tests/Core/PrototypeCivicPolicyTests.cs", "bytes": 9891, "sha256": "cb06f9bbc6a0312a3c5e2116b5c72cc944df914ee80b4ae703d7271e1eedcfb8", "gitBlob": "7706e81ebae3609f887b3f55daaa722d17add173" },
+    { "kind": "managed_test", "path": "tests/Societies.Core.Tests/Core/PrototypeContributionTests.cs", "bytes": 18324, "sha256": "c31bd085cabf4e1c1860d34f72fb7dc9dda0631356db97251e007be5f110a30d", "gitBlob": "b92120c3da2789364e1bd7e984bffb68eba621e3" },
+    { "kind": "managed_test", "path": "tests/Societies.Core.Tests/Core/PrototypeDirectiveSessionTests.cs", "bytes": 6495, "sha256": "e48f2c51c1b2c2bfa4718a8446c01c48a9a40742041bf43cc1a7221d71962c45", "gitBlob": "67622cc20c118544aa96215665e3ba1547b72a55" },
+    { "kind": "managed_test", "path": "tests/Societies.Core.Tests/Core/PrototypePersistenceBoundaryTests.cs", "bytes": 15122, "sha256": "41a935cd500fdb7034586d432c4a0197156ed9957017f5bcc9b6a851bd4649d7", "gitBlob": "a04225aa53c1db0df059aa771d82bda8feaac207" },
+    { "kind": "managed_test", "path": "tests/Societies.Core.Tests/Core/PrototypeRuntimeSessionTests.cs", "bytes": 34554, "sha256": "80ac50ebb3b53a50948461b9b6c8c6453412d044e5c460a43b5e413e35f525fa", "gitBlob": "f29830d16b6d9477dca34ff34cbb2f0ac0b9d4be" },
+    { "kind": "managed_test", "path": "tests/Societies.Core.Tests/Core/PrototypeSchemaV8PersistenceTests.cs", "bytes": 32463, "sha256": "9301344c2226526ebe1d38fd53416c30ec5eaf2db69f60d274b88d5f99840ab9", "gitBlob": "e98691379e08f761308a78e7830db1f8b3626ab8" },
+    { "kind": "managed_test", "path": "tests/Societies.Core.Tests/Simulation/PrototypeCrisisTests.cs", "bytes": 30400, "sha256": "d19d4c909b571acbb85ff403b80563a6a338d8c4cd1fd8f2fbf61d87abdb2bda", "gitBlob": "0f091d05b38f8c649e3162fd0b8c62944ea4d5e4" }
+  ],
+  "manifestCoverage": {
+    "managedExpected": 376,
+    "managedObserved": 376,
+    "managedFailed": 0,
+    "managedSkipped": 0,
+    "godotExpected": 23,
+    "godotObserved": "not independently parsed from console; the direct Godot process exited 0"
+  },
+  "results": [
+    {
+      "command": "dotnet build src/societies/Societies.csproj --configuration Debug",
+      "configuration": "Debug",
+      "exitCode": 0,
+      "elapsedSeconds": 4.61,
+      "warnings": 0,
+      "errors": 0,
+      "result": "pass",
+      "provenance": "orchestrator-observed on final staged bytes"
+    },
+    {
+      "command": "focused Release civic/schema/persistence/artifact/crisis managed suite",
+      "configuration": "Release",
+      "exitCode": 0,
+      "elapsed": "00:01:05",
+      "passed": 145,
+      "failed": 0,
+      "skipped": 0,
+      "total": 145,
+      "result": "pass",
+      "provenance": "orchestrator-observed direct focused test result on final staged bytes"
+    },
+    {
+      "command": "./scripts/run-prototype-validation.ps1",
+      "godotVersion": "4.6.2",
+      "exitCode": 0,
+      "wallSeconds": 313.6,
+      "result": "pass",
+      "wrapperSteps": [
+        "dotnet build src/societies/Societies.csproj",
+        "dotnet test tests/Societies.Core.Tests/Societies.Core.Tests.csproj --configuration Release",
+        "Godot --headless --path src/societies --build-solutions --quit",
+        "Godot --headless --path src/societies res://tests/HeadlessTestRunner.tscn"
+      ],
+      "outputProvenance": "Authoritative wrapper exit only; child summaries are not independently parsed from this wrapper invocation."
+    },
+    {
+      "command": "dotnet test tests/Societies.Core.Tests/Societies.Core.Tests.csproj --configuration Release --no-build",
+      "configuration": "Release",
+      "exitCode": 0,
+      "elapsed": "00:05:19",
+      "passed": 376,
+      "failed": 0,
+      "skipped": 0,
+      "total": 376,
+      "result": "pass",
+      "outputProvenance": "orchestrator-observed direct VSTest summary on final staged bytes"
+    },
+    {
+      "command": "dotnet build src/societies/Societies.csproj --configuration Release",
+      "configuration": "Release",
+      "exitCode": 0,
+      "elapsedSeconds": 1.34,
+      "warnings": 0,
+      "errors": 0,
+      "result": "pass",
+      "provenance": "orchestrator-observed on final staged bytes"
+    },
+    {
+      "command": "dotnet build src/societies/Societies.sln --configuration ExportRelease",
+      "configuration": "ExportRelease",
+      "exitCode": 0,
+      "elapsedSeconds": 2.89,
+      "warnings": 0,
+      "errors": 0,
+      "result": "pass",
+      "provenance": "orchestrator-observed on final staged bytes"
+    },
+    {
+      "command": "Godot 4.6.2 --headless --path src/societies res://tests/HeadlessTestRunner.tscn",
+      "godotVersion": "4.6.2",
+      "exitCode": 0,
+      "result": "pass",
+      "testCount": {
+        "expected": 23,
+        "source": "tests/test-manifest.json",
+        "consoleObserved": "not independently parsed"
+      },
+      "outputProvenance": "Direct headless process exit only; do not infer a console-parsed 23/23 result."
+    }
+  ],
+  "verification": {
+    "headMatchesBoundCommit": true,
+    "headTreeMatchesBoundTree": true,
+    "worktreeTrackedPathsMatchHead": true,
+    "indexTrackedPathsMatchHead": true,
+    "trackedSourceTestScriptPathsChangedAfterCommit": false,
+    "commands": [
+      "git diff --quiet 9d8bff42af5b5ad3f5a270b6579f9c51a400343a --",
+      "git diff --cached --quiet 9d8bff42af5b5ad3f5a270b6579f9c51a400343a --",
+      "git diff --check 9d8bff42af5b5ad3f5a270b6579f9c51a400343a --"
+    ],
+    "gitDiffCheckExitCode": 0,
+    "notes": "The two quiet diffs returned 0 before this untracked evidence file was created. The commit/tree and every listed bound input were then read from the current clean HEAD worktree and checked against its commit blob."
+  },
+  "workingState": {
+    "preEvidenceStatus": "clean: no tracked, staged, or untracked paths were reported before this evidence file was created",
+    "evidencePath": "planning/active/evidence/v3-w3-01-validation.json",
+    "concurrentEvidenceHandling": "A separately created untracked performance-evidence file, if present after this capture, is outside this record and does not alter the bound commit/tree or the tested staged source bytes."
+  },
+  "limitations": [
+    "No long full suite or performance matrix was rerun for this evidence-only task.",
+    "The Godot expected count is manifest-bound; its direct console count was not independently parsed.",
+    "Earlier test-only compile and legacy-fixture diagnostics are not final failures and are intentionally excluded from the final result set."
+  ]
+}

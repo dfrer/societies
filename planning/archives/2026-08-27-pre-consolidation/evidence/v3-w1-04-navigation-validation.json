@@ -1,0 +1,99 @@
+{
+  "schemaVersion": 1,
+  "capturedUtc": "2026-07-13T02:42:44.0798468Z",
+  "scope": "V3-W1-04_navigation_correctness_only",
+  "status": "passed",
+  "source": {
+    "branch": "feature/v3-navigation-semantics",
+    "implementationCommit": "7918d49",
+    "testedContentCommittedWithoutChanges": true,
+    "sourceCleanAfterImplementationCommit": true
+  },
+  "claims": {
+    "navigationCorrectnessEvidence": true,
+    "performanceBaselineEvidence": false,
+    "performanceSafetyGateLifted": false,
+    "week2FeatureExpansionAllowed": false,
+    "nextRequiredSlice": "V3-W1-05"
+  },
+  "contracts": {
+    "explicitUnreachableResults": true,
+    "blockedStartsRejected": true,
+    "blockedDestinationsRejected": true,
+    "diagonalCornerCuttingRejected": true,
+    "builtPathHeuristicAdmissible": true,
+    "deterministicTieBreaking": true,
+    "exactEndpointsRematerializedFromCachedCellRoutes": true,
+    "unreachableResultsCached": true,
+    "unreachableWorkOrdersSkippedAndCounted": true,
+    "allRequiredWorkOrderLegsPreflighted": true,
+    "existingScoreFormulaPreserved": true,
+    "postPickupFailureRestoresInventory": true,
+    "wetlandResourcesUseWalkableInteractionPositions": true,
+    "legacyWetlandPositionsNormalized": true
+  },
+  "validation": {
+    "affectedProgressionAndResumeTests": {
+      "passed": 3,
+      "failed": 0,
+      "duration": "2m24s"
+    },
+    "requiredDotnetTests": {
+      "passed": 110,
+      "failed": 0,
+      "duration": "4m51s"
+    },
+    "solutionBuilds": [
+      {
+        "configuration": "Debug",
+        "warnings": 0,
+        "errors": 0
+      },
+      {
+        "configuration": "ExportDebug",
+        "warnings": 0,
+        "errors": 0
+      },
+      {
+        "configuration": "ExportRelease",
+        "warnings": 0,
+        "errors": 0
+      }
+    ],
+    "godot": {
+      "version": "4.6.2-stable (official)",
+      "headlessPassed": 16,
+      "headlessFailed": 0
+    },
+    "gitDiffCheck": true,
+    "independentReview": {
+      "p0Findings": 0,
+      "p1Findings": 0
+    }
+  },
+  "testInventory": {
+    "requiredDotnet": 110,
+    "fast": 89,
+    "integration": 11,
+    "soak": 10,
+    "godotHeadless": 16,
+    "newW104Tests": 7
+  },
+  "correctnessChanges": [
+    "Disconnected or blocked destinations no longer receive direct fallback routes.",
+    "Settlement placements that previously landed on wetland cells resolve deterministically to the nearest walkable cell.",
+    "Wetland resource nodes keep their resource identity while workers travel to deterministic walkable interaction positions.",
+    "Unreachable candidate work remains available for other citizens but is not assigned to a citizen that cannot complete every required leg.",
+    "Legacy active harvesters on blocked cells emit no harvest request and create no carry state when the cache leg cannot begin."
+  ],
+  "warnings": [
+    "The intentional frame-catch-up smoke emits its expected backlog warning.",
+    "One optional runtime-metrics artifact update reported a temporary-path access warning; the headless metrics test and the complete 16-test suite passed."
+  ],
+  "gate": {
+    "w104Complete": true,
+    "w105Unblocked": true,
+    "w103cSafetyFailureStillAuthoritative": true,
+    "canonicalPerformanceMatrixRerunAfterW105": true
+  }
+}
