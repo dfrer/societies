@@ -3,33 +3,164 @@ name: Snow Globe Lab Tests
 on:
   pull_request:
     branches: [master, main]
-    paths:
-      - 'labs/**'
-      - 'tests/Societies.SnowGlobe.*/**'
-      - 'artifacts/snowglobe/**'
-      - '.github/workflows/lab-tests.yml'
-      - 'project-governance.json'
-      - 'scripts/check-project-governance.py'
   workflow_dispatch:
   schedule:
     - cron: '0 3 * * 6'
+
+# This workflow reads repository source and uploads only generated TRX reports.
+permissions:
+  contents: read
 
 concurrency:
   group: snow-globe-lab-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
-  lab-tests:
+  detect-lab-changes:
+    name: Detect Snow Globe lab changes
+    runs-on: ubuntu-latest
+    outputs:
+      relevant: ${{ steps.classify.outputs.relevant }}
+      classification: ${{ steps.classify.outputs.classification }}
+
+    steps:
+      - name: Checkout exact PR head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Classify change scope
+        id: classify
+        shell: bash
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -euo pipefail
+
+          # Scheduled and manual runs intentionally exercise the full laboratory
+          # suite. Pull requests use their immutable base/head commits only.
+          if [[ "$GITHUB_EVENT_NAME" != "pull_request" ]]; then
+            echo "relevant=true" >> "$GITHUB_OUTPUT"
+            echo "classification=scheduled-or-manual" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if [[ ! "$BASE_SHA" =~ ^[0-9a-f]{40}$ ]] || [[ ! "$HEAD_SHA" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "::error::PR base/head SHAs must be immutable 40-character lowercase Git object IDs."
+            exit 1
+          fi
+
+          git cat-file -e "${BASE_SHA}^{commit}"
+          git cat-file -e "${HEAD_SHA}^{commit}"
+
+          # Keep governance inputs synchronized with the same manifest consumed
+          # by the Windows suite. The static entries below cover its executable
+          # manifest/checker; this list covers every manifest-enumerated file.
+          governance_input_list="$(python3 -I - <<'PY'
+          import json
+          import re
+          from pathlib import Path
+          from urllib.parse import unquote
+
+          root = Path.cwd().resolve()
+          manifest = json.loads((root / "project-governance.json").read_text(encoding="utf-8"))
+          inputs = set()
+          for key in ("canonical_documents",):
+              value = manifest.get(key, {})
+              if isinstance(value, dict):
+                  inputs.update(item for item in value.values() if isinstance(item, str))
+          for key in ("scoped_agent_contracts", "root_documents", "live_markdown_documents", "required_archives"):
+              value = manifest.get(key, [])
+              if isinstance(value, list):
+                  inputs.update(item for item in value if isinstance(item, str))
+          inputs.update(("docs/project/CURRENT_STATE.md", "planning/active/MILESTONE.md", "docs/project/DECISION_LOG.md"))
+
+          markdown_link = re.compile(r"!?\[[^\]]*\]\(([^)]+)\)")
+          for relative in manifest.get("live_markdown_documents", []):
+              if not isinstance(relative, str):
+                  continue
+              document = root / relative
+              if not document.is_file():
+                  continue
+              for match in markdown_link.finditer(document.read_text(encoding="utf-8")):
+                  target = match.group(1).strip()
+                  if target.startswith("<") and ">" in target:
+                      target = target[1:target.index(">")]
+                  else:
+                      target = target.split(maxsplit=1)[0]
+                  if target.startswith(("http://", "https://", "mailto:", "tel:", "#")):
+                      continue
+                  target = unquote(target.split("#", 1)[0]).strip()
+                  if not target:
+                      continue
+                  linked = root / target.lstrip("/") if target.startswith("/") else document.parent / target
+                  try:
+                      inputs.add(linked.resolve().relative_to(root).as_posix())
+                  except ValueError:
+                      pass
+          print("\n".join(sorted(inputs)))
+          PY
+          )"
+          mapfile -t governance_inputs <<< "$governance_input_list"
+
+          relevant=false
+          mapfile -d '' -t changed_files < <(git diff --name-only --no-renames -z "$BASE_SHA" "$HEAD_SHA")
+
+          if [[ ${#changed_files[@]} -eq 0 ]]; then
+            echo "::error::The PR base/head comparison returned no changed files."
+            exit 1
+          fi
+
+          for path in "${changed_files[@]}"; do
+            case "$path" in
+              # Direct lab source, tests, evidence, and this executable contract.
+              labs/* | tests/Societies.SnowGlobe.*/* | artifacts/snowglobe/* | .github/workflows/lab-tests.yml)
+                relevant=true
+                ;;
+              # Shared .NET inputs. Root inputs affect every command; the tests
+              # directory is an MSBuild/NuGet ancestor of every lab test project.
+              global.json | [Nn]u[Gg]et.[Cc]onfig | Directory.Build.props | Directory.Build.targets | Directory.Build.rsp | Directory.Packages.props | Directory.Packages.targets | \
+              tests/Directory.Build.* | tests/Directory.Packages.* | tests/[Nn]u[Gg]et.[Cc]onfig)
+                relevant=true
+                ;;
+              # The lab runs this governance checker before .NET work.
+              project-governance.json | scripts/check-project-governance.py | planning/active/*)
+                relevant=true
+                ;;
+            esac
+
+            for governed_path in "${governance_inputs[@]}"; do
+              if [[ "$path" == "$governed_path" ]]; then
+                relevant=true
+                break
+              fi
+            done
+          done
+
+          printf 'Changed files:\n'
+          printf '  %s\n' "${changed_files[@]}"
+          echo "relevant=$relevant" >> "$GITHUB_OUTPUT"
+          echo "classification=pr-base-head" >> "$GITHUB_OUTPUT"
+
+  run-lab-tests:
     # The durable premium journal and trust-anchor tests deliberately depend on
     # Windows handle identity, reparse-point, ACL, and file-sharing semantics.
     # Running this suite on Linux turns supported-platform assertions into
     # hundreds of false failures instead of testing the production contract.
+    name: Run Snow Globe laboratory suite
+    needs: detect-lab-changes
+    if: needs.detect-lab-changes.result == 'success' && needs.detect-lab-changes.outputs.relevant == 'true'
     runs-on: windows-latest
     timeout-minutes: 60
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -86,3 +217,47 @@ jobs:
           name: snow-globe-lab-test-reports
           path: '**/TestResults/*.trx'
           retention-days: 30
+
+  # Keep this job ID stable for master branch protection. It is a real gate:
+  # it rejects failed classification and every relevant-suite failure/cancel/skip.
+  lab-tests:
+    name: lab-tests
+    needs: [detect-lab-changes, run-lab-tests]
+    if: always()
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Enforce Snow Globe laboratory result
+        shell: bash
+        env:
+          DETECTION_RESULT: ${{ needs.detect-lab-changes.result }}
+          RELEVANT: ${{ needs.detect-lab-changes.outputs.relevant }}
+          CLASSIFICATION: ${{ needs.detect-lab-changes.outputs.classification }}
+          LAB_RESULT: ${{ needs.run-lab-tests.result }}
+        run: |
+          set -euo pipefail
+          echo "classification=${CLASSIFICATION:-missing} relevant=${RELEVANT:-missing} detection=${DETECTION_RESULT} lab=${LAB_RESULT}"
+
+          if [[ "$DETECTION_RESULT" != "success" ]]; then
+            echo "::error::Snow Globe change detection failed; the required laboratory gate cannot be bypassed."
+            exit 1
+          fi
+
+          case "$RELEVANT" in
+            true)
+              if [[ "$LAB_RESULT" != "success" ]]; then
+                echo "::error::Relevant Snow Globe change requires a successful Windows laboratory suite; observed '$LAB_RESULT'."
+                exit 1
+              fi
+              ;;
+            false)
+              if [[ "$LAB_RESULT" != "skipped" ]]; then
+                echo "::error::Unrelated classification must skip the Windows laboratory suite; observed '$LAB_RESULT'."
+                exit 1
+              fi
+              ;;
+            *)
+              echo "::error::Snow Globe change detection produced an invalid relevance result."
+              exit 1
+              ;;
+          esac
