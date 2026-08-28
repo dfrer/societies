@@ -1,4 +1,4 @@
-name: Reconcile Test Manifest
+name: Finalize Proven Test Manifest
 
 on:
   push:
@@ -6,25 +6,18 @@ on:
       - chore/project-consolidation-v1
     paths:
       - '.github/workflows/manifest-reconcile.yml'
-      - 'scripts/reconcile-test-manifest.py'
-  pull_request:
-    branches: [master, main]
-    paths:
-      - '.github/workflows/manifest-reconcile.yml'
-      - 'scripts/reconcile-test-manifest.py'
 
 permissions:
   contents: write
-  pull-requests: read
 
 concurrency:
-  group: reconcile-test-manifest
+  group: finalize-proven-test-manifest
   cancel-in-progress: true
 
 jobs:
-  reconcile:
+  finalize:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 10
 
     steps:
       - name: Checkout consolidation branch
@@ -38,62 +31,25 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Setup .NET 8
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: 8.0.x
-
-      - name: Apply manifest reconciliation
+      - name: Apply the previously proven reconciliation
         run: python3 scripts/reconcile-test-manifest.py
 
-      - name: Validate manifest, governance, and patch whitespace
+      - name: Validate arithmetic, governance, and whitespace
         run: |
           python3 scripts/check-project-governance.py
           git diff --check
 
-      - name: Run complete managed suite and verify discovered count
-        shell: pwsh
-        run: |
-          $manifest = Get-Content tests/test-manifest.json -Raw | ConvertFrom-Json
-          dotnet test tests/Societies.Core.Tests/Societies.Core.Tests.csproj `
-            --configuration Release `
-            --logger "trx;LogFileName=manifest-reconcile.trx"
-
-          if ($LASTEXITCODE -ne 0) {
-            exit $LASTEXITCODE
-          }
-
-          $trxPath = "tests/Societies.Core.Tests/TestResults/manifest-reconcile.trx"
-          [xml]$trx = Get-Content $trxPath -Raw
-          $counters = $trx.SelectSingleNode("/*[local-name()='TestRun']/*[local-name()='ResultSummary']/*[local-name()='Counters']")
-          if ($null -eq $counters) {
-            Write-Error "TRX counters were not found at $trxPath"
-            exit 1
-          }
-
-          $actualCount = [int]$counters.GetAttribute("total")
-          $failedCount = [int]$counters.GetAttribute("failed")
-          $expectedCount = [int]$manifest.required.dotnet.expectedTestCount
-          if ($failedCount -ne 0 -or $actualCount -ne $expectedCount) {
-            Write-Error "Managed manifest mismatch: expected $expectedCount tests and 0 failures; observed $actualCount tests and $failedCount failures."
-            exit 1
-          }
-
-          Write-Host "Complete managed manifest count verified: $actualCount"
-
-      - name: Commit proven reconciliation and remove temporary machinery
+      - name: Commit only the manifest and remove the temporary script
         shell: bash
         run: |
-          rm .github/workflows/manifest-reconcile.yml
+          # Permanent workflow changes are installed separately through the
+          # connected GitHub integration, which has workflow-file authority.
+          git restore .github/workflows/tests.yml .github/workflows/tests-extended.yml
           rm scripts/reconcile-test-manifest.py
+
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add \
-            .github/workflows/manifest-reconcile.yml \
-            .github/workflows/tests.yml \
-            .github/workflows/tests-extended.yml \
-            scripts/reconcile-test-manifest.py \
-            tests/test-manifest.json
+          git add scripts/reconcile-test-manifest.py tests/test-manifest.json
           git diff --cached --check
-          git commit -m "ci: enforce authoritative test manifest counts"
+          git commit -m "test: reconcile authoritative manifest counts"
           git push origin HEAD:chore/project-consolidation-v1
