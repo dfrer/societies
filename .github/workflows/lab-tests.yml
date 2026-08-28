@@ -6,6 +6,7 @@ on:
     paths:
       - 'labs/**'
       - 'tests/Societies.SnowGlobe.*/**'
+      - 'artifacts/snowglobe/**'
       - '.github/workflows/lab-tests.yml'
       - 'project-governance.json'
       - 'scripts/check-project-governance.py'
@@ -19,15 +20,24 @@ concurrency:
 
 jobs:
   lab-tests:
-    runs-on: ubuntu-latest
-    timeout-minutes: 45
+    # The durable premium journal and trust-anchor tests deliberately depend on
+    # Windows handle identity, reparse-point, ACL, and file-sharing semantics.
+    # Running this suite on Linux turns supported-platform assertions into
+    # hundreds of false failures instead of testing the production contract.
+    runs-on: windows-latest
+    timeout-minutes: 60
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
       - name: Validate project governance
-        run: python3 scripts/check-project-governance.py
+        run: python scripts/check-project-governance.py
 
       - name: Setup .NET 8
         uses: actions/setup-dotnet@v4
