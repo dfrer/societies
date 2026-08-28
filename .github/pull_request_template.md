@@ -18,7 +18,7 @@
 
 # What changed
 
-- 
+- _Describe the bounded change._
 
 # Evidence
 

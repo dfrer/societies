@@ -1,10 +1,10 @@
 # CONSOLIDATION-V1 — Establish the Durable Societies Starting Point
 
-**Status:** Active  
-**Activated:** 2026-08-27  
-**Product feature work authorized:** No  
-**Accepted runtime baseline:** `847c86b1c379e6a1dd8d4b7b641c3c89646e28c9`  
-**Preservation branch:** `archive/pre-consolidation-2026-08-27`
+- **Status:** Active
+- **Activated:** 2026-08-27
+- **Product feature work authorized:** No
+- **Accepted runtime baseline:** `847c86b1c379e6a1dd8d4b7b641c3c89646e28c9`
+- **Preservation branch:** `archive/pre-consolidation-2026-08-27`
 
 ## Outcome
 

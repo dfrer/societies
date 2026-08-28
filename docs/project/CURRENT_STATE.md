@@ -1,10 +1,10 @@
 # Societies Current State
 
-**Status date:** 2026-08-27  
-**Accepted runtime source:** `847c86b1c379e6a1dd8d4b7b641c3c89646e28c9`  
-**Preservation branch:** `archive/pre-consolidation-2026-08-27`  
-**Current integration path:** `chore/project-consolidation-v1` to `master`  
-**Active milestone:** `planning/active/MILESTONE.md`
+- **Status date:** 2026-08-27
+- **Accepted runtime source:** `847c86b1c379e6a1dd8d4b7b641c3c89646e28c9`
+- **Preservation branch:** `archive/pre-consolidation-2026-08-27`
+- **Current integration path:** `chore/project-consolidation-v1` to `master`
+- **Active milestone:** `planning/active/MILESTONE.md`
 
 This document reports what is proven, not everything planned or implemented somewhere in repository history.
 

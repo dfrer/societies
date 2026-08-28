@@ -18,28 +18,32 @@ The accepted build changes the planning context but does not automatically deter
 
 Treat EB-01R as an accepted interaction base, define exactly which parts satisfy the old visual gate, and establish the environmental, citizen, audio, and conversation language needed before adding social behavior.
 
-**Strength:** reduces the chance of integrating citizens into another temporary presentation.  
+**Strength:** reduces the chance of integrating citizens into another temporary presentation.
+
 **Risk:** can become another art/UX planning loop without proving society behavior.
 
 ### Path B — one participating citizen interface
 
 Implement the smallest gameplay-facing observation, recorded/deterministic cognition receipt, communication act, validated proposal, and persistent consequence for one citizen in the accepted world.
 
-**Strength:** attacks the central unproven thesis directly.  
+**Strength:** attacks the central unproven thesis directly.
+
 **Risk:** may be undermined by unresolved presentation or performance architecture.
 
 ### Path C — performance and voxel authority first
 
 Resolve collision representation and canonical frame safety before adding citizen cognition and behavior.
 
-**Strength:** prevents new systems from hardening around a scaling failure.  
+**Strength:** prevents new systems from hardening around a scaling failure.
+
 **Risk:** can become another infrastructure phase with no visible society progress.
 
 ### Path D — deliberately coupled proof
 
 Build a tightly bounded scene containing one citizen, one material disagreement, one accepted/declined contribution, one physical consequence, recorded/deterministic cognition, and a collision/performance budget. Refactor only the seams touched by that slice.
 
-**Strength:** keeps product, architecture, and performance honest together.  
+**Strength:** keeps product, architecture, and performance honest together.
+
 **Risk:** requires unusually strict scope and may be larger than the safest first task.
 
 The planning discussion should recommend one path or a smaller hybrid based on current code inspection and measured risk. The owner decides the product outcome, not the implementation details.
