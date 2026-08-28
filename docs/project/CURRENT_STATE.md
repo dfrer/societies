@@ -3,7 +3,8 @@
 - **Status date:** 2026-08-28
 - **Accepted runtime source:** `847c86b1c379e6a1dd8d4b7b641c3c89646e28c9`
 - **Preservation branch:** `archive/pre-consolidation-2026-08-27`
-- **Consolidation integration record:** PR #183 from `chore/project-consolidation-v1` into `master`
+- **Consolidation integration record:** PR #183
+- **Integrated master commit:** `54a4e5c0ea1297438b06e4b40ea14391db343657`
 - **Active milestone:** `planning/active/MILESTONE.md`
 
 This document reports what is proven, not everything planned or implemented somewhere in repository history.
@@ -34,16 +35,16 @@ The acceptance was explicitly recorded on 2026-08-27. Numeric per-axis scores we
 
 ## Hosted product evidence
 
-The consolidated integration candidate has been validated on clean GitHub-hosted runners:
+The integrated baseline was validated on clean GitHub-hosted runners before merge:
 
-- authoritative Godot project Release build passed;
+- authoritative Godot project Release build passed with zero warnings and zero errors;
 - the complete managed suite passed **507/507** with zero failures;
-- the pull-request fast tier passed **387/387** and is checked against the manifest count;
-- the Godot headless suite passed **28/28** and is checked against the manifest count;
+- the permanent pull-request fast tier passed **387/387** and verified the manifest count;
+- the Godot headless suite passed **28/28** and verified the manifest count;
 - the Godot C# solution build passed;
 - project-governance and patch-whitespace validation passed.
 
-`tests/test-manifest.json` now declares the discovered **507 managed / 387 fast / 28 Godot** counts. The pull-request and weekly-full workflows fail when the discovered counts drift from that authority instead of silently accepting missing tests.
+`tests/test-manifest.json` declares the discovered **507 managed / 387 fast / 28 Godot** counts. The pull-request and weekly-full workflows fail when discovered counts drift from that authority instead of silently accepting missing tests.
 
 ## Snow Globe laboratory: proven
 
@@ -59,7 +60,7 @@ The isolated .NET 8 laboratory under `labs/` contains real, reusable evidence fo
 - provider readiness, routing, durable attempt-state, and recovery experiments;
 - separate benchmark, recording, and OpenRouter CLIs with dedicated tests.
 
-The permanent Windows-hosted laboratory gate passes:
+The permanent Windows-hosted laboratory gate passed on the final consolidation head:
 
 - Snow Globe core: **1,186 passed, 5 skipped, 0 failed, 1,191 total**;
 - benchmark CLI: **56/56**;
@@ -70,6 +71,15 @@ The permanent Windows-hosted laboratory gate passes:
 The five skips are exact byte-pinning checks for operator-retained v4, v5, and v6 evidence files that are not committed to the repository. They do not replace or relax the synthetic schema, tamper, routing, durability, recovery, and Windows filesystem-contract tests, which remain mandatory and passed.
 
 This work is technically meaningful. It remains laboratory infrastructure until a product milestone uses the smallest necessary interface inside the embodied world.
+
+## Repository authority: proven
+
+- PR #183 is merged into `master` at `54a4e5c0ea1297438b06e4b40ea14391db343657`.
+- The exact accepted pre-consolidation source remains preserved on `archive/pre-consolidation-2026-08-27` at `847c86b1c379e6a1dd8d4b7b641c3c89646e28c9`.
+- PR #178 is recognized as merged ancestry; #177 and #179–#182 are closed as superseded with links to #183.
+- No pull requests remain open after consolidation closeout.
+- Historical plans and branches remain recoverable but carry no execution authority.
+- No next product feature is authorized until the owner-led planning discussion selects a bounded proof.
 
 ## Not yet proven
 
@@ -89,9 +99,9 @@ This work is technically meaningful. It remains laboratory infrastructure until 
 - A historical canonical run recorded median p95 `51.9392 ms` against a `50 ms` safety line. Later performance evidence is mixed and must be reconciled for the accepted scene.
 - The accepted worldcraft scene has no citizens; product progress can stall if more worldcraft or provider infrastructure is added first.
 - `GameManager`, HUD, diagnostic, voxel, run-store, and provider components have grown large enough to require targeted decomposition when a product slice touches them.
-- PRs #177–#182 are superseded by consolidation PR #183 and carry no execution authority; they are retained only as historical delivery context until closed.
 - The repository has extensive stale branches and historical planning. The authority system prevents their use but does not erase Git history.
-- No repository ruleset is enabled. Issue [#184](https://github.com/dfrer/societies/issues/184) records the manual branch-protection configuration that the connected integration cannot perform.
+- Public branch metadata reports `master` protected with `build-test-smoke` required. The connected integration cannot read the complete policy, and `lab-tests` is not listed as required. Issue [#184](https://github.com/dfrer/societies/issues/184) records the remaining manual audit and laboratory-gate hardening.
+- The active milestone remains in feature-freeze closeout until #184 is resolved and the owner selects the next product proof.
 
 ## Current authorization
 
