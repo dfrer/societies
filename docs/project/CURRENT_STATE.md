@@ -81,6 +81,7 @@ This work is technically meaningful. It remains laboratory infrastructure until 
 - `master` does not contain the accepted stack until the consolidation PR is integrated.
 - The old stacked PRs remain historical delivery paths until closed as superseded.
 - The repository has extensive stale branches and historical planning; the new authority system prevents their use but does not erase Git history.
+- No repository ruleset is enabled. Issue [#184](https://github.com/dfrer/societies/issues/184) records the manual branch-protection configuration that the connected integration cannot perform.
 
 ## Current authorization
 

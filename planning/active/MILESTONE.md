@@ -22,7 +22,7 @@ The current Snow Globe direction is producing genuine progress, but the reposito
 4. Replace oversized root status ledgers with concise maintained documents.
 5. Archive historical plans and reports without deleting evidence.
 6. Define product/runtime/lab/planning/test ownership through scoped agent instructions.
-7. Add an automated governance check and PR contract.
+7. Add automated governance, product, and laboratory checks plus a PR contract.
 8. Record current architecture, history, risks, decisions, and unproven product claims.
 9. Close or supersede obsolete stacked PRs after the consolidation PR is safely available.
 10. Hold a separate owner-led planning discussion to select the next bounded product proof.
@@ -39,18 +39,19 @@ The current Snow Globe direction is producing genuine progress, but the reposito
 ## Exit gates
 
 - [ ] The consolidation branch contains the accepted runtime and all governance changes.
-- [ ] The project governance check passes.
-- [ ] Required product and lab validation triggered by the integration PR passes.
+- [ ] The project governance and local-link checks pass.
+- [ ] Required product and Snow Globe lab validation triggered by the integration PR passes.
 - [ ] The consolidation PR is reviewed and integrated into `master`.
 - [ ] Obsolete stacked PRs are closed as superseded with an auditable link to the consolidation PR.
 - [ ] `planning/active/` contains only this milestone, its index, and compatibility evidence.
+- [ ] Branch protection is enabled; until the integration can configure it, issue #184 remains the explicit manual administrative blocker.
 - [ ] The owner and planning agent explicitly select the next product proof after reviewing current state and risks.
 
 ## Evidence required
 
 - exact base and final commit identities;
-- repository governance check output;
-- full triggered GitHub Actions results;
+- repository governance and local-link check output;
+- full triggered GitHub Actions results for product and laboratory paths;
 - diff review showing runtime behavior was not altered by consolidation-specific commits;
 - final open-PR and authority-state report;
 - owner decision for the next milestone, recorded in a new active plan.

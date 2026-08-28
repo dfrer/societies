@@ -8,9 +8,11 @@ import re
 import sys
 from pathlib import Path
 from typing import Any
+from urllib.parse import unquote
 
 ROOT = Path(__file__).resolve().parents[1]
 MANIFEST = ROOT / "project-governance.json"
+MARKDOWN_LINK = re.compile(r"!?\[[^\]]*\]\(([^)]+)\)")
 ERRORS: list[str] = []
 
 
@@ -38,6 +40,33 @@ def load_manifest() -> dict[str, Any]:
         error("project-governance.json root must be an object")
         return {}
     return value
+
+
+def local_markdown_target(raw: str) -> str | None:
+    target = raw.strip()
+    if not target:
+        return None
+    if target.startswith("<") and ">" in target:
+        target = target[1 : target.index(">")]
+    else:
+        target = target.split(maxsplit=1)[0]
+    if target.startswith(("http://", "https://", "mailto:", "tel:", "#")):
+        return None
+    target = unquote(target.split("#", 1)[0]).strip()
+    return target or None
+
+
+def validate_markdown_links(relative: str, path: Path) -> None:
+    if not path.is_file():
+        return
+    text = path.read_text(encoding="utf-8")
+    for match in MARKDOWN_LINK.finditer(text):
+        target = local_markdown_target(match.group(1))
+        if target is None:
+            continue
+        resolved = (ROOT / target.lstrip("/")) if target.startswith("/") else (path.parent / target)
+        if not resolved.resolve().exists():
+            error(f"broken local Markdown link in {relative}: {target}")
 
 
 def main() -> int:
@@ -85,7 +114,10 @@ def main() -> int:
         error("active milestone path must be planning/active/MILESTONE.md")
     if active_config.get("status") != "active":
         error("active milestone status must be active")
-    if active_config.get("feature_work_authorized") is not False:
+    feature_authorized = active_config.get("feature_work_authorized")
+    if not isinstance(feature_authorized, bool):
+        error("active_milestone.feature_work_authorized must be a boolean")
+    if active_config.get("id") == "CONSOLIDATION-V1" and feature_authorized is not False:
         error("CONSOLIDATION-V1 must keep feature_work_authorized false")
 
     active_dir = ROOT / "planning" / "active"
@@ -127,6 +159,17 @@ def main() -> int:
             path = require_file(relative)
             if path.is_file() and path.stat().st_size > max_bytes:
                 error(f"root authority document exceeds {max_bytes} bytes: {relative}")
+
+    live_markdown = manifest.get("live_markdown_documents", [])
+    if not isinstance(live_markdown, list) or not live_markdown:
+        error("live_markdown_documents must be a non-empty array")
+    else:
+        for relative in live_markdown:
+            if not isinstance(relative, str):
+                error("live_markdown_documents entries must be strings")
+                continue
+            path = require_file(relative)
+            validate_markdown_links(relative, path)
 
     archives = manifest.get("required_archives", [])
     if not isinstance(archives, list):

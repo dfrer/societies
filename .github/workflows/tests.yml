@@ -57,13 +57,18 @@ jobs:
           echo "docs_only=$docs_only" >> "$GITHUB_OUTPUT"
           echo "base_sha=$BASE_SHA" >> "$GITHUB_OUTPUT"
 
-      - name: Validate Markdown-only changes
-        if: steps.change_scope.outputs.docs_only == 'true'
+      - name: Validate patch whitespace
         shell: bash
         env:
           BASE_SHA: ${{ steps.change_scope.outputs.base_sha }}
           HEAD_SHA: ${{ github.sha }}
-        run: git diff --check "$BASE_SHA" "$HEAD_SHA"
+        run: |
+          set -euo pipefail
+          if [[ -z "$BASE_SHA" ]]; then
+            echo "::error::Base SHA was not available for diff validation."
+            exit 1
+          fi
+          git diff --check "$BASE_SHA" "$HEAD_SHA"
 
       - name: Setup .NET 8
         if: steps.change_scope.outputs.docs_only != 'true'

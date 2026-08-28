@@ -68,6 +68,12 @@ This register distinguishes current reality from planned fixes. Priority reflect
 **Consequence:** agents can select obsolete bases or duplicate work.  
 **Control:** preserve the exact accepted archive branch, close predecessor PRs as superseded after the consolidation PR exists, use `master` plus one active branch, and treat other branches as history unless explicitly adopted.
 
+### Default branch is not technically protected
+
+**Evidence:** the repository ruleset API returns no active rulesets; the connected integration cannot write classic branch-protection settings.  
+**Consequence:** a direct or force push can bypass the documented PR and validation contract.  
+**Control:** issue [#184](https://github.com/dfrer/societies/issues/184) defines the exact manual configuration and verification. Keep this risk open until the rule is observed.
+
 ### Local evidence is stronger than hosted evidence
 
 **Evidence:** the accepted handoff reports extensive local tests and desktop capture, while hosted workflow status was not attached to the final stacked head.  

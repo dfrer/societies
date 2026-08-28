@@ -4,7 +4,7 @@
 
 This .NET 8 project is the isolated laboratory for the smallest persistent-agent and cognition mechanisms required by Societies. It proves contracts without giving models, providers, storage adapters, or operator tools authority over the Godot world.
 
-The pre-consolidation chronological README—containing detailed provider generations, hashes, ledgers, and historical status—is preserved at `docs/history/pre-consolidation-2026-08-27/labs/Societies.SnowGlobe-README.md`. Current orientation belongs here; detailed bounded contracts remain in their named Markdown files and ADRs.
+The [pre-consolidation chronological README](../../docs/history/pre-consolidation-2026-08-27/labs/Societies.SnowGlobe-README.md)—containing detailed provider generations, hashes, ledgers, and historical status—is preserved intact. Current orientation belongs here; detailed bounded contracts remain in their named Markdown files and ADRs.
 
 ## Capability map
 
