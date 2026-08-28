@@ -1,18 +1,24 @@
 # CONSOLIDATION-V1 — Establish the Durable Societies Starting Point
 
-- **Status:** Active
+- **Status:** Integrated; administrative and owner closeout pending
 - **Activated:** 2026-08-27
+- **Integrated:** 2026-08-28
 - **Product feature work authorized:** No
 - **Accepted runtime baseline:** `847c86b1c379e6a1dd8d4b7b641c3c89646e28c9`
 - **Preservation branch:** `archive/pre-consolidation-2026-08-27`
+- **Master integration commit:** `54a4e5c0ea1297438b06e4b40ea14391db343657`
 
 ## Outcome
 
 Create one durable repository and authority system from which all future Societies and Snow Globe development can proceed without rediscovering the project, following stale plans, trusting agent summaries, or requiring the owner to manage source-level decisions.
 
-## Why this is the active milestone
+The repository integration and validation work is complete. This milestone remains active only as a deliberate feature freeze until the remaining branch-protection audit is completed and the owner-led planning discussion selects the next bounded product proof.
 
-The current Snow Globe direction is producing genuine progress, but the repository still carries the failure patterns of the pre-V3 period: oversized append-only status documents, many historical plans marked active, stacked PR authority, branch sprawl, and technical infrastructure that can continue under its own momentum. Continuing feature work before correcting that operating system would make the present convergence fragile.
+## Why this remains the active milestone
+
+The current Snow Globe direction is producing genuine progress, but the repository previously carried the failure patterns of the pre-V3 period: oversized append-only status documents, many historical plans marked active, stacked PR authority, branch sprawl, and technical infrastructure that could continue under its own momentum. The durable authority system now prevents those records from silently reactivating themselves.
+
+No replacement product milestone has been selected yet. Keeping `CONSOLIDATION-V1` active with feature work unauthorized is more truthful than allowing the final implementation recommendation from an old plan or agent session to become the next roadmap by default.
 
 ## Scope
 
@@ -38,29 +44,33 @@ The current Snow Globe direction is producing genuine progress, but the reposito
 
 ## Exit gates
 
-- [ ] The consolidation branch contains the accepted runtime and all governance changes.
-- [ ] The project governance and local-link checks pass.
-- [ ] Required product and Snow Globe lab validation triggered by the integration PR passes.
-- [ ] The consolidation PR is reviewed and integrated into `master`.
-- [ ] Obsolete stacked PRs are closed as superseded with an auditable link to the consolidation PR.
-- [ ] `planning/active/` contains only this milestone, its index, and compatibility evidence.
-- [ ] Branch protection is enabled; until the integration can configure it, issue #184 remains the explicit manual administrative blocker.
+- [x] The consolidation branch contains the accepted runtime and all governance changes.
+- [x] The project governance and local-link checks pass.
+- [x] Required product and Snow Globe laboratory validation triggered by the integration PR passes.
+- [x] Consolidation PR #183 is reviewed and integrated into `master` at `54a4e5c0ea1297438b06e4b40ea14391db343657`.
+- [x] Obsolete stacked PRs are closed or recognized as merged ancestry with auditable links to #183.
+- [x] `planning/active/` contains only this milestone, its index, and compatibility evidence.
+- [ ] Audit and complete branch protection under issue #184. Public metadata reports `master` protected with `build-test-smoke` required, but the full policy is unreadable through the integration and `lab-tests` is not listed as required.
 - [ ] The owner and planning agent explicitly select the next product proof after reviewing current state and risks.
 
-## Evidence required
+## Integration evidence
 
-- exact base and final commit identities;
-- repository governance and local-link check output;
-- full triggered GitHub Actions results for product and laboratory paths;
-- diff review showing runtime behavior was not altered by consolidation-specific commits;
-- final open-PR and authority-state report;
-- owner decision for the next milestone, recorded in a new active plan.
+- accepted source preserved at `archive/pre-consolidation-2026-08-27` -> `847c86b1c379e6a1dd8d4b7b641c3c89646e28c9`;
+- final consolidation head `898f34220fcf106f73fb7a02b474eaaa9af729c9` was 34 commits ahead and 0 behind before merge;
+- signed merge commit `54a4e5c0ea1297438b06e4b40ea14391db343657` has the old `master` and final consolidation head as parents;
+- governance and patch-whitespace checks passed in both permanent hosted gates;
+- complete product managed suite: 507/507;
+- permanent pull-request fast gate: 387/387 with count enforcement;
+- Godot headless gate: 28/28 with count enforcement;
+- Snow Globe core: 1,186 passed, 5 evidence-only skips, 0 failed;
+- benchmark, recording, and OpenRouter CLI suites: 56/56, 94/94, and 104/104;
+- no open pull requests remain after the superseded chain closeout.
 
 ## Stop conditions
 
 Stop and surface the conflict if:
 
-- the accepted head differs from `847c86b1c379e6a1dd8d4b7b641c3c89646e28c9` without an explicit decision;
+- the accepted source differs from `847c86b1c379e6a1dd8d4b7b641c3c89646e28c9` without an explicit decision;
 - consolidation requires guessing about unpushed local work;
 - a documentation move would discard or overwrite unique evidence;
 - CI exposes a runtime regression in the accepted stack;
@@ -68,7 +78,7 @@ Stop and surface the conflict if:
 
 ## Next owner decision
 
-After repository integration, discuss whether the next bounded proof should first:
+Discuss whether the next bounded proof should first:
 
 1. reconcile and lock the visual/product target around the accepted EB-01R worldcraft base;
 2. prove one participating citizen through the gameplay-facing cognition interface;
