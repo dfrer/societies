@@ -74,7 +74,7 @@ This register distinguishes current reality from planned fixes. Priority reflect
 
 ### Accepted code was not yet on `master` — resolved
 
-**Evidence:** the accepted stack was integrated through PR #183 at `54a4e5c0ea1297438b06e4b40ea14391db343657`; repository-governance closeout is integrated through current `master` at `1eaa1ab6b0c79550a99c9cad68c4ea04e9fdea75`. The exact accepted runtime source remains preserved at `847c86b1c379e6a1dd8d4b7b641c3c89646e28c9`.
+**Evidence:** the accepted stack was integrated through PR #183 at `54a4e5c0ea1297438b06e4b40ea14391db343657`; repository-governance closeout was completed at master commit `1eaa1ab6b0c79550a99c9cad68c4ea04e9fdea75`. The exact accepted runtime source remains preserved at `847c86b1c379e6a1dd8d4b7b641c3c89646e28c9`.
 
 **Consequence:** the default branch now contains the accepted integrated stack, so future work no longer needs to choose between `master` and an unmerged accepted delivery head.
 

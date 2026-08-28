@@ -8,7 +8,7 @@
 - **Preservation branch:** `archive/pre-consolidation-2026-08-27`
 - **Consolidation integration commit:** `54a4e5c0ea1297438b06e4b40ea14391db343657`
 - **Governance workflow integration:** `420738bfc1b51cffacd94845b4e10cb9c72db081`
-- **Governance documentation closeout / current `master`:** `1eaa1ab6b0c79550a99c9cad68c4ea04e9fdea75`
+- **Branch-protection documentation closeout commit:** `1eaa1ab6b0c79550a99c9cad68c4ea04e9fdea75`
 
 ## Outcome
 
@@ -69,7 +69,7 @@ No replacement product milestone has been selected yet. Keeping `CONSOLIDATION-V
 - no open pull requests remain after the superseded chain closeout;
 - branch-protection repair branch `chore/complete-master-protection-v1` -> PR #186 -> merge `420738bfc1b51cffacd94845b4e10cb9c72db081`;
 - PR #187 became CLEAN after its unrelated template checks, then closed unmerged with its branch deleted; PR #188 became CLEAN after its harmless lab README checks, then closed unmerged with its branch deleted;
-- branch-protection documentation closeout PR #189 -> commit `c0a425dca97c59f305622cbda5ae27a36d66ef49` -> current `master` `1eaa1ab6b0c79550a99c9cad68c4ea04e9fdea75`.
+- branch-protection documentation closeout PR #189 -> commit `c0a425dca97c59f305622cbda5ae27a36d66ef49` -> master closeout commit `1eaa1ab6b0c79550a99c9cad68c4ea04e9fdea75`.
 
 ## Stop conditions
 
