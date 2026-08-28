@@ -65,3 +65,5 @@
 - [ ] Automated evidence is not presented as human acceptance.
 - [ ] Failures and unrun gates are reported.
 - [ ] `python scripts/check-project-governance.py` passes.
+
+<!-- Temporary branch-protection verification marker; this PR will not be merged. -->
