@@ -14,10 +14,10 @@ Questions are ordered by their ability to change the product, architecture, or n
 | P1 | Q-006 | What can be owned, shared, traded, owed, or withheld? | Defines economy, property, labor, contracts, and conflict. | Open |
 | P1 | Q-007 | How is civic legitimacy created and lost? | Determines who may propose, decide, enforce, appeal, or ignore policy. | Open |
 | P1 | Q-008 | What does success, failure, recovery, or continuation mean? | Prevents the simulation from becoming either aimless or artificially gamey. | First-slice answer accepted in CON-009; long-term progression remains open |
-| P1 | Q-009 | What should an AI citizen remember, forget, and disclose? | Defines bounded memory, privacy, identity, and cost controls. | F3/F4 blocker: bounded event/commitment ledger accepted; exact horizon and disclosure rules open |
+| P1 | Q-009 | What should an AI citizen remember, forget, and disclose? | Defines bounded memory, privacy, identity, and cost controls. | Bounded event/commitment ledger accepted; exact horizon and disclosure rules open |
 | P2 | Q-010 | What changes when multiple humans share the society? | Establishes the eventual multiplayer authority and social model. | Deferred until local loop proves fun |
-| P1 | Q-011 | Which embodied conversation language best preserves play rhythm and accessibility without becoming a chat window? | Controls input surface, animation, subtitles, pacing, and how Snow Globe feels native to the world. | Visual Gate F1 — active |
-| P1 | Q-012 | What live-model latency, invocation budget, and quality improvement justify using a provider instead of fallback? | Prevents prose novelty from adding unacceptable wait, cost, or operational risk. | F4 live-pilot decision; offline Interface work may proceed |
+| P1 | Q-011 | Which embodied conversation language best preserves play rhythm and accessibility without becoming a chat window? | Controls input surface, animation, subtitles, pacing, and how Snow Globe feels native to the world. | Open; resolve within the owner-approved SNOW-GLOBE-SOCIAL-KERNEL-V1 / Causeway Before Nightfall proof |
+| P1 | Q-012 | What live-model latency, invocation budget, and quality improvement justify using a provider instead of fallback? | Prevents prose novelty from adding unacceptable wait, cost, or operational risk. | Open; live-provider use remains a separate future decision, outside the current proof |
 
 ## Interview Discipline
 
@@ -29,7 +29,8 @@ Questions are ordered by their ability to change the product, architecture, or n
 
 ## Next Interview
 
-F0 is accepted. F1 should answer Q-011 by comparing the same interaction in three visual directions:
+The next concept review should answer Q-011 within the owner-approved SNOW-GLOBE-SOCIAL-KERNEL-V1 / Causeway Before
+Nightfall proof:
 
 > How does the player approach, listen to, answer, and understand a citizen counter-offer while staying inside
 > the world rather than opening a generic dialogue application?

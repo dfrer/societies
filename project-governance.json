@@ -37,10 +37,15 @@
     "docs/AGENTS.md"
   ],
   "active_milestone": {
-    "id": "CONSOLIDATION-V1",
+    "id": "SNOW-GLOBE-SOCIAL-KERNEL-V1",
     "path": "planning/active/MILESTONE.md",
     "status": "active",
-    "feature_work_authorized": false
+    "feature_work_authorization": {
+      "before_merge": false,
+      "after_merge": true,
+      "condition": "planning_pr_merged_to_master",
+      "scope": "ordered_packets_only"
+    }
   },
   "active_directory_allowlist": [
     "README.md",
@@ -108,6 +113,7 @@
     "docs/history/pre-consolidation-2026-08-27/root/CURRENT_BUILD.md",
     "docs/history/pre-consolidation-2026-08-27/root/WORKFLOW.md",
     "docs/history/pre-consolidation-2026-08-27/labs/Societies.SnowGlobe-README.md",
-    "planning/archives/2026-08-27-pre-consolidation/v3-snow-globe-frontend-recovery-plan.md"
+    "planning/archives/2026-08-27-pre-consolidation/v3-snow-globe-frontend-recovery-plan.md",
+    "planning/archives/2026-08-28-consolidation-v1/MILESTONE.md"
   ]
 }

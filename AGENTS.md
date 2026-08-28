@@ -49,7 +49,8 @@ A passing test does not overrule a failed human product gate. A historical compl
 - Preservation branch: `archive/pre-consolidation-2026-08-27`.
 - The accepted EB-01R slice proves bounded founder worldcraft and a substantially better interaction surface.
 - It does **not** yet prove participating citizens, integrated Snow Globe cognition, a negotiated shared consequence, performance acceptance, accessibility, or release readiness.
-- The only authorized milestone is repository consolidation and explicit next-milestone selection. Feature expansion is frozen until that milestone activates a bounded product proof.
+- The selected active milestone is `SNOW-GLOBE-SOCIAL-KERNEL-V1 — Causeway Before Nightfall`; the accepted scene still contains zero participating citizens.
+- The planning branch authorizes no implementation. After the planning PR merges to `master`, feature work is permitted only through the milestone's ordered packets, beginning with packet 01 and proceeding one merged, reconciled PR at a time.
 
 ## Non-negotiable product and architecture rules
 
@@ -65,6 +66,7 @@ A passing test does not overrule a failed human product gate. A historical compl
 ## Work-selection rules
 
 - There is exactly one active milestone: `planning/active/MILESTONE.md`.
+- Read `project-governance.json` for the merge-conditioned authorization state: before planning-PR merge is false; after merge is true only for ordered packets.
 - Select the next task from the milestone's ordered missing evidence, not from an agent's closing recommendation.
 - Every implementation task must state outcome, owned boundary, non-goals, acceptance, validation, human gate, and stop conditions.
 - Prefer the smallest vertical change that proves a product-relevant fact.
@@ -101,7 +103,7 @@ Never convert characterization into acceptance, infer numeric scores the owner d
 
 - Work in an isolated branch or worktree from an explicit base SHA.
 - One branch owns one bounded outcome.
-- Do not stack new product work on an unreviewed stack when a consolidation branch is available.
+- Branch each authorized packet from the then-current `master` only after the preceding packet is merged and its gates are reconciled; do not stack the sequence.
 - Show `git status`, exact validation commands, failures, and the final commit SHA in every handoff.
 - Pull requests must use `.github/pull_request_template.md` and identify the human gate.
 - `master` is the integration branch. Archive branches preserve historical states and are not development bases.

@@ -114,11 +114,24 @@ def main() -> int:
         error("active milestone path must be planning/active/MILESTONE.md")
     if active_config.get("status") != "active":
         error("active milestone status must be active")
-    feature_authorized = active_config.get("feature_work_authorized")
-    if not isinstance(feature_authorized, bool):
-        error("active_milestone.feature_work_authorized must be a boolean")
-    if active_config.get("id") == "CONSOLIDATION-V1" and feature_authorized is not False:
-        error("CONSOLIDATION-V1 must keep feature_work_authorized false")
+    expected_milestone_id = "SNOW-GLOBE-SOCIAL-KERNEL-V1"
+    if active_config.get("id") != expected_milestone_id:
+        error(f"active milestone id must be {expected_milestone_id}")
+
+    authorization = active_config.get("feature_work_authorization")
+    expected_authorization = {
+        "before_merge": False,
+        "after_merge": True,
+        "condition": "planning_pr_merged_to_master",
+        "scope": "ordered_packets_only",
+    }
+    if authorization != expected_authorization:
+        error(
+            "active_milestone.feature_work_authorization must exactly equal "
+            f"{expected_authorization!r}"
+        )
+    if "feature_work_authorized" in active_config:
+        error("ambiguous active_milestone.feature_work_authorized boolean is prohibited")
 
     active_dir = ROOT / "planning" / "active"
     if not active_dir.is_dir():
@@ -218,7 +231,22 @@ def finish(manifest: dict[str, Any] | None = None) -> int:
         active = manifest.get("active_milestone", {})
         if isinstance(active, dict):
             milestone = str(active.get("id", "unknown"))
-    print(f"Project governance validation passed. Active milestone: {milestone}")
+    authorization_summary = "unknown"
+    if manifest:
+        active = manifest.get("active_milestone", {})
+        if isinstance(active, dict):
+            authorization = active.get("feature_work_authorization", {})
+            if isinstance(authorization, dict):
+                authorization_summary = (
+                    f"before_merge={str(authorization.get('before_merge')).lower()}, "
+                    f"after_merge={str(authorization.get('after_merge')).lower()}, "
+                    f"condition={authorization.get('condition')}, "
+                    f"scope={authorization.get('scope')}"
+                )
+    print(
+        "Project governance validation passed. "
+        f"Active milestone: {milestone}. Feature authorization: {authorization_summary}"
+    )
     return 0
 
 

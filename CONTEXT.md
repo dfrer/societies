@@ -8,7 +8,8 @@ Societies is a deterministic civilization and ecology simulation. Snow Globe is 
 - **V3:** first dependable deterministic Godot/C# substrate, with stronger testing, persistence, replay, and evidence discipline.
 - **Snow Globe:** first unified architecture around persistent agents, bounded observations, deterministic proposals, provider-neutral cognition, recovery, and replay.
 - **EB-01R:** first user-accepted bounded player-facing worldcraft slice. It improves the world, HUD, inventory, construction, and interaction surface, but still contains no participating citizens.
-- **Consolidation:** current phase. One repository, one authority chain, one active milestone, historical work archived, and feature work paused until the next product proof is selected.
+- **Consolidation:** completed historical governance phase. It established one repository, one authority chain, explicit archives, and the selection boundary for later product work.
+- **Causeway Before Nightfall:** selected active milestone. It must prove exactly Mara, Ivo, and Sena in one authoritative social, material, and ecological consequence; the accepted scene begins with zero participating citizens.
 
 ## Permanent direction
 
@@ -21,3 +22,5 @@ The first mature product proof remains a small wetland settlement, an embodied r
 Use `docs/project/CURRENT_STATE.md`, not this capsule, for detailed implementation status. Use `planning/active/MILESTONE.md` for the only authorized work. The accepted baseline is preserved at `archive/pre-consolidation-2026-08-27` from commit `847c86b1c379e6a1dd8d4b7b641c3c89646e28c9`.
 
 The current build proves bounded founder worldcraft and strong deterministic infrastructure. It does not yet prove an integrated miniature society, gameplay-facing Snow Globe cognition, accepted performance, accessibility, or release readiness.
+
+The planning branch itself permits no implementation. After the planning PR merges to `master`, authorization is limited to the milestone's ordered packets, starting with packet 01 and advancing only after each prior packet merges and its gates are reconciled.
