@@ -1265,5 +1265,6 @@ The offline Cognition Quality Corpus v1 is implemented in the isolated Snow Glob
 ## Repository state, risks, and next action
 
 - Isolated branch `codex/snow-globe-eb01-ui-replacement` is based on exact PR #181 head `29021b221abc99ff0e5d35b0df067eec1d2422cc`; implementation commit is `00024cd67c8d889fd2e448cd95b45fc580253198`. Stacked PR #182 targets `codex/snow-globe-eco-baseline`; merge is not authorized.
-- Human representative play, subjective visual/accessibility acceptance, hosted CI, and performance acceptance remain open. The scene still begins with 12,777 collision shapes, and the historical 51.9392 ms safety failure is unresolved.
-- Next action: run `scripts/play-snow-globe-eco-baseline.ps1`, play the complete gather/build/dismantle/save-load route, and explicitly score world readability, HUD hierarchy, inventory usability, construction clarity, and interaction feel. Do not begin EB-02 until every score is at least 4/5.
+- On 2026-08-27 the user explicitly confirmed human play acceptance across world readability, HUD hierarchy, inventory usability, construction clarity, and interaction feel. Numeric per-axis scores were not supplied and are not invented. EB-01R's human gate is complete.
+- Accessibility, hosted CI, and performance acceptance remain open. The scene still begins with 12,777 collision shapes, and the historical 51.9392 ms safety failure is unresolved.
+- No follow-on work is authorized in this task. PR #182 remains open and unmerged; EB-02, performance hardening, and release work were not started.

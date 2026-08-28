@@ -2,15 +2,15 @@
 
 ## Status
 
-**Active recovery program; no baseline acceptance is claimed.** The existing SG-VX-01 scene is a validated terrain/collision test, but the user has rejected it as a development baseline because the world is visually flat and repetitive, the HUD/UI is unacceptable, and player inventory, construction, and interaction are too rudimentary and restrictive.
+**EB-01R human play acceptance is confirmed; broader performance, release, and full-baseline acceptance are not claimed.** The predecessor SG-VX-01/EB-01 product failures remain historical evidence and are superseded only for this bounded founder-worldcraft human gate.
 
 ### 2026-08-27 EB-01R replacement result
 
-EB-01R is a technically validated replacement candidate and EB-02 remains blocked pending user acceptance. The authoritative gather, bounded inventory, modular floor/wall/post construction, dismantle, save/load, schema-v10 migration, and schema-v11 replay are unchanged. The replacement adds an eight-slot tactile tool belt and pack, three build cards, reliable focused-GUI Tab/Escape handling, separate gather/build reach, explicit gather/place/dismantle feedback, and strong green-valid/red-invalid placement projection. Independent review is GO with no remaining P0-P3 findings; the authoritative wrapper passes 507/507 managed and 28/28 Godot tests; Release and ExportRelease builds have zero warnings/errors.
+EB-01R is technically validated and its human play gate was explicitly accepted by the user on 2026-08-27. The confirmation covers the five required axes—world readability, HUD hierarchy, inventory usability, construction clarity, and interaction feel—without inventing numeric scores that were not supplied. The authoritative gather, bounded inventory, modular floor/wall/post construction, dismantle, save/load, schema-v10 migration, and schema-v11 replay are unchanged. Independent review is GO with no remaining P0-P3 findings; the authoritative wrapper passes 507/507 managed and 28/28 Godot tests; Release and ExportRelease builds have zero warnings/errors.
 
 Private-desktop r6 diagnostics pass at 1280x720 and 1920x1080 with 13 hash-bound captures each. Inspected frames show a centered non-overlapping pack, readable belt/build hierarchy, distinct valid/invalid previews with reasons, and committed floor/wall/post silhouettes on intact terrain support. These captures supersede the rejected 960x540 presentation evidence for this replacement candidate, but they do not substitute for human representative play. See [EB-01 validation evidence](evidence/v3-sg-eb-01-validation.json).
 
-The next action is user-led play through the established launcher and explicit five-axis scoring. Do not add EB-02 tools/storage/workstations until every EB-01 score is at least 4/5.
+No follow-on work is authorized in this task. EB-02, merge, performance hardening, and release work were not started.
 
 This program replaces “add another prototype feature” with a coherent miniature-society foundation. The Snow Globe remains a bounded version of Societies—not a separate simplified game—and must eventually exercise the same deterministic human/citizen action model and provider-neutral cognition seams at smaller scale.
 
@@ -125,4 +125,4 @@ No live provider calls, credentials, paid traffic, broad LLM UI, markets, govern
 
 ## Delivery boundary and next action
 
-EB-01R work is isolated on `codex/snow-globe-eb01-ui-replacement`, based on exact PR #181 head `29021b221abc99ff0e5d35b0df067eec1d2422cc`. Implementation commit `00024cd67c8d889fd2e448cd95b45fc580253198` is pushed in stacked PR #182 against `codex/snow-globe-eco-baseline`. EB-01 remains the only active implementation milestone. Merge, hosted CI, performance acceptance, and all five human product scores remain open; do not begin EB-02 before acceptance.
+EB-01R work is isolated on `codex/snow-globe-eb01-ui-replacement`, based on exact PR #181 head `29021b221abc99ff0e5d35b0df067eec1d2422cc`. Implementation commit `00024cd67c8d889fd2e448cd95b45fc580253198` is pushed in stacked PR #182 against `codex/snow-globe-eco-baseline`. The user explicitly confirmed the bounded EB-01 human play gate on 2026-08-27. Merge, hosted CI, performance acceptance, release readiness, and any follow-on milestone remain open and unauthorized in this task.
