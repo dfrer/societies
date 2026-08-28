@@ -18,3 +18,5 @@ The laboratory proves substantial deterministic and operational machinery. The a
 Provider, credential, network, paid, and live-readiness operations require explicit current authorization. Archived standing authority and successful historical runs do not grant new execution.
 
 Read `labs/AGENTS.md`, the root project charter/current state, and the active milestone before changing laboratory code.
+
+<!-- Temporary branch-protection verification marker; this PR will not be merged. -->
