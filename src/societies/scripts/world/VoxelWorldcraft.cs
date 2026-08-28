@@ -156,25 +156,29 @@ namespace Societies.Core
 
         public WorldcraftPlacementEvaluation Evaluate(WorldcraftPlacementCommand command, VoxelWorldModule world, InventoryComponent inventory)
         {
-            if (command == null || string.IsNullOrWhiteSpace(command.ActorId)) return Reject(WorldcraftRejection.InvalidActor);
-            if (command.ExpectedConstructionRevision != Revision) return Reject(WorldcraftRejection.StaleRevision);
+            if (command == null) return Reject(WorldcraftRejection.InvalidActor);
             WorldcraftPieceDefinition? definition = VoxelWorldcraftCatalog.FindPiece(command.PieceId);
+            int normalizedRotation = NormalizeRotation(command.RotationQuarterTurns);
+            IReadOnlyList<VoxelCoord> cells = definition == null
+                ? Array.Empty<VoxelCoord>()
+                : CellsFor(definition, command.Anchor, normalizedRotation);
+            if (string.IsNullOrWhiteSpace(command.ActorId)) return Reject(WorldcraftRejection.InvalidActor, definition, cells, command.Anchor, normalizedRotation);
+            if (command.ExpectedConstructionRevision != Revision) return Reject(WorldcraftRejection.StaleRevision, definition, cells, command.Anchor, normalizedRotation);
             if (definition == null) return Reject(WorldcraftRejection.UnknownPiece);
-            if (!CanRecordEvent) return Reject(WorldcraftRejection.EventCapacityReached, definition);
-            if (_pieces.Count >= MaximumPieceCount) return Reject(WorldcraftRejection.PieceCapacityReached, definition);
+            if (!CanRecordEvent) return Reject(WorldcraftRejection.EventCapacityReached, definition, cells, command.Anchor, normalizedRotation);
+            if (_pieces.Count >= MaximumPieceCount) return Reject(WorldcraftRejection.PieceCapacityReached, definition, cells, command.Anchor, normalizedRotation);
             if (command.RotationQuarterTurns is < 0 or > 3 || (!definition.Rotates && command.RotationQuarterTurns != 0))
-                return Reject(WorldcraftRejection.InvalidRotation, definition);
-            IReadOnlyList<VoxelCoord> cells = CellsFor(definition, command.Anchor, command.RotationQuarterTurns);
-            if (cells.Any(cell => !world.Contains(cell))) return Reject(WorldcraftRejection.OutOfBounds, definition, cells);
+                return Reject(WorldcraftRejection.InvalidRotation, definition, cells, command.Anchor, normalizedRotation);
+            if (cells.Any(cell => !world.Contains(cell))) return Reject(WorldcraftRejection.OutOfBounds, definition, cells, command.Anchor, normalizedRotation);
             if (Chebyshev(command.Anchor, command.ActorCell) > VoxelWorldcraftCatalog.BuildRangeCells)
-                return Reject(WorldcraftRejection.OutOfRange, definition, cells);
+                return Reject(WorldcraftRejection.OutOfRange, definition, cells, command.Anchor, normalizedRotation);
             HashSet<VoxelCoord> occupied = _pieces.SelectMany(GetCells).ToHashSet();
             if (cells.Any(cell => world.GetMaterial(cell) != VoxelMaterialId.Air || occupied.Contains(cell)))
-                return Reject(WorldcraftRejection.Occupied, definition, cells);
-            if (!cells.Any(cell => IsSupported(cell, world, occupied))) return Reject(WorldcraftRejection.Unsupported, definition, cells);
-            if (!inventory.HasItems(definition.Cost)) return Reject(WorldcraftRejection.InsufficientMaterials, definition, cells);
+                return Reject(WorldcraftRejection.Occupied, definition, cells, command.Anchor, normalizedRotation);
+            if (!cells.Any(cell => IsSupported(cell, world, occupied))) return Reject(WorldcraftRejection.Unsupported, definition, cells, command.Anchor, normalizedRotation);
+            if (!inventory.HasItems(definition.Cost)) return Reject(WorldcraftRejection.InsufficientMaterials, definition, cells, command.Anchor, normalizedRotation);
             return new() { Cells = Array.AsReadOnly(cells.ToArray()), Definition = definition,
-                Anchor = command.Anchor, RotationQuarterTurns = command.RotationQuarterTurns };
+                Anchor = command.Anchor, RotationQuarterTurns = normalizedRotation };
         }
 
         public WorldcraftPieceSnapshot Place(WorldcraftPlacementCommand command, long worldRevision)
@@ -510,8 +514,12 @@ namespace Societies.Core
             WorldRevision = value.WorldRevision, InventoryDeltas = new(value.InventoryDeltas, StringComparer.Ordinal)
         };
         private static WorldcraftPlacementEvaluation Reject(WorldcraftRejection rejection, WorldcraftPieceDefinition? definition = null,
-            IReadOnlyList<VoxelCoord>? cells = null) => new() { Rejection = rejection, Definition = definition,
-                Cells = Array.AsReadOnly((cells ?? Array.Empty<VoxelCoord>()).ToArray()) };
+            IReadOnlyList<VoxelCoord>? cells = null, VoxelCoord anchor = default, int rotationQuarterTurns = 0) => new()
+            {
+                Rejection = rejection, Definition = definition, Anchor = anchor, RotationQuarterTurns = NormalizeRotation(rotationQuarterTurns),
+                Cells = Array.AsReadOnly((cells ?? Array.Empty<VoxelCoord>()).ToArray())
+            };
+        private static int NormalizeRotation(int rotationQuarterTurns) => ((rotationQuarterTurns % 4) + 4) % 4;
         private static int Chebyshev(VoxelCoord a, VoxelCoord b) => Math.Max(Math.Abs(a.X - b.X), Math.Max(Math.Abs(a.Y - b.Y), Math.Abs(a.Z - b.Z)));
         private static bool IsSupported(VoxelCoord cell, VoxelWorldModule world, HashSet<VoxelCoord> pieces)
         { VoxelCoord below = new(cell.X, cell.Y - 1, cell.Z); return world.Contains(below) && world.GetMaterial(below) != VoxelMaterialId.Air || pieces.Contains(below); }

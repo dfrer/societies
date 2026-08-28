@@ -236,6 +236,7 @@ namespace Societies.Tests
                 Assert(manager.CitizenCount == 0, "SG-VX-01 intentionally excludes citizen simulation");
                 TerrainGenerator terrain = manager.GetNode<TerrainGenerator>("World/Systems/Terrain");
                 VoxelWorldPresenter presenter = manager.GetNode<VoxelWorldPresenter>("World/VoxelWorldPresenter");
+                VoxelWorldcraftPresenter worldcraftPresenter = manager.GetNode<VoxelWorldcraftPresenter>("World/VoxelWorldcraftPresenter");
                 Assert(!terrain.Visible && terrain.GetChildCount() == 0, "Heightfield presentation must be inactive in the voxel scenario");
                 PrototypeHud voxelHud = manager.GetNode<PrototypeHud>("UI");
                 Assert(voxelHud.IsVoxelFoundationMode && !voxelHud.HasVisibleLegacySettlementPanels,
@@ -274,18 +275,110 @@ namespace Societies.Tests
                     voxelHud.VoxelBuildText.Contains("[1] Floor", StringComparison.Ordinal) &&
                     voxelHud.VoxelBuildText.Contains("COST 2 Wood", StringComparison.Ordinal),
                     $"Voxel HUD must always expose bounded stack capacity and exact piece costs; hotbar='{voxelHud.VoxelHotbarText}' build='{voxelHud.VoxelBuildText}'");
+                Assert(voxelHud.VoxelHotbarSlotCount == VoxelWorldcraftCatalog.HotbarSlots &&
+                    voxelHud.VoxelBuildCardCount == VoxelWorldcraftCatalog.Pieces.Count &&
+                    voxelHud.VoxelInventoryVisualSlotCount == VoxelWorldcraftCatalog.HotbarSlots,
+                    "Founder field kit must expose eight physical belt/pack slots and three build cards, rather than a text-only projection.");
+                Assert(voxelHud.GetNodeOrNull<Control>("HudRoot/VoxelToolBelt/EightSlotToolBelt/ToolBeltSlot08") != null &&
+                    voxelHud.GetNodeOrNull<Button>("HudRoot/VoxelBuildTray/BuildCards/BuildCard_wood_floor") != null &&
+                    voxelHud.GetNodeOrNull<Control>("HudRoot/InventoryPanel/EightSlotFieldPack/InventorySlots/FieldPackSlot08") != null,
+                    "Founder field kit hierarchy must retain named, inspectable final belt, build-card, and pack slots.");
+                Assert(voxelHud.GetNodeOrNull<Button>("HudRoot/VoxelToolBelt/EightSlotToolBelt/ToolBeltSlot01/SlotFocus") == null &&
+                    voxelHud.GetNodeOrNull<Button>("HudRoot/InventoryPanel/EightSlotFieldPack/InventorySlots/FieldPackSlot01/SlotFocus") != null,
+                    "Shared slot refresh must support passive belt slots while applying focus affordance only to interactive pack slots.");
+                Color fieldKitInk = new("2d2922");
+                Assert(voxelHud.GetNode<Label>("HudRoot/VoxelToolBelt/ToolBeltCapacity").GetThemeColor("font_color").IsEqualApprox(fieldKitInk) &&
+                    voxelHud.GetNode<Label>("HudRoot/VoxelBuildTray/BuildTraySummary").GetThemeColor("font_color").IsEqualApprox(fieldKitInk) &&
+                    voxelHud.GetNode<Control>("HudRoot/InteractionPanel").GetChildren().OfType<Label>().Single().GetThemeColor("font_color").IsEqualApprox(fieldKitInk),
+                    "Field-kit capacity, build summary, and contextual copy must use high-contrast charcoal ink on ivory.");
+                voxelHud.ApplyResponsiveLayout(new Vector2(1280.0f, 720.0f));
+                Control belt720 = voxelHud.GetNode<Control>("HudRoot/VoxelToolBelt");
+                Control tray720 = voxelHud.GetNode<Control>("HudRoot/VoxelBuildTray");
+                Assert(belt720.Position.X >= 0.0f && belt720.Position.Y >= 0.0f && (belt720.Position + belt720.Size).X <= 1280.0f && (belt720.Position + belt720.Size).Y <= 720.0f &&
+                    tray720.Position.X >= 0.0f && tray720.Position.Y >= 0.0f && (tray720.Position + tray720.Size).X <= 1280.0f && (tray720.Position + tray720.Size).Y <= 720.0f,
+                    "Founder field kit must remain in bounds at 1280x720.");
+                Control prompt720 = voxelHud.GetNode<Control>("HudRoot/InteractionPanel");
+                Control status720 = voxelHud.GetNode<Control>("HudRoot/StatusPanel");
+                Label promptText720 = prompt720.GetChildren().OfType<Label>().Single();
+                Label statusText720 = status720.GetChildren().OfType<Label>().Single();
+                Assert(!new Rect2(tray720.Position, tray720.Size).Intersects(new Rect2(prompt720.Position, prompt720.Size)) &&
+                    !new Rect2(tray720.Position, tray720.Size).Intersects(new Rect2(status720.Position, status720.Size)),
+                    "1280x720 field-kit prompt/toast must not overlap the build tray.");
+                Assert(prompt720.Size.Y - promptText720.OffsetTop + promptText720.OffsetBottom >= 40.0f &&
+                    status720.Size.Y - statusText720.OffsetTop + statusText720.OffsetBottom >= 40.0f &&
+                    promptText720.VerticalAlignment == VerticalAlignment.Center && statusText720.VerticalAlignment == VerticalAlignment.Center,
+                    "Voxel prompt and toast must retain a usable vertically centered glyph box, not blank bars.");
+                voxelHud.ApplyResponsiveLayout(new Vector2(1920.0f, 1080.0f));
+                Control belt1080 = voxelHud.GetNode<Control>("HudRoot/VoxelToolBelt");
+                Assert(belt1080.Position.X >= 0.0f && (belt1080.Position + belt1080.Size).X <= 1920.0f && (belt1080.Position + belt1080.Size).Y <= 1080.0f,
+                    "Founder field kit must remain in bounds at 1920x1080.");
+                voxelHud.GetNode<Button>("HudRoot/VoxelBuildTray/BuildCards/BuildCard_wood_wall").EmitSignal(Button.SignalName.Pressed);
+                Assert(manager.SelectedWorldcraftPieceId == "wood_wall" && manager.IsWorldcraftBuildMode,
+                    "Pointer build-card selection must travel through the same GameManager command selection seam as number shortcuts.");
+                voxelHud.SetVoxelPlacementEvaluation(new WorldcraftPlacementEvaluation { Rejection = WorldcraftRejection.Occupied }, true);
+                Assert(voxelHud.VoxelPlacementStateText.Contains("occupied", StringComparison.OrdinalIgnoreCase), "Occupied build target must have a concise player-facing reason.");
+                voxelHud.SetVoxelPlacementEvaluation(new WorldcraftPlacementEvaluation { Rejection = WorldcraftRejection.Unsupported }, true);
+                Assert(voxelHud.VoxelPlacementStateText.Contains("support", StringComparison.OrdinalIgnoreCase), "Unsupported build target must have a concise player-facing reason.");
+                manager._UnhandledInput(new InputEventKey { Keycode = Key.R, PhysicalKeycode = Key.R, Pressed = true });
+                WorldcraftPlacementEvaluation outOfRange = manager.EvaluateWorldcraftPlacementPresentationProbe(
+                    new VoxelCoord(VoxelWorldModule.MaxXExclusive - 2, 1, VoxelWorldModule.MaxZExclusive - 2));
+                AssertRejectedGhostProjection(worldcraftPresenter, outOfRange, WorldcraftRejection.OutOfRange,
+                    new VoxelCoord(VoxelWorldModule.MaxXExclusive - 2, 1, VoxelWorldModule.MaxZExclusive - 2), 1);
+                Assert(voxelHud.VoxelPlacementStateText.Contains("closer", StringComparison.OrdinalIgnoreCase),
+                    "Out-of-range build target must be surfaced by the authoritative GameManager evaluator.");
+                voxelHud.SetVoxelPlacementEvaluation(new WorldcraftPlacementEvaluation { Rejection = WorldcraftRejection.InsufficientMaterials }, true);
+                Assert(voxelHud.VoxelPlacementStateText.Contains("materials", StringComparison.OrdinalIgnoreCase), "Insufficient-material build target must have a concise player-facing reason.");
+                WorldcraftPlacementEvaluation stale = manager.EvaluateWorldcraftPlacementPresentationProbe(
+                    new VoxelCoord(0, 1, 0), expectedConstructionRevision: manager.CaptureSnapshot().Construction!.Revision + 1);
+                AssertRejectedGhostProjection(worldcraftPresenter, stale, WorldcraftRejection.StaleRevision, new VoxelCoord(0, 1, 0), 1);
+                Assert(voxelHud.VoxelPlacementStateText.Contains("refresh", StringComparison.OrdinalIgnoreCase),
+                    "Stale build target must be surfaced by the authoritative GameManager evaluator.");
+                voxelHud.SetVoxelPlacementEvaluation(new WorldcraftPlacementEvaluation(), true);
+                Assert(voxelHud.VoxelPlacementStateText.Contains("Right-click", StringComparison.OrdinalIgnoreCase), "Valid build target must invite placement.");
+                voxelHud.SetVoxelPlacementEvaluation(null, true);
+                Assert(voxelHud.VoxelPlacementStateText.Contains("AIM", StringComparison.OrdinalIgnoreCase), "Missing build ray must clear the preview state into an aim prompt.");
+                voxelHud.SetVoxelGatherTargetFocus("GATHER TARGET · left-click the exposed material");
+                Assert(voxelHud.VoxelPlacementStateText.Contains("GATHER TARGET", StringComparison.Ordinal), "Gather mode must project a focused terrain target.");
 
-                manager.SetVoxelInventoryOpen(true);
+                Button focusedBuildCard = voxelHud.GetNode<Button>("HudRoot/VoxelBuildTray/BuildCards/BuildCard_wood_wall");
+                focusedBuildCard.GrabFocus();
+                Assert(focusedBuildCard.HasFocus(), "Propagation regression requires an actual focused build-card GUI control.");
+                GetViewport().PushInput(new InputEventKey { Keycode = Key.Tab, PhysicalKeycode = Key.Tab, Pressed = true });
+                await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
                 Assert(manager.IsVoxelInventoryOpen && voxelHud.IsInventoryVisible && voxelHud.VoxelInventorySlotLines == 8,
-                    "Voxel pack must open as an exact eight-slot stack grid");
+                    "Focused GUI Tab input must open the exact eight-slot voxel pack before controls swallow the shortcut.");
+                Assert(voxelHud.VoxelInventoryCapacityText.Contains("0/8", StringComparison.Ordinal) &&
+                    voxelHud.GetNode<Control>("HudRoot/InventoryPanel/EightSlotFieldPack").Visible,
+                    "Empty field pack must present exact capacity and all eight visual slots.");
+                foreach (Vector2 size in new[] { new Vector2(1280.0f, 720.0f), new Vector2(1920.0f, 1080.0f) })
+                {
+                    voxelHud.ApplyResponsiveLayout(size);
+                    Control modal = voxelHud.GetNode<Control>("HudRoot/InventoryPanel");
+                    Control closeHint = voxelHud.GetNode<Control>("HudRoot/InventoryPanel/FieldPackClose");
+                    Assert(modal.Position.X >= 0.0f && modal.Position.Y >= 0.0f && (modal.Position + modal.Size).X <= size.X && (modal.Position + modal.Size).Y <= size.Y &&
+                        closeHint.Position.X >= 0.0f && closeHint.Position.Y >= 0.0f && (closeHint.Position + closeHint.Size).X <= modal.Size.X && (closeHint.Position + closeHint.Size).Y <= modal.Size.Y,
+                        $"Open field pack and close hint must be centered and fully in bounds at {size.X}x{size.Y}.");
+                }
+                Button packFocus = voxelHud.GetNode<Button>("HudRoot/InventoryPanel/EightSlotFieldPack/InventorySlots/FieldPackSlot01/SlotFocus");
+                Assert(!voxelHud.IsVoxelBuildTrayVisible && packFocus.FocusMode == Control.FocusModeEnum.All &&
+                    packFocus.GetThemeStylebox("hover") != null && packFocus.GetThemeStylebox("focus") != null,
+                    "Open field pack must hide the build tray and retain visible hover/focus affordances for pack slots.");
                 Assert(routePlayer.InputSuppressed && !routePlayer.ControlsEnabled && Input.MouseMode == Input.MouseModeEnum.Visible,
                     "Open voxel inventory must suppress player look/movement and release the mouse");
                 long inventoryOpenRevision = manager.VoxelWorldRevision;
+                string pieceBeforeSuppressedGuiAction = manager.SelectedWorldcraftPieceId;
+                voxelHud.GetNode<Button>("HudRoot/VoxelBuildTray/BuildCards/BuildCard_wood_post").EmitSignal(Button.SignalName.Pressed);
+                Assert(manager.SelectedWorldcraftPieceId == pieceBeforeSuppressedGuiAction,
+                    "An emitted GUI build-card action must not select a piece while the pack is open.");
                 manager._UnhandledInput(new InputEventMouseButton { ButtonIndex = MouseButton.Left, Pressed = true });
                 Assert(manager.VoxelWorldRevision == inventoryOpenRevision, "Open voxel inventory must suppress world pointer edits");
-                manager.SetVoxelInventoryOpen(false);
+                packFocus.GrabFocus();
+                GetViewport().PushInput(new InputEventKey { Keycode = Key.Escape, PhysicalKeycode = Key.Escape, Pressed = true });
+                await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
                 Assert(!routePlayer.InputSuppressed && routePlayer.ControlsEnabled,
-                    "Closing voxel inventory must restore player control; captured OS mouse mode is unavailable in headless display mode");
+                    "Focused GUI Escape input must close the voxel inventory and restore player control.");
+                Assert(!manager.IsVoxelInventoryOpen && voxelHud.IsVoxelBuildTrayVisible,
+                    "Escape must close the field pack through the GameManager input path and restore the build tray.");
 
                 manager._UnhandledInput(new InputEventKey { Keycode = Key.Key2, PhysicalKeycode = Key.Key2, Pressed = true });
                 Assert(manager.SelectedWorldcraftPieceId == "wood_wall" && manager.CurrentDirective == PrototypeSettlementDirective.Neutral &&
@@ -299,6 +392,27 @@ namespace Societies.Tests
                 Assert(before.Workers.Count == 0 && before.Resources.Count == 0, "Voxel snapshot must not smuggle heightfield settlement state");
                 VoxelWorldModule snapshotWorld = VoxelWorldModule.Restore(before.VoxelWorld!);
                 VoxelCoord target = FindEditableVoxel(snapshotWorld, 0, 0);
+
+                routePlayer.GlobalPosition = new Vector3(0.5f, VoxelWorldModule.MaxYExclusive + 5.0f, 0.5f);
+                routeCamera.LookAt(routeCamera.GlobalPosition + Vector3.Forward, Vector3.Up);
+                StaticBody3D previewOnlyTarget = new() { Name = "PreviewOnlyRayRegression" };
+                previewOnlyTarget.AddChild(new CollisionShape3D { Shape = new BoxShape3D { Size = Vector3.One * 0.5f } });
+                manager.GetNode<Node3D>("World").AddChild(previewOnlyTarget);
+                previewOnlyTarget.GlobalPosition = routeCamera.GlobalPosition + Vector3.Forward * 6.0f;
+                await ToSignal(GetTree(), SceneTree.SignalName.PhysicsFrame);
+                RayCast3D buildPreviewRay = routePlayer.GetBuildPreviewRay() ?? throw new Exception("Build preview ray missing");
+                RayCast3D gatherRay = routePlayer.GetGatherRay() ?? throw new Exception("Gather ray missing");
+                buildPreviewRay.ForceRaycastUpdate();
+                gatherRay.ForceRaycastUpdate();
+                Assert(buildPreviewRay.IsColliding() && !gatherRay.IsColliding(),
+                    "Voxel scene must retain a longer build-preview query without extending the gather query.");
+                long revisionBeforeFarGather = manager.VoxelWorldRevision;
+                string rootBeforeFarGather = manager.CaptureSnapshot().VoxelWorld!.RootHash;
+                manager._UnhandledInput(new InputEventMouseButton { ButtonIndex = MouseButton.Left, Pressed = true });
+                Assert(manager.VoxelWorldRevision == revisionBeforeFarGather && manager.CaptureSnapshot().VoxelWorld!.RootHash == rootBeforeFarGather,
+                    "A target outside the 4.5m gather ray must not issue an authoritative gather mutation.");
+                previewOnlyTarget.QueueFree();
+                await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
 
                 PhysicsRayQueryParameters3D query = PhysicsRayQueryParameters3D.Create(
                     new Vector3(target.X + 0.5f, VoxelWorldModule.MaxYExclusive + 4.0f, target.Z + 0.5f),
@@ -314,6 +428,11 @@ namespace Societies.Tests
 
                 WorldcraftGatherResult removed = manager.ApplyVoxelGatherIntent(target);
                 Assert(removed.Accepted && manager.VoxelWorldRevision == 1, "Player gather intent did not cross the authoritative runtime path");
+                Assert(voxelHud.StatusText.Contains("+1", StringComparison.Ordinal) && voxelHud.StatusText.Contains("packed", StringComparison.OrdinalIgnoreCase),
+                    "Authoritative gather success must project an inventory-gain confirmation.");
+                WorldcraftGatherResult depletedGather = manager.ApplyVoxelGatherIntent(target);
+                Assert(!depletedGather.Accepted && voxelHud.StatusText.Contains("Gather unavailable", StringComparison.Ordinal),
+                    "Depleted or invalid terrain gather must project a concise rejection without mutating inventory.");
                 PrototypeRuntimeSnapshot afterRemove = manager.CaptureSnapshot();
                 Assert(afterRemove.WorldHash == before.WorldHash, "Voxel edit must preserve immutable world identity");
                 Assert(afterRemove.VoxelWorld!.RootHash != before.VoxelWorld!.RootHash, "Voxel edit must change mutable state hash");
@@ -324,18 +443,30 @@ namespace Societies.Tests
                 WorldcraftGatherResult woodGather = manager.ApplyVoxelGatherIntent(wood);
                 Assert(woodGather.Accepted && manager.Inventory.GetCount("wood") > 0, "Worldcraft gather must authoritatively update the bounded hotbar inventory");
                 routePlayer.GlobalPosition = new Vector3(wood.X + 0.5f, wood.Y + 1.0f, wood.Z + 0.5f);
+                Assert(manager.SelectWorldcraftPiece("wood_wall"), "Worldcraft metadata regression could not select wall.");
+                WorldcraftPlacementEvaluation insufficient = manager.EvaluateWorldcraftPlacementIntent(wood);
+                AssertRejectedGhostProjection(worldcraftPresenter, insufficient, WorldcraftRejection.InsufficientMaterials, wood, 0);
+                Assert(manager.SelectWorldcraftPiece("wood_post"), "Worldcraft metadata regression could not restore post selection.");
                 WorldcraftCommandResult placed = manager.ApplyWorldcraftPlacementIntent(wood);
-                VoxelWorldcraftPresenter worldcraftPresenter = manager.GetNode<VoxelWorldcraftPresenter>("World/VoxelWorldcraftPresenter");
                 Assert(placed.Accepted && manager.CaptureSnapshot().Construction!.Pieces.Count == 1 && worldcraftPresenter.GetChildCount() > 0, "Build command must update only authoritative construction then its presenter");
                 StaticBody3D postBody = worldcraftPresenter.GetChildren().OfType<StaticBody3D>().Single();
                 BoxMesh postMesh = (BoxMesh)postBody.GetChildren().OfType<MeshInstance3D>().Single().Mesh;
                 BoxShape3D postCollision = (BoxShape3D)postBody.GetChildren().OfType<CollisionShape3D>().Single().Shape;
                 Assert(postMesh.Size == new Vector3(0.28f, 3.0f, 0.28f) && postCollision.Size == postMesh.Size,
                     "Wood post must use a slender deterministic mesh/collision footprint");
-                WorldcraftPieceDefinition postDefinition = VoxelWorldcraftCatalog.FindPiece("wood_post")!;
-                worldcraftPresenter.ShowGhost(new WorldcraftPlacementEvaluation { Rejection = WorldcraftRejection.Occupied,
-                    Definition = postDefinition, Anchor = wood, Cells = WorldcraftConstructionState.CellsFor(postDefinition, wood, 0) });
-                Assert(!worldcraftPresenter.GhostValid, "Invalid build preview must remain a non-authoritative invalid projection");
+                Assert(postBody.GetNodeOrNull<Node3D>("TimberDetails")?.GetChildCount() == 2,
+                    "Wood post must add non-colliding brass/timber construction detail without changing its authoritative collision shape.");
+                WorldcraftPlacementEvaluation occupied = manager.EvaluateWorldcraftPlacementIntent(wood);
+                AssertRejectedGhostProjection(worldcraftPresenter, occupied, WorldcraftRejection.Occupied, wood, 0);
+                VoxelWorldModule unsupportedWorld = VoxelWorldModule.Restore(manager.CaptureSnapshot().VoxelWorld!);
+                VoxelCoord unsupportedAnchor = FindUnsupportedWorldcraftAnchor(unsupportedWorld, VoxelWorldcraftCatalog.FindPiece("wood_post")!);
+                routePlayer.GlobalPosition = new Vector3(unsupportedAnchor.X + 0.5f, unsupportedAnchor.Y + 0.1f, unsupportedAnchor.Z + 0.5f);
+                WorldcraftPlacementEvaluation unsupported = manager.EvaluateWorldcraftPlacementIntent(unsupportedAnchor);
+                AssertRejectedGhostProjection(worldcraftPresenter, unsupported, WorldcraftRejection.Unsupported, unsupportedAnchor, 0);
+                // Preserve a real rejected preview so the following failed-load regression can
+                // prove it remains inert rather than clearing presentation state.
+                worldcraftPresenter.ShowGhost(occupied);
+                routePlayer.GlobalPosition = new Vector3(wood.X + 0.5f, wood.Y + 1.0f, wood.Z + 0.5f);
                 PrototypeRuntimeSnapshot malformedLoad = PrototypePersistenceService.DeserializeSnapshot(
                     PrototypePersistenceService.SerializeSnapshot(manager.CaptureSnapshot()));
                 malformedLoad.Construction!.Events[0].Tick = malformedLoad.SimulationTick + 1;
@@ -463,6 +594,38 @@ namespace Societies.Tests
                 if (world.GetMaterial(cell) == material && world.GetMaterial(new VoxelCoord(x, y + 1, z)) == VoxelMaterialId.Air) return cell;
             }
             throw new InvalidOperationException("Voxel smoke world has no exposed requested material.");
+        }
+
+        private static VoxelCoord FindUnsupportedWorldcraftAnchor(VoxelWorldModule world, WorldcraftPieceDefinition definition)
+        {
+            for (int y = VoxelWorldModule.MaxYExclusive - 1; y >= 1; y--)
+            for (int x = VoxelWorldModule.MinX; x < VoxelWorldModule.MaxXExclusive; x++)
+            for (int z = VoxelWorldModule.MinZ; z < VoxelWorldModule.MaxZExclusive; z++)
+            {
+                VoxelCoord anchor = new(x, y, z);
+                IReadOnlyList<VoxelCoord> cells = WorldcraftConstructionState.CellsFor(definition, anchor, 0);
+                if (cells.All(world.Contains) && cells.All(cell => world.GetMaterial(cell) == VoxelMaterialId.Air) &&
+                    cells.All(cell => world.Contains(new VoxelCoord(cell.X, cell.Y - 1, cell.Z)) &&
+                        world.GetMaterial(new VoxelCoord(cell.X, cell.Y - 1, cell.Z)) == VoxelMaterialId.Air))
+                    return anchor;
+            }
+
+            throw new InvalidOperationException("Voxel smoke world has no unsupported worldcraft anchor.");
+        }
+
+        private void AssertRejectedGhostProjection(VoxelWorldcraftPresenter presenter, WorldcraftPlacementEvaluation evaluation,
+            WorldcraftRejection expectedRejection, VoxelCoord expectedAnchor, int expectedRotation)
+        {
+            Assert(evaluation.Rejection == expectedRejection && evaluation.Definition != null && evaluation.Cells.Count > 0 &&
+                evaluation.Anchor == expectedAnchor && evaluation.RotationQuarterTurns == expectedRotation,
+                $"{expectedRejection} placement evaluation must retain known piece projection metadata.");
+            presenter.ShowGhost(evaluation);
+            MeshInstance3D ghostMesh = presenter.GetNodeOrNull<MeshInstance3D>($"WorldcraftPreview/{evaluation.Definition!.Id}_mesh")
+                ?? throw new Exception($"{expectedRejection} placement evaluation did not render a ghost mesh.");
+            Vector3 expectedCenter = VoxelWorldcraftPresenter.Shape(evaluation.Definition.Id, expectedAnchor, expectedRotation).Center;
+            Assert(presenter.HasGhost && !presenter.GhostValid && ghostMesh.Position.IsEqualApprox(expectedCenter),
+                $"{expectedRejection} placement must render its invalid ghost at the rejected command target.");
+            presenter.HideGhost();
         }
 
         private void Test_LegacyVoxelVerticalRunCollision()

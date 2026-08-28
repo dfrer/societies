@@ -2,11 +2,17 @@ param(
     [Parameter(Mandatory = $true)]
     [string]$OutputDirectory,
     [string]$GodotPath = $env:GODOT_BIN,
+    [int]$Width = 1280,
+    [int]$Height = 720,
     [ValidateRange(30, 600)]
     [int]$TimeoutSeconds = 180
 )
 
 $ErrorActionPreference = 'Stop'
+
+if (($Width -ne 1280 -or $Height -ne 720) -and ($Width -ne 1920 -or $Height -ne 1080)) {
+    throw 'Capture dimensions must be exactly 1280x720 or 1920x1080.'
+}
 
 Add-Type -TypeDefinition @'
 using System;
@@ -347,8 +353,9 @@ $sourceDigests = Get-DiagnosticSourceDigests
 
 $arguments = @(
     '--rendering-driver', 'opengl3', '--audio-driver', 'Dummy', '--windowed',
-    '--resolution', '960x540', '--log-file', $logPath, '--path', $projectRoot,
+    '--resolution', "$Width`x$Height", '--log-file', $logPath, '--path', $projectRoot,
     'res://tests/VoxelSceneDiagnosticRunner.tscn', '--', '--output-dir', $outputRoot,
+    '--capture-width', "$Width", '--capture-height', "$Height",
     '--isolation-marker', $marker, '--isolation-marker-file', $markerPath,
     '--isolation-desktop', $desktopName, '--active-desktop', $activeDesktopName
 )
@@ -366,6 +373,8 @@ try {
         windowObservedOnAlternateDesktop = $result.WindowObservedOnDesktop
         descendantCustodyVerified = $result.DescendantCustodyVerified
         exitCode = $result.ExitCode
+        captureWidth = $Width
+        captureHeight = $Height
     } | ConvertTo-Json -Depth 3), [System.Text.UTF8Encoding]::new($false))
     if ($result.ExitCode -ne 0) { throw "Hidden-desktop Godot diagnostic exited $($result.ExitCode). See $logPath" }
     if (-not $result.WindowObservedOnDesktop) { throw 'Godot process never published a window on the alternate desktop.' }
@@ -387,10 +396,13 @@ try {
         'side-surface-diagnostic.png',
         'after-physics-traversal.png',
         'worldcraft-gather-hud.png',
+        'worldcraft-gather-success.png',
+        'worldcraft-tool-belt.png',
         'worldcraft-inventory-grid.png',
         'worldcraft-valid-ghost.png',
         'worldcraft-invalid-ghost.png',
-        'worldcraft-piece-overview.png'
+        'worldcraft-piece-overview.png',
+        'worldcraft-piece-closeup.png'
     )
     foreach ($name in $expectedCaptures) {
         $capture = Get-Item -LiteralPath (Join-Path $outputRoot $name) -ErrorAction Stop
@@ -417,6 +429,8 @@ try {
         windowObservedOnAlternateDesktop = $result.WindowObservedOnDesktop
         descendantCustodyVerified = $result.DescendantCustodyVerified
         exitCode = $result.ExitCode
+        captureWidth = $Width
+        captureHeight = $Height
         encodedPngSha256 = $verifiedCaptureHashes
     } | ConvertTo-Json -Depth 5), [System.Text.UTF8Encoding]::new($false))
     [pscustomobject]@{

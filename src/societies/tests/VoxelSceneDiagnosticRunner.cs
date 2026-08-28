@@ -20,8 +20,8 @@ namespace Societies.Tests
     /// </summary>
     public partial class VoxelSceneDiagnosticRunner : Node
     {
-        private const int CaptureWidth = 960;
-        private const int CaptureHeight = 540;
+        private const int DefaultCaptureWidth = 960;
+        private const int DefaultCaptureHeight = 540;
         private const int LandingFrames = 180;
         private readonly List<string> _failures = new();
         private readonly Dictionary<string, string> _captureHashes = new(StringComparer.Ordinal);
@@ -29,6 +29,9 @@ namespace Societies.Tests
         private string _isolationMarker = string.Empty;
         private string _desktopName = string.Empty;
         private string _activeDesktopName = string.Empty;
+        private int _captureWidth = DefaultCaptureWidth;
+        private int _captureHeight = DefaultCaptureHeight;
+        private Camera3D? _captureCamera;
 
         public override void _Ready()
         {
@@ -42,6 +45,7 @@ namespace Societies.Tests
                 string outputDirectory = ResolveRequiredArgument("--output-dir");
                 Directory.CreateDirectory(outputDirectory);
                 RequireAlternateDesktopIsolation(outputDirectory);
+                ResolveCaptureDimensions();
                 ConfigureCaptureWindow();
                 await RunDiagnosticAsync(outputDirectory);
                 WriteIsolationEvidence(outputDirectory);
@@ -108,6 +112,7 @@ namespace Societies.Tests
                 RecordCameraPose("launch-player-view", player.GetNode<Camera3D>("CameraPivot/Camera3D"));
                 await CaptureAsync(outputDirectory, "launch-player-view.png");
                 Camera3D camera = CreateDiagnosticCamera(manager, "VoxelDiagnosticCamera");
+                _captureCamera = camera;
                 CreateSpawnDiagnosticMarker(manager, player, spawnSurfaceY, maximumSurfaceY);
                 CreateOutsideAirDiagnosticMarker(manager, player, maximumSurfaceY);
                 SetCamera(camera, "spawn", new Vector3(player.GlobalPosition.X + 12.0f, maximumSurfaceY + 50.0f, player.GlobalPosition.Z + 14.0f), player.GlobalPosition + new Vector3(0.0f, 1.2f, 0.0f));
@@ -163,11 +168,23 @@ namespace Societies.Tests
                 VoxelCoord wood = FindExposedVoxel(current, VoxelMaterialId.Wood);
                 player.GlobalPosition = new Vector3(wood.X + 0.5f, wood.Y + 1.2f, wood.Z + 0.5f);
                 Require(manager.ApplyVoxelGatherIntent(wood).Accepted, "Worldcraft diagnostic could not gather required wood through the real route.");
+                if (amount == 0)
+                {
+                    SetCamera(camera, "worldcraft-gather-success", player.GlobalPosition + new Vector3(9.0f, 8.0f, 11.0f), player.GlobalPosition);
+                    await CaptureAsync(outputDirectory, "worldcraft-gather-success.png");
+                }
             }
             Require(hud.VoxelHotbarText.Contains("Wood 5", StringComparison.OrdinalIgnoreCase),
                 "Gather HUD did not expose recovered construction material.");
+            Require(hud.StatusText.Contains("+1", StringComparison.Ordinal) && hud.StatusText.Contains("packed", StringComparison.OrdinalIgnoreCase),
+                "Gather-success diagnostic must retain the authoritative inventory-gain toast.");
             SetCamera(camera, "worldcraft-gather-hud", player.GlobalPosition + new Vector3(9.0f, 8.0f, 11.0f), player.GlobalPosition);
             await CaptureAsync(outputDirectory, "worldcraft-gather-hud.png");
+            manager.SetProcess(false);
+            hud.SetVoxelGatherTargetFocus("GATHER TARGET · left-click the exposed material");
+            Require(hud.VoxelPlacementStateText.Contains("GATHER TARGET", StringComparison.Ordinal),
+                "Focused-target diagnostic must retain its intentional gather prompt.");
+            await CaptureAsync(outputDirectory, "worldcraft-tool-belt.png");
 
             manager.SetVoxelInventoryOpen(true);
             Require(hud.IsInventoryVisible && hud.VoxelInventorySlotLines == 8 && player.InputSuppressed,
@@ -183,28 +200,34 @@ namespace Societies.Tests
             VoxelWorldModule world = VoxelWorldModule.Restore(manager.CaptureSnapshot().VoxelWorld!);
             int centerX = Mathf.FloorToInt(spawnColumn.X);
             int centerZ = Mathf.FloorToInt(spawnColumn.Z);
-            (VoxelCoord floorAnchor, VoxelCoord floorSecond) = FindFlatFloorPad(world, centerX, centerZ);
-            VoxelCoord wallAnchor = FindTopVoxel(world, centerX - 2, centerZ + 1);
-            VoxelCoord postAnchor = FindTopVoxel(world, centerX + 1, centerZ + 1);
-            foreach (VoxelCoord cell in new[] { floorAnchor, floorSecond, wallAnchor, postAnchor })
-                Require(manager.ApplyVoxelGatherIntent(cell).Accepted, "Worldcraft diagnostic build pad gather failed.");
+            (VoxelCoord floorAnchor, VoxelCoord floorSecond, VoxelCoord wallAnchor, VoxelCoord postAnchor) =
+                FindFlatConstructionPad(world, centerX, centerZ);
+            HideConstructionCaptureObstructions(manager, player);
 
             player.GlobalPosition = new Vector3(centerX + 0.5f, floorAnchor.Y + 1.2f, centerZ + 0.5f);
             Require(manager.SelectWorldcraftPiece("wood_floor"), "Worldcraft diagnostic could not select floor.");
             WorldcraftPlacementEvaluation valid = manager.EvaluateWorldcraftPlacementIntent(floorAnchor);
             Require(valid.IsValid, $"Expected valid floor preview was rejected: {valid.Rejection}.");
             construction.ShowGhost(valid);
-            SetCamera(camera, "worldcraft-valid-ghost", new Vector3(centerX + 8.0f, floorAnchor.Y + 7.0f, centerZ + 9.0f),
-                new Vector3(centerX, floorAnchor.Y + 0.8f, centerZ));
+            hud.SetVoxelPlacementEvaluation(valid, true);
+            Require(hud.VoxelPlacementStateText.Contains("PLACE", StringComparison.Ordinal),
+                "Valid ghost diagnostic must retain the placement prompt.");
+            SetCamera(camera, "worldcraft-valid-ghost", new Vector3(centerX + 4.8f, floorAnchor.Y + 4.6f, centerZ + 5.6f),
+                new Vector3(centerX + 0.5f, floorAnchor.Y + 0.45f, centerZ + 0.5f));
             await CaptureAsync(outputDirectory, "worldcraft-valid-ghost.png");
             Require(manager.ApplyWorldcraftPlacementIntent(floorAnchor).Accepted, "Worldcraft diagnostic floor placement failed.");
+            Require(manager.SelectWorldcraftPiece("wood_wall"), "Worldcraft diagnostic could not select an occupied-wall ghost.");
             WorldcraftPlacementEvaluation invalid = manager.EvaluateWorldcraftPlacementIntent(floorAnchor);
-            Require(!invalid.IsValid, "Occupied floor preview must be invalid.");
+            Require(invalid.Rejection == WorldcraftRejection.Occupied,
+                $"Occupied wall preview must be authoritatively rejected as occupied, got {invalid.Rejection}.");
             construction.ShowGhost(invalid);
+            hud.SetVoxelPlacementEvaluation(invalid, true);
+            Require(hud.VoxelPlacementStateText.Contains("occupied", StringComparison.OrdinalIgnoreCase),
+                "Invalid ghost diagnostic must retain the authoritative occupied reason.");
             await CaptureAsync(outputDirectory, "worldcraft-invalid-ghost.png");
+            RequireDistinctCaptureHashes("worldcraft-valid-ghost.png", "worldcraft-invalid-ghost.png");
             construction.HideGhost();
 
-            Require(manager.SelectWorldcraftPiece("wood_wall"), "Worldcraft diagnostic could not select wall.");
             manager._UnhandledInput(new InputEventKey { Keycode = Key.R, PhysicalKeycode = Key.R, Pressed = true });
             Require(manager.ApplyWorldcraftPlacementIntent(wallAnchor).Accepted, "Worldcraft diagnostic wall placement failed.");
             Require(manager.SelectWorldcraftPiece("wood_post"), "Worldcraft diagnostic could not select post.");
@@ -212,9 +235,22 @@ namespace Societies.Tests
             Require(manager.CaptureSnapshot().Construction!.Pieces.Select(piece => piece.PieceId).OrderBy(id => id, StringComparer.Ordinal)
                 .SequenceEqual(new[] { "wood_floor", "wood_post", "wood_wall" }),
                 "Worldcraft overview must contain exactly floor, wall, and post.");
-            SetCamera(camera, "worldcraft-piece-overview", new Vector3(centerX + 10.0f, floorAnchor.Y + 9.0f, centerZ + 11.0f),
-                new Vector3(centerX, floorAnchor.Y + 1.0f, centerZ));
+            // The occupied preview is evidence for the previous capture only; do not carry its
+            // rejection copy into the completed-construction overview.
+            construction.HideGhost();
+            hud.SetVoxelPlacementEvaluation(null, false);
+            Vector3 constructionFocus = new(floorAnchor.X + 2.5f, floorAnchor.Y + 0.85f, floorAnchor.Z + 0.5f);
+            Require(construction.HasExactPieceProjection(manager.CaptureSnapshot().Construction!.Pieces.Single(piece => piece.PieceId == "wood_floor")) &&
+                construction.HasExactPieceProjection(manager.CaptureSnapshot().Construction!.Pieces.Single(piece => piece.PieceId == "wood_wall")) &&
+                construction.HasExactPieceProjection(manager.CaptureSnapshot().Construction!.Pieces.Single(piece => piece.PieceId == "wood_post")),
+                "Construction overview must project every committed floor, wall, and post before capture.");
+            SetCamera(camera, "worldcraft-piece-overview", new Vector3(floorAnchor.X + 3.0f, floorAnchor.Y + 7.0f, floorAnchor.Z + 10.0f),
+                constructionFocus);
             await CaptureAsync(outputDirectory, "worldcraft-piece-overview.png");
+            SetCamera(camera, "worldcraft-piece-closeup", new Vector3(floorAnchor.X + 3.0f, floorAnchor.Y + 3.6f, floorAnchor.Z + 7.2f),
+                constructionFocus);
+            await CaptureAsync(outputDirectory, "worldcraft-piece-closeup.png");
+            RequireDistinctCaptureHashes("worldcraft-piece-overview.png", "worldcraft-piece-closeup.png");
         }
 
         private async Task TraverseAndAssertAsync(PlayerCharacter player, VoxelWorldModule world, VoxelWorldPresenter presenter, Vector3 spawnColumn)
@@ -381,10 +417,30 @@ namespace Societies.Tests
 
         private void SetCamera(Camera3D camera, string poseId, Vector3 position, Vector3 lookAt)
         {
+            camera.MakeCurrent();
             camera.GlobalPosition = position;
             camera.LookAt(lookAt, Vector3.Up);
             Require(camera.GlobalPosition.IsEqualApprox(position), $"Diagnostic camera pose '{poseId}' did not apply deterministically.");
+            Require(GetViewport().GetCamera3D() == camera, $"Diagnostic camera pose '{poseId}' did not become current.");
             RecordCameraPose(poseId, camera);
+        }
+
+        private void HideConstructionCaptureObstructions(GameManager manager, PlayerCharacter player)
+        {
+            Node3D world = manager.GetNode<Node3D>("World");
+            Node3D spawnMarker = world.GetNode<Node3D>("VoxelDiagnosticSpawnMarker");
+            Node3D outsideAirMarker = world.GetNode<Node3D>("VoxelDiagnosticOutsideAirMarker");
+            MeshInstance3D body = player.GetNode<MeshInstance3D>("Body");
+            CollisionShape3D capsule = player.GetNode<CollisionShape3D>("Collision");
+
+            // These are capture aids, not game-world facts. Hiding them preserves the
+            // authoritative pad while keeping the construction and ghost silhouettes clear.
+            spawnMarker.Visible = false;
+            outsideAirMarker.Visible = false;
+            body.Visible = false;
+            capsule.Visible = false;
+            Require(!spawnMarker.Visible && !outsideAirMarker.Visible && !body.Visible && !capsule.Visible,
+                "Construction captures must hide diagnostic markers and the player body/capsule.");
         }
 
         private static void CreateSpawnDiagnosticMarker(GameManager manager, PlayerCharacter player, float surfaceY, float maximumSurfaceY)
@@ -444,13 +500,19 @@ namespace Societies.Tests
 
         private async Task CaptureAsync(string outputDirectory, string fileName)
         {
+            if (_captureCamera != null)
+            {
+                _captureCamera.MakeCurrent();
+                Require(GetViewport().GetCamera3D() == _captureCamera, $"Capture '{fileName}' lost the diagnostic camera.");
+            }
             await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
             await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
             RenderingServer.Singleton.ForceSync();
             await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+            await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
             Image image = GetViewport().GetTexture().GetImage();
-            Require(image.GetWidth() == CaptureWidth && image.GetHeight() == CaptureHeight,
-                $"Capture '{fileName}' is {image.GetWidth()}x{image.GetHeight()}, expected {CaptureWidth}x{CaptureHeight}.");
+            Require(image.GetWidth() == _captureWidth && image.GetHeight() == _captureHeight,
+                $"Capture '{fileName}' is {image.GetWidth()}x{image.GetHeight()}, expected {_captureWidth}x{_captureHeight}.");
             byte[] pixels = image.GetData();
             Require(pixels.Any(value => value != 0) && pixels.Distinct().Take(2).Count() == 2,
                 $"Capture '{fileName}' contains no nonempty rendered pixel variation.");
@@ -460,6 +522,13 @@ namespace Societies.Tests
                 throw new InvalidOperationException($"Could not save capture '{path}'.");
             }
             _captureHashes[fileName] = Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(path))).ToLowerInvariant();
+        }
+
+        private void RequireDistinctCaptureHashes(string first, string second)
+        {
+            Require(_captureHashes.TryGetValue(first, out string? firstHash) && _captureHashes.TryGetValue(second, out string? secondHash) &&
+                !string.Equals(firstHash, secondHash, StringComparison.Ordinal),
+                $"Diagnostic captures '{first}' and '{second}' must encode distinct rendered states.");
         }
 
         private static VoxelCoord FindExposedTopVoxel(VoxelWorldModule world, Vector3 spawnColumn)
@@ -505,23 +574,30 @@ namespace Societies.Tests
                 : throw new InvalidOperationException("Diagnostic build pad has no gatherable top voxel.");
         }
 
-        private static (VoxelCoord Anchor, VoxelCoord Second) FindFlatFloorPad(
+        private static (VoxelCoord FloorAnchor, VoxelCoord FloorSecond, VoxelCoord WallAnchor, VoxelCoord PostAnchor) FindFlatConstructionPad(
             VoxelWorldModule world,
             int centerX,
             int centerZ)
         {
             for (int z = centerZ - 3; z <= centerZ + 3; z++)
-            for (int x = centerX - 3; x < centerX + 3; x++)
+            for (int x = centerX - 5; x < centerX + 1; x++)
             {
-                VoxelCoord anchor = FindTopVoxel(world, x, z);
-                VoxelCoord second = FindTopVoxel(world, x + 1, z);
-                if (anchor.Y == second.Y)
+                VoxelCoord floorSupport = FindTopVoxel(world, x, z);
+                VoxelCoord floorSecondSupport = FindTopVoxel(world, x + 1, z);
+                VoxelCoord wallSupport = FindTopVoxel(world, x + 3, z);
+                VoxelCoord postSupport = FindTopVoxel(world, x + 5, z);
+                if (floorSupport.Y == floorSecondSupport.Y && floorSupport.Y == wallSupport.Y && floorSupport.Y == postSupport.Y)
                 {
-                    return (anchor, second);
+                    // Construction anchors are air immediately above their intact terrain support,
+                    // so the committed timber reads as a surface assembly rather than a trench fill.
+                    return (floorSupport with { Y = floorSupport.Y + 1 },
+                        floorSecondSupport with { Y = floorSecondSupport.Y + 1 },
+                        wallSupport with { Y = wallSupport.Y + 1 },
+                        postSupport with { Y = postSupport.Y + 1 });
                 }
             }
 
-            throw new InvalidOperationException("Diagnostic clearing has no flat two-cell floor pad.");
+            throw new InvalidOperationException("Diagnostic clearing has no flat six-cell construction pad.");
         }
 
         private static float GetSurfaceY(VoxelWorldModule world, Vector3 position)
@@ -559,13 +635,13 @@ namespace Societies.Tests
             return player.GlobalPosition.Y - (capsule.Height * 0.5f);
         }
 
-        private static void ConfigureCaptureWindow()
+        private void ConfigureCaptureWindow()
         {
             DisplayServer.WindowSetFlag(DisplayServer.WindowFlags.Borderless, true);
             DisplayServer.WindowSetFlag(DisplayServer.WindowFlags.NoFocus, true);
             DisplayServer.WindowSetFlag(DisplayServer.WindowFlags.MousePassthrough, true);
-            DisplayServer.WindowSetSize(new Vector2I(CaptureWidth, CaptureHeight));
-            DisplayServer.WindowSetPosition(new Vector2I(-CaptureWidth - 64, -CaptureHeight - 64));
+            DisplayServer.WindowSetSize(new Vector2I(_captureWidth, _captureHeight));
+            DisplayServer.WindowSetPosition(new Vector2I(-_captureWidth - 64, -_captureHeight - 64));
         }
 
         private void RequireCaptureIsolation(PlayerCharacter player)
@@ -637,8 +713,8 @@ namespace Societies.Tests
                 activeInputDesktop = _activeDesktopName,
                 activeDesktopTargeted = false,
                 liveInputDisabled = true,
-                captureWidth = CaptureWidth,
-                captureHeight = CaptureHeight,
+                captureWidth = _captureWidth,
+                captureHeight = _captureHeight,
                 captures = _captureHashes,
                 cameraPoses = _cameraPoses
             }, new JsonSerializerOptions { WriteIndented = true });
@@ -696,6 +772,32 @@ namespace Societies.Tests
             return index >= 0 && index < arguments.Length - 1 && !string.IsNullOrWhiteSpace(arguments[index + 1])
                 ? arguments[index + 1]
                 : throw new InvalidOperationException($"Required argument {argument} is missing.");
+        }
+
+        private void ResolveCaptureDimensions()
+        {
+            string? widthValue = ResolveOptionalArgument("--capture-width");
+            string? heightValue = ResolveOptionalArgument("--capture-height");
+            if (widthValue == null && heightValue == null)
+            {
+                return;
+            }
+            if (!int.TryParse(widthValue, out int width) || !int.TryParse(heightValue, out int height) ||
+                (width, height) is not ((1280, 720) or (1920, 1080)))
+            {
+                throw new InvalidOperationException("Capture dimensions must be an explicit supported pair: 1280x720 or 1920x1080.");
+            }
+            _captureWidth = width;
+            _captureHeight = height;
+        }
+
+        private static string? ResolveOptionalArgument(string argument)
+        {
+            string[] arguments = OS.GetCmdlineUserArgs();
+            int index = Array.IndexOf(arguments, argument);
+            return index >= 0 && index < arguments.Length - 1 && !string.IsNullOrWhiteSpace(arguments[index + 1])
+                ? arguments[index + 1]
+                : null;
         }
 
         private void Require(bool condition, string message)

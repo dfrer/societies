@@ -14,6 +14,8 @@ namespace Societies.Core
         [Export] public float Gravity { get; set; } = 18.0f;
         [Export] public float MouseSensitivity { get; set; } = 0.0025f;
         [Export] public float ContributionRangeMeters { get; set; } = 4.5f;
+        public const float GatherReachMeters = 4.5f;
+        public const float BuildPreviewReachMeters = 8.5f;
 
         public TerrainGenerator? Terrain { get; set; }
         public bool ControlsEnabled => _controlsEnabled && !_inputSuppressed;
@@ -25,7 +27,8 @@ namespace Societies.Core
 
         private Node3D? _cameraPivot;
         private Camera3D? _camera;
-        private RayCast3D? _interactionRay;
+        private RayCast3D? _buildPreviewRay;
+        private RayCast3D? _gatherRay;
         private ResourceNode? _focusedResource;
         private bool _controlsEnabled = true;
         private bool _inputSuppressed;
@@ -145,6 +148,12 @@ namespace Societies.Core
             return capsule.Height * 0.5f;
         }
 
+        /// <summary>Short interaction query used for gather and dismantle input.</summary>
+        public RayCast3D? GetGatherRay() => _gatherRay;
+
+        /// <summary>Longer non-mutating query used only for build preview/placement targeting.</summary>
+        public RayCast3D? GetBuildPreviewRay() => _buildPreviewRay;
+
         private void HandleMovement(float delta)
         {
             Vector2 input = Input.GetVector("move_left", "move_right", "move_forward", "move_backward");
@@ -191,18 +200,18 @@ namespace Societies.Core
         {
             _focusedResource = null;
 
-            if (_interactionRay == null)
+            if (_gatherRay == null)
             {
                 return;
             }
 
-            _interactionRay.ForceRaycastUpdate();
-            if (!_interactionRay.IsColliding())
+            _gatherRay.ForceRaycastUpdate();
+            if (!_gatherRay.IsColliding())
             {
                 return;
             }
 
-            GodotObject collider = _interactionRay.GetCollider();
+            GodotObject collider = _gatherRay.GetCollider();
             if (collider is ResourceNode resource)
             {
                 _focusedResource = resource;
@@ -324,13 +333,22 @@ namespace Societies.Core
             };
             _cameraPivot.AddChild(_camera);
 
-            _interactionRay = new RayCast3D
+            _buildPreviewRay = new RayCast3D
             {
                 Name = "InteractionRay",
-                TargetPosition = new Vector3(0.0f, 0.0f, -4.5f),
+                // Build range is authoritative at seven cells; a slightly longer targeting ray lets
+                // the preview show the honest out-of-range state instead of silently losing focus.
+                TargetPosition = new Vector3(0.0f, 0.0f, -BuildPreviewReachMeters),
                 Enabled = true
             };
-            _camera.AddChild(_interactionRay);
+            _camera.AddChild(_buildPreviewRay);
+            _gatherRay = new RayCast3D
+            {
+                Name = "GatherRay",
+                TargetPosition = new Vector3(0.0f, 0.0f, -GatherReachMeters),
+                Enabled = true
+            };
+            _camera.AddChild(_gatherRay);
         }
     }
 }

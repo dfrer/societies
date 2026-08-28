@@ -41,7 +41,8 @@ namespace Societies.Core
                 WorldcraftPieceDefinition? definition = VoxelWorldcraftCatalog.FindPiece(piece.PieceId); if (definition == null) continue;
                 StaticBody3D root = new() { Name = $"Worldcraft_{piece.InstanceId}" };
                 root.SetMeta("worldcraft_instance_id", piece.InstanceId);
-                AddPieceShape(root, piece.PieceId, piece.Anchor, piece.RotationQuarterTurns, new Color("80522f"), 1.0f, collision: true);
+                AddPieceShape(root, piece.PieceId, piece.Anchor, piece.RotationQuarterTurns, PieceColor(piece.PieceId), 1.0f, collision: true);
+                AddTimberDetails(root, piece.PieceId, piece.Anchor, piece.RotationQuarterTurns);
                 AddChild(root); _pieces.Add(piece.InstanceId, new PieceProjection(root, piece.PieceId, piece.Anchor, piece.RotationQuarterTurns));
             }
         }
@@ -54,14 +55,20 @@ namespace Societies.Core
             HideGhost();
             if (evaluation.Definition == null || evaluation.Cells.Count == 0) return;
             _ghost = new Node3D { Name = "WorldcraftPreview" }; GhostValid = evaluation.IsValid;
-            Color color = GhostValid ? new Color(0.29f, 0.70f, 0.42f, 0.42f) : new Color(0.78f, 0.22f, 0.16f, 0.45f);
+            Color color = GhostValid ? new Color(0.34f, 0.78f, 0.40f, 0.58f) : new Color(0.88f, 0.25f, 0.16f, 0.64f);
             AddPieceShape(_ghost, evaluation.Definition.Id, evaluation.Anchor, evaluation.RotationQuarterTurns, color, color.A, collision: false);
             AddChild(_ghost);
         }
 
         public void HideGhost()
         {
-            if (_ghost != null && IsInstanceValid(_ghost)) _ghost.QueueFree();
+            if (_ghost != null && IsInstanceValid(_ghost))
+            {
+                // A preview can change several times in one rendered frame. Detach first so
+                // the next requested target is the only ghost in the presentation tree.
+                if (_ghost.GetParent() == this) RemoveChild(_ghost);
+                _ghost.QueueFree();
+            }
             _ghost = null;
             GhostValid = false;
         }
@@ -92,7 +99,10 @@ namespace Societies.Core
                 Roughness = 0.86f,
                 ShadingMode = BaseMaterial3D.ShadingModeEnum.PerPixel,
                 Transparency = alpha < 1.0f ? BaseMaterial3D.TransparencyEnum.Alpha : BaseMaterial3D.TransparencyEnum.Disabled,
-                NoDepthTest = alpha < 1.0f
+                NoDepthTest = alpha < 1.0f,
+                EmissionEnabled = alpha < 1.0f,
+                Emission = color,
+                EmissionEnergyMultiplier = alpha < 1.0f ? 0.7f : 0.0f
             };
             MeshInstance3D mesh = new()
             {
@@ -124,6 +134,53 @@ namespace Societies.Core
                 "wood_post" => (new Vector3(anchor.X + 0.5f, anchor.Y + 1.5f, anchor.Z + 0.5f), new Vector3(0.28f, 3.0f, 0.28f)),
                 _ => throw new System.ArgumentOutOfRangeException(nameof(pieceId))
             };
+        }
+
+        private static Color PieceColor(string pieceId) => pieceId switch
+        {
+            "wood_floor" => new Color("9a6a3b"),
+            "wood_wall" => new Color("805236"),
+            "wood_post" => new Color("5f402b"),
+            _ => new Color("80522f")
+        };
+
+        /// <summary>Non-colliding timber joins clarify construction without changing authoritative footprints.</summary>
+        private static void AddTimberDetails(Node3D parent, string pieceId, VoxelCoord anchor, int rotation)
+        {
+            (Vector3 center, Vector3 size) = Shape(pieceId, anchor, rotation);
+            Node3D details = new() { Name = "TimberDetails" };
+            parent.AddChild(details);
+            StandardMaterial3D darkGrain = new() { AlbedoColor = new Color("35261c"), Roughness = 0.95f };
+            StandardMaterial3D brassJoin = new() { AlbedoColor = new Color("b99555"), Metallic = 0.45f, Roughness = 0.52f };
+            bool quarterTurn = rotation % 2 != 0;
+
+            if (pieceId == "wood_floor")
+            {
+                Vector3 seamSize = quarterTurn ? new Vector3(0.035f, 0.025f, size.Z * 0.88f) : new Vector3(size.X * 0.88f, 0.025f, 0.035f);
+                Vector3 offset = quarterTurn ? new Vector3(size.X * 0.22f, size.Y * 0.55f, 0.0f) : new Vector3(0.0f, size.Y * 0.55f, size.Z * 0.22f);
+                AddDetail(details, "PlankSeamA", center + offset, seamSize, darkGrain);
+                AddDetail(details, "PlankSeamB", center - offset, seamSize, darkGrain);
+            }
+            else if (pieceId == "wood_wall")
+            {
+                Vector3 braceSize = quarterTurn ? new Vector3(size.X * 1.35f, 0.10f, size.Z * 0.84f) : new Vector3(size.X * 0.84f, 0.10f, size.Z * 1.35f);
+                AddDetail(details, "WallBraceLow", center + new Vector3(0.0f, -0.55f, 0.0f), braceSize, darkGrain);
+                AddDetail(details, "WallBraceHigh", center + new Vector3(0.0f, 0.55f, 0.0f), braceSize, darkGrain);
+            }
+            else if (pieceId == "wood_post")
+            {
+                AddDetail(details, "PostCollarLow", center + new Vector3(0.0f, -0.82f, 0.0f), new Vector3(0.38f, 0.08f, 0.38f), brassJoin);
+                AddDetail(details, "PostCollarHigh", center + new Vector3(0.0f, 0.82f, 0.0f), new Vector3(0.38f, 0.08f, 0.38f), brassJoin);
+            }
+        }
+
+        private static void AddDetail(Node3D parent, string name, Vector3 position, Vector3 size, Material material)
+        {
+            parent.AddChild(new MeshInstance3D
+            {
+                Name = name, Mesh = new BoxMesh { Size = size }, Position = position,
+                MaterialOverride = material, CastShadow = GeometryInstance3D.ShadowCastingSetting.On
+            });
         }
 
     }
