@@ -1005,7 +1005,7 @@ public sealed class OpenRouterProductionBridgeTests
 
     private static byte[] Secret() => Encoding.ASCII.GetBytes("sk-or-v1-" + new string('a', 64));
     private static string Account(char value) => "byok-account-sha256-" + new string(value, 64);
-    private static string Temp() { string path = Path.Combine(Path.GetTempPath(), "societies-openrouter-production-" + Guid.NewGuid().ToString("N")); Directory.CreateDirectory(path); return path; }
+    private static string Temp() { string path = Path.Combine(Path.GetTempPath(), "sg-or-" + Guid.NewGuid().ToString("N")); Directory.CreateDirectory(path); return path; }
     private static void Delete(string path) { try { if (Directory.Exists(path)) Directory.Delete(path, recursive: true); } catch { } }
     private static void CreateHardLinkExact(string alias, string existing)
     {

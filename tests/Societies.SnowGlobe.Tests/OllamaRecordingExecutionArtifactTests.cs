@@ -59,7 +59,7 @@ public sealed class OllamaRecordingExecutionArtifactTests
             StringComparer.Ordinal);
     }
 
-    [Fact]
+    [HistoricalEvidenceFact(OllamaRecordingExecutionArtifactModule.LegacyRelativeArtifactPath)]
     public void HistoricalV4Artifact_RemainsByteIdenticalAndReadableWithoutReclassification()
     {
         string repositoryRoot = FindRepositoryRoot();
@@ -124,7 +124,7 @@ public sealed class OllamaRecordingExecutionArtifactTests
         Assert.NotNull(validated.ScoreSummary);
     }
 
-    [Fact]
+    [HistoricalEvidenceFact(OllamaRecordingExecutionArtifactModule.PreviousRelativeArtifactPath)]
     public void AcceptedHistoricalV5Artifact_RemainsByteIdenticalAndReadableWithoutNormalizedProposals()
     {
         string repositoryRoot = FindRepositoryRoot();
