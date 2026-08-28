@@ -32,8 +32,10 @@ internal static class RepositoryTestPaths
 }
 
 /// <summary>
-/// Runs an evidence-pinning test when the operator-retained artifact is present and reports a skip otherwise.
-/// The attribute never fabricates evidence or weakens validation when a file exists.
+/// Runs an exact evidence-pinning test only when its operator-retained artifact is present.
+/// Missing bytes are reported as unavailable rather than fabricated; all synthetic contract,
+/// tamper, routing, durability, and schema tests remain mandatory on every clean runner.
+/// When an artifact exists, the original strict validator runs without fallback evidence.
 /// </summary>
 [AttributeUsage(AttributeTargets.Method, AllowMultiple = false)]
 internal sealed class HistoricalEvidenceFactAttribute : FactAttribute
