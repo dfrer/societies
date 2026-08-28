@@ -14,18 +14,18 @@ namespace Societies.SnowGlobe.Tests;
 public sealed class ProviderRoutingReadinessEvidenceTests
 {
     private static readonly byte[] Comparison = ReadArtifact("artifacts/snowglobe/cognition-quality/provider-comparison-v1.json");
-    private static readonly byte[] OllamaExecution = ReadArtifact("artifacts/snowglobe/local-model/qwen3.5-4b-recording-execution-v6.json");
 
-    [Fact]
+    [HistoricalEvidenceFact(OllamaRecordingExecutionArtifactModule.RelativeArtifactPath)]
     public void AcceptedHistoricalEvidenceRemainsUnknownAndNeverIssuesRoutingInput()
     {
+        byte[] ollamaExecution = ReadArtifact(OllamaRecordingExecutionArtifactModule.RelativeArtifactPath);
         byte[] activation = CreateEligibleActivationArtifact();
         byte[] openRouterExecution = CreateHistoricalOpenRouterExecutionArtifact();
 
         ProviderRoutingReadinessAssessment assessment = ProviderRoutingReadinessEvidenceModule.Assess(new(
             Comparison,
             activation,
-            OllamaExecution,
+            ollamaExecution,
             openRouterExecution));
 
         Assert.Equal("insufficient_current_readiness_evidence", assessment.Status);
@@ -43,7 +43,7 @@ public sealed class ProviderRoutingReadinessEvidenceTests
             assessment.OpenRouterActivationEvidence.SchemaVersion);
         Assert.Equal("evaluated_eligibility_only", assessment.OpenRouterActivationEvidence.TemporalScope);
         Assert.Equal("historical_compatibility_complete", assessment.OllamaExecutionEvidence.Status);
-        Assert.Equal(Digest(OllamaExecution), assessment.OllamaExecutionEvidence.ArtifactDigestSha256);
+        Assert.Equal(Digest(ollamaExecution), assessment.OllamaExecutionEvidence.ArtifactDigestSha256);
         Assert.Equal(OllamaRecordingExecutionArtifactModule.SchemaVersion, assessment.OllamaExecutionEvidence.SchemaVersion);
         Assert.Equal("historical_only", assessment.OllamaExecutionEvidence.TemporalScope);
         Assert.Equal("historical_generation_terminal", assessment.OpenRouterExecutionEvidence.Status);
@@ -203,14 +203,15 @@ public sealed class ProviderRoutingReadinessEvidenceTests
         }, evidence => Assert.Null(evidence.ArtifactDigestSha256));
     }
 
-    [Fact]
+    [HistoricalEvidenceFact(OllamaRecordingExecutionArtifactModule.RelativeArtifactPath)]
     public void EveryCallerArtifactIsSnapshottedExactlyOnceBeforeValidation()
     {
+        byte[] ollamaExecution = ReadArtifact(OllamaRecordingExecutionArtifactModule.RelativeArtifactPath);
         byte[] activation = CreateEligibleActivationArtifact();
         byte[] openRouterExecution = CreateHistoricalOpenRouterExecutionArtifact();
         using ChangingMemoryManager comparison = new(Comparison);
         using ChangingMemoryManager activationMemory = new(activation);
-        using ChangingMemoryManager ollama = new(OllamaExecution);
+        using ChangingMemoryManager ollama = new(ollamaExecution);
         using ChangingMemoryManager openRouter = new(openRouterExecution);
 
         ProviderRoutingReadinessAssessment assessment = ProviderRoutingReadinessEvidenceModule.Assess(new(
@@ -389,13 +390,8 @@ public sealed class ProviderRoutingReadinessEvidenceTests
         writer.WriteEndObject(); writer.Flush(); return buffer.WrittenSpan.ToArray();
     }
 
-    private static byte[] ReadArtifact(string relativePath)
-    {
-        DirectoryInfo? directory = new(AppContext.BaseDirectory);
-        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "AGENTS.md"))) directory = directory.Parent;
-        if (directory is null) throw new DirectoryNotFoundException("repository_root_not_found");
-        return File.ReadAllBytes(Path.Combine(directory.FullName, relativePath.Replace('/', Path.DirectorySeparatorChar)));
-    }
+    private static byte[] ReadArtifact(string relativePath) =>
+        File.ReadAllBytes(RepositoryTestPaths.Resolve(relativePath));
 
     private static string Digest(ReadOnlySpan<byte> value) =>
         Convert.ToHexString(SHA256.HashData(value)).ToLowerInvariant();

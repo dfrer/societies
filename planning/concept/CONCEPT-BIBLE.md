@@ -40,6 +40,13 @@ Future LLM capabilities may interpret structured state, deliberate, communicate,
 
 Offline operation, invalid model output, provider failure, and timeout must preserve deterministic progress and replay through a visible fallback path.
 
+### One product, two deep Modules
+
+Societies is the embodied player-facing frontend for Snow Globe. The Godot client presents the shared world,
+citizens, labor, choices, and consequences. Snow Globe supplies bounded cognition and communication behind a
+small proposal Interface. The deterministic runtime remains the sole world authority; the frontend must not
+look or behave like a provider dashboard.
+
 ## Intended Experience Layers
 
 1. **Material layer:** land, resources, ecology, production, logistics, needs, and scarcity.
@@ -52,11 +59,15 @@ Each upper layer must remain grounded in the deterministic layers below it.
 
 ## Current Concept Boundary
 
-The near-term product question remains:
+The near-term product questions are reset to the unresolved foundation:
 
-> Can AI citizens hold understandable material interests and participate with a human in one consequential civic decision?
+> Who is the player, what gives and limits their influence, why do citizens cooperate or refuse, and what
+> smallest shared consequence makes Snow Globe materially improve the embodied experience?
 
-The current prototype should answer that bounded question before the project expands into general markets, general lawmaking, multiplayer, broad social simulation, or live LLM integration.
+The current prototype's deterministic systems may be reused, but its scene, HUD, asset level, and forced civic
+route are not the accepted product foundation. Follow the
+[Snow Globe Frontend Product Recovery Plan](../active/v3-snow-globe-frontend-recovery-plan.md) before expanding
+into general markets, lawmaking, multiplayer, broad social simulation, or live provider integration.
 
 ## Foundational Questions Still Open
 

@@ -70,6 +70,18 @@ namespace Societies.Simulation
             _workerNodes.Clear();
         }
 
+        /// <summary>Removes heightfield-only settlement projection when a voxel-only runtime is active.</summary>
+        public void ClearForVoxelWorld()
+        {
+            ResetDynamicNodes();
+            if (_settlementHub != null && GodotObject.IsInstanceValid(_settlementHub))
+            {
+                _settlementHub.Free();
+            }
+
+            _settlementHub = null;
+        }
+
         public void ApplyWorld(WorldGenerationResult result)
         {
             _settlementAnchorPosition = result.SettlementSpawn.AnchorPosition;

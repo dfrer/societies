@@ -1,0 +1,172 @@
+{
+  "schemaVersion": 1,
+  "capturedUtc": "2026-08-25T23:51:28.2039044Z",
+  "workItem": "W3-05",
+  "scope": "Targeted civic-loop automated validation and author-smoke boundary for the merged W3-01 through W3-04 runtime.",
+  "status": "automated_pass_author_smoke_incomplete",
+  "source": {
+    "baseCommit": "8406b2056feb1285670dd8b89fd959e31413a1fa",
+    "implementationCommit": "616600ec445bf4059e6f396ca9683f4bba728fc3",
+    "implementationTree": "cf9ee68841f184d6964e6b4831dbf2f80e37e370",
+    "branch": "feature/v3-w3-05-targeted-tests-smoke",
+    "repositoryPath": "C:\\Users\\hunte\\.codex\\worktrees\\w305\\societies",
+    "productionRuntimeChanged": false,
+    "schemaOrMigrationChanged": false,
+    "performanceMatrixRerun": false,
+    "preservedPerformanceEvidence": "planning/active/evidence/v3-w3-04-performance-validation.json"
+  },
+  "coverage": {
+    "fixedCatalogScenario": "balanced_basin",
+    "mainSceneDefaultSeed": 1337,
+    "policyPaths": {
+      "protectWetland": {
+        "reedQuota": 4,
+        "selectionWetlandHealth": 75,
+        "oneReedHarvestHealth": 74
+      },
+      "drawDownWetland": {
+        "reedQuota": 12,
+        "selectionWetlandHealth": 45,
+        "oneReedHarvestHealth": 43
+      }
+    },
+    "citizenInterestReasons": [
+      "future_reed_supply",
+      "immediate_shelter_supply"
+    ],
+    "cognition": {
+      "eventType": "civic.cognition.decision",
+      "sources": [
+        "validated_proposal",
+        "deterministic_fallback"
+      ],
+      "fallbackConditions": [
+        "missing",
+        "invalid",
+        "cancelled",
+        "timed_out",
+        "unavailable"
+      ],
+      "rejectedEvidence": [
+        "stale",
+        "malformed",
+        "oversized",
+        "excessively_deep",
+        "incoherent",
+        "duplicate_use"
+      ],
+      "policyMutation": "SelectCivicPolicy remains the only policy mutation path; cognition application preserves the selected policy and one-use resolution capability."
+    },
+    "persistence": "Both policy paths prove schema-v9 checkpoint/resume equivalence over policy, wetland, citizen interests, cognition event source, snapshot bytes, event-log bytes, and combined SHA-256 identity.",
+    "offlineBaseline": "Two fixed-catalog no-input runs advance identically with neutral policy/wetland and no civic event."
+  },
+  "results": [
+    {
+      "command": "dotnet test tests/Societies.Core.Tests/Societies.Core.Tests.csproj --configuration Release --filter FullyQualifiedName~PrototypeW305CivicLoopTests",
+      "passed": 14,
+      "failed": 0,
+      "skipped": 0,
+      "result": "pass",
+      "note": "Test-project-only generated Main conflict warning CS0436 was emitted; the production assembly built successfully."
+    },
+    {
+      "command": "dotnet test tests/Societies.Core.Tests/Societies.Core.Tests.csproj --configuration Release --filter FullyQualifiedName~PrototypeCivicPolicyTests|FullyQualifiedName~PrototypeCitizenInterestTests|FullyQualifiedName~PrototypeWetlandConsequenceTests|FullyQualifiedName~PrototypeCognitionModuleTests|FullyQualifiedName~PrototypeW305CivicLoopTests",
+      "passed": 107,
+      "failed": 0,
+      "skipped": 0,
+      "result": "pass"
+    },
+    {
+      "command": "dotnet build src/societies/Societies.csproj --configuration Debug",
+      "warnings": 0,
+      "errors": 0,
+      "result": "pass"
+    },
+    {
+      "command": "scripts/run-prototype-validation.ps1",
+      "exitCode": 0,
+      "result": "pass",
+      "managed": {
+        "passed": 481,
+        "failed": 0,
+        "skipped": 0,
+        "total": 481
+      },
+      "godotHeadless": {
+        "version": "4.6.2-stable.mono",
+        "passed": 24,
+        "failed": 0,
+        "total": 24,
+        "w305ObservedTest": "Test_GodotCivicDeterministicLoopSmoke"
+      },
+      "debugBuild": {
+        "warnings": 0,
+        "errors": 0
+      }
+    },
+    {
+      "command": "dotnet build src/societies/Societies.csproj --configuration Release",
+      "warnings": 0,
+      "errors": 0,
+      "exitCode": 0,
+      "result": "pass"
+    },
+    {
+      "command": "dotnet build src/societies/Societies.sln --configuration ExportRelease",
+      "warnings": 0,
+      "errors": 0,
+      "exitCode": 0,
+      "result": "pass"
+    },
+    {
+      "command": "git diff --check",
+      "exitCode": 0,
+      "result": "pass"
+    }
+  ],
+  "review": {
+    "role": "deep_reviewer",
+    "gate": "GO",
+    "p0": 0,
+    "p1": 0,
+    "p2": 0,
+    "p3ResolvedBeforeCommit": 1,
+    "summary": "Independent acceptance-coverage review found no P0-P2 findings. The only P3 was a changed-file inventory omission, corrected before commit."
+  },
+  "delivery": {
+    "pullRequest": 173,
+    "pullRequestUrl": "https://github.com/dfrer/societies/pull/173",
+    "headCommit": "a394a8fcd7f14aed571ed4b5060e3daac76a894a",
+    "requiredCheck": "build-test-smoke",
+    "requiredCheckRunId": 32913214826,
+    "requiredCheckJobId": 98011363262,
+    "requiredCheckResult": "pass",
+    "requiredCheckDuration": "4m22s",
+    "mergeCommit": "f8eb2223d0d5884501147ef479d4df57b1bb150c",
+    "mergedUtc": "2026-08-26T00:04:40Z",
+    "implementationAndEvidenceAreAncestorsOfMerge": true
+  },
+  "authorSmoke": {
+    "status": "incomplete_manual_boundary",
+    "commit": "616600ec445bf4059e6f396ca9683f4bba728fc3; validation ran against identical production and test sources before commit",
+    "scenario": "balanced_basin",
+    "seed": 1337,
+    "attemptedActions": [
+      "Launch src/societies/scenes/main.tscn through the authoritative Godot project.",
+      "Inspect the documented keyboard interaction path in GameManager._UnhandledInput."
+    ],
+    "visualObservation": "The local Societies (DEBUG) main-scene process launched. Windows capture could not return a frame because the capture helper failed twice with 'SetIsBorderRequired failed: No such interface supported (0x80004002)'; no visual acceptance claim is made.",
+    "blockingObservation": "The main-scene GameManager has no civic-policy selection public method, input binding, or HUD control. The only selection surface is PrototypeRuntimeSession.SelectCivicPolicy, which is not reachable from player interaction. Therefore no honest interactive author smoke can record a human-selected policy, observed citizen reasons, or policy consequence from the current scene.",
+    "manualInstructions": [
+      "Do not mark an author smoke passed on this branch.",
+      "To reproduce the current boundary, launch src/societies/scenes/main.tscn from the Godot project with balanced_basin seed 1337; expect the civic HUD to remain 'Policy: not selected (neutral)' because the documented GameManager keyboard controls expose directives, inspection, save/reset, camera, overlay, and build controls but no Protect/DrawDown selection.",
+      "For a later separately scoped presentation/input slice, launch the same scenario and seed, select Protect and DrawDown through the approved player-facing control, inspect a forager future_reed_supply reason and a builder immediate_shelter_supply reason, harvest one reed, and record the resulting policy, quota, wetland health, cognition decision source/event, and visual/interaction limits.",
+      "Keep the deterministic automated evidence here distinct from that future human-observed smoke."
+    ]
+  },
+  "limitations": [
+    "No live model/provider, network, credential, payment, retry, Snow Globe, schema, migration, broad UI, or production runtime change occurred.",
+    "W3-04 performance evidence is preserved because runtime behavior is unchanged; this record makes no new performance claim.",
+    "Interactive author and visual acceptance remain incomplete; merge completion does not create a playability, deployment, certification, or release-readiness claim."
+  ]
+}

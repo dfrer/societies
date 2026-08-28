@@ -1,0 +1,328 @@
+{
+  "schema_version": 1,
+  "captured_utc": "2026-08-03T14:04:58.6253270Z",
+  "work_item": "W3-03",
+  "purpose": "Authoritative clean-source ExportRelease performance rerun at a513636, with raw runner status and the established milestone acceptance rule reported separately.",
+  "source": {
+    "repository_root": "C:\\tmp\\societies-v3-w3-03-perf-disposable-a513636",
+    "commit": "a5136360963e7e9951d4f46fc282ac8fd0f204de",
+    "commit_short": "a513636",
+    "detached_head": true,
+    "clean_at_preflight": true,
+    "clean_at_matrix_invocation": true,
+    "preflight_porcelain_entries": 0,
+    "source_identity_verified": true,
+    "safe_directory_handling": "Process-local GIT_CONFIG_COUNT safe.directory override; no global Git configuration was changed."
+  },
+  "run": {
+    "output_root": "C:\\tmp\\societies-v3-w3-03-perf-disposable-a513636\\artifacts\\performance\\w303-a513636-clean",
+    "started_utc": "2026-08-03T13:58:42.4421265Z",
+    "ended_utc": "2026-08-03T14:04:58.6253270Z",
+    "duration_seconds": 376.183,
+    "exit_code": 0,
+    "result_schema_version": 1,
+    "result_status": "pass",
+    "contract_status": "pass",
+    "raw_budget_status": "target_missed",
+    "pairs": "14/14",
+    "metrics_rows": 28,
+    "verified_export_release": true
+  },
+  "tool_provenance": {
+    "matrix_script": {
+      "path": "C:\\tmp\\societies-v3-w3-03-perf-disposable-a513636\\scripts\\run-performance-baseline-matrix.ps1",
+      "size_bytes": 69338,
+      "sha256": "9f058c18cfd4d02ea66950bf77009f970cddb7682234fbe26c1797c53f11acf5"
+    },
+    "pair_script": {
+      "path": "C:\\tmp\\societies-v3-w3-03-perf-disposable-a513636\\scripts\\run-performance-pair.ps1",
+      "size_bytes": 69718,
+      "sha256": "f365eb1308be726d880d973edfda5a0527dab85a5d78cbeb93aad1c53874382d"
+    },
+    "godot_editor": {
+      "path": "C:\\Users\\hunte\\AppData\\Local\\Microsoft\\WinGet\\Packages\\GodotEngine.GodotEngine.Mono_Microsoft.Winget.Source_8wekyb3d8bbwe\\Godot_v4.6.2-stable_mono_win64\\Godot_v4.6.2-stable_mono_win64.exe",
+      "version": "4.6.2.stable.mono.official.71f334935",
+      "file_version": "4.6.2",
+      "size_bytes": 172977672,
+      "sha256": "9dece0030aca9d4bb0d47f50ae8529cfaec6520eb7b3a7056193fb44e9e2fc27"
+    },
+    "godot_console": {
+      "path": "C:\\Users\\hunte\\AppData\\Local\\Microsoft\\WinGet\\Packages\\GodotEngine.GodotEngine.Mono_Microsoft.Winget.Source_8wekyb3d8bbwe\\Godot_v4.6.2-stable_mono_win64\\Godot_v4.6.2-stable_mono_win64_console.exe",
+      "file_version": "4.6.2",
+      "size_bytes": 198152,
+      "sha256": "f13f47b3d3247af7d6bfe3eb161b1c46c1210b5f580b215323a46f0054b4a2e4"
+    },
+    "dotnet_cli_version": "9.0.311",
+    "measured_process_runtime": ".NET 8.0.24"
+  },
+  "environment": {
+    "machine_name": "DESKTOP-H5M54GO",
+    "logical_processor_count": 16,
+    "operating_system": "Microsoft Windows 10.0.19045",
+    "process_architecture": "X64",
+    "godot_version": "4.6.2-stable (official)",
+    "managed_build_configuration": "Release",
+    "managed_assembly_configuration": "ExportRelease",
+    "godot_debug_build": false,
+    "godot_release_feature": true,
+    "godot_template_feature": true,
+    "godot_editor_feature": false
+  },
+  "configuration": {
+    "scenario_id": "balanced_basin",
+    "simulation_seed": 1337,
+    "preconditioning_ticks": 2,
+    "selector_mode": "exact_branch_and_bound",
+    "extraction_planning_mode": "exact_bounded",
+    "route_distance_mode": "cached_distance_only",
+    "export_preset": "Windows Performance Release",
+    "canonical_pair_count": 14
+  },
+  "contracts": {
+    "exact_canonical_inventory": true,
+    "same_environment": true,
+    "same_release_build": true,
+    "verified_release_execution": true,
+    "cold_warm_deterministic_equivalence": true,
+    "reference_trials_comparable": true,
+    "soak_deterministic_repeat": true,
+    "forced_invalidation_correct": true,
+    "release_baseline_evidence": true,
+    "full_matrix_captured": true,
+    "median_of_three_captured": true,
+    "target_or_safety_claim_made": true
+  },
+  "gate_contract_reconciliation": {
+    "milestone_authority": [
+      "planning/active/evidence/v3-w3-01-performance-validation.json",
+      "planning/active/evidence/v3-w3-02-performance-validation.json",
+      "CURRENT_BUILD.md"
+    ],
+    "milestone_reference_rule": "The established milestone hard-safety disposition uses the comparable three-run reference medians: p95 at or below 50 milliseconds and maximum at or below 250 milliseconds.",
+    "other_milestone_rules": "Both 1,000-tick soaks must individually satisfy p95 at or below 50 milliseconds and maximum at or below 250 milliseconds with an exact repeat hash; forced invalidation must be correct and at or below 250 milliseconds; c24 is characterization-only.",
+    "runner_rule": "The matrix preserves formal target and hard-safety assessments in its raw budgetStatus.",
+    "raw_runner_disposition": "target_missed because the formal performance target was not met; the runner did not report a hard-safety failure.",
+    "milestone_disposition": "Green because reference median p95 is 43.1679 milliseconds and median maximum is 213.4861 milliseconds, both soaks pass safety and determinism, and forced invalidation is correct at 21.9538 milliseconds.",
+    "interpretation": "The raw target_missed result is preserved and is not relabeled pass. The established milestone safety gate is independently green."
+  },
+  "reference_assessment": {
+    "trial_count": 3,
+    "trials": [
+      {
+        "id": "matrix-c16-cold-t1",
+        "bootstrap_ms": 788.3415,
+        "p95_ms": 47.5567,
+        "p99_ms": 148.1782,
+        "maximum_ms": 206.2306,
+        "total_ms": 6122.1787,
+        "runner_safety_passed": true
+      },
+      {
+        "id": "reference-c16-cold-t2",
+        "bootstrap_ms": 709.2128,
+        "p95_ms": 40.6589,
+        "p99_ms": 141.0163,
+        "maximum_ms": 213.4861,
+        "total_ms": 5858.2585,
+        "runner_safety_passed": true
+      },
+      {
+        "id": "reference-c16-cold-t3",
+        "bootstrap_ms": 718.9072,
+        "p95_ms": 43.1679,
+        "p99_ms": 152.4262,
+        "maximum_ms": 215.4979,
+        "total_ms": 6051.9868,
+        "runner_safety_passed": true
+      }
+    ],
+    "median_bootstrap_ms": 718.9072,
+    "median_p95_ms": 43.1679,
+    "median_p99_ms": 148.1782,
+    "median_maximum_ms": 213.4861,
+    "median_total_ms": 6051.9868,
+    "safety_limits_ms": {
+      "bootstrap": 5000.0,
+      "p95": 50.0,
+      "maximum": 250.0
+    },
+    "raw_runner_safety_passed": true,
+    "milestone_median_safety_passed": true,
+    "formal_targets_ms": {
+      "bootstrap": 3000.0,
+      "p95": 25.0,
+      "p99": 50.0,
+      "maximum": 100.0,
+      "total": 6000.0
+    },
+    "formal_target_passed": false,
+    "deterministic_hash": "6d1cbcb25efc8c088889eb5c0f30a1fd195405ee539f4d1e34a815001a0fa5d9"
+  },
+  "soak_assessment": {
+    "trial_count": 2,
+    "measured_ticks_per_trial": 1000,
+    "p95_ms": [38.8865, 41.3155],
+    "maximum_ms": [164.2170, 175.9617],
+    "safety_limits_ms": {
+      "p95": 50.0,
+      "maximum": 250.0
+    },
+    "safety_passed": true,
+    "deterministic_repeat": true,
+    "deterministic_hash": "7a04b21fdeccf0f3630cd0541c797da13c2ad25a983514920f18c55474af80c1",
+    "formal_target_passed": false
+  },
+  "forced_invalidation_assessment": {
+    "transition_correct": true,
+    "commit_to_first_correct_lookup_ms": 21.9538,
+    "target_limit_ms": 150.0,
+    "safety_limit_ms": 250.0,
+    "target_passed": true,
+    "safety_passed": true,
+    "single_tick_p95_ms": 139.1511,
+    "single_tick_maximum_ms": 139.1511,
+    "deterministic_hash": "9e4a89a3049911b8978ddd7bcd906161f8b82756c68e05ad70dc4fde220dc66d"
+  },
+  "c24_characterization": {
+    "classification": "characterization",
+    "safety_gate_applied": false,
+    "p95_ms": 144.4787,
+    "maximum_ms": 190.5471,
+    "characterization_targets_ms": {
+      "p95": 50.0,
+      "maximum": 200.0
+    },
+    "target_passed": false,
+    "deterministic_hash": "c7c72b3729587d896b7c44769d4709378dfa6f513764c8e169465d5873b5eba0"
+  },
+  "w3_02_comparison": {
+    "prior_commit": "9706e229413cfac09722c94ae52bdb10fccec4d0",
+    "current_commit": "a5136360963e7e9951d4f46fc282ac8fd0f204de",
+    "prior_raw_budget_status": "safety_failure",
+    "current_raw_budget_status": "target_missed",
+    "prior_milestone_gate_passed": true,
+    "current_milestone_gate_passed": true,
+    "prior_reference_p95_ms": [45.3907, 63.5804, 47.4881],
+    "current_reference_p95_ms": [47.5567, 40.6589, 43.1679],
+    "prior_reference_maximum_ms": [178.6530, 177.8611, 203.8873],
+    "current_reference_maximum_ms": [206.2306, 213.4861, 215.4979],
+    "median_delta_ms_current_minus_prior": {
+      "bootstrap": 5.5690,
+      "p95": -4.3202,
+      "p99": 5.6505,
+      "maximum": 34.8331,
+      "total": -77.0759
+    },
+    "prior_soak_p95_ms": [39.9261, 40.4978],
+    "current_soak_p95_ms": [38.8865, 41.3155],
+    "soak_p95_delta_ms_current_minus_prior": [-1.0396, 0.8177],
+    "prior_soak_maximum_ms": [212.7134, 189.1940],
+    "current_soak_maximum_ms": [164.2170, 175.9617],
+    "soak_maximum_delta_ms_current_minus_prior": [-48.4964, -13.2323],
+    "prior_forced_commit_to_lookup_ms": 24.2609,
+    "current_forced_commit_to_lookup_ms": 21.9538,
+    "forced_delta_ms_current_minus_prior": -2.3071,
+    "prior_c24_p95_ms": 147.4350,
+    "current_c24_p95_ms": 144.4787,
+    "c24_p95_delta_ms_current_minus_prior": -2.9563,
+    "prior_c24_maximum_ms": 189.0085,
+    "current_c24_maximum_ms": 190.5471,
+    "c24_maximum_delta_ms_current_minus_prior": 1.5386,
+    "causal_assessment": "not_performed",
+    "interpretation": "This is a transparent cross-run observation only. No same-session counterbalanced A-B was run, so timing differences are not attributed to W3-03 code changes."
+  },
+  "pair_timings": [
+    {"id":"matrix-c3-cold-t1","citizens":3,"measured_ticks":300,"cache_mode":"cold","pair_status":"pass","verified_release":true,"bootstrap_ms":661.4192,"p95_ms":20.5177,"p99_ms":33.9024,"maximum_ms":53.4123,"deterministic_hash":"8ffb63e4b7dc4d3bb4b4f9c2b495221bfa14beaeea1d49479759f3cfc890363c"},
+    {"id":"matrix-c3-warm-t1","citizens":3,"measured_ticks":300,"cache_mode":"natural_warm","pair_status":"pass","verified_release":true,"bootstrap_ms":692.8987,"p95_ms":28.9439,"p99_ms":34.3697,"maximum_ms":47.3388,"deterministic_hash":"8ffb63e4b7dc4d3bb4b4f9c2b495221bfa14beaeea1d49479759f3cfc890363c"},
+    {"id":"matrix-c6-cold-t1","citizens":6,"measured_ticks":300,"cache_mode":"cold","pair_status":"pass","verified_release":true,"bootstrap_ms":697.8451,"p95_ms":40.9155,"p99_ms":49.6552,"maximum_ms":143.5717,"deterministic_hash":"7377af31cb2ae2e1e9a5835bb58a77ac1763727467465e5b736795c6bf465820"},
+    {"id":"matrix-c6-warm-t1","citizens":6,"measured_ticks":300,"cache_mode":"natural_warm","pair_status":"pass","verified_release":true,"bootstrap_ms":793.1763,"p95_ms":31.6928,"p99_ms":64.5904,"maximum_ms":111.2008,"deterministic_hash":"7377af31cb2ae2e1e9a5835bb58a77ac1763727467465e5b736795c6bf465820"},
+    {"id":"matrix-c12-cold-t1","citizens":12,"measured_ticks":300,"cache_mode":"cold","pair_status":"pass","verified_release":true,"bootstrap_ms":773.9528,"p95_ms":44.2123,"p99_ms":87.6111,"maximum_ms":197.3723,"deterministic_hash":"1d9c948f8bbb5a19e0116e5e3c1988e0b4a4789849736f751ccb074f1cfef038"},
+    {"id":"matrix-c12-warm-t1","citizens":12,"measured_ticks":300,"cache_mode":"natural_warm","pair_status":"pass","verified_release":true,"bootstrap_ms":755.1620,"p95_ms":36.2649,"p99_ms":49.2756,"maximum_ms":226.4300,"deterministic_hash":"1d9c948f8bbb5a19e0116e5e3c1988e0b4a4789849736f751ccb074f1cfef038"},
+    {"id":"matrix-c16-cold-t1","citizens":16,"measured_ticks":300,"cache_mode":"cold","pair_status":"pass","verified_release":true,"bootstrap_ms":788.3415,"p95_ms":47.5567,"p99_ms":148.1782,"maximum_ms":206.2306,"deterministic_hash":"6d1cbcb25efc8c088889eb5c0f30a1fd195405ee539f4d1e34a815001a0fa5d9"},
+    {"id":"matrix-c16-warm-t1","citizens":16,"measured_ticks":300,"cache_mode":"natural_warm","pair_status":"pass","verified_release":true,"bootstrap_ms":815.7120,"p95_ms":64.3802,"p99_ms":138.9420,"maximum_ms":153.0571,"deterministic_hash":"6d1cbcb25efc8c088889eb5c0f30a1fd195405ee539f4d1e34a815001a0fa5d9"},
+    {"id":"reference-c16-cold-t2","citizens":16,"measured_ticks":300,"cache_mode":"cold","pair_status":"pass","verified_release":true,"bootstrap_ms":709.2128,"p95_ms":40.6589,"p99_ms":141.0163,"maximum_ms":213.4861,"deterministic_hash":"6d1cbcb25efc8c088889eb5c0f30a1fd195405ee539f4d1e34a815001a0fa5d9"},
+    {"id":"reference-c16-cold-t3","citizens":16,"measured_ticks":300,"cache_mode":"cold","pair_status":"pass","verified_release":true,"bootstrap_ms":718.9072,"p95_ms":43.1679,"p99_ms":152.4262,"maximum_ms":215.4979,"deterministic_hash":"6d1cbcb25efc8c088889eb5c0f30a1fd195405ee539f4d1e34a815001a0fa5d9"},
+    {"id":"soak-c16-cold-t1","citizens":16,"measured_ticks":1000,"cache_mode":"cold","pair_status":"pass","verified_release":true,"bootstrap_ms":714.5545,"p95_ms":38.8865,"p99_ms":141.7352,"maximum_ms":164.2170,"deterministic_hash":"7a04b21fdeccf0f3630cd0541c797da13c2ad25a983514920f18c55474af80c1"},
+    {"id":"soak-c16-cold-t2","citizens":16,"measured_ticks":1000,"cache_mode":"cold","pair_status":"pass","verified_release":true,"bootstrap_ms":698.1881,"p95_ms":41.3155,"p99_ms":142.4508,"maximum_ms":175.9617,"deterministic_hash":"7a04b21fdeccf0f3630cd0541c797da13c2ad25a983514920f18c55474af80c1"},
+    {"id":"stress-c24-cold-t1","citizens":24,"measured_ticks":300,"cache_mode":"cold","pair_status":"pass","verified_release":true,"bootstrap_ms":687.6044,"p95_ms":144.4787,"p99_ms":164.8555,"maximum_ms":190.5471,"deterministic_hash":"c7c72b3729587d896b7c44769d4709378dfa6f513764c8e169465d5873b5eba0"},
+    {"id":"forced-c16-t1","citizens":16,"measured_ticks":1,"cache_mode":"forced_invalidation","pair_status":"pass","verified_release":true,"bootstrap_ms":683.7821,"p95_ms":139.1511,"p99_ms":139.1511,"maximum_ms":139.1511,"deterministic_hash":"9e4a89a3049911b8978ddd7bcd906161f8b82756c68e05ad70dc4fde220dc66d"}
+  ],
+  "determinism": {
+    "cold_warm_hashes": [
+      {"citizens":3,"hash":"8ffb63e4b7dc4d3bb4b4f9c2b495221bfa14beaeea1d49479759f3cfc890363c"},
+      {"citizens":6,"hash":"7377af31cb2ae2e1e9a5835bb58a77ac1763727467465e5b736795c6bf465820"},
+      {"citizens":12,"hash":"1d9c948f8bbb5a19e0116e5e3c1988e0b4a4789849736f751ccb074f1cfef038"},
+      {"citizens":16,"hash":"6d1cbcb25efc8c088889eb5c0f30a1fd195405ee539f4d1e34a815001a0fa5d9"}
+    ],
+    "soak_repeat_hash": "7a04b21fdeccf0f3630cd0541c797da13c2ad25a983514920f18c55474af80c1"
+  },
+  "artifact_validation": {
+    "manifest_artifacts": 354,
+    "hashes_checked": 354,
+    "hashes_matched": 354,
+    "hash_mismatches": 0,
+    "missing": 0,
+    "outside_output_root": 0,
+    "zero_size": 0,
+    "manifest_failed_checks": 0,
+    "unique_json_artifacts_parsed": 184,
+    "invalid_json": 0,
+    "manifest_artifact_bytes": 74632864,
+    "leaf_results_checked": 28,
+    "leaf_source_commit_unique": ["a5136360963e7e9951d4f46fc282ac8fd0f204de"],
+    "leaf_git_dirty_unique": [false],
+    "leaf_verified_release_unique": [true],
+    "all_passed": true
+  },
+  "release_build_fingerprint": {
+    "console_wrapper_sha256": "b5c477879d9af42ac4ac8efd41f42bf35997a71b35a4d5772ce3e6817f2fa438",
+    "pack_sha256": "0da69f5be12cf8709afa61ca6f3b65063d53a9c07fa5521a04d21e73b966f9bc",
+    "managed_assembly_sha256": "583a3bdec6116d8579f65d3162a25511519eab4ac659a7130c5a5d020fbc6018"
+  },
+  "bound_artifacts": [
+    {"role":"run_plan","path":"C:\\tmp\\societies-v3-w3-03-perf-disposable-a513636\\artifacts\\performance\\w303-a513636-clean\\run-plan.json","size_bytes":11910,"sha256":"bcc728894cbf6971e8ec2b97f60d7d3c930e59767eae273e81433ba2aeb9caf1"},
+    {"role":"performance_matrix","path":"C:\\tmp\\societies-v3-w3-03-perf-disposable-a513636\\artifacts\\performance\\w303-a513636-clean\\perf-matrix.csv","size_bytes":40708,"sha256":"e90654a090f7a5ca3673fba6283a9578eb03d4a2a72cb14df7a452f870b2b302"},
+    {"role":"performance_results","path":"C:\\tmp\\societies-v3-w3-03-perf-disposable-a513636\\artifacts\\performance\\w303-a513636-clean\\perf-results.json","size_bytes":212965,"sha256":"546b1e7a637d431caae2fe28e83537df54481a523a30e9aed210616af7e744e4"},
+    {"role":"summary","path":"C:\\tmp\\societies-v3-w3-03-perf-disposable-a513636\\artifacts\\performance\\w303-a513636-clean\\summary.txt","size_bytes":704,"sha256":"ecc5622a051583f33465fe78acd19a1cbb79bfbc071fc69a6a93bf5838762454"},
+    {"role":"validation_manifest","path":"C:\\tmp\\societies-v3-w3-03-perf-disposable-a513636\\artifacts\\performance\\w303-a513636-clean\\validation-manifest.json","size_bytes":164584,"sha256":"8df343bad34556b6d7cd9716b126a258c440d7671d2ef991bc4b881b4f9b0a49"},
+    {"role":"release_console_wrapper","path":"C:\\tmp\\societies-v3-w3-03-perf-disposable-a513636\\artifacts\\performance\\w303-a513636-clean\\cases\\matrix-c3-cold-t1\\release-runner\\SocietiesPerformance.console.exe","size_bytes":50176,"sha256":"b5c477879d9af42ac4ac8efd41f42bf35997a71b35a4d5772ce3e6817f2fa438"},
+    {"role":"release_pack","path":"C:\\tmp\\societies-v3-w3-03-perf-disposable-a513636\\artifacts\\performance\\w303-a513636-clean\\cases\\matrix-c3-cold-t1\\release-runner\\SocietiesPerformance.pck","size_bytes":34032,"sha256":"0da69f5be12cf8709afa61ca6f3b65063d53a9c07fa5521a04d21e73b966f9bc"},
+    {"role":"managed_assembly","path":"C:\\tmp\\societies-v3-w3-03-perf-disposable-a513636\\artifacts\\performance\\w303-a513636-clean\\cases\\matrix-c3-cold-t1\\release-runner\\data_Societies_windows_x86_64\\Societies.dll","size_bytes":954880,"sha256":"583a3bdec6116d8579f65d3162a25511519eab4ac659a7130c5a5d020fbc6018"},
+    {"role":"godot_editor","path":"C:\\Users\\hunte\\AppData\\Local\\Microsoft\\WinGet\\Packages\\GodotEngine.GodotEngine.Mono_Microsoft.Winget.Source_8wekyb3d8bbwe\\Godot_v4.6.2-stable_mono_win64\\Godot_v4.6.2-stable_mono_win64.exe","size_bytes":172977672,"sha256":"9dece0030aca9d4bb0d47f50ae8529cfaec6520eb7b3a7056193fb44e9e2fc27"},
+    {"role":"godot_console","path":"C:\\Users\\hunte\\AppData\\Local\\Microsoft\\WinGet\\Packages\\GodotEngine.GodotEngine.Mono_Microsoft.Winget.Source_8wekyb3d8bbwe\\Godot_v4.6.2-stable_mono_win64\\Godot_v4.6.2-stable_mono_win64_console.exe","size_bytes":198152,"sha256":"f13f47b3d3247af7d6bfe3eb161b1c46c1210b5f580b215323a46f0054b4a2e4"}
+  ],
+  "generated_artifact_note": {
+    "path": "src/societies/icon.svg.import",
+    "post_run_porcelain": " M src/societies/icon.svg.import",
+    "head_object": "3e357237b7c316d6e9044c24b95a02ca1e010b1f",
+    "worktree_clean_filter_object": "3e357237b7c316d6e9044c24b95a02ca1e010b1f",
+    "ignore_space_at_eol_diff_exit_code": 0,
+    "semantic_change_detected": false,
+    "recovery_performed": false,
+    "reason": "Godot rewrote line endings during import. The tracked file was not modified again after measurement because this task prohibited unrelated disposable-source repair; clean invocation provenance is recorded in all 28 leaf results."
+  },
+  "causality_and_limitations": {
+    "w3_03_caused_observed_timing_deltas": "not_established",
+    "reason": "W3-02 and W3-03 are separate full-matrix observations at different commits, not a same-session counterbalanced A-B experiment.",
+    "other_limitations": [
+      "The raw matrix budgetStatus is target_missed and must not be described as pass.",
+      "The milestone safety gate is green under the established median-reference, individual-soak, and forced-invalidation rules.",
+      "The c24 case is characterization-only and does not gate the milestone.",
+      "No remote CI, browser or device certification, deployment, release, or paid external service was exercised.",
+      "Ignored matrix artifacts remain only in the designated disposable clone."
+    ]
+  },
+  "conclusion": {
+    "w3_03_performance_validation_complete": true,
+    "w3_03_milestone_performance_gate_passed": true,
+    "raw_matrix_budget_status": "target_missed",
+    "raw_matrix_hard_safety_failure": false,
+    "formal_target_remains_missed": true,
+    "reference_median_safety_passed": true,
+    "both_soaks_safety_and_determinism_passed": true,
+    "forced_invalidation_safety_passed": true,
+    "c24_was_non_gating": true,
+    "causal_claim_made": false,
+    "next_boundary": "Use this complete a513636 matrix as the W3-03 performance disposition. Preserve raw target_missed separately from the green milestone safety gate, keep c24 non-gating, and require a same-session counterbalanced A-B before attributing timing deltas to code changes."
+  }
+}

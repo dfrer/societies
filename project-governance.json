@@ -1,0 +1,113 @@
+{
+  "schema_version": 1,
+  "project": "Societies",
+  "repository": "dfrer/societies",
+  "baseline": {
+    "accepted_commit": "847c86b1c379e6a1dd8d4b7b641c3c89646e28c9",
+    "accepted_date": "2026-08-27",
+    "archive_branch": "archive/pre-consolidation-2026-08-27",
+    "description": "User-accepted EB-01R bounded founder-worldcraft baseline"
+  },
+  "authority_order": [
+    "verified_source_tests_runtime_and_human_evidence",
+    "docs/project/CURRENT_STATE.md",
+    "planning/active/MILESTONE.md",
+    "docs/project/CHARTER.md_and_accepted_decisions",
+    "docs/project/ARCHITECTURE.md_and_DEVELOPMENT_PROCESS.md",
+    "adrs_and_bounded_evidence",
+    "historical_material"
+  ],
+  "canonical_documents": {
+    "charter": "docs/project/CHARTER.md",
+    "current_state": "docs/project/CURRENT_STATE.md",
+    "architecture": "docs/project/ARCHITECTURE.md",
+    "development_process": "docs/project/DEVELOPMENT_PROCESS.md",
+    "roadmap": "docs/project/ROADMAP.md",
+    "decisions": "docs/project/DECISION_LOG.md",
+    "risks": "docs/project/RISKS_AND_DEBT.md",
+    "repository_map": "docs/project/REPOSITORY_MAP.md",
+    "active_milestone": "planning/active/MILESTONE.md"
+  },
+  "scoped_agent_contracts": [
+    "AGENTS.md",
+    "src/societies/AGENTS.md",
+    "labs/AGENTS.md",
+    "planning/AGENTS.md",
+    "tests/AGENTS.md",
+    "docs/AGENTS.md"
+  ],
+  "active_milestone": {
+    "id": "CONSOLIDATION-V1",
+    "path": "planning/active/MILESTONE.md",
+    "status": "active",
+    "feature_work_authorized": false
+  },
+  "active_directory_allowlist": [
+    "README.md",
+    "MILESTONE.md",
+    "evidence"
+  ],
+  "root_document_max_bytes": 20000,
+  "root_documents": [
+    "README.md",
+    "AGENTS.md",
+    "CONTEXT.md",
+    "CURRENT_BUILD.md",
+    "WORKFLOW.md",
+    "WORKFLOW_ISSUES.md"
+  ],
+  "live_markdown_documents": [
+    "README.md",
+    "AGENTS.md",
+    "CONTEXT.md",
+    "CURRENT_BUILD.md",
+    "WORKFLOW.md",
+    "WORKFLOW_ISSUES.md",
+    "docs/README.md",
+    "docs/AGENTS.md",
+    "docs/adr/README.md",
+    "docs/history/README.md",
+    "docs/project/CHARTER.md",
+    "docs/project/CURRENT_STATE.md",
+    "docs/project/ARCHITECTURE.md",
+    "docs/project/DEVELOPMENT_PROCESS.md",
+    "docs/project/ROADMAP.md",
+    "docs/project/DECISION_LOG.md",
+    "docs/project/RISKS_AND_DEBT.md",
+    "docs/project/REPOSITORY_MAP.md",
+    "docs/research/README.md",
+    "labs/README.md",
+    "labs/AGENTS.md",
+    "labs/Societies.SnowGlobe/README.md",
+    "planning/README.md",
+    "planning/AGENTS.md",
+    "planning/PRODUCT-THESIS.md",
+    "planning/DEVELOPMENT_WORKFLOW.md",
+    "planning/active/README.md",
+    "planning/active/MILESTONE.md",
+    "src/societies/AGENTS.md",
+    "tests/AGENTS.md"
+  ],
+  "protected_invariants": [
+    "deterministic_runtime_owns_world_truth",
+    "all_world_mutations_use_validated_commands_and_events",
+    "presentation_and_models_do_not_mutate_authority",
+    "persistence_replay_and_offline_fallback_do_not_require_model_recall",
+    "player_is_embodied_and_not_omnipotent",
+    "citizens_may_counter_delay_refuse_withdraw_or_proceed_for_legible_reasons",
+    "human_acceptance_is_required_for_experience_claims"
+  ],
+  "frozen_until_explicit_owner_decision": [
+    "new_gameplay_feature_breadth",
+    "provider_expansion_or_paid_calls",
+    "broad_economy_governance_or_multiplayer",
+    "repository_wide_code_rewrite",
+    "automatic_activation_of_historical_roadmaps"
+  ],
+  "required_archives": [
+    "docs/history/pre-consolidation-2026-08-27/root/CURRENT_BUILD.md",
+    "docs/history/pre-consolidation-2026-08-27/root/WORKFLOW.md",
+    "docs/history/pre-consolidation-2026-08-27/labs/Societies.SnowGlobe-README.md",
+    "planning/archives/2026-08-27-pre-consolidation/v3-snow-globe-frontend-recovery-plan.md"
+  ]
+}

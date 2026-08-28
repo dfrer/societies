@@ -272,7 +272,7 @@ public sealed class LocalPremiumComparisonTests
         Assert.DoesNotContain("winner\"", report.CanonicalJson, StringComparison.OrdinalIgnoreCase);
     }
 
-    [Fact]
+    [HistoricalEvidenceFact(OllamaRecordingExecutionArtifactModule.LegacyRelativeArtifactPath)]
     public void TwoRunOverloadAcceptsTheImmutableHistoricalV4ArtifactWithoutMutation()
     {
         byte[] historical = ReadHistoricalV4Artifact();

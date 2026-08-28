@@ -1,0 +1,280 @@
+{
+  "schemaVersion": 1,
+  "capturedUtc": "2026-07-13T00:47:41.6187936Z",
+  "scope": "V3-W1-03c_publication_grade_performance_baseline_matrix",
+  "status": "passed_contract_safety_failed",
+  "source": {
+    "branch": "feature/v3-performance-baseline-matrix",
+    "implementationCommit": "a636967c8ea4197393cde1f78d817e364301426a",
+    "sourceClean": true,
+    "implementationCommits": [
+      "334629d76f1ec4006304d36f66d9c8dfc7c7fdd7",
+      "51603fdc20c66263a389d33cfc24ce7da4a56ac4",
+      "a636967c8ea4197393cde1f78d817e364301426a"
+    ]
+  },
+  "configuration": {
+    "scenarioId": "balanced_basin",
+    "simulationSeed": 1337,
+    "preconditioningTicks": 2,
+    "canonicalPairCount": 14,
+    "metricsRows": 28,
+    "matrixCitizens": [3, 6, 12, 16],
+    "matrixMeasuredTicks": 300,
+    "referenceTrials": 3,
+    "soakCitizens": 16,
+    "soakMeasuredTicks": 1000,
+    "soakTrials": 2,
+    "stressCitizens": 24,
+    "stressMeasuredTicks": 300,
+    "forcedInvalidationMeasuredTicks": 1
+  },
+  "claims": {
+    "releaseBaselineEvidence": true,
+    "fullMatrixCaptured": true,
+    "medianOfThreeCaptured": true,
+    "targetOrSafetyClaimMade": true,
+    "budgetStatus": "safety_failure"
+  },
+  "releaseExecution": {
+    "machineName": "DESKTOP-H5M54GO",
+    "logicalProcessorCount": 16,
+    "operatingSystem": "Microsoft Windows 10.0.19045",
+    "processArchitecture": "X64",
+    "dotnetRuntime": ".NET 8.0.24",
+    "godotVersion": "4.6.2-stable (official)",
+    "managedBuildConfiguration": "Release",
+    "managedAssemblyConfiguration": "ExportRelease",
+    "godotDebugBuild": false,
+    "godotReleaseFeature": true,
+    "godotTemplateFeature": true,
+    "godotEditorFeature": false,
+    "verifiedReleaseExecution": true
+  },
+  "releaseBuildFingerprint": {
+    "consoleWrapperSha256": "b5c477879d9af42ac4ac8efd41f42bf35997a71b35a4d5772ce3e6817f2fa438",
+    "packSha256": "c56067d5b7117a08f2bd484f05b4009c004c9561b338c6a69c8b2ef11d709c65",
+    "managedAssemblySha256": "d5b405b61e6d417f827f69db9573f37f8e6e048436b059b67e0a3d4c3da735a5"
+  },
+  "validation": {
+    "windowsPowerShell51Ast": true,
+    "canonicalPlanOnly": true,
+    "filteredPlanOnly": true,
+    "failureClaimsRemainFalse": true,
+    "dirtyDebugSampleContract": true,
+    "requiredDotnetTests": {
+      "passed": 103,
+      "failed": 0,
+      "duration": "5m26s"
+    },
+    "exportReleaseBuild": {
+      "warnings": 0,
+      "errors": 0
+    },
+    "canonicalReleaseMatrix": {
+      "status": "pass",
+      "contractStatus": "pass",
+      "budgetStatus": "safety_failure",
+      "pairsPassed": 14,
+      "pairsExpected": 14,
+      "metricsRows": 28,
+      "duration": "17m32s"
+    },
+    "artifactIntegrity": {
+      "manifestArtifactsChecked": 354,
+      "manifestArtifactsMatched": 354,
+      "mismatches": 0
+    },
+    "localGodotHeadlessAfterSoakFix": "not_rerun_pr_ci_pending",
+    "independentReview": {
+      "matrixScriptP0P1": 0,
+      "soakInvalidationFixP0P1": 0,
+      "evidenceAuditP0P1": 0,
+      "evidenceAuditArtifactHashesMatched": 354
+    }
+  },
+  "contracts": {
+    "exactCanonicalInventory": true,
+    "sameEnvironment": true,
+    "sameReleaseBuild": true,
+    "verifiedReleaseExecution": true,
+    "coldWarmDeterministicEquivalence": true,
+    "referenceTrialsComparable": true,
+    "soakDeterministicRepeat": true,
+    "forcedInvalidationCorrect": true,
+    "naturalGameplayInvalidationsHaveMatchedVersionAndCounterDeltas": true
+  },
+  "coldWarmDeterminism": [
+    {
+      "citizens": 3,
+      "hash": "5cd275161df0a766dc1bc502e2411ddb18d33ccc2357132ca8872ff5abff3974"
+    },
+    {
+      "citizens": 6,
+      "hash": "2d909de7cf7934fd97e491d198a2d2b0883bbcf5f9129d98f7f40a4b1896cb6f"
+    },
+    {
+      "citizens": 12,
+      "hash": "2c527a7acff05a6b8e9d7136024a26953d5e532adcc52ce5aea17fd94ef0641e"
+    },
+    {
+      "citizens": 16,
+      "hash": "087625a32df3a4faf959db3454bb432f6b75f29d4aafa337adb9e833d7310d8d",
+      "snapshotSha256": "48c53a170a4d8ad619230bd53b1b7aa108981420316978cdd3081017dedb1221",
+      "eventLogSha256": "73efb359f8dc4de4c150cbb7b0b2019600cf322d35e4390a48e1dbe562248f3d"
+    }
+  ],
+  "referenceAssessment": {
+    "trialCount": 3,
+    "targetPassed": false,
+    "safetyPassed": false,
+    "mediansMilliseconds": {
+      "bootstrap": 771.7541,
+      "p95": 570.6155,
+      "p99": 652.306,
+      "maximum": 3694.2534,
+      "total": 23169.8862
+    },
+    "limitsMilliseconds": {
+      "targetBootstrap": 3000.0,
+      "targetP95": 25.0,
+      "targetP99": 50.0,
+      "targetMaximum": 100.0,
+      "targetTotal": 6000.0,
+      "safetyBootstrap": 5000.0,
+      "safetyP95": 50.0,
+      "safetyMaximum": 250.0
+    },
+    "ratios": {
+      "p95ToTarget": 22.82462,
+      "p95ToSafety": 11.41231,
+      "maximumToTarget": 36.942534,
+      "maximumToSafety": 14.777014
+    }
+  },
+  "soakAssessment": {
+    "trialCount": 2,
+    "deterministicRepeat": true,
+    "combinedSha256": "b876d0fec23d6b552dd5b58259633c0a25b5562db1fa69a9e7bb24d9151808c7",
+    "snapshotSha256": "f02bc86d4cf2b615ef0714d5254e0f9738b9146aed28a7977061a79163dcb158",
+    "eventLogSha256": "5a047d46215653e4d88923065807a79f156a359f26be0ff674b4a7d5484365c4",
+    "p95Milliseconds": [121.6228, 123.458],
+    "maximumMilliseconds": [4294.9962, 4083.3085],
+    "naturalInvalidationsPerRun": 1,
+    "targetPassed": false,
+    "safetyPassed": false
+  },
+  "stressAssessment": {
+    "citizens": 24,
+    "p95Milliseconds": 1045.7539,
+    "maximumMilliseconds": 4897.1867,
+    "targetP95Milliseconds": 50.0,
+    "targetMaximumMilliseconds": 200.0,
+    "targetPassed": false,
+    "safetyGateApplied": false,
+    "pathLookups": 65930,
+    "pathMisses": 7050,
+    "cacheHitRate": 0.8930684058850296,
+    "navigationInvalidations": 9,
+    "navigationRebuildMilliseconds": 49.9866,
+    "candidateOrdersPerIdleCitizen": 117.25714285714285,
+    "combinedSha256": "4cf87ab04ec2a0bbac393ed2344a2393d842fd8f9766f9737ed99ed632a03e83"
+  },
+  "forcedInvalidationAssessment": {
+    "transitionCorrect": true,
+    "pathSegmentStructureId": "path_segment_1",
+    "completionTick": 3,
+    "navigationVersionBefore": 1,
+    "navigationVersionAfter": 2,
+    "invalidationsBefore": 0,
+    "invalidationsAfter": 1,
+    "cacheEntriesBeforeRebuild": 543,
+    "cacheEntriesImmediatelyAfterRebuild": 0,
+    "cacheEntriesAfterMeasurement": 175,
+    "firstLookupObserved": true,
+    "firstLookupWasMiss": true,
+    "firstLookupUsedNewVersion": true,
+    "exactEndpointsMatch": true,
+    "changedCellIncluded": true,
+    "preChangePlanCost": 2.0,
+    "postChangePlanCost": 1.100000023841858,
+    "commitToFirstCorrectLookupMilliseconds": 8.4171,
+    "targetPassed": true,
+    "safetyPassed": true,
+    "wholeTickMilliseconds": 3791.4275
+  },
+  "naturalWarmAssessment": [
+    {
+      "citizens": 3,
+      "hitRate": 0.9990614441246403,
+      "classification": "target_met"
+    },
+    {
+      "citizens": 6,
+      "hitRate": 0.9981024307861629,
+      "classification": "target_met"
+    },
+    {
+      "citizens": 12,
+      "hitRate": 0.9901924662701546,
+      "classification": "target_met"
+    },
+    {
+      "citizens": 16,
+      "hitRate": 0.9826336706408844,
+      "classification": "acceptable_below_target"
+    }
+  ],
+  "productionWarmupDecision": {
+    "decision": "benchmark_only",
+    "eagerAllPairsProductionWarmupRequired": false,
+    "rationale": "Natural warm-cache execution remains deterministic and above the investigation threshold; eager all-pairs prefill remains unsuitable for the endpoint-sensitive cache."
+  },
+  "diagnosis": {
+    "primaryBottleneck": "path_plan_computation_and_cache_churn",
+    "c16ColdFirstMeasuredTickMilliseconds": 3653.8591,
+    "c16ColdFirstMeasuredTickBuildWorkOrdersMilliseconds": 3585.7683,
+    "c16ColdFirstMeasuredTickLookups": 175,
+    "c16ColdFirstMeasuredTickMisses": 174,
+    "c16NaturalWarmFirstMeasuredTickMilliseconds": 30.3735,
+    "c16NaturalWarmFirstMeasuredTickHits": 175,
+    "c16NaturalWarmP95Milliseconds": 108.5399,
+    "c16NaturalWarmTotalMilliseconds": 12441.8749,
+    "c16ColdTotalMilliseconds": 23347.3193,
+    "remainingInstrumentationGap": "route-selection cost inside the unsegmented remainder of sessionAdvance"
+  },
+  "artifacts": [
+    {
+      "role": "run_plan",
+      "path": "E:\\AIExperiments\\games\\societies\\artifacts\\performance\\w103c-clean-release-a636967\\run-plan.json",
+      "sha256": "83b21296a7b8616c22c6c25f2fe8f639fe6751af5071645f7533ebceb6999d7c"
+    },
+    {
+      "role": "performance_matrix",
+      "path": "E:\\AIExperiments\\games\\societies\\artifacts\\performance\\w103c-clean-release-a636967\\perf-matrix.csv",
+      "sha256": "d8b7146bc897f0314e835c8d22e05b397f8daa8aa371bcaa01fd5701362a80cd"
+    },
+    {
+      "role": "performance_results",
+      "path": "E:\\AIExperiments\\games\\societies\\artifacts\\performance\\w103c-clean-release-a636967\\perf-results.json",
+      "sha256": "03e6bdc4b1bb66f9702e600b8e4502503e96c7784cc3f90b02c279004e873d3b"
+    },
+    {
+      "role": "validation_manifest",
+      "path": "E:\\AIExperiments\\games\\societies\\artifacts\\performance\\w103c-clean-release-a636967\\validation-manifest.json",
+      "sha256": "bf471c776f93437fb5b7bd40508e36a3bb9429ac7f88aeb99022b5fb50e3f2ce"
+    },
+    {
+      "role": "summary",
+      "path": "E:\\AIExperiments\\games\\societies\\artifacts\\performance\\w103c-clean-release-a636967\\summary.txt",
+      "sha256": "c252d8a02664c5bb8017c204974dc01de4d420d1ec1f86bb3cc090bdbf95c4e1"
+    }
+  ],
+  "conclusion": {
+    "w103cEvidenceCaptureComplete": true,
+    "performanceSafetyGatePassed": false,
+    "week2FeatureExpansionAllowed": false,
+    "nextWork": "continue correctness and performance work; instrument route selection, complete W1-04 navigation semantics, then use W1-05 branch-and-bound to reduce exact path-plan work before rerunning this matrix",
+    "engineMigrationDecision": "No Unity or DOTS migration. The evidence identifies algorithmic path-selection and cache-miss costs inside the current Godot simulation."
+  }
+}

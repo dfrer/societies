@@ -14,12 +14,21 @@ namespace Societies.Core
             IReadOnlyList<PrototypeResourceSnapshot> resources)
         {
             WorldGenerationResult? world = session.World;
+            IReadOnlyList<VoxelWalkableSpan> voxelWalkable = session.UsesVoxelWorld
+                ? session.CaptureVoxelWalkableSpans()
+                : System.Array.Empty<VoxelWalkableSpan>();
             Dictionary<string, int> biomeCellCounts = world?.WorldMap.Cells
                 .GroupBy(cell => cell.Biome.ToString())
                 .OrderBy(group => group.Key)
-                .ToDictionary(group => group.Key, group => group.Count()) ?? new Dictionary<string, int>();
-            int buildableCellCount = world?.WorldMap.Cells.Count(cell => cell.IsBuildable) ?? 0;
-            int totalCellCount = world?.WorldMap.Cells.Count ?? 0;
+                .ToDictionary(group => group.Key, group => group.Count()) ??
+                (session.UsesVoxelWorld
+                    ? new Dictionary<string, int> { ["VoxelSurface"] = voxelWalkable.Count }
+                    : new Dictionary<string, int>());
+            int buildableCellCount = world?.WorldMap.Cells.Count(cell => cell.IsBuildable) ?? voxelWalkable.Count;
+            int totalCellCount = world?.WorldMap.Cells.Count ??
+                (session.UsesVoxelWorld
+                    ? (VoxelWorldModule.MaxXExclusive - VoxelWorldModule.MinX) * (VoxelWorldModule.MaxZExclusive - VoxelWorldModule.MinZ)
+                    : 0);
 
             return new PrototypeWorldSummary
             {
@@ -29,22 +38,22 @@ namespace Societies.Core
                 WorldSeed = session.WorldSeed,
                 SimulationSeed = session.SimulationSeed,
                 SimulationTick = session.SimulationTick,
-                WorldSize = terrain?.WorldSize ?? 0.0f,
-                GroundHeight = terrain?.GroundHeight ?? 0.0f,
-                GridWidth = world?.WorldMap.GridWidth ?? 0,
-                GridHeight = world?.WorldMap.GridHeight ?? 0,
-                CellSizeMeters = world?.WorldMap.CellSizeMeters ?? 0.0f,
-                TerrainMode = world == null ? "flat" : "heightfield_v1",
+                WorldSize = session.UsesVoxelWorld ? session.Scenario.WorldSize : terrain?.WorldSize ?? 0.0f,
+                GroundHeight = session.UsesVoxelWorld ? VoxelWorldModule.MinY : terrain?.GroundHeight ?? 0.0f,
+                GridWidth = world?.WorldMap.GridWidth ?? (session.UsesVoxelWorld ? VoxelWorldModule.MaxXExclusive - VoxelWorldModule.MinX : 0),
+                GridHeight = world?.WorldMap.GridHeight ?? (session.UsesVoxelWorld ? VoxelWorldModule.MaxZExclusive - VoxelWorldModule.MinZ : 0),
+                CellSizeMeters = world?.WorldMap.CellSizeMeters ?? (session.UsesVoxelWorld ? 1.0f : 0.0f),
+                TerrainMode = session.UsesVoxelWorld ? PrototypeWorldModels.Voxel : world == null ? "flat" : PrototypeWorldModels.Heightfield,
                 BiomeCellCounts = biomeCellCounts,
                 BuildableCellCount = buildableCellCount,
                 BuildableCellRatio = totalCellCount == 0 ? 0.0f : buildableCellCount / (float)totalCellCount,
-                MeanElevation = world?.WorldMap.Cells.Average(cell => cell.ElevationMeters) ?? 0.0f,
-                MaxElevation = world?.WorldMap.Cells.Max(cell => cell.ElevationMeters) ?? 0.0f,
-                AverageMovementCost = world?.WorldMap.Cells.Average(cell => cell.MovementCost) ?? 0.0f,
+                MeanElevation = world?.WorldMap.Cells.Average(cell => cell.ElevationMeters) ?? (voxelWalkable.Count == 0 ? 0.0f : voxelWalkable.Average(span => span.SupportY + 1.0f)),
+                MaxElevation = world?.WorldMap.Cells.Max(cell => cell.ElevationMeters) ?? (voxelWalkable.Count == 0 ? 0.0f : voxelWalkable.Max(span => span.SupportY + 1.0f)),
+                AverageMovementCost = world?.WorldMap.Cells.Average(cell => cell.MovementCost) ?? (session.UsesVoxelWorld ? 1.0f : 0.0f),
                 StarterResourceDistances = world?.StarterResourceDistances.ToDictionary(pair => pair.Key, pair => pair.Value) ?? new Dictionary<string, float>(),
                 AverageClusterDistances = world?.AverageClusterDistances.ToDictionary(pair => pair.Key, pair => pair.Value) ?? new Dictionary<string, float>(),
                 SettlementAnchorPosition = PrototypeSerializableVector3.FromVector3(session.SettlementAnchorPosition),
-                WorldHash = world?.WorldHash ?? string.Empty,
+                WorldHash = session.WorldHash,
                 ResourceNodeCounts = resources
                     .GroupBy(resource => resource.ResourceId)
                     .OrderBy(group => group.Key)

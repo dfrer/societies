@@ -1,0 +1,177 @@
+{
+  "schemaVersion": 1,
+  "capturedUtc": "2026-07-14T22:23:50.6538401Z",
+  "workItem": "V3-W2-01",
+  "status": "empty_stores_contract_and_reference_traces_validated",
+  "branch": "feature/v3-w2-01-empty-stores-contract",
+  "baseCommit": "85995da7fb9ca21a43053fc1ceb625cf9584bcd8",
+  "implementationCommit": "6e4cbd7dff3720b0a243c951078c6bf638c0b22f",
+  "scope": {
+    "implemented": [
+      "catalog-driven empty_stores scenario and strict crisis validation",
+      "shared 20 Hz authoritative simulation-time constant",
+      "session-owned pure crisis state evaluator",
+      "stable, incapacitated-collapse, and deadline holds",
+      "crisis-only citizen-need pacing tuned from real no-input runs",
+      "real fixed-seed no-input session trace and candidate-success contract envelope",
+      "strict domain checkpoint capture and restore",
+      "explicit schema-v6 crisis-persistence fail-fast boundary"
+    ],
+    "deferred": [
+      "W2-02 contribution commands",
+      "W2-03 directives and causal explanations",
+      "W2-04 terminal events and crisis HUD",
+      "W2-05 runtime snapshot schema v7, telemetry, and end-to-end save/load"
+    ],
+    "runtimeSnapshotSchemaVersion": 6,
+    "terminalCrisisEventsImplemented": false,
+    "hudCrisisRulesImplemented": false
+  },
+  "simulationClock": {
+    "ticksPerSecond": 20,
+    "ticksPerMinute": 1200,
+    "tickIntervalSeconds": 0.05,
+    "normalSpeedMappingConfirmed": true,
+    "pausedCallsAdvanceSessionTick": false,
+    "pausedCallsAdvanceCrisisTick": false,
+    "renderCadenceDifferentialExact": true
+  },
+  "scenario": {
+    "id": "empty_stores",
+    "displayName": "Empty Stores",
+    "simulationSeed": 1701,
+    "citizens": 12,
+    "builtHuts": 2,
+    "queuedHuts": 1,
+    "startingMeals": 2,
+    "startingHearthFuel": 1,
+    "startingBedCoveragePercent": 33,
+    "activeBerrySitesPresent": true,
+    "activeLogSitesPresent": true,
+    "citizenNeedRateMultiplier": 0.0875,
+    "legacyCitizenNeedRateMultiplier": 1.0,
+    "deadlineTicks": 21600,
+    "deadlineSeconds": 1080,
+    "requiredCapableCitizens": 9,
+    "requiredMeals": 6,
+    "requiredHearthFuel": 4,
+    "requiredBedCoveragePercent": 50,
+    "stableHoldTicks": 900,
+    "stableHoldSeconds": 45,
+    "collapseIncapacitatedCitizens": 6,
+    "collapseHoldTicks": 200,
+    "collapseHoldSeconds": 10
+  },
+  "referenceTraces": {
+    "noInput": {
+      "authority": "two complete PrototypeRuntimeSession runs with normal AI settlement behavior and no player commands",
+      "repeatRuns": 2,
+      "terminalOutcome": "collapsed",
+      "collapseCause": "incapacitated_hold",
+      "terminalTick": 9735,
+      "terminalSeconds": 486.75,
+      "terminalMinutes": 8.1125,
+      "targetMinimumMinutes": 8,
+      "targetMaximumMinutes": 14,
+      "targetPassed": true,
+      "eventCount": 7532,
+      "traceSha256": "e99b79066ae85fc5617ef21295a29ae1dfc4591932ffea127eae7788073daa36",
+      "traceCoverage": [
+        "per-tick crisis counters, outcome, observations, and resource revision",
+        "per-tick worker phase, needs, work order, carry, position, and route version",
+        "per-tick stockpile contents and every emitted event",
+        "terminal resource ledger, structure stores/state, and build queue"
+      ],
+      "repeatStateAndEventsExact": true
+    },
+    "candidateSuccessContractEnvelope": {
+      "authority": "pure crisis evaluator fed the exact future-success observation boundary; not an end-to-end contribution/directive run",
+      "repeatRuns": 2,
+      "terminalOutcome": "stable",
+      "terminalTick": 18384,
+      "terminalSeconds": 919.2,
+      "terminalMinutes": 15.32,
+      "targetMinimumMinutes": 10,
+      "targetMaximumMinutes": 18,
+      "targetPassed": true,
+      "traceSha256": "46e645177e7a00a74160a5bd5a219448ab137f3d205585b2ae28a54fb786a734",
+      "repeatStateExact": true,
+      "requiredFollowUp": "W2-02 and W2-03 must replace this envelope with a real command-driven candidate-success session trace"
+    }
+  },
+  "correctness": {
+    "stableHoldEntryResetAndCompletionCovered": true,
+    "collapseHoldEntryResetAndCompletionCovered": true,
+    "deadlinePrecedenceCovered": true,
+    "terminalStateFreezes": true,
+    "domainCheckpointResumeExact": true,
+    "sourceImpossibleRestoreRejected": true,
+    "crisisV6CaptureRejected": true,
+    "crisisV6ApplyRejected": true,
+    "gameManagerF6GracefulDeferral": true,
+    "legacyScenariosCrisisFree": [
+      "balanced_basin",
+      "long_haul_quarry",
+      "food_poor_highlands",
+      "wetland_builder"
+    ],
+    "legacyInitialHearthFuel": 2,
+    "legacySchemaV6PersistenceUnchanged": true
+  },
+  "fullValidation": {
+    "command": "./scripts/run-prototype-validation.ps1",
+    "sourceCommit": "6e4cbd7dff3720b0a243c951078c6bf638c0b22f",
+    "sourceCodeMatchesCommit": true,
+    "workingTreeClean": false,
+    "workingTreeNote": "validation ran with documentation/test-manifest updates plus the preserved user-authored north-star plan edit unstaged; all compiled source and tests matched implementationCommit",
+    "passed": true,
+    "requiredDotnetPassed": 211,
+    "requiredDotnetFailed": 0,
+    "dotnetTiers": {
+      "fast": 118,
+      "integration": 11,
+      "soak": 82
+    },
+    "godotHeadlessPassed": 16,
+    "godotHeadlessFailed": 0,
+    "managedBuildConfigurations": [
+      "Debug",
+      "ExportDebug",
+      "ExportRelease"
+    ],
+    "buildWarnings": 0,
+    "buildErrors": 0,
+    "expectedRuntimeWarningsObserved": [
+      "frame catch-up backlog diagnostic",
+      "optional runtime-metrics I/O isolation diagnostic"
+    ]
+  },
+  "review": {
+    "reviewer": "independent deep_reviewer agent",
+    "finalP0Findings": 0,
+    "finalP1Findings": 0,
+    "finalP2Findings": 0,
+    "finalP3Findings": 0,
+    "resolvedFindings": [
+      "prevent schema-v6 load from silently dropping crisis state",
+      "replace fabricated no-input observations with a real session trace",
+      "reject source-impossible checkpoint counters, observations, and terminal precedence"
+    ]
+  },
+  "performance": {
+    "newCanonicalMatrixRun": false,
+    "reason": "W2-01 adds correctness/domain contract coverage; the latest clean W1-06 matrix remains the performance authority and no threshold was relaxed",
+    "authorityEvidence": "planning/active/evidence/v3-w1-06-session-resource-ledger-validation.json",
+    "hardSafetyGate": "passed",
+    "formalBudget": "target_missed",
+    "stress24CitizenP95Milliseconds": 133.8055,
+    "stressClassification": "non_gating_characterization_red"
+  },
+  "decision": {
+    "w201Complete": true,
+    "w202Started": false,
+    "allW201AcceptanceCriteriaGreen": true,
+    "scopeConstraintPreserved": true,
+    "nextAuthorizedWork": "V3-W2-02 atomic contribution only after this PR is green and merged"
+  }
+}

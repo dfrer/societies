@@ -1,0 +1,241 @@
+{
+  "schemaVersion": 1,
+  "capturedUtc": "2026-07-13T19:20:29.4747225Z",
+  "workItem": "V3-W1-05d",
+  "status": "shared_frontier_fanout_reduced_safety_gate_still_failed",
+  "branch": "feature/v3-shared-frontier-bounds",
+  "baseCommit": "2bf4b9d",
+  "implementationCommit": "8688c27140af537c92c1f681c569ac16e275b881",
+  "preImplementationCharacterization": {
+    "sourceMatrixCommit": "a772d15ffc791da25e52afc9a04cb1a0ae655370",
+    "worstStressTick": {
+      "simulationTick": 292,
+      "wallMilliseconds": 626.3771,
+      "generalPathCacheMisses": 67,
+      "selectorPathCacheMisses": 225,
+      "idleCitizens": 2,
+      "candidateOrdersEvaluated": 239,
+      "selectorCandidatesExactScored": 221,
+      "selectorCandidatesPruned": 18,
+      "selectorExactPathQueries": 229,
+      "selectorPathCacheHits": 4
+    },
+    "interpretation": [
+      "At least 217 of 221 scored first legs missed after invalidation.",
+      "The two idle citizens evaluated at least 101 shared work orders but could not share whole-key cache entries because their origins differed.",
+      "General extraction planning issued 85 anchor-or-depot lookups that collapsed to 67 distinct misses and 18 existing same-key hits.",
+      "Only eight selector queries were additional multi-leg reachability checks, so first-leg frontier fanout was the dominant selector pressure."
+    ]
+  },
+  "architectureInput": {
+    "runtimeProfileSelectionAvailable": false,
+    "agent": "generic_native_child_with_ultra_architect_behavioral_contract",
+    "preferredSlice": "Use shared-origin topology-only geometric distance fields solely to strengthen strict candidate bounds while leaving versioned A-star authoritative for every unpruned route.",
+    "rejectedHigherRiskAlternatives": [
+      "reverse-route or suffix reuse",
+      "multi-target route materialization",
+      "positive route-cache migration across navigation versions"
+    ]
+  },
+  "implementation": {
+    "minimumDistinctMissingKeysBeforeFieldBuild": 8,
+    "fieldLifetime": "one simulation tick and current navigation grid",
+    "sharedOrigins": [
+      "settlement anchor",
+      "central depot",
+      "each idle citizen exact position"
+    ],
+    "boundPolicy": [
+      "Runs Dijkstra over immutable packed walkable topology with exact world-position horizontal edge distances.",
+      "Uses the exact origin position for the first leg and the exact destination position for the final leg.",
+      "Precomputes immutable geometric edge lengths once with the same float operation used by route materialization.",
+      "Uses the maximum of the existing guarded straight-line bound and the topology bound.",
+      "Falls back to the straight-line bound for blocked, disconnected, or origin-mismatched queries.",
+      "Never reconstructs a route, supplies an exact score, or bypasses current-version A-star."
+    ],
+    "preservedInvariants": [
+      "route cells and waypoint bytes",
+      "distance and cost float bits",
+      "deterministic strict-below-best pruning and ordinal ties",
+      "exact endpoints and same-cell behavior",
+      "blocked and disconnected behavior",
+      "negative cache semantics",
+      "navigation-version invalidation and first-post-change cache miss"
+    ]
+  },
+  "differentialValidation": {
+    "navigationLowerBoundCases": 8,
+    "scenarioCount": 4,
+    "selectorTicksPerScenario": 300,
+    "perTickWorkerStateCompared": true,
+    "eventsCompared": true,
+    "resourceApplicationCompared": true,
+    "finalSnapshotsCompared": true,
+    "adversarialCoverage": [
+      "exact endpoint offsets",
+      "same-cell routes",
+      "blocked and disconnected cells",
+      "built-path cost versions",
+      "origin identity",
+      "non-binary 0.1 meter cell size float accumulation"
+    ],
+    "balancedBasinSelectorQueries": {
+      "w105c": 2544,
+      "w105d": 1482,
+      "reductionPercent": 41.745,
+      "exhaustiveReference": 17441
+    }
+  },
+  "fullValidation": {
+    "command": "./scripts/run-prototype-validation.ps1",
+    "passed": true,
+    "requiredDotnetPassed": 159,
+    "requiredDotnetFailed": 0,
+    "godotHeadlessPassed": 16,
+    "godotHeadlessFailed": 0,
+    "debugBuildWarnings": 0,
+    "debugBuildErrors": 0,
+    "exportDebugBuildWarnings": 0,
+    "exportDebugBuildErrors": 0,
+    "exportReleaseBuildWarnings": 0,
+    "exportReleaseBuildErrors": 0,
+    "expectedRuntimeWarningsObserved": [
+      "frame catch-up backlog diagnostic",
+      "optional runtime-metrics I/O isolation diagnostic"
+    ]
+  },
+  "forcedInvalidation": {
+    "standaloneCommand": "./scripts/run-performance-pair.ps1 -ReleaseExport -RequireRelease -Scenario balanced_basin -Seed 1337 -Citizens 16 -Ticks 1 -WarmupTicks 2 -CacheMode forced_invalidation -OutputRoot artifacts/performance/w105d-forced-8688c27 -AllowPrimarySafetyFailure",
+    "standaloneTransitionCorrect": true,
+    "standaloneCommitToFirstCorrectLookupMilliseconds": 21.2838,
+    "matrixTransitionCorrect": true,
+    "matrixCommitToFirstCorrectLookupMilliseconds": 11.4945,
+    "matrixMetricsOffFullTickMilliseconds": 246.714,
+    "targetLimitMilliseconds": 150,
+    "safetyLimitMilliseconds": 250,
+    "targetPassed": true,
+    "safetyPassed": true,
+    "pathCacheMisses": 38,
+    "w105cPathCacheMisses": 84
+  },
+  "canonicalReleaseMatrix": {
+    "command": "./scripts/run-performance-baseline-matrix.ps1 -OutputRoot artifacts/performance/w105d-baseline-8688c27",
+    "sourceCommit": "8688c27140af537c92c1f681c569ac16e275b881",
+    "sourceClean": true,
+    "contractStatus": "pass",
+    "budgetStatus": "safety_failure",
+    "pairCount": 14,
+    "metricsRowCount": 28,
+    "manifestArtifactHashesMatched": 354,
+    "reference16Citizens": {
+      "trialCount": 3,
+      "trialP95Milliseconds": [46.9161, 46.2908, 50.9476],
+      "medianP95Milliseconds": 46.9161,
+      "medianP99Milliseconds": 129.3467,
+      "medianMaximumMilliseconds": 159.8224,
+      "medianTotalMilliseconds": 7741.6268,
+      "safetyP95LimitMilliseconds": 50,
+      "safetyMaximumLimitMilliseconds": 250,
+      "medianP95Passed": true,
+      "medianMaximumPassed": true,
+      "allTrialsSafetyPassed": false,
+      "failingTrial": "reference-c16-cold-t3",
+      "failingTrialP95Milliseconds": 50.9476,
+      "w105cMedianP95Milliseconds": 36.9614,
+      "w105cMedianMaximumMilliseconds": 259.702,
+      "maximumReductionPercent": 38.459
+    },
+    "soak16Citizens": {
+      "deterministicRepeat": true,
+      "p95Milliseconds": [36.6139, 36.5885],
+      "maximumMilliseconds": [169.5998, 165.5849],
+      "safetyPassed": true
+    },
+    "stress24Citizens": {
+      "p95Milliseconds": 128.9719,
+      "maximumMilliseconds": 165.0386,
+      "w105cP95Milliseconds": 272.6378,
+      "w105cMaximumMilliseconds": 607.9651,
+      "p95ReductionPercent": 52.695,
+      "maximumReductionPercent": 72.854,
+      "classification": "characterization",
+      "targetPassed": false
+    }
+  },
+  "residualSpikeCharacterization": {
+    "command": "./scripts/analyze-performance-spikes.ps1 -InputPath artifacts/performance/w105d-baseline-8688c27 -OutputPath artifacts/performance/w105d-baseline-8688c27/spike-analysis.json",
+    "runCount": 14,
+    "measuredTickCount": 5301,
+    "wallTimeCorrelations": {
+      "allPathCacheMisses": 0.875159,
+      "generalPathCacheMisses": 0.854568,
+      "selectorPathCacheMisses": 0.394347,
+      "buildWorkOrdersMilliseconds": 0.948732,
+      "routeSelectionMilliseconds": 0.460343,
+      "navigationRebuildMilliseconds": 0.098886
+    },
+    "stressTick292": {
+      "wallMilliseconds": 157.7138,
+      "generalPathCacheMisses": 34,
+      "selectorPathCacheMisses": 2,
+      "w105cWallMilliseconds": 626.3771,
+      "w105cGeneralPathCacheMisses": 67,
+      "w105cSelectorPathCacheMisses": 225,
+      "wallReductionPercent": 74.821,
+      "generalMissReductionPercent": 49.254,
+      "selectorMissReductionPercent": 99.111
+    },
+    "interpretation": "The shared-origin bound eliminates the selector/global-frontier fanout that dominated W1-05c maxima. Remaining p95 pressure is concentrated in general work-order construction and its residual 34-38 exact misses after invalidation."
+  },
+  "review": {
+    "reviewer": "generic_native_child_with_deep_reviewer_behavioral_contract",
+    "initialFindings": {
+      "p0": 0,
+      "p1": 1,
+      "p2": 1,
+      "resolved": true,
+      "details": [
+        "Replaced StepDistance times CellSizeMeters with the exact world-position HorizontalDistance float operation.",
+        "Corrected the non-binary test grid to scale cell positions by CellSizeMeters."
+      ]
+    },
+    "finalP0Findings": 0,
+    "finalP1Findings": 0,
+    "finalP2Findings": 0
+  },
+  "sourceArtifacts": [
+    {
+      "path": "artifacts/performance/w105d-baseline-8688c27/perf-results.json",
+      "sizeBytes": 204910,
+      "sha256": "3937998fcdb1dea3032d9cf50237a7aff25cc4146934c22bb07b3f4c1b25c354"
+    },
+    {
+      "path": "artifacts/performance/w105d-baseline-8688c27/validation-manifest.json",
+      "sizeBytes": 159650,
+      "sha256": "1abb742d8c56e08c492b78d7b41256ca11ef4ea94c42a0bc887178ec4bee7f90"
+    },
+    {
+      "path": "artifacts/performance/w105d-baseline-8688c27/perf-matrix.csv",
+      "sizeBytes": 38104,
+      "sha256": "2a3ef0c45ba56ab487ec0189a487d3104bea79623c9c42139dfa19946e15f571"
+    },
+    {
+      "path": "artifacts/performance/w105d-baseline-8688c27/spike-analysis.json",
+      "sizeBytes": 979400,
+      "sha256": "37bb97db5cd467d20ef739106ff5a46195804a4955eb7002c6c243373a7cf5cd"
+    },
+    {
+      "path": "artifacts/performance/w105d-forced-8688c27/equivalence-results.json",
+      "sizeBytes": 47316,
+      "sha256": "83e0c38df5108d5de72dc11e0bd9434513806396618966ebad9c08a7fe14f9e1"
+    }
+  ],
+  "decision": {
+    "sharedFrontierOptimizationValidated": true,
+    "performanceSafetyGatePassed": false,
+    "w106Allowed": false,
+    "week2FeatureExpansionAllowed": false,
+    "blockingLimit": "One 16-citizen reference trial records 50.9476 ms p95 against the 50 ms hard safety limit.",
+    "next": "Keep W1-06 and Week 2 blocked. Reduce residual general work-order construction cost or variance, then rerun the authoritative clean Release matrix without weakening exact route or tie semantics."
+  }
+}

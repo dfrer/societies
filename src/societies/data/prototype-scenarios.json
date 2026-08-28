@@ -314,6 +314,25 @@
         "hut",
         "kiln"
       ]
+    },
+    {
+      "id": "snow_globe_voxel",
+      "displayName": "Snow Globe Voxel Foundation",
+      "expectedOutcome": "stable",
+      "simulationSeed": 260827,
+      "worldModel": "voxel_v1",
+      "initialTrees": 0,
+      "initialRocks": 0,
+      "initialBerryBushes": 0,
+      "initialClayDeposits": 0,
+      "initialReedBeds": 0,
+      "initialCitizens": 0,
+      "stressPopulationOverride": 0,
+      "worldSize": 128.0,
+      "initialHearthFuel": 0,
+      "startingStock": {},
+      "startingStructures": [],
+      "startingBuildQueue": []
     }
   ]
 }

@@ -1,0 +1,91 @@
+{
+  "schemaVersion": 1,
+  "capturedUtc": "2026-07-10T04:05:00Z",
+  "status": "pass",
+  "source": {
+    "synchronizedCommit": "379300d722c938e878d1984d43e166b040c3f079",
+    "branch": "feature/v3-runtime-hardening",
+    "dirtyPathsAtStart": [
+      "planning/README.md",
+      "planning/active/"
+    ]
+  },
+  "environment": {
+    "machine": "DESKTOP-H5M54GO",
+    "os": "Microsoft Windows NT 10.0.19045.0",
+    "cpu": "Intel(R) Core(TM) i7-10700K CPU @ 3.80GHz",
+    "logicalProcessors": 16,
+    "memoryGb": 31.9,
+    "dotnetSdk": "9.0.311",
+    "godot": "4.6.2-stable.mono",
+    "godotExecutable": "C:/Users/hunte/AppData/Local/Microsoft/WinGet/Packages/GodotEngine.GodotEngine.Mono_Microsoft.Winget.Source_8wekyb3d8bbwe/Godot_v4.6.2-stable_mono_win64/Godot_v4.6.2-stable_mono_win64_console.exe"
+  },
+  "referenceScenario": {
+    "id": "balanced_basin",
+    "simulationSeed": 1337,
+    "citizens": 16
+  },
+  "commands": {
+    "authoritative": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/run-prototype-validation.ps1",
+    "focusedCsvFix": "dotnet test tests/Societies.Core.Tests/Societies.Core.Tests.csproj --configuration Release --filter FullyQualifiedName~PrototypeMetricsTrackerTests --no-restore"
+  },
+  "initialSynchronizedRun": {
+    "status": "fail",
+    "build": {
+      "passed": true,
+      "warnings": 0,
+      "errors": 0,
+      "durationSeconds": 2.18
+    },
+    "dotnet": {
+      "expected": 79,
+      "passed": 77,
+      "failed": 2,
+      "skipped": 0,
+      "durationSeconds": 335,
+      "failureCause": "Two CSV tests split Windows CRLF output on LF without normalizing line endings. Runtime CSV content was valid."
+    },
+    "godot": {
+      "expected": 13,
+      "status": "not_run_due_to_dotnet_failure"
+    }
+  },
+  "focusedFixValidation": {
+    "status": "pass",
+    "passed": 12,
+    "failed": 0,
+    "skipped": 0,
+    "testExecutionDurationMilliseconds": 46
+  },
+  "finalAuthoritativeRun": {
+    "status": "pass",
+    "build": {
+      "configuration": "Release",
+      "passed": true,
+      "warnings": 0,
+      "errors": 0,
+      "durationSeconds": 0.57
+    },
+    "dotnet": {
+      "expected": 79,
+      "passed": 79,
+      "failed": 0,
+      "skipped": 0,
+      "testDurationSeconds": 319,
+      "commandWallDurationSeconds": 324.7
+    },
+    "godot": {
+      "expected": 13,
+      "passed": 13,
+      "failed": 0,
+      "durationSeconds": 304
+    },
+    "note": "The combined rerun advanced through the .NET and Godot build gates, but its output cell was detached by user steering. The complete .NET and Godot headless components were rerun independently with captured zero exit codes."
+  },
+  "history": {
+    "preSyncCommit": "c58e3de",
+    "preSyncDotnetTests": 64,
+    "synchronizedDotnetTests": 79,
+    "godotTests": 13
+  }
+}

@@ -1,0 +1,268 @@
+{
+  "schemaVersion": 1,
+  "capturedUtc": "2026-07-13T21:10:49.9254070Z",
+  "workItem": "V3-W1-05e",
+  "status": "cached_distance_replay_validated_safety_gate_still_failed",
+  "branch": "feature/v3-cached-distance-fast-path",
+  "baseCommit": "2382efd",
+  "implementationCommits": [
+    "b10084bf57bb6a9bbe24a15d386b7a0ab92a787b",
+    "9d5ca142ae185378553174f6363cf375383e5ffe"
+  ],
+  "preImplementationCharacterization": {
+    "sourceMatrix": "artifacts/performance/w105d-baseline-8688c27",
+    "runCount": 14,
+    "measuredTickCount": 5301,
+    "generalFrontier": {
+      "positiveCacheHits": 323893,
+      "exactMisses": 4176,
+      "positiveHitRatePercent": 98.727,
+      "rowsWithAnyMiss": 373,
+      "majorMissBurstRange": [29, 39]
+    },
+    "selectorFrontier": {
+      "positiveCacheHits": 15010,
+      "exactMisses": 1262
+    },
+    "referenceGeneralFrontierPerTrial": {
+      "positiveCacheHits": 18994,
+      "exactMisses": 300
+    },
+    "stressGeneralFrontier": {
+      "positiveCacheHits": 17043,
+      "exactMisses": 1292
+    },
+    "wallTimeCorrelations": {
+      "buildWorkOrdersMilliseconds": 0.948732,
+      "generalPathCacheMisses": 0.854568
+    },
+    "sharedQueryShape": [
+      "General work-order ranking repeatedly queries settlement-anchor and central-depot route legs across a stable candidate frontier.",
+      "Citizen selection shares destination work orders but retains exact citizen origins, so whole-key reuse is safe only for identical versioned endpoints.",
+      "Every positive general distance query called full cached-route materialization and discarded waypoints, copied route cells, cost, ticks, and compression metadata.",
+      "Positive entries are reusable only at the exact navigation version and endpoints already enforced by the route cache; negative entries and post-invalidation misses require the existing authoritative search path."
+    ]
+  },
+  "architectureInput": {
+    "runtimeProfileSelectionAvailable": false,
+    "agent": "generic_native_child_with_ultra_architect_behavioral_contract",
+    "selectedSmallestSlice": "Replay only the distance of a current-version positive cached cell path for general distance-only queries, retaining full materialization as an independent reference mode.",
+    "reason": "This removes the dominant repeated cached-hit work with a smaller correctness surface than suffix reuse, multi-target materialization, or cross-version cache migration.",
+    "deferredIfGateRemainsRed": "Bounded work-order materialization or another exact frontier-search reduction that changes the remaining distinct miss count.",
+    "rejectedHigherRiskAlternatives": [
+      "reverse-route or suffix reuse without a proven asymmetric-cost contract",
+      "multi-target route materialization that could alter authoritative A-star tie paths",
+      "positive cache migration across navigation versions",
+      "using topology lower-bound fields as routes or exact scores"
+    ]
+  },
+  "acceptanceCriteria": {
+    "differentialCorrectness": [
+      "Cached replay and full materialization must produce identical distance float bits for exact endpoints, same-cell routes, built-path costs, non-binary cell sizes, and long paths.",
+      "Blocked endpoints, disconnected routes, negative cache hits, and navigation-version invalidation must retain existing behavior.",
+      "All shipped scenarios must match per-tick assignments, worker state, events, resources, and final snapshots for 300 ticks.",
+      "Selector and full-plan route materialization remain authoritative and unchanged."
+    ],
+    "cleanExportRelease": [
+      "Implementation must be committed before collection and source must be clean.",
+      "Standalone forced invalidation and all 14 canonical pairs must pass evidence/equivalence contracts.",
+      "Metrics-off and metrics-on deterministic hashes and measured fast-path counters must match; warmup hits must be excluded.",
+      "All 354 manifest artifact hashes must verify."
+    ],
+    "performanceGate": [
+      "Every 16-citizen reference trial p95 must be at or below 50 milliseconds.",
+      "Reference median maximum and every soak maximum must be at or below 250 milliseconds.",
+      "Forced commit-to-first-correct-lookup must be at or below 250 milliseconds.",
+      "W1-06 and Week 2 remain blocked if any hard safety limit fails."
+    ]
+  },
+  "implementation": {
+    "defaultMode": "cached_distance_only",
+    "referenceMode": "full_materialization_reference",
+    "fastPathEligibility": "current-navigation-version positive general cache hit only",
+    "distanceReplay": [
+      "Validates exact start/end cells and walkability under the current grid.",
+      "Replays HorizontalDistance for the exact endpoint-to-cell, cached cell-to-cell, and cell-to-end sequence.",
+      "Uses the same float addition order as full route materialization.",
+      "Does not allocate waypoint lists, copy cached route cells, compute route cost/ticks, or compress waypoints."
+    ],
+    "unchangedPaths": [
+      "general cache misses and authoritative A-star",
+      "negative cache hits and unreachable behavior",
+      "selector and selected-route materialization",
+      "deterministic strict-below-best pruning and ordinal ties",
+      "exact endpoint and same-cell semantics",
+      "navigation-version invalidation and first-post-change miss"
+    ],
+    "observability": {
+      "performanceResultSchemaVersion": 6,
+      "equivalenceResultSchemaVersion": 6,
+      "runtimeMetricsCsvSchemaVersion": 4,
+      "counterScope": "measurement interval only; warmup excluded",
+      "pairedContracts": "metrics-off equals metrics-on; result equals manifest; cached mode is positive and reference mode is zero",
+      "spikeAnalyzerCompatibility": [5, 6]
+    }
+  },
+  "differentialValidation": {
+    "directDistanceReplayCases": 9,
+    "scenarioCount": 4,
+    "ticksPerScenario": 300,
+    "runtimeForwardingCases": 2,
+    "routeBytesCompared": true,
+    "distanceFloatBitsCompared": true,
+    "perTickWorkerStateCompared": true,
+    "assignmentsCompared": true,
+    "eventsCompared": true,
+    "resourceApplicationCompared": true,
+    "finalSnapshotsCompared": true,
+    "endpointUnreachableTieAndInvalidationCoverage": true
+  },
+  "fullValidation": {
+    "command": "./scripts/run-prototype-validation.ps1",
+    "sourceCommit": "9d5ca142ae185378553174f6363cf375383e5ffe",
+    "passed": true,
+    "requiredDotnetPassed": 174,
+    "requiredDotnetFailed": 0,
+    "dotnetTiers": {
+      "fast": 106,
+      "integration": 11,
+      "soak": 57
+    },
+    "godotHeadlessPassed": 16,
+    "godotHeadlessFailed": 0,
+    "debugBuildWarnings": 0,
+    "debugBuildErrors": 0,
+    "exportDebugBuildWarnings": 0,
+    "exportDebugBuildErrors": 0,
+    "exportReleaseBuildWarnings": 0,
+    "exportReleaseBuildErrors": 0,
+    "expectedRuntimeWarningsObserved": [
+      "frame catch-up backlog diagnostic",
+      "optional runtime-metrics I/O isolation diagnostic"
+    ]
+  },
+  "forcedInvalidation": {
+    "standaloneCommand": "./scripts/run-performance-pair.ps1 -ReleaseExport -RequireRelease -Scenario balanced_basin -Seed 1337 -Citizens 16 -Ticks 1 -WarmupTicks 2 -CacheMode forced_invalidation -OutputRoot artifacts/performance/w105e-forced-9d5ca14 -AllowPrimarySafetyFailure",
+    "standaloneTransitionCorrect": true,
+    "standaloneMetricsOffFullTickMilliseconds": 255.163,
+    "standaloneMetricsOffCommitToFirstCorrectLookupMilliseconds": 11.8811,
+    "standaloneMetricsOnCommitToFirstCorrectLookupMilliseconds": 11.0617,
+    "standaloneMeasuredFastPathHitsPerSide": 26,
+    "matrixTransitionCorrect": true,
+    "matrixCommitToFirstCorrectLookupMilliseconds": 12.7154,
+    "targetLimitMilliseconds": 150,
+    "safetyLimitMilliseconds": 250,
+    "targetPassed": true,
+    "safetyPassed": true
+  },
+  "canonicalReleaseMatrix": {
+    "command": "./scripts/run-performance-baseline-matrix.ps1 -OutputRoot artifacts/performance/w105e-baseline-9d5ca14",
+    "sourceCommit": "9d5ca142ae185378553174f6363cf375383e5ffe",
+    "sourceClean": true,
+    "contractStatus": "pass",
+    "budgetStatus": "safety_failure",
+    "pairCount": 14,
+    "metricsRowCount": 28,
+    "manifestArtifactHashesMatched": 354,
+    "measuredCachedDistanceFastPathHits": 316534,
+    "generalFrontierTotalsExcludingSelector": {
+      "positiveCacheHits": 323893,
+      "exactMisses": 4176
+    },
+    "selectorFrontierTotals": {
+      "positiveCacheHits": 15010,
+      "exactMisses": 1262
+    },
+    "reference16Citizens": {
+      "trialCount": 3,
+      "trialP95Milliseconds": [49.1537, 51.2372, 46.4927],
+      "trialMaximumMilliseconds": [156.3861, 155.0079, 157.8722],
+      "medianP95Milliseconds": 49.1537,
+      "medianP99Milliseconds": 129.0766,
+      "medianMaximumMilliseconds": 156.3861,
+      "medianTotalMilliseconds": 7562.3931,
+      "safetyP95LimitMilliseconds": 50,
+      "safetyMaximumLimitMilliseconds": 250,
+      "medianP95Passed": true,
+      "medianMaximumPassed": true,
+      "allTrialsSafetyPassed": false,
+      "failingTrial": "reference-c16-cold-t2",
+      "failingTrialP95Milliseconds": 51.2372,
+      "overSafetyMilliseconds": 1.2372
+    },
+    "soak16Citizens": {
+      "deterministicRepeat": true,
+      "p95Milliseconds": [37.475, 37.5293],
+      "maximumMilliseconds": [170.4334, 162.4554],
+      "safetyPassed": true
+    },
+    "stress24Citizens": {
+      "p95Milliseconds": 132.4614,
+      "maximumMilliseconds": 154.5145,
+      "classification": "characterization",
+      "targetPassed": false
+    }
+  },
+  "residualCharacterization": {
+    "command": "./scripts/analyze-performance-spikes.ps1 -InputPath artifacts/performance/w105e-baseline-9d5ca14 -OutputPath artifacts/performance/w105e-baseline-9d5ca14/spike-analysis.json",
+    "runCount": 14,
+    "measuredTickCount": 5301,
+    "runtimeMetricsSchemaVersion": 4,
+    "wallTimeCorrelations": {
+      "buildWorkOrdersMilliseconds": 0.950382,
+      "allPathCacheMisses": 0.883226,
+      "generalPathCacheMisses": 0.866026,
+      "selectorPathCacheMisses": 0.380082,
+      "routeSelectionMilliseconds": 0.442864,
+      "navigationRebuildMilliseconds": 0.108809
+    },
+    "interpretation": "Cached-distance replay removes repeated hit materialization but leaves distinct general and selector misses unchanged. Residual wall time remains dominated by BuildWorkOrders and exact general misses, and threshold tick sets vary between repeated runs near the 50 millisecond boundary."
+  },
+  "review": {
+    "reviewer": "generic_native_child_with_deep_reviewer_behavioral_contract",
+    "resolvedFindings": [
+      "Scoped the fast-path counter to the measured interval so warmup cannot satisfy acceptance.",
+      "Required result and validation-manifest counter equality in pair and matrix contracts.",
+      "Preserved runtime metrics CSV schema v4 and exposed route-distance mode separately."
+    ],
+    "finalP0Findings": 0,
+    "finalP1Findings": 0,
+    "finalP2Findings": 0
+  },
+  "sourceArtifacts": [
+    {
+      "path": "artifacts/performance/w105e-baseline-9d5ca14/perf-results.json",
+      "sizeBytes": 207924,
+      "sha256": "26461af9871defd961cfdc4b3756188ca10a57fc5a82cdb6d8dc129275b475a6"
+    },
+    {
+      "path": "artifacts/performance/w105e-baseline-9d5ca14/validation-manifest.json",
+      "sizeBytes": 159722,
+      "sha256": "3313c114d9aed7ec4a0b2d8bd8768e7c1152ff90233e7e7c27385d4a8e314ecd"
+    },
+    {
+      "path": "artifacts/performance/w105e-baseline-9d5ca14/perf-matrix.csv",
+      "sizeBytes": 39516,
+      "sha256": "c6f35d3945a69956fbf74030ddefd95b70e8bcaaf2e6c5a67ad64a6925c3b486"
+    },
+    {
+      "path": "artifacts/performance/w105e-baseline-9d5ca14/spike-analysis.json",
+      "sizeBytes": 947459,
+      "sha256": "7287f918886eeab4bcea1f7138eff7bd0e45d2387c6af488daba96a47a7cf490"
+    },
+    {
+      "path": "artifacts/performance/w105e-forced-9d5ca14/equivalence-results.json",
+      "sizeBytes": 47584,
+      "sha256": "67f7df3196f28b78b54569c7fe656f04ad0469a5d06fa51c4f0de05f4f314ae5"
+    }
+  ],
+  "decision": {
+    "cachedDistanceOptimizationValidated": true,
+    "distinctSearchCountReduced": false,
+    "performanceSafetyGatePassed": false,
+    "w106Allowed": false,
+    "week2FeatureExpansionAllowed": false,
+    "blockingLimit": "Reference trial 2 records 51.2372 milliseconds p95 against the 50 millisecond hard safety limit.",
+    "next": "Keep W1-06 and Week 2 blocked. Reduce the remaining distinct exact general work-order searches or their invalidation burst, then rerun differential validation and the authoritative clean Release matrix."
+  }
+}

@@ -1,0 +1,33 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="PackedScene" path="res://scenes/main.tscn" id="1_main"]
+[ext_resource type="Script" path="res://scripts/core/SnowGlobeVoxelGameManager.cs" id="2_manager"]
+
+[sub_resource type="Environment" id="Environment_FieldWorkshop"]
+background_mode = 1
+background_color = Color(0.34, 0.47, 0.56, 1)
+background_energy_multiplier = 0.7
+ambient_light_source = 3
+ambient_light_color = Color(0.42, 0.52, 0.61, 1)
+ambient_light_energy = 0.65
+reflected_light_source = 2
+tonemap_mode = 2
+tonemap_exposure = 1.05
+fog_enabled = true
+fog_light_color = Color(0.55, 0.65, 0.67, 1)
+fog_light_energy = 0.45
+fog_density = 0.004
+fog_sky_affect = 0.45
+
+[node name="SnowGlobeVoxelFoundation" instance=ExtResource("1_main")]
+script = ExtResource("2_manager")
+
+[node name="WorldEnvironment" parent="World/Environment"]
+environment = SubResource("Environment_FieldWorkshop")
+
+[node name="FounderSun" type="DirectionalLight3D" parent="World/Environment"]
+rotation_degrees = Vector3(-52, -32, 0)
+light_color = Color(1, 0.83, 0.61, 1)
+light_energy = 1.65
+shadow_enabled = true
+directional_shadow_max_distance = 110.0

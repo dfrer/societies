@@ -1,0 +1,44 @@
+{
+  "schemaVersion": 1,
+  "capturedUtc": "2026-07-10T04:48:44.1025359Z",
+  "status": "pass",
+  "branch": "feature/v3-runtime-hardening",
+  "baseCommit": "79157d3a2c7a4bd8ac705d1cf0ce6ae7004e65de",
+  "unit": "coalesce inventory and stockpile HUD refreshes at the rendered-frame boundary",
+  "contract": {
+    "inventoryMutationRefreshesSynchronously": false,
+    "stockpileMutationRefreshesSynchronously": false,
+    "nextRenderedFrameRefreshesHud": true,
+    "explicitCommandRefreshesRemain": true
+  },
+  "validation": {
+    "fastDotnet": {
+      "passed": 69,
+      "failed": 0,
+      "durationSeconds": 4
+    },
+    "godotBuildSolutions": {
+      "passed": true
+    },
+    "godotHeadless": {
+      "passed": 15,
+      "failed": 0,
+      "durationSeconds": 353.7,
+      "requiredTest": "Test_MainScene_HudRefreshCoalescingSmoke"
+    },
+    "mostRecentRequiredDotnet": {
+      "baseCommit": "79157d3a2c7a4bd8ac705d1cf0ce6ae7004e65de",
+      "passed": 85,
+      "failed": 0,
+      "testDurationSeconds": 318
+    },
+    "requiredDotnetAfterThisUnit": {
+      "status": "pass",
+      "passed": 85,
+      "failed": 0,
+      "skipped": 0,
+      "testDurationSeconds": 339,
+      "commandWallDurationSeconds": 343.3
+    }
+  }
+}

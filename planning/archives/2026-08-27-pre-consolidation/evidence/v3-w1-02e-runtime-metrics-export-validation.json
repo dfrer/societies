@@ -1,0 +1,57 @@
+{
+  "schemaVersion": 1,
+  "capturedUtc": "2026-07-11T02:16:33.6051689Z",
+  "status": "pass",
+  "branch": "feature/v3-runtime-hardening",
+  "baseCommit": "ea4cf88e9317d15c3b1e98eecc26fb61869ad0e9",
+  "unit": "optional runtime batch metrics artifact export",
+  "artifact": {
+    "fileName": "runtime-batch-metrics-v3.csv",
+    "outputRootEnvironmentVariable": "SOCIETIES_RUN_OUTPUT_DIR",
+    "format": "invariant-culture UTF-8 CSV without BOM",
+    "boundedByCollectorCapacity": true
+  },
+  "contract": {
+    "enabledSaveExportsCompletedBatches": true,
+    "disabledSaveRemovesStaleArtifact": true,
+    "optionalMetricsIoFailureDoesNotFailCoreSave": true,
+    "threeParameterSaveArtifactsOverloadPreserved": true,
+    "eightFieldPrototypeArtifactPathsPositionalShapePreserved": true,
+    "environmentVariablesRestoredBySmoke": true,
+    "testManifestChanged": false
+  },
+  "validation": {
+    "fastDotnet": {
+      "passed": 75,
+      "failed": 0,
+      "durationSeconds": 4
+    },
+    "requiredDotnet": {
+      "passed": 91,
+      "failed": 0,
+      "skipped": 0,
+      "testDurationSeconds": 328,
+      "commandWallDurationSeconds": 330.6
+    },
+    "godotBuildSolutions": {
+      "passed": true
+    },
+    "godotHeadless": {
+      "passed": 16,
+      "failed": 0,
+      "durationSeconds": 407.8,
+      "requiredTest": "Test_MainScene_RuntimeMetricsBatchSmoke"
+    }
+  },
+  "smokeProof": [
+    "A metrics-disabled save removes a stale runtime batch CSV.",
+    "A portable export failure is isolated as optional telemetry and does not fail the core artifact save.",
+    "A metrics-enabled save writes the expected header and both manual_step and rendered_frame rows.",
+    "The existing public SaveArtifacts overload and positional artifact-path record shape remain compatible."
+  ],
+  "review": {
+    "independentReviewCompleted": true,
+    "materialFindingsResolved": 3,
+    "remainingMaterialFindings": 0
+  }
+}

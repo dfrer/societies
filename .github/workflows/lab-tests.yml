@@ -1,0 +1,88 @@
+name: Snow Globe Lab Tests
+
+on:
+  pull_request:
+    branches: [master, main]
+    paths:
+      - 'labs/**'
+      - 'tests/Societies.SnowGlobe.*/**'
+      - 'artifacts/snowglobe/**'
+      - '.github/workflows/lab-tests.yml'
+      - 'project-governance.json'
+      - 'scripts/check-project-governance.py'
+  workflow_dispatch:
+  schedule:
+    - cron: '0 3 * * 6'
+
+concurrency:
+  group: snow-globe-lab-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lab-tests:
+    # The durable premium journal and trust-anchor tests deliberately depend on
+    # Windows handle identity, reparse-point, ACL, and file-sharing semantics.
+    # Running this suite on Linux turns supported-platform assertions into
+    # hundreds of false failures instead of testing the production contract.
+    runs-on: windows-latest
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Validate project governance
+        run: python scripts/check-project-governance.py
+
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-snow-globe-${{ hashFiles('**/*.csproj') }}
+          restore-keys: |
+            ${{ runner.os }}-nuget-
+
+      - name: Build Snow Globe core
+        run: dotnet build labs/Societies.SnowGlobe/Societies.SnowGlobe.csproj --configuration Release
+
+      - name: Test Snow Globe core
+        run: >
+          dotnet test tests/Societies.SnowGlobe.Tests/Societies.SnowGlobe.Tests.csproj
+          --configuration Release
+          --logger "trx;LogFileName=snow-globe-core.trx"
+
+      - name: Test benchmark CLI
+        run: >
+          dotnet test tests/Societies.SnowGlobe.BenchmarkCli.Tests/Societies.SnowGlobe.BenchmarkCli.Tests.csproj
+          --configuration Release
+          --logger "trx;LogFileName=snow-globe-benchmark-cli.trx"
+
+      - name: Test recording CLI
+        run: >
+          dotnet test tests/Societies.SnowGlobe.RecordingCli.Tests/Societies.SnowGlobe.RecordingCli.Tests.csproj
+          --configuration Release
+          --logger "trx;LogFileName=snow-globe-recording-cli.trx"
+
+      - name: Test OpenRouter CLI
+        run: >
+          dotnet test tests/Societies.SnowGlobe.OpenRouterCli.Tests/Societies.SnowGlobe.OpenRouterCli.Tests.csproj
+          --configuration Release
+          --logger "trx;LogFileName=snow-globe-openrouter-cli.trx"
+
+      - name: Upload lab test reports
+        if: success() || failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: snow-globe-lab-test-reports
+          path: '**/TestResults/*.trx'
+          retention-days: 30

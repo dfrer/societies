@@ -1,0 +1,317 @@
+{
+  "schemaVersion": 1,
+  "capturedUtc": "2026-07-11T18:06:54.6741248Z",
+  "status": "pass",
+  "unit": "verified Godot ExportRelease performance-runner route",
+  "scope": "V3-W1-03a_release_route_only",
+  "branch": "feature/v3-performance-evidence",
+  "sourceBoundary": {
+    "baseCommit": "1c3d969c00466dceb739e8d7178bb88c3bd962d2",
+    "implementationCommit": "acf634fae1bae21f6dfcb0903d36ac51653344d7",
+    "regressionValidationContentCommittedAs": "acf634fae1bae21f6dfcb0903d36ac51653344d7",
+    "regressionValidationWorkingTreeClean": false,
+    "cleanRuntimeSourceCommit": "acf634fae1bae21f6dfcb0903d36ac51653344d7",
+    "cleanRuntimeSourceClean": true,
+    "cleanPairMatchesImplementationCommit": true,
+    "evidenceFile": "planning/active/evidence/v3-w1-03a-release-route-validation.json",
+    "evidenceCommitRecordedBy": "git_history"
+  },
+  "configuration": {
+    "scenarioId": "balanced_basin",
+    "simulationSeed": 1337,
+    "citizenCount": 3,
+    "warmupTicks": 0,
+    "measuredTicks": 3,
+    "measurementMode": "one_manual_step_per_external_sample",
+    "exportPreset": "Windows Performance Release",
+    "requiredGodotVersion": "4.6.2",
+    "solutionConfigurations": [
+      "Debug",
+      "ExportDebug",
+      "ExportRelease"
+    ],
+    "catalogRuntimeRoot": "res://data",
+    "catalogIncludeFilter": "data/*.json"
+  },
+  "templateProvisioning": {
+    "archiveUrl": "https://github.com/godotengine/godot-builds/releases/download/4.6.2-stable/Godot_v4.6.2-stable_mono_export_templates.tpz",
+    "archiveSha256": "4ecf72faf76f96e010d166ddbbe3f0fb8e7df9633282666a3a9afd4ee3e00e7d",
+    "templateId": "4.6.2.stable.mono",
+    "localRuntimeRoot": "artifacts/tooling/godot-4.6.2-self-contained",
+    "localRuntimeIgnoredByGit": true,
+    "committed": false,
+    "note": "The self-contained editor and templates are local validation dependencies, not repository content."
+  },
+  "validation": {
+    "focusedDotnet": {
+      "command": "dotnet test tests/Societies.Core.Tests/Societies.Core.Tests.csproj --configuration Release --filter \"FullyQualifiedName~PrototypeCatalogLoaderTests|FullyQualifiedName~PerformanceRunStatisticsTests\" --no-restore",
+      "passed": 6,
+      "failed": 0,
+      "skipped": 0,
+      "durationMilliseconds": 99
+    },
+    "fastDotnet": {
+      "command": "dotnet test tests/Societies.Core.Tests/Societies.Core.Tests.csproj --configuration Release --filter \"FullyQualifiedName!~PrototypeRuntimeSessionTests&FullyQualifiedName!~PrototypeSettlementSimulationTests&FullyQualifiedName!~SettlementDiagnosticsTests&FullyQualifiedName!~WorkOrderGenerationDiagnosticsTests\" --no-restore",
+      "passed": 79,
+      "failed": 0,
+      "skipped": 0,
+      "testDurationSeconds": 3,
+      "commandWallDurationSeconds": 6.0
+    },
+    "requiredDotnet": {
+      "command": "dotnet test tests/Societies.Core.Tests/Societies.Core.Tests.csproj --configuration Release --no-restore",
+      "passed": 95,
+      "failed": 0,
+      "skipped": 0,
+      "testDurationSeconds": 317,
+      "commandWallDurationSeconds": 319.1
+    },
+    "godotSolutionConfigurations": {
+      "commandPattern": "dotnet build src/societies/Societies.sln --configuration <configuration> --no-restore",
+      "warnings": 0,
+      "errors": 0,
+      "results": {
+        "Debug": {
+          "passed": true,
+          "wallDurationSeconds": 3.946
+        },
+        "ExportDebug": {
+          "passed": true,
+          "wallDurationSeconds": 2.356
+        },
+        "ExportRelease": {
+          "passed": true,
+          "wallDurationSeconds": 2.025
+        }
+      }
+    },
+    "godotBuildSolutions": {
+      "command": "Godot_v4.6.2-stable_mono_win64_console.exe --headless --path src/societies --build-solutions --quit",
+      "passed": true,
+      "cleanRetryDurationSeconds": 5.9,
+      "initialAttemptTimedOutSeconds": 124,
+      "initialAttemptProductDefect": false
+    },
+    "godotHeadless": {
+      "command": "Godot_v4.6.2-stable_mono_win64_console.exe --headless --path src/societies res://tests/HeadlessTestRunner.tscn",
+      "passed": 16,
+      "failed": 0,
+      "durationSeconds": 422.5,
+      "expectedWarnings": [
+        "The catch-up-cap smoke intentionally reports retained backlog.",
+        "The optional metrics I/O isolation smoke intentionally denies one telemetry artifact update."
+      ]
+    }
+  },
+  "runtimeChecks": {
+    "dirtyReleaseSmoke": {
+      "status": "pass",
+      "claimScope": "export_pck_and_wrapper_mechanics_only",
+      "command": "./scripts/run-performance-pair.ps1 -ReleaseExport -AllowDirtySource -GodotPath <self-contained-4.6.2-editor> -Scenario balanced_basin -Seed 1337 -Citizens 3 -Ticks 3",
+      "headCommit": "1c3d969c00466dceb739e8d7178bb88c3bd962d2",
+      "gitDirty": true,
+      "pairStatus": "pass_dirty_source",
+      "releaseEnvironmentValid": true,
+      "verifiedReleaseExecution": true,
+      "outputRoot": "artifacts/performance/w103a-dirty-release-final-20260711161813993",
+      "artifacts": [
+        {
+          "role": "equivalence_results",
+          "path": "artifacts/performance/w103a-dirty-release-final-20260711161813993/equivalence-results.json",
+          "sha256": "1b017e7e48940a4f029c16b8d6d3f0c82c8493d3b2611e593f7cbeab91c09191"
+        },
+        {
+          "role": "metrics_off_results",
+          "path": "artifacts/performance/w103a-dirty-release-final-20260711161813993/metrics-off/perf-results.json",
+          "sha256": "01e33843aab18f89a2824c036ac7757b424990f886e71b07c61089fd21ac28dc"
+        },
+        {
+          "role": "metrics_on_results",
+          "path": "artifacts/performance/w103a-dirty-release-final-20260711161813993/metrics-on/perf-results.json",
+          "sha256": "68bc5dcfe11e0674c70da4599768f71b2067b5a63e1ae6bbd9440a14d6a7c7ef"
+        }
+      ]
+    },
+    "cleanDebugReleaseRejection": {
+      "status": "pass",
+      "command": "./scripts/run-performance-pair.ps1 -RequireRelease -SkipBuild -GodotPath <self-contained-4.6.2-editor> -Scenario balanced_basin -Seed 1337 -Citizens 3 -Ticks 3",
+      "sourceCommit": "acf634fae1bae21f6dfcb0903d36ac51653344d7",
+      "sourceClean": true,
+      "expectedFailure": "release_environment",
+      "observedFailure": "release_environment",
+      "pairStatus": "fail",
+      "executionRoute": "editor_scene",
+      "managedAssemblyConfiguration": "Debug",
+      "godotDebugBuild": true,
+      "godotEditorFeature": true,
+      "releaseEnvironmentValid": false,
+      "verifiedReleaseExecution": false,
+      "allNonReleasePairContractsPassed": true,
+      "outputRoot": "artifacts/performance/w103a-clean-debug-rejection-acf634f",
+      "artifacts": [
+        {
+          "role": "equivalence_results",
+          "path": "artifacts/performance/w103a-clean-debug-rejection-acf634f/equivalence-results.json",
+          "sha256": "6e72a6ebc918756e0ac245500e131fb47d0f5b5c85419749744b0386973b68d9"
+        },
+        {
+          "role": "metrics_off_results",
+          "path": "artifacts/performance/w103a-clean-debug-rejection-acf634f/metrics-off/perf-results.json",
+          "sha256": "ad910d82acc7e1bdf6aed050a65dcaafb4dec2da3620a986b7c66361c657b4a0"
+        },
+        {
+          "role": "metrics_on_results",
+          "path": "artifacts/performance/w103a-clean-debug-rejection-acf634f/metrics-on/perf-results.json",
+          "sha256": "c946855aa2bb68f00dc4f1ff181f91a71a7b2c02eb7bd90aa3c091f92eaeec45"
+        }
+      ]
+    },
+    "cleanCommittedReleasePair": {
+      "status": "pass",
+      "claimScope": "release_route_validation_only",
+      "command": "./scripts/run-performance-pair.ps1 -ReleaseExport -GodotPath <self-contained-4.6.2-editor> -Scenario balanced_basin -Seed 1337 -Citizens 3 -Ticks 3",
+      "sourceCommit": "acf634fae1bae21f6dfcb0903d36ac51653344d7",
+      "sourceClean": true,
+      "pairStatus": "pass",
+      "resultSchemaVersion": 2,
+      "outputRoot": "artifacts/performance/w103a-clean-release-acf634f-retry",
+      "contract": {
+        "releaseEnvironmentValid": true,
+        "resultSchemaValid": true,
+        "configurationMatches": true,
+        "commandConfigurationMatches": true,
+        "modeContractValid": true,
+        "executionRouteValid": true,
+        "gitIdentityMatches": true,
+        "environmentMatches": true,
+        "godotVersionValid": true,
+        "processExecutableMatches": true,
+        "tickBoundsMatch": true,
+        "hashesValid": true,
+        "snapshotHashMatches": true,
+        "eventLogHashMatches": true,
+        "combinedHashMatches": true,
+        "resultStatusesValid": true,
+        "artifactContractValid": true,
+        "metricsOffRuntimeMetricsAbsent": true,
+        "metricsOnRuntimeMetricsValid": true
+      },
+      "provenance": {
+        "resolvedEditorVersionOutput": "4.6.2.stable.mono.official.71f334935",
+        "exportTemplateId": "4.6.2.stable.mono",
+        "executionRoute": "export_release",
+        "managedBuildConfiguration": "Release",
+        "managedAssemblyConfiguration": "ExportRelease",
+        "godotDebugBuild": false,
+        "godotReleaseFeature": true,
+        "godotTemplateFeature": true,
+        "godotEditorFeature": false,
+        "verifiedReleaseExecution": true,
+        "dotnetRuntime": ".NET 8.0.24",
+        "operatingSystem": "Microsoft Windows 10.0.19045",
+        "processArchitecture": "X64",
+        "logicalProcessorCount": 16,
+        "processExecutablePath": "artifacts/performance/w103a-clean-release-acf634f-retry/release-runner/SocietiesPerformance.exe",
+        "runnerExecutablePath": "artifacts/performance/w103a-clean-release-acf634f-retry/release-runner/SocietiesPerformance.console.exe",
+        "metricsOffExactInvocationRecorded": true,
+        "metricsOnExactInvocationRecorded": true
+      },
+      "deterministicEquivalence": {
+        "snapshotSha256": "b2aa573fb752d4a788ee720fb2307a31ac7ff7b68e1fd4cc8b16bc2645e91d8c",
+        "eventLogSha256": "b5a1194087badb1f3142d58eee13fa153afd013ff9451deb2b07f3038f8c5b34",
+        "deterministicStateAndEventSha256": "d9581664e4bdfa40d55b0b301c271c5106854379d3a7f9e72e7df5ef5bbb5a1e",
+        "metricsOnBatchCount": 3,
+        "metricsOnDroppedBatchCount": 0
+      },
+      "observedTimingOnly": {
+        "baselineClaim": false,
+        "targetOrSafetyGatesApplied": false,
+        "metricsOffBootstrapMilliseconds": 765.5124,
+        "metricsOffP95Milliseconds": 4925.767,
+        "metricsOffTotalMilliseconds": 4994.0695,
+        "metricsOnBootstrapMilliseconds": 882.652,
+        "metricsOnP95Milliseconds": 5514.3691,
+        "metricsOnTotalMilliseconds": 5565.0959
+      },
+      "artifacts": [
+        {
+          "role": "equivalence_results",
+          "path": "artifacts/performance/w103a-clean-release-acf634f-retry/equivalence-results.json",
+          "sha256": "c46ccbf3d690e3caf9312a8d98685fed1eecce86a856319fadb628e28c500bc1"
+        },
+        {
+          "role": "aggregate_matrix",
+          "path": "artifacts/performance/w103a-clean-release-acf634f-retry/perf-matrix.csv",
+          "sha256": "915d68cf66983740a2c00155fa0f2c6de39e10396aa2659794e408bc89d2a55e"
+        },
+        {
+          "role": "metrics_off_results",
+          "path": "artifacts/performance/w103a-clean-release-acf634f-retry/metrics-off/perf-results.json",
+          "sha256": "bf60dc0db406355b045d70fe29e11da9a99bcb6f34bf3a0a8f042971cd638cdc"
+        },
+        {
+          "role": "metrics_on_results",
+          "path": "artifacts/performance/w103a-clean-release-acf634f-retry/metrics-on/perf-results.json",
+          "sha256": "11d6e3cf0caef4388767d025cbb4102964d9dda901c03fcf634ebe427cb1b3a1"
+        },
+        {
+          "role": "metrics_off_snapshot",
+          "path": "artifacts/performance/w103a-clean-release-acf634f-retry/metrics-off/snapshot-v2.json",
+          "sha256": "b2aa573fb752d4a788ee720fb2307a31ac7ff7b68e1fd4cc8b16bc2645e91d8c"
+        },
+        {
+          "role": "metrics_off_event_log",
+          "path": "artifacts/performance/w103a-clean-release-acf634f-retry/metrics-off/event-log-v2.json",
+          "sha256": "b5a1194087badb1f3142d58eee13fa153afd013ff9451deb2b07f3038f8c5b34"
+        },
+        {
+          "role": "metrics_on_snapshot",
+          "path": "artifacts/performance/w103a-clean-release-acf634f-retry/metrics-on/snapshot-v2.json",
+          "sha256": "b2aa573fb752d4a788ee720fb2307a31ac7ff7b68e1fd4cc8b16bc2645e91d8c"
+        },
+        {
+          "role": "metrics_on_event_log",
+          "path": "artifacts/performance/w103a-clean-release-acf634f-retry/metrics-on/event-log-v2.json",
+          "sha256": "b5a1194087badb1f3142d58eee13fa153afd013ff9451deb2b07f3038f8c5b34"
+        },
+        {
+          "role": "metrics_on_runtime_metrics",
+          "path": "artifacts/performance/w103a-clean-release-acf634f-retry/metrics-on/runtime-batch-metrics-v3.csv",
+          "sha256": "4e933857836289fc3e52e245d5d04d197c2149c3f4126661827cfc1094a18a69"
+        }
+      ]
+    }
+  },
+  "environmentNotes": {
+    "regressionSourceBoundary": "The focused, fast, full .NET, Godot build, and headless suites ran on the final staged implementation content immediately before commit acf634f. The clean Release pair, clean Debug rejection, and three solution-configuration builds then ran from clean commit acf634f.",
+    "initialTemplateInstall": "The standard C-drive template install exhausted disk space. Only the failed archive, extraction, and partial version folder were removed after their absolute paths were verified; the official archive was then installed into an ignored self-contained runtime on E.",
+    "godotBuildRetry": "The initial editor build attempt timed out without compiler output. Only its Godot console and dotnet child processes were terminated; the clean retry passed.",
+    "cleanPairRetry": "The first clean pair attempt completed managed publish and pack output but its editor console and dotnet child stopped making progress before the exported runner launched. Only the three processes from that attempt were terminated. The clean retry used a new output root and passed.",
+    "classifiedAsProductDefect": false
+  },
+  "releaseBoundary": {
+    "releaseRouteValidated": true,
+    "releaseBaselineCaptured": false,
+    "targetOrSafetyClaimMade": false,
+    "coldWarmComparisonCaptured": false,
+    "forcedInvalidationCaptured": false,
+    "medianOfThreeCaptured": false,
+    "nextRequiredStep": "Add explicit cold, natural-warm, and forced-invalidation modes, then run the complete V3-W1-03 matrix and median reference cases."
+  },
+  "review": {
+    "releaseRequirementsReviewCompleted": true,
+    "exportRouteReviewCompleted": true,
+    "catalogExportReviewCompleted": true,
+    "precommitCodeReviewCompleted": true,
+    "precommitDocumentationReviewCompleted": true,
+    "remainingP0P1Findings": 0
+  },
+  "publicationBoundary": {
+    "pullRequestNumber": null,
+    "pullRequestUrl": null,
+    "stateAtEvidenceCapture": "not_created",
+    "checksAtEvidenceCapture": "not_started",
+    "evidenceCommitRecordedBy": "git_history",
+    "futureMergeCommitRecordedBy": "git_history_and_github"
+  }
+}

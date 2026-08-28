@@ -344,11 +344,8 @@ public sealed class ProviderRoutingPolicyTests
 
     private static byte[] ReadAcceptedComparison()
     {
-        DirectoryInfo? directory = new(AppContext.BaseDirectory);
-        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "AGENTS.md"))) directory = directory.Parent;
-        if (directory is null) throw new DirectoryNotFoundException("repository_root_not_found");
-        string path = Path.Combine(directory.FullName, "artifacts", "snowglobe", "cognition-quality", "provider-comparison-v1.json");
-        byte[] bytes = File.ReadAllBytes(path);
+        byte[] bytes = File.ReadAllBytes(RepositoryTestPaths.Resolve(
+            "artifacts/snowglobe/cognition-quality/provider-comparison-v1.json"));
         Assert.Equal(ProviderRoutingPolicyModule.AcceptedComparisonArtifactDigestSha256,
             Convert.ToHexString(SHA256.HashData(bytes)).ToLowerInvariant());
         return bytes;

@@ -268,9 +268,9 @@ namespace Societies.Core.Tests
             string before = PrototypePersistenceService.SerializeSnapshot(session.CaptureSnapshot(Vector3.Zero));
             string eventsBefore = JsonSerializer.Serialize(session.EventLog.Entries);
 
-            foreach (string propertyName in typeof(PrototypeRuntimeSnapshot)
-                .GetProperties()
-                .Select(property => property.Name))
+            foreach (string propertyName in JsonNode.Parse(before)!.AsObject()
+                .Select(pair => pair.Key)
+                .ToArray())
             {
                 JsonObject incomplete = JsonNode.Parse(before)!.AsObject();
                 Assert.True(incomplete.Remove(propertyName));

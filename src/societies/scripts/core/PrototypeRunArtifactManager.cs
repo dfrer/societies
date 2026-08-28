@@ -11,6 +11,11 @@ using Societies.Simulation;
 
 namespace Societies.Core
 {
+    internal static class PrototypePersistenceBounds
+    {
+        internal const int MaximumSnapshotRows = 10_000;
+    }
+
     /// <summary>
     /// Centralizes artifact naming, persistence, and compatibility paths for prototype runs.
     /// Legacy filenames remain authoritative for current smoke coverage while V2 artifacts are emitted in parallel.
@@ -27,7 +32,6 @@ namespace Societies.Core
         internal const long MaximumWorldSummaryBytes = 2 * 1024 * 1024;
         private const long MaximumMetricsCsvBytes = 16 * 1024 * 1024;
         internal const int MaximumEventRows = 50_000;
-        internal const int MaximumSnapshotRows = 10_000;
         internal const int MaximumDictionaryEntries = 4_096;
         internal const int MaximumIdentifierLength = 128;
         internal const int MaximumMessageLength = 1_024;
@@ -122,13 +126,13 @@ namespace Societies.Core
 
             PreflightJson(
                 worldSummaryBytes,
-                MaximumSnapshotRows,
+                PrototypePersistenceBounds.MaximumSnapshotRows,
                 MaximumDictionaryEntries,
                 MaximumMessageLength,
                 "world summary");
             _ = PrototypePersistenceService.DeserializeWorldSummary(
                 Encoding.UTF8.GetString(worldSummaryBytes));
-            if (snapshot.SchemaVersion is 7 or 8 or 9)
+            if (snapshot.SchemaVersion is 7 or 8 or 9 or 10 or 11)
             {
                 PrototypeRuntimeSnapshot validatedSnapshot = DeserializeAndValidateSnapshotPayload(
                     snapshotBytes);
@@ -203,7 +207,7 @@ namespace Societies.Core
             byte[] snapshotBytes = ReadBoundedFile(paths.LegacySnapshotPath, MaximumSnapshotBytes, "snapshot");
             PrototypeRuntimeSnapshot snapshot = DeserializeAndValidateSnapshotPayload(snapshotBytes);
 
-            if (snapshot.SchemaVersion is 7 or 8 or 9)
+            if (snapshot.SchemaVersion is 7 or 8 or 9 or 10 or 11)
             {
                 return LoadCommittedArtifacts(paths, snapshot, snapshotBytes);
             }
@@ -239,7 +243,7 @@ namespace Societies.Core
             ValidatePayloadByteLength(snapshotBytes, MaximumSnapshotBytes, "snapshot");
             PreflightJson(
                 snapshotBytes,
-                MaximumSnapshotRows,
+                PrototypePersistenceBounds.MaximumSnapshotRows,
                 MaximumDictionaryEntries,
                 MaximumMessageLength,
                 "snapshot");
@@ -290,7 +294,7 @@ namespace Societies.Core
             ValidatePayloadByteLength(runSummaryBytes, MaximumRunSummaryBytes, "run summary");
             PreflightJson(
                 runSummaryBytes,
-                maximumArrayItems: MaximumSnapshotRows,
+                maximumArrayItems: PrototypePersistenceBounds.MaximumSnapshotRows,
                 maximumObjectProperties: MaximumDictionaryEntries,
                 maximumStringBytes: MaximumMessageLength,
                 "run summary");
@@ -390,7 +394,7 @@ namespace Societies.Core
 
             if (!Guid.TryParseExact(manifest.GenerationId, "N", out _) ||
                 manifest.RuntimeSchemaVersion != snapshot.SchemaVersion ||
-                manifest.RuntimeSchemaVersion is not (7 or 8 or 9) ||
+                manifest.RuntimeSchemaVersion is not (7 or 8 or 9 or 10 or 11) ||
                 !string.Equals(manifest.ScenarioId, snapshot.ScenarioId, StringComparison.Ordinal) ||
                 manifest.SimulationTick != snapshot.SimulationTick ||
                 manifest.EventCount < 0 ||
@@ -526,7 +530,7 @@ namespace Societies.Core
                 !DictionaryEqual(summary.ContributionsByResource, snapshot.ContributionCountsByResource) ||
                 (snapshot.SchemaVersion >= 8 &&
                     !CivicPoliciesEqual(summary.CivicPolicy, snapshot.CivicPolicy)) ||
-                (snapshot.SchemaVersion == 9 &&
+                (snapshot.SchemaVersion >= 9 &&
                     !WetlandsEqual(summary.Wetland, snapshot.Wetland)))
             {
                 throw new InvalidDataException(
@@ -546,7 +550,7 @@ namespace Societies.Core
             {
                 ValidateCivicPolicyConsistency(snapshot.CivicPolicy!, snapshot.Workers, eventLog);
             }
-            if (snapshot.SchemaVersion == 9)
+            if (snapshot.SchemaVersion >= 9)
             {
                 ValidateWetlandConsistency(snapshot.CivicPolicy!, snapshot.Wetland!, eventLog);
             }
@@ -623,9 +627,12 @@ namespace Societies.Core
                 snapshot.ContributionCountsByResource == null ||
                 snapshot.Telemetry == null ||
                 (snapshot.SchemaVersion >= 8 && snapshot.CivicPolicy == null) ||
-                (snapshot.SchemaVersion == 9 && snapshot.Wetland == null) ||
-                snapshot.Workers.Count > MaximumSnapshotRows ||
-                snapshot.Resources.Count > MaximumSnapshotRows)
+                (snapshot.SchemaVersion >= 9 && snapshot.Wetland == null) ||
+                (snapshot.SchemaVersion is 10 or 11 &&
+                    (!string.Equals(snapshot.WorldModel, PrototypeWorldModels.Voxel, StringComparison.Ordinal) ||
+                     snapshot.VoxelWorld == null)) ||
+                snapshot.Workers.Count > PrototypePersistenceBounds.MaximumSnapshotRows ||
+                snapshot.Resources.Count > PrototypePersistenceBounds.MaximumSnapshotRows)
             {
                 throw new InvalidDataException("Runtime snapshot exceeds bounded artifact limits.");
             }
@@ -633,6 +640,25 @@ namespace Societies.Core
             ValidateDictionaryBounds(snapshot.Inventory);
             ValidateDictionaryBounds(snapshot.Stockpile);
             ValidateDictionaryBounds(snapshot.ContributionCountsByResource);
+
+            if (snapshot.SchemaVersion is 10 or 11)
+            {
+                PrototypeVoxelSnapshotValidator.ValidateCanonicalShell(snapshot);
+                try
+                {
+                    VoxelWorldModule voxelWorld = VoxelWorldModule.Restore(snapshot.VoxelWorld!);
+                    if (voxelWorld.Seed != snapshot.WorldSeed || snapshot.SimulationSeed != snapshot.WorldSeed ||
+                        snapshot.WorldGenerationAttempt != 0 ||
+                        !string.Equals(voxelWorld.WorldIdentity, snapshot.WorldHash, StringComparison.Ordinal))
+                    {
+                        throw new InvalidDataException("Runtime snapshot voxel identity does not match its outer envelope.");
+                    }
+                }
+                catch (InvalidOperationException exception)
+                {
+                    throw new InvalidDataException("Runtime snapshot voxel payload is invalid.", exception);
+                }
+            }
         }
 
         private static void ValidateSummaryBounds(PrototypeRunSummary summary)
@@ -685,7 +711,7 @@ namespace Societies.Core
         internal static void ValidateStandaloneRunSummary(PrototypeRunSummary summary)
         {
             ValidateSummaryBounds(summary);
-            if (summary.SchemaVersion is not (5 or 6 or 7 or 8 or 9) ||
+            if (summary.SchemaVersion is not (5 or 6 or 7 or 8 or 9 or 10 or 11) ||
                 summary.SimulationTick < 0)
             {
                 throw new InvalidDataException(
@@ -702,7 +728,7 @@ namespace Societies.Core
                         "Run-summary civic policy selection tick exceeds the simulation tick.");
                 }
 
-                if (summary.SchemaVersion == 9)
+                if (summary.SchemaVersion >= 9)
                 {
                     _ = PrototypeWetlandState.PrepareRestore(summary.Wetland!, civicPolicy);
                 }

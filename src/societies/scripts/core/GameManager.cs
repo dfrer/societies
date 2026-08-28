@@ -57,6 +57,12 @@ namespace Societies.Core
         private PrototypeRunArtifactManager? _artifactManager;
         private PrototypeRuntimeSession? _runtimeSession;
         private PrototypeSettlementScenePresenter? _scenePresenter;
+        private VoxelWorldPresenter? _voxelPresenter;
+        private VoxelWorldcraftPresenter? _worldcraftPresenter;
+        private bool _worldcraftBuildMode;
+        private string _selectedWorldcraftPieceId = "wood_floor";
+        private int _worldcraftRotation;
+        private bool _voxelInventoryOpen;
         private readonly InventoryComponent _fallbackInventory = new();
         private readonly FixedStepAccumulator _fixedStepAccumulator = new(TickIntervalSeconds, MaxTicksPerFrame);
         private readonly PrototypeContributionInteraction _contributionInteraction = new();
@@ -106,6 +112,8 @@ namespace Societies.Core
         public int CivicCognitionDecisionCount => _runtimeSession?.EventLog.Entries.Count(entry =>
             entry.EventType == PrototypeEventTypes.CivicCognitionDecision) ?? 0;
 
+        public int RuntimeEventCount => _runtimeSession?.EventLog.Entries.Count ?? 0;
+
         public double? PerformanceBootstrapMilliseconds { get; private set; }
 
         public InventoryComponent Inventory => _runtimeSession?.Inventory ?? _fallbackInventory;
@@ -121,6 +129,16 @@ namespace Societies.Core
         public string CurrentScenarioId => _scenario?.Id ?? _scenarioId;
 
         public int CurrentWorldSeed => _runtimeSession?.WorldSeed ?? 0;
+
+        public bool UsesVoxelWorld => _runtimeSession?.UsesVoxelWorld == true;
+
+        public long VoxelWorldRevision => _runtimeSession?.VoxelWorldRevision ?? 0;
+
+        public bool IsWorldcraftBuildMode => _worldcraftBuildMode;
+
+        public string SelectedWorldcraftPieceId => _selectedWorldcraftPieceId;
+
+        public bool IsVoxelInventoryOpen => _voxelInventoryOpen;
 
         public RuntimeMetricsCollector? RuntimeMetrics => _runtimeMetrics;
 
@@ -209,10 +227,19 @@ namespace Societies.Core
                 _backlogWarningCooldownSeconds = BacklogWarningCooldownSeconds;
             }
 
+            UpdateWorldcraftPreview();
+
         }
 
         public override void _UnhandledInput(InputEvent @event)
         {
+            if (@event is InputEventMouseButton mouseButton && mouseButton.Pressed && !mouseButton.DoubleClick &&
+                TryHandleVoxelPointerInput(mouseButton))
+            {
+                GetViewport().SetInputAsHandled();
+                return;
+            }
+
             if (@event is not InputEventKey keyEvent || !keyEvent.Pressed || keyEvent.Echo)
             {
                 return;
@@ -220,9 +247,57 @@ namespace Societies.Core
 
             if (@event.IsActionPressed("toggle_inventory"))
             {
-                _hud?.ToggleInventory();
+                if (_runtimeSession?.UsesVoxelWorld == true) SetVoxelInventoryOpen(!_voxelInventoryOpen);
+                else _hud?.ToggleInventory();
                 GetViewport().SetInputAsHandled();
                 return;
+            }
+
+            if (_runtimeSession?.UsesVoxelWorld == true)
+            {
+                if (_voxelInventoryOpen)
+                {
+                    if (keyEvent.Keycode == Key.Escape)
+                    {
+                        SetVoxelInventoryOpen(false);
+                    }
+                    GetViewport().SetInputAsHandled();
+                    return;
+                }
+                switch (keyEvent.Keycode)
+                {
+                    case Key.B:
+                        _worldcraftBuildMode = !_worldcraftBuildMode;
+                        if (!_worldcraftBuildMode)
+                        {
+                            _worldcraftPresenter?.HideGhost();
+                            _hud?.SetVoxelPlacementEvaluation(null, false);
+                        }
+                        _hud?.SetStatusText(_worldcraftBuildMode ? "Build mode" : "Gather mode");
+                        UpdateHud(); GetViewport().SetInputAsHandled(); return;
+                    case Key.R:
+                        WorldcraftPieceDefinition? selected = VoxelWorldcraftCatalog.FindPiece(_selectedWorldcraftPieceId);
+                        if (_worldcraftBuildMode && selected?.Rotates == true) _worldcraftRotation = (_worldcraftRotation + 1) % 4;
+                        UpdateHud(); GetViewport().SetInputAsHandled(); return;
+                    case Key.Key1:
+                        _ = SelectWorldcraftPiece("wood_floor"); GetViewport().SetInputAsHandled(); return;
+                    case Key.Key2:
+                        _ = SelectWorldcraftPiece("wood_wall"); GetViewport().SetInputAsHandled(); return;
+                    case Key.Key3:
+                        _ = SelectWorldcraftPiece("wood_post"); GetViewport().SetInputAsHandled(); return;
+                    case Key.X:
+                        _ = TryDismantleTargetedWorldcraftPiece(); GetViewport().SetInputAsHandled(); return;
+                    case Key.Key4:
+                    case Key.Key5:
+                    case Key.Key6:
+                    case Key.F3:
+                    case Key.F4:
+                    case Key.F5:
+                    case Key.F10:
+                    case Key.F11:
+                    case Key.F12:
+                        GetViewport().SetInputAsHandled(); return;
+                }
             }
 
             switch (keyEvent.Keycode)
@@ -317,6 +392,21 @@ namespace Societies.Core
             _scenarioId = PrototypeVisualCaptureConfiguration.ScenarioId;
             _simulationSeed = PrototypeVisualCaptureConfiguration.SimulationSeed;
             _visualCaptureConfigured = true;
+        }
+
+        /// <summary>Sets a catalog scenario before this node enters the scene tree.</summary>
+        public void ConfigureScenarioStartup(string scenarioId)
+        {
+            if (_readyStarted)
+            {
+                throw new InvalidOperationException("Scenario startup must be configured before the game manager enters the scene tree.");
+            }
+            if (string.IsNullOrWhiteSpace(scenarioId))
+            {
+                throw new ArgumentException("Scenario id is required.", nameof(scenarioId));
+            }
+
+            _scenarioId = scenarioId;
         }
 
         /// <summary>Resets a ready manager to the catalog-owned canonical capture scenario.</summary>
@@ -678,6 +768,7 @@ namespace Societies.Core
 
         public void ResetPrototypeRun()
         {
+            ResetVoxelInteractionState();
             StartNewPrototypeRun(resetPlayerPosition: true);
             RecordEvent(PrototypeEventTypes.RuntimeReset, $"Reset prototype run with seed {SimulationSeed}");
             _hud?.SetStatusText("Prototype run reset");
@@ -686,6 +777,7 @@ namespace Societies.Core
 
         public void SetScenario(string scenarioId, bool restart = true)
         {
+            ResetVoxelInteractionState();
             PrototypeScenarioDefinition scenario = ResolveScenarioDefinition(scenarioId);
             _scenario = scenario;
             ApplyScenarioDefaults(scenario);
@@ -736,15 +828,12 @@ namespace Societies.Core
                 return string.Empty;
             }
 
-            PrototypeArtifactPaths artifactPaths = _artifactManager.GetArtifactPaths();
-            RecordEvent(PrototypeEventTypes.SnapshotSaved, $"Saved snapshot to {Path.GetFileName(artifactPaths.LegacySnapshotPath)}");
-
             PrototypeRuntimeSnapshot snapshot = CaptureSnapshot();
             CaptureMetricsSnapshot();
             PrototypeWorldSummary worldSummary = PrototypeWorldSummaryBuilder.Build(_runtimeSession, _terrain, _runtimeSession.ActiveResourceSnapshots);
-            _lastWorldSummary = worldSummary;
-
             string snapshotPath = _artifactManager.SaveArtifacts(_runtimeSession, snapshot, worldSummary, _runtimeMetrics);
+            _lastWorldSummary = worldSummary;
+            RecordEvent(PrototypeEventTypes.SnapshotSaved, $"Saved snapshot to {Path.GetFileName(snapshotPath)}");
             _hud?.SetStatusText($"Saved snapshot to {Path.GetFileName(snapshotPath)}");
             return snapshotPath;
         }
@@ -755,17 +844,22 @@ namespace Societies.Core
             PrototypeLoadedArtifacts? loadedArtifacts = _artifactManager.LoadLatestArtifacts();
             if (loadedArtifacts == null)
             {
-                _hud?.SetStatusText("No snapshot found");
                 return false;
             }
+            ApplyLoadedArtifacts(loadedArtifacts.Value, Path.GetFileName(_artifactManager.GetArtifactPaths().LegacySnapshotPath));
+            return true;
+        }
 
-            EnsureWorldShell();
+        internal void ApplyLoadedArtifactsForTest(PrototypeLoadedArtifacts artifacts) => ApplyLoadedArtifacts(artifacts, "test-snapshot.json");
 
-            PrototypeLoadedArtifacts artifacts = loadedArtifacts.Value;
+        private void ApplyLoadedArtifacts(PrototypeLoadedArtifacts artifacts, string sourceFileName)
+        {
             PrototypeScenarioDefinition scenario = ResolveScenarioDefinition(artifacts.Snapshot.ScenarioId);
             PrototypeRuntimeSession candidateSession = BuildRuntimeSession(scenario);
             candidateSession.ApplySnapshot(artifacts.Snapshot);
             candidateSession.RestoreArtifacts(artifacts.EventLog, artifacts.RunSummary);
+            EnsureWorldShell();
+            ResetVoxelInteractionState();
             _scenario = scenario;
             ApplyScenarioDefaults(scenario);
             _runtimeSession = candidateSession;
@@ -781,15 +875,15 @@ namespace Societies.Core
             if (_player != null)
             {
                 _player.Velocity = Vector3.Zero;
-                _player.Position = artifacts.Snapshot.PlayerPosition.ToVector3();
+                _player.Position = _runtimeSession.ResolvePlayerPositionAfterSnapshot(
+                    artifacts.Snapshot.PlayerPosition.ToVector3(), _player.GetGroundingFootOffset());
             }
 
             BindPlayerToRuntime();
             CaptureMetricsSnapshot();
             _lastWorldSummary = PrototypeWorldSummaryBuilder.Build(_runtimeSession, _terrain, _runtimeSession.ActiveResourceSnapshots);
-            RecordEvent(PrototypeEventTypes.SnapshotLoaded, $"Loaded snapshot from {Path.GetFileName(_artifactManager.GetArtifactPaths().LegacySnapshotPath)}");
-            NotifyStatus($"Loaded snapshot from {Path.GetFileName(_artifactManager.GetArtifactPaths().LegacySnapshotPath)}");
-            return true;
+            RecordEvent(PrototypeEventTypes.SnapshotLoaded, $"Loaded snapshot from {sourceFileName}");
+            NotifyStatus($"Loaded snapshot from {sourceFileName}");
         }
 
         private void EnsureSceneStructure()
@@ -930,7 +1024,17 @@ namespace Societies.Core
                 _entitiesRoot,
                 _environmentRoot,
                 _terrain);
-            _scenePresenter.EnsureSettlementHub();
+            if (_scenario?.WorldModel != PrototypeWorldModels.Voxel)
+            {
+                _scenePresenter.EnsureSettlementHub();
+            }
+
+            _voxelPresenter = _worldRoot?.GetNodeOrNull<VoxelWorldPresenter>("VoxelWorldPresenter");
+            if (_scenario?.WorldModel == PrototypeWorldModels.Voxel && _voxelPresenter == null)
+            {
+                _voxelPresenter = new VoxelWorldPresenter { Name = "VoxelWorldPresenter" };
+                _worldRoot!.AddChild(_voxelPresenter);
+            }
 
             _player = _playersRoot.GetNodeOrNull<PlayerCharacter>("LocalPlayer");
             if (_player == null || !IsInstanceValid(_player))
@@ -964,12 +1068,17 @@ namespace Societies.Core
 
             if (_hud != null)
             {
+                _hud.VoxelPieceRequested -= OnVoxelPieceRequested;
+                _hud.VoxelPieceRequested += OnVoxelPieceRequested;
+                _hud.VoxelFieldPackShortcutRequested -= OnVoxelFieldPackShortcutRequested;
+                _hud.VoxelFieldPackShortcutRequested += OnVoxelFieldPackShortcutRequested;
                 PrototypeHudPresenter.Initialize(_hud);
             }
         }
 
         private void StartNewPrototypeRun(bool resetPlayerPosition)
         {
+            ResetVoxelInteractionState();
             EnsureWorldShell();
 
             if (_environmentController == null || _scenePresenter == null || _scenario == null)
@@ -991,7 +1100,7 @@ namespace Societies.Core
 
             RecordEvent(PrototypeEventTypes.WorldSeeded, $"Spawned world for scenario {_runtimeSession.Scenario.Id} using world seed {_runtimeSession.WorldSeed}");
 
-            if (resetPlayerPosition && _player != null && _terrain != null)
+            if (resetPlayerPosition && _player != null)
             {
                 _player.ResetForPrototypeRun(BuildPlayerSpawnPoint());
             }
@@ -1058,8 +1167,9 @@ namespace Societies.Core
         {
             if (_player != null)
             {
-                _player.Terrain = _terrain;
+                _player.Terrain = _runtimeSession?.UsesVoxelWorld == true ? null : _terrain;
                 _player.ContributionDepotPosition = CentralDepotPosition;
+                _player.SetFirstPersonBodyHidden(_runtimeSession?.UsesVoxelWorld == true);
                 _player.SetControlEnabled(_cameraMode == CameraMode.Player);
             }
 
@@ -1197,7 +1307,7 @@ namespace Societies.Core
 
         private void UpdateSettlementPresentationFromSession()
         {
-            if (_scenePresenter == null || _runtimeSession == null)
+            if (_scenePresenter == null || _runtimeSession == null || _runtimeSession.UsesVoxelWorld)
             {
                 return;
             }
@@ -1221,7 +1331,7 @@ namespace Societies.Core
 
         private void UpdateSettlementPresentationFromSessionOrFallback()
         {
-            if (_scenePresenter == null)
+            if (_scenePresenter == null || _runtimeSession?.UsesVoxelWorld == true)
             {
                 return;
             }
@@ -1265,6 +1375,16 @@ namespace Societies.Core
             {
                 return;
             }
+
+            if (_runtimeSession?.UsesVoxelWorld == true)
+            {
+                _hud.SetVoxelFoundationMode(true);
+                _hud.SetVoxelWorldcraftState(Inventory, _worldcraftBuildMode, _selectedWorldcraftPieceId, _worldcraftRotation, _runtimeSession.ConstructionRevision);
+                UpdateSettlementPresentationFromSessionOrFallback();
+                return;
+            }
+
+            _hud.SetVoxelFoundationMode(false);
 
             string timeText = _runtimeSession != null
                 ? FormatTime(_runtimeSession.CurrentHour)
@@ -1321,11 +1441,42 @@ namespace Societies.Core
 
         private void ApplyWorldToScene()
         {
-            if (_runtimeSession?.World == null || _terrain == null || _scenePresenter == null)
+            if (_runtimeSession == null || _terrain == null || _scenePresenter == null)
             {
                 return;
             }
 
+            if (_runtimeSession.UsesVoxelWorld)
+            {
+                _scenePresenter.ClearForVoxelWorld();
+                _terrain.ClearWorldPresentation();
+                _terrain.Visible = false;
+                if (_voxelPresenter == null || !IsInstanceValid(_voxelPresenter))
+                {
+                    _voxelPresenter = GetOrCreateChild<VoxelWorldPresenter>(_worldRoot!, "VoxelWorldPresenter");
+                }
+                if (_worldcraftPresenter == null || !IsInstanceValid(_worldcraftPresenter))
+                {
+                    _worldcraftPresenter = GetOrCreateChild<VoxelWorldcraftPresenter>(_worldRoot!, "VoxelWorldcraftPresenter");
+                }
+                _voxelPresenter.SetActive(true);
+                _voxelPresenter.Apply(_runtimeSession.CaptureVoxelProjection());
+                _worldcraftPresenter.SetActive(true);
+                _worldcraftPresenter.ApplyPieces(_runtimeSession.ConstructionPieces);
+                return;
+            }
+
+            if (_runtimeSession.World == null)
+            {
+                return;
+            }
+
+            _terrain.Visible = true;
+            if (_voxelPresenter != null)
+            {
+                _voxelPresenter.SetActive(false);
+            }
+            _worldcraftPresenter?.SetActive(false);
             _terrain.ApplyWorld(_runtimeSession.World.WorldMap, _overlayMode);
             _scenePresenter.UpdateTerrain(_terrain);
             _scenePresenter.ApplyWorld(_runtimeSession.World);
@@ -1346,12 +1497,21 @@ namespace Societies.Core
 
         private Vector3 BuildPlayerSpawnPoint()
         {
-            if (_terrain == null || _runtimeSession?.World == null)
+            if (_runtimeSession == null)
             {
                 return Vector3.Zero;
             }
 
             Vector3 desiredPosition = _runtimeSession.SettlementAnchorPosition + new Vector3(0.0f, 0.0f, -8.0f);
+            if (_runtimeSession.UsesVoxelWorld)
+            {
+                return _runtimeSession.GetVoxelSafePlayerSpawnPoint();
+            }
+
+            if (_terrain == null || _runtimeSession.World == null)
+            {
+                return Vector3.Zero;
+            }
             return _terrain.GetPlayerSpawnPoint(desiredPosition);
         }
 
@@ -1426,6 +1586,275 @@ namespace Societies.Core
 
             return _catalogs.Scenarios.ResolveDefault();
         }
+
+        public VoxelWorldProjection CaptureVoxelProjection()
+        {
+            if (_runtimeSession?.UsesVoxelWorld != true)
+            {
+                throw new InvalidOperationException("The active scenario does not own a voxel world.");
+            }
+
+            return _runtimeSession.CaptureVoxelProjection();
+        }
+
+        /// <summary>Compatibility adapter; player removal always crosses the gather/inventory/event path.</summary>
+        public VoxelEditResult ApplyVoxelPlayerIntent(
+            VoxelEditKind kind,
+            VoxelCoord coord,
+            VoxelMaterialId placeMaterial = VoxelMaterialId.Wood)
+        {
+            if (_runtimeSession?.UsesVoxelWorld != true)
+            {
+                throw new InvalidOperationException("The active scenario does not own a voxel world.");
+            }
+
+            if (kind == VoxelEditKind.Place)
+            {
+                return new VoxelEditResult { Rejection = VoxelEditRejection.UnsupportedPlacement, WorldRevision = _runtimeSession.VoxelWorldRevision };
+            }
+            if (kind != VoxelEditKind.Remove)
+            {
+                return new VoxelEditResult { Rejection = VoxelEditRejection.InvalidEditKind, WorldRevision = _runtimeSession.VoxelWorldRevision };
+            }
+            WorldcraftGatherResult gather = ApplyVoxelGatherIntent(coord);
+            return gather.VoxelEdit ?? new VoxelEditResult
+            {
+                Rejection = gather.Rejection == WorldcraftRejection.EventCapacityReached
+                    ? VoxelEditRejection.EventCapacityReached
+                    : VoxelEditRejection.NonSurfaceEdit,
+                WorldRevision = _runtimeSession.VoxelWorldRevision
+            };
+        }
+
+        public WorldcraftGatherResult ApplyVoxelGatherIntent(VoxelCoord coord)
+        {
+            if (_runtimeSession?.UsesVoxelWorld != true) throw new InvalidOperationException("The active scenario does not own a voxel world.");
+            WorldcraftGatherResult result = _runtimeSession.GatherVoxel(coord);
+            if (result.Accepted)
+            {
+                _voxelPresenter?.Apply(_runtimeSession.CaptureVoxelProjection(result.VoxelEdit!.DirtyChunks));
+                _hud?.SetStatusText($"+1 {InventoryComponent.FormatItemName(result.ItemId)} · packed safely"); UpdateHud();
+            }
+            else _hud?.SetStatusText(result.Rejection == WorldcraftRejection.InventoryFull ? "Pack full · free a stack before gathering" : "Gather unavailable · aim at an exposed material");
+            return result;
+        }
+
+        public WorldcraftCommandResult ApplyWorldcraftPlacementIntent(VoxelCoord anchor)
+        {
+            if (_runtimeSession?.UsesVoxelWorld != true) throw new InvalidOperationException("The active scenario does not own a voxel world.");
+            WorldcraftPlacementCommand command = new() { ActorId = "player", Tick = _runtimeSession.SimulationTick, ExpectedConstructionRevision = _runtimeSession.ConstructionRevision, PieceId = _selectedWorldcraftPieceId, Anchor = anchor, RotationQuarterTurns = _worldcraftRotation, ActorCell = PlayerVoxelCell() };
+            WorldcraftCommandResult result = _runtimeSession.PlaceWorldcraftPiece(command);
+            if (result.Accepted) { _worldcraftPresenter?.ApplyPieces(_runtimeSession.ConstructionPieces); _hud?.SetStatusText($"Placed {VoxelWorldcraftCatalog.FindPiece(result.Piece!.PieceId)!.DisplayName} · materials recorded"); UpdateHud(); }
+            else _hud?.SetStatusText($"Build rejected · {DescribeWorldcraftRejection(result.Rejection)}");
+            return result;
+        }
+
+        public WorldcraftPlacementEvaluation EvaluateWorldcraftPlacementIntent(VoxelCoord anchor)
+        {
+            if (_runtimeSession?.UsesVoxelWorld != true) throw new InvalidOperationException("The active scenario does not own a voxel world.");
+            return EvaluateWorldcraftPlacementPresentationProbe(anchor);
+        }
+
+        public override void _Input(InputEvent @event)
+        {
+            // GUI controls consume Tab while focused before _UnhandledInput runs. Handle the
+            // field-pack pair at the pre-GUI input phase so the advertised shortcut is reliable.
+            if (_runtimeSession?.UsesVoxelWorld != true || @event is not InputEventKey keyEvent || !keyEvent.Pressed || keyEvent.Echo)
+            {
+                return;
+            }
+
+            if (@event.IsActionPressed("toggle_inventory") || keyEvent.Keycode == Key.Tab || keyEvent.PhysicalKeycode == Key.Tab)
+            {
+                SetVoxelInventoryOpen(!_voxelInventoryOpen);
+                GetViewport().SetInputAsHandled();
+                return;
+            }
+
+            if (_voxelInventoryOpen && keyEvent.Keycode == Key.Escape)
+            {
+                SetVoxelInventoryOpen(false);
+                GetViewport().SetInputAsHandled();
+            }
+        }
+
+        /// <summary>Non-mutating authoritative evaluator seam for preview and UI diagnostics.</summary>
+        public WorldcraftPlacementEvaluation EvaluateWorldcraftPlacementPresentationProbe(
+            VoxelCoord anchor,
+            long? expectedConstructionRevision = null,
+            long? tick = null)
+        {
+            if (_runtimeSession?.UsesVoxelWorld != true) throw new InvalidOperationException("The active scenario does not own a voxel world.");
+            WorldcraftPlacementEvaluation evaluation = _runtimeSession.EvaluateWorldcraftPlacement(new WorldcraftPlacementCommand
+            {
+                ActorId = "player", Tick = tick ?? _runtimeSession.SimulationTick,
+                ExpectedConstructionRevision = expectedConstructionRevision ?? _runtimeSession.ConstructionRevision,
+                PieceId = _selectedWorldcraftPieceId, Anchor = anchor,
+                RotationQuarterTurns = _worldcraftRotation, ActorCell = PlayerVoxelCell()
+            });
+            _hud?.SetVoxelPlacementEvaluation(evaluation, _worldcraftBuildMode);
+            return evaluation;
+        }
+
+        public WorldcraftCommandResult ApplyWorldcraftDismantleIntent(string pieceInstanceId)
+        {
+            if (_runtimeSession?.UsesVoxelWorld != true) throw new InvalidOperationException("The active scenario does not own a voxel world.");
+            WorldcraftCommandResult result = _runtimeSession.DismantleWorldcraftPiece(new WorldcraftDismantleCommand
+            {
+                ActorId = "player", Tick = _runtimeSession.SimulationTick,
+                ExpectedConstructionRevision = _runtimeSession.ConstructionRevision,
+                PieceInstanceId = pieceInstanceId, ActorCell = PlayerVoxelCell()
+            });
+            if (result.Accepted)
+            {
+                _worldcraftPresenter?.ApplyPieces(_runtimeSession.ConstructionPieces);
+                _hud?.SetStatusText($"Recovered {VoxelWorldcraftCatalog.FindPiece(result.Piece!.PieceId)!.DisplayName} · materials returned"); UpdateHud();
+            }
+            else _hud?.SetStatusText($"Dismantle unavailable · {DescribeWorldcraftRejection(result.Rejection)}");
+            return result;
+        }
+
+        public bool SelectWorldcraftPiece(string pieceId)
+        {
+            if (_runtimeSession?.UsesVoxelWorld != true || _voxelInventoryOpen || VoxelWorldcraftCatalog.FindPiece(pieceId) == null) return false;
+            _selectedWorldcraftPieceId = pieceId; _worldcraftRotation = 0; _worldcraftBuildMode = true; UpdateHud(); return true;
+        }
+
+        private void OnVoxelPieceRequested(string pieceId) => _ = SelectWorldcraftPiece(pieceId);
+
+        private void OnVoxelFieldPackShortcutRequested(bool toggle)
+        {
+            if (_runtimeSession?.UsesVoxelWorld == true)
+            {
+                SetVoxelInventoryOpen(toggle ? !_voxelInventoryOpen : false);
+            }
+        }
+
+        private bool TryHandleVoxelPointerInput(InputEventMouseButton mouseButton)
+        {
+            if (_runtimeSession?.UsesVoxelWorld != true ||
+                _voxelInventoryOpen ||
+                mouseButton.ButtonIndex is not (MouseButton.Left or MouseButton.Right))
+            {
+                return false;
+            }
+
+            bool build = _worldcraftBuildMode && mouseButton.ButtonIndex == MouseButton.Right;
+            RayCast3D? ray = build ? _player?.GetBuildPreviewRay() : _player?.GetGatherRay();
+            if (ray == null)
+            {
+                return false;
+            }
+
+            ray.ForceRaycastUpdate();
+            if (!ray.IsColliding())
+            {
+                return false;
+            }
+
+            Vector3 collisionPoint = ray.GetCollisionPoint();
+            Vector3 collisionNormal = ray.GetCollisionNormal();
+            Vector3 cellPoint = collisionPoint + collisionNormal * (build ? 0.01f : -0.01f);
+            VoxelCoord coord = new(
+                Mathf.FloorToInt(cellPoint.X),
+                Mathf.FloorToInt(cellPoint.Y),
+                Mathf.FloorToInt(cellPoint.Z));
+            if (build) _ = ApplyWorldcraftPlacementIntent(coord);
+            else if (mouseButton.ButtonIndex == MouseButton.Left) _ = ApplyVoxelGatherIntent(coord);
+            else return false;
+            return true;
+        }
+
+        private VoxelCoord PlayerVoxelCell()
+        {
+            Vector3 position = _player?.GlobalPosition ?? Vector3.Zero;
+            return new VoxelCoord(Mathf.FloorToInt(position.X), Mathf.FloorToInt(position.Y), Mathf.FloorToInt(position.Z));
+        }
+
+        private void UpdateWorldcraftPreview()
+        {
+            if (_voxelInventoryOpen || _runtimeSession?.UsesVoxelWorld != true || _worldcraftPresenter == null)
+            { _worldcraftPresenter?.HideGhost(); return; }
+            RayCast3D? ray = _worldcraftBuildMode ? _player?.GetBuildPreviewRay() : _player?.GetGatherRay();
+            if (ray == null)
+            {
+                _worldcraftPresenter.HideGhost();
+                _hud?.SetVoxelPlacementEvaluation(null, _worldcraftBuildMode);
+                return;
+            }
+            ray.ForceRaycastUpdate();
+            if (!ray.IsColliding())
+            {
+                _worldcraftPresenter.HideGhost();
+                _hud?.SetVoxelPlacementEvaluation(null, _worldcraftBuildMode);
+                return;
+            }
+            if (!_worldcraftBuildMode)
+            {
+                _worldcraftPresenter.HideGhost();
+                if (VoxelWorldcraftPresenter.TryResolvePieceInstance(ray.GetCollider(), out _))
+                    _hud?.SetVoxelGatherTargetFocus("TARGET · built piece · X dismantles and returns its materials");
+                else
+                    _hud?.SetVoxelGatherTargetFocus("GATHER TARGET · left-click the exposed material");
+                return;
+            }
+            Vector3 point = ray.GetCollisionPoint() + ray.GetCollisionNormal() * 0.01f;
+            VoxelCoord anchor = new(Mathf.FloorToInt(point.X), Mathf.FloorToInt(point.Y), Mathf.FloorToInt(point.Z));
+            WorldcraftPlacementEvaluation evaluation = EvaluateWorldcraftPlacementPresentationProbe(anchor);
+            _worldcraftPresenter.ShowGhost(evaluation);
+            _hud?.SetVoxelPlacementEvaluation(evaluation, true);
+        }
+
+        private bool TryDismantleTargetedWorldcraftPiece()
+        {
+            RayCast3D? ray = _player?.GetGatherRay();
+            if (ray == null) return false;
+            ray.ForceRaycastUpdate();
+            if (!ray.IsColliding() || !VoxelWorldcraftPresenter.TryResolvePieceInstance(ray.GetCollider(), out string instanceId))
+            { _hud?.SetStatusText("Aim at a built piece to dismantle"); return false; }
+            return ApplyWorldcraftDismantleIntent(instanceId).Accepted;
+        }
+
+        public void SetVoxelInventoryOpen(bool open)
+        {
+            if (_runtimeSession?.UsesVoxelWorld != true) return;
+            _voxelInventoryOpen = open;
+            _hud?.SetVoxelInventoryVisible(open);
+            _player?.SetInputSuppressed(open);
+            if (open)
+            {
+                _worldcraftPresenter?.HideGhost();
+                Input.MouseMode = Input.MouseModeEnum.Visible;
+            }
+            else if (_cameraMode == CameraMode.Player)
+            {
+                Input.MouseMode = Input.MouseModeEnum.Captured;
+            }
+            UpdateHud();
+        }
+
+        private void ResetVoxelInteractionState()
+        {
+            _worldcraftBuildMode = false;
+            _selectedWorldcraftPieceId = "wood_floor";
+            _worldcraftRotation = 0;
+            _voxelInventoryOpen = false;
+            _worldcraftPresenter?.HideGhost();
+            _hud?.SetVoxelInventoryVisible(false);
+            _hud?.SetVoxelPlacementEvaluation(null, false);
+            _player?.SetInputSuppressed(false);
+        }
+
+        private static string DescribeWorldcraftRejection(WorldcraftRejection rejection) => rejection switch
+        {
+            WorldcraftRejection.Occupied => "space occupied",
+            WorldcraftRejection.Unsupported => "needs support",
+            WorldcraftRejection.OutOfRange => "move closer",
+            WorldcraftRejection.InsufficientMaterials => "need materials",
+            WorldcraftRejection.StaleRevision or WorldcraftRejection.TickMismatch => "world changed; try again",
+            WorldcraftRejection.InventoryFull => "pack full",
+            _ => "that action is unavailable"
+        };
 
         private void OnPlayerHarvestRequested(string siteId, int amount)
         {

@@ -6,6 +6,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 
 namespace Societies.Core
 {
@@ -61,6 +62,13 @@ namespace Societies.Core
         public PrototypeCivicPolicySnapshot? CivicPolicy { get; set; } = new();
 
         public PrototypeWetlandSnapshot? Wetland { get; set; } = new();
+
+        public string WorldModel { get; set; } = "heightfield_v1";
+
+        public VoxelWorldSnapshot? VoxelWorld { get; set; }
+
+        /// <summary>Schema-v11 authoritative placed-piece state; absent in terrain-only v10 saves.</summary>
+        public WorldcraftConstructionSnapshot? Construction { get; set; }
     }
 
     /// <summary>
@@ -478,6 +486,53 @@ namespace Societies.Core
             nameof(PrototypeRuntimeSnapshot.CivicPolicy),
             nameof(PrototypeRuntimeSnapshot.Wetland)
         };
+        private static readonly string[] RequiredSchemaV10SnapshotProperties = RequiredSchemaV9SnapshotProperties
+            .Concat(new[] { nameof(PrototypeRuntimeSnapshot.WorldModel), nameof(PrototypeRuntimeSnapshot.VoxelWorld) })
+            .ToArray();
+        private static readonly string[] RequiredSchemaV11SnapshotProperties = RequiredSchemaV10SnapshotProperties
+            .Concat(new[] { nameof(PrototypeRuntimeSnapshot.Construction) })
+            .ToArray();
+        private static readonly string[] RequiredSchemaV10VoxelWorldProperties =
+        {
+            nameof(VoxelWorldSnapshot.Schema), nameof(VoxelWorldSnapshot.Generator), nameof(VoxelWorldSnapshot.Materials),
+            nameof(VoxelWorldSnapshot.Seed), nameof(VoxelWorldSnapshot.MinX), nameof(VoxelWorldSnapshot.MaxXExclusive),
+            nameof(VoxelWorldSnapshot.MinY), nameof(VoxelWorldSnapshot.MaxYExclusive), nameof(VoxelWorldSnapshot.MinZ),
+            nameof(VoxelWorldSnapshot.MaxZExclusive), nameof(VoxelWorldSnapshot.WorldRevision),
+            nameof(VoxelWorldSnapshot.EventSequence), nameof(VoxelWorldSnapshot.Events), nameof(VoxelWorldSnapshot.Chunks),
+            nameof(VoxelWorldSnapshot.WorldIdentity), nameof(VoxelWorldSnapshot.RootHash)
+        };
+        private static readonly string[] RequiredSchemaV10VoxelChunkProperties =
+        {
+            nameof(VoxelChunkSnapshot.X), nameof(VoxelChunkSnapshot.Y), nameof(VoxelChunkSnapshot.Z),
+            nameof(VoxelChunkSnapshot.PayloadSegments), nameof(VoxelChunkSnapshot.Hash)
+        };
+        private static readonly string[] RequiredSchemaV10VoxelEventProperties =
+        {
+            nameof(VoxelChangeEvent.Sequence), nameof(VoxelChangeEvent.Tick), nameof(VoxelChangeEvent.ActorId),
+            nameof(VoxelChangeEvent.Kind), nameof(VoxelChangeEvent.Coord), nameof(VoxelChangeEvent.Before),
+            nameof(VoxelChangeEvent.After), nameof(VoxelChangeEvent.Revision)
+        };
+        private static readonly string[] RequiredSchemaV10VoxelCoordProperties =
+        {
+            nameof(VoxelCoord.X), nameof(VoxelCoord.Y), nameof(VoxelCoord.Z)
+        };
+        private static readonly string[] RequiredSchemaV11ConstructionProperties =
+        {
+            nameof(WorldcraftConstructionSnapshot.BaseWorldRevision), nameof(WorldcraftConstructionSnapshot.Revision),
+            nameof(WorldcraftConstructionSnapshot.NextPieceSequence), nameof(WorldcraftConstructionSnapshot.EventSequence),
+            nameof(WorldcraftConstructionSnapshot.Pieces), nameof(WorldcraftConstructionSnapshot.Events)
+        };
+        private static readonly string[] RequiredSchemaV11PieceProperties =
+        {
+            nameof(WorldcraftPieceSnapshot.InstanceId), nameof(WorldcraftPieceSnapshot.PieceId), nameof(WorldcraftPieceSnapshot.Anchor), nameof(WorldcraftPieceSnapshot.RotationQuarterTurns), nameof(WorldcraftPieceSnapshot.PlacedTick)
+        };
+        private static readonly string[] RequiredSchemaV11ConstructionEventProperties =
+        {
+            nameof(WorldcraftConstructionEvent.Sequence), nameof(WorldcraftConstructionEvent.Tick), nameof(WorldcraftConstructionEvent.Kind),
+            nameof(WorldcraftConstructionEvent.PieceInstanceId), nameof(WorldcraftConstructionEvent.PieceId), nameof(WorldcraftConstructionEvent.ItemId),
+            nameof(WorldcraftConstructionEvent.Coord), nameof(WorldcraftConstructionEvent.Anchor), nameof(WorldcraftConstructionEvent.RotationQuarterTurns),
+            nameof(WorldcraftConstructionEvent.ConstructionRevision), nameof(WorldcraftConstructionEvent.WorldRevision), nameof(WorldcraftConstructionEvent.InventoryDeltas)
+        };
         private static readonly string[] RequiredSchemaV7DirectiveProperties =
         {
             nameof(PrototypeDirectiveSnapshot.DirectiveId)
@@ -557,7 +612,15 @@ namespace Societies.Core
 
         public static string SerializeSnapshot(PrototypeRuntimeSnapshot snapshot)
         {
-            return JsonSerializer.Serialize(snapshot, JsonOptions);
+            JsonObject root = JsonSerializer.SerializeToNode(snapshot, JsonOptions)!.AsObject();
+            if (snapshot.SchemaVersion < 10)
+            {
+                root.Remove(nameof(PrototypeRuntimeSnapshot.WorldModel));
+                root.Remove(nameof(PrototypeRuntimeSnapshot.VoxelWorld));
+                root.Remove(nameof(PrototypeRuntimeSnapshot.Construction));
+            }
+            else if (snapshot.SchemaVersion == 10) root.Remove(nameof(PrototypeRuntimeSnapshot.Construction));
+            return root.ToJsonString(JsonOptions);
         }
 
         public static PrototypeRuntimeSnapshot DeserializeSnapshot(string json)
@@ -565,7 +628,7 @@ namespace Societies.Core
             byte[] bytes = ValidateJsonPayload(
                 json,
                 PrototypeRunArtifactManager.MaximumSnapshotBytes,
-                PrototypeRunArtifactManager.MaximumSnapshotRows,
+                PrototypePersistenceBounds.MaximumSnapshotRows,
                 PrototypeRunArtifactManager.MaximumDictionaryEntries,
                 PrototypeRunArtifactManager.MaximumMessageLength,
                 "snapshot");
@@ -577,18 +640,20 @@ namespace Societies.Core
                 throw new InvalidDataException("Runtime snapshot is missing an integral SchemaVersion.");
             }
 
-            if (schemaVersion is not (5 or 6 or 7 or 8 or 9))
+            if (schemaVersion is not (5 or 6 or 7 or 8 or 9 or 10 or 11))
             {
-                throw new InvalidDataException($"Unsupported runtime snapshot schema {schemaVersion}; expected 5, 6, 7, 8, or 9.");
+                throw new InvalidDataException($"Unsupported runtime snapshot schema {schemaVersion}; expected 5, 6, 7, 8, 9, 10, or 11.");
             }
 
-            if (schemaVersion is 7 or 8 or 9)
+            if (schemaVersion is 7 or 8 or 9 or 10 or 11)
             {
                 IReadOnlyList<string> requiredSnapshotProperties = schemaVersion switch
                 {
                     7 => RequiredSchemaV7SnapshotProperties,
                     8 => RequiredSchemaV8SnapshotProperties,
-                    _ => RequiredSchemaV9SnapshotProperties
+                    9 => RequiredSchemaV9SnapshotProperties,
+                    10 => RequiredSchemaV10SnapshotProperties,
+                    _ => RequiredSchemaV11SnapshotProperties
                 };
                 foreach (string propertyName in requiredSnapshotProperties)
                 {
@@ -648,13 +713,28 @@ namespace Societies.Core
                         schemaVersion);
                 }
 
-                if (schemaVersion == 9)
+                if (schemaVersion >= 9)
                 {
                     _ = RequireObjectWithProperties(
                         document.RootElement,
                         nameof(PrototypeRuntimeSnapshot.Wetland),
                         RequiredSchemaV9WetlandProperties,
                         schemaVersion);
+                }
+
+                if (schemaVersion is 10 or 11)
+                {
+                    JsonElement voxelWorld = RequireObjectWithProperties(
+                        document.RootElement,
+                        nameof(PrototypeRuntimeSnapshot.VoxelWorld),
+                        RequiredSchemaV10VoxelWorldProperties,
+                        schemaVersion);
+                    ValidateSchemaV10VoxelRows(voxelWorld, schemaVersion);
+                    if (schemaVersion == 11)
+                    {
+                        JsonElement construction = RequireObjectWithProperties(document.RootElement, nameof(PrototypeRuntimeSnapshot.Construction), RequiredSchemaV11ConstructionProperties, schemaVersion);
+                        ValidateSchemaV11ConstructionRows(construction, schemaVersion);
+                    }
                 }
             }
 
@@ -674,13 +754,103 @@ namespace Societies.Core
                         "Runtime snapshot civic policy selection tick exceeds the simulation tick.");
                 }
 
-                if (schemaVersion == 9)
+                if (schemaVersion >= 9)
                 {
                     _ = PrototypeWetlandState.PrepareRestore(snapshot.Wetland!, civicPolicy);
                 }
             }
 
+            if (schemaVersion is 10 or 11)
+            {
+                PrototypeVoxelSnapshotValidator.ValidateCanonicalShell(snapshot);
+                try
+                {
+                    VoxelWorldModule voxelWorld = VoxelWorldModule.Restore(snapshot.VoxelWorld!);
+                    if (voxelWorld.Seed != snapshot.WorldSeed || snapshot.SimulationSeed != snapshot.WorldSeed ||
+                        snapshot.WorldGenerationAttempt != 0 ||
+                        !string.Equals(voxelWorld.WorldIdentity, snapshot.WorldHash, StringComparison.Ordinal))
+                    {
+                        throw new InvalidDataException($"Schema-v{schemaVersion} voxel identity does not match its outer envelope.");
+                    }
+                    if (schemaVersion == 11)
+                    {
+                        _ = WorldcraftConstructionState.Restore(snapshot.Construction!, voxelWorld, snapshot.Inventory, snapshot.SimulationTick);
+                    }
+                }
+                catch (InvalidOperationException exception)
+                {
+                    throw new InvalidDataException($"Schema-v{schemaVersion} voxel world payload is invalid.", exception);
+                }
+            }
+
             return snapshot;
+        }
+
+        private static void ValidateSchemaV10VoxelRows(JsonElement voxelWorld, int schemaVersion)
+        {
+            JsonElement chunks = voxelWorld.GetProperty(nameof(VoxelWorldSnapshot.Chunks));
+            if (chunks.ValueKind != JsonValueKind.Array)
+            {
+                throw new InvalidDataException("Schema-v10 voxel chunks must be an array.");
+            }
+            foreach (JsonElement chunk in chunks.EnumerateArray())
+            {
+                if (chunk.ValueKind != JsonValueKind.Object)
+                {
+                    throw new InvalidDataException("Schema-v10 voxel chunk must be an object.");
+                }
+                RequireProperties(chunk, nameof(VoxelWorldSnapshot.Chunks), RequiredSchemaV10VoxelChunkProperties, schemaVersion);
+                if (chunk.GetProperty(nameof(VoxelChunkSnapshot.PayloadSegments)).ValueKind != JsonValueKind.Array)
+                {
+                    throw new InvalidDataException("Schema-v10 voxel chunk segments must be an array.");
+                }
+            }
+
+            JsonElement events = voxelWorld.GetProperty(nameof(VoxelWorldSnapshot.Events));
+            if (events.ValueKind != JsonValueKind.Array)
+            {
+                throw new InvalidDataException("Schema-v10 voxel events must be an array.");
+            }
+            foreach (JsonElement voxelEvent in events.EnumerateArray())
+            {
+                if (voxelEvent.ValueKind != JsonValueKind.Object)
+                {
+                    throw new InvalidDataException("Schema-v10 voxel event must be an object.");
+                }
+                RequireProperties(voxelEvent, nameof(VoxelWorldSnapshot.Events), RequiredSchemaV10VoxelEventProperties, schemaVersion);
+                JsonElement coord = voxelEvent.GetProperty(nameof(VoxelChangeEvent.Coord));
+                if (coord.ValueKind != JsonValueKind.Object)
+                {
+                    throw new InvalidDataException("Schema-v10 voxel event coordinate must be an object.");
+                }
+                RequireProperties(coord, nameof(VoxelChangeEvent.Coord), RequiredSchemaV10VoxelCoordProperties, schemaVersion);
+            }
+        }
+
+        private static void ValidateSchemaV11ConstructionRows(JsonElement construction, int schemaVersion)
+        {
+            JsonElement pieces = construction.GetProperty(nameof(WorldcraftConstructionSnapshot.Pieces));
+            JsonElement events = construction.GetProperty(nameof(WorldcraftConstructionSnapshot.Events));
+            if (pieces.ValueKind != JsonValueKind.Array || events.ValueKind != JsonValueKind.Array)
+            {
+                throw new InvalidDataException("Schema-v11 construction pieces and events must be arrays.");
+            }
+            foreach (JsonElement piece in pieces.EnumerateArray())
+            {
+                RequireProperties(piece, "construction piece", RequiredSchemaV11PieceProperties, schemaVersion);
+                _ = RequireObjectWithProperties(piece, nameof(WorldcraftPieceSnapshot.Anchor), RequiredSchemaV10VoxelCoordProperties, schemaVersion);
+            }
+            foreach (JsonElement constructionEvent in events.EnumerateArray())
+            {
+                RequireProperties(constructionEvent, "construction event", RequiredSchemaV11ConstructionEventProperties, schemaVersion);
+                _ = RequireObjectWithProperties(constructionEvent, nameof(WorldcraftConstructionEvent.Coord), RequiredSchemaV10VoxelCoordProperties, schemaVersion);
+                _ = RequireObjectWithProperties(constructionEvent, nameof(WorldcraftConstructionEvent.Anchor), RequiredSchemaV10VoxelCoordProperties, schemaVersion);
+                JsonElement deltas = constructionEvent.GetProperty(nameof(WorldcraftConstructionEvent.InventoryDeltas));
+                if (deltas.ValueKind != JsonValueKind.Object)
+                {
+                    throw new InvalidDataException("Schema-v11 construction event inventory deltas must be an object.");
+                }
+            }
         }
 
         private static JsonElement RequireObjectWithProperties(
@@ -753,7 +923,7 @@ namespace Societies.Core
             byte[] bytes = ValidateJsonPayload(
                 json,
                 PrototypeRunArtifactManager.MaximumRunSummaryBytes,
-                PrototypeRunArtifactManager.MaximumSnapshotRows,
+                PrototypePersistenceBounds.MaximumSnapshotRows,
                 PrototypeRunArtifactManager.MaximumDictionaryEntries,
                 PrototypeRunArtifactManager.MaximumMessageLength,
                 "run summary");
@@ -765,14 +935,14 @@ namespace Societies.Core
                 throw new InvalidDataException("Run summary is missing an integral SchemaVersion.");
             }
 
-            if (schemaVersion == 9)
+            if (schemaVersion >= 9)
             {
                 foreach (string propertyName in RequiredSchemaV9RunSummaryProperties)
                 {
                     if (!document.RootElement.TryGetProperty(propertyName, out _))
                     {
                         throw new InvalidDataException(
-                            $"Schema-v9 run summary is missing required property '{propertyName}'.");
+                            $"Schema-v{schemaVersion} run summary is missing required property '{propertyName}'.");
                     }
                 }
 
@@ -876,7 +1046,7 @@ namespace Societies.Core
             byte[] bytes = ValidateJsonPayload(
                 json,
                 PrototypeRunArtifactManager.MaximumWorldSummaryBytes,
-                PrototypeRunArtifactManager.MaximumSnapshotRows,
+                PrototypePersistenceBounds.MaximumSnapshotRows,
                 PrototypeRunArtifactManager.MaximumDictionaryEntries,
                 PrototypeRunArtifactManager.MaximumMessageLength,
                 "world summary");

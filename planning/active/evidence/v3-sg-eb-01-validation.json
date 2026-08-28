@@ -1,0 +1,152 @@
+{
+  "schema": "societies_sg_eb_01_validation/v2",
+  "recorded_date": "2026-08-27",
+  "milestone": "EB-01R Player HUD, UI, and Interaction Replacement",
+  "status": "human_play_accepted_performance_open",
+  "base_commit": "29021b221abc99ff0e5d35b0df067eec1d2422cc",
+  "branch": "codex/snow-globe-eb01-ui-replacement",
+  "implementation_commit": "00024cd67c8d889fd2e448cd95b45fc580253198",
+  "pull_request": 182,
+  "pull_request_base": "codex/snow-globe-eco-baseline",
+  "authority": {
+    "runtime": "PrototypeRuntimeSession",
+    "intent_seam": "GameManager",
+    "schema": 11,
+    "historical_schema_10_migration": true,
+    "ui_duplicates_simulation_state": false
+  },
+  "implemented": [
+    "atomic bounded eight-slot inventory with stack limit 32",
+    "authoritative exposed-voxel gather rewards",
+    "floor, wall, and post placement with rotation, cost, support, overlap, range, dismantle, and material recovery",
+    "versioned canonical worldcraft history and exact save-load-replay validation",
+    "incremental bounded replay cursor",
+    "eight-slot tactile tool belt and centered eight-slot field pack with exact capacity",
+    "three pointer and keyboard build cards with authoritative cost and affordability projection",
+    "contextual gather, placement, dismantle, success, and rejection feedback",
+    "reliable focused-GUI Tab and Escape handling with pack action suppression",
+    "separate 4.5-unit gather-dismantle reach and 8.5-unit non-mutating build preview",
+    "green valid and red invalid placement ghosts derived from authoritative evaluations",
+    "readable floor, wall, and post construction with non-colliding timber and brass detail",
+    "dual-resolution private-desktop rendered diagnostics with live input disabled"
+  ],
+  "review": {
+    "initial_result": "STOP",
+    "closed_findings": [
+      "bounded inventory restore and atomic configuration",
+      "real voxel hotkeys and targeted dismantle",
+      "replay-equivalent historical geometry and revisions",
+      "orphan and unsaveable-state rejection",
+      "exact presenter rebuild after load",
+      "failed load and failed save inertness",
+      "bounded construction-history replay",
+      "pack overlap and GUI action suppression",
+      "actual Tab binding and focused-control propagation",
+      "authoritative stale and out-of-range presentation",
+      "rejected placement anchor and rotation projection metadata",
+      "original gather reach preserved while build preview reaches rejection range",
+      "distinct valid and invalid rendered ghosts",
+      "committed floor, wall, and post readability at both resolutions"
+    ],
+    "final_result": "GO",
+    "remaining_p0_to_p3": 0
+  },
+  "validation": {
+    "focused_managed": {
+      "passed": 26,
+      "failed": 0
+    },
+    "replay_cap": {
+      "events": 10000,
+      "world_generations": 1,
+      "applied_events": 10000,
+      "wall_clock_is_not_the_assertion": true
+    },
+    "authoritative_wrapper": {
+      "exit_code": 0,
+      "managed_passed": 507,
+      "managed_failed": 0,
+      "managed_skipped": 0,
+      "godot_passed": 28,
+      "godot_failed": 0
+    },
+    "release_build": {
+      "warnings": 0,
+      "errors": 0
+    },
+    "export_release_build": {
+      "warnings": 0,
+      "errors": 0
+    },
+    "launch_helper_verify_only": "passed",
+    "diff_check": "passed_with_windows_line_ending_notices"
+  },
+  "rendered_diagnostic": {
+    "historical_failed_predecessor": {
+      "output": "artifacts/visual/eb01-20260827-r2",
+      "capture_count": 10,
+      "resolution": "960x540",
+      "visual_assessment": "failed"
+    },
+    "final_runs": [
+      {
+        "output": "artifacts/visual/eb01r-20260827-1280x720-r6",
+        "resolution": "1280x720",
+        "exit_code": 0,
+        "capture_count": 13,
+        "launcher_evidence": "artifacts/visual/eb01r-20260827-1280x720-r6/launcher-evidence.json",
+        "runner_evidence": "artifacts/visual/eb01r-20260827-1280x720-r6/isolation-evidence.json"
+      },
+      {
+        "output": "artifacts/visual/eb01r-20260827-1920x1080-r6",
+        "resolution": "1920x1080",
+        "exit_code": 0,
+        "capture_count": 13,
+        "launcher_evidence": "artifacts/visual/eb01r-20260827-1920x1080-r6/launcher-evidence.json",
+        "runner_evidence": "artifacts/visual/eb01r-20260827-1920x1080-r6/isolation-evidence.json"
+      }
+    ],
+    "active_desktop_targeted": false,
+    "live_input_disabled": true,
+    "descendant_custody_verified": true,
+    "matching_runner_source_sha256": "ded9aba297bcea9e16d7c2b3f31e92567f3d6af2f85e90c898a21dadd8b4455c",
+    "matching_executed_assembly_sha256": "90fd59214c032cd7b07bb8a51282645e520a3c7a2a506239d0f41aa10bf833f9",
+    "visual_assessment": "replacement_candidate_passed_internal_inspection",
+    "proven_states": [
+      "centered non-overlapping field pack with eight slots",
+      "persistent eight-slot tool belt and three build cards",
+      "distinct pale-green valid and red occupied placement ghosts with textual reasons",
+      "authoritative gather and placement confirmations",
+      "committed floor, wall, and post readable on intact terrain support"
+    ],
+    "limitation": "The bundles are internally provenance-consistent; a later validation rebuild changed the current Debug assembly, and screenshots do not constitute human acceptance."
+  },
+  "performance": {
+    "claim": "characterization_only",
+    "collision_bodies": 64,
+    "initial_collision_shapes": 12777,
+    "post_edit_collision_shapes": 12781,
+    "historical_51_9392_ms_safety_failure_resolved": false,
+    "representative_frame_performance_accepted": false
+  },
+  "human_acceptance": {
+    "performed": true,
+    "accepted": true,
+    "confirmed_date": "2026-08-27",
+    "confirmation_source": "explicit user confirmation in the Codex task",
+    "numeric_scores_recorded": false,
+    "axis_results": {
+      "world_readability": "accepted_by_user",
+      "hud_hierarchy": "accepted_by_user",
+      "inventory_usability": "accepted_by_user",
+      "construction_clarity": "accepted_by_user",
+      "interaction_feel": "accepted_by_user"
+    },
+    "limitation": "No numeric per-axis scores were supplied; none are inferred or invented."
+  },
+  "project_sid_research": {
+    "document": "planning/research/completed/r9-project-sid-architecture-study.md",
+    "adoption_boundary": "paper-pattern study only; no software dependency or code reuse"
+  },
+  "next_action": "No further work is authorized in this task; PR #182 remains open and unmerged."
+}

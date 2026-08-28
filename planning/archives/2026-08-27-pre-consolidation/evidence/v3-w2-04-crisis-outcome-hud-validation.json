@@ -1,0 +1,157 @@
+{
+  "schemaVersion": 1,
+  "capturedUtc": "2026-07-15T07:29:53Z",
+  "workItem": "V3-W2-04",
+  "status": "implementation_and_final_review_fixes_validated_final_staged_deep_re_review_clean",
+  "branch": "feature/v3-w2-04-crisis-outcome-hud",
+  "scope": {
+    "implemented": [
+      "domain-owned Stable and Collapsed terminal outcome with deterministic causal summary",
+      "exactly-once session terminal event guarded by strict crisis checkpoint state",
+      "schema-v6 runtime snapshot fail-fast preserved for crisis, contribution, and directive state",
+      "strict restore rejects an active checkpoint whose terminal event is already marked emitted",
+      "capacity- and input-aware wood-yard reservations expose safe firewood and timber alternatives without overcommitting shared inputs or output capacity",
+      "every wood-yard candidate independently validates its inputs and exact output capacity before selection",
+      "wood-yard recipe completion commits input consumption and output production atomically",
+      "scoped internal settlement snapshot access supports reference comparison without changing the public schema-v6 runtime snapshot fail-fast boundary",
+      "procedural HUD presentation of crisis contract, directive, ordered cumulative contributions, four conditions, holds, and terminal summary",
+      "session initialize/reset reconstruction of scenario-owned crisis, contribution, directive, event, and presentation state"
+    ],
+    "deferred": [
+      "W2-VIS visual baseline",
+      "W2-05 schema-v7 runtime snapshot attachment and migration",
+      "W2-06 Release performance matrix and playtests"
+    ],
+    "runtimeSnapshotSchemaVersion": 6,
+    "runtimeSnapshotStateLossFailsFast": true
+  },
+  "determinismContracts": {
+    "terminalOutcomeStopsCrisisProgression": true,
+    "terminalEventEmitsOnce": true,
+    "checkpointIncludes": [
+      "elapsedTicks",
+      "deadlineTicks via frozen definition",
+      "stableHoldTicks",
+      "collapseHoldTicks",
+      "outcome",
+      "collapseCause",
+      "terminalEventEmitted"
+    ],
+    "references": [
+      "fixed-seed no-input session collapse",
+      "fixed-seed scripted SetDirective plus ContributeToStockpile stable run on the unmodified empty_stores catalog",
+      "repeat-run ordered EventLog plus complete final settlement and session state equality"
+    ]
+  },
+  "validation": {
+    "focusedCommandsAttempted": [
+      "dotnet test tests/Societies.Core.Tests/Societies.Core.Tests.csproj --configuration Debug --filter FullyQualifiedName~PrototypeCrisisTests|FullyQualifiedName~PrototypeHudTextBuilderTests",
+      "dotnet test tests/Societies.Core.Tests/Societies.Core.Tests.csproj --configuration Debug --filter FullyQualifiedName~PrototypeContributionTests|FullyQualifiedName~PrototypeDirectiveTests|FullyQualifiedName~PrototypeDirectiveSessionTests|FullyQualifiedName~PrototypeCrisisTests|FullyQualifiedName~PrototypeReferenceTraceTests|FullyQualifiedName~PrototypeRuntimeSessionTests|FullyQualifiedName~PrototypeSettlementTests|FullyQualifiedName~PrototypeSelectorTests",
+      "dotnet test tests/Societies.Core.Tests/Societies.Core.Tests.csproj --configuration Debug --filter FullyQualifiedName~WoodYardProcessingTests",
+      "godot --headless --path src/societies res://tests/HeadlessTestRunner.tscn",
+      "dotnet build Societies.sln --configuration Debug",
+      "dotnet build Societies.sln --configuration ExportDebug",
+      "dotnet build Societies.sln --configuration ExportRelease"
+    ],
+    "focusedResult": "The prior consolidated Debug crisis, directive, contribution, and HUD filter passed 48/48 in 1m19s.",
+    "scriptedStableReference": {
+      "catalog": "empty_stores unchanged",
+      "commands": [
+        "SetDirective",
+        "ContributeToStockpile"
+      ],
+      "initialDirective": "Shelter",
+      "switchDirective": "Food & Fuel",
+      "switchTrigger": "hut_3 completion",
+      "switchTick": 245,
+      "outcome": "Stable",
+      "terminalTick": 1253,
+      "sha256": "a81d7083649911a3244446bcde991f215dc0237ea2aa8967b94bfc0c9a98bd3b",
+      "supersededSha256": [
+        "5d0f4085abed3c0cb8eb635606d6e291abc2239b61f6085daef5afc160a3a883",
+        "42319c26d3053eb53be91c1239516bc5d22cec077e6025de2d4caffe4decb320"
+      ],
+      "hashChangeReason": "The prior hashes canonicalized narrower state and are superseded; this hash covers ordered events plus complete final settlement and session state after the final review fixes.",
+      "repeatCompared": [
+        "ordered EventLog",
+        "crisis snapshot",
+        "directive snapshot",
+        "contribution counters",
+        "inventory",
+        "stockpile",
+        "resource snapshots sorted by stable ID",
+        "complete PrototypeSettlementSnapshot"
+      ],
+      "result": "Two independent unchanged-catalog runs passed 1/1 in 1m14s"
+    },
+    "noInputReference": {
+      "terminalTick": 9735,
+      "outcome": "Collapsed",
+      "cause": "IncapacitatedHold",
+      "events": 7533,
+      "sha256": "01fedc29bae1aadeef47bab2a645f4bfd390fb2eab39243d7bd18def90c3aafc"
+    },
+    "woodYardProcessingResult": "6/6 passed in approximately 5s; one-slot firewood rejection safely falls back to timber, and one log cannot reserve a second recipe",
+    "selectorEquivalence": "15/15 optimized/exhaustive 300-tick cases passed in 6m27s",
+    "directiveResult": "11/11 passed in 36s",
+    "fastTierResult": "The expanded Release manifest-fast tier passed 159/159 with 0 failed and 0 skipped; test duration was 58s and command wall time was 66.2s. The prior 157/157 result remains provenance.",
+    "fastTierCompileWarning": "The test-project compile emitted CS0436 for a Godot-generated Main type conflict; the test command is not classified as warning-free.",
+    "godotResult": "Godot 4.6.2 headless passed 19/19 with 0 failed in 148.9s wall time after the final review fixes",
+    "godotExpectedWarnings": [
+      "frame catch-up backlog diagnostic",
+      "optional runtime-metrics I/O isolation diagnostic"
+    ],
+    "buildResult": "Debug, ExportDebug, and ExportRelease solution builds each succeeded with 0 warnings and 0 errors after the final review fixes; total command wall time was 6.8s",
+    "gitDiffCheck": "passed",
+    "manifestJsonParse": "passed",
+    "jsonParse": "passed",
+    "manifest": {
+      "dotnetDeclared": 263,
+      "fast": 159,
+      "integration": 11,
+      "soak": 93,
+      "godotDeclared": 19,
+      "godotIntegration": 12
+    },
+    "fullWeeklySoakRun": false,
+    "fullWeeklySoakReason": "The full 263-test weekly coverage/soak route was not run; it remains outside W2-04 validation."
+  },
+  "review": {
+    "initialFindings": [
+      "P1 real-catalog scripted reference gap",
+      "P2 active plus TerminalEventEmitted restore inconsistency",
+      "P3 stale deferred wording"
+    ],
+    "initialFindingsFixed": true,
+    "stagedReviewFindings": [
+      "P1 unsafe concurrent wood-yard alternatives and non-atomic recipe completion"
+    ],
+    "stagedReviewP1Resolution": "Resolved with capacity- and input-aware reservations plus atomic recipe completion.",
+    "finalReviewFindings": [
+      "P1 candidate-alone validation gap",
+      "P2 complete-trace overclaim"
+    ],
+    "finalReviewP1Resolution": "Every candidate now validates inputs and exact output capacity; one-slot firewood rejection falls back safely to timber, and one log prevents a second recipe. WoodYardProcessingTests passed 6/6.",
+    "finalReviewP2Resolution": "A scoped internal settlement snapshot accessor supports canonical comparison of ordered events and complete final settlement/session state without changing public schema-v6 fail-fast behavior.",
+    "finalReviewFindingsResolved": true,
+    "finalStagedDiffReview": "clean",
+    "finalStagedDiffReviewScope": "deep re-review after final P1 and P2 fixes",
+    "finalFindingCounts": {
+      "P0": 0,
+      "P1": 0,
+      "P2": 0,
+      "P3": 0
+    }
+  },
+  "performance": {
+    "newReleasePerformanceRun": false,
+    "newPerformanceClaim": false,
+    "historicalAuthority": "planning/active/evidence/v3-w1-06-session-resource-ledger-validation.json",
+    "historicalClassification": "Historical W1-06 performance remains authoritative; no new timing claim is made."
+  },
+  "workingTree": {
+    "intentionallyDirty": true,
+    "unrelatedFilesPreserved": true,
+    "deliveryStatus": "validated_and_ready_for_commit_or_pull_request"
+  }
+}

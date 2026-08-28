@@ -1,110 +1,150 @@
-# AGENTS.md - Societies Project
+# AGENTS.md — Societies Project Operating Contract
 
-## Overview
+## Mission
 
-Societies is a Godot 4 + C# prototype working toward this product north star: "A deterministic civilization/ecology simulation where humans and AI citizens work, trade, negotiate, govern, and experience shared consequences."
+Build Societies toward this product north star:
 
-This is future intent, not current implementation scope. Deterministic simulation owns world facts and every state-changing outcome. Future LLMs may interpret structured state, deliberate, communicate, summarize memory, and propose commands, but all changes must enter through validated deterministic commands/events. Humans remain consequential, and offline/model-failure fallback must preserve the simulation and replay. See [planning/PRODUCT-THESIS.md](planning/PRODUCT-THESIS.md).
+> A deterministic civilization and ecology simulation where humans and AI citizens work, trade, negotiate, govern, and experience shared consequences.
 
-## Project Structure
+Snow Globe is the first bounded realization of that idea. It must become a small but complete society proof before the project expands into a larger civilization simulation.
 
-- `src/societies/` - Godot project with C# scripts
-- `planning/` - Comprehensive 7-session planning structure
-- `tests/` - C# unit tests and Godot integration tests
+## Owner and agent roles
 
-## Current Build Reality
+The project owner is the **vision, product, and human-acceptance authority**. Do not require the owner to choose files, classes, algorithms, migrations, test filters, or refactor tactics. Translate technical decisions into understandable options, consequences, and a recommendation.
 
-- The authoritative build is the Godot project under `src/societies/`
-- The current default branch in this repository is `master`
-- Use `CURRENT_BUILD.md` as the repo-truth summary before assuming stale planning still reflects implementation
-- Treat `planning/` as aspirational unless the current Godot code confirms it
-- W2-02 through W2-04 are validated and merged; W2-04 landed through PR #117 at master `d519d4d`. W2-05 is merged through PR #119 at master `f0e88f0` and locally validated on its feature branch. V3-W2-VIS is complete only by its explicit timing and visual-readback waivers: performance safety remains red, persistence/hash equivalence is unavailable, and visual acceptance is waived, not passed. W2-06 records **Stop Feature Expansion** in `V3_SPRINT_VALIDATION_REPORT.md`; Weeks 3-4 remain Draft/Conditional and inactive pending a future green performance boundary.
+Agents are responsible for technical investigation, planning translation, bounded implementation, validation, review, documentation, and honest handoff. An execution agent does not gain roadmap authority merely because it completed the previous task.
 
-## Tech Stack
+## Required reading order
 
-- **Engine**: Godot 4.x + C#
-- **Networking**: Local session in the current prototype, ENet deferred
-- **Persistence**: Local JSON snapshot/event-log/run-summary output in the current prototype
-- **Testing**: .NET Test + Godot headless runner
-- **Planning**: Markdown-based documentation
+Before substantial work, read:
 
-## Development Workflow
+1. `project-governance.json`
+2. `docs/project/CHARTER.md`
+3. `docs/project/CURRENT_STATE.md`
+4. `planning/active/MILESTONE.md`
+5. `docs/project/ARCHITECTURE.md`
+6. `docs/project/DEVELOPMENT_PROCESS.md`
+7. the nearest scoped `AGENTS.md`
+8. only then the relevant code, tests, ADRs, evidence, and historical material
 
-For substantial features, fixes, performance work, and milestones, follow [planning/DEVELOPMENT_WORKFLOW.md](planning/DEVELOPMENT_WORKFLOW.md) after reading `CURRENT_BUILD.md` and the active plan. It defines the outcome contract, evidence tiers, delivery boundary, and milestone handoff; preserve unrelated work and do not overclaim red or unverified gates.
+Do not begin by reading the largest historical status file or by treating an old plan as current.
 
-### For Planning
-1. Review existing session documents in `planning/sessions/`
-2. Create or update planning documents collaboratively
-3. Ensure cross-session dependencies are documented
-4. Maintain version control through git
+## Authority order
 
-### For Development
-1. Complete planning phase first
-2. Implement features according to specifications
-3. Follow existing code patterns and conventions
-4. Run tests before committing
+When sources disagree, use this order:
 
-## Testing
+1. verified source behavior, tests, runtime artifacts, and explicit human acceptance;
+2. `docs/project/CURRENT_STATE.md`;
+3. `planning/active/MILESTONE.md` for authorized work;
+4. `docs/project/CHARTER.md` and accepted decisions;
+5. `docs/project/ARCHITECTURE.md` and `DEVELOPMENT_PROCESS.md`;
+6. ADRs and bounded evidence;
+7. archived plans, old completion reports, branch names, and prior agent summaries.
 
-```bash
-# Run C# unit tests
-dotnet test tests/Societies.Core.Tests/Societies.Core.Tests.csproj
+A passing test does not overrule a failed human product gate. A historical completion claim does not activate work.
 
-# Run Godot headless tests (requires Godot)
+## Current development state
+
+- Accepted runtime baseline: `847c86b1c379e6a1dd8d4b7b641c3c89646e28c9`.
+- Preservation branch: `archive/pre-consolidation-2026-08-27`.
+- The accepted EB-01R slice proves bounded founder worldcraft and a substantially better interaction surface.
+- It does **not** yet prove participating citizens, integrated Snow Globe cognition, a negotiated shared consequence, performance acceptance, accessibility, or release readiness.
+- The only authorized milestone is repository consolidation and explicit next-milestone selection. Feature expansion is frozen until that milestone activates a bounded product proof.
+
+## Non-negotiable product and architecture rules
+
+1. `PrototypeRuntimeSession` and deterministic domain code own world facts and every state-changing outcome.
+2. Godot scenes, presenters, HUDs, diagnostics, and model adapters consume or propose; they do not own hidden gameplay truth.
+3. LLMs may interpret bounded observations, deliberate, communicate, summarize bounded memory, and propose closed actions. They never mutate world state or invent authoritative facts.
+4. Replay, persistence, fallback, and offline operation must remain possible without calling a model.
+5. The player is an embodied resident-founder with limited formal authority. Influence comes from contribution, commitments, persuasion, and consequences—not omnipotent commands.
+6. Citizens must be allowed to counter, delay, refuse, withdraw, or proceed for legible material and social reasons.
+7. Provider identity, credentials, billing, routing internals, and raw responses stay outside the player-facing product.
+8. Human acceptance is required for visual, interaction, social, and experiential claims.
+
+## Work-selection rules
+
+- There is exactly one active milestone: `planning/active/MILESTONE.md`.
+- Select the next task from the milestone's ordered missing evidence, not from an agent's closing recommendation.
+- Every implementation task must state outcome, owned boundary, non-goals, acceptance, validation, human gate, and stop conditions.
+- Prefer the smallest vertical change that proves a product-relevant fact.
+- Do not add adjacent systems, generalized frameworks, provider depth, content breadth, or speculative abstractions unless the active milestone requires them.
+- Do not reactivate archived plans by editing them. Create an explicit decision and update the active milestone.
+- When a human decision is required, stop with concrete options and a recommendation. Do not fill the gap with implementation.
+
+## Required execution cycle
+
+1. **Orient:** inspect branch, status, authority documents, relevant code, tests, and prior evidence.
+2. **Plan:** restate the bounded outcome and identify what is already proven versus assumed.
+3. **Implement:** make the smallest coherent change; preserve unrelated work.
+4. **Verify:** run focused checks, then every triggered integration, replay, persistence, build, CI, performance, or human gate.
+5. **Review:** inspect the actual diff and failure paths independently of the completion summary.
+6. **Report:** separate implemented facts, test evidence, human evidence, unresolved risks, and prohibited follow-on work.
+7. **Integrate:** use a focused PR; do not merge red or unverified required gates.
+8. **Archive:** move completed or stopped plans out of `planning/active/` before activating another milestone.
+
+## Evidence honesty
+
+Use these labels precisely:
+
+- **Implemented** — code exists.
+- **Mechanically validated** — named automated checks passed.
+- **Runtime observed** — a named executable route was inspected.
+- **Human accepted** — the owner explicitly accepted the stated product gate.
+- **Characterized** — measured without passing a target.
+- **Deferred** — intentionally not built.
+- **Blocked** — a named dependency or decision prevents work.
+
+Never convert characterization into acceptance, infer numeric scores the owner did not provide, claim CI from local tests, or claim a complete society from infrastructure alone.
+
+## Git and delivery rules
+
+- Work in an isolated branch or worktree from an explicit base SHA.
+- One branch owns one bounded outcome.
+- Do not stack new product work on an unreviewed stack when a consolidation branch is available.
+- Show `git status`, exact validation commands, failures, and the final commit SHA in every handoff.
+- Pull requests must use `.github/pull_request_template.md` and identify the human gate.
+- `master` is the integration branch. Archive branches preserve historical states and are not development bases.
+- Do not delete historical material merely to make the repository look clean; move it into the defined archive.
+
+## Validation baseline
+
+```powershell
+python scripts/check-project-governance.py
+dotnet build src/societies/Societies.csproj --configuration Release
+dotnet test tests/Societies.Core.Tests/Societies.Core.Tests.csproj --configuration Release
 godot --headless --path src/societies res://tests/HeadlessTestRunner.tscn
 ```
 
-## Git Workflow
+Use `tests/test-manifest.json`, the active milestone, and nearby scoped instructions to determine additional required suites. Performance and release claims require their dedicated clean-source routes.
 
-- Current default branch: `master`
-- Feature branches: `feature/<description>`
-- Commit planning documents to the relevant `planning/` location; short-horizon execution plans belong in `planning/active/`
+## Handoff format
 
-## Planning Structure
+```markdown
+## Outcome
+- Product result:
+- Owned boundary:
+- Non-goals preserved:
 
-The project uses a 7-session planning methodology:
+## Repository truth
+- Base branch/SHA:
+- Changed files:
+- Final commit:
+- Working tree:
 
-1. **Session 1**: Technical Architecture
-2. **Session 2**: AI System Design
-3. **Session 3**: Core Gameplay Loops
-4. **Session 4**: Progression & Balance
-5. **Session 5**: Governance Mechanics
-6. **Session 6**: Prototyping Roadmap
-7. **Session 7**: Integration Master Plan
+## Evidence
+- Commands and results:
+- Runtime observation:
+- Human gate:
 
-Each session is in `planning/sessions/session-N-<name>/`
+## Risks and limits
+- Still red or unverified:
+- Assumptions:
 
-## Resources
-
-- Project README: `README.md`
-- Planning Index: `planning/sessions/[AGENTS-READ-FIRST]-index.md`
-
-## Key Commands Summary
-
-```bash
-# Build project
-dotnet build src/societies/Societies.csproj
-
-# Run tests
-dotnet test tests/Societies.Core.Tests/Societies.Core.Tests.csproj
-
-# Open in Godot
-godot --path src/societies
-
-# Run the full local validation loop
-./scripts/run-prototype-validation.ps1
+## Authority
+- Active milestone state:
+- Follow-on work authorized: yes/no
+- Next owner decision, if any:
 ```
 
-## Getting Started
-
-When asked to work on planning documents, features, or research:
-1. **Review existing context** in `planning/sessions/`
-2. **Follow established patterns** from other session documents
-3. **Document decisions** clearly with rationale
-4. **Check dependencies** before making changes
-
-This ensures:
-- Systematic progress tracking
-- No context loss across tasks
-- Documented decision trail
-- Consistent workflow
+The purpose of this contract is not bureaucracy. It is to let the owner contribute primarily through vision, planning, and judgment while preventing locally impressive agent work from quietly changing the project.

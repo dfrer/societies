@@ -1,0 +1,94 @@
+{
+  "schemaVersion": 1,
+  "capturedUtc": "2026-08-25T23:18:40.7988722Z",
+  "workItem": "W3-04",
+  "purpose": "Clean-source canonical ExportRelease performance and deterministic-equivalence gate for the W3-04 implementation commit.",
+  "source": {
+    "commit": "c107d18d75642fd535be8a058c292a11ab77af77",
+    "tree": "2c4df6a462b94b757ba4651c853df2ade500fa9b",
+    "repositoryRoot": "C:\\Users\\hunte\\.codex\\worktrees\\w304\\societies",
+    "cleanAtInvocation": true,
+    "verifiedReleaseExecution": true
+  },
+  "run": {
+    "command": "scripts/run-performance-baseline-matrix.ps1 -OutputRoot artifacts/performance/w304-c107d18-clean",
+    "exitCode": 0,
+    "status": "pass",
+    "contractStatus": "pass",
+    "rawBudgetStatus": "target_missed",
+    "pairs": "14/14",
+    "artifactHashesVerified": "354/354",
+    "fullMatrix": true,
+    "medianOfThree": true,
+    "releaseBaselineEvidence": true
+  },
+  "contracts": {
+    "coldWarmDeterministicEquivalence": true,
+    "soakDeterministicRepeat": true,
+    "forcedInvalidationCorrect": true,
+    "referenceSafetyPassed": true,
+    "soakSafetyPassed": true,
+    "forcedInvalidationSafetyPassed": true
+  },
+  "referenceAssessment": {
+    "trialCount": 3,
+    "medianP95Milliseconds": 48.0286,
+    "medianP99Milliseconds": 139.4526,
+    "medianMaximumMilliseconds": 171.7133,
+    "medianTotalMilliseconds": 5559.3664,
+    "safetyP95LimitMilliseconds": 50.0,
+    "safetyMaximumLimitMilliseconds": 250.0,
+    "formalTargetPassed": false,
+    "safetyPassed": true,
+    "deterministicHash": "6d1cbcb25efc8c088889eb5c0f30a1fd195405ee539f4d1e34a815001a0fa5d9"
+  },
+  "soakAssessment": {
+    "trialCount": 2,
+    "p95Milliseconds": [43.6284, 38.8121],
+    "maximumMilliseconds": [178.7319, 185.1226],
+    "formalTargetPassed": false,
+    "safetyPassed": true,
+    "deterministicRepeat": true,
+    "deterministicHash": "7a04b21fdeccf0f3630cd0541c797da13c2ad25a983514920f18c55474af80c1"
+  },
+  "forcedInvalidationAssessment": {
+    "transitionCorrect": true,
+    "commitToFirstCorrectLookupMilliseconds": 26.0146,
+    "targetLimitMilliseconds": 150.0,
+    "safetyLimitMilliseconds": 250.0,
+    "targetPassed": true,
+    "safetyPassed": true,
+    "deterministicHash": "9e4a89a3049911b8978ddd7bcd906161f8b82756c68e05ad70dc4fde220dc66d"
+  },
+  "c24Characterization": {
+    "classification": "characterization",
+    "safetyGateApplied": false,
+    "p95Milliseconds": 152.1691,
+    "maximumMilliseconds": 185.3862,
+    "targetPassed": false
+  },
+  "gateReconciliation": {
+    "rawRunnerDisposition": "target_missed because the aspirational performance target was not met; the runner reported no hard-safety or determinism failure.",
+    "milestoneDisposition": "green because the reference medians, both soaks, forced invalidation, all 14 pairs, and all 354 artifact hashes satisfy the established correctness and safety gates.",
+    "interpretation": "The raw target_missed result is preserved and is not relabeled as a formal target pass."
+  },
+  "artifactBindings": {
+    "validationManifest": {
+      "path": "artifacts/performance/w304-c107d18-clean/validation-manifest.json",
+      "sha256": "a26234bd7af3e2b559a57448ba6a6c4dca8a16c819b14ca7fd3287fd0cfc3b15"
+    },
+    "performanceResults": {
+      "path": "artifacts/performance/w304-c107d18-clean/perf-results.json",
+      "sha256": "9fda3dd398d0a8154cf814fdda06bc5595b15ab7b91af52606f8d57ef27f95fe"
+    },
+    "summary": {
+      "path": "artifacts/performance/w304-c107d18-clean/summary.txt",
+      "sha256": "2d47f3d12710ad2b5c5027307d13b561aaf2ff0b729c50eba16ea237fa1c498e"
+    }
+  },
+  "limitations": [
+    "Timing is a single-session local measurement and is not a causal comparison against W3-03.",
+    "The ignored raw artifact directory is locally retained; this committed record binds its canonical summary, result, and manifest hashes.",
+    "The 24-citizen case is characterization-only, and the formal performance target remains missed."
+  ]
+}

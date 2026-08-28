@@ -23,6 +23,8 @@ Only the user may promote Candidate decisions to Accepted.
 | CON-005 | Accepted | Model failure or offline operation must preserve simulation progress and deterministic replay. | The game must remain a coherent simulation without a provider. | [Product Thesis](../PRODUCT-THESIS.md) | Deterministic fallback behavior is required for every LLM-assisted action. |
 | CON-006 | Accepted | Concept work does not authorize implementation; the active plan remains execution authority. | Prevents a parallel design track from becoming a competing roadmap. | [Concept Studio README](README.md) | Weekly handoffs recommend rather than silently schedule work. |
 | CON-007 | Accepted | The Concept Studio prepares and finishes the next two-week sprint proposal before the current sprint ends. | Continuous clarification should improve the next plan without disrupting current implementation. | User direction, 2026-07-14 | The draft advances weekly, includes conditional closing branches, and requires explicit promotion. |
+| CON-008 | Accepted | Societies is the embodied player-facing frontend for Snow Globe; the old Societies demo is reusable deterministic infrastructure, not the accepted product presentation. | The user rejected continued refinement of the old demo as materially insufficient in concept, gameplay, visuals, quality, and overall experience. | User direction, 2026-08-26 | Product definition and an accepted visual target precede more implementation. Snow Globe may enrich citizen cognition behind a validated seam, while the deterministic runtime remains world authority. |
+| CON-009 | Accepted | The player is an embodied resident-founder with limited formal power who earns influence through visible contribution, kept commitments, and persuasion; autonomous citizens may negotiate, counter, refuse, withdraw labor, or proceed without the player. The first slice centers on a failing wetland causeway and a negotiated water-control commitment with visible ecological, material, and social consequences. | Establishes a consequential human role without turning the player into either a powerless laborer or an omnipotent manager, and gives Snow Globe cognition a materially grounded job. | User direction, 2026-08-26; [Frontend Recovery Plan](../active/v3-snow-globe-frontend-recovery-plan.md) | F0 is closed. F1 must express this exact situation visually and interactively. Gameplay cognition begins through a provider-neutral Interface with deterministic/recorded Adapters; live provider execution remains a separate gate. |
 
 ## Pending Decisions
 
@@ -30,4 +32,4 @@ Candidate decisions created during interviews belong below this line until the u
 
 | ID | Status | Proposed decision | Why it matters | Required user choice |
 |---|---|---|---|---|
-| — | — | No candidates yet. | — | Begin the player-role interview. |
+| — | — | No candidates currently await approval. | — | F1 will present three materially different visual/interaction directions. |
