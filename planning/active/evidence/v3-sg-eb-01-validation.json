@@ -1,13 +1,13 @@
 {
-  "schema": "societies_sg_eb_01_validation/v1",
+  "schema": "societies_sg_eb_01_validation/v2",
   "recorded_date": "2026-08-27",
-  "milestone": "EB-01 Founder Worldcraft Vertical Slice",
-  "status": "technical_candidate_product_gate_failed",
-  "base_commit": "c8e4f758588e7c8a04f465034489a53a56fb1e8e",
-  "branch": "codex/snow-globe-eco-baseline",
-  "implementation_commit": "f0a8b5071c385a333208e45e0dbbcdc53b62ef2b",
-  "pull_request": 181,
-  "pull_request_base": "codex/snow-globe-voxel-foundation",
+  "milestone": "EB-01R Player HUD, UI, and Interaction Replacement",
+  "status": "technical_replacement_candidate_human_gate_open",
+  "base_commit": "29021b221abc99ff0e5d35b0df067eec1d2422cc",
+  "branch": "codex/snow-globe-eb01-ui-replacement",
+  "implementation_commit": "00024cd67c8d889fd2e448cd95b45fc580253198",
+  "pull_request": 182,
+  "pull_request_base": "codex/snow-globe-eco-baseline",
   "authority": {
     "runtime": "PrototypeRuntimeSession",
     "intent_seam": "GameManager",
@@ -21,9 +21,14 @@
     "floor, wall, and post placement with rotation, cost, support, overlap, range, dismantle, and material recovery",
     "versioned canonical worldcraft history and exact save-load-replay validation",
     "incremental bounded replay cursor",
-    "voxel-mode hotbar, build strip, contextual feedback, and suppressing inventory panel",
-    "directional lighting, shadow-capable terrain and construction materials",
-    "private-desktop rendered diagnostic with live input disabled"
+    "eight-slot tactile tool belt and centered eight-slot field pack with exact capacity",
+    "three pointer and keyboard build cards with authoritative cost and affordability projection",
+    "contextual gather, placement, dismantle, success, and rejection feedback",
+    "reliable focused-GUI Tab and Escape handling with pack action suppression",
+    "separate 4.5-unit gather-dismantle reach and 8.5-unit non-mutating build preview",
+    "green valid and red invalid placement ghosts derived from authoritative evaluations",
+    "readable floor, wall, and post construction with non-colliding timber and brass detail",
+    "dual-resolution private-desktop rendered diagnostics with live input disabled"
   ],
   "review": {
     "initial_result": "STOP",
@@ -34,14 +39,21 @@
       "orphan and unsaveable-state rejection",
       "exact presenter rebuild after load",
       "failed load and failed save inertness",
-      "bounded construction-history replay"
+      "bounded construction-history replay",
+      "pack overlap and GUI action suppression",
+      "actual Tab binding and focused-control propagation",
+      "authoritative stale and out-of-range presentation",
+      "rejected placement anchor and rotation projection metadata",
+      "original gather reach preserved while build preview reaches rejection range",
+      "distinct valid and invalid rendered ghosts",
+      "committed floor, wall, and post readability at both resolutions"
     ],
     "final_result": "GO",
     "remaining_p0_to_p3": 0
   },
   "validation": {
     "focused_managed": {
-      "passed": 19,
+      "passed": 26,
       "failed": 0
     },
     "replay_cap": {
@@ -70,28 +82,47 @@
     "diff_check": "passed_with_windows_line_ending_notices"
   },
   "rendered_diagnostic": {
-    "output": "artifacts/visual/eb01-20260827-r2",
-    "exit_code": 0,
-    "capture_count": 10,
-    "resolution": "960x540",
+    "historical_failed_predecessor": {
+      "output": "artifacts/visual/eb01-20260827-r2",
+      "capture_count": 10,
+      "resolution": "960x540",
+      "visual_assessment": "failed"
+    },
+    "final_runs": [
+      {
+        "output": "artifacts/visual/eb01r-20260827-1280x720-r6",
+        "resolution": "1280x720",
+        "exit_code": 0,
+        "capture_count": 13,
+        "launcher_evidence": "artifacts/visual/eb01r-20260827-1280x720-r6/launcher-evidence.json",
+        "runner_evidence": "artifacts/visual/eb01r-20260827-1280x720-r6/isolation-evidence.json"
+      },
+      {
+        "output": "artifacts/visual/eb01r-20260827-1920x1080-r6",
+        "resolution": "1920x1080",
+        "exit_code": 0,
+        "capture_count": 13,
+        "launcher_evidence": "artifacts/visual/eb01r-20260827-1920x1080-r6/launcher-evidence.json",
+        "runner_evidence": "artifacts/visual/eb01r-20260827-1920x1080-r6/isolation-evidence.json"
+      }
+    ],
     "active_desktop_targeted": false,
     "live_input_disabled": true,
     "descendant_custody_verified": true,
-    "launcher_evidence": "artifacts/visual/eb01-20260827-r2/launcher-evidence.json",
-    "runner_evidence": "artifacts/visual/eb01-20260827-r2/isolation-evidence.json",
-    "visual_assessment": "failed",
-    "findings": [
-      "directional shadows are present but terrain remains a noisy repetitive field of similar columns",
-      "material and landmark hierarchy is insufficient for orientation",
-      "inventory remains a small text list rather than a proper player-facing inventory surface",
-      "valid and invalid placement ghosts are not legible in the captured play view",
-      "floor, wall, and post do not read clearly as a constructed object in the overview",
-      "HUD structure is cleaner but still prototype text rather than an acceptable Eco-like baseline"
-    ]
+    "matching_runner_source_sha256": "ded9aba297bcea9e16d7c2b3f31e92567f3d6af2f85e90c898a21dadd8b4455c",
+    "matching_executed_assembly_sha256": "90fd59214c032cd7b07bb8a51282645e520a3c7a2a506239d0f41aa10bf833f9",
+    "visual_assessment": "replacement_candidate_passed_internal_inspection",
+    "proven_states": [
+      "centered non-overlapping field pack with eight slots",
+      "persistent eight-slot tool belt and three build cards",
+      "distinct pale-green valid and red occupied placement ghosts with textual reasons",
+      "authoritative gather and placement confirmations",
+      "committed floor, wall, and post readable on intact terrain support"
+    ],
+    "limitation": "The bundles are internally provenance-consistent; a later validation rebuild changed the current Debug assembly, and screenshots do not constitute human acceptance."
   },
   "performance": {
     "claim": "characterization_only",
-    "scene_startup_ms": 875.528,
     "collision_bodies": 64,
     "initial_collision_shapes": 12777,
     "post_edit_collision_shapes": 12781,
@@ -113,5 +144,5 @@
     "document": "planning/research/completed/r9-project-sid-architecture-study.md",
     "adoption_boundary": "paper-pattern study only; no software dependency or code reuse"
   },
-  "next_action": "Start the next session with an EB-01 visual and interaction replacement pass before EB-02, using the manual route and failed rendered findings as the product gate."
+  "next_action": "Run scripts/play-snow-globe-eco-baseline.ps1 for representative play and explicitly score world readability, HUD hierarchy, inventory usability, construction clarity, and interaction feel at least 4/5 before EB-02."
 }

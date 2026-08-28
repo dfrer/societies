@@ -1245,3 +1245,25 @@ The offline Cognition Quality Corpus v1 is implemented in the isolated Snow Glob
 ## Continue with
 
 - Start the next session with an EB-01 visual and interaction replacement pass. Do not begin EB-02 or citizen/provider expansion until the user plays the route and scores all five product gates at least 4/5.
+
+# EB-01R player HUD, inventory, and interaction replacement (2026-08-27)
+
+## Outcome and scope
+
+- Replaced the rejected voxel text HUD with an eight-slot tactile tool belt and field pack, three build cards, contextual target/action prompts, and concise gather/place/dismantle success and rejection feedback.
+- Preserved `PrototypeRuntimeSession` as sole mutation and placement-validity authority. `GameManager` remains the intent seam; rejected evaluations now retain non-authoritative anchor/rotation projection metadata so invalid ghosts render at the requested target.
+- Kept the original 4.5-unit gather/dismantle reach while allowing an 8.5-unit non-mutating build preview. Focused UI controls relay Tab/Escape through the real viewport input path, and the open pack suppresses world/build actions.
+- Improved floor/wall/post presentation without changing authoritative footprints or collision: decorative timber/brass details are non-colliding, and the diagnostic constructs all three above intact terrain support.
+
+## Validation and evidence
+
+- Final independent deep review: GO, no P0-P3 findings after closing shared-ray reach, focused-GUI shortcut, invalid-ghost metadata, and construction-readability defects.
+- Authoritative wrapper: exit 0; 507/507 managed and 28/28 Godot tests. Direct Godot: 28/28. Release and ExportRelease: 0 warnings/errors. `git diff --check`: clean apart from Windows line-ending notices.
+- Final private-desktop evidence: `artifacts/visual/eb01r-20260827-1280x720-r6` and `artifacts/visual/eb01r-20260827-1920x1080-r6`; both exit 0 with 13 captures, alternate-desktop custody, live input disabled, and matching runner/source assembly provenance.
+- The dirty primary checkout and unrelated `icon.svg.import` working-copy normalization remained untouched and unstaged.
+
+## Repository state, risks, and next action
+
+- Isolated branch `codex/snow-globe-eb01-ui-replacement` is based on exact PR #181 head `29021b221abc99ff0e5d35b0df067eec1d2422cc`; implementation commit is `00024cd67c8d889fd2e448cd95b45fc580253198`. Stacked PR #182 targets `codex/snow-globe-eco-baseline`; merge is not authorized.
+- Human representative play, subjective visual/accessibility acceptance, hosted CI, and performance acceptance remain open. The scene still begins with 12,777 collision shapes, and the historical 51.9392 ms safety failure is unresolved.
+- Next action: run `scripts/play-snow-globe-eco-baseline.ps1`, play the complete gather/build/dismantle/save-load route, and explicitly score world readability, HUD hierarchy, inventory usability, construction clarity, and interaction feel. Do not begin EB-02 until every score is at least 4/5.
