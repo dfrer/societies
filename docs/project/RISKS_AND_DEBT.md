@@ -88,13 +88,13 @@ This register distinguishes current reality from planned fixes. Priority reflect
 
 **Control:** preserve the exact accepted archive branch, close predecessor PRs as superseded after the consolidation PR exists, use `master` plus one active branch, and treat other branches as history unless explicitly adopted.
 
-### Default branch is not technically protected
+### Default branch protection was not technically protected — resolved
 
-**Evidence:** the repository ruleset API returns no active rulesets; the connected integration cannot write classic branch-protection settings.
+**Evidence:** PR #186 from `chore/complete-master-protection-v1` merged at `420738bfc1b51cffacd94845b4e10cb9c72db081`. Classic branch protection is now observed on `master`; rulesets are empty. Pull requests, strict/up-to-date `build-test-smoke` and `lab-tests` contexts (GitHub Actions app id `15368`), admin enforcement, conversation resolution, and the configured no-bypass policy are enabled as recorded in `docs/project/CURRENT_STATE.md`.
 
-**Consequence:** a direct or force push can bypass the documented PR and validation contract.
+**Consequence:** the documented PR and validation contract is enforced for the default branch.
 
-**Control:** issue [#184](https://github.com/dfrer/societies/issues/184) defines the exact manual configuration and verification. Keep this risk open until the rule is observed.
+**Control:** retain the exact policy and PR #186 evidence in current state; no product or release readiness is inferred from this administrative control.
 
 ### Local evidence is stronger than hosted evidence
 

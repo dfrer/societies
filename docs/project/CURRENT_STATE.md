@@ -3,8 +3,8 @@
 - **Status date:** 2026-08-28
 - **Accepted runtime source:** `847c86b1c379e6a1dd8d4b7b641c3c89646e28c9`
 - **Preservation branch:** `archive/pre-consolidation-2026-08-27`
-- **Consolidation integration record:** PR #183
-- **Integrated master commit:** `54a4e5c0ea1297438b06e4b40ea14391db343657`
+- **Consolidation integration record:** PR #183 at `54a4e5c0ea1297438b06e4b40ea14391db343657`
+- **Governance workflow integration / master before documentation closeout:** `420738bfc1b51cffacd94845b4e10cb9c72db081`
 - **Active milestone:** `planning/active/MILESTONE.md`
 
 This document reports what is proven, not everything planned or implemented somewhere in repository history.
@@ -75,11 +75,18 @@ This work is technically meaningful. It remains laboratory infrastructure until 
 ## Repository authority: proven
 
 - PR #183 is merged into `master` at `54a4e5c0ea1297438b06e4b40ea14391db343657`.
+- Branch-protection repair branch `chore/complete-master-protection-v1` was merged as PR #186 at `420738bfc1b51cffacd94845b4e10cb9c72db081`.
 - The exact accepted pre-consolidation source remains preserved on `archive/pre-consolidation-2026-08-27` at `847c86b1c379e6a1dd8d4b7b641c3c89646e28c9`.
 - PR #178 is recognized as merged ancestry; #177 and #179–#182 are closed as superseded with links to #183.
 - No pull requests remain open after consolidation closeout.
 - Historical plans and branches remain recoverable but carry no execution authority.
 - No next product feature is authorized until the owner-led planning discussion selects a bounded proof.
+
+### Master governance policy: proven
+
+`master` uses classic branch protection; the repository has no active rulesets. Pull requests are required, with zero required approvals. The required GitHub Actions contexts are exactly `build-test-smoke` and `lab-tests`, both provided by the GitHub Actions app (id `15368`), with strict/up-to-date enforcement enabled. Stale-approval dismissal, code-owner review, and last-push approval are disabled. Admin enforcement is enabled, with no bypass actors or restrictions. Conversation resolution is required. Force pushes and branch deletion are disabled; linear history, signed commits, and lock-branch settings are not enabled.
+
+The repair was evidenced by PR #186 and its merge commit above. Follow-up PR #187 (unrelated `.github/pull_request_template.md`) and PR #188 (harmless `labs/README.md`) both became CLEAN after the required checks, then closed unmerged with their branches deleted; neither changed product scope. #187 recorded `build-test-smoke` pass (6s), Windows skipped, and final `lab-tests` pass (3s; relevant=false, detection succeeded, lab skipped). #188 recorded `build-test-smoke` pass (8s), classifier pass, Windows pass (6m4s; 1,186 passed, 5 documented evidence-only skips, 56 benchmark, 94 recording, 104 offline OpenRouter), and final `lab-tests` pass with relevant=true, detection success, and lab success.
 
 ## Not yet proven
 
@@ -100,8 +107,8 @@ This work is technically meaningful. It remains laboratory infrastructure until 
 - The accepted worldcraft scene has no citizens; product progress can stall if more worldcraft or provider infrastructure is added first.
 - `GameManager`, HUD, diagnostic, voxel, run-store, and provider components have grown large enough to require targeted decomposition when a product slice touches them.
 - The repository has extensive stale branches and historical planning. The authority system prevents their use but does not erase Git history.
-- Public branch metadata reports `master` protected with `build-test-smoke` required. The connected integration cannot read the complete policy, and `lab-tests` is not listed as required. Issue [#184](https://github.com/dfrer/societies/issues/184) records the remaining manual audit and laboratory-gate hardening.
-- The active milestone remains in feature-freeze closeout until #184 is resolved and the owner selects the next product proof.
+- Branch protection is now proven under the exact policy recorded above; no product or release gate is implied by this administrative closeout.
+- The active milestone remains in feature-freeze closeout until the owner selects the next product proof.
 
 ## Current authorization
 

@@ -6,13 +6,14 @@
 - **Product feature work authorized:** No
 - **Accepted runtime baseline:** `847c86b1c379e6a1dd8d4b7b641c3c89646e28c9`
 - **Preservation branch:** `archive/pre-consolidation-2026-08-27`
-- **Master integration commit:** `54a4e5c0ea1297438b06e4b40ea14391db343657`
+- **Consolidation integration commit:** `54a4e5c0ea1297438b06e4b40ea14391db343657`
+- **Governance workflow integration / master before documentation closeout:** `420738bfc1b51cffacd94845b4e10cb9c72db081`
 
 ## Outcome
 
 Create one durable repository and authority system from which all future Societies and Snow Globe development can proceed without rediscovering the project, following stale plans, trusting agent summaries, or requiring the owner to manage source-level decisions.
 
-The repository integration and validation work is complete. This milestone remains active only as a deliberate feature freeze until the remaining branch-protection audit is completed and the owner-led planning discussion selects the next bounded product proof.
+The repository integration and validation work is complete. This milestone remains active only as a deliberate feature freeze until the owner-led planning discussion selects the next bounded product proof.
 
 ## Why this remains the active milestone
 
@@ -50,7 +51,7 @@ No replacement product milestone has been selected yet. Keeping `CONSOLIDATION-V
 - [x] Consolidation PR #183 is reviewed and integrated into `master` at `54a4e5c0ea1297438b06e4b40ea14391db343657`.
 - [x] Obsolete stacked PRs are closed or recognized as merged ancestry with auditable links to #183.
 - [x] `planning/active/` contains only this milestone, its index, and compatibility evidence.
-- [ ] Audit and complete branch protection under issue #184. Public metadata reports `master` protected with `build-test-smoke` required, but the full policy is unreadable through the integration and `lab-tests` is not listed as required.
+- [x] Audit and complete branch protection under issue #184: classic protection is active with no active rulesets; pull requests, strict/up-to-date `build-test-smoke` and `lab-tests` contexts (GitHub Actions app id `15368`), admin enforcement, conversation resolution, and no bypass actors are enforced as recorded in current state.
 - [ ] The owner and planning agent explicitly select the next product proof after reviewing current state and risks.
 
 ## Integration evidence
@@ -65,6 +66,8 @@ No replacement product milestone has been selected yet. Keeping `CONSOLIDATION-V
 - Snow Globe core: 1,186 passed, 5 evidence-only skips, 0 failed;
 - benchmark, recording, and OpenRouter CLI suites: 56/56, 94/94, and 104/104;
 - no open pull requests remain after the superseded chain closeout.
+- branch-protection repair branch `chore/complete-master-protection-v1` -> PR #186 -> merge `420738bfc1b51cffacd94845b4e10cb9c72db081`;
+- PR #187 became CLEAN after its unrelated template checks, then closed unmerged with its branch deleted; PR #188 became CLEAN after its harmless lab README checks, then closed unmerged with its branch deleted.
 
 ## Stop conditions
 
