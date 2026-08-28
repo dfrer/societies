@@ -4,7 +4,8 @@
 - **Accepted runtime source:** `847c86b1c379e6a1dd8d4b7b641c3c89646e28c9`
 - **Preservation branch:** `archive/pre-consolidation-2026-08-27`
 - **Consolidation integration record:** PR #183 at `54a4e5c0ea1297438b06e4b40ea14391db343657`
-- **Governance workflow integration / master before documentation closeout:** `420738bfc1b51cffacd94845b4e10cb9c72db081`
+- **Governance workflow integration:** PR #186 at `420738bfc1b51cffacd94845b4e10cb9c72db081`
+- **Governance documentation closeout / current `master`:** PR #189 at `1eaa1ab6b0c79550a99c9cad68c4ea04e9fdea75`
 - **Active milestone:** `planning/active/MILESTONE.md`
 
 This document reports what is proven, not everything planned or implemented somewhere in repository history.
@@ -76,6 +77,7 @@ This work is technically meaningful. It remains laboratory infrastructure until 
 
 - PR #183 is merged into `master` at `54a4e5c0ea1297438b06e4b40ea14391db343657`.
 - Branch-protection repair branch `chore/complete-master-protection-v1` was merged as PR #186 at `420738bfc1b51cffacd94845b4e10cb9c72db081`.
+- Branch-protection documentation closeout PR #189 is merged; current `master` is `1eaa1ab6b0c79550a99c9cad68c4ea04e9fdea75`.
 - The exact accepted pre-consolidation source remains preserved on `archive/pre-consolidation-2026-08-27` at `847c86b1c379e6a1dd8d4b7b641c3c89646e28c9`.
 - PR #178 is recognized as merged ancestry; #177 and #179–#182 are closed as superseded with links to #183.
 - No pull requests remain open after consolidation closeout.

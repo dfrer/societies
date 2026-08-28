@@ -54,13 +54,13 @@ This register distinguishes current reality from planned fixes. Priority reflect
 
 **Control:** decompose only when a bounded product task touches a hotspot and characterization tests can preserve behavior. Do not launch a repository-wide rewrite.
 
-### Test-manifest drift
+### Test-manifest drift — resolved
 
-**Evidence:** `tests/test-manifest.json` declares 494 managed and 27 Godot tests while the accepted handoff reports 507 and 28.
+**Evidence:** the pre-consolidation manifest mismatch was reconciled before integration. `tests/test-manifest.json` now declares the discovered **507 managed / 387 fast / 28 Godot** counts; hosted evidence passed 507/507 complete managed tests, 387/387 fast tests, and 28/28 Godot tests with count enforcement.
 
-**Consequence:** tier claims and CI expectations can become dishonest even when tests pass.
+**Consequence:** current test-tier claims and CI expectations are aligned with hosted discovery. Future drift remains possible but is no longer an open baseline defect.
 
-**Control:** use hosted discovery from the consolidation PR, reconcile counts and tier filters in a focused follow-up if needed, and never manually guess counts.
+**Control:** retain manifest-count enforcement in pull-request and weekly-full workflows; reopen this risk only if hosted discovery and the declared authority diverge.
 
 ### Persistence and migration surface area
 
@@ -72,21 +72,21 @@ This register distinguishes current reality from planned fixes. Priority reflect
 
 ## P1 — delivery risks
 
-### Accepted code is not yet on `master`
+### Accepted code was not yet on `master` — resolved
 
-**Evidence:** the accepted stack is fourteen commits ahead of the current default branch.
+**Evidence:** the accepted stack was integrated through PR #183 at `54a4e5c0ea1297438b06e4b40ea14391db343657`; repository-governance closeout is integrated through current `master` at `1eaa1ab6b0c79550a99c9cad68c4ea04e9fdea75`. The exact accepted runtime source remains preserved at `847c86b1c379e6a1dd8d4b7b641c3c89646e28c9`.
 
-**Consequence:** new work may start from the wrong base and status documents can disagree with the default branch.
+**Consequence:** the default branch now contains the accepted integrated stack, so future work no longer needs to choose between `master` and an unmerged accepted delivery head.
 
-**Control:** one consolidation PR from the accepted head; no new product stack until integration.
+**Control:** branch new work from an explicitly verified current `master`; use the preservation branch as historical recovery evidence, not as a development base.
 
-### Stacked PR and branch ambiguity
+### Historical branch sprawl and stale-base ambiguity
 
-**Evidence:** several open recovery/voxel/worldcraft PRs represent predecessor or stacked delivery paths. The repository also retains many generated Codex branches.
+**Evidence:** the former recovery, voxel, and worldcraft pull-request stack is closed or merged ancestry through PR #183. Numerous historical and generated Codex branches still remain in the repository.
 
-**Consequence:** agents can select obsolete bases or duplicate work.
+**Consequence:** agents can still select stale branches, infer authority from branch names, or duplicate superseded work even though no delivery PR stack remains open.
 
-**Control:** preserve the exact accepted archive branch, close predecessor PRs as superseded after the consolidation PR exists, use `master` plus one active branch, and treat other branches as history unless explicitly adopted.
+**Control:** use current `master` plus one bounded active branch; take execution authority only from the active milestone; treat retained branches as history unless explicitly adopted. Do not delete historical branches merely to make the repository look clean.
 
 ### Default branch protection was not technically protected — resolved
 
@@ -96,13 +96,13 @@ This register distinguishes current reality from planned fixes. Priority reflect
 
 **Control:** retain the exact policy and PR #186 evidence in current state; no product or release readiness is inferred from this administrative control.
 
-### Local evidence is stronger than hosted evidence
+### Hosted validation gap — resolved
 
-**Evidence:** the accepted handoff reports extensive local tests and desktop capture, while hosted workflow status was not attached to the final stacked head.
+**Evidence:** the final consolidation path received hosted product and laboratory validation before merge: 507/507 complete managed tests, 387/387 pull-request fast tests, 28/28 Godot tests, warning-free authoritative product and laboratory Release builds, and the full Windows Snow Globe suites with 1,186 core passes plus the five documented evidence-only skips, 56 benchmark, 94 recording, and 104 offline OpenRouter tests.
 
-**Consequence:** environment-specific or integration failures may remain hidden.
+**Consequence:** the accepted integrated baseline no longer depends on local-only evidence. Hosted validation still does not establish visual quality, social coherence, performance acceptance, accessibility, or release readiness.
 
-**Control:** run the required GitHub Actions suite on the consolidation PR and record the result before merge.
+**Control:** keep both required contexts green on future pull requests and preserve separate runtime and human gates for claims that CI cannot prove.
 
 ## P2 — documentation and laboratory debt
 
