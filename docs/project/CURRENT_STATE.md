@@ -14,7 +14,7 @@ This document reports what is proven, not everything planned or implemented some
 
 Societies has a substantial deterministic foundation and a user-accepted bounded founder-worldcraft experience. Snow Globe is making materially better, more unified progress than the fragmented pre-V3 period. The project has crossed from speculative architecture into a credible product base.
 
-It has **not** yet proven its central thesis. The accepted player-facing scene still contains zero participating citizens, and the isolated cognition laboratory has not yet become an embodied social interaction inside the authoritative Godot world. The owner has selected **Causeway Before Nightfall** as the next bounded proof: exactly Mara, Ivo, and Sena must participate in one deterministic material, ecological, and social consequence. This selection authorizes no implementation until the planning PR merges.
+It has **not** yet proven its central thesis. The accepted player-facing scene still contains zero participating citizens, and the isolated cognition laboratory has not yet become an embodied social interaction inside the authoritative Godot world. The owner selected **Causeway Before Nightfall** in repository decision record [D-014](DECISION_LOG.md#d-014--select-the-three-citizen-causeway-before-nightfall-proof) as the next bounded proof: exactly Mara, Ivo, and Sena must participate in one deterministic material, ecological, and social consequence. This selection authorizes no implementation until the planning PR merges.
 
 ## Product runtime: proven
 
@@ -32,7 +32,7 @@ The accepted EB-01R bounded slice adds or proves:
 - a centered field-kit/tool-belt interaction surface;
 - user-accepted world readability, HUD hierarchy, inventory usability, construction clarity, and interaction feel.
 
-The acceptance was explicitly recorded on 2026-08-27. Numeric per-axis scores were not supplied and are not inferred.
+The acceptance is recorded in the [EB-01R repository attestation](../../planning/active/evidence/v3-sg-eb-01-validation.json). Numeric per-axis scores were not supplied and are not inferred.
 
 The accepted voxel scenario itself remains socially empty: it declares `initialCitizens: 0`, and current catalog validation forbids citizens, resources, stock, and crisis state in voxel scenarios. Legacy heightfield worker, civic, wetland, and crisis systems remain reusable infrastructure and regression harnesses, not accepted social UX or an alternate current product route.
 
@@ -116,8 +116,8 @@ The selected contract requires the player's own shelter to be exposed and their 
 
 ## Known red or open gates
 
-- Accepted-scene characterization records **64 collision bodies**, **12,777 initial collision shapes**, and **12,781 shapes after an edit**; scaling is unresolved.
-- A historical `51.9392 ms` safety miss remains unresolved. There is no representative accepted-scene frame/physics timing baseline for the fixed Causeway route, so existing figures are characterization only.
+- The [EB-01R repository attestation](../../planning/active/evidence/v3-sg-eb-01-validation.json) characterizes **64 collision bodies**, **12,777 initial collision shapes**, and **12,781 shapes after an edit**; scaling is unresolved.
+- A historical [`51.9392 ms` safety miss](../history/pre-consolidation-2026-08-27/root/CURRENT_BUILD.md) remains unresolved. There is no representative accepted-scene frame/physics timing baseline for the fixed Causeway route, so existing figures are characterization only, not acceptance.
 - The accepted worldcraft scene has no citizens; product progress can stall if more worldcraft or provider infrastructure is added first.
 - A narrow scenario can become a scripted quest or player-puppet sequence if citizen knowledge, independent action, refusal, commitment, and no-player routes are not derived from authoritative state.
 - A tally, privileged player choice, or magical veto could counterfeit social causality. The milestone permits influence only from role authority, bounded knowledge, material custody, labor availability, obligations, trust, dependency, and current world facts, with perturbation tests for those causes.
@@ -128,7 +128,7 @@ The selected contract requires the player's own shelter to be exposed and their 
 
 ## Current authorization
 
-The owner has approved `SNOW-GLOBE-SOCIAL-KERNEL-V1 — Causeway Before Nightfall`. The planning branch remains documentation-only and authorizes no implementation while unmerged. Once its planning PR merges, authorization is limited to the milestone's nine ordered packets, beginning with packet 01; each packet is one PR from the then-current `master` after its predecessor merges.
+The owner approved `SNOW-GLOBE-SOCIAL-KERNEL-V1 — Causeway Before Nightfall` in repository decision record [D-014](DECISION_LOG.md#d-014--select-the-three-citizen-causeway-before-nightfall-proof). The planning branch changes planning documentation and repository-governance validation only; it changes no product/runtime behavior and creates no unmerged implementation authority. Once its planning PR merges, authorization is limited to the milestone's nine ordered packets, beginning with packet 01; each packet is one PR from the then-current `master` after its predecessor merges.
 
 No historical milestone label is current authority. No live-provider, network, credential, paid, billing, raw-response, operator-store, deployment, publishing, release, or adjacent feature work is authorized.
 

@@ -1,7 +1,7 @@
 # SNOW-GLOBE-SOCIAL-KERNEL-V1 — Causeway Before Nightfall
 
 - **Status:** Active when this planning PR merges
-- **Owner approval:** Granted 2026-08-28 for the outcome and bounded sequence below
+- **Owner approval:** Granted 2026-08-28 in repository decision record [D-014](../../docs/project/DECISION_LOG.md#d-014--select-the-three-citizen-causeway-before-nightfall-proof) for the outcome and bounded sequence below
 - **Feature-work authorization:** before planning-PR merge: **No**; after merge to `master`: **Yes, ordered packets only**
 - **Accepted runtime baseline:** `847c86b1c379e6a1dd8d4b7b641c3c89646e28c9`
 - **Planning base:** `c71014c30662e509cee0de2f8ef40c37d59918cf`
@@ -23,7 +23,7 @@ The accepted scene is a credible player-facing worldcraft base, but it still has
 
 ### Accepted product baseline
 
-- Commit `847c86b1c379e6a1dd8d4b7b641c3c89646e28c9` preserves the owner-accepted world readability, HUD hierarchy, inventory usability, construction clarity, and interaction feel.
+- Commit `847c86b1c379e6a1dd8d4b7b641c3c89646e28c9` preserves the owner-accepted world readability, HUD hierarchy, inventory usability, construction clarity, and interaction feel recorded in the [EB-01R repository attestation](evidence/v3-sg-eb-01-validation.json).
 - The accepted voxel scenario starts with `initialCitizens: 0`.
 - Voxel-scenario catalog validation currently forbids citizens, resources, stock, and crisis state; those capabilities cannot be assumed to exist merely because legacy scenario formats contain them.
 - Legacy heightfield worker, civic, wetland, and crisis systems are reusable infrastructure and regression harnesses. They are not accepted social UX and must not be exposed as the current product route.
@@ -37,8 +37,8 @@ The accepted scene is a credible player-facing worldcraft base, but it still has
 
 ### Performance starting point
 
-- Accepted-scene evidence characterizes **64 collision bodies**, **12,777 initial collision shapes**, and **12,781 shapes after an edit**.
-- A historical `51.9392 ms` safety miss remains unresolved.
+- The [EB-01R repository attestation](evidence/v3-sg-eb-01-validation.json) characterizes **64 collision bodies**, **12,777 initial collision shapes**, and **12,781 shapes after an edit**.
+- A historical [`51.9392 ms` safety miss](../../docs/history/pre-consolidation-2026-08-27/root/CURRENT_BUILD.md) remains unresolved.
 - There is no representative accepted-scene frame-time baseline for the fixed Causeway route. Existing figures are characterization, not acceptance.
 
 ## Milestone-wide product contract
@@ -57,6 +57,8 @@ The accepted scene is a credible player-facing worldcraft base, but it still has
 The deterministic runtime owns causeway condition, water/wetland state, the player's exposed shelter, the player's reserved dry-timber custody, time to nightfall, other available material, citizen location and work, commitments, resource custody, and next-morning consequences. Presentation and cognition consume detached projections and submit intents or closed proposals. Every state change is validate-before-append and mutates authoritative state exactly once through recorded commands/events.
 
 A staged compromise is never instant or free. It requires immediate extra material, player labor, citizen cooperation, and a dated future wetland-restoration or shelter/causeway-repair obligation. The following morning must show what material and labor were actually delivered, whether the dated obligation remains credible or was fulfilled, and the physical, ecological, commitment, and relationship consequences of any shortfall or breach.
+
+One mandatory causeway-specific exchange is reciprocal rather than a unilateral contribution: an exact quantity of player-held material is exchanged for an exact citizen labor contribution or dated restoration/repair commitment. The proposal names both parties, material source and target, quantity, counter-term, and custody/commitment effects. Authoritative validation creates both sides atomically on acceptance and neither side on refusal, staleness, or insufficient material/labor. Exactly-once events make the exchange observable to all three citizens, change available future actions, and remain equal across uninterrupted, save/resume, and replay routes. This is not a price, purchase, market, trade UI, or generalized economy.
 
 ### Power and causal influence invariant
 
@@ -94,20 +96,21 @@ The implementation and final owner route must cover all of these from authoritat
 2. the player supports Mara's ecological priority;
 3. the player supports Ivo's access/shelter priority;
 4. the player contributes their reserved dry timber and citizens observe the sacrifice;
-5. the player keeps the reserved dry timber for their exposed shelter and citizens observe that allowed choice;
-6. the player accepts or proposes a staged costly compromise requiring immediate extra material, player labor, citizen cooperation, and a dated restoration/repair obligation;
-7. the player makes and then breaks a promise;
-8. a proposal becomes stale because time or world state changes;
-9. the player consumes a needed resource;
-10. the player withholds a needed resource;
-11. save and resume preserve the live situation and identities;
-12. absent cognition follows its typed path;
-13. malformed cognition follows its typed path;
-14. late, stale, and cancelled cognition follow their distinct typed paths;
-15. unavailable cognition follows its typed path;
-16. deterministic fallback preserves identity and available actions;
-17. with the same player input, a different authoritative action, known fact, material custody, or obligation for another citizen can produce a different validated outcome;
-18. the next morning visibly reflects actual physical, resource, labor, ecological, fulfillment/delivery, commitment, and relationship outcomes, including breach consequences.
+5. the player proposes the exact scenario-specific material-for-citizen-labor-or-dated-commitment exchange; acceptance creates both sides atomically, while refusal, staleness, and insufficient material/labor create neither;
+6. the player keeps the reserved dry timber for their exposed shelter and citizens observe that allowed choice;
+7. the player accepts or proposes a staged costly compromise requiring immediate extra material, player labor, citizen cooperation, and a dated restoration/repair obligation;
+8. the player makes and then breaks a promise;
+9. a proposal becomes stale because time or world state changes;
+10. the player consumes a needed resource;
+11. the player withholds a needed resource;
+12. save and resume preserve the live situation and identities;
+13. absent cognition follows its typed path;
+14. malformed cognition follows its typed path;
+15. late, stale, and cancelled cognition follow their distinct typed paths;
+16. unavailable cognition follows its typed path;
+17. deterministic fallback preserves identity and available actions;
+18. with the same player input, a different authoritative action, known fact, material custody, or obligation for another citizen can produce a different validated outcome;
+19. the next morning visibly reflects actual physical, resource, labor, ecological, fulfillment/delivery, commitment, and relationship outcomes, including breach consequences.
 
 No route may collapse into a universal cost-free ending. At least one scarce resource, labor opportunity, ecological condition, access/shelter condition, commitment, or relationship must be gained, spent, delayed, damaged, or made harder by every resolved outcome.
 
@@ -130,7 +133,7 @@ Packet 01 establishes the fixed accepted-scene route and baseline before citizen
 - one accepted-scene causeway/wetland/player-shelter situation with deterministic time and next-morning resolution;
 - exactly Mara, Ivo, and Sena as persistent embodied citizens;
 - bounded citizen knowledge, material interests, work, trust/relationship effects, and commitments required by this situation;
-- reserved dry-timber custody and sacrifice, contribution, refusal, counter-offer, staged costly compromise, promise, broken promise, resource consumption/withholding, no-player action through the following morning, citizen-to-citizen response, and independent citizen action;
+- reserved dry-timber custody and sacrifice, unilateral contribution, one causeway-specific reciprocal material-for-labor-or-dated-commitment exchange, refusal, counter-offer, staged costly compromise, promise, broken promise, resource consumption/withholding, no-player action through the following morning, citizen-to-citizen response, and independent citizen action;
 - the smallest product-owned cognition request/receipt/validation seam with deterministic and recorded adapters;
 - typed absent/malformed/late/stale/cancelled/unavailable paths and deterministic fallback;
 - save, resume, migration where required, and replay without adapter invocation;
@@ -141,13 +144,13 @@ Packet 01 establishes the fixed accepted-scene route and baseline before citizen
 
 - live models, network calls, credentials, provider selection, paid calls, billing, routing, or quality comparison;
 - provider or CLI integration, raw model responses, operator run stores, laboratory evidence stores, or provider identity in product state or UI;
-- more than three citizens, generic population simulation, open-ended memory, broad economy, policy/governance, law, markets, multiplayer, or networking;
+- more than three citizens, generic population simulation, open-ended memory, broad economy, prices, purchases, markets, trade UI, policy/governance, law, multiplayer, or networking;
 - a reusable quest engine, dialogue tree framework, generalized scheduler, generalized social graph, or generalized commitment language;
 - scripted puppet behavior that bypasses citizen state, validated choices, or material reasons;
 - universal happy endings, instant or cost-free compromises, majority voting, privileged player resolution, magical vetoes, or hidden corrective state;
 - broad voxel, collision, `GameManager`, persistence, laboratory, presentation, or repository refactors;
 - visual replacement of the accepted interaction base except changes required to make the three citizens and consequences readable;
-- accessibility, release, packaging, deployment, or civilization-scale readiness claims.
+- broad accessibility acceptance or certification, release, packaging, deployment, or civilization-scale readiness claims; the named Packet 09 scenario communication readability/accessibility gate remains required.
 
 ## Ordered implementation packets
 
@@ -251,49 +254,49 @@ Each packet is independently deliverable and reviewable. One packet equals one P
 
 ### Packet 05 — Three-citizen social triangle, contributions, and commitments
 
-**Product fact:** Mara, Ivo, and Sena understand different bounded facts, observe/respond to one another, express conflicting interests, contribute, counter, refuse, and form validated commitments around the same causeway situation without majority tally or privileged player resolution.
+**Product fact:** Mara, Ivo, and Sena understand different bounded facts, observe/respond to one another, express conflicting interests, contribute, make one reciprocal causeway exchange, counter, refuse, and form validated commitments around the same causeway situation without majority tally or privileged player resolution.
 
-**Owned boundary:** scenario-specific social evaluation, contribution/counter/refusal actions, commitment domain/events/projections, trust/relationship deltas needed by the triangle, and readable in-world communication.
+**Owned boundary:** scenario-specific social evaluation, unilateral contribution plus reciprocal material-for-labor-or-dated-commitment proposal/commit behavior, counter/refusal actions, commitment domain/events/projections, trust/relationship deltas needed by the triangle, and readable in-world communication.
 
-**Non-goals:** generic dialogue generation, broad emotion/personality simulation, markets, governance, open-ended memory, live inference, more citizens, or universal peaceful resolution.
+**Non-goals:** generic dialogue generation, broad emotion/personality simulation, price or purchase mechanics, markets, trade UI, generalized economy, governance, open-ended memory, live inference, more citizens, or universal peaceful resolution.
 
-**Authoritative behavior:** commitments name parties, terms, deadline/state binding, evidence of fulfillment/delivery/breach, and consequences. Citizen actions use role authority, known facts, custody, available labor, obligations, trust, dependency, and world facts; the runtime validates each proposal and contribution before append. A staged compromise requires immediate extra material, player labor, citizen cooperation, and a dated restoration/repair obligation.
+**Authoritative behavior:** commitments name parties, terms, deadline/state binding, evidence of fulfillment/delivery/breach, and consequences. Citizen actions use role authority, known facts, custody, available labor, obligations, trust, dependency, and world facts; the runtime validates each proposal and contribution before append. The reciprocal exchange names both parties, exact player-held material source/target/quantity, exact citizen labor contribution or dated restoration/repair counter-term, and custody/commitment effects; acceptance records both sides atomically, while refusal, staleness, or insufficiency records neither. A staged compromise requires immediate extra material, player labor, citizen cooperation, and a dated restoration/repair obligation.
 
-**Focused and integrated validation:** Mara/Ivo support routes, kept-versus-contributed player timber, staged costly compromise, counter/refusal, contribution ownership, conflicting commitments, and cause perturbations proving that role authority, knowledge, custody, labor, obligation, trust, dependency, or world facts—not tally/player privilege/veto—change outcomes. Include same-player-input variations driven by another citizen's authoritative action/known fact/custody/obligation, validation ordering, exactly-once results, three-citizen integrated Godot tests, and triggered complete suites.
+**Focused and integrated validation:** Mara/Ivo support routes, kept-versus-contributed player timber, reciprocal exchange acceptance/refusal/stale/insufficient paths, staged costly compromise, counter/refusal, contribution ownership, conflicting commitments, and cause perturbations proving that role authority, knowledge, custody, labor, obligation, trust, dependency, or world facts—not tally/player privilege/veto—change outcomes. Prove atomic two-sided effects or no effects, exactly-once events observed by all citizens, changed future actions, same-player-input variations driven by another citizen's authoritative action/known fact/custody/obligation, validation ordering, three-citizen integrated Godot tests, and triggered complete suites.
 
-**Persistence and replay:** persist and replay citizen-known events, relationship/trust changes, commitments, validation results, and communication receipts without adapter recall or duplicate consequences.
+**Persistence and replay:** persist and replay citizen-known events, relationship/trust changes, both sides of the reciprocal exchange, commitments, validation results, and communication receipts without adapter recall or duplicate consequences; uninterrupted, save/resume, and replay exchange results are equal.
 
 **Performance implications:** measure all-three interaction and busy-state routes; classify p95 and backlog against baseline/regression/hard-safety budgets.
 
-**Runtime observation:** play support-Mara, support-Ivo, keep-timber, sacrifice-timber, staged-compromise, refusal, contribution, and citizen-to-citizen perturbation routes; confirm each outcome follows named causal inputs, changes available future action, and has no instant or universal cost-free ending.
+**Runtime observation:** play support-Mara, support-Ivo, keep-timber, sacrifice-timber, reciprocal accepted/refused/stale/insufficient exchange, staged-compromise, refusal, unilateral contribution, and citizen-to-citizen perturbation routes; confirm each outcome follows named causal inputs, changes available future action, and has no instant or universal cost-free ending.
 
 **Human gate:** owner reviews whether the three interests, reasons, counters, refusals, and commitments are understandable and whether the player feels influential but not omnipotent; rejection returns this packet to bounded rework.
 
-**Stop conditions:** stop if outcomes are dialogue-tree puppetry, citizens share hidden omniscient state, commitments are cosmetic, staged compromise lacks an immediate and dated cost, a tally/player override/veto decides the result, causal perturbations do not affect validation, one option dominates without cost, or the interaction needs a generalized social system.
+**Stop conditions:** stop if outcomes are dialogue-tree puppetry, citizens share hidden omniscient state, commitments are cosmetic, the reciprocal exchange can create only one side or mutate more than once, staged compromise lacks an immediate and dated cost, a tally/player override/veto decides the result, causal perturbations do not affect validation, one option dominates without cost, or the interaction needs a generalized social or economic system.
 
 **Delivery:** `feature/social-kernel-05-social-triangle`, one PR from updated `master`, independent product/architecture review and named human gate before merge.
 
 ### Packet 06 — Social/material adversity and commitment consequences
 
-**Product fact:** the social kernel remains coherent when the player disengages, keeps their reserved timber, consumes or withholds needed material, stages a costly compromise, or breaks a promise; the next morning exposes actual delivery, fulfillment, shortfall, and breach consequences.
+**Product fact:** the social kernel remains coherent when the player disengages, keeps their reserved timber, consumes or withholds needed material, completes or breaches the reciprocal exchange counter-term, stages a costly compromise, or breaks a promise; the next morning exposes actual delivery, fulfillment, shortfall, and breach consequences.
 
-**Owned boundary:** social/material adversity routes, commitment fulfillment/delivery/breach logic, resource/labor/ecology/relationship consequences, following-morning projections, and player-readable causal reasons.
+**Owned boundary:** social/material adversity routes, reciprocal exchange counter-term fulfillment/delivery/breach logic, resource/labor/ecology/relationship consequences, following-morning projections, and player-readable causal reasons.
 
 **Non-goals:** cognition lifecycle failures, adapter persistence/replay, provider work, new scenario breadth, generalized quest/recovery systems, hidden auto-correction, or removal of consequences to make failure paths easy.
 
-**Authoritative behavior:** consumption/withholding and kept/contributed timber change real custody and availability. A staged compromise records immediate material/labor/cooperation plus a dated restoration/repair obligation. Fulfillment and breach derive from recorded delivery and world events; zero player input continues through nightfall to morning while citizens act and respond through normal validation.
+**Authoritative behavior:** consumption/withholding and kept/contributed timber change real custody and availability. Reciprocal labor or dated restoration/repair counter-terms derive fulfillment, shortfall, and breach from recorded work, delivery, commitment, and world events rather than presentation or inference. A staged compromise records immediate material/labor/cooperation plus a dated restoration/repair obligation. Zero player input continues through nightfall to morning while citizens act and respond through normal validation.
 
-**Focused and integrated validation:** keep/sacrifice timber, consume/withhold, staged compromise, delivery/fulfillment/shortfall/breach, broken promise, no-player citizen-to-citizen route, causal perturbations, validate-before-append, ordering/exactly-once, following-morning consequence matrix, Godot observation, and full triggered suites.
+**Focused and integrated validation:** keep/sacrifice timber, consume/withhold, reciprocal exchange delivery/fulfillment/shortfall/breach, staged compromise, broken promise, no-player citizen-to-citizen route, causal perturbations, validate-before-append, ordering/exactly-once, following-morning consequence matrix, Godot observation, and full triggered suites.
 
-**Persistence and replay:** persist and replay resource custody, labor/work, citizen observations, commitment lifecycle, delivery evidence, world events, and next-morning physical/ecological/relationship outcomes. Uninterrupted, save/resume, and replay zero-input routes must produce equal authoritative state.
+**Persistence and replay:** persist and replay resource custody, labor/work, both reciprocal exchange sides, citizen observations, commitment lifecycle, delivery evidence, world events, and next-morning physical/ecological/relationship outcomes. Uninterrupted, save/resume, and replay zero-input and exchange routes must produce equal authoritative state.
 
 **Performance implications:** exercise the busiest social/material and zero-input-to-morning routes, report fixed-route timing/collision/backlog metrics, and retain target/regression/hard-safety classification.
 
-**Runtime observation:** execute no action through morning, keep timber, sacrifice timber, consume, withhold, staged compromise, fulfilled obligation, shortfall, and broken-promise routes; verify citizens observe one another and every outcome has a visible cost.
+**Runtime observation:** execute no action through morning, keep timber, sacrifice timber, consume, withhold, reciprocal counter-term delivered/shortfall/breached, staged compromise, fulfilled obligation, shortfall, and broken-promise routes; verify citizens observe one another and every outcome has a visible cost.
 
-**Human gate:** owner confirms material sacrifice is understandable, keeping timber is allowed rather than secretly punished, staged compromise feels costly, and delivery/breach consequences are fair and meaningful enough to continue.
+**Human gate:** owner confirms material sacrifice is understandable, keeping timber is allowed rather than secretly punished, reciprocal exchange delivery/breach consequences are legible, staged compromise feels costly, and consequences are fair and meaningful enough to continue.
 
-**Stop conditions:** stop if inactivity freezes time, timber custody is cosmetic, compromise resolves instantly/free, delivery is inferred rather than recorded, breach lacks consequence, a hidden vote/player override decides the result, or save/resume/replay diverge.
+**Stop conditions:** stop if inactivity freezes time, timber or reciprocal-exchange custody is cosmetic, compromise resolves instantly/free, delivery is inferred rather than recorded, breach lacks consequence, a hidden vote/player override decides the result, or save/resume/replay diverge.
 
 **Delivery:** `feature/social-kernel-06-social-adversity`, one PR from updated `master`, independent review of authority, commitment causality, and following-morning equality before merge.
 
@@ -351,7 +354,7 @@ Each packet is independently deliverable and reviewable. One packet equals one P
 
 **Owned boundary:** only bounded presentation, pacing, readability, observation/evidence, and defects revealed by the complete route. Any substantive authority change returns to the responsible earlier packet boundary.
 
-**Non-goals:** new mechanics, fourth citizen, content breadth, live providers, release packaging, accessibility certification, broad polish pass, or changing costs to force acceptance.
+**Non-goals:** new mechanics, fourth citizen, content breadth, live providers, release packaging, broad accessibility acceptance/certification/readiness, broad polish pass, or changing costs to force acceptance. The named scenario communication readability/accessibility gate below remains required.
 
 **Authoritative behavior:** presentation reflects recorded world/citizen/commitment state and sends intents only. Final fixes cannot bypass validation, persistence, replay, or fallback contracts.
 
@@ -361,11 +364,11 @@ Each packet is independently deliverable and reviewable. One packet equals one P
 
 **Performance implications:** final route must meet regression and collision budgets and must not pass with a hard-safety breach absent explicit owner disposition. Record misses honestly.
 
-**Runtime observation:** observe support-Mara, support-Ivo, kept/sacrificed timber, staged costly compromise, zero-input citizen-to-citizen action through morning, causal perturbations, broken promise, consume/withhold, stale/failure/fallback, save/resume, and next-morning delivery/fulfillment/breach states in the actual accepted-scene route.
+**Runtime observation:** observe support-Mara, support-Ivo, kept/sacrificed timber, reciprocal accepted/refused/stale/insufficient exchange and counter-term delivery/breach, staged costly compromise, zero-input citizen-to-citizen action through morning, causal perturbations, broken promise, consume/withhold, stale/failure/fallback, save/resume, and next-morning delivery/fulfillment/breach states in the actual accepted-scene route.
 
-**Human gate:** the owner explicitly accepts or rejects citizen recognizability, citizen-to-citizen causality, motive and disagreement clarity, material sacrifice, player influence without tally/privilege/veto, consequence readability, fallback coherence, pacing/feel, and desire to continue or replay. Automated evidence cannot pass this gate.
+**Human gate:** the owner explicitly accepts or rejects citizen recognizability, citizen-to-citizen causality, motive and disagreement clarity, reciprocal exchange and material sacrifice, player influence without tally/privilege/veto, consequence readability, fallback coherence, pacing/feel, and desire to continue or replay. With audio muted and using keyboard/pointer, the owner must identify the speaker, the offered/countered/refused action, and the authoritative outcome through the embodied in-world interaction surface. Failure returns Packet 09 to bounded rework. This named gate covers scenario communication readability/accessibility only; it is not broad accessibility acceptance, certification, release, or readiness. Automated evidence cannot pass it.
 
-**Stop conditions:** stop on owner rejection, missing mandatory route, non-authoritative presentation, unresolved replay divergence, hidden provider/operator detail, performance hard-safety breach without disposition, or pressure to add breadth instead of repairing the named experience.
+**Stop conditions:** stop on owner rejection, failure of the named scenario communication readability/accessibility gate, missing mandatory route, non-authoritative presentation, unresolved replay divergence, hidden provider/operator detail, performance hard-safety breach without disposition, or pressure to add breadth instead of repairing the named experience.
 
 **Delivery:** `feature/social-kernel-09-owner-acceptance`, one final PR from updated `master`; one cohesive closeout, no release claim, and no next milestone starts until acceptance and evidence are reconciled.
 
@@ -376,6 +379,7 @@ The milestone passes only when all are true:
 - exactly Mara, Ivo, and Sena are embodied, persistent participants in the accepted scene;
 - the mandatory route matrix is mechanically validated and runtime observed;
 - the player can keep or sacrifice their reserved dry timber, contribute labor/material, promise, negotiate, accept a counter, refuse, consume/withhold resources, break a promise, or take no action;
+- the causeway-specific reciprocal exchange atomically binds exact parties, material source/target/quantity, exact citizen labor or dated restoration/repair counter-term, and custody/commitment effects; acceptance creates both sides exactly once, refusal/stale/insufficient paths create neither, all citizens observe it, future actions change, and uninterrupted/save-resume/replay results are equal;
 - citizens observe and respond to one another and can contribute, counter, delay, refuse, withdraw, or proceed for state-driven, player-readable reasons;
 - the zero-input route advances from scenario start through nightfall to the following morning and produces equal uninterrupted, save/resume, and replay state;
 - same player input can produce different validated outcomes when another citizen's authoritative action, known fact, custody, or obligation differs;
@@ -387,6 +391,7 @@ The milestone passes only when all are true:
 - save/resume/replay preserve validated receipts/results, commitments, authoritative events, and world/citizen state;
 - final fixed-route metrics meet the 10% regression and collision budgets; no hard-safety breach is accepted without explicit owner disposition;
 - required hosted checks and independent reviews pass for every PR;
+- with audio muted and keyboard/pointer, the owner identifies the speaker, offered/countered/refused action, and authoritative outcome through the embodied in-world surface; this is a scenario communication readability/accessibility gate, not broad accessibility acceptance, certification, release, or readiness;
 - the owner explicitly accepts the complete social experience. No numeric score is inferred.
 
 ## Risks reduced
@@ -410,6 +415,7 @@ Stop and surface an owner decision if:
 - a majority tally, privileged player choice, magical veto, or other unnamed influence decides an outcome;
 - zero player input freezes time, blocks citizen-to-citizen action, or diverges across uninterrupted/save-resume/replay routes;
 - the player's reserved timber can be contributed without sacrifice, keeping it is disallowed, or staged compromise lacks immediate and dated cost;
+- the reciprocal exchange becomes unilateral, partially applies, duplicates, is not observed by all citizens, leaves future actions unchanged, or diverges across uninterrupted/save-resume/replay routes;
 - cognition exceeds the canonical request, receipt, depth, reference, proposal, or communication bounds, or rejected/noncanonical input reaches validation, communication, or persistence;
 - deterministic authority, validate-before-append, persistence, replay, or same-world rules cannot be preserved;
 - live-provider, network, credential, paid, billing, raw-response, CLI, or operator-store work becomes necessary;
@@ -420,7 +426,7 @@ Stop and surface an owner decision if:
 
 ## Delivery and post-merge authorization
 
-This planning branch changes documents only. It does not authorize implementation while unmerged.
+This planning branch changes planning documentation and repository-governance validation only. It changes no product/runtime behavior and creates no implementation authority while unmerged.
 
 Merging the planning PR into `master` authorizes only the ordered bounded implementation packets above, beginning with packet 01. Each packet must:
 
