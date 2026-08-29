@@ -2,10 +2,10 @@
 
 There is exactly one authorized plan in this directory:
 
-- [`MILESTONE.md`](MILESTONE.md) — repository consolidation and explicit next-milestone selection.
+- [`MILESTONE.md`](MILESTONE.md) — `SNOW-GLOBE-SOCIAL-KERNEL-V1`, the owner-approved **Causeway Before Nightfall** three-citizen proof.
 
-No other Markdown file in this directory may be treated as active authority. Historical plans were moved intact to [`../archives/2026-08-27-pre-consolidation/`](../archives/2026-08-27-pre-consolidation/).
+No other Markdown file in this directory may be treated as active authority. Historical plans remain in [`../archives/`](../archives/); the completed consolidation milestone is preserved exactly at [`../archives/2026-08-28-consolidation-v1/MILESTONE.md`](../archives/2026-08-28-consolidation-v1/MILESTONE.md).
 
 `evidence/` remains here only to preserve paths used by test manifests, scripts, and historical records. Evidence proves bounded facts; it does not authorize new work.
 
-To activate a product milestone, the owner must accept its product outcome and scope. The milestone must name its evidence, human gate, stop conditions, and prohibited adjacent work. The previous active milestone must be completed, stopped, or superseded and archived first.
+The owner has accepted this milestone's product outcome and scope. Merging the planning PR authorizes only its nine ordered implementation packets, beginning with packet 01; it does not authorize implementation from the unmerged planning branch, live-provider activity, or adjacent work.

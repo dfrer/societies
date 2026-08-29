@@ -2,102 +2,89 @@
 
 ## Roadmap rule
 
-This document records **candidate progression**, not automatic authorization. Only `planning/active/MILESTONE.md` authorizes work. A stage activates when the previous stage's evidence is reconciled, the owner accepts the next outcome, and a bounded milestone is written.
+This document shows product progression but does not authorize work by itself. Only [`planning/active/MILESTONE.md`](../../planning/active/MILESTONE.md) is execution authority. Historical phase names, branches, plans, and completion recommendations remain evidence only.
 
-## Active stage — R0: durable starting point
+## Active milestone — Causeway Before Nightfall
 
-Consolidate the accepted EB-01R stack and the entire Societies/Snow Globe project into one maintainable repository with one authority chain, one active milestone, explicit archives, scoped agent rules, hosted validation, and a clean integration path.
+`SNOW-GLOBE-SOCIAL-KERNEL-V1` is the owner-approved next product proof, effective when its planning PR merges. It preserves the accepted founder-worldcraft runtime at `847c86b1c379e6a1dd8d4b7b641c3c89646e28c9` and adds one small, deep social kernel:
 
-No product feature work is authorized during R0.
+- exactly three embodied, persistent citizens: Mara, Ivo, and Sena;
+- one failing wetland causeway before nightfall;
+- the player's exposed shelter and reserved dry timber, which may be kept or sacrificed with observed consequences;
+- bounded knowledge, citizen-to-citizen causality, distinct material interests, contribution, counter, refusal, promise, breach, and independent action;
+- staged compromise that consumes immediate material, player labor, and citizen cooperation and creates a dated restoration/repair obligation;
+- one product-owned cognition request/receipt seam through deterministic and recorded adapters only;
+- authoritative physical, resource, labor, ecological, commitment, and relationship consequences visible the next morning;
+- save, resume, replay, typed failure/fallback routes, fixed performance budgets, runtime observation, and explicit owner play acceptance.
 
-## Next decision — select the smallest integrated product proof
+One citizen is only an internal end-to-end checkpoint. The active milestone passes only with all three citizens and no universal cost-free ending.
 
-The accepted build changes the planning context but does not automatically determine the next feature. The owner and planning agent must compare these paths:
+### Ordered delivery
 
-### Path A — visual/product target reconciliation
+Implementation begins only after the planning PR merges. Nine independently deliverable packets then proceed sequentially, one PR each from the then-current `master`:
 
-Treat EB-01R as an accepted interaction base, define exactly which parts satisfy the old visual gate, and establish the environmental, citizen, audio, and conversation language needed before adding social behavior.
+1. verify accepted scenario state and establish the fixed-route performance baseline;
+2. implement authoritative causeway, wetland, shelter, time, material, and next-morning state;
+3. embody Mara, Ivo, and Sena with persistent bounded knowledge/work and a no-player route;
+4. integrate the smallest product cognition interface with a one-citizen internal checkpoint;
+5. complete the three-citizen triangle, contributions, counters, refusals, and commitments;
+6. prove social/material adversity, timber custody, commitment fulfillment/delivery/breach, and following-morning consequences;
+7. prove cognition lifecycle, save/resume/replay, stale/failure paths, and deterministic fallback;
+8. reconcile performance and repair only a measured hotspot if needed;
+9. observe the cohesive runtime and obtain explicit owner play acceptance.
 
-**Strength:** reduces the chance of integrating citizens into another temporary presentation.
+No packet activates the next automatically; merge and gate reconciliation come first. The active milestone contains the binding scope, acceptance, performance, stop, provider, and delivery contracts.
 
-**Risk:** can become another art/UX planning loop without proving society behavior.
+## Milestone success boundary
 
-### Path B — one participating citizen interface
+Causeway Before Nightfall is successful only when the owner accepts one understandable social/material/ecological consequence with:
 
-Implement the smallest gameplay-facing observation, recorded/deterministic cognition receipt, communication act, validated proposal, and persistent consequence for one citizen in the accepted world.
+- an embodied player who can influence but not command;
+- recognizable citizens who observe/respond to one another and can support, counter, delay, refuse, withdraw, contribute, or proceed for legible reasons;
+- state-driven routes for zero input through the following morning, Mara support, Ivo support, kept/sacrificed timber, staged costly compromise, broken promise, stale proposal, resource consumption/withholding, save/resume, cognition failures, fallback, and fulfillment/delivery/breach consequences;
+- causal perturbation where another citizen's action, known fact, custody, or obligation changes the validated result under the same player input;
+- influence only from role authority, bounded knowledge, custody, labor, obligations, trust, dependency, and world facts—not tally, player privilege, or veto;
+- deterministic authority, validate-before-append, exactly-once outcomes, persistence, and replay without adapter calls;
+- an honest fixed-route performance classification and no unresolved hard-safety breach without owner disposition.
 
-**Strength:** attacks the central unproven thesis directly.
+Mechanical success is insufficient. Human acceptance remains a separate required gate.
 
-**Risk:** may be undermined by unresolved presentation or performance architecture.
+## Candidates after milestone acceptance
 
-### Path C — performance and voxel authority first
+These are not authorized and must be selected through a new owner decision and active milestone:
 
-Resolve collision representation and canonical frame safety before adding citizen cognition and behavior.
+### Governed live-cognition comparison
 
-**Strength:** prevents new systems from hardening around a scaling failure.
+Use the accepted product interface for a separately authorized bounded local-model pilot and, only if explicitly approved, one paid comparison. Prove player value over recorded and deterministic paths without making inference necessary for continuity.
 
-**Risk:** can become another infrastructure phase with no visible society progress.
+### Meaningful situation variation
 
-### Path D — deliberately coupled proof
+Create one second situation with a genuinely different strategy and social/ecological tension using the accepted three-citizen authority and cognition contracts. Add no content that fails to create a new player decision.
 
-Build a tightly bounded scene containing one citizen, one material disagreement, one accepted/declined contribution, one physical consequence, recorded/deterministic cognition, and a collision/performance budget. Refactor only the seams touched by that slice.
+### Snow Globe hardening and completion decision
 
-**Strength:** keeps product, architecture, and performance honest together.
+Reconcile accessibility, privacy, cost, cancellation, performance, packaging, and operational evidence appropriate to a Snow Globe completion decision. The owner chooses continuation, bounded rework, or stop before civilization-scale expansion.
 
-**Risk:** requires unusually strict scope and may be larger than the safest first task.
+## Deferred until the social kernel is accepted
 
-The planning discussion should recommend one path or a smaller hybrid based on current code inspection and measured risk. The owner decides the product outcome, not the implementation details.
-
-## Candidate product progression after selection
-
-### R1 — accepted world and interaction language
-
-Lock a coherent environmental, citizen, UI, audio, and embodied-conversation grammar around the accepted base. Produce a representative in-engine target, not only concept images or debug captures.
-
-### R2 — one citizen participation proof
-
-One persistent citizen observes bounded facts, responds through deterministic/recorded cognition, supports/counters/refuses a closed proposal for a legible reason, and causes one validated persistent outcome. Replay does not recall a model.
-
-### R3 — Golden Three
-
-A few minutes of cohesive movement, atmosphere, work, one citizen exchange, and one visible consequence. The player can act in more than one meaningful order. Human feel and clarity gates apply.
-
-### R4 — Golden Fifteen
-
-The wetland causeway situation, Mara/Ivo/Sena, contribution, promise, counter-offer/refusal, water-control commitment, physical/ecological change, trust/memory, save/replay, and a reason to continue into the next day.
-
-### R5 — governed live pilot
-
-Exercise the accepted interaction through the same provider-neutral interface with one bounded local model and only separately authorized premium comparison. Prove that live cognition adds value over deterministic and recorded paths without becoming required for simulation continuity.
-
-### R6 — meaningful variation
-
-A second starting situation with a genuinely different strategy and social/ecological tension, using the same authority and cognition contracts. No breadth that fails to create a new player decision.
-
-### R7 — hardening and Snow Globe completion decision
-
-Resolve or explicitly accept performance risk; validate fallback, replay, cancellation, stale output, privacy, cost, accessibility, and the full human scorecard. Decide go, narrow rework, or stop before considering civilization-scale expansion.
-
-## Deferred until Snow Globe proves the loop
-
-- broad markets and production chains;
-- general law and governance systems;
+- more than three citizens or generalized population simulation;
+- broad markets, production chains, law, and general governance;
 - multiplayer and networking authority;
-- large populations and regions;
 - open-ended semantic memory;
-- uncontrolled model invocation;
-- additional provider infrastructure not required by an accepted interaction;
-- content breadth without a new player decision.
+- uncontrolled or mandatory model invocation;
+- provider, routing, CLI, billing, or operator-store expansion;
+- additional worldcraft or content breadth without a new social decision;
+- deployment, publishing, release, or civilization-scale claims.
 
 ## Expansion gate
 
 Larger Societies development begins only when a bounded Snow Globe build demonstrates:
 
-1. an understandable human role;
-2. recognizable persistent citizens with material interests;
-3. meaningful cooperation, disagreement, or refusal;
-4. one shared physical/social/ecological consequence;
+1. an understandable embodied human role;
+2. recognizable persistent citizens with material interests and bounded knowledge;
+3. meaningful cooperation, disagreement, refusal, and independent action;
+4. one shared physical, resource, labor, ecological, commitment, and relationship consequence;
 5. deterministic authority, persistence, replay, and offline fallback;
 6. accepted interaction and presentation quality;
 7. performance and operational safety sufficient for the next scale; and
-8. a user desire to replay or continue.
+8. explicit owner desire to replay or continue.

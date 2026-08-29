@@ -10,7 +10,23 @@ This register distinguishes current reality from planned fixes. Priority reflect
 
 **Consequence:** the project can continue making a better survival/worldcraft shell without proving a society.
 
-**Control:** the next product milestone must explicitly justify how it moves toward one legible citizen decision and shared consequence.
+**Control:** `SNOW-GLOBE-SOCIAL-KERNEL-V1` requires exactly Mara, Ivo, and Sena in one authoritative causeway consequence. A one-citizen route is only an internal interface checkpoint; owner acceptance of all three is the product gate.
+
+### A narrow social slice can become a scripted quest or player-puppet show
+
+**Evidence:** no accepted Mara/Ivo/Sena, trust, commitment, or causeway domain exists yet. The legacy civic/wetland route and current cognition precursor can demonstrate mechanics without proving citizen knowledge, independent agency, or a lived social consequence.
+
+**Consequence:** a fixed scenario could appear coherent while dialogue order, hidden omniscient state, or player-triggered puppetry determines every result. It would not prove a society.
+
+**Control:** require bounded citizen-known facts, citizen-to-citizen observation/response, state-driven contribution/counter/refusal, a zero-input route from scenario start through the following morning, material custody/consumption/withholding, promise/breach, stale-world/time paths, causal perturbations, independent citizen action, and next-morning consequences. No majority tally, privileged player choice, or magical veto; influence is limited to role authority, knowledge, custody, labor, obligations, trust, dependency, and world facts. Presentation and communication cannot own or invent authoritative facts.
+
+### Material sacrifice can be replaced by a free compromise
+
+**Evidence:** the selected scenario needs an exposed player shelter and a small player-owned dry-timber reserve, but those authoritative custody and obligation facts do not yet exist.
+
+**Consequence:** contributing material could become a fake choice, while a compromise could instantly satisfy everyone without resource, labor, ecological, commitment, or relationship cost.
+
+**Control:** keeping the reserved timber is allowed and observed; contributing it removes a real personal repair option. Staged compromise requires immediate extra material, player labor, citizen cooperation, and a dated restoration/repair obligation. Next-morning delivery/fulfillment or breach derives from recorded state and has consequences.
 
 ### Roadmap drift through agent momentum
 
@@ -32,19 +48,19 @@ This register distinguishes current reality from planned fixes. Priority reflect
 
 ### Voxel collision and frame safety
 
-**Evidence:** the accepted line retains a roughly 12.8k collision-shape baseline and a historical median p95 of `51.9392 ms` against a `50 ms` safety line. Evidence across revisions is not yet reconciled for the accepted product route.
+**Evidence:** accepted-scene characterization records 64 collision bodies, 12,777 initial collision shapes, and 12,781 shapes after an edit. A historical `51.9392 ms` safety miss remains unresolved, and no representative frame/physics timing baseline exists for the fixed accepted-scene Causeway route.
 
 **Consequence:** citizen and world complexity may amplify a scaling failure.
 
-**Control:** the selected next milestone must either include a strict budget or explicitly schedule a focused performance proof before breadth.
+**Control:** packet 01 establishes three warm fixed-route trials before citizen breadth and reports p50/p95/p99/max frame and physics timing, collision counts, and backlog. Target p95 is at most 16.67 ms, hard safety is at most 33.33 ms, and same-route p95 regression is at most 10%. Unchanged terrain collision count cannot grow without evidence. Misses remain misses; broad refactoring is prohibited; a hard-safety breach stops breadth or milestone passage without explicit owner disposition.
 
 ### Product/lab integration seam does not exist in play
 
-**Evidence:** Snow Globe contracts and provider-neutral machinery exist in the lab, but no gameplay-facing citizen observation/receipt/communication interface is implemented in the accepted scene.
+**Evidence:** Snow Globe contracts and provider-neutral machinery exist in the lab, but no gameplay-facing citizen observation/receipt/communication interface is implemented in the accepted scene. `PrototypeCognitionModule` is a narrow strict precursor whose current apply path records an informational event only.
 
 **Consequence:** integration may reveal incompatible identity, timing, persistence, and ownership assumptions.
 
-**Control:** adopt the smallest versioned interface through recorded/deterministic adapters first; preserve runtime validation and exact replay.
+**Control:** adopt a product-owned versioned request bound to interaction, citizen, tick, state version/digest, observation digest, citizen-known facts, scenario-specific allowed actions, and cancellation/deadline. Canonical request ≤16 KiB, receipt ≤8 KiB, depth ≤4, fact refs ≤16, recent-event refs ≤8, commitment refs ≤8, proposals ≤8, and communication ≤512 UTF-8 bytes; reject oversized, over-deep, duplicate, unknown-field, or noncanonical input before validation/communication/persistence. Keep closed proposal separate from bounded communication; validate before append; persist the validated receipt/result, commitment, and events; replay never calls an adapter. Absent, malformed, late, stale, cancelled, and unavailable paths are typed, and fallback preserves the same identity and action vocabulary. Only deterministic and recorded adapters are in scope; provider, CLI, billing, raw-response, and operator-store boundaries stay out.
 
 ### Responsibility hotspots
 

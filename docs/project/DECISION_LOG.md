@@ -74,6 +74,28 @@ Preserve and integrate the accepted stack, replace conflicting authority documen
 
 The accepted runtime and lab code remain behaviorally unchanged during repository governance work. Large files and mixed responsibilities are recorded as debt. Refactor them only through bounded tasks with characterization and triggered validation.
 
-## Open decision after consolidation
+## D-013 — Societies is the product; Snow Globe is its bounded social/cognition proving ground
 
-Select whether the next bounded proof prioritizes visual/product-target reconciliation, one participating citizen interface, performance/collision architecture, or a deliberately coupled minimum slice. The planning agent must inspect current code and evidence, explain tradeoffs, and recommend a product outcome without asking the owner to choose low-level implementation details.
+**Status:** Accepted 2026-08-28
+
+Societies remains the embodied player-facing product and deterministic world authority. Snow Globe names its first miniature social proof and the bounded cognition/laboratory work that supports it; it is not a separate frontend, provider dashboard, alternate simulation authority, or automatic roadmap. Product integration adopts only the smallest reviewed request/receipt contract needed by an accepted interaction.
+
+Laboratory CLIs, provider types, credentials, billing, raw responses, routing, and operator stores remain outside product runtime and player presentation. Recorded and deterministic adapters are the first product path; any live-model pilot requires a separate owner decision.
+
+## D-014 — Select the three-citizen Causeway Before Nightfall proof
+
+**Status:** Accepted 2026-08-28
+
+The next bounded product proof is `SNOW-GLOBE-SOCIAL-KERNEL-V1 — Causeway Before Nightfall`. Exactly Mara, Ivo, and Sena must participate as embodied, persistent citizens with bounded knowledge and distinct material interests in one failing-wetland-causeway situation. One citizen is an internal integration checkpoint only, not the product pass gate.
+
+The scenario must support state-driven player support for Mara or Ivo, keeping or sacrificing the player's reserved dry timber, a staged costly compromise with immediate and dated obligations, citizen-to-citizen action, no action through the following morning, contribution, counter/refusal, promise and breach, resource consumption/withholding, stale and failed cognition, deterministic fallback, save/resume/replay, and next-morning physical, resource, labor, ecological, fulfillment/delivery, commitment, and relationship consequences. There is no universal cost-free ending, majority tally, privileged player choice, or magical veto.
+
+The planning PR authorizes no implementation while unmerged. Once merged, work proceeds through the milestone's nine ordered one-PR packets, beginning with verified baseline/performance characterization. Live provider, network, credential, paid, billing, deployment, release, and adjacent feature work remain unauthorized.
+
+## D-015 — Consolidation transition completed
+
+**Status:** Completed 2026-08-28
+
+D-011 reached its completion boundary when consolidation, hosted validation, governance workflow, branch-protection repair, and documentation closeout were integrated on `master`. The exact accepted runtime remains `847c86b1c379e6a1dd8d4b7b641c3c89646e28c9`, and the completed milestone is archived unchanged at `planning/archives/2026-08-28-consolidation-v1/MILESTONE.md`.
+
+This transition closes the consolidation freeze without rewriting D-011's original record. It does not itself authorize product work; merge-conditioned authorization is defined by D-014, `project-governance.json`, and the active milestone.

@@ -8,7 +8,7 @@ This file is a stable compatibility entry point. The canonical, maintained imple
 - Preservation branch: `archive/pre-consolidation-2026-08-27`
 - Product project: `src/societies/`
 - Snow Globe laboratory: `labs/Societies.SnowGlobe/`
-- Active authority: `planning/active/MILESTONE.md`
+- Active authority: `planning/active/MILESTONE.md` — `SNOW-GLOBE-SOCIAL-KERNEL-V1 — Causeway Before Nightfall`
 
 ## Proven now
 
@@ -16,6 +16,8 @@ The EB-01R bounded founder-worldcraft slice has explicit user acceptance for wor
 
 ## Not proven now
 
-The accepted scene has zero participating citizens. It does not yet contain the gameplay-facing Snow Globe cognition interface, negotiated wetland consequence, accepted performance safety, accessibility acceptance, hosted release evidence, or release readiness. The approximately 12.8k collision-shape baseline and historical 51.9392 ms safety failure remain named risks.
+The accepted scene has zero participating citizens. It does not yet contain Mara, Ivo, Sena, the gameplay-facing Snow Globe cognition interface, negotiated wetland consequence, accepted performance safety, accessibility acceptance, hosted release evidence, or release readiness. The accepted-scene characterization of 64 collision bodies, 12,777 initial collision shapes, 12,781 shapes after an edit, and the historical 51.9392 ms safety miss remain named risks.
 
-Feature implementation is paused during consolidation and explicit next-milestone selection.
+## Active delivery boundary
+
+Causeway Before Nightfall is selected. This planning branch authorizes no implementation. After its planning PR merges to `master`, implementation is permitted only through the milestone's ordered packets, beginning with packet 01 and proceeding one merged, reconciled PR at a time. No live-provider, credential, paid, deployment, release, or adjacent feature work is authorized.

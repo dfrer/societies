@@ -59,24 +59,21 @@ Each upper layer must remain grounded in the deterministic layers below it.
 
 ## Current Concept Boundary
 
-The near-term product questions are reset to the unresolved foundation:
+The accepted near-term foundation is an embodied resident-founder with limited formal power, whose influence is earned
+through contribution, commitments, and persuasion. Citizens cooperate or refuse based on material interests,
+obligations, trust, and visible evidence. The selected shared consequence is the failing wetland causeway and its
+negotiated water-control commitment.
 
-> Who is the player, what gives and limits their influence, why do citizens cooperate or refuse, and what
-> smallest shared consequence makes Snow Globe materially improve the embodied experience?
+The owner-accepted EB-01R baseline establishes the current founder-worldcraft presentation, including its scene,
+HUD readability, and interaction feel. It has zero participating citizens, and representative performance acceptance
+remains open. The owner-approved next product proof is **SNOW-GLOBE-SOCIAL-KERNEL-V1 / Causeway Before Nightfall**.
+Only [planning/active/MILESTONE.md](../active/MILESTONE.md) authorizes work; historical plans and labels do not.
 
-The current prototype's deterministic systems may be reused, but its scene, HUD, asset level, and forced civic
-route are not the accepted product foundation. Follow the
-[Snow Globe Frontend Product Recovery Plan](../active/v3-snow-globe-frontend-recovery-plan.md) before expanding
-into general markets, lawmaking, multiplayer, broad social simulation, or live provider integration.
+## Open Concept Questions
 
-## Foundational Questions Still Open
-
-The highest-priority unknowns are maintained in [OPEN-QUESTIONS.md](OPEN-QUESTIONS.md). The first interview must determine:
-
-- who the human player is within the society;
-- what formal and informal power the player possesses;
-- why citizens cooperate with, tolerate, challenge, or resist the player;
-- what the player risks losing; and
-- what kind of shared consequence makes the society feel alive.
-
-Do not silently answer these questions in this document. Record user-approved answers in [DECISIONS.md](DECISIONS.md) first.
+The remaining concept questions are maintained in [OPEN-QUESTIONS.md](OPEN-QUESTIONS.md). The open questions most
+directly relevant to the active milestone are the exact bounded memory horizon and disclosure rules (Q-009), the
+embodied conversation language that preserves play rhythm and accessibility (Q-011), and long-term progression plus
+the deferred value of live-model use (Q-012). Other longer-horizon questions remain open there but do not expand the
+current milestone.
+Only [planning/active/MILESTONE.md](../active/MILESTONE.md) authorizes work against the current proof.

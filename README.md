@@ -6,7 +6,9 @@ Societies is a Godot 4 + C# civilization and ecology simulation project. **Snow 
 
 The accepted product baseline is the EB-01R founder-worldcraft slice recorded at commit `847c86b1c379e6a1dd8d4b7b641c3c89646e28c9` and preserved on `archive/pre-consolidation-2026-08-27`. The user accepted its world readability, HUD hierarchy, inventory usability, construction clarity, and interaction feel on 2026-08-27. The recorded validation reports 507 managed tests, 28 Godot tests, and warning-free Release and ExportRelease builds.
 
-That is meaningful progress, but it is not yet a miniature society. The accepted scene still has no participating citizens, no gameplay-facing Snow Globe cognition interface, and unresolved performance and collision-shape risk. Feature development is paused while the repository is consolidated and the next product proof is selected explicitly.
+That is meaningful progress, but it is not yet a miniature society. The accepted scene still has zero participating citizens, no gameplay-facing Snow Globe cognition interface, and unresolved performance and collision-shape risk.
+
+The owner-selected active milestone is **Causeway Before Nightfall** (`SNOW-GLOBE-SOCIAL-KERNEL-V1`): exactly Mara, Ivo, and Sena must participate in one authoritative material, ecological, and social consequence. This planning branch authorizes no implementation. After its planning PR merges to `master`, work is permitted only through the milestone's ordered packets, beginning with packet 01 and proceeding one merged, reconciled PR at a time.
 
 ## Repository map
 
