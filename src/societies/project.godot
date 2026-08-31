@@ -19,6 +19,7 @@ config/description="A persistent multiplayer civilization simulation where human
 config/version="0.1.0-alpha"
 run/main_scene="res://scenes/main.tscn"
 run/main_scene.performance_runner="res://tests/PerfRunner.tscn"
+run/main_scene.accepted_scene_baseline="res://tests/AcceptedSceneBaselineRunner.tscn"
 config/features=PackedStringArray("4.6", "C#", "Forward Plus")
 config/icon="res://icon.svg"
 

@@ -134,6 +134,9 @@ namespace Societies.Core
 
         public long VoxelWorldRevision => _runtimeSession?.VoxelWorldRevision ?? 0;
 
+        /// <summary>Read-only scheduler observation; excluded from authoritative snapshots and replay.</summary>
+        public long PendingSimulationBacklogTicks => _fixedStepAccumulator.PendingWholeTicks;
+
         public bool IsWorldcraftBuildMode => _worldcraftBuildMode;
 
         public string SelectedWorldcraftPieceId => _selectedWorldcraftPieceId;
