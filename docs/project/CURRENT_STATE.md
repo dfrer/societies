@@ -1,6 +1,6 @@
 # Societies Current State
 
-- **Status date:** 2026-08-30 (Packet 01 evidence captured UTC `2026-08-31T03:34:14.1183646Z`)
+- **Status date:** 2026-08-30 (Packet 01 evidence captured UTC `2026-08-31T03:34:14.1183646Z`; delivery reconciled UTC `2026-08-31T04:54:10Z`)
 - **Accepted runtime source:** `847c86b1c379e6a1dd8d4b7b641c3c89646e28c9`
 - **Preservation branch:** `archive/pre-consolidation-2026-08-27`
 - **Consolidation integration record:** PR #183 at `54a4e5c0ea1297438b06e4b40ea14391db343657`
@@ -8,8 +8,9 @@
 - **Branch-protection documentation closeout:** PR #189 at master commit `1eaa1ab6b0c79550a99c9cad68c4ea04e9fdea75`
 - **Planning authority:** PR #191 merged at master/base `31ea1d6012d6fd932d0bfe0dbc621e668fd58c80`
 - **Packet 01 local checkpoint:** `936771285fd1fd2ebb92054dc3630a656a78b941` on `feature/social-kernel-01-baseline`; verified tree `2bd4a709a54ae72fde84fc3e24968e5fec49e49b`
+- **Packet 01 delivery:** [PR #192](https://github.com/dfrer/societies/pull/192), exact head `ea538a506318f99946f858c7c4b50508b65fb44c`, merged as `f471efe5fe5f5b62aef37e48f27bc1fbffd0104e`
 - **Active milestone:** [`SNOW-GLOBE-SOCIAL-KERNEL-V1 — Causeway Before Nightfall`](../../planning/active/MILESTONE.md)
-- **Current packet:** Packet 01 local implementation and canonical characterization complete; Packet 01 PR is not attempted, while hosted checks and merge are unrun.
+- **Current packet:** Packet 01 implementation, canonical characterization, required hosted checks, protected merge, and delivery reconciliation are complete. Packet 02 is the next ordered packet in principle but is **NOT STARTED**.
 
 This document reports what is proven, not everything planned or implemented somewhere in repository history.
 
@@ -19,7 +20,7 @@ Societies has a substantial deterministic foundation and a user-accepted bounded
 
 It has **not** yet proven its central thesis. The accepted player-facing scene still contains zero participating citizens, and the isolated cognition laboratory has not yet become an embodied social interaction inside the authoritative Godot world. The owner selected **Causeway Before Nightfall** in repository decision record [D-014](DECISION_LOG.md#d-014--select-the-three-citizen-causeway-before-nightfall-proof) as the next bounded proof: exactly Mara, Ivo, and Sena must participate in one deterministic material, ecological, and social consequence. Planning PR #191 is now merged, but implementation remains limited to the milestone's ordered packets, one merged and reconciled PR at a time.
 
-Packet 01 establishes a clean, reproducible local baseline for the authoritative empty Snow Globe scene and its four-leg edit/reload/replay route. The realtime route is mechanically validated and deterministic; three fixed-60 executions provide identity evidence only. The product performance target is not met: worst physics p95 is **23.109 ms** against **16.67 ms**. Both process and physics p95 metrics pass the **33.33 ms hard-safety** line. This is local characterization, not human product acceptance, hosted evidence, or release readiness. Packet 01 prohibits optimization and does not authorize Packet 02 before merge and reconciliation.
+Packet 01 establishes a clean, reproducible baseline for the authoritative empty Snow Globe scene and its four-leg edit/reload/replay route. The realtime route is mechanically validated and deterministic; three fixed-60 executions provide identity evidence only. The product performance target is not met: worst physics p95 is **23.109 ms** against **16.67 ms**. Both process and physics p95 metrics pass the **33.33 ms hard-safety** line. Required hosted checks passed and PR #192 merged through the protected branch path. Packet 01 required no human product gate, and none is claimed. This remains characterization, not performance acceptance, deployment, accessibility acceptance, or release readiness.
 
 ## Product runtime: proven
 
@@ -52,7 +53,7 @@ The integrated founder-worldcraft baseline was validated on clean GitHub-hosted 
 - the Godot C# solution build passed;
 - project-governance and patch-whitespace validation passed.
 
-Those **507 managed / 387 fast / 28 Godot** counts are previously merged hosted evidence, not Packet 01 hosted evidence. The current local `tests/test-manifest.json` counts are **519 managed / 399 fast / 28 Godot**. The pull-request and weekly-full workflows fail when discovered counts drift from manifest authority instead of silently accepting missing tests.
+Those **507 managed / 387 fast / 28 Godot** counts remain earlier hosted evidence. Packet 01's distinct local capture passed the complete **519/519** managed suite and **399/399** fast tier. Packet 01's hosted PR gate ran the manifest-owned **399/399** fast tier and **28/28** Godot suite; the complete 519-test managed run was local evidence and is not relabeled as hosted. The pull-request and weekly-full workflows fail when discovered counts drift from manifest authority instead of silently accepting missing tests.
 
 ## Snow Globe laboratory: proven
 
@@ -105,14 +106,21 @@ All six executions recorded zero citizens/resources/stock/structures/build queue
 
 ## Validation and review
 
-- Focused Packet tests: **12/12**.
-- Manifest fast gate: **399/399**.
-- Complete managed suite: **519/519**, 0 failures in 5m40s; one known generated test-project `CS0436 Main` conflict warning; production assembly clean.
-- Production Release build: 0 warnings, 0 errors.
-- Godot 4.6.2 build-solutions, wrapper parse, and git diff checks passed.
+- Local focused Packet tests: **12/12**.
+- Local manifest fast gate: **399/399**.
+- Local complete managed suite: **519/519**, 0 failures in 5m40s; one known generated test-project `CS0436 Main` conflict warning; production assembly clean.
+- Local production Release build: 0 warnings, 0 errors.
+- Local Godot 4.6.2 build-solutions, wrapper parse, and git diff checks passed.
 - Independent deep review: **PASS**, 0 P0/P1/P2 findings.
 
 The final checkpoint was clean, including post-export/trial status and content identity. Earlier shutdown deferred-free and cadence-dependent queued-input route-divergence findings were fixed before this checkpoint; stale manifest executable counts were corrected before final review.
+
+### Packet 01 hosted delivery evidence
+
+- Required [`build-test-smoke`](https://github.com/dfrer/societies/actions/runs/33358362870/job/99384744879) was **SUCCESS**: run `33358362870`, job `99384744879`, started `2026-08-31T04:48:31Z`, completed `2026-08-31T04:52:24Z`, displayed duration `3m53s`.
+- That hosted job built the production Release assembly with 0 warnings and 0 errors, passed the fast managed gate **399/399** with manifest count 399, passed Godot headless **28/28** with manifest count 28, and passed project governance. The known generated test-project `CS0436 Main` warning appeared only during the fast test build, consistent with local evidence.
+- Required [`lab-tests`](https://github.com/dfrer/societies/actions/runs/33358362846/job/99385290379) was **SUCCESS**: run `33358362846`, final job `99385290379`, started `2026-08-31T04:52:06Z`, completed `2026-08-31T04:52:10Z`, displayed duration `4s`. Its classifier was **SUCCESS** in job `99384744780` (`6s`), and the full relevant Windows lab suite was **SUCCESS** in job `99384766079` (displayed `3m23s`).
+- The relevant lab job built core with 0 warnings and 0 errors and passed Snow Globe core **1,186 passed, 5 documented skips, 0 failed, 1,191 total**; benchmark **56/56**; recording **94/94**; OpenRouter **104/104**; and project governance.
 
 ## Repository authority: proven
 
@@ -120,11 +128,12 @@ The final checkpoint was clean, including post-export/trial status and content i
 - Branch-protection repair branch `chore/complete-master-protection-v1` was merged as PR #186 at `420738bfc1b51cffacd94845b4e10cb9c72db081`.
 - Branch-protection documentation closeout PR #189 merged at master commit `1eaa1ab6b0c79550a99c9cad68c4ea04e9fdea75`.
 - Planning PR #191 merged at master/base `31ea1d6012d6fd932d0bfe0dbc621e668fd58c80` and activated the bounded three-citizen proof in `planning/active/MILESTONE.md`.
+- Packet 01 [PR #192](https://github.com/dfrer/societies/pull/192) merged at `2026-08-31T04:52:40Z` as `f471efe5fe5f5b62aef37e48f27bc1fbffd0104e`. Its parents are the exact base `31ea1d6012d6fd932d0bfe0dbc621e668fd58c80` and exact PR head `ea538a506318f99946f858c7c4b50508b65fb44c`.
 - The exact accepted pre-consolidation source remains preserved on `archive/pre-consolidation-2026-08-27` at `847c86b1c379e6a1dd8d4b7b641c3c89646e28c9`.
 - PR #178 is recognized as merged ancestry; #177 and #179–#182 are closed as superseded with links to #183.
 - No pull requests remained open at the consolidation closeout boundary; that historical fact does not imply Packet 01 delivery.
 - Historical plans and branches remain recoverable but carry no execution authority.
-- Packet 01 is a local checkpoint at `936771285fd1fd2ebb92054dc3630a656a78b941` (tree `2bd4a709a54ae72fde84fc3e24968e5fec49e49b`) on `feature/social-kernel-01-baseline`; no Packet 01 PR, hosted checks, or merge exists yet.
+- Packet 01 implementation `936771285fd1fd2ebb92054dc3630a656a78b941` (tree `2bd4a709a54ae72fde84fc3e24968e5fec49e49b`) is retained as the local evidence identity; PR head `ea538a506318f99946f858c7c4b50508b65fb44c` and merge `f471efe5fe5f5b62aef37e48f27bc1fbffd0104e` are the delivery identities.
 
 ### Master governance policy: proven
 
@@ -164,11 +173,11 @@ The selected contract requires the player's own shelter to be exposed and their 
 
 The owner approved `SNOW-GLOBE-SOCIAL-KERNEL-V1 — Causeway Before Nightfall` in repository decision record [D-014](DECISION_LOG.md#d-014--select-the-three-citizen-causeway-before-nightfall-proof), and planning PR #191 merged at `31ea1d6012d6fd932d0bfe0dbc621e668fd58c80`. Authorization is limited to the milestone's nine ordered packets, beginning with Packet 01; each packet is one PR from the then-current `master` after its predecessor merges and required gates are reconciled.
 
-Packet 01 implementation and canonical characterization are complete locally only. No historical milestone label is current authority. No live-provider, network, credential, paid, billing, raw-response, operator-store, deployment, publishing, release, or adjacent feature work is authorized.
+Packet 01 implementation, canonical characterization, required hosted checks, protected merge, and delivery reconciliation are complete. Packet 02 is **NOT STARTED**; it is only the next ordered packet in principle and must begin as a separately bounded slice from then-current `master`. No historical milestone label is current authority. No live-provider, network, credential, paid, billing, raw-response, operator-store, deployment, publishing, release, or adjacent feature work is authorized.
 
-## Packet 01 delivery gates
+## Packet 01 delivery status
 
-No Packet 01 hosted CI, PR, merge, deployment, release, accessibility acceptance, or human product acceptance is claimed. Packet 01 requires no human product-acceptance gate; the absence of that gate is not an acceptance claim. The 16.67 ms target remains open for a later measured Packet 08 repair; Packet 01's hard-safety pass does not convert it into a target pass. No Packet 02 citizen/causeway work may begin before Packet 01 remote checks, merge, and reconciliation.
+Packet 01's required `build-test-smoke` and `lab-tests` checks passed under the exact protected-branch policy: those two contexts only, strict/up-to-date enforcement, GitHub Actions app id `15368`. PR #192 then merged with the exact base and head identified above. No deployment, release, accessibility acceptance, or human product acceptance is claimed. Packet 01 required no human product-acceptance gate; the absence of that gate is not an acceptance claim. The 16.67 ms target remains open for a later measured Packet 08 repair; Packet 01's hard-safety pass does not convert it into a target pass. Packet 02 remains not started.
 
 ## Status vocabulary
 
