@@ -2,7 +2,9 @@
   "schemaVersion": 1,
   "schema": "societies_snow_globe_social_kernel_packet_01_validation",
   "recordedUtc": "2026-08-31T03:34:14.1183646Z",
-  "status": "canonical_local_characterization_complete_target_missed_hard_safety_pass_remote_delivery_unrun",
+  "reconciledUtc": "2026-08-31T04:54:10Z",
+  "status": "packet_01_merged_required_checks_passed_target_missed_hard_safety_pass",
+  "localEvidenceCaptureStatus": "canonical_local_characterization_complete_target_missed_hard_safety_pass_remote_delivery_unrun",
   "milestone": "SNOW-GLOBE-SOCIAL-KERNEL-V1 — Causeway Before Nightfall",
   "packet": "01",
   "workItem": "SNOW-GLOBE-SOCIAL-KERNEL-PACKET-01",
@@ -88,5 +90,75 @@
   "persistenceReplay": {"snapshotWritten": true, "snapshotReloaded": true, "routeReplayed": true, "initialStateIdentity": "2b407d3c761959a8d511113bc606fdcbcf79f04ed80ea2f0b2c50ef0769e70b1", "measurementStartStateIdentity": "a7b71fd0fd1b98a5fa5827c9bd05db64093944c6b966640e7eefece07c94f560", "measurementEndStateIdentity": "8711bbf9f5bf0a0cfa8e801682e578e835f34e0ef7dc741eedfc9abf368b49f4", "replayedMeasurementStartStateIdentity": "a7b71fd0fd1b98a5fa5827c9bd05db64093944c6b966640e7eefece07c94f560", "replayedMeasurementEndStateIdentity": "8711bbf9f5bf0a0cfa8e801682e578e835f34e0ef7dc741eedfc9abf368b49f4", "afterEditStateIdentity": "b1eaf4205b7bfa85def2a9fc71e00166af21d042c59939ef5945dd08b85f77e3", "reloadedStateIdentity": "b1eaf4205b7bfa85def2a9fc71e00166af21d042c59939ef5945dd08b85f77e3", "replayedStateIdentity": "b1eaf4205b7bfa85def2a9fc71e00166af21d042c59939ef5945dd08b85f77e3", "identitiesExact": true},
   "assembly": {"exportReleaseSha256": "0778ed08acbd729656543291ce6be616cffb29ad2cca3643f2b6ec54acbc1b0d"},
   "validation": {"focusedPacketTests": "12/12", "manifestFastGate": "399/399", "completeManagedSuite": {"passed": 519, "failed": 0, "duration": "5m40s", "knownWarning": "generated test-project CS0436 Main conflict; production assembly clean"}, "productionReleaseBuild": {"warnings": 0, "errors": 0}, "godotBuildSolutions": "passed", "wrapperParse": "passed", "gitDiffCheck": "passed", "deepReview": {"result": "PASS", "P0": 0, "P1": 0, "P2": 0}, "resolvedFindings": ["shutdown deferred-free crash", "cadence-dependent queued-input cross-mode route divergence", "stale manifest executable counts"]},
-  "deliveryGates": {"localImplementationAndCharacterization": "complete", "hostedCi": "unrun", "pullRequest": "not_attempted", "merge": "unrun", "deployment": "unrun", "release": "unproven", "humanProductAcceptance": "none_required", "humanProductAcceptanceClaimed": false, "accessibility": "unrun", "providerNetworkCredentialsPaidActivity": "none", "nextAction": "bounded remote/hosted Packet 01 checks after explicit authorization", "packet02": "blocked_until_packet01_merge_and_reconciliation", "optimization": "prohibited_in_packet01"}
+  "delivery": {
+    "status": "merged_required_checks_passed",
+    "pullRequest": {
+      "number": 192,
+      "url": "https://github.com/dfrer/societies/pull/192",
+      "baseCommit": "31ea1d6012d6fd932d0bfe0dbc621e668fd58c80",
+      "headCommit": "ea538a506318f99946f858c7c4b50508b65fb44c",
+      "implementationCommit": "936771285fd1fd2ebb92054dc3630a656a78b941",
+      "implementationTree": "2bd4a709a54ae72fde84fc3e24968e5fec49e49b"
+    },
+    "requiredChecks": {
+      "buildTestSmoke": {
+        "name": "build-test-smoke",
+        "result": "SUCCESS",
+        "runId": 33358362870,
+        "jobId": 99384744879,
+        "startedUtc": "2026-08-31T04:48:31Z",
+        "completedUtc": "2026-08-31T04:52:24Z",
+        "displayedDuration": "3m53s",
+        "url": "https://github.com/dfrer/societies/actions/runs/33358362870/job/99384744879",
+        "hostedValidation": {
+          "productionReleaseBuild": {"warnings": 0, "errors": 0},
+          "fastManagedGate": {"passed": 399, "failed": 0, "skipped": 0, "manifestCount": 399},
+          "godotHeadless": {"passed": 28, "failed": 0, "manifestCount": 28},
+          "projectGovernance": "passed",
+          "knownWarning": "generated test-project CS0436 Main conflict appeared only during fast test build; production assembly clean"
+        }
+      },
+      "labTests": {
+        "name": "lab-tests",
+        "result": "SUCCESS",
+        "runId": 33358362846,
+        "jobId": 99385290379,
+        "startedUtc": "2026-08-31T04:52:06Z",
+        "completedUtc": "2026-08-31T04:52:10Z",
+        "displayedDuration": "4s",
+        "url": "https://github.com/dfrer/societies/actions/runs/33358362846/job/99385290379",
+        "classifier": {"result": "SUCCESS", "jobId": 99384744780, "displayedDuration": "6s"},
+        "relevantWindowsSuite": {
+          "result": "SUCCESS",
+          "jobId": 99384766079,
+          "displayedDuration": "3m23s",
+          "coreBuild": {"warnings": 0, "errors": 0},
+          "snowGlobeCore": {"passed": 1186, "skipped": 5, "failed": 0, "total": 1191, "skipClassification": "documented"},
+          "benchmark": {"passed": 56, "failed": 0},
+          "recording": {"passed": 94, "failed": 0},
+          "openRouter": {"passed": 104, "failed": 0},
+          "projectGovernance": "passed"
+        }
+      }
+    },
+    "branchProtection": {
+      "requiredContexts": ["build-test-smoke", "lab-tests"],
+      "requiredContextsExact": true,
+      "strictUpToDate": true,
+      "githubActionsAppId": 15368
+    },
+    "merge": {
+      "commit": "f471efe5fe5f5b62aef37e48f27bc1fbffd0104e",
+      "mergedUtc": "2026-08-31T04:52:40Z",
+      "parents": ["31ea1d6012d6fd932d0bfe0dbc621e668fd58c80", "ea538a506318f99946f858c7c4b50508b65fb44c"],
+      "parentsAreExactBaseAndPullRequestHead": true
+    },
+    "captureTimeHistory": {
+      "atRecordedUtc": "2026-08-31T03:34:14.1183646Z",
+      "hostedCi": "unrun",
+      "pullRequest": "not_attempted",
+      "merge": "unrun"
+    }
+  },
+  "deliveryGates": {"localImplementationAndCharacterization": "complete", "hostedCi": "complete_required_checks_success", "pullRequest": "merged", "merge": "complete", "deployment": "unrun", "release": "unproven", "humanProductAcceptance": "none_required", "humanProductAcceptanceClaimed": false, "accessibility": "unrun", "providerNetworkCredentialsPaidActivity": "none", "nextAction": "Packet 02 is the next ordered packet in principle; implementation is not started and requires its own bounded slice from then-current master", "packet02": "not_started_next_ordered_packet_in_principle", "optimization": "prohibited_in_packet01"}
 }
