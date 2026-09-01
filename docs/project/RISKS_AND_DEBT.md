@@ -12,6 +12,14 @@ This register distinguishes current reality from planned fixes. Priority reflect
 
 **Control:** `SNOW-GLOBE-SOCIAL-KERNEL-V1` requires exactly Mara, Ivo, and Sena in one authoritative causeway consequence. A one-citizen route is only an internal interface checkpoint; owner acceptance of all three is the product gate.
 
+### Visual-production gate reopened
+
+**Evidence:** the owner rejected the first Packet 02 visual presentation as “basically none of this is near actual visual completleness, needs massive work”. Headless evidence has no GPU/render driver and cannot establish visual quality. Existing route characterization is process p95 **7.7562 ms** and physics p95 **20.7071 ms**; physics misses the 16.67 ms target while passing the 33.33 ms hard-safety line.
+
+**Consequence:** social breadth must not resume on a primitive presenter or dressed-up blockout. The representative Causeway district needs one coherent weathered civic-folk wetland direction, authored asset provenance, contextual interaction feedback, and an actual in-engine owner gate.
+
+**Control:** recover deterministic seams in Packet 02A, then deliver exactly one near-final district in Packet 02V. Record the displayed baseline using the protocol in the active milestone; Packet 03 remains unstarted until owner acceptance. No quality reduction may green an unrelated metric.
+
 ### A narrow social slice can become a scripted quest or player-puppet show
 
 **Evidence:** no accepted Mara/Ivo/Sena, trust, commitment, or causeway domain exists yet. The legacy civic/wetland route and current cognition precursor can demonstrate mechanics without proving citizen knowledge, independent agency, or a lived social consequence.
