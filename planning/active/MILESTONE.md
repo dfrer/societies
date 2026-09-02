@@ -1,6 +1,6 @@
 # SNOW-GLOBE-SOCIAL-KERNEL-V1 — Causeway Before Nightfall
 
-- **Status:** Active; Packet 02A implemented locally and awaiting technical review/hosted delivery
+- **Status:** Active; Packet 02A implemented and independently reviewed locally, awaiting PR/hosted delivery
 - **Owner approval:** Outcome approved 2026-08-28 in [D-014](../../docs/project/DECISION_LOG.md#d-014--select-the-three-citizen-causeway-before-nightfall-proof); visual recovery direction selected in D-016 and delivered through PR #194
 - **Feature-work authorization:** planning amendment merged to `master`: **Yes, ordered packets only**
 - **Accepted runtime baseline:** `847c86b1c379e6a1dd8d4b7b641c3c89646e28c9`
@@ -27,7 +27,7 @@ The accepted scene still has **zero participating citizens**, and the first Caus
 - The accepted voxel scenario starts with `initialCitizens: 0`.
 - Voxel-scenario catalog validation currently forbids citizens, resources, stock, and crisis state; those capabilities cannot be assumed to exist merely because legacy scenario formats contain them.
 - Legacy heightfield worker, civic, wetland, and crisis systems are reusable infrastructure and regression harnesses. They are not accepted social UX and must not be exposed as the current product route.
-- No Mara, Ivo, or Sena identity, failing-causeway state, citizen trust, or commitment domain currently exists.
+- At milestone selection, no Mara, Ivo, or Sena identity, failing-Causeway state, citizen trust, or commitment domain existed. Packet 02A now supplies branch-local authoritative Causeway state only; citizen identity, trust, negotiation, and commitment remain absent.
 
 ### Cognition starting point
 
@@ -38,8 +38,8 @@ The accepted scene still has **zero participating citizens**, and the first Caus
 ### Performance starting point
 
 - The [EB-01R repository attestation](evidence/v3-sg-eb-01-validation.json) characterizes **64 collision bodies**, **12,777 initial collision shapes**, and **12,781 shapes after an edit**.
-- A historical [`51.9392 ms` safety miss](../../docs/history/pre-consolidation-2026-08-27/root/CURRENT_BUILD.md) remains unresolved.
-- There is no representative accepted-scene frame-time baseline for the fixed Causeway route. Existing figures are characterization, not acceptance.
+- A historical [`51.9392 ms` safety miss](../../docs/history/pre-consolidation-2026-08-27/root/CURRENT_BUILD.md) remains context only.
+- Packet 01 established the representative comparison baseline, and Packet 02A now supplies a clean six-trial headless fixed-route cadence/identity baseline. Packet 02A misses the **16.67 ms physics target** while passing **33.33 ms hard safety** and the same-route regression budget. These figures are scheduling-inclusive headless callback cadence characterization, not displayed frame time, CPU/physics duration, GPU evidence, visual acceptance, or release acceptance.
 
 ## Visual-production recovery amendment (owner decision, 2026-09-01)
 
@@ -191,13 +191,13 @@ Each packet is independently deliverable and reviewable. One packet equals one P
 
 ### Packet 02A — Deterministic Causeway substrate
 
-**Status:** Implemented locally on `feature/social-kernel-02a-causeway-substrate`; awaiting technical review and hosted delivery.
+**Status:** Implemented and independently reviewed locally on `feature/social-kernel-02a-causeway-substrate`; awaiting PR/hosted delivery.
 
 **Base and boundary:** based on `master` `1745896535124bd39ca6321fe6430d93de81bf43`. Retains deterministic causeway state/catalog/events/session, schema-v12 persistence/replay/artifact/summary, v5 route/profile, `ExecuteCausewayIntent`, and zero-tick HUD refresh suppression/coalescing. Drops rejected presenter/`Label3D`, keyboard review controls, source-string UI scaffold/tests, and historical evidence/status.
 
-**Evidence:** governance; Causeway authority 44/44; authority/artifact/baseline 85/85; broader persistence/voxel 162/162; executable profile/tooling and accepted-scene contracts 21/21, including 8/8 fail-closed tooling cases; full managed 582/582 and fast 462/462 with zero failures or skips; integration 11 and soak 109 exactly declared; direct Release and Debug builds 0 warnings/errors; Godot headless 29/29 with observed exit 0. Schema-v12 freezes and binds the actual Causeway definition schema/version/SHA-256 digest and fails closed on catalog mismatch; exact-field, duplicate, order, and valid-anchor checks are strict. The accepted deterministic route transition is `ContributeCommunityTimber`, revision `0->1`, with Causeway equality across edit/reload/fixed replay. Earlier ad-hoc reuse-derived timing is invalid and is not Packet 02A evidence. A corrected fresh export with explicit `--quit` exited 0 and finalized a fail-closed v2 attestation, but post-export full-worktree drift stopped the wrapper before trials. All six current performance trials are unrun, so Packet 02A has no current performance classification; the 16.67 ms target, 33.33 ms hard-safety result, and GPU/display timing remain unresolved. The known `--build-solutions` signal-11 attempt remains red and was not repeated.
+**Evidence:** governance; Causeway authority 44/44; authority/artifact/baseline 85/85; broader persistence/voxel 162/162; executable profile/tooling and accepted-scene contracts 21/21, including 8/8 fail-closed tooling cases; full managed 582/582 and fast 462/462 with zero failures or skips; integration 11 and soak 109 exactly declared; direct Release and Debug builds 0 warnings/errors; Godot headless 29/29 with observed exit 0. Schema-v12 freezes and binds the actual Causeway definition schema/version/SHA-256 digest and fails closed on catalog mismatch; exact-field, duplicate, order, and valid-anchor checks are strict. Clean source `566b21d536b94f7d7eea17a2c432d2c1729af698` (tree `883a4f005a491f68c2f9bfec92dd24738e8da922`) completed a fresh attested route with 3 realtime + 3 fixed trials. Every trial accepted `ContributeCommunityTimber` quantity 1, emitted `causeway.material.committed`, advanced revision `0->1`, and preserved Causeway edit/reload identity; fixed replay also matched. Process p95 median/worst was 7.3971/7.4032 ms and physics 20.7075/20.7089 ms. Backlog was 0/0/0; collision counts stayed 64 bodies and 12,777 -> 12,781 shapes. Same-route deltas -16.348967808273347% process and -10.38599679778442% physics pass the +10% budget. Classification is `target_missed`: physics exceeds 16.67 ms while 33.33 ms hard safety passes; GPU/display remain unmeasured headlessly. The known `--build-solutions` signal-11 attempt remains red and was not repeated.
 
-**Gate and delivery:** no human visual acceptance is required for 02A. Technical review and hosted delivery remain open. Do not start Packet 02V until both are reconciled. Historical checkpoint `7aad77dc10f2edf84e44f5f43e0082568a1ab8e9` and rejection head `269c80e16766094378afd4809bca40e045ab686b` are unpublished/read-only history.
+**Gate and delivery:** no human visual acceptance is required for 02A. Independent technical review is complete; PR/hosted delivery remains open. Do not start Packet 02V until delivery is reconciled. Historical checkpoint `7aad77dc10f2edf84e44f5f43e0082568a1ab8e9` and rejection head `269c80e16766094378afd4809bca40e045ab686b` are unpublished/read-only history.
 
 ### Packet 01 — Verified accepted-scene baseline and performance characterization
 
@@ -444,7 +444,7 @@ Stop and surface an owner decision if:
 
 ## Delivery and post-merge authorization
 
-PR #194 delivered the visual-recovery amendment and authorizes the revised ordered packets. Packet 02A is now a branch-local implementation from `master` `1745896535124bd39ca6321fe6430d93de81bf43` on `feature/social-kernel-02a-causeway-substrate`; its technical review and hosted delivery remain open. No runtime/product, human visual, hosted, playable, visual-complete, or release acceptance is implied.
+PR #194 delivered the visual-recovery amendment and authorizes the revised ordered packets. Packet 02A is now an independently reviewed branch-local implementation from `master` `1745896535124bd39ca6321fe6430d93de81bf43` on `feature/social-kernel-02a-causeway-substrate`; PR/hosted delivery and merge remain separate gates. No merged-runtime/product, human visual, hosted, playable, visual-complete, or release acceptance is implied.
 
 The PR #194 merge into `master` authorizes only the revised ordered bounded implementation packets above, beginning with Packet 02A. PR #191's earlier merge did not itself authorize this recovery. Each packet must:
 

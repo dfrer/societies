@@ -6,7 +6,7 @@ This document shows product progression but does not authorize work by itself. O
 
 ## Active milestone — Causeway Before Nightfall
 
-`SNOW-GLOBE-SOCIAL-KERNEL-V1` is the active owner-approved product proof. PR #194 delivered its visual-recovery amendment, authorizing the revised sequence beginning Packet 02A. Packet 02A is now implemented locally from `master` `1745896535124bd39ca6321fe6430d93de81bf43` on `feature/social-kernel-02a-causeway-substrate`, awaiting technical review and hosted delivery. It preserves the accepted founder-worldcraft runtime and adds only the deterministic Causeway substrate: schema-v12 freezes the actual definition schema/version/SHA-256 digest and fails closed on catalog mismatch; the validated `ContributeCommunityTimber` transition moves revision `0->1` and remains equal across edit/reload/fixed replay. No visual-completion or social-citizen claim is made.
+`SNOW-GLOBE-SOCIAL-KERNEL-V1` is the active owner-approved product proof. PR #194 delivered its visual-recovery amendment, authorizing the revised sequence beginning Packet 02A. Packet 02A is implemented and independently reviewed locally from `master` `1745896535124bd39ca6321fe6430d93de81bf43` on `feature/social-kernel-02a-causeway-substrate`; PR/hosted delivery remains. It preserves the accepted founder-worldcraft runtime and adds only the deterministic Causeway substrate: schema-v12 freezes the actual definition schema/version/SHA-256 digest and fails closed on catalog mismatch; the validated `ContributeCommunityTimber` transition moves revision `0->1` and remains equal across edit/reload/fixed replay. The clean six-trial route passes same-route and 33.33 ms hard-safety budgets but misses the 16.67 ms physics target. No visual-completion or social-citizen claim is made.
 
 - exactly three embodied, persistent citizens: Mara, Ivo, and Sena;
 - one failing wetland causeway before nightfall;
@@ -24,7 +24,7 @@ One citizen is only an internal end-to-end checkpoint. The active milestone pass
 The first Packet 02 visual gate failed, so recovery proceeds through independently deliverable packets, one PR each from then-current `master`:
 
 1. verify accepted scenario state and establish the fixed-route performance baseline;
-2. recover the authoritative Causeway substrate as Packet 02A (implemented locally; technical review and hosted delivery remain open; no visual-completion claim);
+2. recover the authoritative Causeway substrate as Packet 02A (implemented and independently reviewed locally; PR/hosted delivery remains open; no visual-completion claim);
 3. deliver one near-final authored weathered civic-folk wetland district and pass the interactive owner gate as Packet 02V;
 4. embody Mara, Ivo, and Sena with persistent bounded knowledge/work and a no-player route (Packet 03);
 5. integrate the smallest product cognition interface with a one-citizen internal checkpoint;

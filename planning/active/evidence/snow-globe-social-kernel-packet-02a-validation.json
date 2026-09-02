@@ -1,0 +1,166 @@
+{
+  "schemaVersion": 1,
+  "schema": "societies_snow_globe_social_kernel_packet_02a_validation",
+  "recordedUtc": "2026-09-02T20:37:35Z",
+  "status": "branch_local_validated_reviewed_pr_delivery_pending_target_missed_hard_safety_pass",
+  "milestone": "SNOW-GLOBE-SOCIAL-KERNEL-V1 - Causeway Before Nightfall",
+  "packet": "02A",
+  "source": {
+    "branch": "feature/social-kernel-02a-causeway-substrate",
+    "baseCommit": "1745896535124bd39ca6321fe6430d93de81bf43",
+    "implementationCommits": [
+      "475eacfc33b5f854c836a8801dcc143c4b993eae",
+      "fab1e7d15706cc80a23de7f036b5547f2bf40b0b",
+      "566b21d536b94f7d7eea17a2c432d2c1729af698"
+    ],
+    "performanceSourceCommit": "566b21d536b94f7d7eea17a2c432d2c1729af698",
+    "performanceSourceTree": "883a4f005a491f68c2f9bfec92dd24738e8da922",
+    "performanceSourceDirty": false,
+    "dirtySourceOverrideUsed": false,
+    "note": "The final candidate adds only documentation and this evidence record after the executable performance source."
+  },
+  "historicalProvenance": {
+    "branch": "codex/snow-globe-social-kernel-packet-02",
+    "originalBase": "760c39e22219c41a92ec021fbf16490df380d004",
+    "recoveryCheckpoint": "7aad77dc10f2edf84e44f5f43e0082568a1ab8e9",
+    "recoveryCheckpointTree": "fe0c91ca05d6d3f24647967ae4876b3d8265e131",
+    "rejectionRecordHead": "269c80e16766094378afd4809bca40e045ab686b",
+    "rejectionRecordTree": "c18d419e53dee2a60f90ffa44baa89ffc19b51ed",
+    "rejectionRecordUsedAsImplementationSource": false,
+    "salvageManifest": "planning/active/evidence/snow-globe-social-kernel-packet-02a-salvage-manifest.json",
+    "salvageManifestCoverage": "30/30 source paths"
+  },
+  "scope": {
+    "retained": [
+      "deterministic Causeway state, catalog, events, and session",
+      "schema-v12 persistence, migration, replay, artifact, and summary support",
+      "accepted-scene v5 route and performance profile",
+      "ExecuteCausewayIntent through runtime authority",
+      "zero-tick HUD projection refresh suppression and coalescing"
+    ],
+    "dropped": [
+      "rejected Causeway presenter and Label3D presentation",
+      "causeway-specific keyboard review controls",
+      "source-string UI and direct-control tests",
+      "historical validation artifacts and status wording"
+    ],
+    "notStarted": [
+      "Packet 02V visual production",
+      "Packet 03",
+      "citizens or cognition",
+      "asset acquisition",
+      "providers, network, paid calls, deployment, or release"
+    ]
+  },
+  "validation": {
+    "governance": "passed",
+    "causewayAuthority": {"passed": 44, "failed": 0},
+    "authorityArtifactBaseline": {"passed": 85, "failed": 0},
+    "broaderPersistenceVoxel": {"passed": 162, "failed": 0},
+    "executableProfileToolingAcceptedScene": {"passed": 21, "failed": 0, "failClosedToolingCases": "8/8"},
+    "completeManagedRelease": {"passed": 582, "failed": 0, "skipped": 0, "duration": "5:51.615"},
+    "manifestFast": {"passed": 462, "failed": 0, "skipped": 0, "duration": "1:53.520"},
+    "manifestComposition": {"fast": 462, "integration": 11, "soak": 109, "total": 582},
+    "productionReleaseBuild": {"warnings": 0, "errors": 0},
+    "debugBuild": {"warnings": 0, "errors": 0},
+    "godotHeadless": {"passed": 29, "failed": 0, "exitCode": 0, "fast": 6, "integration": 21, "soak": 2},
+    "godotBuildSolutions": {"result": "failed", "failure": "signal 11 after managed compilation and editor-layout handling", "repeated": false},
+    "jsonSchemaLinksAndDiff": "passed"
+  },
+  "performance": {
+    "rawBundle": {
+      "path": "artifacts/performance/causeway-packet-02-route-clean-566b21d/accepted-scene-baseline-v5.json",
+      "ignored": true,
+      "bytes": 449833,
+      "sha256": "982e77ba51fad62066e7eb950504603645139895adf314653a35248dc453bb30"
+    },
+    "exportAttestation": {
+      "path": "artifacts/performance/causeway-packet-02-route-clean-566b21d/accepted-scene-export-identity.json",
+      "ignored": true,
+      "sha256": "6a9e25700553bea26d053e44858035d7fd825fa7325213aac7d7cd56ed9814f2",
+      "repositoryContentIdentity": "df6640e86203b59187a730d422a3e0c6523d75f7b08d2b4c256113e5d7646a88",
+      "projectInputCount": 91,
+      "projectInputsSha256": "935b60292fdc7d3874ccb1ec08f64a54ba71c1a82a1a2e5e3f04c1a4ccf3da24",
+      "pckBytes": 43144,
+      "pckSha256": "606c59c6f3dad61186e5839a26b8404216eba077fc68e9ffa80eb9cb465a67be",
+      "exportCacheFileCount": 7,
+      "exportCacheSha256": "c4260f790a59a68b90f23f3c1459b265488d6819d5dde73049e574b70ba958b7",
+      "releaseFileCount": 190,
+      "exportReleaseAssemblySha256": "f707407d06db750a1ce44f09916ba7f0cd881c5d3cfd21caaf67ae6089f989c1"
+    },
+    "environment": {
+      "identitySha256": "0992740305faa3f4354ecc5a58d5f45d4fcf5af34bfbb68cd0e85bec4ca07277",
+      "godot": "4.6.2 stable mono official",
+      "dotnet": ".NET 8.0.24",
+      "displayServer": "headless",
+      "renderingMethod": "forward_plus",
+      "renderingDriver": "unavailable_headless",
+      "renderingAdapter": "unavailable_headless"
+    },
+    "route": {
+      "id": "snow-globe-voxel-causeway-state-edit-reload-replay/v5",
+      "scene": "res://scenes/snow_globe_voxel_foundation.tscn",
+      "seed": 260827,
+      "realtimeTrials": 3,
+      "fixedIdentityTrials": 3,
+      "warmupFramesPerTrial": 120,
+      "measuredPhysicsIntervalsPerTrial": 300
+    },
+    "metricSemantics": "Headless ExportRelease scheduling-inclusive callback-start wall-clock cadence; not CPU, GPU, render-thread, displayed-frame, or whole-engine duration.",
+    "realtimeTrials": [
+      {"trial": 1, "process": {"samples": 720, "p50": 6.9003, "p95": 7.3511, "p99": 10.5412, "max": 13.9352}, "physics": {"samples": 300, "p50": 13.8024, "p95": 20.7089, "p99": 20.7127, "max": 24.1874}, "backlog": {"p50": 0, "p95": 0, "max": 0}},
+      {"trial": 2, "process": {"samples": 722, "p50": 6.9013, "p95": 7.4032, "p99": 8.9733, "max": 13.0802}, "physics": {"samples": 300, "p50": 13.8040, "p95": 20.7061, "p99": 20.7109, "max": 20.7301}, "backlog": {"p50": 0, "p95": 0, "max": 0}},
+      {"trial": 3, "process": {"samples": 723, "p50": 6.9001, "p95": 7.3971, "p99": 8.0508, "max": 11.6019}, "physics": {"samples": 300, "p50": 13.8044, "p95": 20.7075, "p99": 20.7123, "max": 20.7557}, "backlog": {"p50": 0, "p95": 0, "max": 0}}
+    ],
+    "classification": {
+      "result": "target_missed",
+      "targetClaimEligible": true,
+      "productTargetP95Ms": 16.67,
+      "hardSafetyP95Ms": 33.33,
+      "hardSafety": "passed",
+      "medianProcessP95Ms": 7.3971,
+      "worstProcessP95Ms": 7.4032,
+      "medianPhysicsP95Ms": 20.7075,
+      "worstPhysicsP95Ms": 20.7089
+    },
+    "sameRouteComparison": {
+      "packet01WorstProcessP95Ms": 8.8501,
+      "packet01WorstPhysicsP95Ms": 23.109,
+      "processRegressionPercent": -16.348967808273347,
+      "physicsRegressionPercent": -10.38599679778442,
+      "maximumAllowedRegressionPercent": 10.0,
+      "withinBudget": true
+    },
+    "collisions": {"initialBodies": 64, "afterEditBodies": 64, "initialShapes": 12777, "afterEditShapes": 12781},
+    "causeway": {
+      "commandKind": "ContributeCommunityTimber",
+      "commandQuantity": 1,
+      "acceptedInAllTrials": true,
+      "eventType": "causeway.material.committed",
+      "previousRevision": 0,
+      "revision": 1,
+      "beforeIdentity": "3cf7925ec9b61765b388190cc1150364b93f068cac9d8f7eef573b45837a5a4a",
+      "afterIdentity": "48ebea40f9a21050d3e6641129dbf3e9288b924c1694db5dbe84ca4682521559",
+      "editReloadFixedReplayEqual": true
+    }
+  },
+  "failedAttempts": [
+    "Console-attached Godot fresh export timed out after 300 seconds and produced no qualifying evidence.",
+    "An early ad-hoc export-reuse run was disqualified because export identity was not sufficiently attested.",
+    "A fresh non-console export exited zero but fail-closed source verification detected post-export status drift before trials.",
+    "After repository-state hardening, a fresh export failed closed on a real raw line-ending rewrite of src/societies/icon.svg.import; an exact gitattributes rule stabilized that generated import input.",
+    "godot --headless --build-solutions --quit compiled managed code and then failed with signal 11; this remains red and was not repeated."
+  ],
+  "independentReviews": {
+    "authorityAndPersistence": {"result": "GO", "P0": 0, "P1": 0, "P2": 0, "P3": 0},
+    "salvageAndProvenance": {"result": "GO", "P0": 0, "P1": 0, "P2": 0, "P3": 0},
+    "scope": {"result": "GO", "P0": 0, "P1": 0, "P2": 0, "P3": 0}
+  },
+  "limitations": [
+    "Branch-local local evidence is not hosted CI evidence or merge acceptance.",
+    "No human visual, accessibility, deployment, or release acceptance is claimed.",
+    "No displayed CPU, physics-duration, render-thread, or GPU baseline exists.",
+    "The 16.67 ms production target remains missed on headless physics cadence and unresolved for displayed Packet 02V evidence."
+  ],
+  "delivery": {"pullRequest": null, "hostedChecks": "pending", "mergeAuthorized": false}
+}

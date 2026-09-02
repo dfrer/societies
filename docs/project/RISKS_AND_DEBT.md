@@ -14,7 +14,7 @@ This register distinguishes current reality from planned fixes. Priority reflect
 
 ### Visual-production gate reopened
 
-**Evidence:** the owner rejected the first Packet 02 visual presentation as “basically none of this is near actual visual completleness, needs massive work”. Headless evidence has no GPU/display measurement and cannot establish visual quality. Packet 02A's corrected fresh export exited 0 and finalized a fail-closed v2 attestation, but post-export full-worktree drift stopped the wrapper before trials. Earlier ad-hoc reuse-derived timing is invalid. All six current performance trials are unrun, so Packet 02A has no current target, hard-safety, same-route, or GPU/display classification.
+**Evidence:** the owner rejected the first Packet 02 visual presentation as “basically none of this is near actual visual completleness, needs massive work”. Headless evidence has no GPU/display measurement and cannot establish visual quality. Packet 02A's clean six-trial route reports worst process p95 **7.4032 ms** and worst physics p95 **20.7089 ms**. Same-route deltas **-16.348967808273347%/-10.38599679778442%** pass the +10% regression budget and **33.33 ms hard safety passes**, but physics misses the **16.67 ms target**. This is headless scheduling-inclusive cadence characterization, not visual or GPU/display acceptance.
 
 **Consequence:** social breadth must not resume on a primitive presenter or dressed-up blockout. The representative Causeway district needs one coherent weathered civic-folk wetland direction, authored asset provenance, contextual interaction feedback, and an actual in-engine owner gate.
 
@@ -56,11 +56,11 @@ This register distinguishes current reality from planned fixes. Priority reflect
 
 ### Voxel collision and frame safety
 
-**Evidence:** accepted-scene characterization records 64 collision bodies, 12,777 initial collision shapes, and 12,781 shapes after an edit. A historical `51.9392 ms` safety miss remains unresolved, and no representative frame/physics timing baseline exists for the fixed accepted-scene Causeway route.
+**Evidence:** Packet 02A's accepted-scene characterization records 64 collision bodies, 12,777 initial collision shapes, and 12,781 shapes after an edit. Its representative fixed Causeway route has a clean six-trial headless baseline: worst process p95 **7.4032 ms** and physics p95 **20.7089 ms**. The **33.33 ms hard-safety** line and same-route regression budget pass, but physics misses the **16.67 ms target**; displayed/GPU evidence remains absent. The historical `51.9392 ms` result remains context only.
 
 **Consequence:** citizen and world complexity may amplify a scaling failure.
 
-**Control:** packet 01 establishes three warm fixed-route trials before citizen breadth and reports p50/p95/p99/max frame and physics timing, collision counts, and backlog. Target p95 is at most 16.67 ms, hard safety is at most 33.33 ms, and same-route p95 regression is at most 10%. Unchanged terrain collision count cannot grow without evidence. Misses remain misses; broad refactoring is prohibited; a hard-safety breach stops breadth or milestone passage without explicit owner disposition.
+**Control:** Packet 01 established the comparison baseline, and Packet 02A reports three warm realtime trials plus three fixed identity/replay trials before citizen breadth, including p50/p95/p99/max process/physics cadence, collision counts, backlog, and Causeway identities. Target p95 is at most 16.67 ms, hard safety is at most 33.33 ms, and same-route p95 regression is at most 10%. Unchanged terrain collision count cannot grow without evidence. Misses remain misses; broad refactoring is prohibited; a hard-safety breach stops breadth or milestone passage without explicit owner disposition.
 
 ### Product/lab integration seam does not exist in play
 
