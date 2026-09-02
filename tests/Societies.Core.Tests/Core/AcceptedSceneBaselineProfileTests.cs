@@ -694,7 +694,20 @@ namespace Societies.Core.Tests
             Assert.All(result.EngineResults, engine =>
             {
                 Assert.NotEqual(0, engine.ExitCode);
-                Assert.Contains(expectedMessage, engine.StandardError + engine.StandardOutput);
+                string renderedOutput = engine.StandardError + engine.StandardOutput;
+                string plainOutput = System.Text.RegularExpressions.Regex.Replace(
+                    renderedOutput,
+                    "\u001B\\[[0-?]*[ -/]*[@-~]",
+                    string.Empty);
+                string normalizedOutput = System.Text.RegularExpressions.Regex.Replace(
+                    plainOutput,
+                    "\\s+",
+                    " ");
+                string normalizedExpected = System.Text.RegularExpressions.Regex.Replace(
+                    expectedMessage,
+                    "\\s+",
+                    " ");
+                Assert.Contains(normalizedExpected, normalizedOutput);
             });
         }
 
