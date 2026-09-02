@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "schema": "societies_snow_globe_social_kernel_packet_02a_validation",
   "recordedUtc": "2026-09-02T20:37:35Z",
-  "status": "branch_local_validated_reviewed_pr_delivery_pending_target_missed_hard_safety_pass",
+  "status": "merged_hosted_validated_target_missed_hard_safety_pass",
   "milestone": "SNOW-GLOBE-SOCIAL-KERNEL-V1 - Causeway Before Nightfall",
   "packet": "02A",
   "source": {
@@ -159,10 +159,10 @@
     "scope": {"result": "GO", "P0": 0, "P1": 0, "P2": 0, "P3": 0}
   },
   "limitations": [
-    "Branch-local local evidence is not hosted CI evidence or merge acceptance.",
+    "Local evidence remains distinct from hosted CI evidence; hosted CI and merge acceptance are recorded in delivery.",
     "No human visual, accessibility, deployment, or release acceptance is claimed.",
     "No displayed CPU, physics-duration, render-thread, or GPU baseline exists.",
     "The 16.67 ms production target remains missed on headless physics cadence and unresolved for displayed Packet 02V evidence."
   ],
-  "delivery": {"pullRequest": null, "hostedChecks": "pending", "mergeAuthorized": false}
+  "delivery": {"pullRequest": {"number": 196, "url": "https://github.com/dfrer/societies/pull/196", "merged": true, "mergedAt": "2026-09-02T22:27:10Z", "mergeCommit": "155fa9dac62eebc516bcff189fd5692071f366d9", "mergeTree": "5c2e8b53a4b18802ead74b1ba57647c2846763cf", "reviewedHead": "c268207501817335d54e31cf432ade17f93ca78a"}, "hostedChecks": {"product": {"run": "33682822948", "job": "100423159671", "result": "success", "fast": "462/462", "godotBuildSolutions": "passed", "headless": "29/29", "governanceDiff": "passed"}, "lab": {"run": "33682822608", "detector": "100423158477", "suite": "100423215546", "finalLabTests": "100424336278", "result": "success", "core": "1186 passed/5 documented historical byte-pinning skips/0 failed", "companions": ["56/56", "94/94", "104/104"]}}, "mergeAuthorized": true}
 }
