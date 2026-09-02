@@ -12,6 +12,7 @@ This file is a stable compatibility entry point. The canonical, maintained imple
 - Planning authority merged: PR #191 at `31ea1d6012d6fd932d0bfe0dbc621e668fd58c80`
 - Packet 01 local checkpoint: `936771285fd1fd2ebb92054dc3630a656a78b941` on `feature/social-kernel-01-baseline` (tree `2bd4a709a54ae72fde84fc3e24968e5fec49e49b`)
 - Packet 01 delivery: [PR #192](https://github.com/dfrer/societies/pull/192), head `ea538a506318f99946f858c7c4b50508b65fb44c`, merged as `f471efe5fe5f5b62aef37e48f27bc1fbffd0104e`
+- Visual-recovery amendment: [PR #194](https://github.com/dfrer/societies/pull/194), planning head `52557d0a517b841421aa60a7b7b295375908c35f`, merged as `ccb651c67689c25eb0f3adec78abbfcf870699f5` at `2026-09-02T03:28:09Z`
 
 ## Proven now
 
@@ -27,4 +28,4 @@ The accepted scene still has zero participating citizens, resources, stock, stru
 
 ## Active delivery boundary
 
-Planning PR #191 is merged, but it does not itself authorize this recovery. Only merge of this amendment authorizes the revised sequence beginning Packet 02A, limited to one merged and reconciled PR at a time. Packet 01 implementation, canonical characterization, required hosted checks, protected merge, and delivery reconciliation are complete. The unpublished historical Packet 02 branch remains evidence and is not rewritten. Recovery is Packet 02A substrate -> Packet 02V visual-production target -> Packet 03; Packet 03 is **NOT STARTED** pending the 02V owner gate. No live-provider, credential, paid, deployment, accessibility acceptance, release, or adjacent feature work is authorized or claimed.
+Planning PR #191 is merged, and PR #194 delivered the visual-recovery amendment. The revised sequence beginning Packet 02A is authorized, limited to one merged and reconciled PR at a time. Packet 01 implementation, canonical characterization, required hosted checks, protected merge, and delivery reconciliation are complete. The unpublished historical Packet 02 branch remains evidence and is not rewritten. Recovery is Packet 02A substrate -> Packet 02V visual-production target -> Packet 03; Packet 03 is **NOT STARTED** and unauthorized pending the 02V owner gate. No live-provider, credential, paid, deployment, accessibility, release, or adjacent feature work is authorized or claimed.

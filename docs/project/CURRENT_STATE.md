@@ -1,6 +1,6 @@
 # Societies Current State
 
-- **Status date:** 2026-09-01 (visual-production recovery decision recorded; Packet 01 delivery evidence unchanged)
+- **Status date:** 2026-09-02 (visual-production recovery amendment delivered; Packet 01 delivery evidence unchanged)
 - **Accepted runtime source:** `847c86b1c379e6a1dd8d4b7b641c3c89646e28c9`
 - **Preservation branch:** `archive/pre-consolidation-2026-08-27`
 - **Consolidation integration record:** PR #183 at `54a4e5c0ea1297438b06e4b40ea14391db343657`
@@ -9,8 +9,9 @@
 - **Planning authority:** PR #191 merged at master/base `31ea1d6012d6fd932d0bfe0dbc621e668fd58c80`
 - **Packet 01 local checkpoint:** `936771285fd1fd2ebb92054dc3630a656a78b941` on `feature/social-kernel-01-baseline`; verified tree `2bd4a709a54ae72fde84fc3e24968e5fec49e49b`
 - **Packet 01 delivery:** [PR #192](https://github.com/dfrer/societies/pull/192), exact head `ea538a506318f99946f858c7c4b50508b65fb44c`, merged as `f471efe5fe5f5b62aef37e48f27bc1fbffd0104e`
+- **Visual-recovery amendment:** [PR #194](https://github.com/dfrer/societies/pull/194), planning head `52557d0a517b841421aa60a7b7b295375908c35f`, merged as `ccb651c67689c25eb0f3adec78abbfcf870699f5` at `2026-09-02T03:28:09Z`
 - **Active milestone:** [`SNOW-GLOBE-SOCIAL-KERNEL-V1 — Causeway Before Nightfall`](../../planning/active/MILESTONE.md)
-- **Current packet:** Packet 01 delivery is complete. The first Packet 02 visual gate failed; recovery is ordered Packet 02A substrate -> Packet 02V visual-production target -> Packet 03. Packet 03 is **NOT STARTED**.
+- **Current packet:** Packet 01 delivery and the visual-recovery planning amendment are complete. Packet 02A substrate is next; Packet 02V visual-production target follows; Packet 03 is **NOT STARTED** and unauthorized until the 02V owner gate passes.
 
 This document reports what is proven, not everything planned or implemented somewhere in repository history.
 
@@ -20,7 +21,7 @@ Societies has a substantial deterministic foundation and a user-accepted bounded
 
 It has **not** yet proven its central thesis. The accepted player-facing scene still has **zero participating citizens**. The first Packet 02 human visual gate was rejected as not near visual completeness (“basically none of this is near actual visual completleness, needs massive work”). The owner preserves the broad block-based substrate, selects a weathered civic-folk wetland production direction, and requires the representative district to pass the Packet 02V in-engine gate before introducing Mara, Ivo, or Sena. Decision [D-016](DECISION_LOG.md#d-016--recover-causeway-visual-production-before-social-breadth) supersedes D-014 only on sequencing and visual detail; mechanics remain salvageable evidence.
 
-Packet 01 establishes a clean, reproducible baseline for the authoritative empty Snow Globe scene and its four-leg edit/reload/replay route. The realtime route is mechanically validated and deterministic; three fixed-60 executions provide identity evidence only. The product performance target is not met: worst physics p95 is **23.109 ms** against **16.67 ms**. Both process and physics p95 metrics pass the **33.33 ms hard-safety** line. Required hosted checks passed and PR #192 merged through the protected branch path. Packet 01 required no human product gate, and none is claimed. This remains characterization, not performance acceptance, deployment, accessibility acceptance, or release readiness.
+Packet 01 establishes a clean, reproducible baseline for the authoritative empty Snow Globe scene and its four-leg edit/reload/replay route. The realtime route is mechanically validated and deterministic; three fixed-60 executions provide identity evidence only. The product performance target is not met: worst physics p95 is **23.109 ms** against **16.67 ms**. Both process and physics p95 metrics pass the **33.33 ms hard-safety** line. Required hosted checks passed and PR #192 merged through the protected branch path. The visual-recovery amendment then merged as PR #194 with required `build-test-smoke` and Snow Globe laboratory evidence passing. No human product gate is claimed. This remains characterization, not performance acceptance, deployment, accessibility acceptance, or release readiness.
 
 ## Product runtime: proven
 
@@ -128,6 +129,7 @@ The final checkpoint was clean, including post-export/trial status and content i
 - Branch-protection repair branch `chore/complete-master-protection-v1` was merged as PR #186 at `420738bfc1b51cffacd94845b4e10cb9c72db081`.
 - Branch-protection documentation closeout PR #189 merged at master commit `1eaa1ab6b0c79550a99c9cad68c4ea04e9fdea75`.
 - Planning PR #191 merged at master/base `31ea1d6012d6fd932d0bfe0dbc621e668fd58c80` and activated the bounded three-citizen proof in `planning/active/MILESTONE.md`.
+- Visual-recovery planning PR #194 merged planning head `52557d0a517b841421aa60a7b7b295375908c35f` as `ccb651c67689c25eb0f3adec78abbfcf870699f5` at `2026-09-02T03:28:09Z`; required `build-test-smoke` job `99934428113` and Snow Globe laboratory detector `99934427058`, suite `99934496859`, and `lab-tests` `99935427335` jobs passed.
 - Packet 01 [PR #192](https://github.com/dfrer/societies/pull/192) merged at `2026-08-31T04:52:40Z` as `f471efe5fe5f5b62aef37e48f27bc1fbffd0104e`. Its parents are the exact base `31ea1d6012d6fd932d0bfe0dbc621e668fd58c80` and exact PR head `ea538a506318f99946f858c7c4b50508b65fb44c`.
 - The exact accepted pre-consolidation source remains preserved on `archive/pre-consolidation-2026-08-27` at `847c86b1c379e6a1dd8d4b7b641c3c89646e28c9`.
 - PR #178 is recognized as merged ancestry; #177 and #179–#182 are closed as superseded with links to #183.
@@ -172,7 +174,7 @@ The selected contract requires the player's own shelter to be exposed and their 
 
 ## Current authorization
 
-The owner approved `SNOW-GLOBE-SOCIAL-KERNEL-V1 — Causeway Before Nightfall` in [D-014](DECISION_LOG.md#d-014--select-the-three-citizen-causeway-before-nightfall-proof); D-016 accepts/selects the visual recovery sequence. PR #191's merge does not itself authorize this recovery. Only merge of this amendment authorizes the revised sequence beginning Packet 02A; each packet is one PR from then-current `master` after its predecessor merges and required gates are reconciled.
+The owner approved `SNOW-GLOBE-SOCIAL-KERNEL-V1 — Causeway Before Nightfall` in [D-014](DECISION_LOG.md#d-014--select-the-three-citizen-causeway-before-nightfall-proof); D-016 accepts/selects the visual recovery sequence. PR #194 delivered the amendment and authorizes the revised sequence beginning Packet 02A; each packet is one PR from then-current `master` after its predecessor merges and required gates are reconciled.
 
 Packet 01 implementation, canonical characterization, required hosted checks, protected merge, and delivery reconciliation are complete. The local historical Packet 02 candidate exists, but Packet 02A/02V are unstarted on current `master`; Packet 03 remains unstarted pending the 02V human gate. No historical milestone label is current authority. No live-provider, network, credential, paid, billing, raw-response, operator-store, deployment, publishing, release, or adjacent feature work is authorized.
 

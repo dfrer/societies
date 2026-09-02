@@ -1,10 +1,10 @@
 # SNOW-GLOBE-SOCIAL-KERNEL-V1 — Causeway Before Nightfall
 
-- **Status:** Proposed amendment; PR #191 is merged, but this recovery amendment is unmerged and pending owner/reviewer delivery
-- **Owner approval:** Outcome approved 2026-08-28 in [D-014](../../docs/project/DECISION_LOG.md#d-014--select-the-three-citizen-causeway-before-nightfall-proof); visual recovery direction selected in D-016, with planning delivery/review still pending
-- **Feature-work authorization:** before planning-PR merge: **No**; after merge to `master`: **Yes, ordered packets only**
+- **Status:** Active; visual-recovery amendment delivered through PR #194
+- **Owner approval:** Outcome approved 2026-08-28 in [D-014](../../docs/project/DECISION_LOG.md#d-014--select-the-three-citizen-causeway-before-nightfall-proof); visual recovery direction selected in D-016 and delivered through PR #194
+- **Feature-work authorization:** planning amendment merged to `master`: **Yes, ordered packets only**
 - **Accepted runtime baseline:** `847c86b1c379e6a1dd8d4b7b641c3c89646e28c9`
-- **Planning base:** exact remote `master` `760c39e22219c41a92ec021fbf16490df380d004`
+- **Planning base:** planning head `52557d0a517b841421aa60a7b7b295375908c35f`; merged to `master` as `ccb651c67689c25eb0f3adec78abbfcf870699f5` at `2026-09-02T03:28:09Z`
 - **Preservation branch:** `archive/pre-consolidation-2026-08-27`
 - **Scenario:** **Causeway Before Nightfall**
 - **Milestone pass gate:** exactly three embodied, persistent citizens—Mara, Ivo, and Sena—inside one authoritative lived-world consequence, after the representative district clears the Packet 02V visual-production gate
@@ -73,7 +73,7 @@ Create exactly one authored representative district: causeway/breach, wetland ed
 
 In the headless cadence lane, compare process-frame-start interval and physics-frame-start interval only with Packet 01 using the identical clean-source build, seed, route, duration, warm-up, sampling, and metric semantics. The 10% same-route regression budget applies only within this headless lane. Packet 01/02 headless evidence is callback-start cadence characterization, not CPU-duration, GPU, render-thread, or whole-engine frame-time evidence; it has no GPU/render-driver evidence and must not be described as 1920x1080-equivalent. Do not compare percentages or timing results across lanes. Non-timing counts are diagnostic guardrails initially derived after the displayed baseline, not invented hard caps. The 02V implementation plan/PR must propose conservative numeric ceilings from that baseline for owner/reviewer approval before asset production. Structural rules require instancing/LOD/occlusion planning, no per-stalk collision, no unbounded shader loops, bounded transparent/full-screen effects, and no hard-safety breach. Do not lower visual quality to green an unrelated metric.
 
-**Stop/delivery:** stop on visual-gate rejection, missing displayed baseline, asset provenance ambiguity, runtime/debug scaffolding leakage, hard-safety breach without owner disposition, or any pressure to start Packet 03. Deliver one bounded PR; owner/reviewer gate remains open and this planning PR is not merged in this session.
+**Stop/delivery:** stop on independent technical-review failure, missing displayed baseline, asset provenance ambiguity, runtime/debug scaffolding leakage, hard-safety breach without owner disposition, or any pressure to start Packet 03. Deliver one bounded PR; Packet 02A has no human visual-completion gate, while Packet 02V remains subject to the interactive owner visual gate.
 
 ## Milestone-wide product contract
 
@@ -417,8 +417,7 @@ The milestone passes only when all are true:
 Stop and surface an owner decision if:
 
 - the accepted runtime baseline or planning base differs from the exact SHAs above without a recorded explanation;
-- implementation begins before this planning PR merges;
-- a packet starts before its predecessor is merged and reconciled;
+- a packet starts before its predecessor is merged and its required gates are reconciled (the planning-PR merge prerequisite is satisfied by PR #194);
 - the scenario requires more than exactly three citizens or a generalized framework to become coherent;
 - citizen behavior becomes a scripted quest, player puppet, omniscient planner, or dialogue-only illusion;
 - a majority tally, privileged player choice, magical veto, or other unnamed influence decides an outcome;
@@ -435,9 +434,9 @@ Stop and surface an owner decision if:
 
 ## Delivery and post-merge authorization
 
-This planning branch changes planning documentation and repository-governance validation only. It changes no product/runtime behavior and creates no implementation authority while unmerged. It is open for owner/reviewer review and is not merged in this session.
+This planning branch changed planning documentation and repository-governance validation only. It changed no product/runtime behavior. PR #194 delivered the planning head `52557d0a517b841421aa60a7b7b295375908c35f` to `master` as merge `ccb651c67689c25eb0f3adec78abbfcf870699f5` at `2026-09-02T03:28:09Z`, authorizing only the revised ordered bounded implementation packets above, beginning with Packet 02A. Required hosted evidence passed: `build-test-smoke` run `33531175853`, job `99934428113`; Snow Globe lab detector job `99934427058`, suite job `99934496859`, and `lab-tests` job `99935427335`. D-016 is accepted and delivered; no runtime/product acceptance is implied.
 
-Merging this planning PR into `master` authorizes only the revised ordered bounded implementation packets above, beginning with Packet 02A. PR #191's merge does not itself authorize this recovery. Each packet must:
+The PR #194 merge into `master` authorizes only the revised ordered bounded implementation packets above, beginning with Packet 02A. PR #191's earlier merge did not itself authorize this recovery. Each packet must:
 
 - branch from the current `master` after the previous packet merges;
 - own one bounded outcome and one PR;
@@ -448,7 +447,7 @@ Merging this planning PR into `master` authorizes only the revised ordered bound
 - update canonical state only for facts actually changed;
 - stop after delivery rather than starting the next packet automatically.
 
-No merge of this planning PR or any packet authorizes live providers, network traffic, credentials, paid calls, billing, deployment, publishing, release claims, or work outside this milestone. A later packet is authorized in principle but may begin only after the previous packet's merge and gate reconciliation confirm that its assumptions remain valid.
+The PR #194 merge and any packet merge authorize no live providers, network traffic, credentials, paid calls, billing, deployment, publishing, release claims, or work outside this milestone. A later packet is authorized in principle but may begin only after the previous packet's merge and gate reconciliation confirm that its assumptions remain valid.
 
 ## Owner decision at completion
 

@@ -6,7 +6,7 @@ This document shows product progression but does not authorize work by itself. O
 
 ## Active milestone — Causeway Before Nightfall
 
-`SNOW-GLOBE-SOCIAL-KERNEL-V1` is the owner-approved next product proof, effective when its planning PR merges. PR #191's merge does not itself authorize this visual recovery; only this amendment's merge authorizes the revised sequence beginning Packet 02A. It preserves the accepted founder-worldcraft runtime at `847c86b1c379e6a1dd8d4b7b641c3c89646e28c9` and adds one small, deep social kernel:
+`SNOW-GLOBE-SOCIAL-KERNEL-V1` is the owner-approved next product proof. PR #194 delivered its visual-recovery amendment (planning head `52557d0a517b841421aa60a7b7b295375908c35f`, merged as `ccb651c67689c25eb0f3adec78abbfcf870699f5` at `2026-09-02T03:28:09Z`), authorizing the revised sequence beginning Packet 02A. It preserves the accepted founder-worldcraft runtime at `847c86b1c379e6a1dd8d4b7b641c3c89646e28c9` and adds one small, deep social kernel:
 
 - exactly three embodied, persistent citizens: Mara, Ivo, and Sena;
 - one failing wetland causeway before nightfall;
