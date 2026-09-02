@@ -57,6 +57,7 @@ namespace Societies.Tests
             Test_LegacyVoxelVerticalRunCollision();
             await Test_SnowGlobeVoxelPlayerGroundingRegression();
             await Test_MainScene_DepotContributionInputSmoke();
+            await Test_MainScene_CausewayIntentBridgeSmoke();
             await Test_MainScene_DirectiveInputSmoke();
             await Test_MainScene_CivicPolicySelectionInputSmoke();
             await Test_MainScene_CrisisHudPresentationSmoke();
@@ -388,7 +389,8 @@ namespace Societies.Tests
                 Assert(manager.SelectedWorldcraftPieceId == "wood_post", "Voxel key 3 must select post through the actual input route");
 
                 PrototypeRuntimeSnapshot before = manager.CaptureSnapshot();
-                Assert(before.SchemaVersion == 11 && before.WorldModel == PrototypeWorldModels.Voxel, "Voxel runtime snapshot identity mismatch");
+                Assert(before.SchemaVersion == 12 && before.WorldModel == PrototypeWorldModels.Voxel && before.Causeway != null,
+                    "Voxel causeway runtime snapshot identity mismatch");
                 Assert(before.Workers.Count == 0 && before.Resources.Count == 0, "Voxel snapshot must not smuggle heightfield settlement state");
                 VoxelWorldModule snapshotWorld = VoxelWorldModule.Restore(before.VoxelWorld!);
                 VoxelCoord target = FindEditableVoxel(snapshotWorld, 0, 0);
@@ -984,6 +986,83 @@ namespace Societies.Tests
             catch (Exception ex)
             {
                 Fail(nameof(Test_MainScene_DepotContributionInputSmoke), ex);
+            }
+            finally
+            {
+                if (scene != null)
+                {
+                    scene.QueueFree();
+                    await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+                }
+            }
+        }
+
+        private async Task Test_MainScene_CausewayIntentBridgeSmoke()
+        {
+            Node? scene = null;
+
+            try
+            {
+                PackedScene packedScene = GD.Load<PackedScene>("res://scenes/main.tscn");
+                Assert(packedScene != null, "Main scene failed to load");
+
+                GameManager manager = packedScene!.Instantiate() as GameManager ??
+                    throw new Exception("Main scene root is not GameManager");
+                manager.ConfigureScenarioStartup("snow_globe_voxel");
+                scene = manager;
+                AddChild(scene);
+                await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+                manager.SetProcess(false);
+
+                PrototypeRuntimeSnapshot before = manager.CaptureSnapshot();
+                PrototypeCausewayStateSnapshot causewayBefore = before.Causeway ??
+                    throw new Exception("Causeway scenario did not initialize authoritative state");
+                int eventsBefore = manager.RuntimeEventCount;
+
+                PrototypeCausewayCommandResult accepted = manager.ExecuteCausewayIntent(new PrototypeCausewayCommand
+                {
+                    ActorId = "player",
+                    ExpectedRevision = causewayBefore.Revision,
+                    Kind = PrototypeCausewayCommandKind.ContributeCommunityTimber,
+                    Quantity = 1
+                });
+
+                Assert(accepted.Accepted, "Causeway intent bridge should return the session-accepted command");
+                Assert(accepted.EventType == PrototypeEventTypes.CausewayMaterialCommitted,
+                    "Accepted bridge command should expose the authoritative material event");
+                PrototypeRuntimeSnapshot afterAccepted = manager.CaptureSnapshot();
+                PrototypeCausewayStateSnapshot causewayAfterAccepted = afterAccepted.Causeway ??
+                    throw new Exception("Accepted bridge command lost causeway state");
+                Assert(causewayAfterAccepted.Revision == causewayBefore.Revision + 1,
+                    "Accepted bridge command should commit exactly one causeway revision");
+                Assert(causewayAfterAccepted.CommunityTimber == causewayBefore.CommunityTimber - 1 &&
+                    causewayAfterAccepted.CausewayTimberCommitted == causewayBefore.CausewayTimberCommitted + 1,
+                    "Accepted bridge command should apply the authoritative material mutation");
+                Assert(manager.RuntimeEventCount == eventsBefore + 1,
+                    "Accepted bridge command should append exactly one session event");
+
+                PrototypeCausewayCommandResult stale = manager.ExecuteCausewayIntent(new PrototypeCausewayCommand
+                {
+                    ActorId = "player",
+                    ExpectedRevision = causewayBefore.Revision,
+                    Kind = PrototypeCausewayCommandKind.ContributeStone,
+                    Quantity = 1
+                });
+
+                Assert(!stale.Accepted && stale.Rejection == "stale_revision",
+                    "Stale bridge command should be rejected by session validation");
+                PrototypeRuntimeSnapshot afterRejected = manager.CaptureSnapshot();
+                Assert(PrototypePersistenceService.SerializeSnapshot(afterAccepted) ==
+                    PrototypePersistenceService.SerializeSnapshot(afterRejected),
+                    "Rejected bridge command must leave authoritative state atomic");
+                Assert(manager.RuntimeEventCount == eventsBefore + 1,
+                    "Rejected bridge command must not append an event");
+
+                Pass(nameof(Test_MainScene_CausewayIntentBridgeSmoke));
+            }
+            catch (Exception ex)
+            {
+                Fail(nameof(Test_MainScene_CausewayIntentBridgeSmoke), ex);
             }
             finally
             {
@@ -1678,7 +1757,12 @@ namespace Societies.Tests
                 Assert(hud.InventoryText == inventoryBeforeMutation, "Inventory mutation should not rebuild the HUD synchronously");
 
                 manager._Process(0.0);
-                Assert(hud.InventoryText.Contains("hud refresh probe: 1"), "The next rendered-frame update should present the inventory mutation");
+                Assert(hud.InventoryText == inventoryBeforeMutation,
+                    "A zero-tick rendered frame must not rebuild presentation when authoritative state cannot advance");
+
+                manager._Process(PrototypeSimulationTime.TickIntervalSeconds);
+                Assert(hud.InventoryText.Contains("hud refresh probe: 1"),
+                    "The next authoritative simulation tick should present the inventory mutation");
 
                 Pass(nameof(Test_MainScene_HudRefreshCoalescingSmoke));
             }
@@ -1854,6 +1938,8 @@ namespace Societies.Tests
                 Assert(!afterZeroTickFrame[2].WorkerCountLast.HasValue, "Zero-tick frame should not fabricate a worker count");
                 Assert(!afterZeroTickFrame[2].CandidateOrdersPerIdleCitizen.HasValue, "Zero-tick frame should not fabricate an assignment ratio");
                 Assert(afterZeroTickFrame[2].StartSimulationTick == 4 && afterZeroTickFrame[2].EndSimulationTick == 4, "Zero-tick frame bounds should remain unchanged");
+                Assert(afterZeroTickFrame[2].Phases.UpdateHudMilliseconds == 0.0,
+                    "Zero-tick frame telemetry should preserve the batch while reporting no skipped HUD work");
 
                 manager.SaveSnapshotToDisk();
                 Assert(File.Exists(runtimeMetricsPath), "A metrics-enabled save should export runtime batch metrics");

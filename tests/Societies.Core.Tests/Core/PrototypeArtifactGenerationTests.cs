@@ -22,6 +22,232 @@ namespace Societies.Core.Tests
         private const string OutputEnvironmentVariable = "SOCIETIES_RUN_OUTPUT_DIR";
 
         [Fact]
+        public void SchemaV12CausewayArtifactsBindSnapshotSummaryAndExactEventRecords()
+        {
+            using ArtifactFixture fixture = ArtifactFixture.Create();
+            PrototypeRuntimeSession session = fixture.CreateCausewaySession();
+            session.Advance(24.0f, 24.0f);
+            PrototypeRuntimeSnapshot snapshot = session.CaptureSnapshot(Vector3.Zero);
+
+            fixture.Save(session, snapshot);
+            PrototypeLoadedArtifacts loaded = Assert.NotNull(fixture.Manager.LoadLatestArtifacts());
+
+            Assert.Equal(12, loaded.Snapshot.SchemaVersion);
+            Assert.Equal(
+                JsonSerializer.Serialize(loaded.Snapshot.Causeway),
+                JsonSerializer.Serialize(loaded.RunSummary!.Causeway));
+            Assert.Equal(
+                loaded.EventLog.Where(entry => entry.EventType.StartsWith("causeway.", StringComparison.Ordinal)).Select(EventIdentity),
+                loaded.RunSummary.CausewayEvents.Select(EventIdentity));
+        }
+
+        [Fact]
+        public void SchemaV12ArtifactsBindAndReloadTheActualNonDefaultFrozenCausewayDefinition()
+        {
+            using ArtifactFixture fixture = ArtifactFixture.Create();
+            PrototypeRuntimeSession session = fixture.CreateCausewaySession(causeway =>
+            {
+                causeway.InitialCausewayIntegrity = 41;
+                causeway.InitialWetlandHealth = 91;
+            });
+            Assert.True(session.ExecuteCausewayCommand(new PrototypeCausewayCommand
+            {
+                ActorId = "player", ExpectedRevision = 0,
+                Kind = PrototypeCausewayCommandKind.ContributeCommunityTimber
+            }).Accepted);
+            PrototypeRuntimeSnapshot snapshot = session.CaptureSnapshot(Vector3.Zero);
+            fixture.Save(session, snapshot);
+
+            PrototypeLoadedArtifacts loaded = Assert.IsType<PrototypeLoadedArtifacts>(
+                fixture.Manager.LoadLatestArtifacts());
+            Assert.Equal(41, loaded.Snapshot.Causeway!.Definition!.InitialCausewayIntegrity);
+            Assert.Equal(91, loaded.Snapshot.Causeway.Definition.InitialWetlandHealth);
+            Assert.True(PrototypeCausewayDefinitionContract.SnapshotsEqual(
+                loaded.Snapshot.Causeway.Definition,
+                loaded.RunSummary!.Causeway!.Definition));
+            Assert.True(PrototypeCausewayState.SnapshotsEqual(
+                loaded.Snapshot.Causeway, loaded.RunSummary.Causeway));
+        }
+
+        [Fact]
+        public void SchemaV12ArtifactsRejectCausewayDefinitionDigestMismatchAfterCoherentRebinding()
+        {
+            using ArtifactFixture fixture = ArtifactFixture.Create();
+            PrototypeRuntimeSession session = fixture.CreateCausewaySession();
+            PrototypeRuntimeSnapshot snapshot = session.CaptureSnapshot(Vector3.Zero);
+            fixture.Save(session, snapshot);
+
+            JsonObject summary = JsonNode.Parse(File.ReadAllText(fixture.Paths.LegacyRunSummaryPath))!.AsObject();
+            summary[nameof(PrototypeRunSummary.Causeway)]!
+                [nameof(PrototypeCausewayStateSnapshot.Definition)]!
+                [nameof(PrototypeCausewayDefinitionSnapshot.InitialWetlandHealth)] = 83;
+            File.WriteAllText(fixture.Paths.LegacyRunSummaryPath, summary.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
+            fixture.Rebind(fixture.Paths.LegacyRunSummaryPath, nameof(PrototypeArtifactGenerationManifest.RunSummary));
+
+            Assert.Throws<InvalidDataException>(() => fixture.Manager.LoadLatestArtifacts());
+        }
+
+        [Theory]
+        [InlineData("missing")]
+        [InlineData("duplicate")]
+        [InlineData("wrong_order")]
+        [InlineData("post_nightfall_command")]
+        public void SchemaV12CausewayArtifactsRejectCoherentlyReboundEventTampering(string tamper)
+        {
+            using ArtifactFixture fixture = ArtifactFixture.Create();
+            PrototypeRuntimeSession session = fixture.CreateCausewaySession();
+            Assert.True(session.ExecuteCausewayCommand(new PrototypeCausewayCommand
+            {
+                ActorId = "player", ExpectedRevision = 0,
+                Kind = PrototypeCausewayCommandKind.ContributeStone
+            }).Accepted);
+            session.Advance(24.0f, 24.0f);
+            fixture.Save(session, session.CaptureSnapshot(Vector3.Zero));
+
+            JsonArray events = JsonNode.Parse(File.ReadAllText(fixture.Paths.LegacyEventLogPath))!.AsArray();
+            if (tamper == "missing")
+            {
+                events.RemoveAt(0);
+            }
+            else if (tamper == "duplicate")
+            {
+                events.Add(events[0]!.DeepClone());
+            }
+            else if (tamper == "wrong_order")
+            {
+                JsonNode first = events[0]!.DeepClone();
+                events.RemoveAt(0);
+                events.Add(first);
+            }
+            else
+            {
+                JsonNode first = events[0]!.DeepClone();
+                JsonNode second = events[1]!.DeepClone();
+                events[0] = second;
+                events[1] = first;
+            }
+            File.WriteAllText(fixture.Paths.LegacyEventLogPath, events.ToJsonString());
+
+            JsonObject summary = JsonNode.Parse(File.ReadAllText(fixture.Paths.LegacyRunSummaryPath))!.AsObject();
+            var counts = events
+                .Select(node => node!.AsObject()[nameof(PrototypeEventRecord.EventType)]!.GetValue<string>())
+                .GroupBy(type => type, StringComparer.Ordinal)
+                .ToDictionary(group => group.Key, group => group.Count(), StringComparer.Ordinal);
+            summary[nameof(PrototypeRunSummary.EventCountsByType)] = JsonSerializer.SerializeToNode(counts);
+            summary[nameof(PrototypeRunSummary.CausewayEvents)] = events.DeepClone();
+            File.WriteAllText(fixture.Paths.LegacyRunSummaryPath, summary.ToJsonString());
+            fixture.Rebind(fixture.Paths.LegacyEventLogPath, nameof(PrototypeArtifactGenerationManifest.EventLog), events.Count);
+            fixture.Rebind(fixture.Paths.LegacyRunSummaryPath, nameof(PrototypeArtifactGenerationManifest.RunSummary));
+
+            Assert.Throws<InvalidDataException>(() => fixture.Manager.LoadLatestArtifacts());
+        }
+
+        [Fact]
+        public void SchemaV12ArtifactsRemainSaveableAfterSixtyFiveWaterSelectionAttempts()
+        {
+            using ArtifactFixture fixture = ArtifactFixture.Create();
+            PrototypeRuntimeSession session = fixture.CreateCausewaySession();
+            for (int attempt = 1; attempt <= 65; attempt++)
+            {
+                PrototypeCausewayCommandResult result = session.ExecuteCausewayCommand(new PrototypeCausewayCommand
+                {
+                    ActorId = "player", ExpectedRevision = attempt == 1 ? 0 : 1,
+                    Kind = PrototypeCausewayCommandKind.SelectWaterControl,
+                    WaterControl = attempt % 2 == 0
+                        ? PrototypeCausewayWaterControl.DrawDownWetland
+                        : PrototypeCausewayWaterControl.ProtectNursery
+                });
+                Assert.Equal(attempt == 1, result.Accepted);
+            }
+
+            fixture.Save(session, session.CaptureSnapshot(Vector3.Zero));
+            PrototypeLoadedArtifacts loaded = Assert.NotNull(fixture.Manager.LoadLatestArtifacts());
+            Assert.Single(loaded.RunSummary!.CausewayEvents);
+            Assert.Equal(1, loaded.Snapshot.Causeway!.Revision);
+        }
+
+        [Fact]
+        public void SchemaV12CausewayArtifactsRejectDuplicateWaterSelectionWithoutMutatingArtifacts()
+        {
+            using ArtifactFixture fixture = ArtifactFixture.Create();
+            PrototypeRuntimeSession session = fixture.CreateCausewaySession();
+            Assert.True(session.ExecuteCausewayCommand(new PrototypeCausewayCommand
+            {
+                ActorId = "player", ExpectedRevision = 0,
+                Kind = PrototypeCausewayCommandKind.SelectWaterControl,
+                WaterControl = PrototypeCausewayWaterControl.DrawDownWetland
+            }).Accepted);
+            fixture.Save(session, session.CaptureSnapshot(Vector3.Zero));
+
+            JsonObject snapshot = JsonNode.Parse(File.ReadAllText(fixture.Paths.LegacySnapshotPath))!.AsObject();
+            snapshot[nameof(PrototypeRuntimeSnapshot.Causeway)]!.AsObject()[nameof(PrototypeCausewayStateSnapshot.Revision)] = 2;
+            File.WriteAllText(fixture.Paths.LegacySnapshotPath, snapshot.ToJsonString());
+            fixture.Rebind(fixture.Paths.LegacySnapshotPath, nameof(PrototypeArtifactGenerationManifest.Snapshot));
+
+            JsonArray events = JsonNode.Parse(File.ReadAllText(fixture.Paths.LegacyEventLogPath))!.AsArray();
+            events.Add(events[0]!.DeepClone());
+            File.WriteAllText(fixture.Paths.LegacyEventLogPath, events.ToJsonString());
+            fixture.Rebind(fixture.Paths.LegacyEventLogPath, nameof(PrototypeArtifactGenerationManifest.EventLog), events.Count);
+
+            JsonObject summary = JsonNode.Parse(File.ReadAllText(fixture.Paths.LegacyRunSummaryPath))!.AsObject();
+            summary[nameof(PrototypeRunSummary.Causeway)]!.AsObject()[nameof(PrototypeCausewayStateSnapshot.Revision)] = 2;
+            summary[nameof(PrototypeRunSummary.CausewayEvents)] = events.DeepClone();
+            summary[nameof(PrototypeRunSummary.EventCountsByType)] = JsonSerializer.SerializeToNode(new Dictionary<string, int>
+            {
+                [PrototypeEventTypes.CausewayWaterControlSelected] = 2
+            });
+            File.WriteAllText(fixture.Paths.LegacyRunSummaryPath, summary.ToJsonString());
+            fixture.Rebind(fixture.Paths.LegacyRunSummaryPath, nameof(PrototypeArtifactGenerationManifest.RunSummary));
+
+            string snapshotBeforeLoad = File.ReadAllText(fixture.Paths.LegacySnapshotPath);
+            string eventsBeforeLoad = File.ReadAllText(fixture.Paths.LegacyEventLogPath);
+            string summaryBeforeLoad = File.ReadAllText(fixture.Paths.LegacyRunSummaryPath);
+
+            Assert.Throws<InvalidDataException>(() => fixture.Manager.LoadLatestArtifacts());
+            Assert.Equal(snapshotBeforeLoad, File.ReadAllText(fixture.Paths.LegacySnapshotPath));
+            Assert.Equal(eventsBeforeLoad, File.ReadAllText(fixture.Paths.LegacyEventLogPath));
+            Assert.Equal(summaryBeforeLoad, File.ReadAllText(fixture.Paths.LegacyRunSummaryPath));
+        }
+
+        [Fact]
+        public void SchemaV12CausewayArtifactsRejectReservedTimberSacrificeMaskedAsCommunityCustody()
+        {
+            using ArtifactFixture fixture = ArtifactFixture.Create();
+            PrototypeRuntimeSession session = fixture.CreateCausewaySession();
+            Assert.True(session.ExecuteCausewayCommand(new PrototypeCausewayCommand
+            {
+                ActorId = "player", ExpectedRevision = 0, Kind = PrototypeCausewayCommandKind.RepairPlayerShelter
+            }).Accepted);
+            Assert.True(session.ExecuteCausewayCommand(new PrototypeCausewayCommand
+            {
+                ActorId = "player", ExpectedRevision = 1, Kind = PrototypeCausewayCommandKind.ContributeCommunityTimber
+            }).Accepted);
+            fixture.Save(session, session.CaptureSnapshot(Vector3.Zero));
+
+            JsonArray events = JsonNode.Parse(File.ReadAllText(fixture.Paths.LegacyEventLogPath))!.AsArray();
+            JsonObject sacrifice = events[0]!.AsObject();
+            sacrifice[nameof(PrototypeEventRecord.EventType)] = PrototypeEventTypes.CausewayTimberSacrificed;
+            sacrifice[nameof(PrototypeEventRecord.Message)] = "reserved_dry_timber:1";
+            JsonObject repair = events[1]!.AsObject();
+            repair[nameof(PrototypeEventRecord.EventType)] = PrototypeEventTypes.CausewayShelterRepaired;
+            repair[nameof(PrototypeEventRecord.Message)] = "reserved_dry_timber:2;player_labor:1";
+            File.WriteAllText(fixture.Paths.LegacyEventLogPath, events.ToJsonString());
+
+            JsonObject summary = JsonNode.Parse(File.ReadAllText(fixture.Paths.LegacyRunSummaryPath))!.AsObject();
+            summary[nameof(PrototypeRunSummary.CausewayEvents)] = events.DeepClone();
+            summary[nameof(PrototypeRunSummary.EventCountsByType)] = JsonSerializer.SerializeToNode(new Dictionary<string, int>
+            {
+                [PrototypeEventTypes.CausewayTimberSacrificed] = 1,
+                [PrototypeEventTypes.CausewayShelterRepaired] = 1
+            });
+            File.WriteAllText(fixture.Paths.LegacyRunSummaryPath, summary.ToJsonString());
+            fixture.Rebind(fixture.Paths.LegacyEventLogPath, nameof(PrototypeArtifactGenerationManifest.EventLog), events.Count);
+            fixture.Rebind(fixture.Paths.LegacyRunSummaryPath, nameof(PrototypeArtifactGenerationManifest.RunSummary));
+
+            Assert.Throws<InvalidDataException>(() => fixture.Manager.LoadLatestArtifacts());
+        }
+
+        [Fact]
         public void SchemaV8ArtifactsRoundTripAsOneCommittedGeneration()
         {
             using ArtifactFixture fixture = ArtifactFixture.Create();
@@ -635,6 +861,19 @@ namespace Societies.Core.Tests
                 return session;
             }
 
+            public PrototypeRuntimeSession CreateCausewaySession(
+                Action<PrototypeCausewayDefinition>? configure = null)
+            {
+                PrototypeScenarioDefinition scenario = _bundle.Scenarios.Resolve("snow_globe_voxel");
+                configure?.Invoke(scenario.Causeway!);
+                PrototypeRuntimeSession session = new(
+                    scenario,
+                    _bundle.RoleQuotas.Roles,
+                    resourceDefinitions: _bundle.Resources.Resources);
+                session.Initialize(8.0f);
+                return session;
+            }
+
             public PrototypeRuntimeSession CreateTerminalSession()
             {
                 PrototypeScenarioDefinition scenario = JsonSerializer.Deserialize<PrototypeScenarioDefinition>(
@@ -737,5 +976,8 @@ namespace Societies.Core.Tests
                 throw new DirectoryNotFoundException("Could not find src/societies/data.");
             }
         }
+
+        private static string EventIdentity(PrototypeEventRecord entry) =>
+            $"{entry.Tick}|{entry.EventType}|{entry.Message}";
     }
 }

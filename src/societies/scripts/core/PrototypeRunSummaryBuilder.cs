@@ -127,7 +127,21 @@ namespace Societies.Core
                     ReedQuotaConsumed = wetland.ReedQuotaConsumed,
                     WetlandHealth = wetland.WetlandHealth,
                     WetlandHealthBand = wetland.WetlandHealthBand
-                }
+                },
+                Causeway = snapshot.SchemaVersion >= 12 && snapshot.Causeway != null
+                    ? PrototypeCausewayState.CloneSnapshot(snapshot.Causeway)
+                    : null,
+                CausewayEvents = snapshot.SchemaVersion >= 12
+                    ? eventRecords
+                        .Where(record => PrototypeCausewayState.IsCausewayEventType(record.EventType))
+                        .Select(record => new PrototypeEventRecord
+                        {
+                            Tick = record.Tick,
+                            EventType = record.EventType,
+                            Message = record.Message
+                        })
+                        .ToList()
+                    : new List<PrototypeEventRecord>()
             };
         }
 

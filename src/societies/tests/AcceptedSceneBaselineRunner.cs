@@ -37,17 +37,21 @@ namespace Societies.Tests
         private async void RunAsync()
         {
             string outputDirectory = ResolveArgument("--output-dir");
-            string resultPath = Path.Combine(outputDirectory, "accepted-scene-baseline-trial-v4.json");
+            string artifactSchema = ResolveOptionalArgument("--artifact-schema", AcceptedSceneBaselineContract.Schema);
+            string routeId = ResolveOptionalArgument("--route-id", AcceptedSceneBaselineContract.RouteId);
+            string resultPath = Path.Combine(outputDirectory, ResolveOptionalArgument("--artifact-file-name", "accepted-scene-baseline-trial-v4.json"));
             Directory.CreateDirectory(outputDirectory);
             AcceptedSceneBaselineTrialArtifact? artifact = null;
             var failureEvidence = new AcceptedSceneBaselineFailureEvidence();
             try
             {
                 artifact = await CaptureAsync(outputDirectory, failureEvidence);
+                artifact.Schema = artifactSchema;
+                artifact.Route.RouteId = routeId;
                 failureEvidence.Stage = "artifact_serialization";
                 WriteJson(resultPath, artifact);
                 failureEvidence.Stage = "artifact_validation";
-                AcceptedSceneBaselineContract.ValidateArtifact(artifact);
+                AcceptedSceneBaselineContract.ValidateArtifact(artifact, artifactSchema, routeId);
                 GD.Print($"ACCEPTED_SCENE_BASELINE {artifact.Status} {resultPath}");
                 GetTree().Quit(artifact.Timing.Classification == "safety_failure" ? 2 : 0);
             }
@@ -55,7 +59,7 @@ namespace Societies.Tests
             {
                 WriteJson(resultPath, new
                 {
-                    schema = AcceptedSceneBaselineContract.Schema,
+                    schema = artifactSchema,
                     status = "failed",
                     errorType = exception.GetType().FullName,
                     errorMessage = exception.Message,
@@ -92,6 +96,7 @@ namespace Societies.Tests
             bool sourceDirty = bool.Parse(ResolveArgument("--source-dirty"));
             bool dirtySourceOverrideUsed = bool.Parse(ResolveArgument("--dirty-source-override"));
             string managedAssemblySha256 = ResolveArgument("--managed-assembly-sha256");
+            bool requireCauseway = bool.Parse(ResolveOptionalArgument("--require-causeway", "false"));
             failureEvidence.TrialIndex = trialIndex;
             failureEvidence.TrialMode = trialMode;
             failureEvidence.FixedFps = fixedFps;
@@ -131,6 +136,12 @@ namespace Societies.Tests
 
                 PrototypeRuntimeSnapshot initialSnapshot = manager.CaptureSnapshot();
                 ValidateEmptyRuntime(initialSnapshot);
+                if (requireCauseway)
+                {
+                    Require(scenario.Causeway != null && initialSnapshot.SchemaVersion == 12 && initialSnapshot.Causeway != null &&
+                        initialSnapshot.Causeway.CausewayIntegrity is > 0 and < 100 && initialSnapshot.Causeway.ReservedDryTimber > 0,
+                        "Packet 02 route did not start from the authoritative causeway state.");
+                }
                 string initialIdentity = SnapshotIdentity(initialSnapshot);
                 VoxelWorldPresenter presenter = manager.GetNode<VoxelWorldPresenter>("World/VoxelWorldPresenter");
                 (int initialBodies, int initialShapes) = CountPresenterCollisions(presenter);
@@ -152,6 +163,29 @@ namespace Societies.Tests
                     "Warmup or fixed player route changed direct presenter collision counts.");
                 RequireInstrumentationAbsent(measurementEndSnapshot);
 
+                PrototypeCausewayCommandResult? causewayCommand = null;
+                string causewayBeforeCommandIdentity = string.Empty;
+                string causewayAfterCommandIdentity = string.Empty;
+                if (requireCauseway)
+                {
+                    failureEvidence.Stage = "causeway_command";
+                    causewayBeforeCommandIdentity = CausewayIdentity(measurementEndSnapshot);
+                    causewayCommand = manager.ExecuteCausewayIntent(new PrototypeCausewayCommand
+                    {
+                        ActorId = "player",
+                        ExpectedRevision = measurementEndSnapshot.Causeway!.Revision,
+                        Kind = PrototypeCausewayCommandKind.ContributeCommunityTimber,
+                        Quantity = 1
+                    });
+                    Require(causewayCommand.Accepted &&
+                        causewayCommand.EventType == PrototypeEventTypes.CausewayMaterialCommitted &&
+                        causewayCommand.PreviousRevision == 0 && causewayCommand.Revision == 1,
+                        $"Packet 02 fixed causeway command failed: {causewayCommand.Rejection}.");
+                    causewayAfterCommandIdentity = CausewayIdentity(manager.CaptureSnapshot());
+                    Require(causewayBeforeCommandIdentity != causewayAfterCommandIdentity,
+                        "Packet 02 fixed causeway command did not change authoritative causeway state.");
+                }
+
                 VoxelCoord target = FixedEditTarget();
                 failureEvidence.Stage = "voxel_edit";
                 RequireFixedEditTarget(measurementEndSnapshot, target);
@@ -161,6 +195,13 @@ namespace Societies.Tests
                 await ToSignal(GetTree(), SceneTree.SignalName.PhysicsFrame);
                 PrototypeRuntimeSnapshot afterEditSnapshot = manager.CaptureSnapshot();
                 string afterEditIdentity = SnapshotIdentity(afterEditSnapshot);
+                string causewayAfterEditIdentity = requireCauseway
+                    ? CausewayIdentity(afterEditSnapshot) : string.Empty;
+                if (requireCauseway)
+                {
+                    Require(causewayAfterCommandIdentity == causewayAfterEditIdentity,
+                        "Voxel edit changed authoritative causeway state.");
+                }
                 (int afterEditBodies, int afterEditShapes) = CountPresenterCollisions(presenter);
 
                 failureEvidence.Stage = "persistence_reload";
@@ -171,6 +212,13 @@ namespace Societies.Tests
                     "Accepted route failed to reload its persisted snapshot.");
                 PrototypeRuntimeSnapshot reloadedSnapshot = manager.CaptureSnapshot();
                 string reloadedIdentity = SnapshotIdentity(reloadedSnapshot);
+                string causewayReloadedIdentity = requireCauseway
+                    ? CausewayIdentity(reloadedSnapshot) : string.Empty;
+                if (requireCauseway)
+                {
+                    Require(causewayAfterEditIdentity == causewayReloadedIdentity,
+                        "Reloaded causeway state differs from the post-edit causeway state.");
+                }
                 RequireSnapshotIdentity(
                     afterEditSnapshot,
                     afterEditIdentity,
@@ -182,6 +230,8 @@ namespace Societies.Tests
                 string replayedMeasurementStartIdentity = string.Empty;
                 string replayedMeasurementEndIdentity = string.Empty;
                 string replayedIdentity = string.Empty;
+                string replayedCausewayAfterCommandIdentity = string.Empty;
+                string replayedCausewayAfterEditIdentity = string.Empty;
                 if (fixedDeltaIdentity)
                 {
                     failureEvidence.Stage = "fixed_delta_replay_setup";
@@ -217,11 +267,36 @@ namespace Societies.Tests
                         replayedMeasurementEndSnapshot,
                         "Fixed player/camera route did not reproduce measurement-end identity.",
                         failureEvidence);
+                    if (requireCauseway)
+                    {
+                        PrototypeCausewayCommandResult replayedCauseway =
+                            manager.ExecuteCausewayIntent(new PrototypeCausewayCommand
+                            {
+                                ActorId = "player",
+                                ExpectedRevision = replayedMeasurementEndSnapshot.Causeway!.Revision,
+                                Kind = PrototypeCausewayCommandKind.ContributeCommunityTimber,
+                                Quantity = 1
+                            });
+                        Require(replayedCauseway.Accepted && replayedCauseway.PreviousRevision == 0 &&
+                            replayedCauseway.Revision == 1 &&
+                            replayedCauseway.EventType == PrototypeEventTypes.CausewayMaterialCommitted,
+                            "Fixed route replay causeway command failed or changed identity.");
+                        replayedCausewayAfterCommandIdentity = CausewayIdentity(manager.CaptureSnapshot());
+                        Require(causewayAfterCommandIdentity == replayedCausewayAfterCommandIdentity,
+                            "Fixed route replay causeway command did not reproduce authoritative causeway state.");
+                    }
                     VoxelEditResult replayed = manager.ApplyVoxelPlayerIntent(VoxelEditKind.Remove, target);
                     Require(replayed.Accepted && replayed.WorldRevision == 1, "Fixed route replay edit failed.");
                     await ToSignal(GetTree(), SceneTree.SignalName.PhysicsFrame);
                     PrototypeRuntimeSnapshot replayedAfterEditSnapshot = manager.CaptureSnapshot();
                     replayedIdentity = SnapshotIdentity(replayedAfterEditSnapshot);
+                    replayedCausewayAfterEditIdentity = requireCauseway
+                        ? CausewayIdentity(replayedAfterEditSnapshot) : string.Empty;
+                    if (requireCauseway)
+                    {
+                        Require(causewayAfterCommandIdentity == replayedCausewayAfterEditIdentity,
+                            "Fixed route replay voxel edit changed or failed to reproduce causeway state.");
+                    }
                     RequireSnapshotIdentity(
                         afterEditSnapshot,
                         afterEditIdentity,
@@ -261,6 +336,23 @@ namespace Societies.Tests
                 string classification = realtimePerformance
                     ? claimEligible ? rawClassification : "not_applied_characterization_only"
                     : "not_applicable_identity_only";
+                AcceptedSceneBaselineCausewayTransition? causewayEvidence = requireCauseway
+                    ? new AcceptedSceneBaselineCausewayTransition
+                    {
+                        CommandKind = nameof(PrototypeCausewayCommandKind.ContributeCommunityTimber),
+                        CommandQuantity = 1,
+                        Accepted = causewayCommand!.Accepted,
+                        EventType = causewayCommand.EventType,
+                        PreviousRevision = causewayCommand.PreviousRevision,
+                        Revision = causewayCommand.Revision,
+                        BeforeCommandStateIdentity = causewayBeforeCommandIdentity,
+                        AfterCommandStateIdentity = causewayAfterCommandIdentity,
+                        AfterVoxelEditStateIdentity = causewayAfterEditIdentity,
+                        ReloadedStateIdentity = causewayReloadedIdentity,
+                        ReplayedAfterCommandStateIdentity = replayedCausewayAfterCommandIdentity,
+                        ReplayedAfterVoxelEditStateIdentity = replayedCausewayAfterEditIdentity
+                    }
+                    : null;
 
                 return BuildArtifact(
                     trialIndex, warmupFrames, measuredFrames, trialMode, fixedFps, baseSha, sourceSha, sourceTree,
@@ -271,7 +363,7 @@ namespace Societies.Tests
                     activeFrameStatistics, activePhysicsStatistics, backlogStatistics,
                     initialBodies, initialShapes,
                     afterEditBodies, afterEditShapes, target, edit, afterEditIdentity, reloadedIdentity,
-                    replayedIdentity, classification, rawClassification, claimEligible);
+                    replayedIdentity, causewayEvidence, classification, rawClassification, claimEligible);
             }
             finally
             {
@@ -526,7 +618,8 @@ namespace Societies.Tests
             PerformanceSampleStatistics backlogStatistics,
             int initialBodies, int initialShapes, int afterEditBodies, int afterEditShapes,
             VoxelCoord target, VoxelEditResult edit, string afterEditIdentity, string reloadedIdentity,
-            string replayedIdentity, string classification, string rawClassification, bool claimEligible)
+            string replayedIdentity, AcceptedSceneBaselineCausewayTransition? causewayEvidence,
+            string classification, string rawClassification, bool claimEligible)
         {
             bool realtimePerformance = trialMode == AcceptedSceneBaselineContract.RealtimePerformanceMode;
             return new AcceptedSceneBaselineTrialArtifact
@@ -637,6 +730,7 @@ namespace Societies.Tests
                     AfterEditStateIdentity = afterEditIdentity, ReloadedStateIdentity = reloadedIdentity,
                     ReplayedStateIdentity = replayedIdentity
                 },
+                Causeway = causewayEvidence,
                 Limitations = new List<string>
                 {
                     realtimePerformance
@@ -789,6 +883,14 @@ namespace Societies.Tests
         private static string SnapshotIdentity(PrototypeRuntimeSnapshot snapshot) =>
             AcceptedSceneBaselineContract.Sha256(PrototypePersistenceService.SerializeSnapshot(snapshot));
 
+        private static string CausewayIdentity(PrototypeRuntimeSnapshot snapshot)
+        {
+            PrototypeCausewayStateSnapshot causeway = snapshot.Causeway ??
+                throw new InvalidOperationException("Packet 02 route snapshot is missing causeway state.");
+            return AcceptedSceneBaselineContract.Sha256(
+                JsonSerializer.Serialize(causeway));
+        }
+
         private static void RequireSnapshotIdentity(
             PrototypeRuntimeSnapshot expectedSnapshot,
             string expectedIdentity,
@@ -838,6 +940,13 @@ namespace Societies.Tests
                 if (arguments[index] == name) return arguments[index + 1];
             }
             throw new ArgumentException($"Missing required runner argument {name}.");
+        }
+
+        private static string ResolveOptionalArgument(string name, string fallback)
+        {
+            string[] arguments = OS.GetCmdlineUserArgs().ToArray();
+            int index = Array.IndexOf(arguments, name);
+            return index >= 0 && index + 1 < arguments.Length ? arguments[index + 1] : fallback;
         }
 
         private static int ResolveIntArgument(string name, int minimum, int maximum)

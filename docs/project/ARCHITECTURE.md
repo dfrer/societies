@@ -86,6 +86,10 @@ intent or proposal
 
 No UI callback, provider response, memory summary, animation, or diagnostic may skip this path.
 
+### Packet 02A Causeway authority boundary
+
+The Packet 02A substrate freezes and binds the actual Causeway definition schema/version and SHA-256 digest. Catalog mismatch fails closed before authoritative use. Canonical persistence is strict about exact fields, duplicates, ordering, and valid anchors. The accepted deterministic route transition is `ContributeCommunityTimber`, advancing revision `0->1`; edit, reload, and fixed replay must preserve Causeway equality. This remains a deterministic product substrate, not citizen cognition or visual acceptance.
+
 ## Cognition interface requirements
 
 The first product interface must be versioned and small. A request contains only citizen-known state, stable identity/traits, current needs and obligations, recent observed events, the player's exact bounded interaction, allowed proposals, and stale-binding digests. A receipt separates:

@@ -249,6 +249,8 @@ namespace Societies.Core.Tests
 
             foreach (string propertyName in typeof(PrototypeRunSummary)
                 .GetProperties()
+                .Where(property => property.Name is not nameof(PrototypeRunSummary.Causeway) and
+                    not nameof(PrototypeRunSummary.CausewayEvents))
                 .Select(property => property.Name))
             {
                 JsonObject incomplete = JsonNode.Parse(complete)!.AsObject();

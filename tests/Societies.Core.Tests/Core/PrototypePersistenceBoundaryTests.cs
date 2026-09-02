@@ -102,13 +102,20 @@ namespace Societies.Core.Tests
 
             PrototypeRunSummary currentSummary = PrototypePersistenceService.DeserializeRunSummary(
                 PrototypePersistenceService.SerializeRunSummary(
-                    new PrototypeRunSummary { SchemaVersion = 11 }));
-            Assert.Equal(11, currentSummary.SchemaVersion);
+                    new PrototypeRunSummary
+                    {
+                        SchemaVersion = 12,
+                        EndHour = 8.0f,
+                        Causeway = new PrototypeCausewayState(new PrototypeCausewayDefinition()).CaptureSnapshot(),
+                        CausewayEvents = new List<PrototypeEventRecord>()
+                    }));
+            Assert.Equal(12, currentSummary.SchemaVersion);
+            Assert.NotNull(currentSummary.Causeway);
 
             Assert.Throws<InvalidDataException>(() =>
                 PrototypePersistenceService.DeserializeRunSummary(
                     PrototypePersistenceService.SerializeRunSummary(
-                        new PrototypeRunSummary { SchemaVersion = 12 })));
+                        new PrototypeRunSummary { SchemaVersion = 13 })));
             Assert.Throws<InvalidDataException>(() =>
                 PrototypePersistenceService.DeserializeRunSummary(
                     PrototypePersistenceService.SerializeRunSummary(

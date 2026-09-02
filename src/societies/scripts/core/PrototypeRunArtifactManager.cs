@@ -132,7 +132,7 @@ namespace Societies.Core
                 "world summary");
             _ = PrototypePersistenceService.DeserializeWorldSummary(
                 Encoding.UTF8.GetString(worldSummaryBytes));
-            if (snapshot.SchemaVersion is 7 or 8 or 9 or 10 or 11)
+            if (snapshot.SchemaVersion is 7 or 8 or 9 or 10 or 11 or 12)
             {
                 PrototypeRuntimeSnapshot validatedSnapshot = DeserializeAndValidateSnapshotPayload(
                     snapshotBytes);
@@ -207,7 +207,7 @@ namespace Societies.Core
             byte[] snapshotBytes = ReadBoundedFile(paths.LegacySnapshotPath, MaximumSnapshotBytes, "snapshot");
             PrototypeRuntimeSnapshot snapshot = DeserializeAndValidateSnapshotPayload(snapshotBytes);
 
-            if (snapshot.SchemaVersion is 7 or 8 or 9 or 10 or 11)
+            if (snapshot.SchemaVersion is 7 or 8 or 9 or 10 or 11 or 12)
             {
                 return LoadCommittedArtifacts(paths, snapshot, snapshotBytes);
             }
@@ -394,7 +394,7 @@ namespace Societies.Core
 
             if (!Guid.TryParseExact(manifest.GenerationId, "N", out _) ||
                 manifest.RuntimeSchemaVersion != snapshot.SchemaVersion ||
-                manifest.RuntimeSchemaVersion is not (7 or 8 or 9 or 10 or 11) ||
+                manifest.RuntimeSchemaVersion is not (7 or 8 or 9 or 10 or 11 or 12) ||
                 !string.Equals(manifest.ScenarioId, snapshot.ScenarioId, StringComparison.Ordinal) ||
                 manifest.SimulationTick != snapshot.SimulationTick ||
                 manifest.EventCount < 0 ||
@@ -531,7 +531,9 @@ namespace Societies.Core
                 (snapshot.SchemaVersion >= 8 &&
                     !CivicPoliciesEqual(summary.CivicPolicy, snapshot.CivicPolicy)) ||
                 (snapshot.SchemaVersion >= 9 &&
-                    !WetlandsEqual(summary.Wetland, snapshot.Wetland)))
+                    !WetlandsEqual(summary.Wetland, snapshot.Wetland)) ||
+                (snapshot.SchemaVersion >= 12 &&
+                    !PrototypeCausewayState.SnapshotsEqual(summary.Causeway, snapshot.Causeway)))
             {
                 throw new InvalidDataException(
                     $"Run summary does not match the schema-v{snapshot.SchemaVersion} snapshot.");
@@ -553,6 +555,22 @@ namespace Societies.Core
             if (snapshot.SchemaVersion >= 9)
             {
                 ValidateWetlandConsistency(snapshot.CivicPolicy!, snapshot.Wetland!, eventLog);
+            }
+            if (snapshot.SchemaVersion >= 12)
+            {
+                IReadOnlyList<PrototypeEventRecord> causewayEvents = eventLog
+                    .Where(entry => PrototypeCausewayState.IsCausewayEventType(entry.EventType))
+                    .ToArray();
+                if (!EventRecordsEqual(summary.CausewayEvents, causewayEvents))
+                {
+                    throw new InvalidDataException("Run-summary causeway events do not exactly match the authoritative event log.");
+                }
+                PrototypeCausewayState restoredCauseway =
+                    PrototypeCausewayState.PrepareRestore(
+                        PrototypeCausewayDefinitionContract.PrepareFromSnapshot(snapshot.Causeway!.Definition),
+                        snapshot.Causeway);
+                restoredCauseway.ValidateCurrentHour(snapshot.CurrentHour);
+                PrototypeCausewayState.ValidateEventCoherence(snapshot.Causeway!, causewayEvents);
             }
         }
 
@@ -628,9 +646,10 @@ namespace Societies.Core
                 snapshot.Telemetry == null ||
                 (snapshot.SchemaVersion >= 8 && snapshot.CivicPolicy == null) ||
                 (snapshot.SchemaVersion >= 9 && snapshot.Wetland == null) ||
-                (snapshot.SchemaVersion is 10 or 11 &&
+                (snapshot.SchemaVersion is 10 or 11 or 12 &&
                     (!string.Equals(snapshot.WorldModel, PrototypeWorldModels.Voxel, StringComparison.Ordinal) ||
                      snapshot.VoxelWorld == null)) ||
+                (snapshot.SchemaVersion == 12 && snapshot.Causeway == null) ||
                 snapshot.Workers.Count > PrototypePersistenceBounds.MaximumSnapshotRows ||
                 snapshot.Resources.Count > PrototypePersistenceBounds.MaximumSnapshotRows)
             {
@@ -641,7 +660,7 @@ namespace Societies.Core
             ValidateDictionaryBounds(snapshot.Stockpile);
             ValidateDictionaryBounds(snapshot.ContributionCountsByResource);
 
-            if (snapshot.SchemaVersion is 10 or 11)
+            if (snapshot.SchemaVersion is 10 or 11 or 12)
             {
                 PrototypeVoxelSnapshotValidator.ValidateCanonicalShell(snapshot);
                 try
@@ -700,6 +719,11 @@ namespace Societies.Core
             ValidateDictionaryBounds(summary.DepotThroughputByDepot);
             ValidateDictionaryBounds(summary.RouteBacklogTicksByKind);
             ValidateDictionaryBounds(summary.ContributionsByResource);
+            if (summary.CausewayEvents == null || summary.CausewayEvents.Count > 64)
+            {
+                throw new InvalidDataException("Run summary contains an invalid causeway event sequence.");
+            }
+            ValidateEventLog(summary.CausewayEvents, summary.SimulationTick);
         }
 
         internal static void ValidateStandaloneEventLog(
@@ -711,7 +735,7 @@ namespace Societies.Core
         internal static void ValidateStandaloneRunSummary(PrototypeRunSummary summary)
         {
             ValidateSummaryBounds(summary);
-            if (summary.SchemaVersion is not (5 or 6 or 7 or 8 or 9 or 10 or 11) ||
+            if (summary.SchemaVersion is not (5 or 6 or 7 or 8 or 9 or 10 or 11 or 12) ||
                 summary.SimulationTick < 0)
             {
                 throw new InvalidDataException(
@@ -733,6 +757,41 @@ namespace Societies.Core
                     _ = PrototypeWetlandState.PrepareRestore(summary.Wetland!, civicPolicy);
                 }
             }
+
+            if (summary.SchemaVersion == 12)
+            {
+                if (summary.Causeway == null)
+                {
+                    throw new InvalidDataException("Schema-v12 run summary is missing causeway state.");
+                }
+                PrototypeCausewayState restoredCauseway =
+                    PrototypeCausewayState.PrepareRestore(
+                        PrototypeCausewayDefinitionContract.PrepareFromSnapshot(summary.Causeway.Definition),
+                        summary.Causeway);
+                restoredCauseway.ValidateCurrentHour(summary.EndHour);
+                PrototypeCausewayState.ValidateEventCoherence(summary.Causeway, summary.CausewayEvents);
+            }
+            else if (summary.Causeway != null || summary.CausewayEvents.Count != 0)
+            {
+                throw new InvalidDataException("Legacy run summary contains causeway state.");
+            }
+        }
+
+        private static bool EventRecordsEqual(
+            IReadOnlyList<PrototypeEventRecord> first,
+            IReadOnlyList<PrototypeEventRecord> second)
+        {
+            if (first.Count != second.Count) return false;
+            for (int index = 0; index < first.Count; index++)
+            {
+                if (first[index].Tick != second[index].Tick ||
+                    !string.Equals(first[index].EventType, second[index].EventType, StringComparison.Ordinal) ||
+                    !string.Equals(first[index].Message, second[index].Message, StringComparison.Ordinal))
+                {
+                    return false;
+                }
+            }
+            return true;
         }
 
         private static bool CivicPoliciesEqual(

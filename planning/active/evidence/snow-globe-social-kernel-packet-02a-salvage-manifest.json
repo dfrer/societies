@@ -1,0 +1,271 @@
+{
+  "schemaVersion": 1,
+  "schema": "societies_snow_globe_social_kernel_packet_02a_salvage_manifest",
+  "packet": "02A",
+  "purpose": "Deterministic substrate salvage map only; it does not authorize a visual-completion claim or Packet 03.",
+  "target": {
+    "branch": "feature/social-kernel-02a-causeway-substrate",
+    "baseCommit": "1745896535124bd39ca6321fe6430d93de81bf43",
+    "baseTree": "d03d39e348ff037c507805a0cf0ab6955cdb7795"
+  },
+  "immutableHistoricalSource": {
+    "branch": "codex/snow-globe-social-kernel-packet-02",
+    "baseCommit": "760c39e22219c41a92ec021fbf16490df380d004",
+    "baseTree": "fb7960f5c2a79db13c6cd3dcefc6ff7c6ce26f1c",
+    "checkpointCommit": "7aad77dc10f2edf84e44f5f43e0082568a1ab8e9",
+    "checkpointTree": "fe0c91ca05d6d3f24647967ae4876b3d8265e131",
+    "rejectionHead": "269c80e16766094378afd4809bca40e045ab686b",
+    "rejectionTree": "c18d419e53dee2a60f90ffa44baa89ffc19b51ed",
+    "sourceRange": "760c39e22219c41a92ec021fbf16490df380d004..7aad77dc10f2edf84e44f5f43e0082568a1ab8e9",
+    "postCheckpointRule": "Commits after 7aad77dc10f2edf84e44f5f43e0082568a1ab8e9 are not recovery source. The inspected 7aad77dc..269c80e post-checkpoint diff is documentation and evidence only."
+  },
+  "manifestRule": "Each entry covers one path changed by the immutable source range. Adaptation must preserve deterministic authority, validate-before-append, persistence/replay equality, and bounded performance semantics while excluding rejected presentation and review scaffolding.",
+  "entries": [
+    {
+      "sourcePath": "CURRENT_BUILD.md",
+      "provenance": "760c39e..7aad77d documentation hunk",
+      "targetPath": null,
+      "classification": "drop_obsolete_evidence_or_status",
+      "rationale": "Historical local-checkpoint status conflicts with current master and cannot establish delivery or acceptance.",
+      "validationRequired": ["no historical status copied", "current CURRENT_BUILD.md handoff updates are independent of this historical drop"]
+    },
+    {
+      "sourcePath": "WORKFLOW.md",
+      "provenance": "760c39e..7aad77d workflow-status hunk",
+      "targetPath": null,
+      "classification": "drop_obsolete_evidence_or_status",
+      "rationale": "Historical local evidence and next-action wording are superseded by D-016 recovery sequencing.",
+      "validationRequired": ["no historical workflow claim copied", "current WORKFLOW.md handoff updates are independent of this historical drop"]
+    },
+    {
+      "sourcePath": "docs/project/CURRENT_STATE.md",
+      "provenance": "760c39e..7aad77d current-state hunk",
+      "targetPath": null,
+      "classification": "drop_obsolete_evidence_or_status",
+      "rationale": "Current canonical state already records the rejection and makes 02A the next authorized packet.",
+      "validationRequired": ["no historical implementation or acceptance claim copied", "current CURRENT_STATE handoff updates are independent of this historical drop"]
+    },
+    {
+      "sourcePath": "planning/active/evidence/snow-globe-social-kernel-packet-02-validation.json",
+      "provenance": "added in 331afc0; retained through checkpoint",
+      "targetPath": null,
+      "classification": "drop_obsolete_evidence_or_status",
+      "rationale": "It records rejected presentation-era local evidence and must not be relabeled as current recovery evidence.",
+      "validationRequired": ["new Packet 02A evidence has distinct provenance", "no visual-acceptance claim"]
+    },
+    {
+      "sourcePath": "scripts/run-accepted-scene-baseline.ps1",
+      "provenance": "5356a28 packet02-v5 profile patch",
+      "targetPath": "scripts/run-accepted-scene-baseline.ps1",
+      "classification": "keep_but_adapt_to_current_master",
+      "rationale": "Preserve immutable route/profile binding, source identity, artifact containment, mutually exclusive execution and validator modes, two-phase completed export attestation, exact-shape/native-type Causeway evidence verification, and same-route classification; retarget only from current master and do not retain obsolete branch identity.",
+      "validationRequired": ["profile-contract and mode-conflict tests", "executable complete pending missing and drift attestation tests", "executable omitted null wrong-type malformed and corrupted Causeway evidence tests", "clean-source route identity", "same-route budget and hard-safety classification"]
+    },
+    {
+      "sourcePath": "scripts/run-causeway-packet-02-route.ps1",
+      "provenance": "added in 5356a28",
+      "targetPath": "scripts/run-causeway-packet-02-route.ps1",
+      "classification": "keep_but_adapt_to_current_master",
+      "rationale": "Retain the bounded Packet 02 route wrapper as a performance seam while pinning it to the new recovery source identity.",
+      "validationRequired": ["profile-contract test", "output remains inside repository", "route execution after deterministic substrate integration"]
+    },
+    {
+      "sourcePath": "src/societies/data/prototype-scenarios.json",
+      "provenance": "5356a28 causeway-definition hunk",
+      "targetPath": "src/societies/data/prototype-scenarios.json",
+      "classification": "keep_unchanged_where_safe",
+      "rationale": "The closed voxel scenario definition supplies authoritative material, time, and anchors without citizen or presentation ownership; runtime authority freezes the validated definition rather than retaining the mutable catalog object.",
+      "validationRequired": ["catalog validation", "finite distinct in-bounds anchors", "mutation-after-initialization isolation", "save/replay route"]
+    },
+    {
+      "sourcePath": "src/societies/scripts/core/GameManager.cs",
+      "provenance": "5356a28, 8467207, 7a2051d hunks",
+      "targetPath": "src/societies/scripts/core/GameManager.cs",
+      "classification": "reconstruct_from_behavior",
+      "rationale": "Retain only the intent bridge and authoritative projection-refresh behavior; remove direct keyboard review shortcuts and rejected presenter ownership.",
+      "validationRequired": ["intent bridge reaches session validation", "zero-tick projection-refresh characterization", "no normal-play debug shortcuts"]
+    },
+    {
+      "sourcePath": "src/societies/scripts/core/PrototypeCatalogs.cs",
+      "provenance": "5356a28 catalog-validation hunk",
+      "targetPath": "src/societies/scripts/core/PrototypeCatalogs.cs",
+      "classification": "keep_unchanged_where_safe",
+      "rationale": "Causeway definition bounds protect closed scenario inputs, including finite distinct anchors inside the authoritative voxel volume, and preserve voxel-world authority.",
+      "validationRequired": ["valid catalog load", "invalid material/time definition rejection", "invalid anchor matrix rejection"]
+    },
+    {
+      "sourcePath": "src/societies/scripts/core/PrototypeCausewayState.cs",
+      "provenance": "added in 5356a28; hardened in 764010b",
+      "targetPath": "src/societies/scripts/core/PrototypeCausewayState.cs",
+      "classification": "keep_unchanged_where_safe",
+      "rationale": "This is the core deterministic substrate: frozen definition authority, custody, command rejection, ordered time transitions, canonical snapshots, migration, and event coherence are presentation-independent.",
+      "validationRequired": ["focused Causeway state suite", "fresh-run phase rejection before mutation", "validate-before-append", "uninterrupted/save-resume/replay equality", "definition mismatch and tamper rejection"]
+    },
+    {
+      "sourcePath": "src/societies/scripts/core/PrototypeEventTypes.cs",
+      "provenance": "5356a28 event constants hunk",
+      "targetPath": "src/societies/scripts/core/PrototypeEventTypes.cs",
+      "classification": "keep_unchanged_where_safe",
+      "rationale": "Named causeway events are the deterministic audit and replay seam.",
+      "validationRequired": ["event ordering and exactly-once tests", "artifact coherence tests"]
+    },
+    {
+      "sourcePath": "src/societies/scripts/core/PrototypeRunArtifactManager.cs",
+      "provenance": "5356a28 schema-v12 artifact-coherence hunks",
+      "targetPath": "src/societies/scripts/core/PrototypeRunArtifactManager.cs",
+      "classification": "keep_but_adapt_to_current_master",
+      "rationale": "Preserve bounded schema-v12 snapshot, frozen-definition digest, summary, and event-log coherence checks while reconciling current artifact contracts.",
+      "validationRequired": ["non-default definition artifact round trip", "definition digest mismatch rejection", "event tamper rejection", "run-summary exact-event equality"]
+    },
+    {
+      "sourcePath": "src/societies/scripts/core/PrototypeRunSummaryBuilder.cs",
+      "provenance": "5356a28 run-summary hunk",
+      "targetPath": "src/societies/scripts/core/PrototypeRunSummaryBuilder.cs",
+      "classification": "keep_unchanged_where_safe",
+      "rationale": "Copies authoritative causeway snapshots and ordered events into bounded run summaries without presentation authority.",
+      "validationRequired": ["run-summary serialization", "snapshot and event equality"]
+    },
+    {
+      "sourcePath": "src/societies/scripts/core/PrototypeRuntimePersistence.cs",
+      "provenance": "5356a28 schema-v12 persistence hunk",
+      "targetPath": "src/societies/scripts/core/PrototypeRuntimePersistence.cs",
+      "classification": "keep_but_adapt_to_current_master",
+      "rationale": "Preserve strict v12 exact ordinal causeway fields, duplicate detection, frozen-definition schema/version/digest, legacy exclusion, and canonical deserialization while reconciling current schema owners.",
+      "validationRequired": ["native v12 round trip", "v10/v11 migration", "unknown duplicate reordered or malformed causeway rejection", "legacy payload exclusion"]
+    },
+    {
+      "sourcePath": "src/societies/scripts/core/PrototypeRuntimeSession.cs",
+      "provenance": "5356a28 authoritative-session hunk",
+      "targetPath": "src/societies/scripts/core/PrototypeRuntimeSession.cs",
+      "classification": "keep_but_adapt_to_current_master",
+      "rationale": "Retain session-owned causeway creation from frozen validated rules, event-before-commit ordering, clock transitions, capture, and prepare-before-commit restore.",
+      "validationRequired": ["invalid fresh start rejection before mutation", "command atomicity", "threshold ordering", "zero-input morning route", "changed-catalog restore rejection", "save/resume/replay equality"]
+    },
+    {
+      "sourcePath": "src/societies/scripts/core/PrototypeVoxelSnapshotValidator.cs",
+      "provenance": "5356a28 schema-v12 voxel-validation hunk",
+      "targetPath": "src/societies/scripts/core/PrototypeVoxelSnapshotValidator.cs",
+      "classification": "keep_unchanged_where_safe",
+      "rationale": "Keeps causeway payload valid only for schema-v12 voxel snapshots and rejects pre-v12 leakage.",
+      "validationRequired": ["voxel snapshot validation", "pre-v12 rejection", "migration coverage"]
+    },
+    {
+      "sourcePath": "src/societies/scripts/presentation/PrototypeCausewayPresenter.cs",
+      "provenance": "added in 5356a28; revised in 7768097, 7a2051d, and 7aad77d",
+      "targetPath": null,
+      "classification": "drop_rejected_visual_presentation",
+      "rationale": "Primitive boxes and Label3D developer readout are explicitly rejected visual presentation and are not a Packet 02A target.",
+      "validationRequired": ["file absent", "no Label3D causeway readout", "normal play has no rejected developer presentation"]
+    },
+    {
+      "sourcePath": "src/societies/tests/AcceptedSceneBaselineModels.cs",
+      "provenance": "packet02-v5 artifact-contract hunk",
+      "targetPath": "src/societies/tests/AcceptedSceneBaselineModels.cs",
+      "classification": "keep_but_adapt_to_current_master",
+      "rationale": "Keep separate v4/v5 route identities and explicit accepted causeway-command equality evidence without mutating Packet 01 evidence.",
+      "validationRequired": ["artifact command/equality contract tests", "Packet 01 v4 compatibility"]
+    },
+    {
+      "sourcePath": "src/societies/tests/AcceptedSceneBaselineRunner.cs",
+      "provenance": "packet02-v5 runner hunk",
+      "targetPath": "src/societies/tests/AcceptedSceneBaselineRunner.cs",
+      "classification": "keep_but_adapt_to_current_master",
+      "rationale": "Retain deterministic artifact schema/route injection and execute one fixed accepted causeway command outside the timed movement window, proving Causeway equality across voxel edit, reload, and fixed-delta replay.",
+      "validationRequired": ["headless baseline capture", "accepted command transition", "Causeway edit/reload/replay equality", "artifact parse"]
+    },
+    {
+      "sourcePath": "src/societies/tests/HeadlessTestRunner.cs",
+      "provenance": "5356a28, 7768097, 8467207, 7a2051d, and 7aad77d Godot integration hunks",
+      "targetPath": "src/societies/tests/HeadlessTestRunner.cs",
+      "classification": "reconstruct_from_behavior",
+      "rationale": "Keep authoritative Godot/session and zero-tick refresh coverage, but remove assertions tied to primitive meshes, Label3D text, and keyboard review shortcuts.",
+      "validationRequired": ["Godot headless suite", "authoritative projection observation", "zero-tick refresh behavior", "no presentation-string assertions"]
+    },
+    {
+      "sourcePath": "tests/Societies.Core.Tests/Core/AcceptedSceneBaselineContractTests.cs",
+      "provenance": "packet02-v5 contract test hunk",
+      "targetPath": "tests/Societies.Core.Tests/Core/AcceptedSceneBaselineContractTests.cs",
+      "classification": "keep_but_adapt_to_current_master",
+      "rationale": "Protects separate immutable Packet 01 and recovery route contracts.",
+      "validationRequired": ["focused baseline contract tests", "v4 default remains rejected for v5 artifact"]
+    },
+    {
+      "sourcePath": "tests/Societies.Core.Tests/Core/AcceptedSceneBaselineProfileTests.cs",
+      "provenance": "added in 5356a28 for profile-contract verification",
+      "targetPath": "tests/Societies.Core.Tests/Core/AcceptedSceneBaselineProfileTests.cs",
+      "classification": "keep_but_adapt_to_current_master",
+      "rationale": "Protects the fixed performance-profile boundary, two-phase completed export attestation, and independent outer Causeway artifact verification while rejecting caller-composed historical identity fields.",
+      "validationRequired": ["focused executable PowerShell contract tests", "missing/incomplete/source/project/PCK/release drift rejection", "malformed/missing/corrupted Causeway evidence rejection", "wrapper output containment"]
+    },
+    {
+      "sourcePath": "tests/Societies.Core.Tests/Core/CausewayPlayerControlContractTests.cs",
+      "provenance": "added in 7a2051d and clarified in 7aad77d source-string control/readout tests",
+      "targetPath": null,
+      "classification": "drop_temporary_review_scaffolding",
+      "rationale": "The tests bind direct review shortcuts and Label3D text by source string, both explicitly rejected for recovery.",
+      "validationRequired": ["file absent", "replacement tests assert behavior at session or intent boundary"]
+    },
+    {
+      "sourcePath": "tests/Societies.Core.Tests/Core/PrototypeArtifactGenerationTests.cs",
+      "provenance": "5356a28 schema-v12 artifact/tamper tests; hardened in 764010b",
+      "targetPath": "tests/Societies.Core.Tests/Core/PrototypeArtifactGenerationTests.cs",
+      "classification": "keep_but_adapt_to_current_master",
+      "rationale": "Retain artifact save/load, bounded-event, and coherent-tamper rejection coverage for authoritative persistence.",
+      "validationRequired": ["focused artifact tests", "tamper rejection", "no partial mutation on load failure"]
+    },
+    {
+      "sourcePath": "tests/Societies.Core.Tests/Core/PrototypeCausewayStateTests.cs",
+      "provenance": "added in 5356a28",
+      "targetPath": "tests/Societies.Core.Tests/Core/PrototypeCausewayStateTests.cs",
+      "classification": "keep_unchanged_where_safe",
+      "rationale": "This is the principal deterministic characterization: frozen rules, custody, atomicity, time, migration, restore, replay, exact persistence fields, and bounded history behavior.",
+      "validationRequired": ["complete focused Causeway state suite", "invalid fresh-start atomicity", "catalog mutation isolation", "uninterrupted/save-resume/replay equality", "unknown duplicate reordered and stale cases"]
+    },
+    {
+      "sourcePath": "tests/Societies.Core.Tests/Core/PrototypePersistenceBoundaryTests.cs",
+      "provenance": "schema-v12 persistence-boundary hunk",
+      "targetPath": "tests/Societies.Core.Tests/Core/PrototypePersistenceBoundaryTests.cs",
+      "classification": "keep_but_adapt_to_current_master",
+      "rationale": "Extends the existing current-schema boundary to cover complete v12 causeway summaries.",
+      "validationRequired": ["persistence boundary suite", "unsupported schema rejection"]
+    },
+    {
+      "sourcePath": "tests/Societies.Core.Tests/Core/PrototypeSchemaV8PersistenceTests.cs",
+      "provenance": "legacy-summary property-list exclusion hunk",
+      "targetPath": "tests/Societies.Core.Tests/Core/PrototypeSchemaV8PersistenceTests.cs",
+      "classification": "keep_but_adapt_to_current_master",
+      "rationale": "Preserves legacy-schema strictness by excluding v12-only fields from older required-property checks.",
+      "validationRequired": ["legacy schema suite", "v12 fields rejected from legacy payloads"]
+    },
+    {
+      "sourcePath": "tests/Societies.Core.Tests/Core/PrototypeVoxelRuntimeIntegrationTests.cs",
+      "provenance": "schema-v12 voxel integration hunk",
+      "targetPath": "tests/Societies.Core.Tests/Core/PrototypeVoxelRuntimeIntegrationTests.cs",
+      "classification": "keep_but_adapt_to_current_master",
+      "rationale": "Proves the accepted voxel route mounts and round-trips causeway authority.",
+      "validationRequired": ["voxel runtime integration suite", "artifact round trip"]
+    },
+    {
+      "sourcePath": "tests/Societies.Core.Tests/Core/VoxelWorldcraftTests.cs",
+      "provenance": "schema-v12 migration hunk",
+      "targetPath": "tests/Societies.Core.Tests/Core/VoxelWorldcraftTests.cs",
+      "classification": "keep_but_adapt_to_current_master",
+      "rationale": "Protects existing worldcraft behavior while asserting legacy v10 migration becomes a valid v12 causeway state.",
+      "validationRequired": ["worldcraft regression suite", "v10-to-v12 migration and world hash equality"]
+    },
+    {
+      "sourcePath": "tests/test-manifest.json",
+      "provenance": "5356a28 manifest counts and route declaration; revised in 7a2051d and 764010b",
+      "targetPath": "tests/test-manifest.json",
+      "classification": "reconstruct_from_behavior",
+      "rationale": "Reconcile 582 discovered managed tests (462 fast, 11 integration, 109 soak) and route declaration after retaining only substrate behavior; historical counts include dropped presentation scaffolding and cannot be copied.",
+      "validationRequired": ["manifest validator", "actual discovery equals 582 declared managed tests", "fast discovery equals 462", "Packet 01 route remains unchanged"]
+    }
+  ],
+  "coverage": {
+    "sourceRangeChangedPathCount": 30,
+    "manifestEntryCount": 30,
+    "uncertainStopCount": 0,
+    "recommendation": "Proceed to Packet 02A implementation only from this manifest: recover deterministic substrate and its behavior-level tests first; do not import rejected presentation, review shortcuts, source-string UI tests, or historical status/evidence."
+  }
+}

@@ -159,6 +159,15 @@ namespace Societies.Core
                         $"Voxel scenario '{scenario.Id}' cannot declare heightfield settlement, citizen, resource, stock, or crisis state.");
                 }
 
+                if (scenario.Causeway != null)
+                {
+                    if (!usesVoxelWorld)
+                    {
+                        throw new InvalidOperationException($"Causeway scenario '{scenario.Id}' must use the voxel world authority.");
+                    }
+                    ValidateCauseway(scenario);
+                }
+
                 if (!usesVoxelWorld && scenario.InitialWorkers == 0)
                 {
                     throw new InvalidOperationException($"Heightfield scenario '{scenario.Id}' must define at least one starting citizen.");
@@ -311,6 +320,11 @@ namespace Societies.Core
                 throw new InvalidOperationException($"Scenario '{scenario.Id}' crisis stability thresholds are invalid.");
             }
         }
+
+        private static void ValidateCauseway(PrototypeScenarioDefinition scenario)
+        {
+            PrototypeCausewayDefinitionContract.Validate(scenario.Causeway!, scenario.Id);
+        }
     }
 
     public sealed class PrototypeScenarioDefinition
@@ -365,6 +379,9 @@ namespace Societies.Core
         public int StressPopulationOverride { get; set; }
 
         public PrototypeCrisisDefinition? Crisis { get; set; }
+
+        /// <summary>Optional closed Packet 02 state; it is not heightfield stock, citizen, or crisis state.</summary>
+        public PrototypeCausewayDefinition? Causeway { get; set; }
     }
 
     public sealed class PrototypeCrisisDefinition

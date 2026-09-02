@@ -1193,7 +1193,10 @@ namespace Societies.Core
                     ProcessSimulationTick(metrics: null);
                 }
 
-                UpdateHud();
+                if (requestedTicks > 0)
+                {
+                    UpdateHud();
+                }
                 return;
             }
 
@@ -1216,14 +1219,17 @@ namespace Societies.Core
                     metrics.RecordCompletedTick(_runtimeSession?.LastTickRuntimeDiagnostics ?? default);
                 }
 
-                RuntimeMetricsPhaseToken hudPhase = metrics.BeginPhase(RuntimeMetricsPhase.UpdateHud);
-                try
+                if (requestedTicks > 0)
                 {
-                    UpdateHud();
-                }
-                finally
-                {
-                    hudPhase.Complete();
+                    RuntimeMetricsPhaseToken hudPhase = metrics.BeginPhase(RuntimeMetricsPhase.UpdateHud);
+                    try
+                    {
+                        UpdateHud();
+                    }
+                    finally
+                    {
+                        hudPhase.Complete();
+                    }
                 }
 
                 metrics.EndBatch(SimulationTick);
@@ -1598,6 +1604,22 @@ namespace Societies.Core
             }
 
             return _runtimeSession.CaptureVoxelProjection();
+        }
+
+        /// <summary>Intent bridge only; the session validates and records every causeway mutation.</summary>
+        public PrototypeCausewayCommandResult ExecuteCausewayIntent(PrototypeCausewayCommand command)
+        {
+            if (_runtimeSession?.Causeway == null)
+            {
+                throw new InvalidOperationException("The active scenario has no causeway state.");
+            }
+
+            PrototypeCausewayCommandResult result = _runtimeSession.ExecuteCausewayCommand(command);
+            if (result.Accepted)
+            {
+                UpdateHud();
+            }
+            return result;
         }
 
         /// <summary>Compatibility adapter; player removal always crosses the gather/inventory/event path.</summary>
