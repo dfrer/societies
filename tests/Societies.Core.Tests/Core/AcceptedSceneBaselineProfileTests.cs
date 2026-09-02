@@ -106,6 +106,7 @@ namespace Societies.Core.Tests
         public void ExecutionModesRejectConflictsAndIncompleteAttestationParameterPairsBeforeEarlyReturn()
         {
             string repositoryRoot = FindRepositoryRoot();
+            string script = Path.Combine(repositoryRoot, "scripts", "run-accepted-scene-baseline.ps1");
             string wrapper = Path.Combine(repositoryRoot, "scripts", "run-causeway-packet-02-route.ps1");
             string missing = Path.Combine(repositoryRoot, "artifacts", "mode-conflict-does-not-exist.json");
 
@@ -132,6 +133,91 @@ namespace Societies.Core.Tests
             PowerShellResult validationWithReuse = RunPowerShell(
                 wrapper, "-VerifyTrialCausewayArtifactOnly", missing, "-ReuseExistingExport");
             AssertAllEnginesFailedWith(validationWithReuse, "cannot be combined with normal run");
+
+            string stateFixture = Path.Combine(
+                repositoryRoot, "artifacts", $"repository-state-{Guid.NewGuid():N}");
+            Directory.CreateDirectory(stateFixture);
+            try
+            {
+                RunGit(stateFixture, "init");
+                RunGit(stateFixture, "config", "user.email", "repository-state@example.invalid");
+                RunGit(stateFixture, "config", "user.name", "Repository State Fixture");
+                RunGit(stateFixture, "config", "core.autocrlf", "true");
+                string tracked = Path.Combine(stateFixture, "tracked.txt");
+                File.WriteAllText(tracked, "baseline\n");
+                RunGit(stateFixture, "add", "tracked.txt");
+                RunGit(stateFixture, "commit", "-m", "baseline");
+
+                JsonElement cleanState = ReadRepositoryState(script, stateFixture);
+                Assert.Equal(0, cleanState.GetProperty("changeCount").GetInt32());
+                string cleanIdentity = cleanState.GetProperty("identitySha256").GetString()!;
+                JsonElement cleanTracked = Assert.Single(cleanState.GetProperty("trackedIndex").EnumerateArray());
+                Assert.Equal("100644", cleanTracked.GetProperty("mode").GetString());
+                Assert.Equal(0, cleanTracked.GetProperty("stage").GetInt32());
+                string cleanRawIdentity = cleanTracked.GetProperty("rawSha256").GetString()!;
+
+                File.SetLastWriteTimeUtc(tracked, DateTime.UtcNow.AddMinutes(1));
+                JsonElement metadataOnlyState = ReadRepositoryState(script, stateFixture);
+                Assert.Equal(0, metadataOnlyState.GetProperty("changeCount").GetInt32());
+                Assert.Equal(cleanIdentity, metadataOnlyState.GetProperty("identitySha256").GetString());
+
+                File.WriteAllText(tracked, "baseline\r\n");
+                JsonElement eolRewriteState = ReadRepositoryState(script, stateFixture);
+                Assert.Equal(0, eolRewriteState.GetProperty("changeCount").GetInt32());
+                Assert.Equal(0, eolRewriteState.GetProperty("unstaged").GetProperty("changeCount").GetInt32());
+                Assert.NotEqual(cleanIdentity, eolRewriteState.GetProperty("identitySha256").GetString());
+                JsonElement eolTracked = Assert.Single(eolRewriteState.GetProperty("trackedIndex").EnumerateArray());
+                Assert.NotEqual(cleanRawIdentity, eolTracked.GetProperty("rawSha256").GetString());
+
+                File.AppendAllText(tracked, "unstaged\n");
+                JsonElement unstagedState = ReadRepositoryState(script, stateFixture);
+                Assert.Equal(1, unstagedState.GetProperty("changeCount").GetInt32());
+                Assert.Equal(1, unstagedState.GetProperty("unstaged").GetProperty("changeCount").GetInt32());
+                Assert.NotEqual(cleanIdentity, unstagedState.GetProperty("identitySha256").GetString());
+
+                RunGit(stateFixture, "reset", "--hard", "HEAD");
+                File.AppendAllText(tracked, "staged\n");
+                RunGit(stateFixture, "add", "tracked.txt");
+                JsonElement stagedState = ReadRepositoryState(script, stateFixture);
+                Assert.Equal(1, stagedState.GetProperty("changeCount").GetInt32());
+                Assert.Equal(1, stagedState.GetProperty("staged").GetProperty("changeCount").GetInt32());
+                Assert.NotEqual(cleanIdentity, stagedState.GetProperty("identitySha256").GetString());
+
+                RunGit(stateFixture, "reset", "--hard", "HEAD");
+                RunGit(stateFixture, "mv", "tracked.txt", "renamed.txt");
+                JsonElement renameState = ReadRepositoryState(script, stateFixture);
+                Assert.Equal(1, renameState.GetProperty("staged").GetProperty("changeCount").GetInt32());
+                Assert.Contains(renameState.GetProperty("staged").GetProperty("paths").EnumerateArray(),
+                    row => row.GetString()!.StartsWith("R", StringComparison.Ordinal));
+                Assert.Equal("renamed.txt",
+                    Assert.Single(renameState.GetProperty("trackedIndex").EnumerateArray()).GetProperty("path").GetString());
+
+                RunGit(stateFixture, "reset", "--hard", "HEAD");
+                RunGit(stateFixture, "update-index", "--chmod=+x", "tracked.txt");
+                JsonElement executableModeState = ReadRepositoryState(script, stateFixture);
+                Assert.Equal(1, executableModeState.GetProperty("staged").GetProperty("changeCount").GetInt32());
+                JsonElement executableTracked = Assert.Single(executableModeState.GetProperty("trackedIndex").EnumerateArray());
+                Assert.Equal("100755", executableTracked.GetProperty("mode").GetString());
+                Assert.Equal(0, executableTracked.GetProperty("stage").GetInt32());
+
+                RunGit(stateFixture, "reset", "--hard", "HEAD");
+                File.Delete(tracked);
+                JsonElement deletionState = ReadRepositoryState(script, stateFixture);
+                Assert.Equal(1, deletionState.GetProperty("changeCount").GetInt32());
+                Assert.Equal(1, deletionState.GetProperty("unstaged").GetProperty("changeCount").GetInt32());
+                Assert.NotEqual(cleanIdentity, deletionState.GetProperty("identitySha256").GetString());
+
+                RunGit(stateFixture, "reset", "--hard", "HEAD");
+                File.WriteAllText(Path.Combine(stateFixture, "untracked.txt"), "untracked\n");
+                JsonElement untrackedState = ReadRepositoryState(script, stateFixture);
+                Assert.Equal(1, untrackedState.GetProperty("changeCount").GetInt32());
+                Assert.Single(untrackedState.GetProperty("untracked").EnumerateArray());
+                Assert.NotEqual(cleanIdentity, untrackedState.GetProperty("identitySha256").GetString());
+            }
+            finally
+            {
+                if (Directory.Exists(stateFixture)) DeleteDirectoryTree(stateFixture);
+            }
         }
 
         [Fact]
@@ -361,6 +447,14 @@ namespace Societies.Core.Tests
             return document.RootElement.Clone();
         }
 
+        private static JsonElement ReadRepositoryState(string script, string repositoryRoot)
+        {
+            PowerShellResult result = RunPowerShell(script, "-VerifyRepositoryStateOnly", repositoryRoot);
+            AssertAllEnginesSucceeded(result);
+            using JsonDocument document = JsonDocument.Parse(result.StandardOutput.Trim());
+            return document.RootElement.Clone();
+        }
+
         private static PowerShellResult VerifyAttestation(string wrapper, AttestationFixture fixture) =>
             RunPowerShell(wrapper,
                 "-OutputDirectory", fixture.Root,
@@ -521,6 +615,30 @@ namespace Societies.Core.Tests
 
         private static string Md5(string path) =>
             Convert.ToHexString(MD5.HashData(File.ReadAllBytes(path))).ToLowerInvariant();
+
+        private static void RunGit(string workingDirectory, params string[] arguments)
+        {
+            ProcessStartInfo start = new("git")
+            {
+                WorkingDirectory = workingDirectory,
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true
+            };
+            foreach (string argument in arguments) start.ArgumentList.Add(argument);
+            using Process process = Process.Start(start)!;
+            string stdout = process.StandardOutput.ReadToEnd();
+            string stderr = process.StandardError.ReadToEnd();
+            process.WaitForExit();
+            Assert.True(process.ExitCode == 0, $"git {string.Join(' ', arguments)}: {stderr}{stdout}");
+        }
+
+        private static void DeleteDirectoryTree(string path)
+        {
+            foreach (string file in Directory.EnumerateFiles(path, "*", SearchOption.AllDirectories))
+                File.SetAttributes(file, FileAttributes.Normal);
+            Directory.Delete(path, recursive: true);
+        }
 
         private static PowerShellResult RunPowerShell(string script, params string[] arguments)
         {

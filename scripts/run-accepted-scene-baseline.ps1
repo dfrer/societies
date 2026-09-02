@@ -17,6 +17,7 @@ param(
     [string]$VerifyTrialCausewayArtifactOnly = '',
     [string]$VerifyExportAttestationOnly = '',
     [string]$ExpectedAttestationRequestPath = '',
+    [string]$VerifyRepositoryStateOnly = '',
     [switch]$ProfileContractOnly
 )
 
@@ -27,20 +28,23 @@ if ($args.Count -ne 0) {
 $causewayVerifierRequested = -not [string]::IsNullOrWhiteSpace($VerifyTrialCausewayArtifactOnly)
 $attestationVerifierRequested = -not [string]::IsNullOrWhiteSpace($VerifyExportAttestationOnly)
 $attestationRequestSupplied = -not [string]::IsNullOrWhiteSpace($ExpectedAttestationRequestPath)
+$repositoryStateVerifierRequested = -not [string]::IsNullOrWhiteSpace($VerifyRepositoryStateOnly)
 if ($attestationVerifierRequested -xor $attestationRequestSupplied) {
     throw '-VerifyExportAttestationOnly and -ExpectedAttestationRequestPath must be supplied together.'
 }
 $exclusiveModeCount = @(
     $ProfileContractOnly.IsPresent,
     $causewayVerifierRequested,
-    $attestationVerifierRequested
+    $attestationVerifierRequested,
+    $repositoryStateVerifierRequested
 ).Where({ $_ }).Count
 if ($exclusiveModeCount -gt 1) {
     throw 'Profile-contract, Causeway-verifier, and attestation-verifier modes are mutually exclusive.'
 }
 $executionOptionRequested = $ReuseExistingExport -or $ReuseValidationOnly -or
     $AllowDirtySourceForSmoke -or $FixedDeltaOnlyDiagnostic -or $RealtimeOnlyDiagnostic
-if (($ProfileContractOnly -or $causewayVerifierRequested -or $attestationVerifierRequested) -and
+if (($ProfileContractOnly -or $causewayVerifierRequested -or $attestationVerifierRequested -or
+    $repositoryStateVerifierRequested) -and
     $executionOptionRequested) {
     throw 'Profile and validation-only modes cannot be combined with normal run, reuse, or diagnostic options.'
 }
@@ -125,22 +129,6 @@ if ($ProfileContractOnly) {
     return
 }
 
-function Get-RepositoryContentIdentity {
-    $rows = [System.Collections.Generic.List[string]]::new()
-    $files = @(git -C $repositoryRoot ls-files --cached --others --exclude-standard | Sort-Object -Unique)
-    foreach ($relativePath in $files) {
-        $path = Join-Path $repositoryRoot $relativePath
-        if (Test-Path -LiteralPath $path -PathType Leaf) {
-            $blob = (git -C $repositoryRoot hash-object -- $relativePath).Trim()
-            $rows.Add("$relativePath=$blob")
-        } else {
-            $rows.Add("$relativePath=<deleted>")
-        }
-    }
-    $bytes = [System.Text.Encoding]::UTF8.GetBytes(($rows -join "`n"))
-    return Get-BytesSha256 $bytes
-}
-
 function Convert-BytesToLowerHex {
     param([byte[]]$Bytes)
     return -join @($Bytes | ForEach-Object { $_.ToString('x2') })
@@ -179,6 +167,153 @@ function Get-Md5 {
         $stream.Dispose()
         $algorithm.Dispose()
     }
+}
+
+function Get-StringSequenceSha256 {
+    param([string[]]$Lines)
+    return Get-BytesSha256 ([System.Text.Encoding]::UTF8.GetBytes(($Lines -join "`n")))
+}
+
+function Invoke-GitLines {
+    param([string]$Root, [string[]]$Arguments, [string]$Label)
+    $lines = @(& git -C $Root @Arguments)
+    if ($LASTEXITCODE -ne 0) { throw "$Label failed with exit code $LASTEXITCODE." }
+    return @($lines | ForEach-Object { [string]$_ })
+}
+
+function Get-TrackedIndexManifest {
+    param([string]$Root)
+    $startInfo = [System.Diagnostics.ProcessStartInfo]::new()
+    $startInfo.FileName = 'git'
+    $startInfo.WorkingDirectory = $Root
+    $startInfo.Arguments = 'ls-files -z --stage --'
+    $startInfo.UseShellExecute = $false
+    $startInfo.RedirectStandardOutput = $true
+    $startInfo.RedirectStandardError = $true
+    $startInfo.CreateNoWindow = $true
+    $startInfo.StandardOutputEncoding = [System.Text.Encoding]::UTF8
+    $process = [System.Diagnostics.Process]::new()
+    $process.StartInfo = $startInfo
+    if (-not $process.Start()) { throw 'Tracked-index discovery failed to start git.' }
+    $raw = $process.StandardOutput.ReadToEnd()
+    $errorText = $process.StandardError.ReadToEnd()
+    $process.WaitForExit()
+    if ($process.ExitCode -ne 0) {
+        throw "Tracked-index discovery failed with exit code $($process.ExitCode): $errorText"
+    }
+    if ($raw.Length -gt 0 -and $raw[$raw.Length - 1] -ne [char]0) {
+        throw 'Tracked-index discovery returned a non-NUL-terminated manifest.'
+    }
+    $records = if ($raw.Length -eq 0) { @() } else { @($raw.Substring(0, $raw.Length - 1).Split([char]0)) }
+    $manifest = [System.Collections.Generic.List[object]]::new()
+    $seenPaths = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
+    $seenPathStages = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
+    foreach ($record in $records) {
+        $separator = $record.IndexOf("`t", [System.StringComparison]::Ordinal)
+        if ($separator -le 0 -or $separator -ge $record.Length - 1) {
+            throw 'Tracked-index discovery returned a malformed record.'
+        }
+        $header = $record.Substring(0, $separator)
+        $path = $record.Substring($separator + 1).Replace('\', '/')
+        if ($header -cnotmatch '^(?<mode>[0-7]{6}) (?<blob>[0-9a-f]{40}|[0-9a-f]{64}) (?<stage>[0-3])$' -or
+            [string]::IsNullOrWhiteSpace($path) -or [System.IO.Path]::IsPathRooted($path) -or
+            $path.Split('/') -contains '.' -or $path.Split('/') -contains '..') {
+            throw 'Tracked-index discovery returned malformed mode, blob, stage, or path data.'
+        }
+        $stage = [int]$Matches.stage
+        $pathStageKey = "$stage`0$path"
+        if (-not $seenPaths.Add($path) -or -not $seenPathStages.Add($pathStageKey)) {
+            throw "Tracked-index discovery returned a duplicate path/stage record: $path stage $stage"
+        }
+        $fullPath = [System.IO.Path]::GetFullPath((Join-Path $Root $path))
+        [void](Get-NormalizedContainedRelativePath $Root $fullPath 'Tracked repository input')
+        $present = Test-Path -LiteralPath $fullPath
+        $rawLength = [long]-1
+        $rawSha256 = $null
+        if ($present) {
+            if (-not (Test-Path -LiteralPath $fullPath -PathType Leaf)) {
+                if ([string]$Matches.mode -cne '160000') {
+                    throw "Tracked repository input is not a file: $path"
+                }
+            }
+            else {
+                $rawLength = (Get-Item -LiteralPath $fullPath).Length
+                $rawSha256 = Get-Sha256 $fullPath
+            }
+        }
+        $manifest.Add([ordered]@{
+            path = $path
+            mode = [string]$Matches.mode
+            blob = [string]$Matches.blob
+            stage = $stage
+            workingTreePresent = $present
+            rawLength = $rawLength
+            rawSha256 = $rawSha256
+        })
+    }
+    return $manifest.ToArray()
+}
+
+function Get-RepositoryCanonicalState {
+    param([string]$Root)
+    $fullRoot = [System.IO.Path]::GetFullPath($Root)
+    $trackedIndex = @(Get-TrackedIndexManifest $fullRoot)
+    $stagedPaths = @(Invoke-GitLines $fullRoot @(
+        'diff', '--cached', '--name-status', '--find-renames', '--no-ext-diff', '--'
+    ) 'Staged-path discovery')
+    $stagedPatch = @(Invoke-GitLines $fullRoot @(
+        'diff', '--cached', '--binary', '--full-index', '--find-renames', '--no-ext-diff', '--'
+    ) 'Staged-content discovery')
+    $unstagedPaths = @(Invoke-GitLines $fullRoot @(
+        'diff', '--name-status', '--find-renames', '--no-ext-diff', '--'
+    ) 'Unstaged-path discovery')
+    $unstagedPatch = @(Invoke-GitLines $fullRoot @(
+        'diff', '--binary', '--full-index', '--find-renames', '--no-ext-diff', '--'
+    ) 'Unstaged-content discovery')
+    $untrackedPaths = @(Invoke-GitLines $fullRoot @(
+        'ls-files', '--others', '--exclude-standard', '--'
+    ) 'Untracked-path discovery' | Sort-Object)
+    $untracked = [System.Collections.Generic.List[object]]::new()
+    foreach ($relativePath in $untrackedPaths) {
+        $fullPath = Join-Path $fullRoot $relativePath
+        [void](Get-NormalizedContainedRelativePath $fullRoot $fullPath 'Untracked repository input')
+        if (-not (Test-Path -LiteralPath $fullPath -PathType Leaf)) {
+            throw "Untracked repository input is not a file: $relativePath"
+        }
+        $rawHashLines = @(Invoke-GitLines $fullRoot @('hash-object', '--no-filters', '--', $relativePath) `
+            'Untracked raw-content hashing')
+        $filteredHashLines = @(Invoke-GitLines $fullRoot @('hash-object', '--', $relativePath) `
+            'Untracked filtered-content hashing')
+        if ($rawHashLines.Count -ne 1 -or $filteredHashLines.Count -ne 1) {
+            throw "Untracked repository input did not produce exactly one content identity: $relativePath"
+        }
+        $rawHash = ([string]$rawHashLines[0]).Trim()
+        $filteredHash = ([string]$filteredHashLines[0]).Trim()
+        $untracked.Add([ordered]@{
+            path = $relativePath.Replace('\', '/')
+            length = (Get-Item -LiteralPath $fullPath).Length
+            rawSha1 = $rawHash
+            filteredSha1 = $filteredHash
+        })
+    }
+    $state = [ordered]@{
+        schema = 'societies_repository_content_state/v1'
+        trackedIndex = $trackedIndex
+        staged = [ordered]@{
+            changeCount = $stagedPaths.Count
+            paths = $stagedPaths
+            contentSha256 = Get-StringSequenceSha256 $stagedPatch
+        }
+        unstaged = [ordered]@{
+            changeCount = $unstagedPaths.Count
+            paths = $unstagedPaths
+            contentSha256 = Get-StringSequenceSha256 $unstagedPatch
+        }
+        untracked = $untracked.ToArray()
+    }
+    $state.changeCount = $stagedPaths.Count + $unstagedPaths.Count + $untracked.Count
+    $state.identitySha256 = Get-StringSequenceSha256 @(($state | ConvertTo-Json -Depth 8 -Compress))
+    return $state
 }
 
 function Assert-ExactJsonPropertySet {
@@ -587,17 +722,12 @@ function Assert-ExportAttestationDocument {
     return $actual
 }
 
-function Get-RepositoryStatus {
-    return @(git -C $repositoryRoot status --porcelain=v1 --untracked-files=all)
-}
-
-function Assert-SameSequence {
-    param([object[]]$Expected, [object[]]$Actual, [string]$Label)
-    if ($Expected.Count -ne $Actual.Count) { throw "$Label count changed." }
-    for ($index = 0; $index -lt $Expected.Count; $index++) {
-        if ([string]$Expected[$index] -cne [string]$Actual[$index]) {
-            throw "$Label changed at row $index."
-        }
+function Assert-RepositoryCanonicalState {
+    param([object]$Expected, [object]$Actual, [string]$Label)
+    if ([string]$Expected.identitySha256 -cne [string]$Actual.identitySha256 -or
+        ($Expected | ConvertTo-Json -Depth 8 -Compress) -cne
+        ($Actual | ConvertTo-Json -Depth 8 -Compress)) {
+        throw "$Label canonical content state changed."
     }
 }
 
@@ -1061,6 +1191,17 @@ function Assert-Trial {
     }
 }
 
+if ($repositoryStateVerifierRequested) {
+    $stateRoot = [System.IO.Path]::GetFullPath($VerifyRepositoryStateOnly)
+    if (-not $stateRoot.StartsWith($repositoryPrefix, [System.StringComparison]::OrdinalIgnoreCase) -or
+        -not (Test-Path -LiteralPath $stateRoot -PathType Container)) {
+        throw 'Repository-state verifier root must be an existing repository-contained directory.'
+    }
+    $state = Get-RepositoryCanonicalState $stateRoot
+    $state | ConvertTo-Json -Depth 8 -Compress
+    return
+}
+
 if ($causewayVerifierRequested) {
     $artifactPath = [System.IO.Path]::GetFullPath($VerifyTrialCausewayArtifactOnly)
     if (-not $artifactPath.StartsWith($repositoryPrefix, [System.StringComparison]::OrdinalIgnoreCase) -or
@@ -1131,8 +1272,8 @@ git -C $repositoryRoot merge-base --is-ancestor $baseSha $sourceSha
 if ($LASTEXITCODE -ne 0) {
     throw "Source HEAD $sourceSha does not descend from Packet 01 base $baseSha."
 }
-$statusBefore = @(Get-RepositoryStatus)
-$sourceDirty = $statusBefore.Count -gt 0
+$repositoryStateBefore = Get-RepositoryCanonicalState $repositoryRoot
+$sourceDirty = [int]$repositoryStateBefore.changeCount -gt 0
 if ($sourceDirty -and -not $AllowDirtySourceForSmoke) {
     throw 'Canonical Packet 01 performance evidence requires clean source. Use -AllowDirtySourceForSmoke only for local smoke validation.'
 }
@@ -1147,7 +1288,7 @@ if (($FixedDeltaOnlyDiagnostic -or $RealtimeOnlyDiagnostic) -and -not $AllowDirt
 }
 
 $sourceStateIdentity = $sourceSha + ':' + $sourceTree
-$repositoryContentIdentityBefore = Get-RepositoryContentIdentity
+$repositoryContentIdentityBefore = [string]$repositoryStateBefore.identitySha256
 if ($sourceDirty) {
     $sourceStateIdentity = 'dirty-smoke:' + $repositoryContentIdentityBefore
 }
@@ -1192,12 +1333,11 @@ if (-not (Test-Path -LiteralPath $consoleWrapper -PathType Leaf) -or $packagedAs
 }
 $assemblyPath = $packagedAssemblies[0].FullName
 $managedAssemblySha256 = Get-Sha256 $assemblyPath
-$repositoryContentIdentityAfter = Get-RepositoryContentIdentity
-if ($repositoryContentIdentityBefore -ne $repositoryContentIdentityAfter) {
+$repositoryStateAfterExport = Get-RepositoryCanonicalState $repositoryRoot
+if ($repositoryContentIdentityBefore -ne [string]$repositoryStateAfterExport.identitySha256) {
     throw 'Godot export changed tracked or untracked source state; refusing mixed-identity evidence.'
 }
-$statusAfterExport = @(Get-RepositoryStatus)
-Assert-SameSequence $statusBefore $statusAfterExport 'Git status after export'
+Assert-RepositoryCanonicalState $repositoryStateBefore $repositoryStateAfterExport 'Repository state after export'
 
 $performanceTrials = [System.Collections.Generic.List[object]]::new()
 $identityTrials = [System.Collections.Generic.List[object]]::new()
@@ -1246,12 +1386,11 @@ for ($trialIndex = 1; $trialIndex -le $performanceTrialCount; $trialIndex++) {
 }
 
 if ($RealtimeOnlyDiagnostic) {
-    $repositoryContentIdentityFinal = Get-RepositoryContentIdentity
-    if ($repositoryContentIdentityBefore -ne $repositoryContentIdentityFinal) {
+    $repositoryStateFinal = Get-RepositoryCanonicalState $repositoryRoot
+    if ($repositoryContentIdentityBefore -ne [string]$repositoryStateFinal.identitySha256) {
         throw 'Diagnostic trial execution changed tracked or untracked source state.'
     }
-    $statusAfterTrials = @(Get-RepositoryStatus)
-    Assert-SameSequence $statusBefore $statusAfterTrials 'Git status after diagnostic trial'
+    Assert-RepositoryCanonicalState $repositoryStateBefore $repositoryStateFinal 'Repository state after diagnostic trial'
     Write-Host "Real-time-only diagnostic artifact: $(Join-Path $outputRoot "realtime-trial-1\$trialArtifactFileName")"
     return
 }
@@ -1297,12 +1436,11 @@ for ($trialIndex = 1; $trialIndex -le $identityTrialCount; $trialIndex++) {
 }
 
 if ($FixedDeltaOnlyDiagnostic) {
-    $repositoryContentIdentityFinal = Get-RepositoryContentIdentity
-    if ($repositoryContentIdentityBefore -ne $repositoryContentIdentityFinal) {
+    $repositoryStateFinal = Get-RepositoryCanonicalState $repositoryRoot
+    if ($repositoryContentIdentityBefore -ne [string]$repositoryStateFinal.identitySha256) {
         throw 'Diagnostic trial execution changed tracked or untracked source state.'
     }
-    $statusAfterTrials = @(Get-RepositoryStatus)
-    Assert-SameSequence $statusBefore $statusAfterTrials 'Git status after diagnostic trial'
+    Assert-RepositoryCanonicalState $repositoryStateBefore $repositoryStateFinal 'Repository state after diagnostic trial'
     Write-Host "Fixed-delta-only diagnostic artifact: $(Join-Path $outputRoot "fixed-delta-identity-trial-1\$trialArtifactFileName")"
     return
 }
@@ -1371,12 +1509,11 @@ $claimEligible = -not $sourceDirty -and -not $AllowDirtySourceForSmoke -and
     $sharedEnvironmentIdentityAcrossAllTrials -and
     @($performanceTrials | Where-Object { -not $_.timing.targetSafetyClaimEligible }).Count -eq 0
 $classification = if ($claimEligible) { $rawClassification } else { 'not_applied_characterization_only' }
-$repositoryContentIdentityFinal = Get-RepositoryContentIdentity
-if ($repositoryContentIdentityBefore -ne $repositoryContentIdentityFinal) {
+$repositoryStateFinal = Get-RepositoryCanonicalState $repositoryRoot
+if ($repositoryContentIdentityBefore -ne [string]$repositoryStateFinal.identitySha256) {
     throw 'Trial execution changed tracked or untracked source state; refusing mixed-identity evidence.'
 }
-$statusAfterTrials = @(Get-RepositoryStatus)
-Assert-SameSequence $statusBefore $statusAfterTrials 'Git status after trials'
+Assert-RepositoryCanonicalState $repositoryStateBefore $repositoryStateFinal 'Repository state after trials'
 $bundle = [ordered]@{
     schema = $bundleSchema
     status = if ($claimEligible) {
