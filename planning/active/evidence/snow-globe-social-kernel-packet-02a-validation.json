@@ -150,7 +150,8 @@
     "A fresh non-console export exited zero but fail-closed source verification detected post-export status drift before trials.",
     "After repository-state hardening, a fresh export failed closed on a real raw line-ending rewrite of src/societies/icon.svg.import; an exact gitattributes rule stabilized that generated import input.",
     "godot --headless --build-solutions --quit compiled managed code and then failed with signal 11; this remains red and was not repeated.",
-    "Hosted Tests run 33681068539 first failed 3 of 462 fast tests because Linux pwsh decorated and line-wrapped expected PowerShell error text; the assertions were corrected to strip ANSI presentation and normalize whitespace before semantic substring comparison."
+    "Hosted Tests run 33681068539 first failed 3 of 462 fast tests because Linux pwsh decorated and line-wrapped expected PowerShell error text; an initial correction stripped ANSI presentation and normalized whitespace before semantic substring comparison.",
+    "Hosted Tests run 33682061264 still failed the same 3 of 462 because PowerShell continuation-gutter characters remained between wrapped message fragments; normalization was narrowed further to remove only line-leading diagnostic gutters before the same case-sensitive semantic substring comparison."
   ],
   "independentReviews": {
     "authorityAndPersistence": {"result": "GO", "P0": 0, "P1": 0, "P2": 0, "P3": 0},

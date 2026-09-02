@@ -124,6 +124,14 @@ namespace Societies.Core.Tests
                 "-VerifyExportAttestationOnly", missing, "-ExpectedAttestationRequestPath", missing);
             AssertAllEnginesFailedWith(bothVerifiers, "modes are mutually exclusive");
 
+            string linuxPwshDiagnostic =
+                "\u001b[31;1mException:\u001b[0m wrapper.ps1:42\n"
+                + "     | Profile-contract and verifier modes are\n"
+                + "     | mutually exclusive.";
+            Assert.Contains(
+                "modes are mutually exclusive",
+                NormalizePowerShellDiagnostic(linuxPwshDiagnostic));
+
             PowerShellResult missingRequest = RunPowerShell(wrapper, "-VerifyExportAttestationOnly", missing);
             AssertAllEnginesFailedWith(missingRequest, "must be supplied together");
 
@@ -694,21 +702,27 @@ namespace Societies.Core.Tests
             Assert.All(result.EngineResults, engine =>
             {
                 Assert.NotEqual(0, engine.ExitCode);
-                string renderedOutput = engine.StandardError + engine.StandardOutput;
-                string plainOutput = System.Text.RegularExpressions.Regex.Replace(
-                    renderedOutput,
-                    "\u001B\\[[0-?]*[ -/]*[@-~]",
-                    string.Empty);
-                string normalizedOutput = System.Text.RegularExpressions.Regex.Replace(
-                    plainOutput,
-                    "\\s+",
-                    " ");
-                string normalizedExpected = System.Text.RegularExpressions.Regex.Replace(
-                    expectedMessage,
-                    "\\s+",
-                    " ");
+                string normalizedOutput = NormalizePowerShellDiagnostic(
+                    engine.StandardError + engine.StandardOutput);
+                string normalizedExpected = NormalizePowerShellDiagnostic(expectedMessage);
                 Assert.Contains(normalizedExpected, normalizedOutput);
             });
+        }
+
+        private static string NormalizePowerShellDiagnostic(string renderedOutput)
+        {
+            string plainOutput = System.Text.RegularExpressions.Regex.Replace(
+                renderedOutput,
+                "\u001B\\[[0-?]*[ -/]*[@-~]",
+                string.Empty);
+            string withoutContinuationGutters = System.Text.RegularExpressions.Regex.Replace(
+                plainOutput,
+                "(?m)^\\s*\\|\\s?",
+                string.Empty);
+            return System.Text.RegularExpressions.Regex.Replace(
+                withoutContinuationGutters,
+                "\\s+",
+                " ");
         }
 
         private static string FindRepositoryRoot()
