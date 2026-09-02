@@ -6,7 +6,7 @@ This document shows product progression but does not authorize work by itself. O
 
 ## Active milestone — Causeway Before Nightfall
 
-`SNOW-GLOBE-SOCIAL-KERNEL-V1` is the owner-approved next product proof, effective when its planning PR merges. It preserves the accepted founder-worldcraft runtime at `847c86b1c379e6a1dd8d4b7b641c3c89646e28c9` and adds one small, deep social kernel:
+`SNOW-GLOBE-SOCIAL-KERNEL-V1` is the owner-approved next product proof, effective when its planning PR merges. PR #191's merge does not itself authorize this visual recovery; only this amendment's merge authorizes the revised sequence beginning Packet 02A. It preserves the accepted founder-worldcraft runtime at `847c86b1c379e6a1dd8d4b7b641c3c89646e28c9` and adds one small, deep social kernel:
 
 - exactly three embodied, persistent citizens: Mara, Ivo, and Sena;
 - one failing wetland causeway before nightfall;
@@ -21,19 +21,22 @@ One citizen is only an internal end-to-end checkpoint. The active milestone pass
 
 ### Ordered delivery
 
-Implementation begins only after the planning PR merges. Nine independently deliverable packets then proceed sequentially, one PR each from the then-current `master`:
+Implementation begins only after the planning PR merges. The first Packet 02 visual gate failed, so recovery proceeds through independently deliverable packets, one PR each from then-current `master`:
 
 1. verify accepted scenario state and establish the fixed-route performance baseline;
-2. implement authoritative causeway, wetland, shelter, time, material, and next-morning state;
-3. embody Mara, Ivo, and Sena with persistent bounded knowledge/work and a no-player route;
-4. integrate the smallest product cognition interface with a one-citizen internal checkpoint;
-5. complete the three-citizen triangle, contributions, counters, refusals, and commitments;
-6. prove social/material adversity, timber custody, commitment fulfillment/delivery/breach, and following-morning consequences;
-7. prove cognition lifecycle, save/resume/replay, stale/failure paths, and deterministic fallback;
-8. reconcile performance and repair only a measured hotspot if needed;
-9. observe the cohesive runtime and obtain explicit owner play acceptance.
+2. recover the authoritative Causeway substrate as Packet 02A (preserve deterministic seams; no visual-completion claim);
+3. deliver one near-final authored weathered civic-folk wetland district and pass the interactive owner gate as Packet 02V;
+4. embody Mara, Ivo, and Sena with persistent bounded knowledge/work and a no-player route (Packet 03);
+5. integrate the smallest product cognition interface with a one-citizen internal checkpoint;
+6. complete the three-citizen triangle, contributions, counters, refusals, and commitments;
+7. prove social/material adversity, timber custody, commitment fulfillment/delivery/breach, and following-morning consequences;
+8. prove cognition lifecycle, save/resume/replay, stale/failure paths, and deterministic fallback;
+9. reconcile performance and repair only a measured hotspot if needed;
+10. observe the cohesive runtime and obtain explicit owner play acceptance.
 
 No packet activates the next automatically; merge and gate reconciliation come first. The active milestone contains the binding scope, acceptance, performance, stop, provider, and delivery contracts.
+
+Packet 02V's selected direction is **A — weathered civic-folk wetland**: editable blocky voxel terrain substrate with richer authored non-terrain models, coherent wetland materials, labor/scarcity/habitation evidence, contextual spatial feedback, and no copied Eco assets or style. Packet 03 remains unstarted until its visual benchmark is accepted.
 
 ## Milestone success boundary
 

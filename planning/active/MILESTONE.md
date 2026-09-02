@@ -1,13 +1,13 @@
 # SNOW-GLOBE-SOCIAL-KERNEL-V1 — Causeway Before Nightfall
 
-- **Status:** Active when this planning PR merges
-- **Owner approval:** Granted 2026-08-28 in repository decision record [D-014](../../docs/project/DECISION_LOG.md#d-014--select-the-three-citizen-causeway-before-nightfall-proof) for the outcome and bounded sequence below
+- **Status:** Proposed amendment; PR #191 is merged, but this recovery amendment is unmerged and pending owner/reviewer delivery
+- **Owner approval:** Outcome approved 2026-08-28 in [D-014](../../docs/project/DECISION_LOG.md#d-014--select-the-three-citizen-causeway-before-nightfall-proof); visual recovery direction selected in D-016, with planning delivery/review still pending
 - **Feature-work authorization:** before planning-PR merge: **No**; after merge to `master`: **Yes, ordered packets only**
 - **Accepted runtime baseline:** `847c86b1c379e6a1dd8d4b7b641c3c89646e28c9`
-- **Planning base:** `c71014c30662e509cee0de2f8ef40c37d59918cf`
+- **Planning base:** exact remote `master` `760c39e22219c41a92ec021fbf16490df380d004`
 - **Preservation branch:** `archive/pre-consolidation-2026-08-27`
 - **Scenario:** **Causeway Before Nightfall**
-- **Milestone pass gate:** exactly three embodied, persistent citizens—Mara, Ivo, and Sena—inside one authoritative lived-world consequence
+- **Milestone pass gate:** exactly three embodied, persistent citizens—Mara, Ivo, and Sena—inside one authoritative lived-world consequence, after the representative district clears the Packet 02V visual-production gate
 
 ## Outcome
 
@@ -17,7 +17,7 @@ This is one complete social kernel, not a generalized citizen framework. One cit
 
 ## Why this is the next proof
 
-The accepted scene is a credible player-facing worldcraft base, but it still has **zero participating citizens**. Further worldcraft breadth would avoid the central product question, while another provider or laboratory phase would deepen infrastructure that is not yet experienced as play. Causeway Before Nightfall uses the smallest coherent coupling of social behavior, deterministic authority, persistence, and performance evidence that can prove or falsify the project's thesis.
+The accepted scene still has **zero participating citizens**, and the first Causeway presentation failed the owner's visual-production gate. The recovery must make one representative district credible before adding social breadth. Causeway Before Nightfall then uses the smallest coherent coupling of social behavior, deterministic authority, persistence, and performance evidence that can prove or falsify the project's thesis.
 
 ## Verified starting point and limits
 
@@ -40,6 +40,40 @@ The accepted scene is a credible player-facing worldcraft base, but it still has
 - The [EB-01R repository attestation](evidence/v3-sg-eb-01-validation.json) characterizes **64 collision bodies**, **12,777 initial collision shapes**, and **12,781 shapes after an edit**.
 - A historical [`51.9392 ms` safety miss](../../docs/history/pre-consolidation-2026-08-27/root/CURRENT_BUILD.md) remains unresolved.
 - There is no representative accepted-scene frame-time baseline for the fixed Causeway route. Existing figures are characterization, not acceptance.
+
+## Visual-production recovery amendment (owner decision, 2026-09-01)
+
+The owner rejected the first Packet 02 presentation as visually incomplete: “basically none of this is near actual visual completleness, needs massive work”. This rejects visual completeness/presentation, not the authoritative mechanics and not necessarily the broad block-based substrate. The broad voxel substrate remains valid because block-based terrain makes mining and exploration familiar and understandable; art need not look voxel-focused. The selected direction is **A — weathered civic-folk wetland**: blocky editable voxel terrain/world substrate plus richer authored models for everything else, using an Eco-like structural approach only as a structural reference, with no copying of Eco assets or style.
+
+The representative district must be credible as the near-final benchmark before social development resumes. Packet 02's existing local branch is retained as unpublished historical evidence and is not rewritten: `codex/snow-globe-social-kernel-packet-02`, exact base `760c39e22219c41a92ec021fbf16490df380d004`, mechanically validated checkpoint `7aad77dc10f2edf84e44f5f43e0082568a1ab8e9` (tree `fe0c91ca05d6d3f24647967ae4876b3d8265e131`), rejection-record HEAD `269c80e16766094378afd4809bca40e045ab686b` (tree `c18d419e53dee2a60f90ffa44baa89ffc19b51ed`), and evidence `planning/active/evidence/snow-globe-social-kernel-packet-02-validation.json` on that local branch. No GitHub link or publication exists. Packet 02A compares the immutable `base..7aad77dc10f2edf84e44f5f43e0082568a1ab8e9` range using a keep/drop manifest; later rejection records are historical evidence, not recovery source. The recovery sequence is **Packet 02A substrate -> Packet 02V visual-production target -> Packet 03**. Packet 02A makes no human visual-completion claim.
+
+### Packet 02A — Deterministic substrate recovery
+
+Rebuild from then-current `master` using a keep/drop manifest. Keep the causeway domain, scenario, commands/events, session, schema, persistence, replay, artifact, and performance seams; keep hardened tests, `ExecuteCausewayIntent`, and projection-refresh behavior. Drop the primitive presenter and `Label3D`, direct review shortcuts, source-string UI tests, and rejected completion evidence. Preserve authoritative behavior and replay equality; do not rewrite the existing local branch or turn mechanical evidence into visual acceptance.
+
+**Human gate:** none for visual completion. The packet is accepted only as a deterministic substrate recovery with no claim that the district is production-ready.
+
+### Packet 02V — Causeway Before Nightfall visual-production target
+
+Create exactly one authored representative district: causeway/breach, wetland edge, reed nursery, exposed shelter, supply/work area, reserved timber, and readable routes/sightlines. The state-driven start must show worsening time/weather pressure; the player can protect or draw down water, keep or contribute timber, and leave the shelter damaged or protected. The following morning must visibly show the causal result. Authority is communicated primarily through geometry, materials, motion, audio, and contextual UI rather than labels.
+
+**Direction contract:** editable blocky voxel terrain substrate; richer authored non-terrain models; weathered civic-folk wetland with hand-hewn timber, reed thatch, patched fabric, rain-darkened mud, painterly-grounded materials, muted teal/peat/reed-ochre/clay palette, small amber work lights, strong silhouettes, and evidence of labor, scarcity, and habitation. Use contextual spatial prompts and restrained interface with a human-height camera/composition. Include wind, water, tarp, and reed motion plus wetland/labor audio. No generic empty low-poly blockout, unharmonized marketplace/AI collage, or copied Eco assets/style.
+
+**Near-final benchmark:** geometry clearly establishes the named spaces and routes; materials/textures show coherent authored wear; vegetation and water read as a lived wetland; lighting/atmosphere establish weather, time, and shelter; animation/VFX show wind, water, rain, work, and damage; sound establishes wetland/labor presence; interface and feedback are contextual, restrained, and spatial; composition supports human-height reading; all assets share a consistent scale, palette, material language, and visual identity; developer scaffolding is absent from normal play. Permitted temporary elements are limited to one non-shipping mannequin for the feasibility study, non-final localization/voice, bounded out-of-district background treatment when explicitly identified, and a review overlay hidden from normal play. A dressed-up blockout is not a near-final benchmark.
+
+**Asset pipeline/provenance:** use one coherent import/material pipeline, documented scale and pivot conventions, palette/material rules, and a source/licence/attribution ledger. Apply supply-chain hygiene, bounded custom or source-cleared assets, and review any generated assets before use. This planning PR authorizes no purchases, downloads, accounts, or external asset service.
+
+**Interaction contract:** contextual object interaction previews consequences in plain language; an explicit countdown and repair progress remain visible in-world; the keep-versus-contribute timber tradeoff is clear; water choice shows immediate and future effect; durable feedback is localized; the morning recap states causes and consequences. Review/debug controls are absent from normal play.
+
+**Feasibility study:** include one isolated, non-shipping character scale/silhouette/rig-import/locomotion study. It must use no Mara, Ivo, or Sena identity, must not enter runtime, and makes no citizen-readiness claim.
+
+**Human gate:** actual interactive in-engine observation, not screenshots or concept art. The owner asks whether this is an intentional production-quality game space; whether causeway, nursery, shelter, supplies, clock, and morning change are world-readable; whether materials, light, weather, sound, motion, UI, and interaction cohere; whether labor, scarcity, ecology, habitation, and consequence are legible; whether this is a credible benchmark; and whether the owner would feel comfortable introducing Mara/Ivo/Sena later. Rejection keeps Packet 03 unstarted.
+
+**Technical-art/performance budgets:** use two independent evidence lanes. In the displayed visual lane, before production record a baseline on owner hardware: NVIDIA RTX 2070 SUPER/32 GB, Godot 4.6.2 mono, Forward+, 1920x1080, render scale 1.0. Name route/cameras and weather/time/state variants; record CPU, OS, power profile, GPU/driver/adapter, Godot/render settings, VSync/frame-cap state, warm-up/sample window, and profiler method. Capture CPU/main-thread/frame time, physics time, GPU frame time where available, draw calls, rendered objects/primitives, material/shader inventory, collision bodies/shapes, texture/model memory when exposed, cold load time, and repository/artifact delta. Apply absolute 16.67 ms p95 target and 33.33 ms p95 hard safety separately to measurable timing metrics. Compare these counters only with the displayed baseline; do not prescribe an invented regression percentage until baseline-derived ceilings are approved by owner/reviewer. Unsupported profiler metrics must be reported unmeasured with method/limitation.
+
+In the headless cadence lane, compare process-frame-start interval and physics-frame-start interval only with Packet 01 using the identical clean-source build, seed, route, duration, warm-up, sampling, and metric semantics. The 10% same-route regression budget applies only within this headless lane. Packet 01/02 headless evidence is callback-start cadence characterization, not CPU-duration, GPU, render-thread, or whole-engine frame-time evidence; it has no GPU/render-driver evidence and must not be described as 1920x1080-equivalent. Do not compare percentages or timing results across lanes. Non-timing counts are diagnostic guardrails initially derived after the displayed baseline, not invented hard caps. The 02V implementation plan/PR must propose conservative numeric ceilings from that baseline for owner/reviewer approval before asset production. Structural rules require instancing/LOD/occlusion planning, no per-stalk collision, no unbounded shader loops, bounded transparent/full-screen effects, and no hard-safety breach. Do not lower visual quality to green an unrelated metric.
+
+**Stop/delivery:** stop on visual-gate rejection, missing displayed baseline, asset provenance ambiguity, runtime/debug scaffolding leakage, hard-safety breach without owner disposition, or any pressure to start Packet 03. Deliver one bounded PR; owner/reviewer gate remains open and this planning PR is not merged in this session.
 
 ## Milestone-wide product contract
 
@@ -119,10 +153,9 @@ No route may collapse into a universal cost-free ending. At least one scarce res
 Packet 01 establishes the fixed accepted-scene route and baseline before citizen breadth is implemented.
 
 - Use the same clean-source build, fixed world/scenario seed, camera/player route, duration, warm-up, and sampling method.
-- Run **three warm trials** and report p50, p95, p99, and maximum frame time; p50, p95, p99, and maximum physics time; collision-body and collision-shape counts; and relevant simulation/work backlog.
-- Product target: frame-time and physics-time p95 at or below **16.67 ms** on the named route and hardware.
-- Hard safety: frame-time and physics-time p95 at or below **33.33 ms**.
-- Same-route regression budget: no worse than **10%** against the packet-01 baseline for each p95 metric.
+- Headless cadence lane: run **three warm trials** and report p50, p95, p99, and maximum process-frame-start and physics-frame-start intervals, collision-body and collision-shape counts, and relevant simulation/work backlog. Compare only against Packet 01's identical headless route and metric semantics; the 10% same-route regression budget applies only here.
+- Displayed visual lane: report profiler p50, p95, p99, and maximum CPU/main-thread/frame, physics, and GPU timings where measurable, plus technical-art counters, against the new displayed baseline with identical route/cameras/state variants/settings/method. Apply absolute p95 target **16.67 ms** and hard safety **33.33 ms** separately to measurable timing metrics.
+- Do not use Packet 01 headless cadence as a displayed frame-time/GPU baseline, prescribe an invented displayed regression percentage, or compare percentages across lanes. Baseline-derived displayed ceilings require owner/reviewer approval.
 - Unchanged terrain collision count must not grow without measured evidence and an explicit explanation.
 - Target misses remain target misses; they are not relabeled as passes, accepted variance, or a safer metric.
 - Broad performance refactors are prohibited. Packet 08 may repair only a hotspot proven by the route.
@@ -149,12 +182,12 @@ Packet 01 establishes the fixed accepted-scene route and baseline before citizen
 - scripted puppet behavior that bypasses citizen state, validated choices, or material reasons;
 - universal happy endings, instant or cost-free compromises, majority voting, privileged player resolution, magical vetoes, or hidden corrective state;
 - broad voxel, collision, `GameManager`, persistence, laboratory, presentation, or repository refactors;
-- visual replacement of the accepted interaction base except changes required to make the three citizens and consequences readable;
+- visual replacement of the accepted interaction base outside the one representative district, except changes required to make the three citizens and consequences readable;
 - broad accessibility acceptance or certification, release, packaging, deployment, or civilization-scale readiness claims; the named Packet 09 scenario communication readability/accessibility gate remains required.
 
 ## Ordered implementation packets
 
-Each packet is independently deliverable and reviewable. One packet equals one PR. A packet starts from the then-current `master` only after the previous packet is merged and its required gates are reconciled. Do not stack the sequence into one giant PR.
+Each packet is independently deliverable and reviewable. One packet equals one PR. A packet starts from the then-current `master` only after the previous packet is merged and its required gates are reconciled. Do not stack the sequence into one giant PR. The ordered recovery is Packet 02A substrate, Packet 02V visual production, then Packet 03; Packet 03 remains unstarted until 02V passes its human gate.
 
 ### Packet 01 — Verified accepted-scene baseline and performance characterization
 
@@ -179,30 +212,6 @@ Each packet is independently deliverable and reviewable. One packet equals one P
 **Stop conditions:** stop on baseline/source mismatch, non-reproducible route, missing metrics, catalog facts that differ from the audit, or hard-safety breach pending owner disposition.
 
 **Delivery:** `feature/social-kernel-01-baseline` (or equivalent bounded name), one PR to current `master`, with exact source identity, raw summaries, target classification, and no follow-on implementation before merge.
-
-### Packet 02 — Authoritative causeway world state and next-morning consequence
-
-**Product fact:** the accepted world contains a real failing causeway, wetland/reed nursery, the player's exposed shelter, a small player-owned dry-timber supply reserved for personal repair, other material stock, time to nightfall, and deterministic next-morning consequences.
-
-**Owned boundary:** authoritative scenario/domain state, commands/events, projections, minimal world presentation, and fixtures/tests for causeway, wetland, player shelter, timber/material custody, time, staged-restoration/repair requirements, and morning resolution.
-
-**Non-goals:** citizens, cognition, dialogue, trust, commitments, generalized crisis framework, or broad legacy-system reactivation.
-
-**Authoritative behavior:** validate-before-append for timber custody/use, other material use, work/contribution, water-control choice, time progression, and morning resolution. Keeping the reserved timber is allowed; contributing it removes a real personal repair option. No scene or presenter owns hidden outcome state, and no player inactivity freezes time.
-
-**Focused and integrated validation:** deterministic rule tests, timber-custody and sacrifice tests, time-to-nightfall/morning progression with zero player input, command rejection/atomicity, event ordering, scenario integration, Godot presentation projection, and full triggered persistence/build/test gates.
-
-**Persistence and replay:** persist and replay every world fact and resolution event exactly; restore is prepare-before-commit and invalid state does not partially mount.
-
-**Performance implications:** rerun the packet-01 route, report same metrics and collision counts, stay within the 10% p95 budget, and explain any terrain collision growth.
-
-**Runtime observation:** observe causeway deterioration, exposed player shelter, reserved timber kept or contributed, time pressure, resource/work application, and next-morning physical/ecological/resource state without citizens.
-
-**Human gate:** owner confirms that the causeway, stakes, clock, and morning change are readable enough to support social play; this is not milestone acceptance.
-
-**Stop conditions:** stop if required facts cannot fit existing deterministic authority without broad crisis reactivation, if projection becomes authority, if every outcome is cost-free, or if performance hard safety fails.
-
-**Delivery:** `feature/social-kernel-02-causeway-state`, one PR from updated `master`, no citizen or cognition code, required hosted checks green before merge.
 
 ### Packet 03 — Three embodied persistent citizens and independent work
 
@@ -401,7 +410,7 @@ The milestone passes only when all are true:
 - **Product/lab integration:** reduced by a small product-owned seam that may reuse principles but excludes CLI/provider/operator boundaries.
 - **Performance uncertainty:** reduced by a pre-breadth baseline, fixed budgets, same-route comparison, and measured repair only.
 - **Persistence/replay divergence:** reduced by normalized recorded receipts/results and replay no-call evidence.
-- **Roadmap drift:** reduced by nine sequential one-PR packets and explicit non-goals/stop conditions.
+- **Roadmap drift:** reduced by the ten-packet revised sequence and explicit non-goals/stop conditions.
 
 ## Milestone stop conditions
 
@@ -426,9 +435,9 @@ Stop and surface an owner decision if:
 
 ## Delivery and post-merge authorization
 
-This planning branch changes planning documentation and repository-governance validation only. It changes no product/runtime behavior and creates no implementation authority while unmerged.
+This planning branch changes planning documentation and repository-governance validation only. It changes no product/runtime behavior and creates no implementation authority while unmerged. It is open for owner/reviewer review and is not merged in this session.
 
-Merging the planning PR into `master` authorizes only the ordered bounded implementation packets above, beginning with packet 01. Each packet must:
+Merging this planning PR into `master` authorizes only the revised ordered bounded implementation packets above, beginning with Packet 02A. PR #191's merge does not itself authorize this recovery. Each packet must:
 
 - branch from the current `master` after the previous packet merges;
 - own one bounded outcome and one PR;

@@ -1,6 +1,6 @@
 # Societies Current State
 
-- **Status date:** 2026-08-30 (Packet 01 evidence captured UTC `2026-08-31T03:34:14.1183646Z`; delivery reconciled UTC `2026-08-31T04:54:10Z`)
+- **Status date:** 2026-09-01 (visual-production recovery decision recorded; Packet 01 delivery evidence unchanged)
 - **Accepted runtime source:** `847c86b1c379e6a1dd8d4b7b641c3c89646e28c9`
 - **Preservation branch:** `archive/pre-consolidation-2026-08-27`
 - **Consolidation integration record:** PR #183 at `54a4e5c0ea1297438b06e4b40ea14391db343657`
@@ -10,7 +10,7 @@
 - **Packet 01 local checkpoint:** `936771285fd1fd2ebb92054dc3630a656a78b941` on `feature/social-kernel-01-baseline`; verified tree `2bd4a709a54ae72fde84fc3e24968e5fec49e49b`
 - **Packet 01 delivery:** [PR #192](https://github.com/dfrer/societies/pull/192), exact head `ea538a506318f99946f858c7c4b50508b65fb44c`, merged as `f471efe5fe5f5b62aef37e48f27bc1fbffd0104e`
 - **Active milestone:** [`SNOW-GLOBE-SOCIAL-KERNEL-V1 — Causeway Before Nightfall`](../../planning/active/MILESTONE.md)
-- **Current packet:** Packet 01 implementation, canonical characterization, required hosted checks, protected merge, and delivery reconciliation are complete. Packet 02 is the next ordered packet in principle but is **NOT STARTED**.
+- **Current packet:** Packet 01 delivery is complete. The first Packet 02 visual gate failed; recovery is ordered Packet 02A substrate -> Packet 02V visual-production target -> Packet 03. Packet 03 is **NOT STARTED**.
 
 This document reports what is proven, not everything planned or implemented somewhere in repository history.
 
@@ -18,7 +18,7 @@ This document reports what is proven, not everything planned or implemented some
 
 Societies has a substantial deterministic foundation and a user-accepted bounded founder-worldcraft experience. Snow Globe is making materially better, more unified progress than the fragmented pre-V3 period. The project has crossed from speculative architecture into a credible product base.
 
-It has **not** yet proven its central thesis. The accepted player-facing scene still contains zero participating citizens, and the isolated cognition laboratory has not yet become an embodied social interaction inside the authoritative Godot world. The owner selected **Causeway Before Nightfall** in repository decision record [D-014](DECISION_LOG.md#d-014--select-the-three-citizen-causeway-before-nightfall-proof) as the next bounded proof: exactly Mara, Ivo, and Sena must participate in one deterministic material, ecological, and social consequence. Planning PR #191 is now merged, but implementation remains limited to the milestone's ordered packets, one merged and reconciled PR at a time.
+It has **not** yet proven its central thesis. The accepted player-facing scene still has **zero participating citizens**. The first Packet 02 human visual gate was rejected as not near visual completeness (“basically none of this is near actual visual completleness, needs massive work”). The owner preserves the broad block-based substrate, selects a weathered civic-folk wetland production direction, and requires the representative district to pass the Packet 02V in-engine gate before introducing Mara, Ivo, or Sena. Decision [D-016](DECISION_LOG.md#d-016--recover-causeway-visual-production-before-social-breadth) supersedes D-014 only on sequencing and visual detail; mechanics remain salvageable evidence.
 
 Packet 01 establishes a clean, reproducible baseline for the authoritative empty Snow Globe scene and its four-leg edit/reload/replay route. The realtime route is mechanically validated and deterministic; three fixed-60 executions provide identity evidence only. The product performance target is not met: worst physics p95 is **23.109 ms** against **16.67 ms**. Both process and physics p95 metrics pass the **33.33 ms hard-safety** line. Required hosted checks passed and PR #192 merged through the protected branch path. Packet 01 required no human product gate, and none is claimed. This remains characterization, not performance acceptance, deployment, accessibility acceptance, or release readiness.
 
@@ -162,6 +162,7 @@ The selected contract requires the player's own shelter to be exposed and their 
 - The [EB-01R repository attestation](../../planning/active/evidence/v3-sg-eb-01-validation.json) characterized **64 collision bodies**, **12,777 initial collision shapes**, and **12,781 shapes after an edit**; Packet 01 reproduced those counts and the expected +4 edit delta, while scaling remains unresolved.
 - The historical [`51.9392 ms` safety miss](../history/pre-consolidation-2026-08-27/root/CURRENT_BUILD.md) remains context. Packet 01 now supplies a representative local accepted-scene cadence baseline, but its worst physics p95 of **23.109 ms** remains a **16.67 ms target miss** even though it passes the **33.33 ms hard-safety line**. This is characterization, not acceptance.
 - The accepted worldcraft scene has no citizens; product progress can stall if more worldcraft or provider infrastructure is added first.
+- Packet 02 visual production is an open human gate. Headless evidence cannot accept it: the current route characterization reports process p95 **7.7562 ms** and physics p95 **20.7071 ms**, with no GPU/render-driver evidence. Packet 02A must preserve deterministic seams; Packet 02V must prove one near-final district, provenance, interaction feedback, and displayed frame/physics/GPU baselines against the bounded budgets in the active milestone.
 - A narrow scenario can become a scripted quest or player-puppet sequence if citizen knowledge, independent action, refusal, commitment, and no-player routes are not derived from authoritative state.
 - A tally, privileged player choice, or magical veto could counterfeit social causality. The milestone permits influence only from role authority, bounded knowledge, material custody, labor availability, obligations, trust, dependency, and current world facts, with perturbation tests for those causes.
 - `GameManager`, HUD, diagnostic, voxel, run-store, and provider components have grown large enough to require targeted decomposition when a product slice touches them.
@@ -171,13 +172,13 @@ The selected contract requires the player's own shelter to be exposed and their 
 
 ## Current authorization
 
-The owner approved `SNOW-GLOBE-SOCIAL-KERNEL-V1 — Causeway Before Nightfall` in repository decision record [D-014](DECISION_LOG.md#d-014--select-the-three-citizen-causeway-before-nightfall-proof), and planning PR #191 merged at `31ea1d6012d6fd932d0bfe0dbc621e668fd58c80`. Authorization is limited to the milestone's nine ordered packets, beginning with Packet 01; each packet is one PR from the then-current `master` after its predecessor merges and required gates are reconciled.
+The owner approved `SNOW-GLOBE-SOCIAL-KERNEL-V1 — Causeway Before Nightfall` in [D-014](DECISION_LOG.md#d-014--select-the-three-citizen-causeway-before-nightfall-proof); D-016 accepts/selects the visual recovery sequence. PR #191's merge does not itself authorize this recovery. Only merge of this amendment authorizes the revised sequence beginning Packet 02A; each packet is one PR from then-current `master` after its predecessor merges and required gates are reconciled.
 
-Packet 01 implementation, canonical characterization, required hosted checks, protected merge, and delivery reconciliation are complete. Packet 02 is **NOT STARTED**; it is only the next ordered packet in principle and must begin as a separately bounded slice from then-current `master`. No historical milestone label is current authority. No live-provider, network, credential, paid, billing, raw-response, operator-store, deployment, publishing, release, or adjacent feature work is authorized.
+Packet 01 implementation, canonical characterization, required hosted checks, protected merge, and delivery reconciliation are complete. The local historical Packet 02 candidate exists, but Packet 02A/02V are unstarted on current `master`; Packet 03 remains unstarted pending the 02V human gate. No historical milestone label is current authority. No live-provider, network, credential, paid, billing, raw-response, operator-store, deployment, publishing, release, or adjacent feature work is authorized.
 
 ## Packet 01 delivery status
 
-Packet 01's required `build-test-smoke` and `lab-tests` checks passed under the exact protected-branch policy: those two contexts only, strict/up-to-date enforcement, GitHub Actions app id `15368`. PR #192 then merged with the exact base and head identified above. No deployment, release, accessibility acceptance, or human product acceptance is claimed. Packet 01 required no human product-acceptance gate; the absence of that gate is not an acceptance claim. The 16.67 ms target remains open for a later measured Packet 08 repair; Packet 01's hard-safety pass does not convert it into a target pass. Packet 02 remains not started.
+Packet 01's required `build-test-smoke` and `lab-tests` checks passed under the exact protected-branch policy: those two contexts only, strict/up-to-date enforcement, GitHub Actions app id `15368`. PR #192 then merged with the exact base and head identified above. No deployment, release, accessibility acceptance, or human product acceptance is claimed. Packet 01 required no human product-acceptance gate; the absence of that gate is not an acceptance claim. The 16.67 ms target remains open for a later measured Packet 08 repair; Packet 01's hard-safety pass does not convert it into a target pass. The local historical Packet 02 candidate exists, while Packet 02A/02V remain unstarted on current `master`.
 
 ## Status vocabulary
 
