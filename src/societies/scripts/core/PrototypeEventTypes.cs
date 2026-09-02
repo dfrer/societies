@@ -51,5 +51,12 @@ namespace Societies.Core
         public const string SettlementBlocked = "settlement.blocked";
         public const string SettlementPathBuilt = "settlement.path.built";
         public const string SettlementRemoteDepotEstablished = "settlement.remote_depot.established";
+        public const string CausewayTimberSacrificed = "causeway.timber.sacrificed";
+        public const string CausewayMaterialCommitted = "causeway.material.committed";
+        public const string CausewayLaborCommitted = "causeway.labor.committed";
+        public const string CausewayShelterRepaired = "causeway.shelter.repaired";
+        public const string CausewayWaterControlSelected = "causeway.water_control.selected";
+        public const string CausewayNightfallReached = "causeway.nightfall.reached";
+        public const string CausewayMorningResolved = "causeway.morning.resolved";
     }
 }

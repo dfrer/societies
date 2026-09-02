@@ -332,7 +332,27 @@
       "initialHearthFuel": 0,
       "startingStock": {},
       "startingStructures": [],
-      "startingBuildQueue": []
+      "startingBuildQueue": [],
+      "causeway": {
+        "initialCausewayIntegrity": 32,
+        "initialWetlandHealth": 84,
+        "reservedDryTimber": 2,
+        "initialCommunityTimber": 1,
+        "initialStone": 2,
+        "initialReedBundles": 2,
+        "initialPlayerLabor": 3,
+        "requiredCausewayTimber": 2,
+        "requiredCausewayStone": 1,
+        "requiredCausewayReeds": 1,
+        "requiredPlayerLabor": 2,
+        "requiredShelterTimber": 2,
+        "scenarioStartHour": 8.0,
+        "nightfallHour": 18.0,
+        "morningHour": 6.0,
+        "causewayAnchor": { "x": -5.0, "y": 14.0, "z": 2.0 },
+        "nurseryAnchor": { "x": -9.0, "y": 13.0, "z": 7.0 },
+        "shelterAnchor": { "x": 4.0, "y": 14.0, "z": -3.0 }
+      }
     }
   ]
 }

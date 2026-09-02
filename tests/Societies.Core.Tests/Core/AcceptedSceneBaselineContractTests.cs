@@ -192,6 +192,27 @@ namespace Societies.Core.Tests
         }
 
         [Fact]
+        public void ValidateArtifact_AcceptsExplicitPacket02V5RouteWithoutChangingV4Defaults()
+        {
+            AcceptedSceneBaselineTrialArtifact artifact = ValidArtifact();
+            artifact.Schema = AcceptedSceneBaselineContract.Packet02Schema;
+            artifact.Route.RouteId = AcceptedSceneBaselineContract.Packet02RouteId;
+            artifact.Causeway = ValidCausewayEvidence();
+
+            AcceptedSceneBaselineContract.ValidateArtifact(
+                artifact,
+                AcceptedSceneBaselineContract.Packet02Schema,
+                AcceptedSceneBaselineContract.Packet02RouteId);
+            Assert.Throws<InvalidOperationException>(() => AcceptedSceneBaselineContract.ValidateArtifact(artifact));
+
+            artifact.Causeway.AfterVoxelEditStateIdentity = "tampered";
+            Assert.Throws<InvalidOperationException>(() => AcceptedSceneBaselineContract.ValidateArtifact(
+                artifact,
+                AcceptedSceneBaselineContract.Packet02Schema,
+                AcceptedSceneBaselineContract.Packet02RouteId));
+        }
+
+        [Fact]
         public void ValidateArtifact_FailsClosedOnRawTimingEligibilityAndRouteExecution()
         {
             AcceptedSceneBaselineTrialArtifact artifact = ValidArtifact();
@@ -452,6 +473,20 @@ namespace Societies.Core.Tests
                 new() { LegId = "move_backward", CompletedFrameCount = 40, PlayerX = 0.0,
                     PlayerY = 1.0, PlayerZ = 0.0, CameraPitchDegrees = -12.0, CameraYawDegrees = -18.0 }
             }
+        };
+
+        private static AcceptedSceneBaselineCausewayTransition ValidCausewayEvidence() => new()
+        {
+            CommandKind = nameof(PrototypeCausewayCommandKind.ContributeCommunityTimber),
+            CommandQuantity = 1,
+            Accepted = true,
+            EventType = PrototypeEventTypes.CausewayMaterialCommitted,
+            PreviousRevision = 0,
+            Revision = 1,
+            BeforeCommandStateIdentity = "causeway-before",
+            AfterCommandStateIdentity = "causeway-after",
+            AfterVoxelEditStateIdentity = "causeway-after",
+            ReloadedStateIdentity = "causeway-after"
         };
     }
 }

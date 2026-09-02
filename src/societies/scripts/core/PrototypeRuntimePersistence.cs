@@ -69,6 +69,9 @@ namespace Societies.Core
 
         /// <summary>Schema-v11 authoritative placed-piece state; absent in terrain-only v10 saves.</summary>
         public WorldcraftConstructionSnapshot? Construction { get; set; }
+
+        /// <summary>Schema-v12 scenario-specific causeway state; absent before Packet 02.</summary>
+        public PrototypeCausewayStateSnapshot? Causeway { get; set; }
     }
 
     /// <summary>
@@ -380,6 +383,12 @@ namespace Societies.Core
         public PrototypeCivicPolicySnapshot? CivicPolicy { get; set; } = new();
 
         public PrototypeWetlandSnapshot? Wetland { get; set; } = new();
+
+        /// <summary>Schema-v12 exact causeway state mirrored from the authoritative snapshot.</summary>
+        public PrototypeCausewayStateSnapshot? Causeway { get; set; }
+
+        /// <summary>Schema-v12 exact ordered causeway event records for artifact coherence.</summary>
+        public List<PrototypeEventRecord> CausewayEvents { get; set; } = new();
     }
 
     public struct PrototypeSerializableVector3
@@ -492,6 +501,71 @@ namespace Societies.Core
         private static readonly string[] RequiredSchemaV11SnapshotProperties = RequiredSchemaV10SnapshotProperties
             .Concat(new[] { nameof(PrototypeRuntimeSnapshot.Construction) })
             .ToArray();
+        private static readonly string[] RequiredSchemaV12SnapshotProperties = RequiredSchemaV11SnapshotProperties
+            .Concat(new[] { nameof(PrototypeRuntimeSnapshot.Causeway) })
+            .ToArray();
+        private static readonly string[] RequiredSchemaV12CausewayProperties =
+        {
+            nameof(PrototypeCausewayStateSnapshot.Revision),
+            nameof(PrototypeCausewayStateSnapshot.MigrationSourceSchemaVersion),
+            nameof(PrototypeCausewayStateSnapshot.CausewayIntegrity),
+            nameof(PrototypeCausewayStateSnapshot.WetlandHealth),
+            nameof(PrototypeCausewayStateSnapshot.ReservedDryTimber),
+            nameof(PrototypeCausewayStateSnapshot.CommunityTimber),
+            nameof(PrototypeCausewayStateSnapshot.Stone),
+            nameof(PrototypeCausewayStateSnapshot.ReedBundles),
+            nameof(PrototypeCausewayStateSnapshot.AvailablePlayerLabor),
+            nameof(PrototypeCausewayStateSnapshot.PlayerLabor),
+            nameof(PrototypeCausewayStateSnapshot.ShelterTimberSpent),
+            nameof(PrototypeCausewayStateSnapshot.ShelterLaborSpent),
+            nameof(PrototypeCausewayStateSnapshot.CausewayTimberCommitted),
+            nameof(PrototypeCausewayStateSnapshot.CausewayStoneCommitted),
+            nameof(PrototypeCausewayStateSnapshot.CausewayReedsCommitted),
+            nameof(PrototypeCausewayStateSnapshot.WaterControl),
+            nameof(PrototypeCausewayStateSnapshot.NightfallReached),
+            nameof(PrototypeCausewayStateSnapshot.MorningResolved),
+            nameof(PrototypeCausewayStateSnapshot.MorningOutcome),
+            nameof(PrototypeCausewayStateSnapshot.PlayerShelterRepaired),
+            nameof(PrototypeCausewayStateSnapshot.RestorationRequired),
+            nameof(PrototypeCausewayStateSnapshot.RestorationDueMorning),
+            nameof(PrototypeCausewayStateSnapshot.Definition)
+        };
+        private static readonly string[] RequiredSchemaV12CausewayDefinitionProperties =
+        {
+            nameof(PrototypeCausewayDefinitionSnapshot.Schema),
+            nameof(PrototypeCausewayDefinitionSnapshot.SchemaVersion),
+            nameof(PrototypeCausewayDefinitionSnapshot.InitialCausewayIntegrity),
+            nameof(PrototypeCausewayDefinitionSnapshot.InitialWetlandHealth),
+            nameof(PrototypeCausewayDefinitionSnapshot.ReservedDryTimber),
+            nameof(PrototypeCausewayDefinitionSnapshot.InitialCommunityTimber),
+            nameof(PrototypeCausewayDefinitionSnapshot.InitialStone),
+            nameof(PrototypeCausewayDefinitionSnapshot.InitialReedBundles),
+            nameof(PrototypeCausewayDefinitionSnapshot.InitialPlayerLabor),
+            nameof(PrototypeCausewayDefinitionSnapshot.RequiredCausewayTimber),
+            nameof(PrototypeCausewayDefinitionSnapshot.RequiredCausewayStone),
+            nameof(PrototypeCausewayDefinitionSnapshot.RequiredCausewayReeds),
+            nameof(PrototypeCausewayDefinitionSnapshot.RequiredPlayerLabor),
+            nameof(PrototypeCausewayDefinitionSnapshot.RequiredShelterTimber),
+            nameof(PrototypeCausewayDefinitionSnapshot.NightfallHour),
+            nameof(PrototypeCausewayDefinitionSnapshot.MorningHour),
+            nameof(PrototypeCausewayDefinitionSnapshot.ScenarioStartHour),
+            nameof(PrototypeCausewayDefinitionSnapshot.CausewayAnchor),
+            nameof(PrototypeCausewayDefinitionSnapshot.NurseryAnchor),
+            nameof(PrototypeCausewayDefinitionSnapshot.ShelterAnchor),
+            nameof(PrototypeCausewayDefinitionSnapshot.Digest)
+        };
+        private static readonly string[] RequiredSchemaV12CausewayVectorProperties =
+        {
+            nameof(PrototypeSerializableVector3.X),
+            nameof(PrototypeSerializableVector3.Y),
+            nameof(PrototypeSerializableVector3.Z)
+        };
+        private static readonly string[] RequiredSchemaV12CausewayEventProperties =
+        {
+            nameof(PrototypeEventRecord.Tick),
+            nameof(PrototypeEventRecord.EventType),
+            nameof(PrototypeEventRecord.Message)
+        };
         private static readonly string[] RequiredSchemaV10VoxelWorldProperties =
         {
             nameof(VoxelWorldSnapshot.Schema), nameof(VoxelWorldSnapshot.Generator), nameof(VoxelWorldSnapshot.Materials),
@@ -601,7 +675,11 @@ namespace Societies.Core
         };
         private static readonly string[] RequiredSchemaV9RunSummaryProperties = typeof(PrototypeRunSummary)
             .GetProperties()
+            .Where(property => property.Name is not nameof(PrototypeRunSummary.Causeway) and not nameof(PrototypeRunSummary.CausewayEvents))
             .Select(property => property.Name)
+            .ToArray();
+        private static readonly string[] RequiredSchemaV12RunSummaryProperties = RequiredSchemaV9RunSummaryProperties
+            .Concat(new[] { nameof(PrototypeRunSummary.Causeway), nameof(PrototypeRunSummary.CausewayEvents) })
             .ToArray();
 
         private static readonly JsonSerializerOptions JsonOptions = new()
@@ -618,8 +696,14 @@ namespace Societies.Core
                 root.Remove(nameof(PrototypeRuntimeSnapshot.WorldModel));
                 root.Remove(nameof(PrototypeRuntimeSnapshot.VoxelWorld));
                 root.Remove(nameof(PrototypeRuntimeSnapshot.Construction));
+                root.Remove(nameof(PrototypeRuntimeSnapshot.Causeway));
             }
-            else if (snapshot.SchemaVersion == 10) root.Remove(nameof(PrototypeRuntimeSnapshot.Construction));
+            else if (snapshot.SchemaVersion == 10)
+            {
+                root.Remove(nameof(PrototypeRuntimeSnapshot.Construction));
+                root.Remove(nameof(PrototypeRuntimeSnapshot.Causeway));
+            }
+            else if (snapshot.SchemaVersion == 11) root.Remove(nameof(PrototypeRuntimeSnapshot.Causeway));
             return root.ToJsonString(JsonOptions);
         }
 
@@ -640,12 +724,12 @@ namespace Societies.Core
                 throw new InvalidDataException("Runtime snapshot is missing an integral SchemaVersion.");
             }
 
-            if (schemaVersion is not (5 or 6 or 7 or 8 or 9 or 10 or 11))
+            if (schemaVersion is not (5 or 6 or 7 or 8 or 9 or 10 or 11 or 12))
             {
-                throw new InvalidDataException($"Unsupported runtime snapshot schema {schemaVersion}; expected 5, 6, 7, 8, 9, 10, or 11.");
+                throw new InvalidDataException($"Unsupported runtime snapshot schema {schemaVersion}; expected 5 through 12.");
             }
 
-            if (schemaVersion is 7 or 8 or 9 or 10 or 11)
+            if (schemaVersion is 7 or 8 or 9 or 10 or 11 or 12)
             {
                 IReadOnlyList<string> requiredSnapshotProperties = schemaVersion switch
                 {
@@ -653,7 +737,8 @@ namespace Societies.Core
                     8 => RequiredSchemaV8SnapshotProperties,
                     9 => RequiredSchemaV9SnapshotProperties,
                     10 => RequiredSchemaV10SnapshotProperties,
-                    _ => RequiredSchemaV11SnapshotProperties
+                    11 => RequiredSchemaV11SnapshotProperties,
+                    _ => RequiredSchemaV12SnapshotProperties
                 };
                 foreach (string propertyName in requiredSnapshotProperties)
                 {
@@ -722,7 +807,7 @@ namespace Societies.Core
                         schemaVersion);
                 }
 
-                if (schemaVersion is 10 or 11)
+                if (schemaVersion is 10 or 11 or 12)
                 {
                     JsonElement voxelWorld = RequireObjectWithProperties(
                         document.RootElement,
@@ -730,10 +815,19 @@ namespace Societies.Core
                         RequiredSchemaV10VoxelWorldProperties,
                         schemaVersion);
                     ValidateSchemaV10VoxelRows(voxelWorld, schemaVersion);
-                    if (schemaVersion == 11)
+                    if (schemaVersion >= 11)
                     {
                         JsonElement construction = RequireObjectWithProperties(document.RootElement, nameof(PrototypeRuntimeSnapshot.Construction), RequiredSchemaV11ConstructionProperties, schemaVersion);
                         ValidateSchemaV11ConstructionRows(construction, schemaVersion);
+                    }
+                    if (schemaVersion == 12)
+                    {
+                        JsonElement causeway = RequireObjectWithExactProperties(
+                            document.RootElement, nameof(PrototypeRuntimeSnapshot.Causeway),
+                            RequiredSchemaV12CausewayProperties, schemaVersion);
+                        ValidateSchemaV12CausewayDefinition(causeway, schemaVersion);
+                        PrototypeCausewayStateSnapshot? parsedCauseway = JsonSerializer.Deserialize<PrototypeCausewayStateSnapshot>(causeway.GetRawText(), JsonOptions);
+                        PrototypeCausewayState.ValidateSnapshot(parsedCauseway!);
                     }
                 }
             }
@@ -743,6 +837,10 @@ namespace Societies.Core
             if (snapshot == null)
             {
                 throw new InvalidDataException("Runtime snapshot payload is null.");
+            }
+            if (schemaVersion < 12 && snapshot.Causeway != null)
+            {
+                throw new InvalidDataException($"Schema-v{schemaVersion} runtime snapshot cannot contain causeway state.");
             }
             if (schemaVersion >= 8)
             {
@@ -760,7 +858,7 @@ namespace Societies.Core
                 }
             }
 
-            if (schemaVersion is 10 or 11)
+            if (schemaVersion is 10 or 11 or 12)
             {
                 PrototypeVoxelSnapshotValidator.ValidateCanonicalShell(snapshot);
                 try
@@ -772,9 +870,13 @@ namespace Societies.Core
                     {
                         throw new InvalidDataException($"Schema-v{schemaVersion} voxel identity does not match its outer envelope.");
                     }
-                    if (schemaVersion == 11)
+                    if (schemaVersion >= 11)
                     {
                         _ = WorldcraftConstructionState.Restore(snapshot.Construction!, voxelWorld, snapshot.Inventory, snapshot.SimulationTick);
+                    }
+                    if (schemaVersion == 12)
+                    {
+                        PrototypeCausewayState.ValidateSnapshot(snapshot.Causeway!);
                     }
                 }
                 catch (InvalidOperationException exception)
@@ -870,6 +972,68 @@ namespace Societies.Core
             return payload;
         }
 
+        private static JsonElement RequireObjectWithExactProperties(
+            JsonElement parent,
+            string propertyName,
+            IReadOnlyList<string> requiredProperties,
+            int schemaVersion)
+        {
+            if (!parent.TryGetProperty(propertyName, out JsonElement payload) ||
+                payload.ValueKind != JsonValueKind.Object)
+            {
+                throw new InvalidDataException(
+                    $"Schema-v{schemaVersion} property '{propertyName}' must be an object.");
+            }
+            RequireExactOrdinalProperties(payload, propertyName, requiredProperties, schemaVersion);
+            return payload;
+        }
+
+        private static void RequireExactOrdinalProperties(
+            JsonElement payload,
+            string payloadName,
+            IReadOnlyList<string> requiredProperties,
+            int schemaVersion)
+        {
+            if (payload.ValueKind != JsonValueKind.Object)
+            {
+                throw new InvalidDataException(
+                    $"Schema-v{schemaVersion} property '{payloadName}' must be an object.");
+            }
+            JsonProperty[] actual = payload.EnumerateObject().ToArray();
+            if (actual.Length != requiredProperties.Count)
+            {
+                throw new InvalidDataException(
+                    $"Schema-v{schemaVersion} property '{payloadName}' has an unknown, duplicate, or missing field.");
+            }
+            for (int index = 0; index < requiredProperties.Count; index++)
+            {
+                if (!string.Equals(actual[index].Name, requiredProperties[index], StringComparison.Ordinal))
+                {
+                    throw new InvalidDataException(
+                        $"Schema-v{schemaVersion} property '{payloadName}' field order or field set is noncanonical.");
+                }
+            }
+        }
+
+        private static void ValidateSchemaV12CausewayDefinition(
+            JsonElement causeway,
+            int schemaVersion)
+        {
+            JsonElement definition = RequireObjectWithExactProperties(
+                causeway, nameof(PrototypeCausewayStateSnapshot.Definition),
+                RequiredSchemaV12CausewayDefinitionProperties, schemaVersion);
+            foreach (string anchorName in new[]
+            {
+                nameof(PrototypeCausewayDefinitionSnapshot.CausewayAnchor),
+                nameof(PrototypeCausewayDefinitionSnapshot.NurseryAnchor),
+                nameof(PrototypeCausewayDefinitionSnapshot.ShelterAnchor)
+            })
+            {
+                _ = RequireObjectWithExactProperties(
+                    definition, anchorName, RequiredSchemaV12CausewayVectorProperties, schemaVersion);
+            }
+        }
+
         private static void RequireProperties(
             JsonElement payload,
             string payloadName,
@@ -915,7 +1079,13 @@ namespace Societies.Core
 
         public static string SerializeRunSummary(PrototypeRunSummary summary)
         {
-            return JsonSerializer.Serialize(summary, JsonOptions);
+            JsonObject root = JsonSerializer.SerializeToNode(summary, JsonOptions)!.AsObject();
+            if (summary.SchemaVersion < 12)
+            {
+                root.Remove(nameof(PrototypeRunSummary.Causeway));
+                root.Remove(nameof(PrototypeRunSummary.CausewayEvents));
+            }
+            return root.ToJsonString(JsonOptions);
         }
 
         public static PrototypeRunSummary DeserializeRunSummary(string json)
@@ -937,7 +1107,10 @@ namespace Societies.Core
 
             if (schemaVersion >= 9)
             {
-                foreach (string propertyName in RequiredSchemaV9RunSummaryProperties)
+                IReadOnlyList<string> requiredProperties = schemaVersion >= 12
+                    ? RequiredSchemaV12RunSummaryProperties
+                    : RequiredSchemaV9RunSummaryProperties;
+                foreach (string propertyName in requiredProperties)
                 {
                     if (!document.RootElement.TryGetProperty(propertyName, out _))
                     {
@@ -956,11 +1129,37 @@ namespace Societies.Core
                     nameof(PrototypeRunSummary.Wetland),
                     RequiredSchemaV9WetlandProperties,
                     schemaVersion);
+                if (schemaVersion >= 12)
+                {
+                    JsonElement causeway = RequireObjectWithExactProperties(
+                        document.RootElement,
+                        nameof(PrototypeRunSummary.Causeway),
+                        RequiredSchemaV12CausewayProperties,
+                        schemaVersion);
+                    ValidateSchemaV12CausewayDefinition(causeway, schemaVersion);
+                    PrototypeCausewayStateSnapshot? parsedCauseway =
+                        JsonSerializer.Deserialize<PrototypeCausewayStateSnapshot>(causeway.GetRawText(), JsonOptions);
+                    PrototypeCausewayState.ValidateSnapshot(parsedCauseway!);
+                    if (!document.RootElement.TryGetProperty(nameof(PrototypeRunSummary.CausewayEvents), out JsonElement events) ||
+                        events.ValueKind != JsonValueKind.Array)
+                    {
+                        throw new InvalidDataException("Schema-v12 run summary causeway events must be an array.");
+                    }
+                    foreach (JsonElement causewayEvent in events.EnumerateArray())
+                    {
+                        RequireExactOrdinalProperties(causewayEvent, nameof(PrototypeRunSummary.CausewayEvents),
+                            RequiredSchemaV12CausewayEventProperties, schemaVersion);
+                    }
+                }
             }
 
             PrototypeRunSummary summary =
                 JsonSerializer.Deserialize<PrototypeRunSummary>(bytes, JsonOptions)
                 ?? throw new InvalidDataException("Run-summary payload is null.");
+            if (schemaVersion < 12 && (summary.Causeway != null || summary.CausewayEvents == null || summary.CausewayEvents.Count != 0))
+            {
+                throw new InvalidDataException($"Schema-v{schemaVersion} run summary cannot contain causeway state.");
+            }
             PrototypeRunArtifactManager.ValidateStandaloneRunSummary(summary);
             return summary;
         }

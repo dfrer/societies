@@ -14,15 +14,15 @@ This register distinguishes current reality from planned fixes. Priority reflect
 
 ### Visual-production gate reopened
 
-**Evidence:** the owner rejected the first Packet 02 visual presentation as “basically none of this is near actual visual completleness, needs massive work”. Headless evidence has no GPU/render driver and cannot establish visual quality. Existing route characterization is process p95 **7.7562 ms** and physics p95 **20.7071 ms**; physics misses the 16.67 ms target while passing the 33.33 ms hard-safety line.
+**Evidence:** the owner rejected the first Packet 02 visual presentation as “basically none of this is near actual visual completleness, needs massive work”. Headless evidence has no GPU/display measurement and cannot establish visual quality. Packet 02A's corrected fresh export exited 0 and finalized a fail-closed v2 attestation, but post-export full-worktree drift stopped the wrapper before trials. Earlier ad-hoc reuse-derived timing is invalid. All six current performance trials are unrun, so Packet 02A has no current target, hard-safety, same-route, or GPU/display classification.
 
 **Consequence:** social breadth must not resume on a primitive presenter or dressed-up blockout. The representative Causeway district needs one coherent weathered civic-folk wetland direction, authored asset provenance, contextual interaction feedback, and an actual in-engine owner gate.
 
-**Control:** recover deterministic seams in Packet 02A, then deliver exactly one near-final district in Packet 02V. Record the displayed baseline using the protocol in the active milestone; Packet 03 remains unstarted until owner acceptance. No quality reduction may green an unrelated metric.
+**Control:** complete technical review and hosted delivery of Packet 02A, then deliver exactly one near-final district in Packet 02V. Record the displayed baseline using the protocol in the active milestone; Packet 03 remains unstarted until owner acceptance. No quality reduction may green an unrelated metric.
 
 ### A narrow social slice can become a scripted quest or player-puppet show
 
-**Evidence:** no accepted Mara/Ivo/Sena, trust, commitment, or causeway domain exists yet. The legacy civic/wetland route and current cognition precursor can demonstrate mechanics without proving citizen knowledge, independent agency, or a lived social consequence.
+**Evidence:** Packet 02A now provides the deterministic causeway substrate, but no accepted Mara/Ivo/Sena, trust, commitment, or citizen domain exists yet. The legacy civic/wetland route and current cognition precursor can demonstrate mechanics without proving citizen knowledge, independent agency, or a lived social consequence.
 
 **Consequence:** a fixed scenario could appear coherent while dialogue order, hidden omniscient state, or player-triggered puppetry determines every result. It would not prove a society.
 

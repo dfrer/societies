@@ -44,7 +44,7 @@ namespace Societies.Core
                 previousEventTick = voxelEvent.Tick;
             }
 
-            bool isWorldcraft = snapshot.SchemaVersion == 11;
+            bool isWorldcraft = snapshot.SchemaVersion >= 11;
             if (isWorldcraft)
             {
                 ValidateWorldcraftInventory(snapshot.Inventory);
@@ -52,6 +52,15 @@ namespace Societies.Core
                 {
                     throw new InvalidDataException("Schema-v11 voxel runtime snapshot is missing construction state.");
                 }
+            }
+
+            if (snapshot.SchemaVersion == 12)
+            {
+                PrototypeCausewayState.ValidateSnapshot(snapshot.Causeway ?? throw new InvalidDataException("Schema-v12 causeway state is missing."));
+            }
+            else if (snapshot.Causeway != null)
+            {
+                throw new InvalidDataException("Pre-v12 voxel snapshot cannot carry causeway state.");
             }
 
             if ((!isWorldcraft && snapshot.Inventory.Count != 0) || snapshot.Stockpile.Count != 0 || snapshot.Resources.Count != 0 ||

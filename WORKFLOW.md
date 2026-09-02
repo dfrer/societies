@@ -1,27 +1,29 @@
 # Workflow
 
-The canonical process is [`docs/project/DEVELOPMENT_PROCESS.md`](docs/project/DEVELOPMENT_PROCESS.md). The root file remains only because older prompts and scripts expect it.
+The canonical process is [`docs/project/DEVELOPMENT_PROCESS.md`](docs/project/DEVELOPMENT_PROCESS.md). This root file is the current handoff boundary for Packet 02A.
 
-## Latest delivery boundary
+## Packet 02A continuation packet
 
-Packet 01's canonical empty-scene baseline remains identified by implementation `936771285fd1fd2ebb92054dc3630a656a78b941` and tree `2bd4a709a54ae72fde84fc3e24968e5fec49e49b`. Its six-execution ExportRelease bundle is deterministic and mechanically validated: three realtime trials supply timing evidence, while three fixed-60 executions supply identity evidence only. Realtime physics p95 remains a characterized **16.67 ms target miss** (worst **23.109 ms**) while both realtime p95 metrics pass the **33.33 ms hard-safety line**.
+- **Outcome:** deterministic Causeway substrate implemented locally, with no visual-completion claim.
+- **Base:** `master` `1745896535124bd39ca6321fe6430d93de81bf43`.
+- **Branch/status:** `feature/social-kernel-02a-causeway-substrate`, awaiting technical review and hosted delivery; not committed, PR-open, hosted-green, merge-ready, playable, visual-complete, or release-ready.
+- **Retained:** deterministic causeway state/catalog/events/session; schema-v12 persistence/replay/artifact/summary; v5 route/profile; `ExecuteCausewayIntent`; zero-tick HUD refresh suppression/coalescing.
+- **Dropped:** rejected presenter/`Label3D`, keyboard review controls, source-string UI scaffold/tests, and historical evidence/status.
+- **Historical only:** checkpoint `7aad77dc10f2edf84e44f5f43e0082568a1ab8e9` and rejection head `269c80e16766094378afd4809bca40e045ab686b`.
 
-Delivery is complete through [PR #192](https://github.com/dfrer/societies/pull/192): exact head `ea538a506318f99946f858c7c4b50508b65fb44c` merged at `2026-08-31T04:52:40Z` as `f471efe5fe5f5b62aef37e48f27bc1fbffd0104e`, whose parents are exact base `31ea1d6012d6fd932d0bfe0dbc621e668fd58c80` and that PR head. Required `build-test-smoke` was **SUCCESS** (run `33358362870`, job `99384744879`, `3m53s`) and required `lab-tests` was **SUCCESS** (run `33358362846`, job `99385290379`, `4s`); the classifier and full relevant lab suite also succeeded. Branch protection required exactly those two strict/up-to-date contexts from GitHub Actions app id `15368`.
+## Validation evidence
 
-Hosted product evidence is 0-warning/0-error production Release, **399/399** fast managed, **28/28** Godot, and governance pass. Hosted relevant-lab evidence is 0-warning/0-error core build, Snow Globe core **1,186 passed, 5 documented skips, 0 failed**, benchmark **56/56**, recording **94/94**, OpenRouter **104/104**, and governance pass. The local full managed **519/519** result remains local evidence and is not presented as hosted.
+- Governance passed.
+- Full managed 582/582 and fast 462/462 passed with zero failures or skips; integration 11 and soak 109 remain exactly declared.
+- Causeway authority 44/44; authority/artifact/baseline 85/85; broader persistence/voxel 162/162; executable profile/tooling and accepted-scene contracts 21/21, including 8/8 fail-closed tooling cases.
+- Direct Release and Debug builds: 0 warnings/errors.
+- Godot headless: 29/29, observed exit 0.
+- Schema-v12 freezes and binds the actual Causeway definition schema/version/SHA-256 digest; catalog mismatch fails closed. Exact-field, duplicate, and order strictness plus valid anchors are covered. Accepted deterministic route transition is `ContributeCommunityTimber`, revision `0->1`, with Causeway equality across edit/reload/fixed replay.
+- Earlier ad-hoc reuse-derived timing is invalid and is not Packet 02A evidence. A corrected fresh export with explicit `--quit` exited 0 and finalized a fail-closed v2 attestation, but post-export full-worktree drift stopped the wrapper before trials. All six current performance trials are unrun, so Packet 02A has no current performance classification; the 16.67 ms target, 33.33 ms hard-safety result, and GPU/display timing remain unresolved.
+- `godot --headless --build-solutions --quit` remains a known red signal-11 attempt and was not repeated.
 
-The visual-recovery amendment was delivered through [PR #194](https://github.com/dfrer/societies/pull/194): planning head `52557d0a517b841421aa60a7b7b295375908c35f` merged as `ccb651c67689c25eb0f3adec78abbfcf870699f5` at `2026-09-02T03:28:09Z`. Required hosted CI validation ran and succeeded: `build-test-smoke` in run `33531175853`, job `99934428113`; Snow Globe lab detector, suite, and required `lab-tests` in jobs `99934427058`, `99934496859`, and `99935427335`. No local runtime/build/test suite was rerun for this documentation-only reconciliation. D-016 is accepted/delivered, so Packet 02A is next authorized implementation; Packet 02V still requires the interactive owner visual gate, and Packet 03 remains unstarted/unauthorized.
+## Next action and gates
 
-The visual-production recovery amendment changes only planning/prose authority in `planning/active/MILESTONE.md`, `docs/project/DECISION_LOG.md`, `docs/project/CURRENT_STATE.md`, `docs/project/RISKS_AND_DEBT.md`, `docs/project/ROADMAP.md`, `CURRENT_BUILD.md`, and this file. No local runtime/build/test suite was rerun for this documentation-only boundary. The first Packet 02 visual gate remains failed; its unpublished branch is historical evidence and is not rewritten. Recovery is Packet 02A substrate -> Packet 02V visual-production target -> Packet 03, with Packet 03 **NOT STARTED** and unauthorized until the 02V owner gate passes. No deployment, accessibility, provider, paid, or release gate is claimed.
+Technical review must inspect the actual Packet 02A diff and authority-fix boundary, then hosted delivery must run from the exact branch head. Packet 02V starts only after both are reconciled. There is no human visual acceptance for 02A. Packet 02V requires a near-final authored district and interactive in-engine owner acceptance; Packet 03, citizens, cognition/providers, assets, deployment, and release remain unstarted/unauthorized.
 
-Before work:
-
-1. read `project-governance.json`;
-2. read `docs/project/CURRENT_STATE.md`;
-3. read `planning/active/MILESTONE.md`;
-4. read the nearest scoped `AGENTS.md`;
-5. inspect the actual branch, source, tests, and evidence.
-
-Every task must be bounded by an observable outcome, non-goals, acceptance criteria, validation, human gate, and stop conditions. Execution agents implement the active plan; they do not silently choose or expand the roadmap. A passing automated suite cannot override a failed or missing human product gate.
-
-Run `python scripts/check-project-governance.py` before handoff. Historical workflow records were preserved under `docs/history/pre-consolidation-2026-08-27/`.
+Run `python scripts/check-project-governance.py`, contradiction search, and `git diff --check` before handoff. No commit, push, or PR is authorized here.

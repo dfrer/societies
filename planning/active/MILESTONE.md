@@ -1,10 +1,10 @@
 # SNOW-GLOBE-SOCIAL-KERNEL-V1 — Causeway Before Nightfall
 
-- **Status:** Active; visual-recovery amendment delivered through PR #194
+- **Status:** Active; Packet 02A implemented locally and awaiting technical review/hosted delivery
 - **Owner approval:** Outcome approved 2026-08-28 in [D-014](../../docs/project/DECISION_LOG.md#d-014--select-the-three-citizen-causeway-before-nightfall-proof); visual recovery direction selected in D-016 and delivered through PR #194
 - **Feature-work authorization:** planning amendment merged to `master`: **Yes, ordered packets only**
 - **Accepted runtime baseline:** `847c86b1c379e6a1dd8d4b7b641c3c89646e28c9`
-- **Planning base:** planning head `52557d0a517b841421aa60a7b7b295375908c35f`; merged to `master` as `ccb651c67689c25eb0f3adec78abbfcf870699f5` at `2026-09-02T03:28:09Z`
+- **Planning base:** visual-recovery amendment delivered through PR #194; Packet 02A base `master` `1745896535124bd39ca6321fe6430d93de81bf43`
 - **Preservation branch:** `archive/pre-consolidation-2026-08-27`
 - **Scenario:** **Causeway Before Nightfall**
 - **Milestone pass gate:** exactly three embodied, persistent citizens—Mara, Ivo, and Sena—inside one authoritative lived-world consequence, after the representative district clears the Packet 02V visual-production gate
@@ -188,6 +188,16 @@ Packet 01 establishes the fixed accepted-scene route and baseline before citizen
 ## Ordered implementation packets
 
 Each packet is independently deliverable and reviewable. One packet equals one PR. A packet starts from the then-current `master` only after the previous packet is merged and its required gates are reconciled. Do not stack the sequence into one giant PR. The ordered recovery is Packet 02A substrate, Packet 02V visual production, then Packet 03; Packet 03 remains unstarted until 02V passes its human gate.
+
+### Packet 02A — Deterministic Causeway substrate
+
+**Status:** Implemented locally on `feature/social-kernel-02a-causeway-substrate`; awaiting technical review and hosted delivery.
+
+**Base and boundary:** based on `master` `1745896535124bd39ca6321fe6430d93de81bf43`. Retains deterministic causeway state/catalog/events/session, schema-v12 persistence/replay/artifact/summary, v5 route/profile, `ExecuteCausewayIntent`, and zero-tick HUD refresh suppression/coalescing. Drops rejected presenter/`Label3D`, keyboard review controls, source-string UI scaffold/tests, and historical evidence/status.
+
+**Evidence:** governance; Causeway authority 44/44; authority/artifact/baseline 85/85; broader persistence/voxel 162/162; executable profile/tooling and accepted-scene contracts 21/21, including 8/8 fail-closed tooling cases; full managed 582/582 and fast 462/462 with zero failures or skips; integration 11 and soak 109 exactly declared; direct Release and Debug builds 0 warnings/errors; Godot headless 29/29 with observed exit 0. Schema-v12 freezes and binds the actual Causeway definition schema/version/SHA-256 digest and fails closed on catalog mismatch; exact-field, duplicate, order, and valid-anchor checks are strict. The accepted deterministic route transition is `ContributeCommunityTimber`, revision `0->1`, with Causeway equality across edit/reload/fixed replay. Earlier ad-hoc reuse-derived timing is invalid and is not Packet 02A evidence. A corrected fresh export with explicit `--quit` exited 0 and finalized a fail-closed v2 attestation, but post-export full-worktree drift stopped the wrapper before trials. All six current performance trials are unrun, so Packet 02A has no current performance classification; the 16.67 ms target, 33.33 ms hard-safety result, and GPU/display timing remain unresolved. The known `--build-solutions` signal-11 attempt remains red and was not repeated.
+
+**Gate and delivery:** no human visual acceptance is required for 02A. Technical review and hosted delivery remain open. Do not start Packet 02V until both are reconciled. Historical checkpoint `7aad77dc10f2edf84e44f5f43e0082568a1ab8e9` and rejection head `269c80e16766094378afd4809bca40e045ab686b` are unpublished/read-only history.
 
 ### Packet 01 — Verified accepted-scene baseline and performance characterization
 
@@ -434,7 +444,7 @@ Stop and surface an owner decision if:
 
 ## Delivery and post-merge authorization
 
-This planning branch changed planning documentation and repository-governance validation only. It changed no product/runtime behavior. PR #194 delivered the planning head `52557d0a517b841421aa60a7b7b295375908c35f` to `master` as merge `ccb651c67689c25eb0f3adec78abbfcf870699f5` at `2026-09-02T03:28:09Z`, authorizing only the revised ordered bounded implementation packets above, beginning with Packet 02A. Required hosted evidence passed: `build-test-smoke` run `33531175853`, job `99934428113`; Snow Globe lab detector job `99934427058`, suite job `99934496859`, and `lab-tests` job `99935427335`. D-016 is accepted and delivered; no runtime/product acceptance is implied.
+PR #194 delivered the visual-recovery amendment and authorizes the revised ordered packets. Packet 02A is now a branch-local implementation from `master` `1745896535124bd39ca6321fe6430d93de81bf43` on `feature/social-kernel-02a-causeway-substrate`; its technical review and hosted delivery remain open. No runtime/product, human visual, hosted, playable, visual-complete, or release acceptance is implied.
 
 The PR #194 merge into `master` authorizes only the revised ordered bounded implementation packets above, beginning with Packet 02A. PR #191's earlier merge did not itself authorize this recovery. Each packet must:
 

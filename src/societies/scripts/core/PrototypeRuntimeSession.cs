@@ -23,6 +23,7 @@ namespace Societies.Core
         private WorldGenerationResult? _world;
         private VoxelWorldModule? _voxelWorld;
         private WorldcraftConstructionState? _worldcraft;
+        private PrototypeCausewayState? _causeway;
         private IPrototypeRuntimeTerrainQuery? _terrainQuery;
         private PrototypeResourceLedger? _resourceLedger;
         private PrototypeCrisisState? _crisisState;
@@ -31,6 +32,7 @@ namespace Societies.Core
         private readonly PrototypeExtractionPlanningMode _extractionPlanningMode;
         private readonly PrototypeRouteDistanceMode _routeDistanceMode;
         private readonly string _selectedWorldModel;
+        private readonly PrototypeCausewayDefinition? _causewayDefinition;
         private readonly HashSet<string> _eligibleContributionResourceIds;
         private readonly Dictionary<string, long> _contributionCountsByResource = new(StringComparer.Ordinal);
         private PrototypeSettlementDirective _activeDirective = PrototypeSettlementDirective.Neutral;
@@ -52,6 +54,9 @@ namespace Societies.Core
         {
             Scenario = scenario;
             _selectedWorldModel = scenario.WorldModel;
+            _causewayDefinition = scenario.Causeway == null
+                ? null
+                : PrototypeCausewayDefinitionContract.Freeze(scenario.Causeway, scenario.Id);
             if (!string.Equals(_selectedWorldModel, PrototypeWorldModels.Heightfield, StringComparison.Ordinal) &&
                 !string.Equals(_selectedWorldModel, PrototypeWorldModels.Voxel, StringComparison.Ordinal))
             {
@@ -98,10 +103,25 @@ namespace Societies.Core
 
         public long ConstructionRevision => _worldcraft?.Revision ?? 0;
 
+        /// <summary>Detached scenario-specific facts for Packet 02 presentation and commands.</summary>
+        public PrototypeCausewayProjection? Causeway => _causeway?.CaptureProjection(CurrentHour);
+
         public IReadOnlyList<WorldcraftPieceSnapshot> ConstructionPieces =>
             _worldcraft?.CapturePieces() ?? System.Array.Empty<WorldcraftPieceSnapshot>();
 
         public IReadOnlyList<string> VoxelHotbarItems => VoxelWorldcraftCatalog.HotbarOrder;
+
+        public PrototypeCausewayCommandResult ExecuteCausewayCommand(PrototypeCausewayCommand command)
+        {
+            if (_causeway == null) throw new InvalidOperationException("The active scenario has no causeway state.");
+            PrototypeCausewayCommandResult result = _causeway.Execute(command);
+            if (!result.Accepted) return result;
+
+            // The event is appended only after validation and immediately before the one authoritative state commit.
+            RecordEvent(result.EventType, result.EventMessage);
+            _causeway.Commit(result);
+            return result;
+        }
 
         public VoxelMaterialId GetVoxelMaterial(VoxelCoord coord)
         {
@@ -464,6 +484,11 @@ namespace Societies.Core
 
         public void Initialize(float startHour)
         {
+            if (_causewayDefinition != null)
+            {
+                PrototypeCausewayDefinitionContract.ValidateNewRunStartHour(
+                    _causewayDefinition, startHour);
+            }
             SimulationTick = 0;
             CurrentHour = startHour;
             RunStartHour = startHour;
@@ -481,6 +506,7 @@ namespace Societies.Core
             _world = null;
             _voxelWorld = null;
             _worldcraft = null;
+            _causeway = null;
             _terrainQuery = null;
             _resourceLedger = null;
             _settlementSimulation = null;
@@ -490,6 +516,7 @@ namespace Societies.Core
                 _voxelWorld = new VoxelWorldModule(Scenario.SimulationSeed);
                 Inventory.ConfigureBoundedStorage(VoxelWorldcraftCatalog.HotbarSlots, VoxelWorldcraftCatalog.StackLimit, VoxelWorldcraftCatalog.HotbarOrder);
                 _worldcraft = new WorldcraftConstructionState();
+                _causeway = _causewayDefinition == null ? null : new PrototypeCausewayState(_causewayDefinition);
                 _terrainQuery = new VoxelRuntimeTerrainQuery(_voxelWorld);
             }
             else
@@ -549,8 +576,35 @@ namespace Societies.Core
                     false);
             }
 
+            if (!float.IsFinite(tickIntervalSeconds) || tickIntervalSeconds <= 0.0f ||
+                !float.IsFinite(dayLengthSeconds) || dayLengthSeconds <= 0.0f)
+            {
+                throw new ArgumentOutOfRangeException(nameof(tickIntervalSeconds),
+                    "Runtime clock intervals must be finite and positive.");
+            }
+
+            double elapsedHours = 24.0 * tickIntervalSeconds / dayLengthSeconds;
+            if (!double.IsFinite(elapsedHours) || elapsedHours <= 0.0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(tickIntervalSeconds),
+                    "Runtime clock advance must resolve to a finite positive hour interval.");
+            }
+
+            float previousHour = CurrentHour;
+            float nextHour = AdvanceHour(CurrentHour, elapsedHours);
+            IReadOnlyList<PrototypeCausewayTransitionResult> causewayTransitions =
+                _causeway?.PrepareAdvance(previousHour, elapsedHours) ?? Array.Empty<PrototypeCausewayTransitionResult>();
             SimulationTick++;
-            CurrentHour = AdvanceHour(CurrentHour, tickIntervalSeconds, dayLengthSeconds);
+            CurrentHour = nextHour;
+
+            if (_causeway != null)
+            {
+                foreach (PrototypeCausewayTransitionResult transition in causewayTransitions)
+                {
+                    RecordEvent(transition.EventType, transition.Message);
+                    _causeway.Commit(transition);
+                }
+            }
 
             if (_weatherSimulation != null && _weatherSimulation.Advance(tickIntervalSeconds))
             {
@@ -1224,7 +1278,7 @@ namespace Societies.Core
 
             return new PrototypeRuntimeSnapshot
             {
-                SchemaVersion = UsesVoxelWorld ? 11 : 9,
+                SchemaVersion = UsesVoxelWorld ? (_causeway == null ? 11 : 12) : 9,
                 ScenarioId = Scenario.Id,
                 WorldSeed = WorldSeed,
                 WorldGenerationAttempt = WorldGenerationAttempt,
@@ -1252,7 +1306,8 @@ namespace Societies.Core
                 Wetland = _wetland.CaptureSnapshot(),
                 WorldModel = _terrainQuery.WorldModel,
                 VoxelWorld = _voxelWorld?.CaptureSnapshot(),
-                Construction = _worldcraft?.CaptureSnapshot()
+                Construction = _worldcraft?.CaptureSnapshot(),
+                Causeway = _causeway?.CaptureSnapshot()
             };
         }
 
@@ -1279,9 +1334,13 @@ namespace Societies.Core
             PrototypeSettlementSimulation? candidateSettlement = null;
             if (UsesVoxelWorld)
             {
-                if (snapshot.SchemaVersion is not (10 or 11))
+                if (_causewayDefinition == null
+                    ? snapshot.SchemaVersion is not (10 or 11)
+                    : snapshot.SchemaVersion is not (10 or 11 or 12))
                 {
-                    throw new InvalidDataException("Voxel scenarios require a schema-v10 or schema-v11 runtime snapshot.");
+                    throw new InvalidDataException(_causewayDefinition == null
+                        ? "Voxel scenarios require a schema-v10 or schema-v11 runtime snapshot."
+                        : "The causeway scenario requires a native schema-v12 snapshot or exact schema-v10/v11 accepted-scene migration input.");
                 }
 
                 try
@@ -1297,7 +1356,7 @@ namespace Societies.Core
                 candidateTerrainQuery = new VoxelRuntimeTerrainQuery(candidateVoxelWorld);
                 try
                 {
-                    candidateWorldcraft = snapshot.SchemaVersion == 11
+                    candidateWorldcraft = snapshot.SchemaVersion >= 11
                         ? WorldcraftConstructionState.Restore(snapshot.Construction ?? throw new InvalidDataException("Voxel construction payload is missing."), candidateVoxelWorld, snapshot.Inventory, snapshot.SimulationTick)
                         : new WorldcraftConstructionState(candidateVoxelWorld.WorldRevision);
                 }
@@ -1350,6 +1409,7 @@ namespace Societies.Core
             PrototypeRuntimeTelemetrySnapshot candidateTelemetry = new();
             PrototypeCivicPolicyState candidateCivicPolicy = new();
             PrototypeWetlandState candidateWetland = new();
+            PrototypeCausewayState? candidateCauseway = null;
             if (snapshot.SchemaVersion >= 7)
             {
                 candidateDirective = ParseDirectiveStrict(snapshot.Directive!.DirectiveId);
@@ -1403,6 +1463,7 @@ namespace Societies.Core
                     ? PrototypeWetlandState.PrepareRestore(snapshot.Wetland!, candidateCivicPolicy)
                     : PrototypeWetlandState.MigrateFromCivicPolicy(candidateCivicPolicy);
             }
+
             else
             {
                 ValidateLegacyV5V6Defaults(snapshot);
@@ -1410,6 +1471,37 @@ namespace Societies.Core
                 {
                     throw new InvalidDataException("Legacy schema snapshots cannot target a crisis scenario.");
                 }
+            }
+
+            if (_causewayDefinition != null)
+            {
+                if (snapshot.SchemaVersion is 10 or 11)
+                {
+                    if (snapshot.Causeway != null)
+                    {
+                        throw new InvalidDataException($"Schema-v{snapshot.SchemaVersion} causeway migration input cannot inject causeway state.");
+                    }
+                    candidateCauseway = PrototypeCausewayState.PrepareMigration(
+                        _causewayDefinition, snapshot.CurrentHour, snapshot.SchemaVersion);
+                }
+                else try
+                {
+                    candidateCauseway = PrototypeCausewayState.PrepareRestore(_causewayDefinition,
+                        snapshot.Causeway ?? throw new InvalidDataException("Causeway snapshot payload is missing."));
+                    candidateCauseway.ValidateCurrentHour(snapshot.CurrentHour);
+                }
+                catch (InvalidDataException)
+                {
+                    throw;
+                }
+                catch (ArgumentException exception)
+                {
+                    throw new InvalidDataException("Causeway snapshot payload is invalid.", exception);
+                }
+            }
+            else if (snapshot.Causeway != null)
+            {
+                throw new InvalidDataException("A non-causeway scenario cannot restore causeway state.");
             }
 
             if (UsesVoxelWorld)
@@ -1425,6 +1517,7 @@ namespace Societies.Core
             _world = candidateWorld;
             _voxelWorld = candidateVoxelWorld;
             _worldcraft = candidateWorldcraft;
+            _causeway = candidateCauseway;
             _terrainQuery = candidateTerrainQuery;
             _resourceLedger = candidateLedger;
             InvalidatePlanningResourceProjection();
@@ -1481,10 +1574,10 @@ namespace Societies.Core
 
         private static void ValidateSnapshot(PrototypeRuntimeSnapshot snapshot)
         {
-            if (snapshot.SchemaVersion is not (5 or 6 or 7 or 8 or 9 or 10 or 11))
+            if (snapshot.SchemaVersion is not (5 or 6 or 7 or 8 or 9 or 10 or 11 or 12))
             {
                 throw new InvalidDataException(
-                    $"Unsupported runtime snapshot schema {snapshot.SchemaVersion}; expected 5, 6, 7, 8, 9, 10, or 11.");
+                    $"Unsupported runtime snapshot schema {snapshot.SchemaVersion}; expected 5 through 12.");
             }
 
             if (snapshot.Inventory == null || snapshot.Stockpile == null || snapshot.Workers == null ||
@@ -1493,8 +1586,9 @@ namespace Societies.Core
                 snapshot.Telemetry == null ||
                 (snapshot.SchemaVersion >= 8 && snapshot.CivicPolicy == null) ||
                 (snapshot.SchemaVersion >= 9 && snapshot.Wetland == null) ||
-                (snapshot.SchemaVersion is 10 or 11 && (snapshot.WorldModel != PrototypeWorldModels.Voxel || snapshot.VoxelWorld == null)) ||
-                (snapshot.SchemaVersion == 11 && snapshot.Construction == null))
+                (snapshot.SchemaVersion is 10 or 11 or 12 && (snapshot.WorldModel != PrototypeWorldModels.Voxel || snapshot.VoxelWorld == null)) ||
+                (snapshot.SchemaVersion >= 11 && snapshot.Construction == null) ||
+                (snapshot.SchemaVersion == 12 && snapshot.Causeway == null))
             {
                 throw new InvalidDataException("Runtime snapshot required collections cannot be null.");
             }
@@ -1510,7 +1604,7 @@ namespace Societies.Core
             ValidateCountMap(snapshot.Inventory, "inventory");
             ValidateCountMap(snapshot.Stockpile, "stockpile");
 
-            if (snapshot.SchemaVersion is 10 or 11)
+            if (snapshot.SchemaVersion is 10 or 11 or 12)
             {
                 PrototypeVoxelSnapshotValidator.ValidateCanonicalShell(snapshot);
                 return;
@@ -1937,15 +2031,10 @@ namespace Societies.Core
             throw new InvalidDataException($"Runtime snapshot weather '{weatherName}' is not a known exact weather value.");
         }
 
-        private static float AdvanceHour(float currentHour, double tickIntervalSeconds, double dayLengthSeconds)
+        private static float AdvanceHour(float currentHour, double elapsedHours)
         {
-            double hoursPerTick = 24.0 * tickIntervalSeconds / dayLengthSeconds;
-            float next = (float)(currentHour + hoursPerTick);
-            while (next >= 24.0f)
-            {
-                next -= 24.0f;
-            }
-            return next;
+            double normalized = (currentHour + elapsedHours) % 24.0;
+            return (float)normalized;
         }
     }
 

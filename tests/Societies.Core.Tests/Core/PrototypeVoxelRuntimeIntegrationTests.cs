@@ -41,7 +41,9 @@ namespace Societies.Core.Tests
             Assert.NotEmpty(voxel.CaptureVoxelProjection(new[] { new VoxelChunkCoord(0, 0, 0) }).Chunks);
             voxel.Scenario.WorldModel = PrototypeWorldModels.Heightfield;
             Assert.True(voxel.UsesVoxelWorld);
-            Assert.Equal(11, voxel.CaptureSnapshot(Vector3.Zero).SchemaVersion);
+            PrototypeRuntimeSnapshot voxelSnapshot = voxel.CaptureSnapshot(Vector3.Zero);
+            Assert.Equal(12, voxelSnapshot.SchemaVersion);
+            Assert.NotNull(voxelSnapshot.Causeway);
             Assert.Null(voxel.World);
 
             PrototypeScenarioDefinition legacyScenario = bundle.Scenarios.Resolve("balanced_basin");
@@ -195,7 +197,7 @@ namespace Societies.Core.Tests
         }
 
         [Fact]
-        public void SchemaV11Artifacts_RoundTripWithinExistingBoundedEnvelope()
+        public void SchemaV12CausewayArtifacts_RoundTripWithinExistingBoundedEnvelope()
         {
             string outputDirectory = Path.Combine(Path.GetTempPath(), $"societies-voxel-{Guid.NewGuid():N}");
             string? original = System.Environment.GetEnvironmentVariable("SOCIETIES_RUN_OUTPUT_DIR");
@@ -213,7 +215,8 @@ namespace Societies.Core.Tests
                 PrototypeLoadedArtifacts loaded = Assert.IsType<PrototypeLoadedArtifacts>(manager.LoadLatestArtifacts());
 
                 Assert.True(File.Exists(path));
-                Assert.Equal(11, loaded.Snapshot.SchemaVersion);
+                Assert.Equal(12, loaded.Snapshot.SchemaVersion);
+                Assert.NotNull(loaded.Snapshot.Causeway);
                 Assert.Equal(snapshot.WorldHash, loaded.Snapshot.WorldHash);
                 Assert.Equal(PrototypeWorldModels.Voxel, summary.TerrainMode);
                 Assert.True(summary.GridWidth > 0 && summary.GridHeight > 0 && summary.BuildableCellCount > 0);

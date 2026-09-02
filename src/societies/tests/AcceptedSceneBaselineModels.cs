@@ -12,8 +12,10 @@ namespace Societies.Tests
     public static class AcceptedSceneBaselineContract
     {
         public const string Schema = "societies_accepted_scene_baseline/v4";
+        public const string Packet02Schema = "societies_accepted_scene_baseline/v5";
         public const string BundleSchema = "societies_accepted_scene_baseline_bundle/v4";
         public const string RouteId = "snow-globe-voxel-four-leg-edit-reload-replay/v4";
+        public const string Packet02RouteId = "snow-globe-voxel-causeway-state-edit-reload-replay/v5";
         public const string EnvironmentSchema = "societies_accepted_scene_environment/v1";
         public const string ProcessFrameCadenceMetric = "process_frame_start_interval_ms";
         public const string PhysicsFrameCadenceMetric = "physics_frame_start_interval_ms";
@@ -100,11 +102,18 @@ namespace Societies.Tests
             Require(scenario.Crisis == null, "Accepted voxel scenario must not declare crisis state.");
         }
 
-        public static void ValidateArtifact(AcceptedSceneBaselineTrialArtifact artifact)
+        public static void ValidateArtifact(
+            AcceptedSceneBaselineTrialArtifact artifact,
+            string? expectedSchema = null,
+            string? expectedRouteId = null)
         {
             ArgumentNullException.ThrowIfNull(artifact);
-            Require(artifact.Schema == Schema, "Artifact schema mismatch.");
-            Require(artifact.Route.RouteId == RouteId && artifact.Route.ScenePath == ScenePath,
+            expectedSchema ??= Schema;
+            expectedRouteId ??= RouteId;
+            bool packet02 = string.Equals(expectedSchema, Packet02Schema, StringComparison.Ordinal) &&
+                string.Equals(expectedRouteId, Packet02RouteId, StringComparison.Ordinal);
+            Require(artifact.Schema == expectedSchema, "Artifact schema mismatch.");
+            Require(artifact.Route.RouteId == expectedRouteId && artifact.Route.ScenePath == ScenePath,
                 "Artifact route identity mismatch.");
             Require(artifact.Route.TrialIndex is >= 1 and <= TrialCount, "Artifact trial index is out of range.");
             Require(artifact.Route.WarmupFrameCount > 0 && artifact.Route.MeasuredFrameCount > 0,
@@ -251,6 +260,40 @@ namespace Societies.Tests
                 "Edit persistence/reload identity mismatch.");
             Require(artifact.Persistence.SnapshotWritten && artifact.Persistence.SnapshotReloaded,
                 "Persistence/reload evidence is incomplete.");
+            if (packet02)
+            {
+                AcceptedSceneBaselineCausewayTransition causeway = artifact.Causeway ??
+                    throw new InvalidOperationException("Packet 02 artifact is missing causeway command evidence.");
+                Require(causeway.Accepted &&
+                    causeway.CommandKind == nameof(PrototypeCausewayCommandKind.ContributeCommunityTimber) &&
+                    causeway.CommandQuantity == 1 &&
+                    causeway.EventType == PrototypeEventTypes.CausewayMaterialCommitted &&
+                    causeway.PreviousRevision == 0 && causeway.Revision == 1,
+                    "Packet 02 causeway command identity is not the fixed accepted transition.");
+                Require(!string.IsNullOrWhiteSpace(causeway.BeforeCommandStateIdentity) &&
+                    !string.IsNullOrWhiteSpace(causeway.AfterCommandStateIdentity) &&
+                    causeway.BeforeCommandStateIdentity != causeway.AfterCommandStateIdentity &&
+                    causeway.AfterCommandStateIdentity == causeway.AfterVoxelEditStateIdentity &&
+                    causeway.AfterCommandStateIdentity == causeway.ReloadedStateIdentity,
+                    "Packet 02 causeway state did not remain equal across command, voxel edit, and reload.");
+                if (fixedDelta)
+                {
+                    Require(causeway.AfterCommandStateIdentity == causeway.ReplayedAfterCommandStateIdentity &&
+                        causeway.AfterCommandStateIdentity == causeway.ReplayedAfterVoxelEditStateIdentity,
+                        "Packet 02 causeway state did not reproduce across the fixed-delta replay.");
+                }
+                else
+                {
+                    Require(string.IsNullOrEmpty(causeway.ReplayedAfterCommandStateIdentity) &&
+                        string.IsNullOrEmpty(causeway.ReplayedAfterVoxelEditStateIdentity),
+                        "Real-time Packet 02 evidence contains a fixed-delta causeway replay claim.");
+                }
+            }
+            else
+            {
+                Require(artifact.Causeway == null,
+                    "Packet 01 artifact unexpectedly contains Packet 02 causeway command evidence.");
+            }
             if (fixedDelta)
             {
                 Require(artifact.Persistence.RouteReplayed &&
@@ -749,6 +792,7 @@ namespace Societies.Tests
         public AcceptedSceneBaselineBacklog Backlog { get; set; } = new();
         public AcceptedSceneBaselineEdit Edit { get; set; } = new();
         public AcceptedSceneBaselinePersistence Persistence { get; set; } = new();
+        public AcceptedSceneBaselineCausewayTransition? Causeway { get; set; }
         public List<string> Limitations { get; set; } = new();
     }
 
@@ -950,5 +994,21 @@ namespace Societies.Tests
         public string AfterEditStateIdentity { get; set; } = string.Empty;
         public string ReloadedStateIdentity { get; set; } = string.Empty;
         public string ReplayedStateIdentity { get; set; } = string.Empty;
+    }
+
+    public sealed class AcceptedSceneBaselineCausewayTransition
+    {
+        public string CommandKind { get; set; } = string.Empty;
+        public int CommandQuantity { get; set; }
+        public bool Accepted { get; set; }
+        public string EventType { get; set; } = string.Empty;
+        public long PreviousRevision { get; set; }
+        public long Revision { get; set; }
+        public string BeforeCommandStateIdentity { get; set; } = string.Empty;
+        public string AfterCommandStateIdentity { get; set; } = string.Empty;
+        public string AfterVoxelEditStateIdentity { get; set; } = string.Empty;
+        public string ReloadedStateIdentity { get; set; } = string.Empty;
+        public string ReplayedAfterCommandStateIdentity { get; set; } = string.Empty;
+        public string ReplayedAfterVoxelEditStateIdentity { get; set; } = string.Empty;
     }
 }

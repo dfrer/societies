@@ -1,6 +1,6 @@
 # Societies Current State
 
-- **Status date:** 2026-09-02 (visual-production recovery amendment delivered; Packet 01 delivery evidence unchanged)
+- **Status date:** 2026-09-02 (Packet 02A branch-local deterministic substrate implementation)
 - **Accepted runtime source:** `847c86b1c379e6a1dd8d4b7b641c3c89646e28c9`
 - **Preservation branch:** `archive/pre-consolidation-2026-08-27`
 - **Consolidation integration record:** PR #183 at `54a4e5c0ea1297438b06e4b40ea14391db343657`
@@ -11,9 +11,15 @@
 - **Packet 01 delivery:** [PR #192](https://github.com/dfrer/societies/pull/192), exact head `ea538a506318f99946f858c7c4b50508b65fb44c`, merged as `f471efe5fe5f5b62aef37e48f27bc1fbffd0104e`
 - **Visual-recovery amendment:** [PR #194](https://github.com/dfrer/societies/pull/194), planning head `52557d0a517b841421aa60a7b7b295375908c35f`, merged as `ccb651c67689c25eb0f3adec78abbfcf870699f5` at `2026-09-02T03:28:09Z`
 - **Active milestone:** [`SNOW-GLOBE-SOCIAL-KERNEL-V1 — Causeway Before Nightfall`](../../planning/active/MILESTONE.md)
-- **Current packet:** Packet 01 delivery and the visual-recovery planning amendment are complete. Packet 02A substrate is next; Packet 02V visual-production target follows; Packet 03 is **NOT STARTED** and unauthorized until the 02V owner gate passes.
+- **Current packet:** Packet 02A is implemented locally on `feature/social-kernel-02a-causeway-substrate`, based on `master` `1745896535124bd39ca6321fe6430d93de81bf43`, awaiting technical review and hosted delivery. Packet 02V follows only after that delivery; Packet 03 is **NOT STARTED** and unauthorized until the 02V owner gate passes.
 
 This document reports what is proven, not everything planned or implemented somewhere in repository history.
+
+## Packet 02A branch-local status
+
+Packet 02A retains deterministic causeway state/catalog/events/session, schema-v12 persistence/replay/artifact/summary, v5 route/profile, `ExecuteCausewayIntent`, and zero-tick HUD refresh suppression/coalescing. It explicitly drops the rejected presenter/`Label3D`, keyboard review controls, source-string UI scaffold/tests, and historical evidence/status. The implementation is not committed, PR-open, hosted-green, merge-ready, playable, visual-complete, or release-ready. Historical checkpoint `7aad77dc10f2edf84e44f5f43e0082568a1ab8e9` and rejection head `269c80e16766094378afd4809bca40e045ab686b` remain unpublished/read-only history.
+
+Local evidence: governance passed; Causeway authority 44/44; authority/artifact/baseline 85/85; broader persistence/voxel 162/162; executable profile/tooling and accepted-scene contracts 21/21, including 8/8 fail-closed tooling cases; full managed 582/582 and fast 462/462 with zero failures or skips; integration 11 and soak 109 exactly declared; direct Release and Debug builds 0 warnings/errors; Godot headless 29/29 with observed exit 0. Schema-v12 freezes and binds the actual Causeway definition schema/version/SHA-256 digest and fails closed on catalog mismatch; exact-field, duplicate, order, and valid-anchor checks are strict. The accepted deterministic route transition is `ContributeCommunityTimber`, revision `0->1`, with Causeway equality across edit/reload/fixed replay. Earlier ad-hoc reuse-derived timing is invalid and is not Packet 02A evidence. A corrected fresh export with explicit `--quit` exited 0 and finalized a fail-closed v2 attestation, but post-export full-worktree drift stopped the wrapper before trials. All six current performance trials are unrun, so Packet 02A has no current performance classification; the 16.67 ms target, 33.33 ms hard-safety result, and GPU/display timing remain unresolved. The known `--build-solutions` signal-11 attempt remains red and was not repeated.
 
 ## Executive assessment
 
@@ -164,7 +170,7 @@ The selected contract requires the player's own shelter to be exposed and their 
 - The [EB-01R repository attestation](../../planning/active/evidence/v3-sg-eb-01-validation.json) characterized **64 collision bodies**, **12,777 initial collision shapes**, and **12,781 shapes after an edit**; Packet 01 reproduced those counts and the expected +4 edit delta, while scaling remains unresolved.
 - The historical [`51.9392 ms` safety miss](../history/pre-consolidation-2026-08-27/root/CURRENT_BUILD.md) remains context. Packet 01 now supplies a representative local accepted-scene cadence baseline, but its worst physics p95 of **23.109 ms** remains a **16.67 ms target miss** even though it passes the **33.33 ms hard-safety line**. This is characterization, not acceptance.
 - The accepted worldcraft scene has no citizens; product progress can stall if more worldcraft or provider infrastructure is added first.
-- Packet 02 visual production is an open human gate. Headless evidence cannot accept it: the current route characterization reports process p95 **7.7562 ms** and physics p95 **20.7071 ms**, with no GPU/render-driver evidence. Packet 02A must preserve deterministic seams; Packet 02V must prove one near-final district, provenance, interaction feedback, and displayed frame/physics/GPU baselines against the bounded budgets in the active milestone.
+- Packet 02 visual production is an open human gate. Headless evidence cannot accept it. Packet 02A's corrected fresh export completed with a fail-closed v2 attestation, but full-worktree drift stopped execution before all six performance trials; earlier ad-hoc reuse-derived timing is invalid. Packet 02A therefore has no current process/physics classification or GPU/display evidence. Packet 02V must prove one near-final district, provenance, interaction feedback, and displayed frame/physics/GPU baselines against the bounded budgets in the active milestone.
 - A narrow scenario can become a scripted quest or player-puppet sequence if citizen knowledge, independent action, refusal, commitment, and no-player routes are not derived from authoritative state.
 - A tally, privileged player choice, or magical veto could counterfeit social causality. The milestone permits influence only from role authority, bounded knowledge, material custody, labor availability, obligations, trust, dependency, and current world facts, with perturbation tests for those causes.
 - `GameManager`, HUD, diagnostic, voxel, run-store, and provider components have grown large enough to require targeted decomposition when a product slice touches them.
@@ -176,11 +182,11 @@ The selected contract requires the player's own shelter to be exposed and their 
 
 The owner approved `SNOW-GLOBE-SOCIAL-KERNEL-V1 — Causeway Before Nightfall` in [D-014](DECISION_LOG.md#d-014--select-the-three-citizen-causeway-before-nightfall-proof); D-016 accepts/selects the visual recovery sequence. PR #194 delivered the amendment and authorizes the revised sequence beginning Packet 02A; each packet is one PR from then-current `master` after its predecessor merges and required gates are reconciled.
 
-Packet 01 implementation, canonical characterization, required hosted checks, protected merge, and delivery reconciliation are complete. The local historical Packet 02 candidate exists, but Packet 02A/02V are unstarted on current `master`; Packet 03 remains unstarted pending the 02V human gate. No historical milestone label is current authority. No live-provider, network, credential, paid, billing, raw-response, operator-store, deployment, publishing, release, or adjacent feature work is authorized.
+Packet 01 implementation, canonical characterization, required hosted checks, protected merge, and delivery reconciliation are complete. Packet 02A is implemented locally on the bounded feature branch and awaits technical review and hosted delivery; Packet 02V follows, while Packet 03 remains unstarted pending the 02V human gate. No historical milestone label is current authority. No live-provider, network, credential, paid, billing, raw-response, operator-store, deployment, publishing, release, or adjacent feature work is authorized.
 
 ## Packet 01 delivery status
 
-Packet 01's required `build-test-smoke` and `lab-tests` checks passed under the exact protected-branch policy: those two contexts only, strict/up-to-date enforcement, GitHub Actions app id `15368`. PR #192 then merged with the exact base and head identified above. No deployment, release, accessibility acceptance, or human product acceptance is claimed. Packet 01 required no human product-acceptance gate; the absence of that gate is not an acceptance claim. The 16.67 ms target remains open for a later measured Packet 08 repair; Packet 01's hard-safety pass does not convert it into a target pass. The local historical Packet 02 candidate exists, while Packet 02A/02V remain unstarted on current `master`.
+Packet 01's required `build-test-smoke` and `lab-tests` checks passed under the exact protected-branch policy: those two contexts only, strict/up-to-date enforcement, GitHub Actions app id `15368`. PR #192 then merged with the exact base and head identified above. No deployment, release, accessibility acceptance, or human product acceptance is claimed. Packet 01 required no human product-acceptance gate; the absence of that gate is not an acceptance claim. The 16.67 ms target remains open for a later measured Packet 08 repair; Packet 01's hard-safety pass does not convert it into a target pass. Packet 02A is branch-local and not yet hosted-delivered; Packet 02V remains gated behind that delivery and its own human visual gate.
 
 ## Status vocabulary
 

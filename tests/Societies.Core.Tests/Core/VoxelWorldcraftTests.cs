@@ -53,13 +53,17 @@ namespace Societies.Core.Tests
             Assert.True(continuous.GatherVoxel(source).Accepted);
             Assert.True(continuous.PlaceWorldcraftPiece(new WorldcraftPlacementCommand { ActorId = "player", Tick = 0, ExpectedConstructionRevision = 0, PieceId = "wood_post", Anchor = source, ActorCell = source }).Accepted);
             PrototypeRuntimeSnapshot saved = continuous.CaptureSnapshot(Vector3.Zero);
-            Assert.Equal(11, saved.SchemaVersion); Assert.Single(saved.Construction!.Pieces); Assert.Equal(2, saved.Construction.Events.Count); Assert.Contains(saved.Construction.Events, value => value.Kind == "gather");
+            Assert.Equal(12, saved.SchemaVersion); Assert.NotNull(saved.Causeway); Assert.Single(saved.Construction!.Pieces); Assert.Equal(2, saved.Construction.Events.Count); Assert.Contains(saved.Construction.Events, value => value.Kind == "gather");
             PrototypeRuntimeSession resumed = Create(); resumed.ApplySnapshot(PrototypePersistenceService.DeserializeSnapshot(PrototypePersistenceService.SerializeSnapshot(saved)));
             Assert.Equal(continuous.ConstructionRevision, resumed.ConstructionRevision); Assert.Equal(continuous.ConstructionPieces.Single().InstanceId, resumed.ConstructionPieces.Single().InstanceId);
 
             PrototypeRuntimeSnapshot v10 = continuous.CaptureSnapshot(Vector3.Zero); v10.SchemaVersion = 10; v10.Construction = null; v10.Inventory.Clear();
             PrototypeRuntimeSession migrated = Create(); migrated.ApplySnapshot(PrototypePersistenceService.DeserializeSnapshot(PrototypePersistenceService.SerializeSnapshot(v10)));
-            Assert.Empty(migrated.ConstructionPieces); Assert.Empty(migrated.Inventory.Items); Assert.Equal(11, migrated.CaptureSnapshot(Vector3.Zero).SchemaVersion);
+            PrototypeRuntimeSnapshot migratedV12 = migrated.CaptureSnapshot(Vector3.Zero);
+            Assert.Empty(migrated.ConstructionPieces); Assert.Empty(migrated.Inventory.Items); Assert.Equal(12, migratedV12.SchemaVersion); Assert.NotNull(migratedV12.Causeway);
+            Assert.Equal(10, migratedV12.Causeway!.MigrationSourceSchemaVersion);
+            Assert.Equal(v10.WorldHash, migratedV12.WorldHash);
+            Assert.Equal(v10.VoxelWorld!.RootHash, migratedV12.VoxelWorld!.RootHash);
 
             PrototypeRuntimeSnapshot malformed = continuous.CaptureSnapshot(Vector3.Zero); malformed.Construction!.Pieces[0].PieceId = "unknown";
             Assert.Throws<InvalidDataException>(() => PrototypePersistenceService.DeserializeSnapshot(PrototypePersistenceService.SerializeSnapshot(malformed)));
